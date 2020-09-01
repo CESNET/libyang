@@ -246,7 +246,7 @@ test_batch(void **state)
         st->source = NULL;
     }
 
-    lyd_print_mem(&str, st->target, LYD_XML, 0);
+    lyd_print_mem(&str, st->target, LYD_XML, LYD_PRINT_SHRINK);
     assert_string_equal(str, output_template);
 
     ly_in_free(in, 0);
@@ -285,7 +285,7 @@ test_leaf(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -327,7 +327,7 @@ test_container(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -397,7 +397,7 @@ test_list(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -476,7 +476,7 @@ test_list2(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -534,7 +534,7 @@ test_case(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -646,7 +646,7 @@ test_leafrefs(void **state)
 
     assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
 
-    lyd_print_mem(&prt, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&prt, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(prt, res);
     free(prt);
 }

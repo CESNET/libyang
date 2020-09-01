@@ -1455,7 +1455,7 @@ LY_ERR
 yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options}, *ctx = &ctx_;
 
     ly_print_(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print_(ctx->out, "%*s<module name=\"%s\"\n", INDENT, module->name);
@@ -1517,7 +1517,7 @@ LY_ERR
 yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options}, *ctx = &ctx_;
 
     ly_print_(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print_(ctx->out, "%*s<submodule name=\"%s\"\n", INDENT, submodp->name);

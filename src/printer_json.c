@@ -859,7 +859,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
 {
     const struct lyd_node *node;
     struct jsonpr_ctx ctx = {0};
-    const char *delimiter = (options & LYD_PRINT_FORMAT) ? "\n" : "";
+    const char *delimiter = (options & LYD_PRINT_SHRINK) ? "" : "\n";
 
     if (!root) {
         ly_print_(out, "{}%s", delimiter);

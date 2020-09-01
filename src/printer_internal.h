@@ -87,7 +87,7 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *mod
 /**
  * @brief Helper macros for data printers
  */
-#define DO_FORMAT (ctx->options & LYD_PRINT_FORMAT)
+#define DO_FORMAT (!(ctx->options & LY_PRINT_SHRINK))
 #define LEVEL ctx->level                      /**< current level */
 #define INDENT (DO_FORMAT ? (LEVEL)*2 : 0),"" /**< indentation parameters for printer functions */
 #define LEVEL_INC LEVEL++                     /**< increase indentation level */

@@ -434,7 +434,7 @@ cmd_print(const char *arg)
             target_path = optarg;
             break;
         case 's':
-            output_opts |= LYS_OUTPUT_NO_SUBSTMT;
+            output_opts |= LYS_PRINT_NO_SUBSTMT;
             break;
 #if 0
         case 'L':
@@ -819,7 +819,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat) {
-        ret = lyd_print_all(out, data, outformat, LYD_PRINT_FORMAT | printopt);
+        ret = lyd_print_all(out, data, outformat, printopt);
         ret = ret < 0 ? ret * (-1) : 0;
     }
 
@@ -1036,7 +1036,7 @@ print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
             return 1;
         }
 
-        lyd_print_file(out, ylib, outformat, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_FORMAT);
+        lyd_print_file(out, ylib, outformat, LYD_PRINT_WITHSIBLINGS);
         lyd_free_all(ylib);
         return 0;
     }

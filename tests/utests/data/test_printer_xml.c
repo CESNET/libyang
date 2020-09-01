@@ -186,7 +186,7 @@ test_leaf(void **state)
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     result = "<int8 xmlns=\"urn:tests:types\">15</int8>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, 0));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, result);
     lyd_free_all(tree);
@@ -209,7 +209,7 @@ test_anydata(void **state)
 
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns:x=\"url:x\" xmlns=\"example.com\"><x:x/></somexml></any>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, 0));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     /* canonized */
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns=\"example.com\"><x xmlns=\"url:x\"/></somexml></any>";
@@ -219,7 +219,7 @@ test_anydata(void **state)
 
     data = "<any xmlns=\"urn:tests:types\"/>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, 0));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
@@ -241,7 +241,7 @@ test_anydata(void **state)
     assert_string_equal(((struct lyd_node_any *)tree)->value.tree->schema->name, "cont");
     /* but its children not */
     assert_null(((struct lyd_node_inner *)(((struct lyd_node_any *)tree)->value.tree))->child->schema);
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, 0));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     /* canonized */
     data =
@@ -279,18 +279,18 @@ test_defaults(void **state)
     data = "<c xmlns=\"urn:defaults\">aa</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
         " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
@@ -298,7 +298,7 @@ test_defaults(void **state)
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
         " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
@@ -312,22 +312,22 @@ test_defaults(void **state)
     data = "<a xmlns=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
@@ -338,19 +338,19 @@ test_defaults(void **state)
     data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
         " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
@@ -359,7 +359,7 @@ test_defaults(void **state)
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
@@ -393,13 +393,13 @@ test_rpc(void **state)
     reply = "<result xmlns=\"urn:tests:types\">30</result>";
     result = "<sum xmlns=\"urn:tests:types\"><result>30</result></sum>";
     assert_non_null(tree1 = lyd_parse_mem(s->ctx, request, LYD_XML, LYD_OPT_RPC, NULL));
-    assert_true((len = lyd_print_tree(out, tree1, LYD_XML, 0)) >= 0);
+    assert_true((len = lyd_print_tree(out, tree1, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, request);
     ly_out_reset(out);
     assert_non_null(trees = lyd_trees_new(1, tree1));
     assert_non_null(tree2 = lyd_parse_mem(s->ctx, reply, LYD_XML, LYD_OPT_RPCREPLY, trees));
-    assert_true((len = lyd_print_tree(out, tree2, LYD_XML, 0)) >= 0);
+    assert_true((len = lyd_print_tree(out, tree2, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, result);
     ly_out_reset(out);
@@ -412,13 +412,13 @@ test_rpc(void **state)
     reply = "";
     result = "<sum xmlns=\"urn:tests:types\"/>";
     assert_non_null(tree1 = lyd_parse_mem(s->ctx, request, LYD_XML, LYD_OPT_RPC, NULL));
-    assert_true((len = lyd_print_tree(out, tree1, LYD_XML, 0)) >= 0);
+    assert_true((len = lyd_print_tree(out, tree1, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, request);
     ly_out_reset(out);
     assert_non_null(trees = lyd_trees_new(1, tree1));
     assert_non_null(tree2 = lyd_parse_mem(s->ctx, reply, LYD_XML, LYD_OPT_RPCREPLY, trees));
-    assert_true((len = lyd_print_tree(out, tree2, LYD_XML, 0)) >= 0);
+    assert_true((len = lyd_print_tree(out, tree2, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, result);
     ly_out_reset(out);
@@ -436,13 +436,13 @@ test_rpc(void **state)
     reply = "<b xmlns=\"urn:tests:types\">test-reply</b>";
     result = "<cont xmlns=\"urn:tests:types\"><listtarget><id>10</id><test><b>test-reply</b></test></listtarget></cont>";;
     assert_non_null(tree1 = lyd_parse_mem(s->ctx, request, LYD_XML, LYD_OPT_RPC, NULL));
-    assert_true((len = lyd_print_tree(out, tree1, LYD_XML, 0)) >= 0);
+    assert_true((len = lyd_print_tree(out, tree1, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, request);
     ly_out_reset(out);
     assert_non_null(trees = lyd_trees_new(1, tree1));
     assert_non_null(tree2 = lyd_parse_mem(s->ctx, reply, LYD_XML, LYD_OPT_RPCREPLY, trees));
-    assert_true((len = lyd_print_tree(out, tree2, LYD_XML, 0)) >= 0);
+    assert_true((len = lyd_print_tree(out, tree2, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, result);
     ly_out_reset(out);

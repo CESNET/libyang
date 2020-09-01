@@ -292,8 +292,8 @@ test_same(void **state)
     assert_null(st->diff1);
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 }
 
@@ -316,7 +316,7 @@ test_empty1(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">"
             "<foo>42</foo><b1_1>42</b1_1>"
@@ -327,8 +327,8 @@ test_empty1(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 }
 
@@ -348,7 +348,7 @@ test_empty2(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">"
             "<foo>42</foo><b1_1>42</b1_1>"
@@ -378,7 +378,7 @@ test_empty_nested(void **state)
     assert_int_equal(lyd_diff_siblings(NULL, lyd_node_children(st->first, 0), 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"create\">42</foo>"
@@ -389,7 +389,7 @@ test_empty_nested(void **state)
     assert_int_equal(lyd_diff_siblings(lyd_node_children(st->first, 0), NULL, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"delete\">42</foo>"
@@ -431,7 +431,7 @@ test_leaf(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"replace\" yang:orig-value=\"42\">41</foo>"
@@ -444,8 +444,8 @@ test_leaf(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
@@ -453,7 +453,7 @@ test_leaf(void **state)
 
     assert_non_null(st->diff2);
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"replace\" yang:orig-value=\"41\">40</foo>"
@@ -466,16 +466,16 @@ test_leaf(void **state)
 
     assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
-    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     free(st->xml2);
-    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"replace\" yang:orig-value=\"42\">40</foo>"
@@ -515,7 +515,7 @@ test_list(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<list yang:operation=\"delete\">"
@@ -534,8 +534,8 @@ test_list(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
@@ -543,7 +543,7 @@ test_list(void **state)
 
     assert_non_null(st->diff2);
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<list yang:operation=\"delete\">"
@@ -559,16 +559,16 @@ test_list(void **state)
 
     assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
-    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     free(st->xml2);
-    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<list yang:operation=\"none\">"
@@ -619,7 +619,7 @@ test_userord_llist(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>"
@@ -628,8 +628,8 @@ test_userord_llist(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
@@ -637,7 +637,7 @@ test_userord_llist(void **state)
 
     assert_non_null(st->diff2);
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"\">1</llist>"
@@ -647,16 +647,16 @@ test_userord_llist(void **state)
 
     assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
-    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     free(st->xml2);
-    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>"
@@ -703,7 +703,7 @@ test_userord_llist2(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"2\">4</llist>"
@@ -711,8 +711,8 @@ test_userord_llist2(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
@@ -720,7 +720,7 @@ test_userord_llist2(void **state)
 
     assert_non_null(st->diff2);
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"1\">2</llist>"
@@ -730,16 +730,16 @@ test_userord_llist2(void **state)
 
     assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
-    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     free(st->xml2);
-    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"\">4</llist>"
@@ -778,7 +778,7 @@ test_userord_mix(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"1\">2</llist>"
@@ -787,8 +787,8 @@ test_userord_mix(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
@@ -796,7 +796,7 @@ test_userord_mix(void **state)
 
     assert_non_null(st->diff2);
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"\">1</llist>"
@@ -806,16 +806,16 @@ test_userord_mix(void **state)
 
     assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
-    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     free(st->xml2);
-    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"1\">2</llist>"
@@ -853,7 +853,7 @@ test_wd(void **state)
     assert_int_equal(lyd_diff_siblings(st->first, st->second, LYD_DIFF_DEFAULTS, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"replace\" yang:orig-default=\"true\" yang:orig-value=\"42\">41</foo>"
@@ -865,8 +865,8 @@ test_wd(void **state)
     );
 
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
-    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
@@ -874,7 +874,7 @@ test_wd(void **state)
 
     assert_non_null(st->diff2);
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:operation=\"replace\" yang:orig-value=\"41\">42</foo>"
@@ -884,16 +884,16 @@ test_wd(void **state)
 
     assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
-    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     free(st->xml2);
-    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
-    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<foo yang:orig-default=\"true\" yang:operation=\"none\">42</foo>"
