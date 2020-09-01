@@ -339,7 +339,7 @@ lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
     return hash;
 }
 
-uint8_t
+ly_bool
 lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models)
 {
     LY_ARRAY_COUNT_TYPE u;

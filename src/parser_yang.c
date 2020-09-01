@@ -139,7 +139,7 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  */
 LY_ERR
 buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p, size_t *word_len,
-        char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix)
+        char **word_b, size_t *buf_len, ly_bool need_buf, uint8_t *prefix)
 {
     uint32_t c;
     size_t len;
@@ -297,7 +297,8 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
      *         5 - string continues after +, skipping whitespaces */
     uint8_t string;
     uint64_t block_indent = 0, current_indent = 0;
-    uint8_t need_buf = 0, prefix = 0;
+    ly_bool need_buf = 0;
+    uint8_t prefix = 0;
     const char *c;
     uint64_t trailing_ws = 0; /* current number of stored trailing whitespace characters */
 

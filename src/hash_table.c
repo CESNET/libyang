@@ -23,9 +23,15 @@
 #include "compat.h"
 #include "common.h"
 #include "dict.h"
+#include "log.h"
 
-static uint8_t
-lydict_val_eq(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *cb_data)
+/**
+ * @brief Comparison callback for dictionary's hash table
+ *
+ * Implementation of ::values_equal_cb.
+ */
+static ly_bool
+lydict_val_eq(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
 {
     LY_CHECK_ARG_RET(NULL, val1_p, val2_p, cb_data, 0);
 
@@ -173,7 +179,7 @@ finish:
 }
 
 static char *
-dict_insert(const struct ly_ctx *ctx, char *value, size_t len, uint8_t zerocopy)
+dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy)
 {
     LY_ERR ret = 0;
     struct dict_rec *match = NULL, rec;
@@ -332,7 +338,7 @@ lyht_free(struct hash_table *ht)
 }
 
 static LY_ERR
-lyht_resize(struct hash_table *ht, uint8_t enlarge)
+lyht_resize(struct hash_table *ht, ly_bool enlarge)
 {
     struct ht_rec *rec;
     unsigned char *old_recs;
@@ -477,7 +483,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the value to find.
  * @param[in] hash Hash to find.
- * @param[in] mod Operation kind for the val_equal callback.
+ * @param[in] mod Whether the operation modifies the hash table (insert or remove) or not (find).
  * @param[out] crec_p Optional found first record.
  * @param[out] col Optional collision number of @p rec_p, 0 for no collision.
  * @param[out] rec_p Found exact matching record, may be a collision of @p crec_p.
@@ -485,7 +491,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *
  * @return LY_SUCCESS if record was found.
  */
 static LY_ERR
-lyht_find_rec(struct hash_table *ht, void *val_p, uint32_t hash, uint8_t mod, struct ht_rec **crec_p, uint32_t *col,
+lyht_find_rec(struct hash_table *ht, void *val_p, uint32_t hash, ly_bool mod, struct ht_rec **crec_p, uint32_t *col,
         struct ht_rec **rec_p)
 {
     struct ht_rec *rec, *crec;
@@ -682,7 +688,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
 {
     struct ht_rec *rec, *crec;
     int32_t i;
-    uint8_t first_matched = 0;
+    ly_bool first_matched = 0;
     LY_ERR r, ret = LY_SUCCESS;
 
     LY_CHECK_ERR_RET(lyht_find_first(ht, hash, &rec), LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */

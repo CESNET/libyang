@@ -140,11 +140,11 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;
     uint32_t ns_count, i;
-    uint8_t rpc_filter = 0;
+    ly_bool rpc_filter = 0;
     char *p;
     size_t len;
 #endif
-    uint8_t dynamic;
+    ly_bool dynamic;
 
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
@@ -288,7 +288,7 @@ static void
 xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
 {
     struct ly_set ns_list = {0};
-    uint8_t dynamic;
+    ly_bool dynamic;
     const char *value;
 
     xml_print_node_open(ctx, (struct lyd_node *)node);

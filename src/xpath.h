@@ -238,7 +238,7 @@ struct lyxp_set {
         } *meta;
         char *str;
         long double num;
-        uint8_t bln; /* boolean */
+        ly_bool bln; /* boolean */
     } val;
 
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
@@ -354,10 +354,9 @@ LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node 
  * @param[in] node_type Type of @p node.
  * @param[in] skip_idx Index from @p set to skip.
  * @param[out] index_p Optional pointer to store index if the node is found.
- * @return 0 if not found
- * @return 1 if the @p node found.
+ * @return Boolean value whether the @p node found or not.
  */
-uint8_t lyxp_set_scnode_contains(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+ly_bool lyxp_set_scnode_contains(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
         int skip_idx, uint32_t *index_p);
 
 /**
@@ -381,7 +380,7 @@ void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
  * information about expressions and their operators (fill repeat).
  * @return Filled expression structure or NULL on error.
  */
-struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, uint8_t reparse);
+struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_bool reparse);
 
 /**
  * @brief Duplicate parsed XPath expression.

@@ -122,7 +122,7 @@ ypr_encode(struct ly_out *out, const char *text, ssize_t len)
 }
 
 static void
-ypr_open(struct ly_out *out, uint8_t *flag)
+ypr_open(struct ly_out *out, ly_bool *flag)
 {
     if (flag && !*flag) {
         *flag = 1;
@@ -131,7 +131,7 @@ ypr_open(struct ly_out *out, uint8_t *flag)
 }
 
 static void
-ypr_close(struct ypr_ctx *ctx, uint8_t flag)
+ypr_close(struct ypr_ctx *ctx, ly_bool flag)
 {
     if (flag) {
         ly_print_(ctx->out, "%*s}\n", INDENT);
@@ -141,7 +141,7 @@ ypr_close(struct ypr_ctx *ctx, uint8_t flag)
 }
 
 static void
-ypr_text(struct ypr_ctx *ctx, const char *name, const char *text, uint8_t singleline, uint8_t closed)
+ypr_text(struct ypr_ctx *ctx, const char *name, const char *text, ly_bool singleline, ly_bool closed)
 {
     const char *s, *t;
 
@@ -219,11 +219,11 @@ yprp_stmt(struct ypr_ctx *ctx, struct lysp_stmt *stmt)
  */
 static void
 yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-        struct lysp_ext_instance *ext, uint8_t *flag, LY_ARRAY_COUNT_TYPE count)
+        struct lysp_ext_instance *ext, ly_bool *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
-    uint8_t child_presence;
+    ly_bool child_presence;
     const char *argument;
 
     if (!count && ext) {
@@ -285,7 +285,7 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
  */
 static void
 yprc_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-        struct lysc_ext_instance *ext, uint8_t *flag, LY_ARRAY_COUNT_TYPE count)
+        struct lysc_ext_instance *ext, ly_bool *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -310,7 +310,7 @@ static void
 ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, const char *text, void *ext)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t extflag = 0;
+    ly_bool extflag = 0;
 
     if (!text) {
         /* nothing to print */
@@ -340,7 +340,7 @@ ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, c
 }
 
 static void
-ypr_unsigned(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value, uint8_t *flag)
+ypr_unsigned(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value, ly_bool *flag)
 {
     char *str;
 
@@ -354,7 +354,7 @@ ypr_unsigned(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, 
 }
 
 static void
-ypr_signed(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, signed long int attr_value, uint8_t *flag)
+ypr_signed(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, signed long int attr_value, ly_bool *flag)
 {
     char *str;
 
@@ -384,7 +384,7 @@ yprp_revision(struct ypr_ctx *ctx, const struct lysp_revision *rev)
 }
 
 static void
-ypr_mandatory(struct ypr_ctx *ctx, uint16_t flags, void *exts, uint8_t *flag)
+ypr_mandatory(struct ypr_ctx *ctx, uint16_t flags, void *exts, ly_bool *flag)
 {
     if (flags & LYS_MAND_MASK) {
         ypr_open(ctx->out, flag);
@@ -393,7 +393,7 @@ ypr_mandatory(struct ypr_ctx *ctx, uint16_t flags, void *exts, uint8_t *flag)
 }
 
 static void
-ypr_config(struct ypr_ctx *ctx, uint16_t flags, void *exts, uint8_t *flag)
+ypr_config(struct ypr_ctx *ctx, uint16_t flags, void *exts, ly_bool *flag)
 {
     if (flags & LYS_CONFIG_MASK) {
         ypr_open(ctx->out, flag);
@@ -402,7 +402,7 @@ ypr_config(struct ypr_ctx *ctx, uint16_t flags, void *exts, uint8_t *flag)
 }
 
 static void
-ypr_status(struct ypr_ctx *ctx, uint16_t flags, void *exts, uint8_t *flag)
+ypr_status(struct ypr_ctx *ctx, uint16_t flags, void *exts, ly_bool *flag)
 {
     const char *status = NULL;
 
@@ -421,7 +421,7 @@ ypr_status(struct ypr_ctx *ctx, uint16_t flags, void *exts, uint8_t *flag)
 }
 
 static void
-ypr_description(struct ypr_ctx *ctx, const char *dsc, void *exts, uint8_t *flag)
+ypr_description(struct ypr_ctx *ctx, const char *dsc, void *exts, ly_bool *flag)
 {
     if (dsc) {
         ypr_open(ctx->out, flag);
@@ -430,7 +430,7 @@ ypr_description(struct ypr_ctx *ctx, const char *dsc, void *exts, uint8_t *flag)
 }
 
 static void
-ypr_reference(struct ypr_ctx *ctx, const char *ref, void *exts, uint8_t *flag)
+ypr_reference(struct ypr_ctx *ctx, const char *ref, void *exts, ly_bool *flag)
 {
     if (ref) {
         ypr_open(ctx->out, flag);
@@ -439,10 +439,10 @@ ypr_reference(struct ypr_ctx *ctx, const char *ref, void *exts, uint8_t *flag)
 }
 
 static void
-yprp_iffeatures(struct ypr_ctx *ctx, const char **iff, struct lysp_ext_instance *exts, uint8_t *flag)
+yprp_iffeatures(struct ypr_ctx *ctx, const char **iff, struct lysp_ext_instance *exts, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t extflag;
+    ly_bool extflag;
 
     LY_ARRAY_FOR(iff, u) {
         ypr_open(ctx->out, flag);
@@ -466,7 +466,7 @@ yprp_iffeatures(struct ypr_ctx *ctx, const char **iff, struct lysp_ext_instance 
 static void
 yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, size_t *index_e, size_t *index_f)
 {
-    uint8_t brackets_flag = *index_e ? 1 : 0;
+    ly_bool brackets_flag = *index_e ? 1 : 0;
     uint8_t op;
 
     op = lysc_iff_getop(feat->expr, *index_e);
@@ -507,10 +507,10 @@ yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, size_t *index_e
 }
 
 static void
-yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext_instance *exts, uint8_t *flag)
+yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext_instance *exts, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u, v;
-    uint8_t extflag;
+    ly_bool extflag;
 
     LY_ARRAY_FOR(iff, u) {
         size_t index_e = 0, index_f = 0;
@@ -538,7 +538,7 @@ yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext
 static void
 yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
 {
-    uint8_t flag = 0, flag2 = 0;
+    ly_bool flag = 0, flag2 = 0;
     LY_ARRAY_COUNT_TYPE u;
 
     ly_print_(ctx->out, "%*sextension %s", INDENT, ext->name);
@@ -578,7 +578,7 @@ yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
 static void
 yprp_feature(struct ypr_ctx *ctx, const struct lysp_feature *feat)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "\n%*sfeature %s", INDENT, feat->name);
     LEVEL++;
@@ -594,7 +594,7 @@ yprp_feature(struct ypr_ctx *ctx, const struct lysp_feature *feat)
 static void
 yprc_feature(struct ypr_ctx *ctx, const struct lysc_feature *feat)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "\n%*sfeature %s", INDENT, feat->name);
     LEVEL++;
@@ -610,7 +610,7 @@ yprc_feature(struct ypr_ctx *ctx, const struct lysc_feature *feat)
 static void
 yprp_identity(struct ypr_ctx *ctx, const struct lysp_ident *ident)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     LY_ARRAY_COUNT_TYPE u;
 
     ly_print_(ctx->out, "\n%*sidentity %s", INDENT, ident->name);
@@ -635,7 +635,7 @@ yprp_identity(struct ypr_ctx *ctx, const struct lysp_ident *ident)
 static void
 yprc_identity(struct ypr_ctx *ctx, const struct lysc_ident *ident)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     LY_ARRAY_COUNT_TYPE u;
 
     ly_print_(ctx->out, "\n%*sidentity %s", INDENT, ident->name);
@@ -662,9 +662,9 @@ yprc_identity(struct ypr_ctx *ctx, const struct lysc_ident *ident)
 }
 
 static void
-yprp_restr(struct ypr_ctx *ctx, const struct lysp_restr *restr, const char *name, uint8_t *flag)
+yprp_restr(struct ypr_ctx *ctx, const struct lysp_restr *restr, const char *name, ly_bool *flag)
 {
-    uint8_t inner_flag = 0;
+    ly_bool inner_flag = 0;
 
     if (!restr) {
         return;
@@ -698,9 +698,9 @@ yprp_restr(struct ypr_ctx *ctx, const struct lysp_restr *restr, const char *name
 }
 
 static void
-yprc_must(struct ypr_ctx *ctx, const struct lysc_must *must, uint8_t *flag)
+yprc_must(struct ypr_ctx *ctx, const struct lysc_must *must, ly_bool *flag)
 {
-    uint8_t inner_flag = 0;
+    ly_bool inner_flag = 0;
 
     ypr_open(ctx->out, flag);
     ly_print_(ctx->out, "%*smust \"", INDENT);
@@ -725,9 +725,9 @@ yprc_must(struct ypr_ctx *ctx, const struct lysc_must *must, uint8_t *flag)
 }
 
 static void
-yprc_range(struct ypr_ctx *ctx, const struct lysc_range *range, LY_DATA_TYPE basetype, uint8_t *flag)
+yprc_range(struct ypr_ctx *ctx, const struct lysc_range *range, LY_DATA_TYPE basetype, ly_bool *flag)
 {
-    uint8_t inner_flag = 0;
+    ly_bool inner_flag = 0;
     LY_ARRAY_COUNT_TYPE u;
 
     if (!range) {
@@ -774,9 +774,9 @@ yprc_range(struct ypr_ctx *ctx, const struct lysc_range *range, LY_DATA_TYPE bas
 }
 
 static void
-yprc_pattern(struct ypr_ctx *ctx, const struct lysc_pattern *pattern, uint8_t *flag)
+yprc_pattern(struct ypr_ctx *ctx, const struct lysc_pattern *pattern, ly_bool *flag)
 {
-    uint8_t inner_flag = 0;
+    ly_bool inner_flag = 0;
 
     ypr_open(ctx->out, flag);
     ly_print_(ctx->out, "%*spattern \"", INDENT);
@@ -806,9 +806,9 @@ yprc_pattern(struct ypr_ctx *ctx, const struct lysc_pattern *pattern, uint8_t *f
 }
 
 static void
-yprp_when(struct ypr_ctx *ctx, struct lysp_when *when, uint8_t *flag)
+yprp_when(struct ypr_ctx *ctx, struct lysp_when *when, ly_bool *flag)
 {
-    uint8_t inner_flag = 0;
+    ly_bool inner_flag = 0;
 
     if (!when) {
         return;
@@ -828,9 +828,9 @@ yprp_when(struct ypr_ctx *ctx, struct lysp_when *when, uint8_t *flag)
 }
 
 static void
-yprc_when(struct ypr_ctx *ctx, struct lysc_when *when, uint8_t *flag)
+yprc_when(struct ypr_ctx *ctx, struct lysc_when *when, ly_bool *flag)
 {
-    uint8_t inner_flag = 0;
+    ly_bool inner_flag = 0;
 
     if (!when) {
         return;
@@ -850,10 +850,10 @@ yprc_when(struct ypr_ctx *ctx, struct lysc_when *when, uint8_t *flag)
 }
 
 static void
-yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE type, uint8_t *flag)
+yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE type, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t inner_flag;
+    ly_bool inner_flag;
 
     LY_ARRAY_FOR(items, u) {
         ypr_open(ctx->out, flag);
@@ -887,7 +887,7 @@ static void
 yprp_type(struct ypr_ctx *ctx, const struct lysp_type *type)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "%*stype %s", INDENT, type->name);
     LEVEL++;
@@ -929,7 +929,7 @@ yprp_type(struct ypr_ctx *ctx, const struct lysp_type *type)
 static void
 yprc_dflt_value(struct ypr_ctx *ctx, const struct lyd_value *value, struct lysc_ext_instance *exts)
 {
-    uint8_t dynamic;
+    ly_bool dynamic;
     const char *str;
 
     str = value->realtype->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
@@ -943,7 +943,7 @@ static void
 yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "%*stype %s", INDENT, lys_datatype2str(type->basetype));
     LEVEL++;
@@ -982,7 +982,7 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
         struct lysc_type_bits *bits = (struct lysc_type_bits *)type;
         LY_ARRAY_FOR(bits->bits, u) {
             struct lysc_type_bitenum_item *item = &bits->bits[u];
-            uint8_t inner_flag = 0;
+            ly_bool inner_flag = 0;
 
             ypr_open(ctx->out, &flag);
             ly_print_(ctx->out, "%*s%s \"", INDENT, type->basetype == LY_TYPE_BITS ? "bit" : "enum");
@@ -1086,7 +1086,7 @@ static void
 yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node *data;
 
     ly_print_(ctx->out, "\n%*sgrouping %s", INDENT, grp->name);
@@ -1121,7 +1121,7 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
 }
 
 static void
-yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, uint8_t *flag)
+yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_node *data;
@@ -1155,7 +1155,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, uint8_t *
 }
 
 static void
-yprc_inout(struct ypr_ctx *ctx, const struct lysc_action *action, const struct lysc_action_inout *inout, uint8_t *flag)
+yprc_inout(struct ypr_ctx *ctx, const struct lysc_action *action, const struct lysc_action_inout *inout, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_node *data;
@@ -1188,7 +1188,7 @@ static void
 yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node *data;
 
     ly_print_(ctx->out, "%*snotification %s", INDENT, notif->name);
@@ -1227,7 +1227,7 @@ static void
 yprc_notification(struct ypr_ctx *ctx, const struct lysc_notif *notif)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysc_node *data;
 
     ly_print_(ctx->out, "%*snotification %s", INDENT, notif->name);
@@ -1258,7 +1258,7 @@ static void
 yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "%*s%s %s", INDENT, action->parent ? "action" : "rpc", action->name);
 
@@ -1289,7 +1289,7 @@ yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action)
 static void
 yprc_action(struct ypr_ctx *ctx, const struct lysc_action *action)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "%*s%s %s", INDENT, action->parent ? "action" : "rpc", action->name);
 
@@ -1308,7 +1308,7 @@ yprc_action(struct ypr_ctx *ctx, const struct lysc_action *action)
 }
 
 static void
-yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, uint8_t *flag)
+yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, ly_bool *flag)
 {
     ly_print_(ctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
@@ -1319,7 +1319,7 @@ yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, uint8_t *fl
 }
 
 static void
-yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, uint8_t *flag)
+yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -1344,13 +1344,13 @@ yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, uint8_t *fl
     ypr_reference(ctx, node->ref, node->exts, flag)
 
 static void
-yprp_node_common2(struct ypr_ctx *ctx, const struct lysp_node *node, uint8_t *flag)
+yprp_node_common2(struct ypr_ctx *ctx, const struct lysp_node *node, ly_bool *flag)
 {
     YPR_NODE_COMMON2;
 }
 
 static void
-yprc_node_common2(struct ypr_ctx *ctx, const struct lysc_node *node, uint8_t *flag)
+yprc_node_common2(struct ypr_ctx *ctx, const struct lysc_node *node, ly_bool *flag)
 {
     YPR_NODE_COMMON2;
 }
@@ -1361,7 +1361,7 @@ static void
 yprp_container(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node *child;
     struct lysp_node_container *cont = (struct lysp_node_container *)node;
 
@@ -1410,7 +1410,7 @@ static void
 yprc_container(struct ypr_ctx *ctx, const struct lysc_node *node)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysc_node *child;
     struct lysc_node_container *cont = (struct lysc_node_container *)node;
 
@@ -1450,7 +1450,7 @@ yprc_container(struct ypr_ctx *ctx, const struct lysc_node *node)
 static void
 yprp_case(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node *child;
     struct lysp_node_case *cas = (struct lysp_node_case *)node;
 
@@ -1469,7 +1469,7 @@ yprp_case(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprc_case(struct ypr_ctx *ctx, const struct lysc_node_case *cs)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysc_node *child;
 
     yprc_node_common1(ctx, (struct lysc_node *)cs, &flag);
@@ -1489,7 +1489,7 @@ yprc_case(struct ypr_ctx *ctx, const struct lysc_node_case *cs)
 static void
 yprp_choice(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node *child;
     struct lysp_node_choice *choice = (struct lysp_node_choice *)node;
 
@@ -1514,7 +1514,7 @@ yprp_choice(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprc_choice(struct ypr_ctx *ctx, const struct lysc_node *node)
 {
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysc_node_case *cs;
     struct lysc_node_choice *choice = (struct lysc_node_choice *)node;
 
@@ -1663,7 +1663,7 @@ static void
 yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node *child;
     struct lysp_node_list *list = (struct lysp_node_list *)node;
 
@@ -1735,7 +1735,7 @@ static void
 yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
 {
     LY_ARRAY_COUNT_TYPE u, v;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysc_node *child;
     struct lysc_node_list *list = (struct lysc_node_list *)node;
 
@@ -1801,7 +1801,7 @@ static void
 yprp_refine(struct ypr_ctx *ctx, struct lysp_refine *refine)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
 
     ly_print_(ctx->out, "%*srefine \"%s\"", INDENT, refine->nodeid);
     LEVEL++;
@@ -1883,7 +1883,7 @@ static void
 yprp_uses(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node_uses *uses = (struct lysp_node_uses *)node;
 
     yprp_node_common1(ctx, node, &flag);
@@ -1907,7 +1907,7 @@ static void
 yprp_anydata(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysp_node_anydata *any = (struct lysp_node_anydata *)node;
 
     yprp_node_common1(ctx, node, &flag);
@@ -1927,7 +1927,7 @@ static void
 yprc_anydata(struct ypr_ctx *ctx, const struct lysc_node *node)
 {
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t flag = 0;
+    ly_bool flag = 0;
     struct lysc_node_anydata *any = (struct lysc_node_anydata *)node;
 
     yprc_node_common1(ctx, node, &flag);

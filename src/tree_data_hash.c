@@ -83,8 +83,13 @@ lyd_hash(struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-static uint8_t
-lyd_hash_table_val_equal(void *val1_p, void *val2_p, uint8_t mod, void *UNUSED(cb_data))
+/**
+ * @brief Compare callback for values in hash table.
+ *
+ * Implementation of ::values_equal_cb.
+ */
+static ly_bool
+lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_data))
 {
     struct lyd_node *val1, *val2;
 
@@ -120,7 +125,7 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, uint8_t mod, void *UNUSED(c
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, uint8_t empty_ht)
+lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_ht)
 {
     uint32_t hash;
 

@@ -171,9 +171,9 @@ lyb_read_number(void *num, size_t num_size, size_t bytes, struct lylyb_ctx *lybc
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_string(char **str, uint8_t with_length, struct lylyb_ctx *lybctx)
+lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
 {
-    uint8_t next_chunk = 0;
+    ly_bool next_chunk = 0;
     size_t len = 0, cur_len;
 
     *str = NULL;
@@ -345,7 +345,7 @@ static LY_ERR
 lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, struct lyd_meta **meta)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint8_t dynamic;
+    ly_bool dynamic;
     uint8_t i, count = 0;
     char *meta_name = NULL, *meta_value;
     const struct lys_module *mod;
@@ -464,7 +464,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
     uint8_t count, i;
     struct lyd_attr *attr2;
     char *prefix = NULL, *module_name = NULL, *name = NULL, *value = NULL;
-    uint8_t dynamic = 0;
+    ly_bool dynamic = 0;
     LYD_FORMAT format = 0;
     struct ly_prefix *val_prefs = NULL;
 
@@ -688,7 +688,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
     struct ly_prefix *val_prefs = NULL;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
-    uint8_t dynamic = 0;
+    ly_bool dynamic = 0;
     LYD_FORMAT format = 0;
     uint32_t prev_lo;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;

@@ -69,7 +69,7 @@ struct ly_set;
  * @param ELEM Iterator intended for use in the block.
  */
 #define LYSC_TREE_DFS_BEGIN(START, ELEM) \
-    { uint8_t LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
+    { ly_bool LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
     for ((ELEM) = (LYSC_TREE_DFS_next) = (struct lysc_node*)(START); \
          (ELEM); \
          (ELEM) = (LYSC_TREE_DFS_next), LYSC_TREE_DFS_continue = 0)
@@ -1724,10 +1724,9 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
  *
  * @param[in] node Node to examine.
  * @return non-zero if it is,
- * @return 0 if not.
- * @return 1 if the @p node is user-ordered
+ * @return Boolean value whether the @p node is user-ordered or not.
  */
-uint8_t lysc_is_userordered(const struct lysc_node *schema);
+ly_bool lysc_is_userordered(const struct lysc_node *schema);
 
 /**
  * @brief Set a schema private pointer to a user pointer.
@@ -2016,7 +2015,7 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
  * @return NULL if enabled,
  * @return pointer to the node with the unsatisfied (disabled) if-feature expression.
  */
-const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, uint8_t recursive);
+const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, ly_bool recursive);
 
 /**
  * @brief Set a schema private pointer to a user pointer.

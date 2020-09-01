@@ -1500,7 +1500,7 @@ decimal:
  * @return LY_SUCCESS or LY_EEXIST for invalid order.
  */
 static LY_ERR
-range_part_check_ascendancy(uint8_t unsigned_value, uint8_t max, int64_t value, int64_t prev_value)
+range_part_check_ascendancy(ly_bool unsigned_value, ly_bool max, int64_t value, int64_t prev_value)
 {
     if (unsigned_value) {
         if ((max && (uint64_t)prev_value > (uint64_t)value) || (!max && (uint64_t)prev_value >= (uint64_t)value)) {
@@ -1531,8 +1531,8 @@ range_part_check_ascendancy(uint8_t unsigned_value, uint8_t max, int64_t value, 
  * frdigits value), LY_EMEM.
  */
 static LY_ERR
-range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, uint8_t max, int64_t prev, LY_DATA_TYPE basetype,
-        uint8_t first, uint8_t length_restr, uint8_t frdigits, struct lysc_range *base_range, const char **value)
+range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool max, int64_t prev, LY_DATA_TYPE basetype,
+        ly_bool first, ly_bool length_restr, uint8_t frdigits, struct lysc_range *base_range, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *valcopy = NULL;
@@ -1694,13 +1694,13 @@ finalize:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, uint8_t length_restr,
+lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, ly_bool length_restr,
         uint8_t frdigits, struct lysc_range *base_range, struct lysc_range **range)
 {
     LY_ERR ret = LY_EVALID;
     const char *expr;
     struct lysc_range_part *parts = NULL, *part;
-    uint8_t range_expected = 0, uns;
+    ly_bool range_expected = 0, uns;
     LY_ARRAY_COUNT_TYPE parts_done = 0, u, v;
 
     assert(range);
@@ -2401,7 +2401,7 @@ done:
  */
 LY_ERR
 lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
-        int32_t *parent_times, uint8_t *has_predicate)
+        int32_t *parent_times, ly_bool *has_predicate)
 {
     int32_t par_times = 0;
 
@@ -2921,7 +2921,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
         struct lysc_type **type, const char **units, const char **dflt, struct lys_module **dflt_mod)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint8_t dummyloops = 0;
+    ly_bool dummyloops = 0;
     struct type_context {
         const struct lysp_tpdf *tpdf;
         struct lysp_node *node;
@@ -4247,7 +4247,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
  */
 static LY_ERR
 lys_compile_change_config(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t config_flag,
-        uint8_t inheriting, uint8_t refine_flag)
+        ly_bool inheriting, ly_bool refine_flag)
 {
     struct lysc_node *child;
     uint16_t config = config_flag & LYS_CONFIG_MASK;
@@ -4302,7 +4302,7 @@ lys_compile_change_config(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t
  * (mandatory children was removed).
  */
 static void
-lys_compile_mandatory_parents(struct lysc_node *parent, uint8_t add)
+lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add)
 {
     struct lysc_node *iter;
 
@@ -4427,7 +4427,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
     struct lysc_node *node;
     struct lysc_when **when, *when_shared;
     struct lys_module **aug_mod;
-    uint8_t allow_mandatory = 0;
+    ly_bool allow_mandatory = 0;
     uint16_t flags = 0;
     LY_ARRAY_COUNT_TYPE u, v;
     uint32_t opt_prev = ctx->options;
@@ -4594,7 +4594,7 @@ error:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t mandatory_flag, uint8_t refine_flag)
+lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t mandatory_flag, ly_bool refine_flag)
 {
     if (!(node->nodetype & (LYS_LEAF | LYS_ANYDATA | LYS_ANYXML | LYS_CHOICE))) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -4653,7 +4653,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
     struct lysp_node *node_p;
     struct lysp_grp *grp;
     LY_ARRAY_COUNT_TYPE u, v;
-    uint8_t found = 0;
+    ly_bool found = 0;
     const char *id, *name, *prefix;
     size_t prefix_len, name_len;
     struct lys_module *mod;
@@ -5500,7 +5500,7 @@ struct lysc_deviation {
     struct lysc_node *target;      /* target node of the deviation */
     struct lysp_deviate **deviates;/* sized array of pointers to parsed deviate statements to apply on target */
     uint16_t flags;                /* target's flags from lysc_resolve_schema_nodeid() */
-    uint8_t not_supported;         /* flag if deviates contains not-supported deviate */
+    ly_bool not_supported;         /* flag if deviates contains not-supported deviate */
 };
 
 /* MACROS for deviates checking */
@@ -5550,7 +5550,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, uint32_t d
 
 #define DEV_CHECK_NONPRESENCE_VALUE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER) \
     if (((TYPE)target)->MEMBER && (COND)) { \
-        uint8_t dynamic_ = 0; const char *val_; \
+        ly_bool dynamic_ = 0; const char *val_; \
         val_ = ((TYPE)target)->VALUEMEMBER->realtype->plugin->print(((TYPE)target)->VALUEMEMBER, LY_PREF_SCHEMA, \
                                                                              ctx->mod_def, &dynamic_); \
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
@@ -5749,7 +5749,7 @@ static LY_ERR
 lys_apply_deviate_delete_leaf_dflt(struct lysc_ctx *ctx, struct lysc_node *target, const char *dflt)
 {
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
-    uint8_t dyn = 0;
+    ly_bool dyn = 0;
     const char *orig_dflt;
     uint32_t i;
 
@@ -5812,7 +5812,7 @@ static LY_ERR
 lys_apply_deviate_delete_llist_dflts(struct lysc_ctx *ctx, struct lysc_node *target, const char **dflts)
 {
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
-    uint8_t dyn = 0, found;
+    ly_bool dyn = 0, found;
     const char *orig_dflt, **orig_dflts;
     uint32_t i;
     LY_ARRAY_COUNT_TYPE x, y;
@@ -6098,7 +6098,7 @@ lys_apply_deviate_replace_dflt_recompile(struct lysc_ctx *ctx, struct lysc_node 
     struct ly_err_item *err = NULL;
     LY_ARRAY_COUNT_TYPE x;
     const char *dflt;
-    uint8_t dyn;
+    ly_bool dyn;
 
     if (target->module != ctx->mod) {
         /* foreign deviation */
@@ -6553,7 +6553,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
 
     /* apply deviations */
     for (u = 0; u < devs_p.count && devs[u]; ++u) {
-        uint8_t match = 0;
+        ly_bool match = 0;
 
         if (devs[u]->flags & LYSC_OPT_INTERNAL) {
             /* fix the target pointer in case of RPC's/action's input/output */
@@ -6681,7 +6681,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
     /* keep order of the processing the same as the order in the defined substmts,
      * the order is important for some of the statements depending on others (e.g. type needs status and units) */
     for (u = 0; substmts[u].stmt; ++u) {
-        uint8_t stmt_present = 0;
+        ly_bool stmt_present = 0;
 
         for (stmt = ext->child; stmt; stmt = stmt->next) {
             if (substmts[u].stmt != stmt->kw) {
@@ -6882,7 +6882,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u;
     uint32_t opts;
-    uint8_t input_done = 0;
+    ly_bool input_done = 0;
     struct lysc_when **when = NULL;
     struct lysc_must *musts = NULL;
     LY_ERR ret = LY_SUCCESS;
@@ -7215,7 +7215,7 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
         for (u = orig_count; u < LY_ARRAY_COUNT(llist->dflts); ++u) {
             for (v = 0; v < u; ++v) {
                 if (!llist->dflts[u]->realtype->plugin->compare(llist->dflts[u], llist->dflts[v])) {
-                    uint8_t dynamic = 0;
+                    ly_bool dynamic = 0;
                     const char *val = llist->type->plugin->print(llist->dflts[u], LY_PREF_SCHEMA, (void *)dflt_mod, &dynamic);
 
                     lysc_update_path(ctx, llist->parent, llist->name);

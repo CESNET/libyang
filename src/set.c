@@ -75,7 +75,7 @@ ly_set_free(struct ly_set *set, void (*destructor)(void *obj))
     free(set);
 }
 
-API uint8_t
+API ly_bool
 ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p)
 {
     LY_CHECK_ARG_RET(NULL, set, 0);

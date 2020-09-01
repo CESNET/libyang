@@ -89,7 +89,7 @@ struct lysc_node;
  * @param ELEM Iterator intended for use in the block.
  */
 #define LYD_TREE_DFS_BEGIN(START, ELEM) \
-    { uint8_t LYD_TREE_DFS_continue = 0; struct lyd_node *LYD_TREE_DFS_next; \
+    { ly_bool LYD_TREE_DFS_continue = 0; struct lyd_node *LYD_TREE_DFS_next; \
     for ((ELEM) = (LYD_TREE_DFS_next) = (struct lyd_node *)(START); \
          (ELEM); \
          (ELEM) = (LYD_TREE_DFS_next), LYD_TREE_DFS_continue = 0)

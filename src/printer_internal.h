@@ -188,20 +188,18 @@ LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t 
  * @brief Check whether a node value equals to its default one.
  *
  * @param[in] node Term node to test.
- * @return 0 if no,
- * @return 1 if yes.
+ * @return false (no, it is not a default node) or true (yes, it is default)
  */
-uint8_t ly_is_default(const struct lyd_node *node);
+ly_bool ly_is_default(const struct lyd_node *node);
 
 /**
  * @brief Check whether the node should even be printed.
  *
  * @param[in] node Node to check.
  * @param[in] options Printer options.
- * @return 0 if no.
- * @return 1 if yes.
+ * @return false (no, it should not be printed) or true (yes, it is supposed to be printed)
  */
-uint8_t ly_should_print(const struct lyd_node *node, uint32_t options);
+ly_bool ly_should_print(const struct lyd_node *node, uint32_t options);
 
 /**
  * @brief Generic printer of the given format string into the specified output.

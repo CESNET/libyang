@@ -38,16 +38,16 @@
 /* Ignore whitespaces in the input string p */
 #define ign_xmlws(c) while (is_xmlws(*(c)->in->current)) {if (*(c)->in->current == '\n') {++c->line;} ly_in_skip(c->in, 1);}
 
-static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, uint8_t *ws_only,
-        uint8_t *dynamic);
+static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, ly_bool *ws_only,
+        ly_bool *dynamic);
 
 /**
  * @brief Ignore any characters until the delim of the size delim_len is read
  *
  * Detects number of read new lines.
- * Returns 0 if delim was found, 1 if was not.
+ * Returns Boolean value whether delim was found or not.
  */
-static uint8_t
+static ly_bool
 ign_todelim(register const char *input, const char *delim, size_t delim_len, size_t *newlines, size_t *parsed)
 {
     size_t i;
@@ -229,7 +229,7 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
     const char *endtag, *sectname;
     size_t endtag_len, newlines, parsed;
-    uint8_t rc;
+    ly_bool rc;
 
     while (1) {
         ign_xmlws(xmlctx);
@@ -335,7 +335,7 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, uint8_t *ws_only, uint8_t *dynamic)
+lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, ly_bool *ws_only, ly_bool *dynamic)
 {
 #define BUFSIZE 24
 #define BUFSIZE_STEP 128
@@ -349,7 +349,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
     void *p;
     uint32_t n;
     size_t u;
-    uint8_t ws = 1;
+    ly_bool ws = 1;
 
     assert(xmlctx);
 
@@ -518,7 +518,7 @@ success:
  */
 static LY_ERR
 lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len,
-        uint8_t empty)
+        ly_bool empty)
 {
     struct lyxml_elem *e;
 
@@ -584,7 +584,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
     const char *prev_input;
     char *value;
     size_t parsed, value_len;
-    uint8_t ws_only, dynamic, is_ns;
+    ly_bool ws_only, dynamic, is_ns;
     uint32_t c;
 
     /* store element opening tag information */
@@ -651,7 +651,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, uint8_t *ws_only, uint8_t *dynamic)
+lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, ly_bool *ws_only, ly_bool *dynamic)
 {
     char quot;
 
@@ -712,7 +712,7 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
     char *value;
     uint32_t c;
     size_t parsed, value_len;
-    uint8_t ws_only, dynamic;
+    ly_bool ws_only, dynamic;
 
     /* skip WS */
     ign_xmlws(xmlctx);
@@ -763,7 +763,7 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
  */
 static LY_ERR
 lyxml_next_element(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
-        uint8_t *closing)
+        ly_bool *closing)
 {
     /* skip WS until EOF or after opening tag '<' */
     LY_CHECK_RET(lyxml_skip_until_end_or_after_otag(xmlctx));
@@ -795,7 +795,7 @@ lyxml_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyxml_ctx **xml
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxml_ctx *xmlctx;
-    uint8_t closing;
+    ly_bool closing;
 
     /* new context */
     xmlctx = calloc(1, sizeof *xmlctx);
@@ -837,7 +837,7 @@ LY_ERR
 lyxml_ctx_next(struct lyxml_ctx *xmlctx)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint8_t closing;
+    ly_bool closing;
     struct lyxml_elem *e;
 
     /* if the value was not used, free it */
@@ -967,7 +967,7 @@ lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next)
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name, *prev_input;
     size_t prefix_len, name_len;
-    uint8_t closing;
+    ly_bool closing;
 
     prev_input = xmlctx->in->current;
 
@@ -1040,7 +1040,7 @@ lyxml_ctx_free(struct lyxml_ctx *xmlctx)
 }
 
 LY_ERR
-lyxml_dump_text(struct ly_out *out, const char *text, uint8_t attribute)
+lyxml_dump_text(struct ly_out *out, const char *text, ly_bool attribute)
 {
     LY_ERR ret;
 

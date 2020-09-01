@@ -45,9 +45,9 @@ uint32_t dict_hash(const char *key, size_t len);
  * @param[in] val2_p Pointer to the second value, the one stored in the hash table.
  * @param[in] mod Whether the operation modifies the hash table (insert or remove) or not (find).
  * @param[in] cb_data User callback data.
- * @return 0 on non-equal, non-zero on equal.
+ * @return false (non-equal) or true (equal).
  */
-typedef uint8_t (*values_equal_cb)(void *val1_p, void *val2_p, uint8_t mod, void *cb_data);
+typedef ly_bool (*values_equal_cb)(void *val1_p, void *val2_p, ly_bool mod, void *cb_data);
 
 /** when the table is at least this much percent full, it is enlarged (double the size) */
 #define LYHT_ENLARGE_PERCENTAGE 75

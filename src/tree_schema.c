@@ -44,7 +44,7 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
 {
     const struct lysc_node *next = NULL;
     struct lysc_node **snode;
-    uint8_t action_flag = 0, notif_flag = 0;
+    ly_bool action_flag = 0, notif_flag = 0;
     const struct lysc_action *actions;
     const struct lysc_notif *notifs;
     LY_ARRAY_COUNT_TYPE u;
@@ -549,13 +549,14 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
  * @param[in] name Name of the feature to set. Asterisk ('*') can be used to
  * set all the features in the module.
  * @param[in] value Desired value of the feature: 1 (enable) or 0 (disable).
+ * @param[in] skip_checks Flag to skip checking of if-features and just set @p value of the feature.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_feature_change(const struct lys_module *mod, const char *name, uint8_t value, uint8_t skip_checks)
+lys_feature_change(const struct lys_module *mod, const char *name, ly_bool value, ly_bool skip_checks)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint8_t all = 0;
+    ly_bool all = 0;
     LY_ARRAY_COUNT_TYPE u, disabled_count;
     uint32_t changed_count;
     struct lysc_feature *f, **df;
@@ -774,7 +775,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 }
 
 API const struct lysc_node *
-lysc_node_is_disabled(const struct lysc_node *node, uint8_t recursive)
+lysc_node_is_disabled(const struct lysc_node *node, ly_bool recursive)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -972,7 +973,7 @@ error:
 }
 
 LY_ERR
-lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, uint8_t implement,
+lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
         void *check_data, struct lys_module **module)
 {
@@ -1240,12 +1241,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const 
 }
 
 API LY_ERR
-lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *name, const char *revision,
+lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format)
 {
     LY_ERR ret = LY_EMEM;
     size_t len, flen, match_len = 0, dir_len;
-    uint8_t implicit_cwd = 0;
+    ly_bool implicit_cwd = 0;
     char *wd, *wn = NULL;
     DIR *dir = NULL;
     struct dirent *file;

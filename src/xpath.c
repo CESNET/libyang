@@ -318,7 +318,7 @@ cast_string_realloc(const struct ly_ctx *ctx, uint16_t needed, char **str, uint1
  * @return LY_ERR
  */
 static LY_ERR
-cast_string_recursive(const struct lyd_node *node, uint8_t fake_cont, enum lyxp_node_type root_type, uint16_t indent, char **str,
+cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type root_type, uint16_t indent, char **str,
         uint16_t *used, uint16_t *size)
 {
     char *buf, *line, *ptr = NULL;
@@ -464,7 +464,7 @@ cast_string_recursive(const struct lyd_node *node, uint8_t fake_cont, enum lyxp_
  * @return LY_ERR
  */
 static LY_ERR
-cast_string_elem(struct lyd_node *node, uint8_t fake_cont, enum lyxp_node_type root_type, char **str)
+cast_string_elem(struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type root_type, char **str)
 {
     uint16_t used, size;
     LY_ERR rc;
@@ -543,14 +543,16 @@ cast_string_to_number(const char *str)
 /**
  * @brief Callback for checking value equality.
  *
+ * Implementation of ::values_equal_cb.
+ *
  * @param[in] val1_p First value.
  * @param[in] val2_p Second value.
  * @param[in] mod Whether hash table is being modified.
  * @param[in] cb_data Callback data.
- * @return 0 if not equal, non-zero if equal.
+ * @return Boolean value whether values are equal or not.
  */
-static uint8_t
-set_values_equal_cb(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *UNUSED(cb_data))
+static ly_bool
+set_values_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
     struct lyxp_set_hash_node *val1, *val2;
 
@@ -850,7 +852,7 @@ set_fill_number(struct lyxp_set *set, long double number)
  * @param[in] boolean Boolean to fill into \p set.
  */
 static void
-set_fill_boolean(struct lyxp_set *set, uint8_t boolean)
+set_fill_boolean(struct lyxp_set *set, ly_bool boolean)
 {
     lyxp_set_free_content(set);
 
@@ -1054,7 +1056,7 @@ set_dup_node_check(const struct lyxp_set *set, const struct lyd_node *node, enum
     return LY_SUCCESS;
 }
 
-uint8_t
+ly_bool
 lyxp_set_scnode_contains(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, int skip_idx,
         uint32_t *index_p)
 {
@@ -1517,7 +1519,7 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     struct lyd_value val;
     struct ly_err_item *err = NULL;
     char *str, *ptr;
-    uint8_t dynamic;
+    ly_bool dynamic;
     LY_ERR rc;
 
     /* is there anything to canonize even? */
@@ -1592,7 +1594,7 @@ set_sort(struct lyxp_set *set)
 {
     uint32_t i, j;
     int ret = 0, cmp;
-    uint8_t inverted, change;
+    ly_bool inverted, change;
     const struct lyd_node *root;
     struct lyxp_set_node item;
     struct lyxp_set_hash_node hnode;
@@ -2272,7 +2274,7 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
     LY_CHECK_RET(rc);
     ++(*tok_idx);
 
-    if ((arg_count < (uint8_t)min_arg_count) || (arg_count > max_arg_count)) {
+    if ((arg_count < (uint32_t)min_arg_count) || (arg_count > max_arg_count)) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INARGCOUNT, arg_count, exp->tok_len[func_tok_idx],
                &exp->expr[exp->tok_pos[func_tok_idx]]);
         return LY_EVALID;
@@ -2652,12 +2654,12 @@ lyxp_expr_free(const struct ly_ctx *ctx, struct lyxp_expr *expr)
 }
 
 struct lyxp_expr *
-lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, uint8_t reparse)
+lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_bool reparse)
 {
     struct lyxp_expr *ret;
     size_t parsed = 0, tok_len;
     enum lyxp_token tok_type;
-    uint8_t prev_function_check = 0;
+    ly_bool prev_function_check = 0;
     uint16_t tok_idx = 0;
 
     if (!expr[0]) {
@@ -3023,13 +3025,13 @@ warn_get_scnode_in_ctx(struct lyxp_set *set)
  * @brief Test whether a type is numeric - integer type or decimal64.
  *
  * @param[in] type Type to test.
- * @return 1 if numeric, 0 otherwise.
+ * @return Boolean value whether @p type is numeric type or not.
  */
-static uint8_t
+static ly_bool
 warn_is_numeric_type(struct lysc_type *type)
 {
     struct lysc_type_union *uni;
-    uint8_t ret;
+    ly_bool ret;
     LY_ARRAY_COUNT_TYPE u;
 
     switch (type->basetype) {
@@ -3049,7 +3051,7 @@ warn_is_numeric_type(struct lysc_type *type)
             ret = warn_is_numeric_type(uni->types[u]);
             if (ret) {
                 /* found a suitable type */
-                return 1;
+                return ret;
             }
         }
         /* did not find any suitable type */
@@ -3065,13 +3067,13 @@ warn_is_numeric_type(struct lysc_type *type)
  * @brief Test whether a type is string-like - no integers, decimal64 or binary.
  *
  * @param[in] type Type to test.
- * @return 1 if string, 0 otherwise.
+ * @return Boolean value whether @p type's basetype is string type or not.
  */
-static uint8_t
+static ly_bool
 warn_is_string_type(struct lysc_type *type)
 {
     struct lysc_type_union *uni;
-    uint8_t ret;
+    ly_bool ret;
     LY_ARRAY_COUNT_TYPE u;
 
     switch (type->basetype) {
@@ -3087,7 +3089,7 @@ warn_is_string_type(struct lysc_type *type)
             ret = warn_is_string_type(uni->types[u]);
             if (ret) {
                 /* found a suitable type */
-                return 1;
+                return ret;
             }
         }
         /* did not find any suitable type */
@@ -3104,13 +3106,13 @@ warn_is_string_type(struct lysc_type *type)
  *
  * @param[in] type Type to test.
  * @param[in] base Expected type.
- * @return 1 if it is, 0 otherwise.
+ * @return Boolean value whether the given @p type is of the specific basetype @p base.
  */
-static uint8_t
+static ly_bool
 warn_is_specific_type(struct lysc_type *type, LY_DATA_TYPE base)
 {
     struct lysc_type_union *uni;
-    uint8_t ret;
+    ly_bool ret;
     LY_ARRAY_COUNT_TYPE u;
 
     if (type->basetype == base) {
@@ -3121,7 +3123,7 @@ warn_is_specific_type(struct lysc_type *type, LY_DATA_TYPE base)
             ret = warn_is_specific_type(uni->types[u], base);
             if (ret) {
                 /* found a suitable type */
-                return 1;
+                return ret;
             }
         }
         /* did not find any suitable type */
@@ -3144,7 +3146,7 @@ static struct lysc_type *
 warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type)
 {
     struct lysc_type_union *uni;
-    uint8_t found = 0;
+    ly_bool found = 0;
     LY_ARRAY_COUNT_TYPE u;
 
     switch (type->basetype) {
@@ -3221,10 +3223,10 @@ warn_is_equal_type(struct lysc_type *type1, struct lysc_type *type2)
  * @param[in] tok_pos Token position.
  */
 static void
-warn_operands(struct ly_ctx *ctx, struct lyxp_set *set1, struct lyxp_set *set2, uint8_t numbers_only, const char *expr, uint16_t tok_pos)
+warn_operands(struct ly_ctx *ctx, struct lyxp_set *set1, struct lyxp_set *set2, ly_bool numbers_only, const char *expr, uint16_t tok_pos)
 {
     struct lysc_node_leaf *node1, *node2;
-    uint8_t leaves = 1, warning = 0;
+    ly_bool leaves = 1, warning = 0;
 
     node1 = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(set1);
     node2 = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(set2);
@@ -3727,7 +3729,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 }
 
 static LY_ERR
-xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, uint8_t self_match, const char *func)
+xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, ly_bool self_match, const char *func)
 {
     uint16_t i;
     LY_ARRAY_COUNT_TYPE u;
@@ -3737,7 +3739,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, u
     struct lyd_value data = {0}, *val;
     struct ly_err_item *err = NULL;
     LY_ERR rc = LY_SUCCESS;
-    uint8_t found;
+    ly_bool found;
 
     if (options & LYXP_SCNODE_ALL) {
         if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
@@ -4363,7 +4365,7 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyxp_se
 {
     uint16_t i, new_used;
     char *new;
-    uint8_t have_spaces = 0, space_before = 0;
+    ly_bool have_spaces = 0, space_before = 0;
     struct lysc_node_leaf *sleaf;
     LY_ERR rc = LY_SUCCESS;
 
@@ -5121,7 +5123,7 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_
 {
     uint16_t i, j, new_used;
     char *new;
-    uint8_t have_removed;
+    ly_bool have_removed;
     struct lysc_node_leaf *sleaf;
     LY_ERR rc = LY_SUCCESS;
 
@@ -5166,7 +5168,7 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_
 
     have_removed = 0;
     for (i = 0; args[0]->val.str[i]; ++i) {
-        uint8_t found = 0;
+        ly_bool found = 0;
 
         for (j = 0; args[1]->val.str[j]; ++j) {
             if (args[0]->val.str[i] == args[1]->val.str[j]) {
@@ -5438,7 +5440,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *mod, const char *ncna
     }
 
     for (i = 0; i < set->used; ) {
-        uint8_t replaced = 0;
+        ly_bool replaced = 0;
 
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
             assert(!set->val.nodes[i].node);
@@ -5573,7 +5575,7 @@ cleanup:
 static LY_ERR
 moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *ncname, uint32_t options)
 {
-    uint8_t temp_ctx = 0;
+    ly_bool temp_ctx = 0;
     uint32_t getnext_opts;
     uint32_t orig_used, i;
     uint32_t mod_idx;
@@ -5868,7 +5870,7 @@ moveto_attr(struct lyxp_set *set, const struct lys_module *mod, const char *ncna
     }
 
     for (uint32_t i = 0; i < set->used; ) {
-        uint8_t replaced = 0;
+        ly_bool replaced = 0;
 
         /* only attributes of an elem (not dummy) can be in the result, skip all the rest;
          * our attributes are always qualified */
@@ -5991,7 +5993,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
     lyxp_set_free(set_all_desc);
 
     for (uint32_t i = 0; i < set->used; ) {
-        uint8_t replaced = 0;
+        ly_bool replaced = 0;
 
         /* only attributes of an elem can be in the result, skip all the rest,
          * we have all attributes qualified in lyd tree */
@@ -6103,7 +6105,7 @@ moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, e
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-moveto_self(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
+moveto_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 {
     struct lyxp_set ret_set;
     LY_ERR rc;
@@ -6161,7 +6163,7 @@ moveto_self(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
  * @return LY_ERR
  */
 static LY_ERR
-moveto_scnode_self(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
+moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 {
     uint32_t getnext_opts;
     uint32_t mod_idx;
@@ -6246,7 +6248,7 @@ moveto_scnode_self(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-moveto_parent(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
+moveto_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 {
     LY_ERR rc;
     struct lyd_node *node, *new_node;
@@ -6322,10 +6324,10 @@ moveto_parent(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
  * @return LY_ERR
  */
 static LY_ERR
-moveto_scnode_parent(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
+moveto_scnode_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 {
     uint32_t i, orig_used, idx;
-    uint8_t temp_ctx = 0;
+    ly_bool temp_ctx = 0;
     const struct lysc_node *node, *new_node;
     enum lyxp_node_type new_type;
 
@@ -6661,7 +6663,7 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options, uint8_t parent_pos_pred)
+eval_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options, ly_bool parent_pos_pred)
 {
     LY_ERR rc;
     uint16_t i, orig_exp;
@@ -6930,7 +6932,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, uint8_t attr_axis, uint8_t all_desc, struct lyxp_set *set,
+eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc, struct lyxp_set *set,
         uint32_t options)
 {
     char *path;
@@ -7082,7 +7084,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, uint8_t attr_axis, uint8_t all_desc,
+eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc,
         struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
@@ -7147,9 +7149,9 @@ eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, uint8_t 
  * @return LY_ERR (YL_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_relative_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, uint8_t all_desc, struct lyxp_set *set, uint32_t options)
+eval_relative_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool all_desc, struct lyxp_set *set, uint32_t options)
 {
-    uint8_t attr_axis;
+    ly_bool attr_axis;
     LY_ERR rc;
 
     goto step;
@@ -7239,7 +7241,7 @@ step:
 static LY_ERR
 eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
-    uint8_t all_desc;
+    ly_bool all_desc;
 
     if (set) {
         /* no matter what tokens follow, we need to be at the root */
@@ -7561,7 +7563,7 @@ eval_number(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, struct
 static LY_ERR
 eval_path_expr(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
-    uint8_t all_desc, parent_pos_pred;
+    ly_bool all_desc, parent_pos_pred;
     LY_ERR rc;
 
     switch (exp->tokens[*tok_idx]) {
