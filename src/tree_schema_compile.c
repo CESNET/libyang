@@ -5335,7 +5335,6 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node = NULL;
-    struct lysc_node_case *cs = NULL;
     struct lysc_when **when;
     LY_ARRAY_COUNT_TYPE u;
     LY_ERR (*node_compile_spec)(struct lysc_ctx *, struct lysp_node *, struct lysc_node *);
@@ -5378,7 +5377,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
         node_compile_spec = lys_compile_node_any;
         break;
     case LYS_USES:
-        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)node_p, cs ? (struct lysc_node *)cs : parent, &node);
+        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)node_p, parent, &node);
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
         return ret;
