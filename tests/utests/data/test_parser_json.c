@@ -146,7 +146,7 @@ test_leaf(void **state)
     assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -161,7 +161,7 @@ test_leaf(void **state)
     assert_string_equal("default-val", leaf->value.canonical);
     assert_false(leaf->flags & LYD_DEFAULT);
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -177,7 +177,7 @@ test_leaf(void **state)
     assert_true(leaf->flags & LYD_DEFAULT);
 
     /* TODO default values
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_reset(out);
     */
@@ -203,7 +203,7 @@ test_leaf(void **state)
     assert_ptr_equal(tree, tree->meta->next->parent);
     assert_null(tree->meta->next->next);
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, "{\"a:foo\":\"xxx\",\"@a:foo\":{\"a:hint\":1,\"a:hint\":2}}");
     ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
@@ -250,7 +250,7 @@ test_leaflist(void **state)
     ll = (struct lyd_node_term*)tree->next;
     assert_string_equal("11", ll->value.canonical);
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -274,7 +274,7 @@ test_leaflist(void **state)
     assert_string_equal("2", ll->meta->value.canonical);
     assert_null(ll->meta->next);
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -321,7 +321,7 @@ test_leaflist(void **state)
     assert_ptr_equal(ll, ll->meta->parent);
     assert_null(ll->meta->next);
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, "{\"a:ll1\":[1,2,3],\"@a:ll1\":[{\"a:hint\":1,\"a:hint\":10},null,{\"a:hint\":3}]}");
     ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
@@ -360,7 +360,7 @@ test_anydata(void **state)
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
 
@@ -394,7 +394,7 @@ test_list(void **state)
         assert_int_not_equal(0, iter->hash);
     }
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -435,7 +435,7 @@ test_list(void **state)
     assert_string_equal("d", leaf->schema->name);
     logbuf_assert("");
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1,\"d\":\"d\"}]}");
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -455,7 +455,7 @@ test_list(void **state)
     assert_string_equal("c", leaf->schema->name);
     logbuf_assert("");
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1}]}");
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -471,7 +471,7 @@ test_list(void **state)
     assert_ptr_equal(tree, tree->meta->parent);
     assert_null(tree->meta->next);
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
@@ -499,7 +499,7 @@ test_container(void **state)
     cont = (struct lyd_node_inner*)tree;
     assert_true(cont->flags & LYD_DEFAULT);
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, "{}");
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -512,7 +512,7 @@ test_container(void **state)
     cont = (struct lyd_node_inner*)tree;
     assert_false(cont->flags & LYD_DEFAULT);
 
-    lyd_print_all(out, tree, LYD_JSON, 0);
+    lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(printed, data);
     ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
@@ -545,7 +545,7 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "foo3");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -563,7 +563,7 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -581,7 +581,7 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -593,7 +593,7 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -605,7 +605,7 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -664,7 +664,7 @@ test_rpc(void **state)
     assert_null(node->schema);
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "l1");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -708,7 +708,7 @@ test_action(void **state)
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "action");
     assert_null(((struct lyd_node_opaq *)node)->attr);
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -756,7 +756,7 @@ test_notification(void **state)
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "c");
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -773,7 +773,7 @@ test_notification(void **state)
     assert_non_null(tree);
     assert_ptr_equal(ntf, tree);
 
-    lyd_print_tree(out, tree, LYD_JSON, 0);
+    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
     ly_out_reset(out);
     lyd_free_all(tree);
@@ -826,10 +826,10 @@ test_reply(void **state)
     assert_string_equal(node->schema->name, "c");
 
     /* TODO print only rpc-reply node and then output subtree */
-    lyd_print_tree(out, lyd_node_children(op, 0), LYD_JSON, 0);
+    lyd_print_tree(out, lyd_node_children(op, 0), LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, "{\"a:al\":25}");
     ly_out_reset(out);
-    lyd_print_tree(out, lyd_node_children(tree, 0), LYD_JSON, 0);
+    lyd_print_tree(out, lyd_node_children(tree, 0), LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, "{\"a:c\":{\"act\":{\"al\":25}}}");
     ly_out_reset(out);
     lyd_free_all(tree);

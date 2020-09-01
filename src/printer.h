@@ -30,6 +30,11 @@ extern "C" {
 struct ly_out;
 
 /**
+ * @brief Common value for data as well as schema printers to avoid formatting indentations and new lines
+ */
+#define LY_PRINT_SHRINK 0x02
+
+/**
  * @brief Types of the printer's output
  */
 typedef enum LY_OUT_TYPE {

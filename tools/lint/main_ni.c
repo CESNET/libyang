@@ -1086,7 +1086,7 @@ parse_reply:
                 if (!out) {
                     ly_out_new_file(stdout, &out);
                 }
-                lyd_print_all(out, data_item->tree, outformat_d, LYD_PRINT_FORMAT /* TODO defaults | options_dflt */);
+                lyd_print_all(out, data_item->tree, outformat_d, 0 /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {

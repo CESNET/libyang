@@ -1032,7 +1032,7 @@ test_defaults(void **state)
     assert_non_null(diff);
 
     /* check all defaults exist */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
@@ -1051,7 +1051,7 @@ test_defaults(void **state)
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def1</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def2</ll1>"
@@ -1077,7 +1077,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
@@ -1094,7 +1094,7 @@ test_defaults(void **state)
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def1</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def2</ll1>"
@@ -1111,7 +1111,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1127,7 +1127,7 @@ test_defaults(void **state)
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt1</ll2>"
@@ -1142,7 +1142,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1166,7 +1166,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1191,7 +1191,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1204,7 +1204,7 @@ test_defaults(void **state)
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<ll1 yang:operation=\"delete\">def1</ll1>"
