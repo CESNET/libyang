@@ -319,13 +319,12 @@ LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
- * @param[in, out] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
+ * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
  * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
- * If the compilation fails, the whole module is removed from context, freed and @p mod is set to NULL!
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-LY_ERR lys_compile(struct lys_module **mod, uint32_t options);
+LY_ERR lys_compile(struct lys_module *mod, uint32_t options);
 
 /**
  * @brief Get address of a node's actions list if any.
@@ -483,24 +482,24 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
         void *check_data);
 
 /**
- * @brief Parse module from a string.
+ * @brief Create a new module.
  *
- * The modules are added into the context and the latest_revision flag is updated.
+ * It is parsed, opionally compiled, added into the context, and the latest_revision flag is updated.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] implement Flag if the schema is supposed to be marked as implemented and compiled.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
- * @param[out] module Parsed module.
+ * @param[out] module Created module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
+LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
         lys_custom_check custom_check, void *check_data, struct lys_module **module);
 
 /**
- * @brief Parse submodule from a string.
+ * @brief Parse submodule.
  *
  * The latest_revision flag of submodule is updated.
  *
@@ -513,7 +512,7 @@ LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT f
  * @param[out] submodule Parsed submodule.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
+LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
         void *check_data, struct lysp_submodule **submodule);
 

@@ -7300,7 +7300,7 @@ lys_compile_unres(struct lysc_ctx *ctx)
 }
 
 LY_ERR
-lys_compile(struct lys_module **mod, uint32_t options)
+lys_compile(struct lys_module *mod, uint32_t options)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c;
@@ -7314,26 +7314,26 @@ lys_compile(struct lys_module **mod, uint32_t options)
     uint16_t compile_id;
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(NULL, mod, *mod, (*mod)->parsed, (*mod)->ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
 
-    if (!(*mod)->implemented) {
+    if (!mod->implemented) {
         /* just imported modules are not compiled */
         return LY_SUCCESS;
     }
 
-    compile_id = ++(*mod)->ctx->module_set_id;
-    sp = (*mod)->parsed;
+    compile_id = ++mod->ctx->module_set_id;
+    sp = mod->parsed;
 
-    ctx.ctx = (*mod)->ctx;
-    ctx.mod = *mod;
-    ctx.mod_def = *mod;
+    ctx.ctx = mod->ctx;
+    ctx.mod = mod;
+    ctx.mod_def = mod;
     ctx.options = options;
     ctx.path_len = 1;
     ctx.path[0] = '/';
 
-    (*mod)->compiled = mod_c = calloc(1, sizeof *mod_c);
-    LY_CHECK_ERR_RET(!mod_c, LOGMEM((*mod)->ctx), LY_EMEM);
-    mod_c->mod = *mod;
+    mod->compiled = mod_c = calloc(1, sizeof *mod_c);
+    LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
+    mod_c->mod = mod;
 
     LY_ARRAY_FOR(sp->imports, u) {
         LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), error);
@@ -7343,10 +7343,10 @@ lys_compile(struct lys_module **mod, uint32_t options)
     }
 
     /* features */
-    if ((*mod)->dis_features) {
+    if (mod->dis_features) {
         /* there is already precompiled array of features */
-        mod_c->features = (*mod)->dis_features;
-        (*mod)->dis_features = NULL;
+        mod_c->features = mod->dis_features;
+        mod->dis_features = NULL;
     } else {
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
@@ -7373,9 +7373,9 @@ lys_compile(struct lys_module **mod, uint32_t options)
     lysc_update_path(&ctx, NULL, NULL);
 
     /* identities, work similarly to features with the precompilation */
-    if ((*mod)->dis_identities) {
-        mod_c->identities = (*mod)->dis_identities;
-        (*mod)->dis_identities = NULL;
+    if (mod->dis_identities) {
+        mod_c->identities = mod->dis_identities;
+        mod->dis_identities = NULL;
     } else {
         ret = lys_identity_precompile(&ctx, NULL, NULL, sp->identities, &mod_c->identities);
         LY_CHECK_GOTO(ret, error);
@@ -7453,8 +7453,8 @@ lys_compile(struct lys_module **mod, uint32_t options)
 #endif
 
     /* add ietf-netconf-with-defaults "default" metadata to the compiled module */
-    if (!strcmp((*mod)->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lys_compile_ietf_netconf_wd_annotation(&ctx, *mod), error);
+    if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
+        LY_CHECK_GOTO(ret = lys_compile_ietf_netconf_wd_annotation(&ctx, mod), error);
     }
 
     ly_set_erase(&ctx.dflts, free);
@@ -7465,8 +7465,8 @@ lys_compile(struct lys_module **mod, uint32_t options)
     LY_ARRAY_FREE(augments);
 
     if (ctx.options & LYSC_OPT_FREE_SP) {
-        lysp_module_free((*mod)->parsed);
-        (*mod)->parsed = NULL;
+        lysp_module_free(mod->parsed);
+        mod->parsed = NULL;
     }
 
     if (!(ctx.options & LYSC_OPT_INTERNAL)) {
@@ -7482,7 +7482,7 @@ lys_compile(struct lys_module **mod, uint32_t options)
     return LY_SUCCESS;
 
 error:
-    lys_feature_precompile_revert(&ctx, *mod);
+    lys_feature_precompile_revert(&ctx, mod);
     ly_set_erase(&ctx.dflts, free);
     ly_set_erase(&ctx.xpath, NULL);
     ly_set_erase(&ctx.leafrefs, NULL);
@@ -7490,7 +7490,7 @@ error:
     ly_set_erase(&ctx.tpdf_chain, NULL);
     LY_ARRAY_FREE(augments);
     lysc_module_free(mod_c, NULL);
-    (*mod)->compiled = NULL;
+    mod->compiled = NULL;
 
     /* revert compilation of modules implemented by dependency, but only by (directly or indirectly) by dependency
      * of this module, since this module can be also compiled from dependency, there can be some other modules being
@@ -7507,11 +7507,6 @@ error:
             m->compiled = NULL;
         }
     }
-
-    /* remove the module itself from the context and free it */
-    ly_set_rm(&ctx.ctx->list, *mod, NULL);
-    lys_module_free(*mod, NULL);
-    *mod = NULL;
 
     return ret;
 }

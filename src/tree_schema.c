@@ -844,7 +844,7 @@ lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
     mod->implemented = value;
 
     /* compile the schema */
-    LY_CHECK_RET(lys_compile(&mod, LYSC_OPT_INTERNAL));
+    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
 
     return LY_SUCCESS;
 }
@@ -887,7 +887,7 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *modp
 }
 
 LY_ERR
-lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
         LY_ERR (*custom_check)(const struct ly_ctx *, struct lysp_module *, struct lysp_submodule *, void *),
         void *check_data, struct lysp_submodule **submodule)
 {
@@ -947,6 +947,8 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
         latest_sp->latest_revision = 0;
     }
 
+    lys_parser_fill_filepath(ctx, in, &submod->filepath);
+
     /* resolve imports and includes */
     LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod), error);
 
@@ -973,7 +975,7 @@ error:
 }
 
 LY_ERR
-lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
+lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
         void *check_data, struct lys_module **module)
 {
@@ -983,8 +985,13 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;
+    char *filename, *rev, *dot;
+    size_t len;
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
+    if (module) {
+        *module = NULL;
+    }
 
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), LY_EMEM);
@@ -1072,79 +1079,6 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
         }
     }
 
-    if (!mod->implemented) {
-        /* pre-compile features and identities of the module */
-        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->dis_features), error);
-        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->dis_identities), error);
-    }
-
-    if (latest) {
-        latest->latest_revision = 0;
-    }
-
-    /* add into context */
-    ret = ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST, NULL);
-    LY_CHECK_GOTO(ret, error);
-    ctx->module_set_id++;
-
-finish_parsing:
-    /* resolve imports and includes */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), error_ctx);
-
-    if (!mod->implemented) {
-        /* pre-compile features and identities of any submodules */
-        LY_ARRAY_FOR(mod->parsed->includes, u) {
-            LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
-                                                       &mod->dis_features), error);
-            LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
-                                                        &mod->dis_identities), error);
-        }
-    }
-
-    /* check name collisions - typedefs and TODO groupings */
-    LY_CHECK_GOTO(ret = lysp_check_typedefs(pctx, mod->parsed), error_ctx);
-
-    if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
-    } else {
-        yin_parser_ctx_free(yinctx);
-    }
-    *module = mod;
-    return LY_SUCCESS;
-
-error_ctx:
-    ly_set_rm(&ctx->list, mod, NULL);
-error:
-    lys_module_free(mod, NULL);
-    if (pctx) {
-        ly_set_erase(&pctx->tpdfs_nodes, NULL);
-    }
-    if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
-    } else {
-        yin_parser_ctx_free(yinctx);
-    }
-
-    return ret;
-}
-
-API LY_ERR
-lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struct lys_module **module)
-{
-    struct lys_module *mod;
-    char *filename, *rev, *dot;
-    size_t len;
-
-    if (module) {
-        *module = NULL;
-    }
-    LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, LY_EINVAL);
-
-    /* remember input position */
-    in->func_start = in->current;
-
-    LY_CHECK_RET(lys_parse_mem_module(ctx, in, format, 1, NULL, NULL, &mod));
-
     switch (in->type) {
     case LY_IN_FILEPATH:
         /* check that name and revision match filename */
@@ -1177,18 +1111,90 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struc
     case LY_IN_MEMORY:
         /* nothing special to do */
         break;
-    default:
-        LOGINT_RET(ctx);
-        break;
+    case LY_IN_ERROR:
+        LOGINT(ctx);
+        ret = LY_EINT;
+        goto error;
     }
 
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
-    LY_CHECK_RET(lys_compile(&mod, 0));
 
+    if (!mod->implemented) {
+        /* pre-compile features and identities of the module */
+        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->dis_features), error);
+        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->dis_identities), error);
+    }
+
+    if (latest) {
+        latest->latest_revision = 0;
+    }
+
+    /* add into context */
+    ret = ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST, NULL);
+    LY_CHECK_GOTO(ret, error);
+    ctx->module_set_id++;
+
+finish_parsing:
+    /* resolve imports and includes */
+    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), error_ctx);
+
+    if (!mod->implemented) {
+        /* pre-compile features and identities of any submodules */
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
+                                                       &mod->dis_features), error);
+            LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
+                                                        &mod->dis_identities), error);
+        }
+    }
+
+    /* check name collisions - typedefs and TODO groupings */
+    LY_CHECK_GOTO(ret = lysp_check_typedefs(pctx, mod->parsed), error_ctx);
+
+    /* compile */
+    if (!mod->compiled) {
+        ret = lys_compile(mod, 0);
+        LY_CHECK_GOTO(ret, error_ctx);
+    }
+
+    if (format == LYS_IN_YANG) {
+        yang_parser_ctx_free(yangctx);
+    } else {
+        yin_parser_ctx_free(yinctx);
+    }
     if (module) {
         *module = mod;
     }
     return LY_SUCCESS;
+
+error_ctx:
+    ly_set_rm(&ctx->list, mod, NULL);
+error:
+    lys_module_free(mod, NULL);
+    if (pctx) {
+        ly_set_erase(&pctx->tpdfs_nodes, NULL);
+    }
+    if (format == LYS_IN_YANG) {
+        yang_parser_ctx_free(yangctx);
+    } else {
+        yin_parser_ctx_free(yinctx);
+    }
+
+    return ret;
+}
+
+API LY_ERR
+lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struct lys_module **module)
+{
+    if (module) {
+        *module = NULL;
+    }
+    LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, LY_EINVAL);
+
+    /* remember input position */
+    in->func_start = in->current;
+
+    return lys_create_module(ctx, in, format, 1, NULL, NULL, (struct lys_module **)module);
 }
 
 API LY_ERR
