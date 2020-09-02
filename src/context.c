@@ -252,9 +252,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
-        LY_CHECK_GOTO(rc = lys_parse_mem_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
-                                                NULL, NULL, &module), error);
-        LY_CHECK_GOTO(rc = lys_compile(&module, 0), error);
+        LY_CHECK_GOTO(rc = lys_create_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
+                                             NULL, NULL, &module), error);
     }
 
     ly_in_free(in, 0);

@@ -114,16 +114,14 @@ test_module(void **state)
 
     assert_int_equal(LY_EINVAL, lys_compile(NULL, 0));
     logbuf_assert("Invalid argument mod (lys_compile()).");
-    assert_int_equal(LY_EINVAL, lys_compile(&mod, 0));
-    logbuf_assert("Invalid argument *mod (lys_compile()).");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_mem_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, &mod));
+    assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, &mod));
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
-    assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_null(mod->compiled);
     mod->implemented = 1;
-    assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null(mod->compiled);
     assert_string_equal("test", mod->name);
     assert_string_equal("urn:test", mod->ns);
@@ -143,18 +141,16 @@ test_module(void **state)
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EINVAL, lys_parse_mem_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL));
+    assert_int_equal(LY_EINVAL, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL));
     ly_in_free(in, 0);
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
 
     /* data definition name collision in top level */
     str = "module aa {namespace urn:aa;prefix aa; leaf a {type string;} container a{presence x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_mem_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, &mod));
-    ly_in_free(in, 0);
-    assert_int_equal(LY_EEXIST, lys_compile(&mod, 0));
+    assert_int_equal(LY_EEXIST, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, &mod));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /aa:a");
-    assert_null(mod);
+    ly_in_free(in, 0);
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
