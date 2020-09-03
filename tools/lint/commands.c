@@ -766,11 +766,10 @@ cmd_data(const char *arg)
                 }
             }
             break;
-        case 's':
-            options |= LYD_OPT_STRICT;
-            options |= LYD_OPT_OBSOLETE;
-            break;
 #endif
+        case 's':
+            options |= LYD_PARSE_STRICT;
+            break;
         case 't':
             if (!strcmp(optarg, "auto")) {
                 /* no flags */
