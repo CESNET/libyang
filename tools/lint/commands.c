@@ -713,19 +713,17 @@ cmd_data(const char *arg)
         }
 
         switch (c) {
-#if 0
         case 'd':
             if (!strcmp(optarg, "all")) {
-                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_ALL;
+                printopt = (printopt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
             } else if (!strcmp(optarg, "all-tagged")) {
-                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_ALL_TAG;
+                printopt = (printopt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
             } else if (!strcmp(optarg, "trim")) {
-                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_TRIM;
+                printopt = (printopt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
             } else if (!strcmp(optarg, "implicit-tagged")) {
-                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_IMPL_TAG;
+                printopt = (printopt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
             }
             break;
-#endif
         case 'h':
             cmd_data_help();
             ret = 0;

@@ -264,8 +264,8 @@ main_ni(int argc, char* argv[])
     struct option options[] = {
 #if 0
         {"auto",             no_argument,       NULL, 'a'},
-        {"default",          required_argument, NULL, 'd'},
 #endif
+        {"default",          required_argument, NULL, 'd'},
         {"format",           required_argument, NULL, 'f'},
         {"features",         required_argument, NULL, 'F'},
 #if 0
@@ -320,10 +320,11 @@ main_ni(int argc, char* argv[])
     int options_ctx = LY_CTX_NOYANGLIBRARY, list = 0, outoptions_s = 0, outline_length_s = 0;
     int autodetection = 0, options_parser = 0, merge = 0;
     const char *oper_file = NULL;
+    int options_dflt = 0;
 #if 0
+    ly_bool envelope = 0;
     const char *envelope_s = NULL;
     char *ylpath = NULL;
-    int options_dflt = 0, envelope = 0;
     struct lyxml_elem *iter, *elem;
     struct *subroot, *next, *node;
 #endif
@@ -347,25 +348,26 @@ main_ni(int argc, char* argv[])
     {
         switch (opt) {
 #if 0
+        }
         case 'a':
             envelope = 1;
             break;
+#endif
         case 'd':
             if (!strcmp(optarg, "all")) {
-                options_dflt = (options_dflt & ~LYP_WD_MASK) | LYP_WD_ALL;
+                options_dflt = (options_dflt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
             } else if (!strcmp(optarg, "all-tagged")) {
-                options_dflt = (options_dflt & ~LYP_WD_MASK) | LYP_WD_ALL_TAG;
+                options_dflt = (options_dflt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
             } else if (!strcmp(optarg, "trim")) {
-                options_dflt = (options_dflt & ~LYP_WD_MASK) | LYP_WD_TRIM;
+                options_dflt = (options_dflt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
             } else if (!strcmp(optarg, "implicit-tagged")) {
-                options_dflt = (options_dflt & ~LYP_WD_MASK) | LYP_WD_IMPL_TAG;
+                options_dflt = (options_dflt & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
             } else {
                 fprintf(stderr, "yanglint error: unknown default mode %s\n", optarg);
                 help(1);
                 goto cleanup;
             }
             break;
-#endif
         case 'f':
             if (!strcasecmp(optarg, "yang")) {
                 outformat_s = LYS_OUT_YANG;
@@ -641,11 +643,11 @@ main_ni(int argc, char* argv[])
         }
 #endif
     }
-#if 0
     if (!outformat_d && options_dflt) {
         /* we have options for printing default nodes, but data output not specified */
         fprintf(stderr, "yanglint warning: default mode is ignored when not printing data.\n");
     }
+#if 0
     if (outformat_s && (options_parser || autodetection)) {
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: data parser options are ignored when printing schema.\n");
@@ -1086,7 +1088,7 @@ parse_reply:
                 if (!out) {
                     ly_out_new_file(stdout, &out);
                 }
-                lyd_print_all(out, data_item->tree, outformat_d, 0 /* TODO defaults | options_dflt */);
+                lyd_print_all(out, data_item->tree, outformat_d, options_dflt);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {
