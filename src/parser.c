@@ -1995,9 +1995,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
     }
 
-    /* free backup (using the original type) */
+    /* free backup (using the original type, unless we were parsing a leafref - then this was freed in the recursive call) */
     if (store) {
-        lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
+        if (type->base != LY_TYPE_LEAFREF) {
+            lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
+        }
         lydict_remove(ctx, old_val_str);
     }
     return ret;
