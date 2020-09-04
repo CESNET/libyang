@@ -341,9 +341,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "acd:f:F:gunP:L:hHiDlmo:p:r:O:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "acd:f:F:gunP:L:hHiDlmo:p:O:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "acd:f:F:gunP:L:hHiDlmo:p:r:O:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "acd:f:F:gunP:L:hHiDlmo:p:O:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -505,7 +505,6 @@ main_ni(int argc, char* argv[])
             }
             break;
 #if 0
-        case 'r':
         case 'O':
             if (oper_file || (options_parser & LYD_OPT_NOEXTDEPS)) {
                 fprintf(stderr, "yanglint error: The operational datastore (-O) cannot be set multiple times.\n");
