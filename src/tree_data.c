@@ -7095,8 +7095,13 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
         trg->set.g = new;
     }
 
-    /* copy contents from src into trg */
-    memcpy(trg->set.g + trg->number, src->set.g, src->number * sizeof *(src->set.g));
+    /*
+     * copy contents from src into trg
+     * don't copy anything if there's nothing to copy, memcpy doesn't want NULL as second argument
+     */
+    if (src->number > 0) {
+        memcpy(trg->set.g + trg->number, src->set.g, src->number * sizeof *(src->set.g));
+    }
     ret = src->number;
     trg->number += ret;
 
