@@ -921,7 +921,7 @@ parse_yangversion(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t *ve
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 3) && !strncmp(word, "1.0", word_len)) {
+    if ((word_len == 1) && !strncmp(word, "1", word_len)) {
         *version = LYS_VERSION_1_0;
     } else if ((word_len == 3) && !strncmp(word, "1.1", word_len)) {
         *version = LYS_VERSION_1_1;

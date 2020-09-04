@@ -1060,11 +1060,11 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
     mod = mod_renew(&ctx);
-    in.current = SCHEMA_BEGINNING2 "yang-version 1.0;yang-version 1.1;}";
+    in.current = SCHEMA_BEGINNING2 "yang-version 1;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
     mod = mod_renew(&ctx);
-    in.current = SCHEMA_BEGINNING2 "yang-version 1.0;}";
+    in.current = SCHEMA_BEGINNING2 "yang-version 1;}";
     assert_int_equal(LY_SUCCESS, parse_module(&ctx, &in, mod));
     assert_int_equal(1, mod->mod->version);
     mod = mod_renew(&ctx);

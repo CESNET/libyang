@@ -1027,7 +1027,7 @@ struct lysp_notif {
  */
 typedef enum LYS_VERSION {
     LYS_VERSION_UNDEF = 0,  /**< no specific version, YANG 1.0 as default */
-    LYS_VERSION_1_0 = 1,    /**< YANG 1.0 */
+    LYS_VERSION_1_0 = 1,    /**< YANG 1 (1.0) */
     LYS_VERSION_1_1 = 2     /**< YANG 1.1 */
 } LYS_VERSION;
 

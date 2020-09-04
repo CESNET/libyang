@@ -1646,13 +1646,13 @@ yin_parse_yangversion(struct lys_yin_parser_ctx *ctx, uint8_t *version, struct l
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_version, Y_STR_ARG, LY_STMT_YANG_VERSION));
-    if (strcmp(temp_version, "1.0") == 0) {
+    if (strcmp(temp_version, "1") == 0) {
         *version = LYS_VERSION_1_0;
     } else if (strcmp(temp_version, "1.1") == 0) {
         *version = LYS_VERSION_1_1;
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_version, "value",
-                       "yang-version", "1.0", "1.1");
+                       "yang-version", "1", "1.1");
         FREE_STRING(ctx->xmlctx->ctx, temp_version);
         return LY_EVALID;
     }

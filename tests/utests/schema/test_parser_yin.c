@@ -1226,7 +1226,7 @@ test_yangversion_elem(void **state)
     struct lysp_ext_instance *exts = NULL;
 
     /* valid values */
-    data = ELEMENT_WRAPPER_START "<yang-version value=\"1.0\" />" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<yang-version value=\"1\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &version, NULL, NULL), LY_SUCCESS);
     assert_true(version & LYS_VERSION_1_0);
     assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_0);
@@ -1243,7 +1243,7 @@ test_yangversion_elem(void **state)
     /* invalid value */
     data = ELEMENT_WRAPPER_START "<yang-version value=\"version\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &version, NULL, NULL), LY_EVALID);
-    logbuf_assert("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. Valid values are \"1.0\" and \"1.1\". Line number 1.");
+    logbuf_assert("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. Valid values are \"1\" and \"1.1\". Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -4087,7 +4087,7 @@ test_submodule_elem(void **state)
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     lysp_submod = calloc(1, sizeof *lysp_submod);
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
-                "<yang-version value=\"1.0\"/>"
+                "<yang-version value=\"1\"/>"
                 "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
            "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
@@ -4103,7 +4103,7 @@ test_submodule_elem(void **state)
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     lysp_submod = calloc(1, sizeof *lysp_submod);
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
-                "<yang-version value=\"1.0\"/>"
+                "<yang-version value=\"1\"/>"
                 "<reference><text>ref</text></reference>\n"
                 "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
            "</submodule>";
@@ -4165,7 +4165,7 @@ test_yin_parse_module(void **state)
              "xmlns:foo=\"urn:example:foo\""
              "xmlns:myext=\"urn:example:extensions\">\n"
 
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
 
                 "<namespace uri=\"urn:example:foo\"/>\n"
                 "<prefix value=\"foo\"/>\n"
@@ -4199,7 +4199,7 @@ test_yin_parse_module(void **state)
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
     data =  "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
                 "<namespace uri=\"urn:example:foo\"/>\n"
                 "<prefix value=\"foo\"/>\n"
             "</module>\n";
@@ -4226,7 +4226,7 @@ test_yin_parse_module(void **state)
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
     data =  "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
                 "<namespace uri=\"urn:example:foo\"/>\n"
                 "<prefix value=\"foo\"/>\n"
             "</module>"
@@ -4257,7 +4257,7 @@ test_yin_parse_submodule(void **state)
             "<submodule name=\"asub\""
               "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
               "xmlns:a=\"urn:a\">"
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
                 "<belongs-to module=\"a\">"
                     "<prefix value=\"a_pref\"/>"
                 "</belongs-to>"
@@ -4287,7 +4287,7 @@ test_yin_parse_submodule(void **state)
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
                 "<belongs-to module=\"a\">"
                     "<prefix value=\"a_pref\"/>"
                 "</belongs-to>"
@@ -4314,13 +4314,13 @@ test_yin_parse_submodule(void **state)
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
                 "<belongs-to module=\"a\">"
                     "<prefix value=\"a_pref\"/>"
                 "</belongs-to>"
             "</submodule>"
             "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yang-version value=\"1.0\"/>\n"
+                "<yang-version value=\"1\"/>\n"
                 "<belongs-to module=\"a\">"
                     "<prefix value=\"a_pref\"/>"
                 "</belongs-to>"
