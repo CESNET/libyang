@@ -690,6 +690,7 @@ test_schema_print(void **state)
 
     /* test print yin to yang */
     schema_yang = MODULE_CREATE_YANG("PRINT1",
+            "\n"
             "  list user {\n"
             "    key \"uid name\";\n"
             "    unique \"name\";\n"

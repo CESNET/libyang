@@ -1027,7 +1027,7 @@ test_schema_print(void **state)
     schema_yang = MODULE_CREATE_YANG("PRINT1",
             "\n"
             "  description\n"
-            "    \"desc\";\n"
+            "    \"desc\";\n\n"
             "  leaf port {\n"
             "    type int8 {\n"
             "      range \"0 .. 50 | 127\";\n"
@@ -1072,6 +1072,7 @@ test_schema_print(void **state)
 
     /* test print yin to yang */
     schema_yang = MODULE_CREATE_YANG("PRINT3",
+            "\n"
             "  leaf port {\n"
             "    type int8;\n"
             "  }\n");

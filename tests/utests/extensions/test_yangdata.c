@@ -109,7 +109,7 @@ test_schema(void **state)
             "container b { rc:yang-data template { container x { leaf x {type string;}}}}}";
     info = "module b {\n"
             "  namespace \"urn:tests:extensions:yangdata:b\";\n"
-            "  prefix self;\n"
+            "  prefix self;\n\n"
             "  container b {\n"
             "    config true;\n"
             "    status current;\n"
@@ -144,7 +144,7 @@ test_schema(void **state)
             "      presence \"true\";\n"
             "      status current;\n"
             "    }\n"
-            "  }\n"
+            "  }\n\n"
             "  leaf d {\n"
             "    type string;\n"
             "    config true;\n"

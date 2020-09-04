@@ -30,6 +30,7 @@ struct lysp_submodule;
 struct lyspr_ctx {
     struct ly_out *out;              /**< output specification */
     uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    uint16_t flags;                  /**< internal flags for use by printer */
     uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
     const struct lys_module *module; /**< schema to print */
 };
