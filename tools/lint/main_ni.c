@@ -782,7 +782,9 @@ main_ni(int argc, char* argv[])
             lys_feature_enable(mod, "*");
         }
     }
-
+    if (!out && (outformat_s || data)) {
+        ly_out_new_file(stdout, &out);
+    }
     /* convert (print) to FORMAT */
     if (outformat_s) {
         if (outtarget_s) {
@@ -1084,9 +1086,6 @@ parse_reply:
                     }
                 }
 #endif
-                if (!out) {
-                    ly_out_new_file(stdout, &out);
-                }
                 lyd_print_all(out, data_item->tree, outformat_d, options_dflt);
 #if 0
                 if (envelope_s) {
