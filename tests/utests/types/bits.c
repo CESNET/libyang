@@ -522,7 +522,7 @@ test_schema_print(void **state)
             "      }\n"
             "      bit twelve;\n"
             "    }\n"
-            "  }\n"
+            "  }\n\n"
             "  leaf port {\n"
             "    type my_type {\n"
             "      bit ten {\n"

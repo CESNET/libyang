@@ -647,6 +647,7 @@ test_schema_print(void **state)
 
     /* test print yin to yang */
     schema_yang = MODULE_CREATE_YANG("PRINT1",
+            "\n"
             "  leaf port {\n"
             "    type string {\n"
             "      length \"min .. 20 | 50\";\n"
