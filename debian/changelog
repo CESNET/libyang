@@ -1,3 +1,9 @@
+libyang (1.0.184-2) unstable; urgency=medium
+
+  * Move the C++ symbols file to be amd64 only (Closes: #969073)
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 04 Sep 2020 10:16:16 +0200
+
 libyang (1.0.184-1) unstable; urgency=medium
 
   * Remove upstream patches merged upstream
