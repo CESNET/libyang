@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,9 +47,12 @@ struct ly_ctx;
  * NULL terminated string, the len parameter says number of bytes stored in
  * dictionary. The specified number of bytes is duplicated and terminating NULL
  * byte is added automatically. If \p len is 0, it is count automatically using strlen().
- * @return pointer to the string stored in the dictionary, NULL if \p value was NULL.
+ * @param[out] str_p Optional parameter to get pointer to the string corresponding to the @p value and stored in dictionary.
+ * @return LY_SUCCESS in case of successful insertion into dictionary, note that the function does not return LY_EEXIST.
+ * @return LY_EINVAL in case of invalid input parameters.
+ * @return LY_EMEM in case of memory allocation failure.
  */
-const char *lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len);
+LY_ERR lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p);
 
 /**
  * @brief Insert string into dictionary - zerocopy version. If the string is
@@ -61,9 +66,12 @@ const char *lydict_insert(const struct ly_ctx *ctx, const char *value, size_t le
  * dictionary. Otherwise, the reference counter is incremented and the value is
  * freed. So, after calling the function, caller is supposed to not use the
  * value address anymore. If NULL, function does nothing.
- * @return pointer to the string stored in the dictionary, NULL if \p value was NULL.
+ * @param[out] str_p Optional parameter to get pointer to the string corresponding to the @p value and stored in dictionary.
+ * @return LY_SUCCESS in case of successful insertion into dictionary, note that the function does not return LY_EEXIST.
+ * @return LY_EINVAL in case of invalid input parameters.
+ * @return LY_EMEM in case of memory allocation failure.
  */
-const char *lydict_insert_zc(const struct ly_ctx *ctx, char *value);
+LY_ERR lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p);
 
 /**
  * @brief Remove specified string from the dictionary. It decrement reference

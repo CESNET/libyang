@@ -302,8 +302,13 @@ extern const char * const ly_devmod_list[];
  * @param[in] LEN length of the string in WORD to store.
  * @param[in,out] DYNAMIC Set to 1 if STR is dynamically allocated, 0 otherwise. If set to 1, zerocopy version of lydict_insert is used.
  */
-#define INSERT_STRING(CTX, STRING, LEN, DYNAMIC) \
-    (DYNAMIC ? lydict_insert_zc(CTX, (char *)(STRING)) : lydict_insert(CTX, LEN ? (STRING) : "", LEN)); DYNAMIC = 0
+#define INSERT_STRING_RET(CTX, STRING, LEN, DYNAMIC, TARGET) \
+    if (DYNAMIC) { \
+        LY_CHECK_RET(lydict_insert_zc(CTX, (char *)(STRING), &(TARGET))); \
+    } else { \
+        LY_CHECK_RET(lydict_insert(CTX, LEN ? (STRING) : "", LEN, &(TARGET))); \
+    } \
+    DYNAMIC = 0
 
 #define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
 

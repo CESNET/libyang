@@ -1016,7 +1016,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);
     if (mod->parsed->revs) {
-        mod->revision = lydict_insert(ctx, mod->parsed->revs[0].date, 0);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, mod->parsed->revs[0].date, 0, &mod->revision), error);
     }
 
     /* decide the latest revision */

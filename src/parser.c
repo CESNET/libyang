@@ -257,22 +257,22 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
     switch (in->type) {
     case LY_IN_FILEPATH:
         if (realpath(in->method.fpath.filepath, path) != NULL) {
-            *filepath = lydict_insert(ctx, path, 0);
+            lydict_insert(ctx, path, 0, filepath);
         } else {
-            *filepath = lydict_insert(ctx, in->method.fpath.filepath, 0);
+            lydict_insert(ctx, in->method.fpath.filepath, 0, filepath);
         }
 
         break;
     case LY_IN_FD:
 #ifdef __APPLE__
         if (fcntl(in->method.fd, F_GETPATH, path) != -1) {
-            *filepath = lydict_insert(ctx, path, 0);
+            lydict_insert(ctx, path, 0, filepath);
         }
 #else
         /* get URI if there is /proc */
         sprintf(proc_path, "/proc/self/fd/%d", in->method.fd);
         if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
-            *filepath = lydict_insert(ctx, path, len);
+            lydict_insert(ctx, path, len, filepath);
         }
 #endif
         break;

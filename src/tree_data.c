@@ -696,6 +696,7 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
         ly_bool *dynamic, uint32_t value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix, size_t pref_len,
         const char *module_key, size_t module_key_len, struct lyd_node **node)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lyd_node_opaq *opaq;
 
     assert(ctx && name && name_len);
@@ -709,27 +710,33 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
 
     opaq->prev = (struct lyd_node *)opaq;
 
-    opaq->name = lydict_insert(ctx, name, name_len);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &opaq->name), finish);
+
     opaq->format = format;
     if (pref_len) {
-        opaq->prefix.id = lydict_insert(ctx, prefix, pref_len);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, pref_len, &opaq->prefix.id), finish);
     }
     if (module_key_len) {
-        opaq->prefix.module_ns = lydict_insert(ctx, module_key, module_key_len);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &opaq->prefix.module_ns), finish);
     }
 
     opaq->val_prefs = val_prefs;
     if (dynamic && *dynamic) {
-        opaq->value = lydict_insert_zc(ctx, (char *)value);
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, (char *)value, &opaq->value), finish);
         *dynamic = 0;
     } else {
-        opaq->value = lydict_insert(ctx, value, value_len);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, value, value_len, &opaq->value), finish);
     }
     opaq->hint = value_hint;
     opaq->ctx = ctx;
 
-    *node = (struct lyd_node *)opaq;
-    return LY_SUCCESS;
+finish:
+    if (ret) {
+        lyd_free_tree((struct lyd_node *)opaq);
+    } else {
+        *node = (struct lyd_node *)opaq;
+    }
+    return ret;
 }
 
 API LY_ERR
@@ -2121,7 +2128,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, uint32_t value_hint, LY_PREFIX_FORMAT format,
         void *prefix_data, const struct lysc_node *ctx_snode)
 {
-    LY_ERR ret;
+    LY_ERR ret, rc;
     struct lysc_ext_instance *ant = NULL;
     struct lyd_meta *mt, *last;
     LY_ARRAY_COUNT_TYPE u;
@@ -2152,7 +2159,8 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
         free(mt);
         return ret;
     }
-    mt->name = lydict_insert(mod->ctx, name, name_len);
+    rc = lydict_insert(mod->ctx, name, name_len, &mt->name);
+    LY_CHECK_ERR_RET(rc, free(mt), rc);
 
     /* insert as the last attribute */
     if (parent) {
@@ -2199,6 +2207,7 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, uint32_t value_hint, LYD_FORMAT format,
         struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lyd_attr *at, *last;
 
     assert(ctx && (parent || attr) && (!parent || !parent->schema));
@@ -2210,23 +2219,23 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
 
     at = calloc(1, sizeof *at);
     LY_CHECK_ERR_RET(!at, LOGMEM(ctx), LY_EMEM);
-    at->parent = (struct lyd_node_opaq *)parent;
-    at->name = lydict_insert(ctx, name, name_len);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &at->name), finish);
     if (dynamic && *dynamic) {
-        at->value = lydict_insert_zc(ctx, (char *)value);
+        ret = lydict_insert_zc(ctx, (char *)value, &at->value);
+        LY_CHECK_GOTO(ret, finish);
         *dynamic = 0;
     } else {
-        at->value = lydict_insert(ctx, value, value_len);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, value, value_len, &at->value), finish);
     }
 
     at->hint = value_hint;
     at->format = format;
     at->val_prefs = val_prefs;
     if (prefix_len) {
-        at->prefix.id = lydict_insert(ctx, prefix, prefix_len);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, prefix_len, &at->prefix.id), finish);
     }
     if (module_key_len) {
-        at->prefix.module_ns = lydict_insert(ctx, module_key, module_key_len);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &at->prefix.module_ns), finish);
     }
 
     /* insert as the last attribute */
@@ -2237,7 +2246,10 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
         last->next = at;
     }
 
-    if (attr) {
+finish:
+    if (ret) {
+        lyd_free_attr_single(ctx, at);
+    } else if (attr) {
         *attr = at;
     }
     return LY_SUCCESS;
@@ -2539,21 +2551,21 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
                 LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, NULL, options, NULL), error);
             }
         }
-        opaq->name = lydict_insert(LYD_CTX(node), orig->name, 0);
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name, 0, &opaq->name), error);
         opaq->format = orig->format;
         if (orig->prefix.id) {
-            opaq->prefix.id = lydict_insert(LYD_CTX(node), orig->prefix.id, 0);
+            LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->prefix.id, 0, &opaq->prefix.id), error);
         }
-        opaq->prefix.module_ns = lydict_insert(LYD_CTX(node), orig->prefix.module_ns, 0);
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->prefix.module_ns, 0, &opaq->prefix.module_ns), error);
         if (orig->val_prefs) {
             LY_ARRAY_CREATE_GOTO(LYD_CTX(node), opaq->val_prefs, LY_ARRAY_COUNT(orig->val_prefs), ret, error);
             LY_ARRAY_FOR(orig->val_prefs, u) {
-                opaq->val_prefs[u].id = lydict_insert(LYD_CTX(node), orig->val_prefs[u].id, 0);
-                opaq->val_prefs[u].module_ns = lydict_insert(LYD_CTX(node), orig->val_prefs[u].module_ns, 0);
+                LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->val_prefs[u].id, 0, &opaq->val_prefs[u].id), error);
+                LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->val_prefs[u].module_ns, 0, &opaq->val_prefs[u].module_ns), error);
                 LY_ARRAY_INCREMENT(opaq->val_prefs);
             }
         }
-        opaq->value = lydict_insert(LYD_CTX(node), orig->value, 0);
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->value, 0, &opaq->value), error);
         opaq->ctx = orig->ctx;
     } else if (dup->schema->nodetype & LYD_NODE_TERM) {
         struct lyd_node_term *term = (struct lyd_node_term *)dup;
@@ -2720,7 +2732,7 @@ lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uin
 API LY_ERR
 lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct lyd_meta **dup)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     struct lyd_meta *mt, *last;
 
     LY_CHECK_ARG_RET(NULL, meta, node, LY_EINVAL);
@@ -2728,13 +2740,13 @@ lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct l
     /* create a copy */
     mt = calloc(1, sizeof *mt);
     LY_CHECK_ERR_RET(!mt, LOGMEM(LYD_CTX(node)), LY_EMEM);
-    mt->parent = node;
     mt->annotation = meta->annotation;
     ret = meta->value.realtype->plugin->duplicate(LYD_CTX(node), &meta->value, &mt->value);
-    LY_CHECK_ERR_RET(ret, LOGERR(LYD_CTX(node), LY_EINT, "Value duplication failed."), ret);
-    mt->name = lydict_insert(LYD_CTX(node), meta->name, 0);
+    LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(node), LY_EINT, "Value duplication failed."), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), meta->name, 0, &mt->name), finish);
 
     /* insert as the last attribute */
+    mt->parent = node;
     if (node->meta) {
         for (last = node->meta; last->next; last = last->next) {}
         last->next = mt;
@@ -2742,7 +2754,10 @@ lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct l
         node->meta = mt;
     }
 
-    if (dup) {
+finish:
+    if (ret) {
+        lyd_free_meta_single(mt);
+    } else if (dup) {
         *dup = mt;
     }
     return LY_SUCCESS;

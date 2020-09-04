@@ -280,7 +280,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
         if (value->str) {
-            t->value.str = lydict_insert(LYD_CTX(trg), value->str, 0);
+            LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value->str, 0, &t->value.str));
         }
         break;
     case LYD_ANYDATA_LYB:

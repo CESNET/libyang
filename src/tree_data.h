@@ -894,7 +894,7 @@ void lyd_free_meta_siblings(struct lyd_meta *meta);
  * @param[in] ctx Context where the attributes were created.
  * @param[in] attr Attribute to free.
  */
-void ly_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
+void lyd_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
 
 /**
  * @brief Free the attribute with any following attributes.
@@ -902,7 +902,7 @@ void ly_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
  * @param[in] ctx Context where the attributes were created.
  * @param[in] attr First attribute to free.
  */
-void ly_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
+void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

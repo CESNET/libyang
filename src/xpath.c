@@ -2678,7 +2678,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_
     /* init lyxp_expr structure */
     ret = calloc(1, sizeof *ret);
     LY_CHECK_ERR_GOTO(!ret, LOGMEM(ctx), error);
-    ret->expr = lydict_insert(ctx, expr, expr_len);
+    LY_CHECK_GOTO(lydict_insert(ctx, expr, expr_len, &ret->expr), error);
     LY_CHECK_ERR_GOTO(!ret->expr, LOGMEM(ctx), error);
     ret->used = 0;
     ret->size = LYXP_EXPR_SIZE_START;
@@ -2978,7 +2978,7 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp)
 
     dup->used = exp->used;
     dup->size = exp->used;
-    dup->expr = lydict_insert(ctx, exp->expr, 0);
+    LY_CHECK_GOTO(lydict_insert(ctx, exp->expr, 0, &dup->expr), error);
 
     return dup;
 
@@ -7001,7 +7001,7 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool 
     if (!scnode && moveto_mod) {
         /* we are not able to match based on a schema node and not all the modules match,
          * use dictionary for efficient comparison */
-        ncname_dict = lydict_insert(set->ctx, ncname, ncname_len);
+        LY_CHECK_GOTO(rc = lydict_insert(set->ctx, ncname, ncname_len, &ncname_dict), cleanup);
     }
 
 moveto:

@@ -1111,8 +1111,8 @@ lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len
                     }
                     if (!p) {
                         LY_ARRAY_NEW_GOTO(xmlctx->ctx, prefixes, p, ret, error);
-                        p->id = lydict_insert(xmlctx->ctx, start, len);
-                        p->module_ns = lydict_insert(xmlctx->ctx, ns->uri, 0);
+                        LY_CHECK_GOTO(ret = lydict_insert(xmlctx->ctx, start, len, &p->id), error);
+                        LY_CHECK_GOTO(ret = lydict_insert(xmlctx->ctx, ns->uri, 0, &p->module_ns), error);
                     } /* else the prefix already present */
                 }
             }

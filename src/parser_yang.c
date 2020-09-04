@@ -40,9 +40,9 @@
  * @param[in] WORD string to store.
  * @param[in] LEN length of the string in WORD to store.
  */
-#define INSERT_WORD(CTX, BUF, TARGET, WORD, LEN) \
-    if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);}\
-    else {(TARGET) = lydict_insert((CTX)->ctx, LEN ? WORD : "", LEN);}
+#define INSERT_WORD_RET(CTX, BUF, TARGET, WORD, LEN) \
+    if (BUF) {LY_CHECK_RET(lydict_insert_zc((CTX)->ctx, WORD, &(TARGET)));}\
+    else {LY_CHECK_RET(lydict_insert((CTX)->ctx, LEN ? WORD : "", LEN, &(TARGET)));}
 
 /**
  * @brief Read from the IN structure COUNT items. Also updates the indent value in yang parser context
@@ -785,7 +785,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stm
         par_child->next = stmt;
     }
 
-    stmt->stmt = lydict_insert(ctx->ctx, word, word_len);
+    LY_CHECK_RET(lydict_insert(ctx->ctx, word, word_len, &stmt->stmt));
     stmt->kw = kw;
 
     /* get optional argument */
@@ -793,9 +793,9 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stm
 
     if (word) {
         if (buf) {
-            stmt->arg = lydict_insert_zc(ctx->ctx, word);
+            LY_CHECK_RET(lydict_insert_zc(ctx->ctx, word, &stmt->arg));
         } else {
-            stmt->arg = lydict_insert(ctx->ctx, word, word_len);
+            LY_CHECK_RET(lydict_insert(ctx->ctx, word, word_len, &stmt->arg));
         }
     }
 
@@ -831,7 +831,7 @@ parse_ext(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char *ext_nam
     LY_ARRAY_NEW_RET(ctx->ctx, *exts, e, LY_EMEM);
 
     /* store name and insubstmt info */
-    e->name = lydict_insert(ctx->ctx, ext_name, ext_name_len);
+    LY_CHECK_RET(lydict_insert(ctx->ctx, ext_name, ext_name_len, &e->name));
     e->insubstmt = insubstmt;
     e->insubstmt_index = insubstmt_index;
 
@@ -839,7 +839,7 @@ parse_ext(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char *ext_nam
     LY_CHECK_RET(get_argument(ctx, in, Y_MAYBE_STR_ARG, NULL, &word, &buf, &word_len));
 
     if (word) {
-        INSERT_WORD(ctx, buf, e->argument, word, word_len);
+        INSERT_WORD_RET(ctx, buf, e->argument, word, word_len);
     }
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
@@ -880,7 +880,7 @@ parse_text_field(struct lys_yang_parser_ctx *ctx, struct ly_in *in, LYEXT_SUBSTM
     LY_CHECK_RET(get_argument(ctx, in, arg, NULL, &word, &buf, &word_len));
 
     /* store value and spend buf if allocated */
-    INSERT_WORD(ctx, buf, *value, word, word_len);
+    INSERT_WORD_RET(ctx, buf, *value, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -972,7 +972,7 @@ parse_belongsto(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char **
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
 
-    INSERT_WORD(ctx, buf, *belongsto, word, word_len);
+    INSERT_WORD_RET(ctx, buf, *belongsto, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
         switch (kw) {
@@ -1070,7 +1070,7 @@ parse_include(struct lys_yang_parser_ctx *ctx, const char *module_name, struct l
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
 
-    INSERT_WORD(ctx, buf, inc->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, inc->name, word, word_len);
 
     /* submodules share the namespace with the module names, so there must not be
      * a module of the same name in the context, no need for revision matching */
@@ -1126,7 +1126,7 @@ parse_import(struct lys_yang_parser_ctx *ctx, const char *module_prefix, struct 
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, imp->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, imp->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
         switch (kw) {
@@ -1240,7 +1240,7 @@ parse_text_fields(struct lys_yang_parser_ctx *ctx, struct ly_in *in, LYEXT_SUBST
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, arg, NULL, &word, &buf, &word_len));
 
-    INSERT_WORD(ctx, buf, *item, word, word_len);
+    INSERT_WORD_RET(ctx, buf, *item, word, word_len);
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -1376,7 +1376,7 @@ parse_restr(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt rest
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
     CHECK_NONEMPTY(ctx, word_len, ly_stmt2str(restr_kw));
-    INSERT_WORD(ctx, buf, restr->arg, word, word_len);
+    INSERT_WORD_RET(ctx, buf, restr->arg, word, word_len);
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
@@ -1498,13 +1498,13 @@ parse_when(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_when *
 
     when = calloc(1, sizeof *when);
     LY_CHECK_ERR_RET(!when, LOGMEM(ctx->ctx), LY_EMEM);
+    *when_p = when;
 
     /* get value */
-    LY_CHECK_ERR_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len), free(when), LY_EMEM);
+    LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
     CHECK_NONEMPTY(ctx, word_len, "when");
-    INSERT_WORD(ctx, buf, when->cond, word, word_len);
+    INSERT_WORD_RET(ctx, buf, when->cond, word, word_len);
 
-    *when_p = when;
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -1551,7 +1551,7 @@ parse_any(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt kw, st
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, any->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, any->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
@@ -1704,7 +1704,7 @@ parse_type_enum(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt 
         LY_CHECK_ERR_RET(ret, free(buf), ret);
     } /* else nothing specific for YANG_BIT */
 
-    INSERT_WORD(ctx, buf, enm->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, enm->name, word, word_len);
     CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
@@ -1898,7 +1898,7 @@ parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, struct ly_in *in, c
 
     assert(buf[0] == 0x06);
     buf[0] = 0x15;
-    *pat = lydict_insert_zc(ctx->ctx, buf);
+    LY_CHECK_RET(lydict_insert_zc(ctx->ctx, buf, pat));
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -1947,7 +1947,7 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lys
     memmove(buf + 1, word, word_len);
     buf[0] = 0x06; /* pattern's default regular-match flag */
     buf[word_len + 1] = '\0'; /* terminating NULL byte */
-    restr->arg = lydict_insert_zc(ctx->ctx, buf);
+    LY_CHECK_RET(lydict_insert_zc(ctx->ctx, buf, &restr->arg));
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -2004,7 +2004,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_type *
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, type->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, type->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -2108,7 +2108,7 @@ parse_leaf(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, leaf->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, leaf->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -2377,7 +2377,7 @@ parse_leaflist(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_no
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, llist->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, llist->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -2474,7 +2474,7 @@ parse_refine(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_refi
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
     CHECK_NONEMPTY(ctx, word_len, "refine");
-    INSERT_WORD(ctx, buf, rf->nodeid, word, word_len);
+    INSERT_WORD_RET(ctx, buf, rf->nodeid, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -2542,7 +2542,7 @@ parse_typedef(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, tpdf->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, tpdf->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -2697,7 +2697,7 @@ parse_action(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, act->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, act->name, word, word_len);
     act->nodetype = parent ? LYS_ACTION : LYS_RPC;
     act->parent = parent;
 
@@ -2767,7 +2767,7 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node 
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, notif->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, notif->name, word, word_len);
     notif->nodetype = LYS_NOTIF;
     notif->parent = parent;
 
@@ -2859,7 +2859,7 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_no
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, grp->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, grp->name, word, word_len);
     grp->nodetype = LYS_GROUPING;
     grp->parent = parent;
 
@@ -2953,7 +2953,7 @@ parse_augment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_nod
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
     CHECK_NONEMPTY(ctx, word_len, "augment");
-    INSERT_WORD(ctx, buf, aug->nodeid, word, word_len);
+    INSERT_WORD_RET(ctx, buf, aug->nodeid, word, word_len);
     aug->nodetype = LYS_AUGMENT;
     aug->parent = parent;
 
@@ -3052,7 +3052,7 @@ parse_uses(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, uses->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, uses->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -3119,7 +3119,7 @@ parse_case(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, cas->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, cas->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
@@ -3200,7 +3200,7 @@ parse_choice(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, choice->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, choice->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -3297,7 +3297,7 @@ parse_container(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_n
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, cont->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, cont->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -3405,7 +3405,7 @@ parse_list(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, list->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, list->name, word, word_len);
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
@@ -3586,7 +3586,7 @@ parse_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char **a
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, *argument, word, word_len);
+    INSERT_WORD_RET(ctx, buf, *argument, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -3626,7 +3626,7 @@ parse_extension(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_e
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, ex->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, ex->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -3884,7 +3884,7 @@ parse_deviation(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_d
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
     CHECK_NONEMPTY(ctx, word_len, "deviation");
-    INSERT_WORD(ctx, buf, dev->nodeid, word, word_len);
+    INSERT_WORD_RET(ctx, buf, dev->nodeid, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
         switch (kw) {
@@ -3938,7 +3938,7 @@ parse_feature(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_fea
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, feat->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, feat->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -3987,7 +3987,7 @@ parse_identity(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_id
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, ident->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, ident->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
@@ -4043,7 +4043,7 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_modu
 
     /* (sub)module name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, mod->mod->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, mod->mod->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
 
@@ -4253,7 +4253,7 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_s
 
     /* submodule name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, submod->name, word, word_len);
+    INSERT_WORD_RET(ctx, buf, submod->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
 

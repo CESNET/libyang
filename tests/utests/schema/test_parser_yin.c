@@ -1630,9 +1630,10 @@ test_modifier_elem(void **state)
 {
     struct test_parser_yin_state *st = *state;
     const char *data;
-    const char *pat = lydict_insert(st->ctx, "\006pattern", 8);
+    const char *pat;
     struct lysp_ext_instance *exts = NULL;
 
+    assert_int_equal(LY_SUCCESS, lydict_insert(st->ctx, "\006pattern", 8, &pat));
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert-match\">" EXT_SUBELEM "</modifier>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &pat, NULL, &exts), LY_SUCCESS);
     assert_string_equal(pat, "\x015pattern");
@@ -1643,7 +1644,7 @@ test_modifier_elem(void **state)
     exts = NULL;
     FREE_STRING(st->ctx, pat);
 
-    pat = lydict_insert(st->ctx, "\006pattern", 8);
+    assert_int_equal(LY_SUCCESS, lydict_insert(st->ctx, "\006pattern", 8, &pat));
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &pat, NULL, NULL), LY_EVALID);
     logbuf_assert("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. Only valid value is \"invert-match\". Line number 1.");
