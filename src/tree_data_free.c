@@ -77,7 +77,7 @@ lyd_free_meta_siblings(struct lyd_meta *meta)
 }
 
 static void
-ly_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
+lyd_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
 {
     struct lyd_attr *iter;
     LY_ARRAY_COUNT_TYPE u;
@@ -128,15 +128,15 @@ ly_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
 }
 
 API void
-ly_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr)
+lyd_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr)
 {
-    ly_free_attr(ctx, attr, 0);
+    lyd_free_attr(ctx, attr, 0);
 }
 
 API void
-ly_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
+lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
 {
-    ly_free_attr(ctx, attr, 1);
+    lyd_free_attr(ctx, attr, 1);
 }
 
 void
@@ -197,7 +197,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
     }
 
     if (!node->schema) {
-        ly_free_attr_siblings(LYD_CTX(node), opaq->attr);
+        lyd_free_attr_siblings(LYD_CTX(node), opaq->attr);
     } else {
         /* free the node's metadata */
         lyd_free_meta_siblings(node->meta);

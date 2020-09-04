@@ -178,10 +178,10 @@ finish:
     pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
 }
 
-static char *
-dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy)
+LY_ERR
+dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy, const char **str_p)
 {
-    LY_ERR ret = 0;
+    LY_ERR ret = LY_SUCCESS;
     struct dict_rec *match = NULL, rec;
     uint32_t hash;
 
@@ -199,6 +199,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy)
         if (zerocopy) {
             free(value);
         }
+        ret = LY_SUCCESS;
     } else if (ret == LY_SUCCESS) {
         if (!zerocopy) {
             /*
@@ -206,49 +207,52 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy)
              * record is already inserted in hash table
              */
             match->value = malloc(sizeof *match->value * (len + 1));
-            LY_CHECK_ERR_RET(!match->value, LOGMEM(ctx), NULL);
+            LY_CHECK_ERR_RET(!match->value, LOGMEM(ctx), LY_EMEM);
             memcpy(match->value, value, len);
             match->value[len] = '\0';
         }
     } else {
         /* lyht_insert returned error */
-        LOGINT(ctx);
         if (zerocopy) {
             free(value);
         }
-        return NULL;
+        return ret;
     }
 
-    return match->value;
+    if (str_p) {
+        *str_p = match->value;
+    }
+
+    return ret;
 }
 
-API const char *
-lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len)
+API LY_ERR
+lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p)
 {
-    const char *result;
+    LY_ERR result;
 
-    LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, value, LY_EINVAL);
 
     if (!len) {
         len = strlen(value);
     }
 
     pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
-    result = dict_insert(ctx, (char *)value, len, 0);
+    result = dict_insert(ctx, (char *)value, len, 0, str_p);
     pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
 
     return result;
 }
 
-API const char *
-lydict_insert_zc(const struct ly_ctx *ctx, char *value)
+API LY_ERR
+lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 {
-    const char *result;
+    LY_ERR result;
 
-    LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, value, LY_EINVAL);
 
     pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
-    result = dict_insert(ctx, value, strlen(value), 1);
+    result = dict_insert(ctx, value, strlen(value), 1, str_p);
     pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
 
     return result;

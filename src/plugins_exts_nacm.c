@@ -103,7 +103,7 @@ invalid_parent:
                 inherited->parent = iter;
                 inherited->parent_type = LYEXT_PAR_NODE;
                 if (c_ext->argument) {
-                    inherited->argument = lydict_insert(cctx->ctx, c_ext->argument, strlen(c_ext->argument));
+                    LY_CHECK_RET(lydict_insert(cctx->ctx, c_ext->argument, strlen(c_ext->argument), &inherited->argument));
                 }
                 /* TODO duplicate extension instances */
                 inherited->data = c_ext->data;

@@ -432,14 +432,12 @@ lyb_parse_opaq_prefixes(struct lylyb_ctx *lybctx, struct ly_prefix **prefs)
         LY_ARRAY_INCREMENT(*prefs);
 
         /* prefix */
-        ret = lyb_read_string(&str, 1, lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-        (*prefs)[i].id = lydict_insert_zc(lybctx->ctx, str);
+        LY_CHECK_GOTO(ret = lyb_read_string(&str, 1, lybctx), cleanup);
+        LY_CHECK_GOTO(ret = lydict_insert_zc(lybctx->ctx, str, &(*prefs)[i].id), cleanup);
 
         /* module reference is the same as JSON name */
-        ret = lyb_read_string(&str, 1, lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-        (*prefs)[i].module_name = lydict_insert_zc(lybctx->ctx, str);
+        LY_CHECK_GOTO(ret = lyb_read_string(&str, 1, lybctx), cleanup);
+        LY_CHECK_GOTO(ret = lydict_insert_zc(lybctx->ctx, str, &(*prefs)[i].module_name), cleanup);
     }
 
 cleanup:
@@ -540,7 +538,7 @@ cleanup:
     }
     ly_free_val_prefs(lybctx->ctx, val_prefs);
     if (ret) {
-        ly_free_attr_siblings(lybctx->ctx, *attr);
+        lyd_free_attr_siblings(lybctx->ctx, *attr);
         *attr = NULL;
     }
     return ret;
@@ -884,7 +882,7 @@ cleanup:
     ly_free_val_prefs(ctx, val_prefs);
 
     lyd_free_meta_siblings(meta);
-    ly_free_attr_siblings(ctx, attr);
+    lyd_free_attr_siblings(ctx, attr);
     lyd_free_tree(node);
     return ret;
 }

@@ -195,7 +195,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
 
 cleanup:
     if (ret) {
-        ly_free_attr_siblings(xmlctx->ctx, *attr);
+        lyd_free_attr_siblings(xmlctx->ctx, *attr);
         *attr = NULL;
     }
     return ret;
@@ -611,7 +611,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
 
 error:
     lyd_free_meta_siblings(meta);
-    ly_free_attr_siblings(ctx, attr);
+    lyd_free_attr_siblings(ctx, attr);
     lyd_free_tree(node);
     return ret;
 }
@@ -710,7 +710,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, str
     attr = NULL;
 
 cleanup:
-    ly_free_attr_siblings(xmlctx->ctx, attr);
+    lyd_free_attr_siblings(xmlctx->ctx, attr);
     return ret;
 }
 
@@ -897,7 +897,7 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
 cleanup:
     if (ret) {
         lyd_free_tree(*envp);
-        ly_free_attr_siblings(xmlctx->ctx, attr);
+        lyd_free_attr_siblings(xmlctx->ctx, attr);
     }
     return ret;
 }

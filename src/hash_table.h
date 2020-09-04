@@ -196,7 +196,8 @@ LY_ERR lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **
  * @param[in] hash Hash of the stored value.
  * @param[out] match_p Pointer to the stored value, optional
  * @return LY_SUCCESS on success,
- * @return LY_EEXIST if the value is already present.
+ * @return LY_EEXIST in case the value is already present.
+ * @return LY_EMEM in case of memory allocation failure.
  */
 LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
 
@@ -212,7 +213,8 @@ LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @param[in] resize_val_equal Val equal callback to use for resizing.
  * @param[out] match_p Pointer to the stored value, optional
  * @return LY_SUCCESS on success,
- * @return LY_EEXIST if the value is already present.
+ * @return LY_EEXIST in case the value is already present.
+ * @return LY_EMEM in case of memory allocation failure.
  */
 LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal,
         void **match_p);

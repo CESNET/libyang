@@ -317,8 +317,8 @@ lydjson_get_value_prefixes(const struct ly_ctx *ctx, const char *value, size_t v
                 }
                 if (!p) {
                     LY_ARRAY_NEW_GOTO(ctx, prefixes, p, ret, error);
-                    p->id = lydict_insert(ctx, start, len);
-                    p->module_name = lydict_insert(ctx, start, len);
+                    LY_CHECK_GOTO(ret = lydict_insert(ctx, start, len, &p->id), error);
+                    LY_CHECK_GOTO(ret = lydict_insert(ctx, start, len, &p->module_name), error);
                 } /* else the prefix already present */
             }
             stop = stop + bytes;
@@ -569,7 +569,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         if (prev != meta_container->name) {
             /* metas' names are stored in dictionary, so checking pointers must works */
             lydict_remove(lydctx->jsonctx->ctx, prev);
-            prev = lydict_insert(lydctx->jsonctx->ctx, meta_container->name, 0);
+            LY_CHECK_GOTO(ret = lydict_insert(lydctx->jsonctx->ctx, meta_container->name, 0, &prev), cleanup);
             instance = 1;
         } else {
             instance++;

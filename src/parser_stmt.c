@@ -81,14 +81,14 @@ lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SU
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *exts, e, LY_EMEM);
 
     /* store name and insubstmt info */
-    e->name = lydict_insert(PARSER_CTX(ctx), stmt->stmt, 0);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->stmt, 0, &e->name));
     e->insubstmt = insubstmt;
     e->insubstmt_index = insubstmt_index;
     /* TODO (duplicate) e->child = stmt->child; */
 
     /* get optional argument */
     if (stmt->arg) {
-        e->argument = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &e->argument));
     }
 
     return LY_SUCCESS;
@@ -120,7 +120,7 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
     }
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, arg, stmt->arg));
-    *value = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, value));
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -163,7 +163,7 @@ lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, 
 
     /* allocate new pointer */
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *texts, item, LY_EMEM);
-    *item = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, item));
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -251,7 +251,7 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum l
     const struct lysp_stmt *child;
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
-    restr->arg = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &restr->arg));
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -412,7 +412,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
         LY_CHECK_RET(lysp_check_enum_name(ctx, stmt->arg, strlen(stmt->arg)));
     } /* else nothing specific for YANG_BIT */
 
-    enm->name = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &enm->name));
     CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
 
     for (child = stmt->child; child; child = child->next) {
@@ -605,7 +605,7 @@ lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_st
 
     assert(buf[0] == 0x06);
     buf[0] = 0x15;
-    *pat = lydict_insert_zc(PARSER_CTX(ctx), buf);
+    LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, pat));
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -652,7 +652,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     memmove(buf + 1, stmt->arg, arg_len);
     buf[0] = 0x06; /* pattern's default regular-match flag */
     buf[arg_len + 1] = '\0'; /* terminating NULL byte */
-    restr->arg = lydict_insert_zc(PARSER_CTX(ctx), buf);
+    LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg));
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -709,7 +709,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "type");
         return LY_EVALID;
     }
-    type->name = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &type->name));
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;

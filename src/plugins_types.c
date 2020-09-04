@@ -188,7 +188,7 @@ ly_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(form
 static LY_ERR
 ly_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    dup->canonical = lydict_insert(ctx, original->canonical, strlen(original->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
     dup->ptr = original->ptr;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
@@ -557,7 +557,7 @@ ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *
     }
 
     /* store everything */
-    storage->canonical = lydict_insert_zc(ctx, str);
+    LY_CHECK_RET(lydict_insert_zc(ctx, str, &storage->canonical));
     storage->int64 = num;
     storage->realtype = type;
 
@@ -611,7 +611,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     }
 
     /* store everything */
-    storage->canonical = lydict_insert_zc(ctx, str);
+    LY_CHECK_RET(lydict_insert_zc(ctx, str, &storage->canonical));
     storage->int64 = num;
     storage->realtype = type;
 
@@ -677,7 +677,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
         LY_CHECK_RET(ly_type_validate_range(type->basetype, type_dec->range, d, buf, err));
     }
 
-    storage->canonical = lydict_insert(ctx, buf, strlen(buf));
+    LY_CHECK_RET(lydict_insert(ctx, buf, strlen(buf), &storage->canonical));
     storage->dec64 = d;
     storage->realtype = type;
 
@@ -767,9 +767,9 @@ finish:
     }
 
     if (start != 0 || (value_len && stop != value_len - 1)) {
-        storage->canonical = lydict_insert(ctx, &value[start], stop + 1 - start);
+        LY_CHECK_RET(lydict_insert(ctx, &value[start], stop + 1 - start, &storage->canonical));
     } else {
-        storage->canonical = lydict_insert(ctx, value_len ? value : "", value_len);
+        LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
     }
     storage->ptr = NULL;
     storage->realtype = type;
@@ -820,9 +820,9 @@ ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const cha
     LY_CHECK_RET(ly_type_validate_patterns(type_str->patterns, value, value_len, err));
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
-        storage->canonical = lydict_insert_zc(ctx, (char *)value);
+        LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
-        storage->canonical = lydict_insert(ctx, value_len ? value : "", value_len);
+        LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
     }
     storage->ptr = NULL;
     storage->realtype = type;
@@ -919,19 +919,21 @@ next:
         items = NULL;
 
         if (!ws_count && !lws_count && (options & LY_TYPE_OPTS_DYNAMIC)) {
-            can = lydict_insert_zc(ctx, (char *)value);
+            r = lydict_insert_zc(ctx, (char *)value, &can);
+            LY_CHECK_ERR_GOTO(r, ret = r, error);
             value = NULL;
             options &= ~LY_TYPE_OPTS_DYNAMIC;
         } else {
-            can = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count);
+            r = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count, &can);
+            LY_CHECK_ERR_GOTO(r, ret = r, error);
         }
     } else {
         buf = malloc(buf_size * sizeof *buf);
         LY_CHECK_ERR_GOTO(!buf, LOGMEM(ctx); ret = LY_EMEM, error);
         index = 0;
 
-        ret = ly_set_dup(items, NULL, &items_ordered);
-        LY_CHECK_GOTO(ret, error);
+        r = ly_set_dup(items, NULL, &items_ordered);
+        LY_CHECK_ERR_GOTO(r, ret = r, error);
         items_ordered->count = 0;
 
         /* generate ordered bits list */
@@ -948,7 +950,8 @@ next:
         /* termination NULL-byte */
         buf[index] = '\0';
 
-        can = lydict_insert_zc(ctx, buf);
+        r = lydict_insert_zc(ctx, buf, &can);
+        LY_CHECK_ERR_GOTO(r, ret = r, error);
         buf = NULL;
     }
 
@@ -999,7 +1002,7 @@ ly_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, str
         dup->bits_items[u] = original->bits_items[u];
     }
 
-    dup->canonical = lydict_insert(ctx, original->canonical, strlen(original->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 }
@@ -1062,9 +1065,9 @@ match:
     /* validation done */
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
-        storage->canonical = lydict_insert_zc(ctx, (char *)value);
+        LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
-        storage->canonical = lydict_insert(ctx, value_len ? value : "", value_len);
+        LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
     }
     storage->enum_item = &type_enum->enums[u];
     storage->realtype = type;
@@ -1114,9 +1117,9 @@ ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *type, const ch
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
-        storage->canonical = lydict_insert_zc(ctx, (char *)value);
+        LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
-        storage->canonical = lydict_insert(ctx, value, value_len);
+        LY_CHECK_RET(lydict_insert(ctx, value, value_len, &storage->canonical));
     }
     storage->boolean = i;
     storage->realtype = type;
@@ -1150,7 +1153,7 @@ ly_type_store_empty(const struct ly_ctx *ctx, struct lysc_type *type, const char
         }
     }
 
-    storage->canonical = lydict_insert(ctx, "", 0);
+    LY_CHECK_RET(lydict_insert(ctx, "", 0, &storage->canonical));
     storage->ptr = NULL;
     storage->realtype = type;
 
@@ -1275,7 +1278,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     /* get JSON form since there is no canonical */
     str = (char *)ly_type_print_identityref(storage, LY_PREF_JSON, NULL, &dyn);
     assert(str && dyn);
-    storage->canonical = lydict_insert_zc(ctx, str);
+    LY_CHECK_RET(lydict_insert_zc(ctx, str, &storage->canonical));
     storage->realtype = type;
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -1342,7 +1345,6 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
     char *errmsg = NULL, *str;
     struct ly_path *path = NULL;
-    struct ly_set predicates = {0};
     struct lyxp_expr *exp = NULL;
     const struct lysc_node *ctx_scnode;
     int rc = 0;
@@ -1357,7 +1359,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_INCOMPLETE_DATA)) {
         /* we have incomplete schema tree */
         /* HACK temporary storing of the original value */
-        storage->canonical = lydict_insert(ctx, value_len ? value : "", value_len);
+        LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
         goto cleanup;
     }
 
@@ -1425,12 +1427,11 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     /* store JSON string value */
     str = (char *)ly_type_print_instanceid(storage, LY_PREF_JSON, NULL, &dyn);
     assert(str && dyn);
-    storage->canonical = lydict_insert_zc(ctx, str);
+    LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->canonical), error);
 
     storage->realtype = type;
 
 cleanup:
-    ly_set_erase(&predicates, NULL);
     lyxp_expr_free(ctx, exp);
     ly_path_free(ctx, path);
 
@@ -1445,7 +1446,6 @@ cleanup:
     }
 
 error:
-    ly_set_erase(&predicates, NULL);
     lyxp_expr_free(ctx, exp);
     ly_path_free(ctx, path);
 
@@ -1453,7 +1453,7 @@ error:
         if (rc == -1) {
             *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
             ret = LY_EMEM;
-        } else {
+        } else if (errmsg) {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
         }
     }
@@ -1651,7 +1651,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
 static LY_ERR
 ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    dup->canonical = lydict_insert(ctx, original->canonical, strlen(original->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
     dup->realtype = original->realtype;
     return ly_path_dup(ctx, original->target, &dup->target);
 }
@@ -2102,10 +2102,18 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
     } else {
         /* prepare subvalue storage */
         subvalue = calloc(1, sizeof *subvalue);
+        if (!subvalue) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
         subvalue->value = calloc(1, sizeof *subvalue->value);
+        if (!subvalue->value) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
 
         /* remember the original value */
-        subvalue->original = lydict_insert(ctx, value_len ? value : "", value_len);
+        LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &subvalue->original));
 
         /* store format-specific data for later prefix resolution */
         subvalue->format = format;
@@ -2159,7 +2167,7 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
 
     /* success */
 
-    storage->canonical = lydict_insert(ctx, subvalue->value->canonical, strlen(subvalue->value->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, subvalue->value->canonical, strlen(subvalue->value->canonical), &storage->canonical));
     storage->subvalue = subvalue;
     storage->realtype = type;
 
@@ -2202,15 +2210,15 @@ ly_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void
 static LY_ERR
 ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    dup->canonical = lydict_insert(ctx, original->canonical, strlen(original->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
 
     dup->subvalue = calloc(1, sizeof *dup->subvalue);
     LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);
     dup->subvalue->value = calloc(1, sizeof *dup->subvalue->value);
     LY_CHECK_ERR_RET(!dup->subvalue->value, LOGMEM(ctx), LY_EMEM);
-    original->subvalue->value->realtype->plugin->duplicate(ctx, original->subvalue->value, dup->subvalue->value);
+    LY_CHECK_RET(original->subvalue->value->realtype->plugin->duplicate(ctx, original->subvalue->value, dup->subvalue->value));
 
-    dup->subvalue->original = lydict_insert(ctx, original->subvalue->original, strlen(original->subvalue->original));
+    LY_CHECK_RET(lydict_insert(ctx, original->subvalue->original, strlen(original->subvalue->original), &dup->subvalue->original));
     dup->subvalue->format = original->subvalue->format;
     dup->subvalue->prefix_data = ly_type_union_dup_prefix_data(ctx, original->subvalue->format,
                                                                original->subvalue->prefix_data);

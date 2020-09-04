@@ -73,12 +73,12 @@ test_invalid_arguments(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
-    assert_null(lydict_insert(NULL, NULL, 0));
+    assert_int_equal(LY_EINVAL, lydict_insert(NULL, NULL, 0, NULL));
     logbuf_assert("Invalid argument ctx (lydict_insert()).");
 
-    assert_null(lydict_insert_zc(NULL, NULL));
+    assert_int_equal(LY_EINVAL, lydict_insert_zc(NULL, NULL, NULL));
     logbuf_assert("Invalid argument ctx (lydict_insert_zc()).");
-    assert_null(lydict_insert_zc(ctx, NULL));
+    assert_int_equal(LY_EINVAL, lydict_insert_zc(ctx, NULL, NULL));
     logbuf_assert("Invalid argument value (lydict_insert_zc()).");
 
     ly_ctx_destroy(ctx, NULL);
@@ -89,19 +89,20 @@ test_dict_hit(void **state)
 {
     (void) state; /* unused */
 
-    const char *str1, *str2;
+    const char *str1, *str2, *str3;
     struct ly_ctx *ctx;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* insert 2 strings, one of them repeatedly */
-    str1 = lydict_insert(ctx, "test1", 0);
+    assert_int_equal(LY_SUCCESS, lydict_insert(ctx, "test1", 0, &str1));
     assert_non_null(str1);
     /* via zerocopy we have to get the same pointer as provided */
     assert_non_null(str2 = strdup("test2"));
-    assert_true(str2 == lydict_insert_zc(ctx, (char *)str2));
+    assert_int_equal(LY_SUCCESS, lydict_insert_zc(ctx, (char *)str2, &str3));
+    assert_ptr_equal(str2, str3);
     /* here we get the same pointer as in case the string was inserted first time */
-    str2 = lydict_insert(ctx, "test1", 0);
+    assert_int_equal(LY_SUCCESS, lydict_insert(ctx, "test1", 0, &str2));
     assert_non_null(str2);
     assert_ptr_equal(str1, str2);
 
