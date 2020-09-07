@@ -3829,7 +3829,9 @@ lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_
             if (ctx->models.list[i] == module) {
                 /* move all the models to not change the order in the list */
                 ctx->models.used--;
-                memmove(&ctx->models.list[i], ctx->models.list[i + 1], (ctx->models.used - i) * sizeof *ctx->models.list);
+                if (i < ctx->models.used) {
+                    memmove(&ctx->models.list[i], ctx->models.list[i + 1], (ctx->models.used - i) * sizeof *ctx->models.list);
+                }
                 ctx->models.list[ctx->models.used] = NULL;
                 /* we are done */
                 break;
