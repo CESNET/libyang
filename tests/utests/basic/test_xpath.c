@@ -11,6 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _UTEST_MAIN_
+#include "utests.h"
 
 #include <string.h>
 
@@ -20,151 +22,69 @@
 #include "tests/config.h"
 #include "tree_data.h"
 #include "tree_schema.h"
-#include "utests.h"
 
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-int store = -1; /* negative for infinite logging, positive for limited logging */
-
-struct ly_ctx *ctx; /* context for tests */
-
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-#if ENABLE_LOGGER_CHECKING
-static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-    if (store) {
-        if (path && path[0]) {
-            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
-        } else {
-            strncpy(logbuf, msg, BUFSIZE - 1);
-        }
-        if (store > 0) {
-            --store;
-        }
-    }
-}
-
-#endif
+const char *schema_a =
+        "module a {\n"
+        "    namespace urn:tests:a;\n"
+        "    prefix a;\n"
+        "    yang-version 1.1;\n"
+        "\n"
+        "    list l1 {\n"
+        "        key \"a b\";\n"
+        "        leaf a {\n"
+        "            type string;\n"
+        "        }\n"
+        "        leaf b {\n"
+        "            type string;\n"
+        "        }\n"
+        "        leaf c {\n"
+        "            type string;\n"
+        "        }\n"
+        "    }\n"
+        "    leaf foo {\n"
+        "        type string;\n"
+        "    }\n"
+        "    leaf foo2 {\n"
+        "        type uint8;\n"
+        "    }\n"
+        "    container c {\n"
+        "        leaf x {\n"
+        "            type string;\n"
+        "        }\n"
+        "        list ll {\n"
+        "            key \"a\";\n"
+        "            leaf a {\n"
+        "                type string;\n"
+        "            }\n"
+        "            list ll {\n"
+        "                key \"a\";\n"
+        "                leaf a {\n"
+        "                    type string;\n"
+        "                }\n"
+        "                leaf b {\n"
+        "                    type string;\n"
+        "                }\n"
+        "            }\n"
+        "        }\n"
+        "        leaf-list ll2 {\n"
+        "            type string;\n"
+        "        }\n"
+        "    }\n"
+        "}";
 
 static int
 setup(void **state)
 {
-    (void) state; /* unused */
+    UTEST_SETUP;
 
-    const char *schema_a =
-            "module a {\n"
-            "    namespace urn:tests:a;\n"
-            "    prefix a;\n"
-            "    yang-version 1.1;\n"
-            "\n"
-            "    list l1 {\n"
-            "        key \"a b\";\n"
-            "        leaf a {\n"
-            "            type string;\n"
-            "        }\n"
-            "        leaf b {\n"
-            "            type string;\n"
-            "        }\n"
-            "        leaf c {\n"
-            "            type string;\n"
-            "        }\n"
-            "    }\n"
-            "    leaf foo {\n"
-            "        type string;\n"
-            "    }\n"
-            "    leaf foo2 {\n"
-            "        type uint8;\n"
-            "    }\n"
-            "    container c {\n"
-            "        leaf x {\n"
-            "            type string;\n"
-            "        }\n"
-            "        list ll {\n"
-            "            key \"a\";\n"
-            "            leaf a {\n"
-            "                type string;\n"
-            "            }\n"
-            "            list ll {\n"
-            "                key \"a\";\n"
-            "                leaf a {\n"
-            "                    type string;\n"
-            "                }\n"
-            "                leaf b {\n"
-            "                    type string;\n"
-            "                }\n"
-            "            }\n"
-            "        }\n"
-            "        leaf-list ll2 {\n"
-            "            type string;\n"
-            "        }\n"
-            "    }\n"
-            "}";
-    const char *schema_b =
-            "module b {\n"
-            "    namespace urn:tests:b;\n"
-            "    prefix b;\n"
-            "    yang-version 1.1;\n"
-            "\n"
-            "    list l2 {\n"
-            "        key \"a\";\n"
-            "        leaf a {\n"
-            "            type uint16;\n"
-            "        }\n"
-            "        leaf b {\n"
-            "            type uint16;\n"
-            "        }\n"
-            "    }\n"
-            "}";
-
-#if ENABLE_LOGGER_CHECKING
-    ly_set_log_clb(logger, 1);
-#endif
-
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
-    assert_int_equal(lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL), LY_SUCCESS);
-    assert_int_equal(lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL), LY_SUCCESS);
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, NULL);
 
     return 0;
 }
-
-static int
-teardown(void **state)
-{
-#if ENABLE_LOGGER_CHECKING
-    if (*state) {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#else
-    (void) state; /* unused */
-#endif
-
-    ly_ctx_destroy(ctx, NULL);
-    ctx = NULL;
-
-    return 0;
-}
-
-void
-logbuf_clean(void)
-{
-    logbuf[0] = '\0';
-}
-
-#if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
 
 static void
 test_hash(void **state)
 {
-    *state = test_hash;
-
     const char *data =
             "<l1 xmlns=\"urn:tests:a\">\n"
             "    <a>a1</a>\n"
@@ -220,7 +140,7 @@ test_hash(void **state)
     struct lyd_node *tree, *node;
     struct ly_set *set;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
     /* top-level, so hash table is not ultimately used but instances can be compared based on hashes */
@@ -279,14 +199,27 @@ test_hash(void **state)
     ly_set_free(set, NULL);
 
     lyd_free_all(tree);
-    *state = NULL;
 }
 
 static void
 test_toplevel(void **state)
 {
-    *state = test_toplevel;
-
+    const char *schema_b =
+            "module b {\n"
+            "    namespace urn:tests:b;\n"
+            "    prefix b;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    list l2 {\n"
+            "        key \"a\";\n"
+            "        leaf a {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *data =
             "<l1 xmlns=\"urn:tests:a\">\n"
             "    <a>a1</a>\n"
@@ -318,7 +251,9 @@ test_toplevel(void **state)
     struct lyd_node *tree;
     struct ly_set *set;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
     /* all top-level nodes from one module (default container as well) */
@@ -352,18 +287,16 @@ test_toplevel(void **state)
     ly_set_free(set, NULL);
 
     lyd_free_all(tree);
-    *state = NULL;
 }
 
 static void
 test_atomize(void **state)
 {
-    *state = test_atomize;
-
     struct ly_set *set;
     const struct lys_module *mod;
 
-    mod = ly_ctx_get_module_latest(ctx, "a");
+    mod = ly_ctx_get_module_latest(UTEST_LYCTX, "a");
+    assert_non_null(mod);
 
     /* some random paths just making sure the API function works */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(mod->compiled->data, "/a:*", 0, &set));
@@ -387,14 +320,12 @@ test_atomize(void **state)
 static void
 test_canonize(void **state)
 {
-    *state = test_canonize;
-
     const char *data =
             "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
     struct lyd_node *tree;
     struct ly_set *set;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo2[.='050']", &set));
@@ -404,17 +335,16 @@ test_canonize(void **state)
     /* TODO more use-cases once there are some type plugins that have canonical values */
 
     lyd_free_all(tree);
-    *state = NULL;
 }
 
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_hash, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_toplevel, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_atomize, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_canonize, setup, teardown),
+        UTEST(test_hash, setup),
+        UTEST(test_toplevel, setup),
+        UTEST(test_atomize, setup),
+        UTEST(test_canonize, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

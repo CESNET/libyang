@@ -11,103 +11,53 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
-#define _GNU_SOURCE
-#define _POSIX_C_SOURCE 200809L /* strdup */
+#define _UTEST_MAIN_
+#include "utests.h"
 
 #include <stdlib.h>
 
 #include "common.h"
 #include "hash_table.h"
-#include "utests.h"
 
 struct ht_rec *lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx);
-
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-    (void) path; /* unused */
-
-    strncpy(logbuf, msg, BUFSIZE - 1);
-}
-
-static int
-logger_setup(void **state)
-{
-    (void) state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    ly_set_log_clb(logger, 0);
-#endif
-    return 0;
-}
-
-void
-logbuf_clean(void)
-{
-    logbuf[0] = '\0';
-}
-
-#if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
 
 static void
 test_invalid_arguments(void **state)
 {
-    (void) state; /* unused */
-    struct ly_ctx *ctx;
-
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
-
     assert_int_equal(LY_EINVAL, lydict_insert(NULL, NULL, 0, NULL));
-    logbuf_assert("Invalid argument ctx (lydict_insert()).");
+    CHECK_LOG("Invalid argument ctx (lydict_insert()).", NULL);
 
     assert_int_equal(LY_EINVAL, lydict_insert_zc(NULL, NULL, NULL));
-    logbuf_assert("Invalid argument ctx (lydict_insert_zc()).");
-    assert_int_equal(LY_EINVAL, lydict_insert_zc(ctx, NULL, NULL));
-    logbuf_assert("Invalid argument value (lydict_insert_zc()).");
-
-    ly_ctx_destroy(ctx, NULL);
+    CHECK_LOG("Invalid argument ctx (lydict_insert_zc()).", NULL);
+    assert_int_equal(LY_EINVAL, lydict_insert_zc(UTEST_LYCTX, NULL, NULL));
+    CHECK_LOG_CTX("Invalid argument value (lydict_insert_zc()).", NULL);
 }
 
 static void
 test_dict_hit(void **state)
 {
-    (void) state; /* unused */
-
     const char *str1, *str2, *str3;
-    struct ly_ctx *ctx;
-
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* insert 2 strings, one of them repeatedly */
-    assert_int_equal(LY_SUCCESS, lydict_insert(ctx, "test1", 0, &str1));
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "test1", 0, &str1));
     assert_non_null(str1);
     /* via zerocopy we have to get the same pointer as provided */
     assert_non_null(str2 = strdup("test2"));
-    assert_int_equal(LY_SUCCESS, lydict_insert_zc(ctx, (char *)str2, &str3));
+    assert_int_equal(LY_SUCCESS, lydict_insert_zc(UTEST_LYCTX, (char *)str2, &str3));
     assert_ptr_equal(str2, str3);
     /* here we get the same pointer as in case the string was inserted first time */
-    assert_int_equal(LY_SUCCESS, lydict_insert(ctx, "test1", 0, &str2));
+    assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "test1", 0, &str2));
     assert_non_null(str2);
     assert_ptr_equal(str1, str2);
 
     /* remove strings, but the repeatedly inserted only once */
-    lydict_remove(ctx, "test1");
-    lydict_remove(ctx, "test2");
+    lydict_remove(UTEST_LYCTX, "test1");
+    lydict_remove(UTEST_LYCTX, "test2");
 
     /* destroy dictionary - should raise warning about data presence */
-    ly_ctx_destroy(ctx, NULL);
-    logbuf_assert("String \"test1\" not freed from the dictionary, refcount 1");
+    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    UTEST_LYCTX = NULL;
+    CHECK_LOG("String \"test1\" not freed from the dictionary, refcount 1", NULL);
 
 #ifndef NDEBUG
     /* cleanup */
@@ -132,8 +82,6 @@ ht_equal_clb(void *val1, void *val2, uint8_t mod, void *cb_data)
 static void
 test_ht_basic(void **state)
 {
-    (void) state; /* unused */
-
     uint32_t i;
     struct hash_table *ht;
 
@@ -146,7 +94,7 @@ test_ht_basic(void **state)
     assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-    logbuf_assert("Invalid argument hash (lyht_remove_with_resize_cb()).");
+    CHECK_LOG("Invalid argument hash (lyht_remove_with_resize_cb()).", NULL);
 
     lyht_free(ht);
 }
@@ -154,8 +102,6 @@ test_ht_basic(void **state)
 static void
 test_ht_resize(void **state)
 {
-    (void) state; /* unused */
-
     uint32_t i;
     struct ht_rec *rec;
     struct hash_table *ht;
@@ -186,9 +132,9 @@ test_ht_resize(void **state)
 
     /* removing not present data should fail */
     for (i = 0; i < 2; ++i) {
-        logbuf_clean();
+        UTEST_LOG_CLEAN;
         assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-        logbuf_assert("Invalid argument hash (lyht_remove_with_resize_cb()).");
+        CHECK_LOG("Invalid argument hash (lyht_remove_with_resize_cb()).", NULL);
     }
     /* removing present data, resize should happened
      * when we are below 25% of the table filled, so with 3 records left */
@@ -211,9 +157,8 @@ test_ht_resize(void **state)
 }
 
 static void
-test_ht_collisions(void **state)
+test_ht_collisions(void **UNUSED(state))
 {
-    (void) state; /* unused */
 #define GET_REC_INT(rec) (*((uint32_t *)&(rec)->val))
 
     uint32_t i;
@@ -315,11 +260,11 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_invalid_arguments, logger_setup),
-        cmocka_unit_test_setup(test_dict_hit, logger_setup),
-        cmocka_unit_test_setup(test_ht_basic, logger_setup),
-        cmocka_unit_test_setup(test_ht_resize, logger_setup),
-        cmocka_unit_test_setup(test_ht_collisions, logger_setup),
+        UTEST(test_invalid_arguments),
+        UTEST(test_dict_hit),
+        UTEST(test_ht_basic),
+        UTEST(test_ht_resize),
+        UTEST(test_ht_collisions),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

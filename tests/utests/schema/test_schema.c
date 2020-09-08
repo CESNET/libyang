@@ -11,73 +11,14 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
+#define _UTEST_MAIN_
 #include "test_schema.h"
 
 #include <string.h>
 
 #include "log.h"
 #include "parser_schema.h"
-#include "tests/config.h"
 #include "tree_schema.h"
-#include "utests.h"
-
-#if ENABLE_LOGGER_CHECKING
-
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-int store = -1; /* negative for infinite logging, positive for limited logging */
-
-static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-    if (store) {
-        if (path && path[0]) {
-            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
-        } else {
-            strncpy(logbuf, msg, BUFSIZE - 1);
-        }
-        if (store > 0) {
-            --store;
-        }
-    }
-}
-
-#endif
-
-static int
-logger_setup(void **state)
-{
-    (void) state; /* unused */
-
-#if ENABLE_LOGGER_CHECKING
-    /* setup logger */
-    ly_set_log_clb(logger, 1);
-#endif
-
-    return 0;
-}
-
-static int
-logger_teardown(void **state)
-{
-    (void) state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    if (*state) {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#endif
-    return 0;
-}
-
-void
-logbuf_clean(void)
-{
-#if ENABLE_LOGGER_CHECKING
-    logbuf[0] = '\0';
-#endif
-}
 
 LY_ERR
 test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
@@ -109,15 +50,15 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         /** test_schema_common.c */
-        cmocka_unit_test_setup_teardown(test_getnext, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_date, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_revisions, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_typedef, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_accessible_tree, logger_setup, logger_teardown),
+        UTEST(test_getnext),
+        UTEST(test_date),
+        UTEST(test_revisions),
+        UTEST(test_typedef),
+        UTEST(test_accessible_tree),
 
         /** test_schema_stmts.c */
-        cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_feature, logger_setup, logger_teardown),
+        UTEST(test_identity),
+        UTEST(test_feature),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

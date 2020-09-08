@@ -11,44 +11,18 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
-#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L /* strdup */
+#define _UTEST_MAIN_
+#include "utests.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-#include "utests.h"
-
 #include "set.h"
 
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-
 static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
+test_basics(void **UNUSED(state))
 {
-    (void) level; /* unused */
-    (void) path; /* unused */
-
-    strncpy(logbuf, msg, BUFSIZE - 1);
-}
-
-static int
-logger_setup(void **state)
-{
-    (void) state; /* unused */
-
-    ly_set_log_clb(logger, 0);
-
-    return 0;
-}
-
-static void
-test_basics(void **state)
-{
-    (void) state; /* unused */
-
     struct ly_set *set;
     char *str;
     unsigned int u;
@@ -103,42 +77,40 @@ test_inval(void **state)
     memset(&set, 0, sizeof set);
 
     ly_set_clean(NULL, NULL);
-    assert_string_equal(logbuf, "");
+    CHECK_LOG(NULL, NULL);
 
     ly_set_erase(NULL, NULL);
-    assert_string_equal(logbuf, "");
+    CHECK_LOG(NULL, NULL);
 
     ly_set_free(NULL, NULL);
-    assert_string_equal(logbuf, "");
+    CHECK_LOG(NULL, NULL);
 
     assert_int_equal(LY_EINVAL, ly_set_dup(NULL, NULL, NULL));
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_dup()).");
+    CHECK_LOG("Invalid argument set (ly_set_dup()).", NULL);
 
     assert_int_equal(LY_EINVAL, ly_set_add(NULL, NULL, 0, NULL));
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_add()).");
+    CHECK_LOG("Invalid argument set (ly_set_add()).", NULL);
 
     assert_int_equal(LY_EINVAL, ly_set_merge(NULL, NULL, 0, NULL));
-    assert_string_equal(logbuf, "Invalid argument trg (ly_set_merge()).");
+    CHECK_LOG("Invalid argument trg (ly_set_merge()).", NULL);
     assert_int_equal(LY_SUCCESS, ly_set_merge(&set, NULL, 0, NULL));
 
     assert_int_equal(LY_EINVAL, ly_set_rm_index(NULL, 0, NULL));
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_rm_index()).");
+    CHECK_LOG("Invalid argument set (ly_set_rm_index()).", NULL);
     assert_int_equal(LY_EINVAL, ly_set_rm_index(&set, 1, NULL));
-    assert_string_equal(logbuf, "Invalid argument index (ly_set_rm_index()).");
+    CHECK_LOG("Invalid argument index (ly_set_rm_index()).", NULL);
 
     assert_int_equal(LY_EINVAL, ly_set_rm(NULL, NULL, NULL));
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_rm()).");
+    CHECK_LOG("Invalid argument set (ly_set_rm()).", NULL);
     assert_int_equal(LY_EINVAL, ly_set_rm(&set, NULL, NULL));
-    assert_string_equal(logbuf, "Invalid argument object (ly_set_rm()).");
-    assert_int_equal(LY_EINVAL, ly_set_rm(&set, &state, NULL));
-    assert_string_equal(logbuf, "Invalid argument object (ly_set_rm()).");
+    CHECK_LOG("Invalid argument object (ly_set_rm()).", NULL);
+    assert_int_equal(LY_EINVAL, ly_set_rm(&set, &set, NULL));
+    CHECK_LOG("Invalid argument object (ly_set_rm()).", NULL);
 }
 
 static void
-test_duplication(void **state)
+test_duplication(void **UNUSED(state))
 {
-    (void) state; /* unused */
-
     struct ly_set *orig, *new;
     char *str;
     uint32_t index;
@@ -175,10 +147,8 @@ test_duplication(void **state)
 }
 
 static void
-test_add(void **state)
+test_add(void **UNUSED(state))
 {
-    (void) state; /* unused */
-
     uint32_t u, index;
     char *str = "test string";
     struct ly_set set;
@@ -210,10 +180,8 @@ test_add(void **state)
 }
 
 static void
-test_merge(void **state)
+test_merge(void **UNUSED(state))
 {
-    (void) state; /* unused */
-
     char *str1, *str2;
     struct ly_set one, two;
 
@@ -254,10 +222,8 @@ test_merge(void **state)
 }
 
 static void
-test_rm(void **state)
+test_rm(void **UNUSED(state))
 {
-    (void) state; /* unused */
-
     char *str1, *str2, *str3;
     struct ly_set set;
 
@@ -309,12 +275,12 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_basics),
-        cmocka_unit_test(test_duplication),
-        cmocka_unit_test(test_add),
-        cmocka_unit_test(test_merge),
-        cmocka_unit_test(test_rm),
-        cmocka_unit_test_setup(test_inval, logger_setup),
+        UTEST(test_basics),
+        UTEST(test_duplication),
+        UTEST(test_add),
+        UTEST(test_merge),
+        UTEST(test_rm),
+        UTEST(test_inval),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
