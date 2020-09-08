@@ -411,6 +411,17 @@ struct lysp_feature {
 };
 
 /**
+ * @brief YANG node-identifier
+ *
+ * Also used for any strings that may contain prefixes.
+ */
+struct lysp_nodeid {
+    const char *str;                 /**< node-indetifier string */
+    const struct lys_module *mod;    /**< local module for any prefixes found in the node-identifier, it must be
+                                          stored explicitly because of deviations */
+};
+
+/**
  * @brief YANG identity-stmt
  */
 struct lysp_ident {
@@ -427,7 +438,7 @@ struct lysp_ident {
  * @brief Covers restrictions: range, length, pattern, must
  */
 struct lysp_restr {
-    const char *arg;                 /**< The restriction expression/value (mandatory);
+    struct lysp_nodeid arg;          /**< The restriction expression/value (mandatory);
                                           in case of pattern restriction, the first byte has a special meaning:
                                           0x06 (ACK) for regular match and 0x15 (NACK) for invert-match */
     const char *emsg;                /**< error-message */
@@ -491,7 +502,7 @@ struct lysp_type {
 struct lysp_tpdf {
     const char *name;                /**< name of the newly defined type (mandatory) */
     const char *units;               /**< units of the newly defined type */
-    const char *dflt;                /**< default value of the newly defined type */
+    struct lysp_nodeid dflt;         /**< default value of the newly defined type */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -537,7 +548,7 @@ struct lysp_refine {
     const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     const char *presence;            /**< presence description */
-    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *dflts;       /**< list of default values ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -858,7 +869,7 @@ struct lysp_node_leaf {
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysp_type type;           /**< type of the leaf node (mandatory) */
     const char *units;               /**< units of the leaf's type */
-    const char *dflt;                /**< default value */
+    struct lysp_nodeid dflt;         /**< default value */
 };
 
 struct lysp_node_leaflist {
@@ -877,7 +888,7 @@ struct lysp_node_leaflist {
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysp_type type;           /**< type of the leaf node (mandatory) */
     const char *units;               /**< units of the leaf's type */
-    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *dflts;       /**< list of default values ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 };
@@ -902,7 +913,7 @@ struct lysp_node_list {
     struct lysp_node *child;         /**< list of data nodes (linked list) */
     struct lysp_action *actions;     /**< list of actions ([sized array](@ref sizedarrays)) */
     struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
-    const char **uniques;            /**< list of unique specifications ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *uniques;     /**< list of unique specifications ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 };
@@ -921,7 +932,7 @@ struct lysp_node_choice {
 
     /* choice */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
-    const char *dflt;                /**< default case */
+    struct lysp_nodeid dflt;         /**< default case */
 };
 
 struct lysp_node_case {
@@ -1368,6 +1379,7 @@ struct lysc_type_bin {
 };
 
 struct lysc_action_inout {
+    uint16_t nodetype;               /**< LYS_INPUT or LYS_OUTPUT */
     struct lysc_node *data;          /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
@@ -1648,8 +1660,6 @@ struct lysc_module {
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lys_module **deviated_by; /**< List of modules that deviate this module ([sized array](@ref sizedarrays)) */
-    struct lys_module **augmented_by;/**< List of modules that augment this module ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -1826,6 +1836,7 @@ struct lys_module {
     struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing.
                                           Available only for implemented modules. */
+
     struct lysc_feature *features;   /**< List of compiled features of the module ([sized array](@ref sizedarrays)).
                                           Features are outside the compiled tree since they are needed even the module is not
                                           compiled. In such a case, the features are always disabled and cannot be enabled until
@@ -1839,6 +1850,10 @@ struct lys_module {
                                           future (no matter if implicitly via augment/deviate or explicitly via
                                           ::lys_set_implemented()). Note that if the module is not implemented (compiled), the
                                           identities cannot be instantiated in data (in identityrefs). */
+
+    struct lys_module **augmented_by;/**< List of modules that augment this module ([sized array](@ref sizedarrays)) */
+    struct lys_module **deviated_by; /**< List of modules that deviate this module ([sized array](@ref sizedarrays)) */
+
     uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
                                           the flag has non-zero value. Specific values are used internally:
                                           1 - implemented module

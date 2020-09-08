@@ -229,21 +229,6 @@ struct ly_ctx {
 };
 
 /**
- * @defgroup contextflags Context flags
- * @ingroup context
- *
- * Internal context flags.
- *
- * Note that the flags 0x00FF are reserved for @ref contextoptions.
- * @{
- */
-
-#define LY_CTX_CHANGED_TREE 0x8000    /**< Deviation changed tree of a module(s) in the context, it is necessary to recompile
-                                           leafref paths, default values and must/when expressions to check that they are still valid */
-
-/** @} contextflags */
-
-/**
  * @brief Try to find submodule in the context. Submodules are present only in the parsed (lysp_) schema trees, if only
  * the compiled versions of the schemas are present, the submodule cannot be returned even if it was used to compile
  * some of the currently present schemas.

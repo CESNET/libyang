@@ -1429,7 +1429,7 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, l->nodetype);
     assert_string_equal("l", l->name);
     assert_string_equal("test", l->dsc);
-    assert_string_equal("xxx", l->dflt);
+    assert_string_equal("xxx", l->dflt.str);
     assert_string_equal("yyy", l->units);
     assert_string_equal("string", l->type.name);
     assert_non_null(l->exts);
@@ -1453,11 +1453,6 @@ test_leaf(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
     /* invalid */
-    in.current = " l {mandatory true; default xx; type string;} ...";
-    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l));
-    logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as substatements of \"leaf\". Line number 1.");
-    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
-
     in.current = " l {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf\". Line number 1.");
@@ -1513,8 +1508,8 @@ test_leaflist(void **state)
     assert_string_equal("test", ll->dsc);
     assert_non_null(ll->dflts);
     assert_int_equal(2, LY_ARRAY_COUNT(ll->dflts));
-    assert_string_equal("xxx", ll->dflts[0]);
-    assert_string_equal("yyy", ll->dflts[1]);
+    assert_string_equal("xxx", ll->dflts[0].str);
+    assert_string_equal("yyy", ll->dflts[1].str);
     assert_string_equal("zzz", ll->units);
     assert_int_equal(10, ll->max);
     assert_int_equal(0, ll->min);
@@ -1542,19 +1537,9 @@ test_leaflist(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     /* invalid */
-    in.current = " ll {min-elements 1; default xx; type string;} ...";
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
-    logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as substatements of \"leaf-list\". Line number 1.");
-    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
-
     in.current = " ll {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf-list\". Line number 1.");
-    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
-
-    in.current = " ll {type string; min-elements 10; max-elements 1;} ..."; /* invalid combination of min/max */
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
-    logbuf_assert("Invalid combination of min-elements and max-elements: min value 10 is bigger than the max value 1. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     ctx.mod_version = 1; /* simulate YANG 1.0 - default statement is not allowed */
@@ -1613,8 +1598,8 @@ test_list(void **state)
     assert_string_equal("l", l->key);
     assert_non_null(l->uniques);
     assert_int_equal(2, LY_ARRAY_COUNT(l->uniques));
-    assert_string_equal("xxx", l->uniques[0]);
-    assert_string_equal("yyy", l->uniques[1]);
+    assert_string_equal("xxx", l->uniques[0].str);
+    assert_string_equal("yyy", l->uniques[1].str);
     assert_int_equal(10, l->max);
     assert_int_equal(1, l->min);
     assert_non_null(l->exts);
@@ -1694,14 +1679,8 @@ test_choice(void **state)
     assert_non_null(ch);
     assert_int_equal(LYS_CHOICE, ch->nodetype);
     assert_string_equal("ch", ch->name);
-    assert_string_equal("c", ch->dflt);
+    assert_string_equal("c", ch->dflt.str);
     assert_int_equal(0, ch->flags);
-    lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
-
-    /* invalid content */
-    in.current = "ch {mandatory true; default c1; case c1 {leaf x{type string;}}} ...";
-    assert_int_equal(LY_EVALID, parse_choice(&ctx, &in, NULL, (struct lysp_node**)&ch));
-    logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as substatements of \"choice\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
 
     *state = NULL;

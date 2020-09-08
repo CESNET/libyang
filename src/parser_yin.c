@@ -515,8 +515,8 @@ yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     FREE_STRING(ctx->xmlctx->ctx, real_value);
     saved_value[0] = 0x06;
     saved_value[len + 1] = '\0';
-    LY_CHECK_RET(lydict_insert_zc(ctx->xmlctx->ctx, saved_value, &restr->arg));
-    LY_CHECK_ERR_RET(!restr->arg, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert_zc(ctx->xmlctx->ctx, saved_value, &restr->arg.str));
+    restr->arg.mod = ctx->main_mod;
     type->flags |= LYS_SET_PATTERN;
 
     struct yin_subelement subelems[6] = {
@@ -814,7 +814,8 @@ yin_parse_restriction(struct lys_yin_parser_ctx *ctx, enum ly_stmt restr_kw, str
     enum yin_argument arg_type = (restr_kw == LY_STMT_MUST) ? YIN_ARG_CONDITION : YIN_ARG_VALUE;
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
-    LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, &restr->arg, Y_STR_ARG, restr_kw));
+    LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, &restr->arg.str, Y_STR_ARG, restr_kw));
+    restr->arg.mod = ctx->main_mod;
 
     return yin_parse_content(ctx, subelems, 5, restr_kw, NULL, &restr->exts);
 }
@@ -872,6 +873,40 @@ yin_parse_must(struct lys_yin_parser_ctx *ctx, struct lysp_restr **restrs)
 
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *restrs, restr, LY_EMEM);
     return yin_parse_restriction(ctx, LY_STMT_MUST, restr);
+}
+
+/**
+ * @brief Parse a node id into an array.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] kw Type of current element.
+ * @param[in] subinfo Information about subelement, is used to determin which function should be called and where to store parsed value.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_nodeid(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
+        struct lysp_ext_instance **exts)
+{
+    struct lysp_nodeid *nodeid, **nodeids;
+
+    switch (kw) {
+    case LY_STMT_DEFAULT:
+        if (subinfo->flags & YIN_SUBELEM_UNIQUE) {
+            nodeid = (struct lysp_nodeid *)subinfo->dest;
+        } else {
+            nodeids = (struct lysp_nodeid **)subinfo->dest;
+            LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *nodeids, nodeid, LY_EMEM);
+        }
+        nodeid->mod = ctx->main_mod;
+        return yin_parse_simple_element(ctx, kw, &nodeid->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
+    default:
+        break;
+    }
+
+    LOGINT(ctx->xmlctx->ctx);
+    return LY_EINT;
 }
 
 /**
@@ -2901,6 +2936,8 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
                 ret = yin_parse_container(ctx, (struct tree_node_meta *)subelem->dest);
                 break;
             case LY_STMT_DEFAULT:
+                ret = yin_parse_nodeid(ctx, kw, subelem, exts);
+                break;
             case LY_STMT_ERROR_APP_TAG:
             case LY_STMT_KEY:
             case LY_STMT_PRESENCE:

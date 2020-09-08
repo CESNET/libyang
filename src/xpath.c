@@ -2956,6 +2956,10 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp
     struct lyxp_expr *dup = NULL;
     uint32_t i, j;
 
+    if (!exp) {
+        goto cleanup;
+    }
+
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_GOTO(!dup, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 

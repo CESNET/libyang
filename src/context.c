@@ -630,8 +630,8 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_boo
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_FOR(cur_mod->compiled->deviated_by, i) {
-        mod = cur_mod->compiled->deviated_by[i];
+    LY_ARRAY_FOR(cur_mod->deviated_by, i) {
+        mod = cur_mod->deviated_by[i];
 
         if (bis) {
             LY_CHECK_RET(lyd_new_term(parent, NULL, "deviation", mod->name, NULL));

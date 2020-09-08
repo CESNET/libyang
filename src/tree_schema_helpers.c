@@ -97,6 +97,11 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         }
         if (context_node && (context_node->nodetype & (LYS_RPC | LYS_ACTION))) {
             /* move through input/output manually */
+            if (mod != context_node->module) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+                return LY_ENOTFOUND;
+            }
             if (!ly_strncmp("input", name, name_len)) {
                 (*result_flag) |= LYSC_OPT_RPC_INPUT;
             } else if (!ly_strncmp("output", name, name_len)) {

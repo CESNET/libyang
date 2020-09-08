@@ -1050,7 +1050,9 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
             ret = LY_EDENIED;
             goto error;
         }
-        mod->implemented = 1;
+
+        /* being implemented */
+        mod->implemented = ctx->module_set_id;
     }
 
     /* check for duplicity in the context */

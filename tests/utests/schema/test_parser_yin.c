@@ -604,7 +604,8 @@ test_yin_parse_content(void **state)
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
-    const char *value, *err_msg, *app_tag, *units, *def;
+    const char *value, *err_msg, *app_tag, *units;
+    struct lysp_nodeid def = {0};
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
     struct lysp_type_enum pos_enum = {}, val_enum = {};
@@ -639,7 +640,7 @@ test_yin_parse_content(void **state)
     ret = yin_parse_content(st->yin_ctx, subelems, 17, LY_STMT_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     /* check parsed values */
-    assert_string_equal(def, "default-value");
+    assert_string_equal(def.str, "default-value");
     assert_string_equal(exts->name, "urn:example:extensions:custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
@@ -654,14 +655,14 @@ test_yin_parse_content(void **state)
     assert_true(val_enum.flags & LYS_SET_VALUE);
     assert_int_equal(req_type.require_instance, 1);
     assert_true(req_type.flags &= LYS_SET_REQINST);
-    assert_string_equal(range_type.range->arg, "5..10");
+    assert_string_equal(range_type.range->arg.str, "5..10");
     assert_true(range_type.flags & LYS_SET_RANGE);
     assert_string_equal(err_msg, "error-msg");
     assert_string_equal(app_tag, "err-app-tag");
     assert_string_equal(enum_type.enums->name, "yay");
-    assert_string_equal(len_type.length->arg, "baf");
+    assert_string_equal(len_type.length->arg.str, "baf");
     assert_true(len_type.flags & LYS_SET_LENGTH);
-    assert_string_equal(patter_type.patterns->arg, "\x015pattern");
+    assert_string_equal(patter_type.patterns->arg.str, "\x015pattern");
     assert_true(patter_type.flags & LYS_SET_PATTERN);
     /* cleanup */
     lysp_ext_instance_free(st->ctx, exts);
@@ -671,10 +672,10 @@ test_yin_parse_content(void **state)
     FREE_STRING(st->ctx, err_msg);
     FREE_STRING(st->ctx, app_tag);
     FREE_STRING(st->ctx, units);
-    FREE_STRING(st->ctx, patter_type.patterns->arg);
-    FREE_STRING(st->ctx, def);
-    FREE_STRING(st->ctx, range_type.range->arg);
-    FREE_STRING(st->ctx, len_type.length->arg);
+    FREE_STRING(st->ctx, patter_type.patterns->arg.str);
+    FREE_STRING(st->ctx, def.str);
+    FREE_STRING(st->ctx, range_type.range->arg.str);
+    FREE_STRING(st->ctx, len_type.length->arg.str);
     FREE_STRING(st->ctx, enum_type.enums->name);
     FREE_STRING(st->ctx, value);
     LY_ARRAY_FREE(if_features);
@@ -1429,19 +1430,19 @@ test_default_elem(void **state)
 {
     struct test_parser_yin_state *st = *state;
     const char *data;
-    const char *val = NULL;
+    struct lysp_nodeid val = {0};
     struct lysp_ext_instance *exts = NULL;
 
     data = ELEMENT_WRAPPER_START "<default value=\"defaul-value\">"EXT_SUBELEM"</default>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, &exts), LY_SUCCESS);
-    assert_string_equal(val, "defaul-value");
+    assert_string_equal(val.str, "defaul-value");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_DEFAULT);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(st->ctx, val);
-    val = NULL;
+    FREE_STRING(st->ctx, val.str);
+    val.str = NULL;
 
     data = ELEMENT_WRAPPER_START "<default/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, NULL), LY_EVALID);
@@ -1593,7 +1594,7 @@ test_length_elem(void **state)
                 "</length>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.length->arg, "length-str");
+    assert_string_equal(type.length->arg.str, "length-str");
     assert_string_equal(type.length->emsg, "err-msg");
     assert_string_equal(type.length->eapptag, "err-app-tag");
     assert_string_equal(type.length->dsc, "desc");
@@ -1611,7 +1612,7 @@ test_length_elem(void **state)
                 "</length>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.length->arg, "length-str");
+    assert_string_equal(type.length->arg.str, "length-str");
     lysp_type_free(st->ctx, &type);
     assert_true(type.flags & LYS_SET_LENGTH);
     memset(&type, 0, sizeof(type));
@@ -1698,7 +1699,7 @@ test_pattern_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_true(type.flags & LYS_SET_PATTERN);
-    assert_string_equal(type.patterns->arg, "\x015super_pattern");
+    assert_string_equal(type.patterns->arg.str, "\x015super_pattern");
     assert_string_equal(type.patterns->dsc, "\"pattern-desc\"");
     assert_string_equal(type.patterns->eapptag, "err-app-tag-value");
     assert_string_equal(type.patterns->emsg, "err-msg-value");
@@ -1712,7 +1713,7 @@ test_pattern_elem(void **state)
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<pattern value=\"pattern\"> </pattern>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.patterns->arg, "\x006pattern");
+    assert_string_equal(type.patterns->arg.str, "\x006pattern");
     lysp_type_free(st->ctx, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1849,7 +1850,7 @@ test_range_elem(void **state)
                 "</range>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.range->arg, "range-str");
+    assert_string_equal(type.range->arg.str, "range-str");
     assert_string_equal(type.range->dsc, "desc");
     assert_string_equal(type.range->eapptag, "err-app-tag");
     assert_string_equal(type.range->emsg, "err-msg");
@@ -1864,7 +1865,7 @@ test_range_elem(void **state)
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<range value=\"range-str\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(type.range->arg, "range-str");
+    assert_string_equal(type.range->arg.str, "range-str");
     lysp_type_free(st->ctx, &type);
     memset(&type, 0, sizeof(type));
 
@@ -2074,10 +2075,10 @@ test_type_elem(void **state)
     assert_string_equal(type.bits->name,  "bit");
     assert_string_equal(type.enums->name,  "enum");
     assert_int_equal(type.fraction_digits, 2);
-    assert_string_equal(type.length->arg, "length");
+    assert_string_equal(type.length->arg.str, "length");
     assert_string_equal(type.path->expr, "path");
-    assert_string_equal(type.patterns->arg, "\006pattern");
-    assert_string_equal(type.range->arg, "range");
+    assert_string_equal(type.patterns->arg.str, "\006pattern");
+    assert_string_equal(type.range->arg.str, "range");
     assert_int_equal(type.require_instance, 1);
     assert_string_equal(type.types->name, "sub-type-name");
     assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
@@ -2378,10 +2379,10 @@ test_leaf_elem(void **state)
     assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
-    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->type.name, "type");
     assert_string_equal(parsed->units, "uni");
-    assert_string_equal(parsed->dflt, "def-val");
+    assert_string_equal(parsed->dflt.str, "def-val");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -2426,12 +2427,12 @@ test_leaf_list_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
-    assert_string_equal(parsed->dflts[0], "def-val0");
-    assert_string_equal(parsed->dflts[1], "def-val1");
+    assert_string_equal(parsed->dflts[0].str, "def-val0");
+    assert_string_equal(parsed->dflts[1].str, "def-val1");
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(*parsed->iffeatures, "feature");
     assert_int_equal(parsed->max, 5);
-    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->name, "llist");
     assert_null(parsed->next);
     assert_int_equal(parsed->nodetype, LYS_LEAFLIST);
@@ -2470,7 +2471,7 @@ test_leaf_list_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(*parsed->iffeatures, "feature");
     assert_int_equal(parsed->min, 5);
-    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->name, "llist");
     assert_null(parsed->next);
     assert_int_equal(parsed->nodetype, LYS_LEAFLIST);
@@ -2510,7 +2511,7 @@ test_leaf_list_elem(void **state)
     assert_string_equal(*parsed->iffeatures, "feature");
     assert_int_equal(parsed->min, 5);
     assert_int_equal(parsed->max, 15);
-    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->name, "llist");
     assert_null(parsed->next);
     assert_int_equal(parsed->nodetype, LYS_LEAFLIST);
@@ -2652,7 +2653,7 @@ test_typedef_elem(void **state)
                 "</typedef>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &typdef_meta, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(tpdfs[0].dflt, "def-val");
+    assert_string_equal(tpdfs[0].dflt.str, "def-val");
     assert_string_equal(tpdfs[0].dsc, "desc-text");
     assert_string_equal(tpdfs[0].name, "tpdf-name");
     assert_string_equal(tpdfs[0].ref, "ref-text");
@@ -2704,14 +2705,14 @@ test_refine_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &refines, NULL, NULL), LY_SUCCESS);
     assert_string_equal(refines->nodeid, "target");
-    assert_string_equal(*refines->dflts, "def");
+    assert_string_equal(refines->dflts->str, "def");
     assert_string_equal(refines->dsc, "desc");
     assert_true(refines->flags & LYS_CONFIG_W);
     assert_true(refines->flags & LYS_MAND_TRUE);
     assert_string_equal(*refines->iffeatures, "feature");
     assert_int_equal(refines->max, 20);
     assert_int_equal(refines->min, 10);
-    assert_string_equal(refines->musts->arg, "cond");
+    assert_string_equal(refines->musts->arg.str, "cond");
     assert_string_equal(refines->presence, "presence");
     assert_string_equal(refines->ref, "ref");
     assert_string_equal(refines->exts[0].name, "urn:example:extensions:c-define");
@@ -2955,14 +2956,14 @@ test_list_elem(void **state)
     assert_string_equal(*parsed->iffeatures, "iff");
     assert_string_equal(parsed->key, "key");
     assert_int_equal(parsed->min, 10);
-    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->name, "list-name");
     assert_null(parsed->next);
     assert_int_equal(parsed->nodetype, LYS_LIST);
     assert_null(parsed->parent);
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->typedefs->name, "tpdf");
-    assert_string_equal(*parsed->uniques, "utag");
+    assert_string_equal(parsed->uniques->str, "utag");
     assert_string_equal(parsed->when->cond, "when");
     assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
@@ -3035,7 +3036,7 @@ test_notification_elem(void **state)
     assert_string_equal(notifs->data->next->next->next->next->next->next->next->name, "choice");
     assert_null(notifs->data->next->next->next->next->next->next->next->next);
     assert_string_equal(*notifs->iffeatures, "iff");
-    assert_string_equal(notifs->musts->arg, "cond");
+    assert_string_equal(notifs->musts->arg.str, "cond");
     assert_int_equal(notifs->nodetype, LYS_NOTIF);
     assert_null(notifs->parent);
     assert_string_equal(notifs->ref, "ref");
@@ -3171,7 +3172,7 @@ test_container_elem(void **state)
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
     assert_string_equal(*parsed->iffeatures, "iff");
-    assert_string_equal(parsed->musts->arg, "cond");
+    assert_string_equal(parsed->musts->arg.str, "cond");
     assert_string_equal(parsed->presence, "presence");
     assert_string_equal(parsed->typedefs->name, "tpdf");
     assert_string_equal(parsed->groupings->name, "sub-grp");
@@ -3392,7 +3393,7 @@ test_inout_elem(void **state)
     assert_int_equal(test_element_helper(st, data, &inout_meta, NULL, NULL), LY_SUCCESS);
     assert_null(inout.parent);
     assert_int_equal(inout.nodetype, LYS_INPUT);
-    assert_string_equal(inout.musts->arg, "cond");
+    assert_string_equal(inout.musts->arg.str, "cond");
     assert_string_equal(inout.typedefs->name, "tpdf");
     assert_string_equal(inout.groupings->name, "sub-grp");
     assert_string_equal(inout.data->name, "anyd");
@@ -3439,7 +3440,7 @@ test_inout_elem(void **state)
     assert_int_equal(test_element_helper(st, data, &inout_meta, NULL, NULL), LY_SUCCESS);
     assert_null(inout.parent);
     assert_int_equal(inout.nodetype, LYS_OUTPUT);
-    assert_string_equal(inout.musts->arg, "cond");
+    assert_string_equal(inout.musts->arg.str, "cond");
     assert_string_equal(inout.typedefs->name, "tpdf");
     assert_string_equal(inout.groupings->name, "sub-grp");
     assert_string_equal(inout.data->name, "anyd");
@@ -3522,7 +3523,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->typedefs->name, "tpdf");
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.data->name, "uses-name");
-    assert_string_equal(actions->output.musts->arg, "cond");
+    assert_string_equal(actions->output.musts->arg.str, "cond");
     assert_string_equal(actions->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(actions->exts[0].insubstmt_index, 0);
     assert_int_equal(actions->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
@@ -3554,7 +3555,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->typedefs->name, "tpdf");
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.data->name, "uses-name");
-    assert_string_equal(actions->output.musts->arg, "cond");
+    assert_string_equal(actions->output.musts->arg.str, "cond");
     assert_string_equal(actions->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(actions->exts[0].insubstmt_index, 0);
     assert_int_equal(actions->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
@@ -3718,7 +3719,7 @@ test_deviate_elem(void **state)
     assert_int_equal(d_add->mod, LYS_DEV_ADD);
     assert_null(d_add->next);
     assert_string_equal(d_add->units, "units");
-    assert_string_equal(d_add->musts->arg, "cond");
+    assert_string_equal(d_add->musts->arg.str, "cond");
     assert_string_equal(*d_add->uniques, "utag");
     assert_string_equal(*d_add->dflts, "def");
     assert_true(d_add->flags & LYS_MAND_TRUE && d_add->flags & LYS_CONFIG_W);
@@ -3774,7 +3775,7 @@ test_deviate_elem(void **state)
     assert_int_equal(d_del->mod, LYS_DEV_DELETE);
     assert_null(d_del->next);
     assert_string_equal(d_del->units, "u");
-    assert_string_equal(d_del->musts->arg, "c");
+    assert_string_equal(d_del->musts->arg.str, "c");
     assert_string_equal(*d_del->uniques, "tag");
     assert_string_equal(*d_del->dflts, "default");
     assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");

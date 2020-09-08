@@ -482,12 +482,12 @@ lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct ly
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add also their modules deviating or augmenting them */
-        LY_ARRAY_FOR(mod->compiled->deviated_by, u) {
-            ret = ly_set_add(set, mod->compiled->deviated_by[u], 0, NULL);
+        LY_ARRAY_FOR(mod->deviated_by, u) {
+            ret = ly_set_add(set, mod->deviated_by[u], 0, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
-        LY_ARRAY_FOR(mod->compiled->augmented_by, u) {
-            ret = ly_set_add(set, mod->compiled->augmented_by[u], 0, NULL);
+        LY_ARRAY_FOR(mod->augmented_by, u) {
+            ret = ly_set_add(set, mod->augmented_by[u], 0, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }

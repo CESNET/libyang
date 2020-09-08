@@ -34,7 +34,7 @@ int store = -1; /* negative for infinite logging, positive for limited logging *
 struct ly_ctx *ctx; /* context for tests */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void

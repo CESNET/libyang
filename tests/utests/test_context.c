@@ -344,7 +344,8 @@ test_models(void **state)
     /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
     ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
     assert_int_equal(LY_ENOTFOUND, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, &mod2));
-    logbuf_assert("Unable to reload \"w\" module to import it into \"z\", source data not found.");
+    /*logbuf_assert("Unable to reload \"w\" module to import it into \"z\", source data not found.");*/
+    logbuf_assert("Recompilation of module \"w\" failed.");
     assert_null(mod2);
     ly_in_free(in, 0);
 

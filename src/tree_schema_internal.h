@@ -159,14 +159,29 @@ struct lys_yin_parser_ctx {
  */
 void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
 
-struct lysc_incomplete_dflt {
+struct lysc_unres_dflt {
     union {
         struct lysc_node_leaf *leaf;
         struct lysc_node_leaflist *llist;
     };
-    const char *dflt;
-    const char **dflts;
-    struct lys_module *dflt_mod;
+    struct lysp_nodeid *dflt;
+    struct lysp_nodeid *dflts;           /**< this is a sized array */
+};
+
+struct lysc_augment {
+    struct lyxp_expr *nodeid;
+    const struct lys_module *nodeid_mod;
+
+    struct lysp_augment *aug_p;
+};
+
+struct lysc_deviation {
+    struct lyxp_expr *nodeid;
+    const struct lys_module *nodeid_mod;
+
+    struct lysp_deviation **devs;
+    const struct lys_module **dev_mods;
+    uint8_t not_supported;
 };
 
 /**
@@ -180,10 +195,12 @@ struct lysc_ctx {
                                      defined, but its content instances are supposed to be placed into
                                      the target module (mod) */
     struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set xpath;        /**< to validate leafref's targets */
-    struct ly_set leafrefs;     /**< when/must to check */
+    struct ly_set xpath;        /**< when/must to check */
+    struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
+    struct ly_set augs;         /**< set of compiled non-applied augments */
+    struct ly_set devs;         /**< set of compiled non-applied deviations */
     uint32_t path_len;
     uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
@@ -315,6 +332,54 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
  * @return LY_ERR value.
  */
 LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc);
+
+/**
+ * @brief Free a parsed restriction.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] restr Restriction to free.
+ */
+void lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr);
+
+/**
+ * @brief Free a parsed node ID.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] nodeid Node ID to free.
+ */
+void lysp_nodeid_free(struct ly_ctx *ctx, struct lysp_nodeid *nodeid);
+
+/**
+ * @brief Free a parsed node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] node Node to free.
+ */
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+
+/**
+ * @brief Free a parsed input/output node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] inout Input/output to free.
+ */
+void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
+
+/**
+ * @brief Free a parsed action node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] action Action to free.
+ */
+void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
+
+/**
+ * @brief Free a parsed notification node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] notif Notification to free.
+ */
+void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
