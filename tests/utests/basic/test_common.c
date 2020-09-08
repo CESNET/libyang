@@ -11,77 +11,14 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
-#include <stdlib.h>
-
-#include "common.h"
+#define _UTEST_MAIN_
 #include "utests.h"
 
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-int store = -1; /* negative for infinite logging, positive for limited logging */
-
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-#if ENABLE_LOGGER_CHECKING
-static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-    if (store) {
-        if (path && path[0]) {
-            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
-        } else {
-            strncpy(logbuf, msg, BUFSIZE - 1);
-        }
-        if (store > 0) {
-            --store;
-        }
-    }
-}
-
-#endif
-
-static int
-logger_setup(void **state)
-{
-    (void) state; /* unused */
-
-    ly_set_log_clb(logger, 0);
-
-    return 0;
-}
-
-static int
-logger_teardown(void **state)
-{
-    (void) state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    if (*state) {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#endif
-    return 0;
-}
-
-void
-logbuf_clean(void)
-{
-    logbuf[0] = '\0';
-}
-
-#if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
+#include "common.h"
 
 static void
-test_utf8(void **state)
+test_utf8(void **UNUSED(state))
 {
-    (void) state; /* unused */
-
     char buf[5] = {0};
     const char *str = buf;
     unsigned int c;
@@ -116,51 +53,9 @@ test_utf8(void **state)
     assert_int_equal(LY_EINVAL, ly_getutf8(&str, &c, &len));
 }
 
-#ifndef __APPLE__
-void *__real_realloc(void *ptr, size_t size);
-void *
-__wrap_realloc(void *ptr, size_t size)
-{
-    int wrap = mock_type(int);
-
-    if (wrap) {
-        /* memory allocation failed */
-        return NULL;
-    } else {
-        return __real_realloc(ptr, size);
-    }
-}
-
 static void
-test_lyrealloc(void **state)
+test_parse_int(void **UNUSED(state))
 {
-    (void) state; /* unused */
-
-    char *ptr;
-
-    ptr = malloc(1);
-    assert_non_null(ptr);
-
-    /* realloc */
-    will_return(__wrap_realloc, 0);
-    ptr = ly_realloc(ptr, 2048);
-    assert_non_null(ptr);
-    ptr[2047] = 0; /* test write */
-
-    /* realloc fails */
-    will_return(__wrap_realloc, 1);
-    ptr = ly_realloc(ptr, 2048);
-    assert_null(ptr);
-
-    /* ptr should be freed by ly_realloc() */
-}
-
-#endif /* not __APPLE__ */
-
-static void
-test_parse_int(void **state)
-{
-    *state = test_parse_int;
     const char *str;
     int64_t i = 500;
 
@@ -199,14 +94,11 @@ test_parse_int(void **state)
 
     str = "10  zero";
     assert_int_equal(LY_EVALID, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
-
-    *state = NULL;
 }
 
 static void
-test_parse_uint(void **state)
+test_parse_uint(void **UNUSED(state))
 {
-    *state = test_parse_int;
     const char *str;
     uint64_t u = 500;
 
@@ -239,14 +131,11 @@ test_parse_uint(void **state)
 
     str = "10  zero";
     assert_int_equal(LY_EVALID, ly_parse_uint(str, strlen(str), 10, 10, &u));
-
-    *state = NULL;
 }
 
 static void
-test_parse_nodeid(void **state)
+test_parse_nodeid(void **UNUSED(state))
 {
-    *state = test_parse_nodeid;
     const char *str;
     const char *prefix, *name;
     size_t prefix_len, name_len;
@@ -272,14 +161,11 @@ test_parse_nodeid(void **state)
     assert_int_equal(3, name_len);
     assert_int_equal(0, strncmp("_b2", name, name_len));
     assert_string_equal(" xxx", str);
-
-    *state = NULL;
 }
 
 static void
-test_parse_instance_predicate(void **state)
+test_parse_instance_predicate(void **UNUSED(state))
 {
-    *state = test_parse_instance_predicate;
     const char *str, *errmsg;
     const char *prefix, *id, *value;
     size_t prefix_len, id_len, value_len;
@@ -371,22 +257,17 @@ test_parse_instance_predicate(void **state)
     str = "[ex:node='value']";
     assert_int_equal(LY_EINVAL, ly_parse_instance_predicate(&str, strlen(str) - 1, LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Predicate is incomplete.");
-
-    *state = NULL;
 }
 
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_utf8, logger_setup, logger_teardown),
-#ifndef __APPLE__
-        cmocka_unit_test(test_lyrealloc),
-#endif
-        cmocka_unit_test_setup_teardown(test_parse_int, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_parse_uint, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_parse_nodeid, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_parse_instance_predicate, logger_setup, logger_teardown),
+        UTEST(test_utf8),
+        UTEST(test_parse_int),
+        UTEST(test_parse_uint),
+        UTEST(test_parse_nodeid),
+        UTEST(test_parse_instance_predicate),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

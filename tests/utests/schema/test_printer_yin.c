@@ -3,7 +3,7 @@
  * @author: Fred Gan <ganshaolong@vip.qq.com>
  * @brief unit tests for functions from printer_yin.c
  *
- * Copyright (c) 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2019-2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -11,80 +11,18 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _UTEST_MAIN_
+#include "utests.h"
 
 #include "common.h"
 #include "context.h"
 #include "out.h"
 #include "printer_schema.h"
 #include "tree_schema.h"
-#include "utests.h"
-
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-int store = -1; /* negative for infinite logging, positive for limited logging */
-
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-#if ENABLE_LOGGER_CHECKING
-static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-    if (store) {
-        if (path && path[0]) {
-            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
-        } else {
-            strncpy(logbuf, msg, BUFSIZE - 1);
-        }
-        if (store > 0) {
-            --store;
-        }
-    }
-}
-
-#endif
-
-static int
-logger_setup(void **state)
-{
-    (void) state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    ly_set_log_clb(logger, 1);
-#endif
-    return 0;
-}
-
-static int
-logger_teardown(void **state)
-{
-    (void) state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    if (*state) {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#endif
-    return 0;
-}
-
-void
-logbuf_clean(void)
-{
-    logbuf[0] = '\0';
-}
-
-#if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
 
 static void
 test_module(void **state)
 {
-    *state = test_module;
-
-    struct ly_ctx *ctx = {0};
     const struct lys_module *mod;
 
     const char *orig =
@@ -577,16 +515,13 @@ test_module(void **state)
     struct ly_out *out;
 
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YIN, 0, 0));
     assert_int_equal(strlen(ori_res), ly_out_printed(out));
     assert_string_equal(printed, ori_res);
 
-    *state = NULL;
     ly_out_free(out, NULL, 1);
-    ly_ctx_destroy(ctx, NULL);
 }
 
 static LY_ERR
@@ -603,9 +538,6 @@ test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const ch
 static void
 test_submodule(void **state)
 {
-    *state = test_module;
-
-    struct ly_ctx *ctx = {0};
     const struct lys_module *mod;
 
     const char *mod_yin =
@@ -645,25 +577,23 @@ test_submodule(void **state)
     struct ly_out *out;
 
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, submod_yin);
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, mod_yin, LYS_IN_YIN, &mod));
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod_yin);
+
+    UTEST_ADD_MODULE(mod_yin, LYS_IN_YIN, NULL, &mod);
     assert_int_equal(LY_SUCCESS, lys_print_submodule(out, mod, mod->parsed->includes[0].submodule, LYS_OUT_YIN, 0, 0));
     assert_int_equal(strlen(submod_yin), ly_out_printed(out));
     assert_string_equal(printed, submod_yin);
 
-    *state = NULL;
     ly_out_free(out, NULL, 1);
-    ly_ctx_destroy(ctx, NULL);
 }
 
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_submodule, logger_setup, logger_teardown),
+        UTEST(test_module),
+        UTEST(test_submodule),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

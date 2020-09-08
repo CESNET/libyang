@@ -11,8 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
-#define _POSIX_C_SOURCE 200112L
+#define _UTEST_MAIN_
+#include "utests.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -25,75 +25,12 @@
 #include "in.h"
 #include "log.h"
 #include "out.h"
-#include "utests.h"
-
-#define BUFSIZE 1024
-char logbuf[BUFSIZE] = {0};
-int store = -1; /* negative for infinite logging, positive for limited logging */
-
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-#if ENABLE_LOGGER_CHECKING
-static void
-logger(LY_LOG_LEVEL level, const char *msg, const char *path)
-{
-    (void) level; /* unused */
-    if (store) {
-        if (path && path[0]) {
-            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
-        } else {
-            strncpy(logbuf, msg, BUFSIZE - 1);
-        }
-        if (store > 0) {
-            --store;
-        }
-    }
-}
-
-#endif
-
-static int
-logger_setup(void **state)
-{
-    (void) state; /* unused */
-
-    ly_set_log_clb(logger, 0);
-
-    return 0;
-}
-
-static int
-logger_teardown(void **state)
-{
-    (void) state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    if (*state) {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#endif
-    return 0;
-}
-
-void
-logbuf_clean(void)
-{
-    logbuf[0] = '\0';
-}
-
-#if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
 
 static void
-test_input_mem(void **state)
+test_input_mem(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
     char *str1 = "a", *str2 = "b";
-
-    *state = test_input_mem;
 
     assert_int_equal(LY_EINVAL, ly_in_new_memory(NULL, NULL));
     assert_int_equal(LY_EINVAL, ly_in_new_memory(str1, NULL));
@@ -105,19 +42,14 @@ test_input_mem(void **state)
     assert_ptr_equal(str2, ly_in_memory(in, NULL));
     assert_ptr_equal(str2, ly_in_memory(in, NULL));
     ly_in_free(in, 0);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_input_fd(void **state)
+test_input_fd(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
     int fd1, fd2;
     struct stat statbuf;
-
-    *state = test_input_fd;
 
     assert_int_equal(LY_EINVAL, ly_in_new_fd(-1, NULL));
     assert_int_equal(-1, ly_in_fd(NULL, -1));
@@ -140,18 +72,13 @@ test_input_fd(void **state)
     errno = 0;
     assert_int_equal(-1, fstat(fd2, &statbuf));
     assert_int_equal(errno, EBADF);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_input_file(void **state)
+test_input_file(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
     FILE *f1 = NULL, *f2 = NULL;
-
-    *state = test_input_file;
 
     assert_int_equal(LY_EINVAL, ly_in_new_file(NULL, NULL));
     assert_null(ly_in_file(NULL, NULL));
@@ -171,18 +98,13 @@ test_input_file(void **state)
     assert_int_not_equal(-1, fileno(f1));
     fclose(f1);
     /* but f2 was closed by ly_in_free() */
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_input_filepath(void **state)
+test_input_filepath(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
     const char *path1 = __FILE__, *path2 = __FILE__;
-
-    *state = test_input_filepath;
 
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(NULL, 0, NULL));
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(path1, 0, NULL));
@@ -193,18 +115,13 @@ test_input_filepath(void **state)
     assert_ptr_equal(NULL, ly_in_filepath(in, path2, 0));
     assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
     ly_in_free(in, 0);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_output_mem(void **state)
+test_output_mem(void **UNUSED(state))
 {
     struct ly_out *out = NULL;
     char *buf1 = NULL, *buf2 = NULL;
-
-    *state = test_output_mem;
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buf1, 0, &out));
@@ -229,20 +146,15 @@ test_output_mem(void **state)
     assert_int_equal(8, ly_out_printed(out));
     assert_string_equal("rewrite", buf1);
     ly_out_free(out, NULL, 1);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_output_fd(void **state)
+test_output_fd(void **UNUSED(state))
 {
     struct ly_out *out = NULL;
     int fd1, fd2;
     char buf[31] = {0};
     const char *filepath = "/tmp/libyang_test_output";
-
-    *state = test_output_fd;
 
     assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
     assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
@@ -281,20 +193,15 @@ test_output_fd(void **state)
 
     close(fd2);
     ly_out_free(out, NULL, 1);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_output_file(void **state)
+test_output_file(void **UNUSED(state))
 {
     struct ly_out *out = NULL;
     FILE *f1, *f2;
     char buf[31] = {0};
     const char *filepath = "/tmp/libyang_test_output";
-
-    *state = test_output_file;
 
     assert_int_not_equal(-1, f1 = fopen(filepath, "w"));
     assert_int_not_equal(-1, f2 = fopen(filepath, "w"));
@@ -331,21 +238,16 @@ test_output_file(void **state)
 
     fclose(f2);
     ly_out_free(out, NULL, 1);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_output_filepath(void **state)
+test_output_filepath(void **UNUSED(state))
 {
     struct ly_out *out = NULL;
     FILE *f1;
     char buf[31] = {0};
     const char *fp1 = "/tmp/libyang_test_output";
     const char *fp2 = "/tmp/libyang_test_output2";
-
-    *state = test_output_filepath;
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
@@ -377,20 +279,15 @@ test_output_filepath(void **state)
 
     fclose(f1);
     ly_out_free(out, NULL, 1);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 static void
-test_output_clb(void **state)
+test_output_clb(void **UNUSED(state))
 {
     struct ly_out *out = NULL;
     int fd1, fd2;
     char buf[31] = {0};
     const char *filepath = "/tmp/libyang_test_output";
-
-    *state = test_output_clb;
 
     assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
     assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
@@ -421,24 +318,21 @@ test_output_clb(void **state)
 
     close(fd2);
     ly_out_free(out, (void *)close, 0);
-
-    /* cleanup */
-    *state = NULL;
 }
 
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_input_mem, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_input_fd, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_input_file, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_input_filepath, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_output_mem, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_output_fd, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_output_file, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_output_filepath, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_output_clb, logger_setup, logger_teardown),
+        UTEST(test_input_mem),
+        UTEST(test_input_fd),
+        UTEST(test_input_file),
+        UTEST(test_input_filepath),
+        UTEST(test_output_mem),
+        UTEST(test_output_fd),
+        UTEST(test_output_file),
+        UTEST(test_output_filepath),
+        UTEST(test_output_clb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

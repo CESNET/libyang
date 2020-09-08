@@ -15,21 +15,11 @@
 #ifndef TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_
 #define TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_
 
+#include "utests.h"
+
 #include "log.h"
 #include "parser_schema.h"
 #include "tests/config.h"
-
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-#if ENABLE_LOGGER_CHECKING
-extern char logbuf[];
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
-
-void logbuf_clean(void);
 
 LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
         const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT * format,
@@ -49,7 +39,7 @@ LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), c
     "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\""MOD_NAME"\"><yang-version value=\"1.1\"/>" \
     "<namespace uri=\""MOD_NS"\"/><prefix value=\""MOD_PREFIX"\"/>"CONTENT"</module>"
 
-#define TEST_SCHEMA_STR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, STR) \
+#define TEST_SCHEMA_STR(RFC7950, YIN, MOD_NAME, CONTENT, STR) \
     if (YIN) { \
         if (RFC7950) { \
             STR = TEST_YIN_MODULE_11(MOD_NAME, MOD_NAME, "urn:libyang:test:"MOD_NAME, CONTENT); \
@@ -64,30 +54,31 @@ LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), c
         } \
     }
 
-#define TEST_SCHEMA_OK(CTX, RFC7950, YIN, MOD_NAME, CONTENT, RESULT) \
+#define TEST_SCHEMA_OK(RFC7950, YIN, MOD_NAME, CONTENT, RESULT) \
     { \
     const char *test_str__; \
-    TEST_SCHEMA_STR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(CTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, &(RESULT))); \
+    TEST_SCHEMA_STR(RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, &(RESULT))); \
     }
 
-#define TEST_SCHEMA_ERR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, ERRMSG) \
+#define TEST_SCHEMA_ERR(RFC7950, YIN, MOD_NAME, CONTENT, ERRMSG, ERRPATH) \
     { \
     const char *test_str__; \
-    TEST_SCHEMA_STR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
-    assert_int_not_equal(lys_parse_mem(CTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, NULL), LY_SUCCESS); \
-    logbuf_assert(ERRMSG); \
+    TEST_SCHEMA_STR(RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
+    assert_int_not_equal(lys_parse_mem(UTEST_LYCTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, NULL), LY_SUCCESS); \
+    CHECK_LOG_CTX(ERRMSG, ERRPATH); \
     }
 
-#define TEST_STMT_DUP(CTX, RFC7950, YIN, STMT, MEMBER, VALUE1, VALUE2, LINE) \
+#define TEST_STMT_DUP(RFC7950, YIN, STMT, MEMBER, VALUE1, VALUE2, LINE) \
     if (YIN) { \
-        TEST_SCHEMA_ERR(CTX, RFC7950, YIN, "dup", "", "Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
+        TEST_SCHEMA_ERR(RFC7950, YIN, "dup", "", "Duplicate keyword \""MEMBER"\".", "Line number "LINE"."); \
     } else { \
-        TEST_SCHEMA_ERR(CTX, RFC7950, YIN, "dup", STMT"{"MEMBER" "VALUE1";"MEMBER" "VALUE2";}", \
-                        "Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
+        TEST_SCHEMA_ERR(RFC7950, YIN, "dup", STMT"{"MEMBER" "VALUE1";"MEMBER" "VALUE2";}", \
+                        "Duplicate keyword \""MEMBER"\".", "Line number "LINE"."); \
     }
 
-#define TEST_STMT_SUBSTM_ERR(CTX, RFC7950, STMT, SUBSTMT, VALUE) ;\
-        TEST_SCHEMA_ERR(CTX, RFC7950, 0, "inv", STMT" test {"SUBSTMT" "VALUE";}", "Invalid keyword \""SUBSTMT"\" as a child of \""STMT"\". Line number 1.");
+#define TEST_STMT_SUBSTM_ERR(RFC7950, STMT, SUBSTMT, VALUE) ;\
+        TEST_SCHEMA_ERR(RFC7950, 0, "inv", STMT" test {"SUBSTMT" "VALUE";}", \
+                        "Invalid keyword \""SUBSTMT"\" as a child of \""STMT"\".", "Line number 1.");
 
 #endif /* TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_ */
