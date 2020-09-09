@@ -971,7 +971,9 @@ struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
- * Missing nodes are merged, leaf values updated.
+ * Missing nodes are merged, leaf values updated. Any attributes on the data nodes are strictly tied
+ * to the nodes - if the node is merged, its attributes are merged with it, if the node is not merged,
+ * its attributes are not merged either.
  *
  * If \p target and \p source do not share the top-level schema node, even if they
  * are from different modules, \p source parents up to top-level node will be created and
