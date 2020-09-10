@@ -6010,13 +6010,15 @@ fail:
     return NULL;
 
 match:
-    for (i = 0; i < cur->iffeature_size; i++) {
-        if (!resolve_iffeature(&cur->iffeature[i])) {
-            if (node) {
-                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+    if (!dflt) {
+        for (i = 0; i < cur->iffeature_size; i++) {
+            if (!resolve_iffeature(&cur->iffeature[i])) {
+                if (node) {
+                    LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+                }
+                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
+                return NULL;
             }
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
-            return NULL;
         }
     }
     if (need_implemented) {
