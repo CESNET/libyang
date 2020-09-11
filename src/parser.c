@@ -1378,19 +1378,21 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* find bit definition, identifiers appear ordered by their position */
             for (found = i = 0; i < type->info.bits.count; i++) {
                 if (!strncmp(type->info.bits.bit[i].name, &value[c], len) && !type->info.bits.bit[i].name[len]) {
-                    /* we have match, check if the value is enabled ... */
-                    for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
-                        if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[j])) {
-                            if (leaf) {
-                                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-                            } else {
-                                LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                    if (!dflt) {
+                        /* we have match, check if the value is enabled ... */
+                        for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
+                            if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[j])) {
+                                if (leaf) {
+                                    LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
+                                } else {
+                                    LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                                }
+                                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL,
+                                    "Bit \"%s\" is disabled by its %d. if-feature condition.",
+                                    type->info.bits.bit[i].name, j + 1);
+                                free(bits);
+                                goto error;
                             }
-                            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL,
-                                   "Bit \"%s\" is disabled by its %d. if-feature condition.",
-                                   type->info.bits.bit[i].name, j + 1);
-                            free(bits);
-                            goto error;
                         }
                     }
                     /* check that the value was not already set */
@@ -1523,17 +1525,19 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         /* find matching enumeration value */
         for (i = found = 0; i < type->info.enums.count; i++) {
             if (value && !strcmp(value, type->info.enums.enm[i].name)) {
-                /* we have match, check if the value is enabled ... */
-                for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
-                    if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[j])) {
-                        if (leaf) {
-                            LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-                        } else {
-                            LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                if (!dflt) {
+                    /* we have match, check if the value is enabled ... */
+                    for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
+                        if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[j])) {
+                            if (leaf) {
+                                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
+                            } else {
+                                LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                            }
+                            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d. if-feature condition.",
+                                value, j + 1);
+                            goto error;
                         }
-                        LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d. if-feature condition.",
-                               value, j + 1);
-                        goto error;
                     }
                 }
                 /* ... and store pointer to the definition */
