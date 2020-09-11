@@ -6016,7 +6016,8 @@ match:
                 if (node) {
                     LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
                 }
-                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
+                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its %d. if-feature condition.",
+                       cur->name, i);
                 return NULL;
             }
         }
