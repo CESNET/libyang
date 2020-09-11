@@ -7169,6 +7169,9 @@ ly_set_clean(struct ly_set *set)
         return EXIT_FAILURE;
     }
 
+    free(set->set.g);
+    set->set.g = NULL;
+    set->size = 0;
     set->number = 0;
     return EXIT_SUCCESS;
 }
