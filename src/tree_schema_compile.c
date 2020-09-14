@@ -1119,7 +1119,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_modu
     LY_ARRAY_COUNT_TYPE u, v;
     const char *s, *name;
     struct lys_module *mod;
-    struct lysc_ident **idref, *identities;
+    struct lysc_ident **idref;
 
     assert(ident || bases);
 
@@ -1151,27 +1151,22 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_modu
         }
 
         idref = NULL;
-        if (mod->compiled) {
-            identities = mod->compiled->identities;
-        } else {
-            identities = mod->dis_identities;
-        }
-        LY_ARRAY_FOR(identities, v) {
-            if (!strcmp(name, identities[v].name)) {
+        LY_ARRAY_FOR(mod->identities, v) {
+            if (!strcmp(name, mod->identities[v].name)) {
                 if (ident) {
-                    if (ident == &identities[v]) {
+                    if (ident == &mod->identities[v]) {
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                                "Identity \"%s\" is derived from itself.", ident->name);
                         return LY_EVALID;
                     }
-                    LY_CHECK_RET(lys_compile_identity_circular_check(ctx, &identities[v], ident->derived));
+                    LY_CHECK_RET(lys_compile_identity_circular_check(ctx, &mod->identities[v], ident->derived));
                     /* we have match! store the backlink */
-                    LY_ARRAY_NEW_RET(ctx->ctx, identities[v].derived, idref, LY_EMEM);
+                    LY_ARRAY_NEW_RET(ctx->ctx, mod->identities[v].derived, idref, LY_EMEM);
                     *idref = ident;
                 } else {
                     /* we have match! store the found identity */
                     LY_ARRAY_NEW_RET(ctx->ctx, *bases, idref, LY_EMEM);
-                    *idref = &identities[v];
+                    *idref = &mod->identities[v];
                 }
                 break;
             }
@@ -6621,10 +6616,8 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
     ret = lys_feature_precompile(ctx, NULL, NULL, submod->features, &mainmod->mod->features);
     LY_CHECK_GOTO(ret, error);
 
-    if (!mainmod->mod->dis_identities) {
-        ret = lys_identity_precompile(ctx, NULL, NULL, submod->identities, &mainmod->identities);
-        LY_CHECK_GOTO(ret, error);
-    }
+    ret = lys_identity_precompile(ctx, NULL, NULL, submod->identities, &mainmod->mod->identities);
+    LY_CHECK_GOTO(ret, error);
 
     /* data nodes */
     LY_LIST_FOR(submod->data, node_p) {
@@ -7348,11 +7341,8 @@ lys_compile(struct lys_module *mod, uint32_t options)
     } /* else the features are already precompiled */
 
     /* similarly, identities precompilation */
-    if (mod->dis_identities) {
-        mod_c->identities = mod->dis_identities;
-        mod->dis_identities = NULL;
-    } else {
-        ret = lys_identity_precompile(&ctx, NULL, NULL, sp->identities, &mod_c->identities);
+    if (!mod->identities && sp->identities) {
+        ret = lys_identity_precompile(&ctx, NULL, NULL, sp->identities, &mod->identities);
         LY_CHECK_GOTO(ret, error);
     }
 
@@ -7383,13 +7373,13 @@ lys_compile(struct lys_module *mod, uint32_t options)
 
     /* identities, work similarly to features with the precompilation */
     if (sp->identities) {
-        LY_CHECK_GOTO(ret = lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities), error);
+        LY_CHECK_GOTO(ret = lys_compile_identities_derived(&ctx, sp->identities, mod->identities), error);
     }
     lysc_update_path(&ctx, NULL, "{submodule}");
     LY_ARRAY_FOR(sp->includes, v) {
         if (sp->includes[v].submodule->identities) {
             lysc_update_path(&ctx, NULL, sp->includes[v].name);
-            ret = lys_compile_identities_derived(&ctx, sp->includes[v].submodule->identities, mod_c->identities);
+            ret = lys_compile_identities_derived(&ctx, sp->includes[v].submodule->identities, mod->identities);
             LY_CHECK_GOTO(ret, error);
             lysc_update_path(&ctx, NULL, NULL);
         }

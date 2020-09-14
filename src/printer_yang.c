@@ -2355,8 +2355,8 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
         yprc_feature(ctx, &module->features[u]);
     }
 
-    LY_ARRAY_FOR(modc->identities, u) {
-        yprc_identity(ctx, &modc->identities[u]);
+    LY_ARRAY_FOR(module->identities, u) {
+        yprc_identity(ctx, &module->identities[u]);
     }
 
     if (!(ctx->options & LYS_PRINT_NO_SUBSTMT)) {

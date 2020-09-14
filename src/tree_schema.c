@@ -1121,7 +1121,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     if (!mod->implemented) {
         /* pre-compile features and identities of the module */
         LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->features), error);
-        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->dis_identities), error);
+        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->identities), error);
     }
 
     if (latest) {
@@ -1143,7 +1143,7 @@ finish_parsing:
             LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
                                                        &mod->features), error);
             LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
-                                                        &mod->dis_identities), error);
+                                                        &mod->identities), error);
         }
     }
 
