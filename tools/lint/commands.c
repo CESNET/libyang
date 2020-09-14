@@ -1259,11 +1259,7 @@ cmd_feature(const char *arg)
 
         printf("%s features:\n", module->name);
 
-        if (module->compiled) {
-            features = module->compiled->features;
-        } else {
-            features = module->dis_features;
-        }
+        features = module->features;
 
         /* get the max len */
         LY_ARRAY_FOR(features, u) {

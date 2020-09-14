@@ -127,16 +127,16 @@ test_module(void **state)
     assert_string_equal("urn:test", mod->ns);
     assert_string_equal("t", mod->prefix);
     /* features */
-    assert_non_null(mod->compiled->features);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->compiled->features));
-    f = &mod->compiled->features[1];
+    assert_non_null(mod->features);
+    assert_int_equal(2, LY_ARRAY_COUNT(mod->features));
+    f = &mod->features[1];
     assert_non_null(f->iffeatures);
     assert_int_equal(1, LY_ARRAY_COUNT(f->iffeatures));
     iff = &f->iffeatures[0];
     assert_non_null(iff->expr);
     assert_non_null(iff->features);
     assert_int_equal(1, LY_ARRAY_COUNT(iff->features));
-    assert_ptr_equal(&mod->compiled->features[0], iff->features[0]);
+    assert_ptr_equal(&mod->features[0], iff->features[0]);
 
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
