@@ -1644,7 +1644,6 @@ struct lysc_node_anydata {
 struct lysc_module {
     struct lys_module *mod;          /**< covering module structure */
 
-    struct lysc_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
     struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
@@ -1834,10 +1833,12 @@ struct lys_module {
                                           from if-feature statements of the compiled schemas and their proper use in case
                                           the module became implemented in future (no matter if implicitly via augment/deviate
                                           or explicitly via ::lys_set_implemented()). */
-    struct lysc_ident *dis_identities;/**< List of pre-compiled identities in a non-implemented module ([sized array](@ref sizedarrays))
-                                          These identities cannot be instantiated in data (in identityrefs) until
-                                          the module is implemented but can be linked by identities in implemented
-                                          modules. */
+    struct lysc_ident *identities;   /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
+                                          Identities are outside the compiled tree to allow their linkage to the identities from
+                                          the implemented modules. This avoids problems when the module became implemented in
+                                          future (no matter if implicitly via augment/deviate or explicitly via
+                                          ::lys_set_implemented()). Note that if the module is not implemented (compiled), the
+                                          identities cannot be instantiated in data (in identityrefs). */
     uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
                                           the flag has non-zero value. Specific values are used internally:
                                           1 - implemented module

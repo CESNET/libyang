@@ -1236,11 +1236,8 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
         rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
         goto error;
     }
-    if (mod->compiled) {
-        identities = mod->compiled->identities;
-    } else {
-        identities = mod->dis_identities;
-    }
+
+    identities = mod->identities;
     LY_ARRAY_FOR(identities, u) {
         ident = &identities[u]; /* shortcut */
         if (!ly_strncmp(ident->name, id_name, id_len)) {

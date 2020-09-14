@@ -96,26 +96,25 @@ test_identity(void **state)
                    "identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;}"
                    "identity b4 {base b:b1; base b3;}", mod);
     assert_non_null(mod_imp->compiled);
-    assert_non_null(mod_imp->compiled->identities);
-    assert_non_null(mod->compiled);
-    assert_non_null(mod->compiled->identities);
-    assert_non_null(mod_imp->compiled->identities[0].derived);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod_imp->compiled->identities[0].derived));
-    assert_ptr_equal(mod_imp->compiled->identities[0].derived[0], &mod->compiled->identities[2]);
-    assert_non_null(mod->compiled->identities[0].derived);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->compiled->identities[0].derived));
-    assert_ptr_equal(mod->compiled->identities[0].derived[0], &mod->compiled->identities[2]);
-    assert_ptr_equal(mod->compiled->identities[0].derived[1], &mod->compiled->identities[3]);
-    assert_non_null(mod->compiled->identities[1].derived);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->identities[1].derived));
-    assert_ptr_equal(mod->compiled->identities[1].derived[0], &mod->compiled->identities[2]);
-    assert_non_null(mod->compiled->identities[2].derived);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->identities[2].derived));
-    assert_ptr_equal(mod->compiled->identities[2].derived[0], &mod->compiled->identities[3]);
+    assert_non_null(mod_imp->identities);
+    assert_non_null(mod->identities);
+    assert_non_null(mod_imp->identities[0].derived);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod_imp->identities[0].derived));
+    assert_ptr_equal(mod_imp->identities[0].derived[0], &mod->identities[2]);
+    assert_non_null(mod->identities[0].derived);
+    assert_int_equal(2, LY_ARRAY_COUNT(mod->identities[0].derived));
+    assert_ptr_equal(mod->identities[0].derived[0], &mod->identities[2]);
+    assert_ptr_equal(mod->identities[0].derived[1], &mod->identities[3]);
+    assert_non_null(mod->identities[1].derived);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[1].derived));
+    assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[2]);
+    assert_non_null(mod->identities[2].derived);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[2].derived));
+    assert_ptr_equal(mod->identities[2].derived[0], &mod->identities[3]);
 
     TEST_SCHEMA_OK(ctx, 1, 0, "c", "identity c2 {base c1;} identity c1;", mod);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->identities[1].derived));
-    assert_ptr_equal(mod->compiled->identities[1].derived[0], &mod->compiled->identities[0]);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[1].derived));
+    assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[0]);
 
     TEST_SCHEMA_ERR(ctx, 0, 0, "inv", "identity i1;identity i1;", "Duplicate identifier \"i1\" of identity statement. /inv:{identity='i1'}");
 
