@@ -574,7 +574,7 @@ lys_feature_change(const struct lys_module *mod, const char *name, ly_bool value
                mod->name);
         return LY_EINVAL;
     }
-    if (!mod->compiled->features) {
+    if (!mod->features) {
         if (all) {
             /* no feature to enable */
             return LY_SUCCESS;
@@ -587,8 +587,8 @@ lys_feature_change(const struct lys_module *mod, const char *name, ly_bool value
     changed_count = 0;
 
 run:
-    for (disabled_count = u = 0; u < LY_ARRAY_COUNT(mod->compiled->features); ++u) {
-        f = &mod->compiled->features[u];
+    for (disabled_count = u = 0; u < LY_ARRAY_COUNT(mod->features); ++u) {
+        f = &mod->features[u];
         if (all || !strcmp(f->name, name)) {
             if ((value && (f->flags & LYS_FENABLED)) || (!value && !(f->flags & LYS_FENABLED))) {
                 if (all) {
@@ -648,11 +648,11 @@ next:
         if (changed_count == changed->count) {
             /* no change in last run -> not able to enable all ... */
             /* ... print errors */
-            for (u = 0; disabled_count && u < LY_ARRAY_COUNT(mod->compiled->features); ++u) {
-                if (!(mod->compiled->features[u].flags & LYS_FENABLED)) {
+            for (u = 0; disabled_count && u < LY_ARRAY_COUNT(mod->features); ++u) {
+                if (!(mod->features[u].flags & LYS_FENABLED)) {
                     LOGERR(ctx, LY_EDENIED,
                            "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                           mod->compiled->features[u].name);
+                           mod->features[u].name);
                     --disabled_count;
                 }
             }
@@ -738,15 +738,13 @@ API LY_ERR
 lys_feature_value(const struct lys_module *module, const char *feature)
 {
     struct lysc_feature *f = NULL;
-    struct lysc_module *mod;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, module, module->compiled, feature, -1);
-    mod = module->compiled;
 
     /* search for the specified feature */
-    LY_ARRAY_FOR(mod->features, u) {
-        f = &mod->features[u];
+    LY_ARRAY_FOR(module->features, u) {
+        f = &module->features[u];
         if (!strcmp(f->name, feature)) {
             break;
         }
@@ -1122,7 +1120,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     if (!mod->implemented) {
         /* pre-compile features and identities of the module */
-        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->dis_features), error);
+        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->features), error);
         LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->dis_identities), error);
     }
 
@@ -1143,7 +1141,7 @@ finish_parsing:
         /* pre-compile features and identities of any submodules */
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
-                                                       &mod->dis_features), error);
+                                                       &mod->features), error);
             LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
                                                         &mod->dis_identities), error);
         }

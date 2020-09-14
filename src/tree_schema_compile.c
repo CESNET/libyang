@@ -465,7 +465,7 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
 {
     size_t i;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_feature *f, *flist;
+    struct lysc_feature *f;
 
     assert(mod);
 
@@ -481,14 +481,8 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
     }
 
     /* we have the correct module, get the feature */
-    if (mod->implemented) {
-        /* module is implemented so there is already the compiled schema */
-        flist = mod->compiled->features;
-    } else {
-        flist = mod->dis_features;
-    }
-    LY_ARRAY_FOR(flist, u) {
-        f = &flist[u];
+    LY_ARRAY_FOR(mod->features, u) {
+        f = &mod->features[u];
         if (!ly_strncmp(f->name, name, len)) {
             return f;
         }
@@ -1398,26 +1392,20 @@ lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u, v;
 
-    if (mod->compiled) {
-        /* keep the dis_features list until the complete lys_module is freed */
-        mod->dis_features = mod->compiled->features;
-        mod->compiled->features = NULL;
-    }
-
     /* in the dis_features list, remove all the parts (from finished compiling process)
      * which may points into the data being freed here */
-    LY_ARRAY_FOR(mod->dis_features, u) {
-        LY_ARRAY_FOR(mod->dis_features[u].iffeatures, v) {
-            lysc_iffeature_free(ctx->ctx, &mod->dis_features[u].iffeatures[v]);
+    LY_ARRAY_FOR(mod->features, u) {
+        LY_ARRAY_FOR(mod->features[u].iffeatures, v) {
+            lysc_iffeature_free(ctx->ctx, &mod->features[u].iffeatures[v]);
         }
-        LY_ARRAY_FREE(mod->dis_features[u].iffeatures);
-        mod->dis_features[u].iffeatures = NULL;
+        LY_ARRAY_FREE(mod->features[u].iffeatures);
+        mod->features[u].iffeatures = NULL;
 
-        LY_ARRAY_FOR(mod->dis_features[u].exts, v) {
-            lysc_ext_instance_free(ctx->ctx, &(mod->dis_features[u].exts)[v]);
+        LY_ARRAY_FOR(mod->features[u].exts, v) {
+            lysc_ext_instance_free(ctx->ctx, &(mod->features[u].exts)[v]);
         }
-        LY_ARRAY_FREE(mod->dis_features[u].exts);
-        mod->dis_features[u].exts = NULL;
+        LY_ARRAY_FREE(mod->features[u].exts);
+        mod->features[u].exts = NULL;
     }
 }
 
@@ -6627,13 +6615,11 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
     struct lysc_module *mainmod = ctx->mod->compiled;
     struct lysp_node *node_p;
 
-    if (!mainmod->mod->dis_features) {
-        /* features are compiled directly into the compiled module structure,
-         * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
-         * The features compilation is finished in the main module (lys_compile()). */
-        ret = lys_feature_precompile(ctx, NULL, NULL, submod->features, &mainmod->features);
-        LY_CHECK_GOTO(ret, error);
-    }
+    /* features are compiled directly into the compiled module structure,
+     * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
+     * The features compilation is finished in the main module (lys_compile()). */
+    ret = lys_feature_precompile(ctx, NULL, NULL, submod->features, &mainmod->mod->features);
+    LY_CHECK_GOTO(ret, error);
 
     if (!mainmod->mod->dis_identities) {
         ret = lys_identity_precompile(ctx, NULL, NULL, submod->identities, &mainmod->identities);
@@ -7352,41 +7338,16 @@ lys_compile(struct lys_module *mod, uint32_t options)
     LY_ARRAY_FOR(sp->imports, u) {
         LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), error);
     }
-    LY_ARRAY_FOR(sp->includes, u) {
-        LY_CHECK_GOTO(ret = lys_compile_submodule(&ctx, &sp->includes[u]), error);
-    }
 
-    /* features */
-    if (mod->dis_features) {
-        /* there is already precompiled array of features */
-        mod_c->features = mod->dis_features;
-        mod->dis_features = NULL;
-    } else {
+    /* features precompilation */
+    if (!mod->features && sp->features) {
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
-        ret = lys_feature_precompile(&ctx, NULL, NULL, sp->features, &mod_c->features);
+        ret = lys_feature_precompile(&ctx, NULL, NULL, sp->features, &mod->features);
         LY_CHECK_GOTO(ret, error);
-    }
+    } /* else the features are already precompiled */
 
-    /* finish feature compilation, not only for the main module, but also for the submodules.
-     * Due to possible forward references, it must be done when all the features (including submodules)
-     * are present. */
-    LY_ARRAY_FOR(sp->features, u) {
-        ret = lys_feature_precompile_finish(&ctx, &sp->features[u], mod_c->features);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, error);
-    }
-    lysc_update_path(&ctx, NULL, "{submodule}");
-    LY_ARRAY_FOR(sp->includes, v) {
-        lysc_update_path(&ctx, NULL, sp->includes[v].name);
-        LY_ARRAY_FOR(sp->includes[v].submodule->features, u) {
-            ret = lys_feature_precompile_finish(&ctx, &sp->includes[v].submodule->features[u], mod_c->features);
-            LY_CHECK_GOTO(ret != LY_SUCCESS, error);
-        }
-        lysc_update_path(&ctx, NULL, NULL);
-    }
-    lysc_update_path(&ctx, NULL, NULL);
-
-    /* identities, work similarly to features with the precompilation */
+    /* similarly, identities precompilation */
     if (mod->dis_identities) {
         mod_c->identities = mod->dis_identities;
         mod->dis_identities = NULL;
@@ -7394,6 +7355,33 @@ lys_compile(struct lys_module *mod, uint32_t options)
         ret = lys_identity_precompile(&ctx, NULL, NULL, sp->identities, &mod_c->identities);
         LY_CHECK_GOTO(ret, error);
     }
+
+    /* compile submodules
+     * - must be between features/identities precompilation and finishing their compilation to cover features/identities from
+     * submodules */
+    LY_ARRAY_FOR(sp->includes, u) {
+        LY_CHECK_GOTO(ret = lys_compile_submodule(&ctx, &sp->includes[u]), error);
+    }
+
+    /* finish feature compilation, not only for the main module, but also for the submodules.
+     * Due to possible forward references, it must be done when all the features (including submodules)
+     * are present. */
+    LY_ARRAY_FOR(sp->features, u) {
+        ret = lys_feature_precompile_finish(&ctx, &sp->features[u], mod->features);
+        LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+    }
+    lysc_update_path(&ctx, NULL, "{submodule}");
+    LY_ARRAY_FOR(sp->includes, v) {
+        lysc_update_path(&ctx, NULL, sp->includes[v].name);
+        LY_ARRAY_FOR(sp->includes[v].submodule->features, u) {
+            ret = lys_feature_precompile_finish(&ctx, &sp->includes[v].submodule->features[u], mod->features);
+            LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+        }
+        lysc_update_path(&ctx, NULL, NULL);
+    }
+    lysc_update_path(&ctx, NULL, NULL);
+
+    /* identities, work similarly to features with the precompilation */
     if (sp->identities) {
         LY_CHECK_GOTO(ret = lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities), error);
     }

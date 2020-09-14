@@ -224,26 +224,26 @@ test_feature(void **state)
                    "feature f7 {if-feature \"(f2 and f3) or (not f1)\";}\n"
                    "feature f8 {if-feature \"f1 or f2 or f3 or orfeature or andfeature\";}\n"
                    "feature f9 {if-feature \"not not f1\";}", mod);
-    assert_non_null(mod->compiled->features);
-    assert_int_equal(9, LY_ARRAY_COUNT(mod->compiled->features));
+    assert_non_null(mod->features);
+    assert_int_equal(9, LY_ARRAY_COUNT(mod->features));
 
     /* all features are disabled by default */
-    LY_ARRAY_FOR(mod->compiled->features, struct lysc_feature, f) {
+    LY_ARRAY_FOR(mod->features, struct lysc_feature, f) {
         assert_int_equal(LY_ENOT, lysc_feature_value(f));
     }
     /* enable f1 */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f1"));
-    f1 = &mod->compiled->features[0];
+    f1 = &mod->features[0];
     assert_int_equal(LY_SUCCESS, lysc_feature_value(f1));
 
     /* enable orfeature */
-    f = &mod->compiled->features[3];
+    f = &mod->features[3];
     assert_int_equal(LY_ENOT, lysc_feature_value(f));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "orfeature"));
     assert_int_equal(LY_SUCCESS, lysc_feature_value(f));
 
     /* enable andfeature - no possible since f2 is disabled */
-    f = &mod->compiled->features[4];
+    f = &mod->features[4];
     assert_int_equal(LY_ENOT, lysc_feature_value(f));
     assert_int_equal(LY_EDENIED, lys_feature_enable(mod, "andfeature"));
     logbuf_assert("Feature \"andfeature\" cannot be enabled since it is disabled by its if-feature condition(s).");
@@ -255,7 +255,7 @@ test_feature(void **state)
     assert_int_equal(LY_SUCCESS, lysc_feature_value(f));
 
     /* f1 is enabled, so f6 cannot be enabled */
-    f = &mod->compiled->features[5];
+    f = &mod->features[5];
     assert_int_equal(LY_ENOT, lysc_feature_value(f));
     assert_int_equal(LY_EDENIED, lys_feature_enable(mod, "f6"));
     logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
@@ -265,24 +265,24 @@ test_feature(void **state)
     assert_int_equal(LY_SUCCESS, lysc_feature_value(f1));
     assert_int_equal(LY_SUCCESS, lys_feature_disable(mod, "f1"));
     assert_int_equal(LY_ENOT, lysc_feature_value(f1));
-    assert_int_equal(LY_ENOT, lysc_feature_value(&mod->compiled->features[4]));
+    assert_int_equal(LY_ENOT, lysc_feature_value(&mod->features[4]));
     /* while orfeature is stille enabled */
-    assert_int_equal(LY_SUCCESS, lysc_feature_value(&mod->compiled->features[3]));
+    assert_int_equal(LY_SUCCESS, lysc_feature_value(&mod->features[3]));
     /* and finally f6 can be enabled */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f6"));
-    assert_int_equal(LY_SUCCESS, lysc_feature_value(&mod->compiled->features[5]));
+    assert_int_equal(LY_SUCCESS, lysc_feature_value(&mod->features[5]));
 
     /* complex evaluation of f7: f1 and f3 are disabled, while f2 is enabled */
-    assert_int_equal(LY_SUCCESS, lysc_iffeature_value(&mod->compiled->features[6].iffeatures[0]));
+    assert_int_equal(LY_SUCCESS, lysc_iffeature_value(&mod->features[6].iffeatures[0]));
     /* long evaluation of f8 to need to reallocate internal stack for operators */
-    assert_int_equal(LY_SUCCESS, lysc_iffeature_value(&mod->compiled->features[7].iffeatures[0]));
+    assert_int_equal(LY_SUCCESS, lysc_iffeature_value(&mod->features[7].iffeatures[0]));
 
     /* double negation of disabled f1 -> disabled */
-    assert_int_equal(LY_ENOT, lysc_iffeature_value(&mod->compiled->features[8].iffeatures[0]));
+    assert_int_equal(LY_ENOT, lysc_iffeature_value(&mod->features[8].iffeatures[0]));
 
     /* disable all features */
     assert_int_equal(LY_SUCCESS, lys_feature_disable(mod, "*"));
-    LY_ARRAY_FOR(mod->compiled->features, struct lysc_feature, f) {
+    LY_ARRAY_FOR(mod->features, struct lysc_feature, f) {
         assert_int_equal(LY_ENOT, lys_feature_value(mod, f->name));
     }
     /* re-setting already set feature */
@@ -300,19 +300,18 @@ test_feature(void **state)
     assert_int_equal(LY_ENOT, lys_feature_value(mod, "f2"));
 
     TEST_SCHEMA_OK(ctx, 0, 0, "b", "feature f1 {if-feature f2;}feature f2;", mod);
-    assert_non_null(mod->compiled);
-    assert_non_null(mod->compiled->features);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->compiled->features));
-    assert_non_null(mod->compiled->features[0].iffeatures);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->features[0].iffeatures));
-    assert_non_null(mod->compiled->features[0].iffeatures[0].features);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->features[0].iffeatures[0].features));
-    assert_ptr_equal(&mod->compiled->features[1], mod->compiled->features[0].iffeatures[0].features[0]);
-    assert_non_null(mod->compiled->features);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->compiled->features));
-    assert_non_null(mod->compiled->features[1].depfeatures);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->features[1].depfeatures));
-    assert_ptr_equal(&mod->compiled->features[0], mod->compiled->features[1].depfeatures[0]);
+    assert_non_null(mod->features);
+    assert_int_equal(2, LY_ARRAY_COUNT(mod->features));
+    assert_non_null(mod->features[0].iffeatures);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->features[0].iffeatures));
+    assert_non_null(mod->features[0].iffeatures[0].features);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->features[0].iffeatures[0].features));
+    assert_ptr_equal(&mod->features[1], mod->features[0].iffeatures[0].features[0]);
+    assert_non_null(mod->features);
+    assert_int_equal(2, LY_ARRAY_COUNT(mod->features));
+    assert_non_null(mod->features[1].depfeatures);
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->features[1].depfeatures));
+    assert_ptr_equal(&mod->features[0], mod->features[1].depfeatures[0]);
 
     /* invalid reference */
     assert_int_equal(LY_ENOTFOUND, lys_feature_enable(mod, "xxx"));

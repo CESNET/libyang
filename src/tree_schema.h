@@ -1644,7 +1644,6 @@ struct lysc_node_anydata {
 struct lysc_module {
     struct lys_module *mod;          /**< covering module structure */
 
-    struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
     struct lysc_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
     struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
@@ -1828,12 +1827,13 @@ struct lys_module {
     struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing.
                                           Available only for implemented modules. */
-    struct lysc_feature *dis_features;/**< List of pre-compiled features in a non implemented module ([sized array](@ref sizedarrays)).
-                                          These features are always disabled and cannot be enabled until the module
-                                          is implemented. The features are present in this form to allow their linkage
+    struct lysc_feature *features;   /**< List of compiled features of the module ([sized array](@ref sizedarrays)).
+                                          Features are outside the compiled tree since they are needed even the module is not
+                                          compiled. In such a case, the features are always disabled and cannot be enabled until
+                                          the module is implemented. The features are present in this form to allow their linkage
                                           from if-feature statements of the compiled schemas and their proper use in case
                                           the module became implemented in future (no matter if implicitly via augment/deviate
-                                          or explicitly via ly_ctx_module_implement()). */
+                                          or explicitly via ::lys_set_implemented()). */
     struct lysc_ident *dis_identities;/**< List of pre-compiled identities in a non-implemented module ([sized array](@ref sizedarrays))
                                           These identities cannot be instantiated in data (in identityrefs) until
                                           the module is implemented but can be linked by identities in implemented

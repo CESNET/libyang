@@ -608,12 +608,12 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_FOR(cur_mod->compiled->features, i) {
-        if (!(cur_mod->compiled->features[i].flags & LYS_FENABLED)) {
+    LY_ARRAY_FOR(cur_mod->features, i) {
+        if (!(cur_mod->features[i].flags & LYS_FENABLED)) {
             continue;
         }
 
-        LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", cur_mod->compiled->features[i].name, NULL));
+        LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", cur_mod->features[i].name, NULL));
     }
 
     return LY_SUCCESS;

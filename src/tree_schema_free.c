@@ -830,7 +830,6 @@ lysc_module_free_(struct lysc_module *module)
     LY_CHECK_ARG_RET(NULL, module, );
     ctx = module->mod->ctx;
 
-    FREE_ARRAY(ctx, module->features, lysc_feature_free);
     FREE_ARRAY(ctx, module->identities, lysc_ident_free);
 
     LY_LIST_FOR_SAFE(module->data, node_next, node) {
@@ -864,7 +863,7 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     }
 
     lysc_module_free(module->compiled, private_destructor);
-    FREE_ARRAY(module->ctx, module->dis_features, lysc_feature_free);
+    FREE_ARRAY(module->ctx, module->features, lysc_feature_free);
     FREE_ARRAY(module->ctx, module->dis_identities, lysc_ident_free);
     lysp_module_free(module->parsed);
 

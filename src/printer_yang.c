@@ -2351,8 +2351,8 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
         yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, module->compiled->exts, NULL, 0);
     }
 
-    LY_ARRAY_FOR(modc->features, u) {
-        yprc_feature(ctx, &modc->features[u]);
+    LY_ARRAY_FOR(module->features, u) {
+        yprc_feature(ctx, &module->features[u]);
     }
 
     LY_ARRAY_FOR(modc->identities, u) {
