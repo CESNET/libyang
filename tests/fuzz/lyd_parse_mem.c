@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "libyang.h"
 
@@ -10,7 +11,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 	static bool log = false;
 	const char *schema_a = "module defs {namespace urn:tests:defs;prefix d;yang-version 1.1;"
 		            "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}}";
-    const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
+	const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
             "feature f; identity gigabit-ethernet { base defs:ethernet;}"
             "container cont {leaf leaftarget {type empty;}"
                             "list listtarget {key id; max-elements 5;leaf id {type uint8;} leaf value {type string;}}"
@@ -49,6 +50,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
             "type union { type identityref {base defs:interface-type;} type instance-identifier {require-instance true;} }"
             "type string {length 1..20;}}}}";
     	char *data = NULL;
+	struct lyd_node *tree = NULL;
 
 	LY_ERR err;
 
@@ -63,8 +65,8 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 		exit(EXIT_FAILURE);
 	}
 
-	lys_parse_mem(ctx, schema_a, LYS_IN_YANG);
-	lys_parse_mem(ctx, schema_b, LYS_IN_YANG);
+	lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL);
+	lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL);
 
 	data = malloc(len + 1);
 	if (data == NULL) {
@@ -73,7 +75,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 	memcpy(data, buf, len);
 	data[len] = 0;
 
-	lyd_parse_mem(ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY);
+	lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree);
 	ly_ctx_destroy(ctx, NULL);
 
 	free(data);
