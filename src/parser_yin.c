@@ -3539,7 +3539,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     }
 
     mod_p = calloc(1, sizeof *mod_p);
-    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     mod_p->parsing = 1;
 
     ret = yin_parse_submod(*yin_ctx, mod_p);

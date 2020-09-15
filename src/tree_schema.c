@@ -914,6 +914,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
         break;
     }
     LY_CHECK_GOTO(ret, error);
+    assert(submod);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(submod->revs);

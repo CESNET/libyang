@@ -4474,7 +4474,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     }
 
     mod_p = calloc(1, sizeof *mod_p);
-    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM((*context)->ctx), cleanup);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM((*context)->ctx); ret = LY_EMEM, cleanup);
     mod_p->parsing = 1;
 
     /* substatements */
