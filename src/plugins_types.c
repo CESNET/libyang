@@ -72,7 +72,7 @@ ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t pref
 const struct lys_module *
 ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data)
 {
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
 
     switch (format) {
     case LY_PREF_SCHEMA:

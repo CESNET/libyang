@@ -773,6 +773,8 @@ next_entry:
         expected = "@/object";
         LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
         break;
+    default:
+        LOGINT_RET(ctx);
     }
 
     /* process all the members inside a single metadata object */

@@ -4031,7 +4031,7 @@ static LY_ERR
 lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, struct lysc_node *node)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysp_node *child_next_p;
+    struct lysp_node *child_p_next = child_p->next;
     struct lysp_node_case *cs_p;
 
     if (child_p->nodetype == LYS_CASE) {
@@ -4045,7 +4045,6 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         cs_p->child = child_p;
 
         /* make the child the only case child */
-        child_next_p = child_p->next;
         child_p->next = NULL;
 
         /* compile it normally */
@@ -4055,7 +4054,7 @@ free_fake_node:
         /* free the fake parsed node and correct pointers back */
         cs_p->child = NULL;
         lysp_node_free(ctx->ctx, (struct lysp_node *)cs_p);
-        child_p->next = child_next_p;
+        child_p->next = child_p_next;
     }
 
     return ret;
@@ -4988,7 +4987,7 @@ static LY_ERR
 lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct lysc_node **first_p)
 {
     struct lysp_node *node_p;
-    struct lysc_node *child, *iter;
+    struct lysc_node *child = NULL, *iter;
     /* context_node_fake allows us to temporarily isolate the nodes inserted from the grouping instead of uses */
     struct lysc_node_container context_node_fake =
     {.nodetype = LYS_CONTAINER,
