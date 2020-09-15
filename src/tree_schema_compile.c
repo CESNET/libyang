@@ -2963,11 +2963,12 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
         /* check status */
         ret = lysc_check_status(ctx, context_flags, context_mod, context_name,
                                 tctx->tpdf->flags, tctx->mod, tctx->node ? tctx->node->name : tctx->tpdf->name);
-        LY_CHECK_ERR_GOTO(ret,  free(tctx), cleanup);
+        LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
 
         if (units && !*units) {
             /* inherit units */
-            DUP_STRING_GOTO(ctx->ctx, tctx->tpdf->units, *units, ret, cleanup);
+            DUP_STRING(ctx->ctx, tctx->tpdf->units, *units, ret);
+            LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
         }
         if (dflt && !*dflt) {
             /* inherit default */
@@ -2984,7 +2985,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
              * but we still may need to inherit default and units values, so start dummy loops */
             basetype = tctx->tpdf->type.compiled->basetype;
             ret = ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
+            LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
 
             if ((units && !*units) || (dflt && !*dflt)) {
                 dummyloops = 1;
@@ -3021,7 +3022,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
 
         /* store information for the following processing */
         ret = ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
 
 preparenext:
         /* prepare next loop */
@@ -4040,7 +4041,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         /* we need the implicit case first, so create a fake parsed case */
         cs_p = calloc(1, sizeof *cs_p);
         cs_p->nodetype = LYS_CASE;
-        DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, done);
+        DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, free_fake_node);
         cs_p->child = child_p;
 
         /* make the child the only case child */
@@ -4050,13 +4051,13 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         /* compile it normally */
         ret = lys_compile_node(ctx, (struct lysp_node *)cs_p, node, 0);
 
+free_fake_node:
         /* free the fake parsed node and correct pointers back */
         cs_p->child = NULL;
         lysp_node_free(ctx->ctx, (struct lysp_node *)cs_p);
         child_p->next = child_next_p;
     }
 
-done:
     return ret;
 }
 
@@ -7111,11 +7112,11 @@ lys_compile_ietf_netconf_wd_annotation(struct lysc_ctx *ctx, struct lys_module *
     ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
     ext_p->insubstmt_index = 0;
 
-    stmt = calloc(1, sizeof *ext_p->child);
+    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    LY_CHECK_ERR_GOTO(!stmt, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
     LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, "type", 0, &stmt->stmt), cleanup);
     LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, "boolean", 0, &stmt->arg), cleanup);
     stmt->kw = LY_STMT_TYPE;
-    ext_p->child = stmt;
 
     /* allocate new extension instance */
     LY_ARRAY_NEW_GOTO(mod->ctx, mod->compiled->exts, ext, ret, cleanup);
