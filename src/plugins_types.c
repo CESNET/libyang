@@ -2108,12 +2108,18 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
         }
         subvalue->value = calloc(1, sizeof *subvalue->value);
         if (!subvalue->value) {
+            free(subvalue);
             *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
             return LY_EMEM;
         }
 
         /* remember the original value */
-        LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &subvalue->original));
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &subvalue->original);
+        if (ret) {
+            free(subvalue->value);
+            free(subvalue);
+            return ret;
+        }
 
         /* store format-specific data for later prefix resolution */
         subvalue->format = format;
