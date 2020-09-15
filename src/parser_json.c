@@ -954,7 +954,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     if (dynamic) {
         free((char *)value);
     }
-    LY_CHECK_ERR_RET(ret, ly_free_val_prefs(lydctx->jsonctx->ctx, val_prefs), ret);
+    LY_CHECK_RET(ret);
 
     if (*status_p == LYJSON_OBJECT || *status_p == LYJSON_OBJECT_EMPTY) {
         /* process children */

@@ -22,6 +22,18 @@
 #include "tree_data_internal.h"
 #include "plugins_types.h"
 
+void
+ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(val_prefs, u) {
+        FREE_STRING(ctx, val_prefs[u].id);
+        FREE_STRING(ctx, val_prefs[u].module_ns);
+    }
+    LY_ARRAY_FREE(val_prefs);
+}
+
 static void
 lyd_free_meta(struct lyd_meta *meta, ly_bool siblings)
 {
@@ -80,7 +92,6 @@ static void
 lyd_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
 {
     struct lyd_attr *iter;
-    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, ctx, );
     if (!attr) {
@@ -114,11 +125,7 @@ lyd_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
         attr = iter;
         iter = iter->next;
 
-        LY_ARRAY_FOR(attr->val_prefs, u) {
-            FREE_STRING(ctx, attr->val_prefs[u].id);
-            FREE_STRING(ctx, attr->val_prefs[u].module_ns);
-        }
-        LY_ARRAY_FREE(attr->val_prefs);
+        ly_free_val_prefs(ctx, attr->val_prefs);
         FREE_STRING(ctx, attr->name);
         FREE_STRING(ctx, attr->value);
         FREE_STRING(ctx, attr->prefix.id);
@@ -137,18 +144,6 @@ API void
 lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
 {
     lyd_free_attr(ctx, attr, 1);
-}
-
-void
-ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(val_prefs, u) {
-        FREE_STRING(ctx, val_prefs[u].id);
-        FREE_STRING(ctx, val_prefs[u].module_ns);
-    }
-    LY_ARRAY_FREE(val_prefs);
 }
 
 /**

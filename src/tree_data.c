@@ -706,13 +706,13 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
     }
 
     opaq = calloc(1, sizeof *opaq);
-    LY_CHECK_ERR_RET(!opaq, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!opaq, LOGMEM(ctx); ly_free_val_prefs(ctx, val_prefs), LY_EMEM);
 
     opaq->prev = (struct lyd_node *)opaq;
-
+    opaq->val_prefs = val_prefs;
+    opaq->format = format;
     LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &opaq->name), finish);
 
-    opaq->format = format;
     if (pref_len) {
         LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, pref_len, &opaq->prefix.id), finish);
     }
@@ -720,7 +720,6 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
         LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &opaq->prefix.module_ns), finish);
     }
 
-    opaq->val_prefs = val_prefs;
     if (dynamic && *dynamic) {
         LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, (char *)value, &opaq->value), finish);
         *dynamic = 0;
@@ -2218,7 +2217,11 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
     }
 
     at = calloc(1, sizeof *at);
-    LY_CHECK_ERR_RET(!at, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!at, LOGMEM(ctx); ly_free_val_prefs(ctx, val_prefs), LY_EMEM);
+    at->hint = value_hint;
+    at->format = format;
+    at->val_prefs = val_prefs;
+
     LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &at->name), finish);
     if (dynamic && *dynamic) {
         ret = lydict_insert_zc(ctx, (char *)value, &at->value);
@@ -2228,9 +2231,6 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
         LY_CHECK_GOTO(ret = lydict_insert(ctx, value, value_len, &at->value), finish);
     }
 
-    at->hint = value_hint;
-    at->format = format;
-    at->val_prefs = val_prefs;
     if (prefix_len) {
         LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, prefix_len, &at->prefix.id), finish);
     }

@@ -172,7 +172,7 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] value_hint [Value hint](@ref lydvalueparseopts) from the parser regarding the value type.
  * @param[in] format Input format of @p value and @p ns.
- * @param[in] val_prefs Possible value prefixes, array is spent.
+ * @param[in] val_prefs Possible value prefixes, array is spent (even in case the function fails).
  * @param[in] prefix Element prefix.
  * @param[in] pref_len Length of @p prefix, must be set correctly.
  * @param[in] module_key Mandatory key to reference module, can be namespace or name.
@@ -273,7 +273,7 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] value_hint [Value hint](@ref lydvalueparseopts) from the parser regarding the value type.
  * @param[in] format Input format of @p value and @p ns.
- * @param[in] val_prefs Possible value prefixes, array is spent.
+ * @param[in] val_prefs Possible value prefixes, array is spent (even in case the function fails).
  * @param[in] prefix Attribute prefix.
  * @param[in] prefix_len Attribute prefix length.
  * @param[in] module_key Mandatory key to reference module, can be namespace or name.

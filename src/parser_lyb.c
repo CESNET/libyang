@@ -503,7 +503,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
 
         /* value */
         ret = lyb_read_string(&value, 0, lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_ERR_GOTO(ret, ly_free_val_prefs(lybctx->ctx, val_prefs), cleanup);
         dynamic = 1;
 
         /* attr2 is always changed to the created attribute */
@@ -517,7 +517,6 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         module_name = NULL;
         free(name);
         name = NULL;
-        val_prefs = NULL;
         assert(!dynamic);
         value = NULL;
 
@@ -536,7 +535,6 @@ cleanup:
     if (dynamic) {
         free(value);
     }
-    ly_free_val_prefs(lybctx->ctx, val_prefs);
     if (ret) {
         lyd_free_attr_siblings(lybctx->ctx, *attr);
         *attr = NULL;
@@ -745,7 +743,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
         /* parse value */
         ret = lyb_read_string(&value, 0, lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_ERR_GOTO(ret, ly_free_val_prefs(ctx, val_prefs), cleanup);
         dynamic = 1;
 
         /* create node */
@@ -879,7 +877,6 @@ cleanup:
     if (dynamic) {
         free(value);
     }
-    ly_free_val_prefs(ctx, val_prefs);
 
     lyd_free_meta_siblings(meta);
     lyd_free_attr_siblings(ctx, attr);
