@@ -395,7 +395,6 @@ if(ENABLE_FUZZ_TARGETS)
         endif()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
     endif()
-    add_subdirectory(tests/fuzz)
 endif()
 
 #if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)

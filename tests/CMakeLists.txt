@@ -95,3 +95,4 @@ endif()
 
 add_subdirectory(style)
 add_subdirectory(utests)
+add_subdirectory(fuzz)
