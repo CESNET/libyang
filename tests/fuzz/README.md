@@ -57,3 +57,6 @@ However, running the target like that invokes the harness with only one job
 on a single core, with no starting inputs. 
 Multiple jobs running on separate cores should be used, with a starting input corpus.
 The options are described in the official LibFuzzer documentation (https://llvm.org/docs/LibFuzzer.html).
+
+## Fuzzing corpus and regression testing
+The `tests/fuzz/corpus` directory contains subdirectories for every fuzz target. Those subdirectories contain a collection of previous inputs that were found by fuzzing and caused visible issues or crashes. Every input file is named after the issue or pull request where it was originally reported. When a new issue is discovered, the input causing the issue should be added to the appropriate directory.
