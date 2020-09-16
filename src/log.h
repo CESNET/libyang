@@ -273,9 +273,17 @@ const char *ly_errapptag(const struct ly_ctx *ctx);
  * @brief Get the first (thread, context-specific) generated error structure.
  *
  * @param[in] ctx Relative context.
- * @return First error structure (can be NULL), do not modify!
+ * @return The first error structure (can be NULL), do not modify!
  */
 struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get the latest (thread, context-specific) generated error structure.
+ *
+ * @param[in] ctx Relative context.
+ * @return The last error structure (can be NULL), do not modify!
+ */
+struct ly_err_item *ly_err_last(const struct ly_ctx *ctx);
 
 /**
  * @brief Print the error structure as if just generated.

@@ -71,13 +71,6 @@ extern volatile LY_LOG_LEVEL ly_log_level;
 extern volatile uint32_t ly_log_opts;
 
 /**
- * @brief Set error-app-tag to the last error record in the context.
- * @param[in] ctx libyang context where the error records are present.
- * @param[in] apptag The error-app-tag value to store.
- */
-void ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag);
-
-/**
  * @brief Print a log message and store it into the context (if provided).
  *
  * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.

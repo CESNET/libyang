@@ -47,9 +47,9 @@ ly_errcode(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    i = ly_err_first(ctx);
+    i = ly_err_last(ctx);
     if (i) {
-        return i->prev->no;
+        return i->no;
     }
 
     return LY_SUCCESS;
@@ -60,9 +60,9 @@ ly_vecode(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    i = ly_err_first(ctx);
+    i = ly_err_last(ctx);
     if (i) {
-        return i->prev->vecode;
+        return i->vecode;
     }
 
     return LYVE_SUCCESS;
@@ -75,9 +75,9 @@ ly_errmsg(const struct ly_ctx *ctx)
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    i = ly_err_first(ctx);
+    i = ly_err_last(ctx);
     if (i) {
-        return i->prev->msg;
+        return i->msg;
     }
 
     return NULL;
@@ -90,9 +90,9 @@ ly_errpath(const struct ly_ctx *ctx)
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    i = ly_err_first(ctx);
+    i = ly_err_last(ctx);
     if (i) {
-        return i->prev->path;
+        return i->path;
     }
 
     return NULL;
@@ -105,9 +105,9 @@ ly_errapptag(const struct ly_ctx *ctx)
 
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
-    i = ly_err_first(ctx);
+    i = ly_err_last(ctx);
     if (i) {
-        return i->prev->apptag;
+        return i->apptag;
     }
 
     return NULL;
@@ -140,6 +140,17 @@ ly_err_first(const struct ly_ctx *ctx)
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
     return pthread_getspecific(ctx->errlist_key);
+}
+
+API struct ly_err_item *
+ly_err_last(const struct ly_ctx *ctx)
+{
+    const struct ly_err_item *e;
+
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
+
+    e = pthread_getspecific(ctx->errlist_key);
+    return e ? e->prev : NULL;
 }
 
 API void
@@ -498,17 +509,5 @@ ly_err_print(struct ly_err_item *eitem)
                 fprintf(stderr, "(path: %s)\n", eitem->path);
             }
         }
-    }
-}
-
-void
-ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag)
-{
-    struct ly_err_item *i;
-
-    i = ly_err_first(ctx);
-    if (i) {
-        i = i->prev;
-        i->apptag = strdup(apptag);
     }
 }
