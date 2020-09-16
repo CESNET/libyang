@@ -16,7 +16,6 @@ int main(int argc, char **argv)
 	int status = 0;
 	int rc = 0;
 	struct stat path_stat;
-	int i = 0;
 
 	if (argc != 3) {
 		fprintf(stderr, "invalid number of arguments. Call like this ./fuzz_regression_test fuzz_harness corpus_dir\n");
@@ -58,7 +57,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!WIFEXITED(status)) {
-			fprintf(stderr, "test %s - %s failed\n", argv[1], argv[2]);
+			fprintf(stderr, "test %s - %s failed\n", argv[1], dir->d_name);
 			return EXIT_FAILURE;
 		}
 
