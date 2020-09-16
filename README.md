@@ -209,7 +209,11 @@ $ LIBYANG_EXTENSIONS_PLUGINS_DIR="`pwd`/src/extensions" ./yanglint
 
 libyang includes several tests built with [cmocka](https://cmocka.org/). The tests
 can be found in `tests` subdirectory and they are designed for checking library
-functionality after code changes.
+functionality after code changes. Additional regression tests done with
+a corpus of fuzzing inputs that previously caused crashes are done.
+Those are available in `tests/fuzz` and are built automatically with the
+cmocka unit tests.
+
 
 The tests are by default built in the `Debug` build mode by running
 ```
