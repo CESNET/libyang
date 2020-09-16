@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
 
 #include "libyang.h"
 
@@ -75,7 +74,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 	memcpy(data, buf, len);
 	data[len] = 0;
 
-	lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree);
+	lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree);
 	ly_ctx_destroy(ctx, NULL);
 
 	free(data);
