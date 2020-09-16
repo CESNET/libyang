@@ -2159,7 +2159,12 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
             ret = LY_EVALID;
         }
+        goto error;
+    }
 
+    ret = lydict_insert(ctx, subvalue->value->canonical, strlen(subvalue->value->canonical), &storage->canonical);
+    if (ret) {
+error:
         /* free any stored information */
         free(subvalue->value);
         lydict_remove(ctx, subvalue->original);
@@ -2172,15 +2177,13 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
     }
 
     /* success */
-
-    LY_CHECK_RET(lydict_insert(ctx, subvalue->value->canonical, strlen(subvalue->value->canonical), &storage->canonical));
     storage->subvalue = subvalue;
     storage->realtype = type;
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char *)value);
     }
-    return ret;
+    return LY_SUCCESS;
 }
 
 /**
