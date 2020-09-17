@@ -6995,7 +6995,11 @@ check_musts:
     LY_ARRAY_FOR(musts, u) {
         ret = lyxp_atomize(musts[u].cond, LY_PREF_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
-            LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
+	    if (musts[u].cond == NULL) {
+                LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid, must restriction shouldn't be NULL");
+	    } else {
+                LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
+	    }
             goto cleanup;
         }
 
