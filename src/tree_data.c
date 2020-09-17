@@ -331,6 +331,8 @@ lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, ui
         LOGINT_RET(ctx);
     }
 
+    LY_CHECK_RET(lydctx == NULL, LY_EINVAL);
+
     if (!(parse_options & LYD_PARSE_ONLY)) {
         uint32_t i = 0;
         const struct lys_module *mod;
