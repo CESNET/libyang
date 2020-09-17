@@ -6958,7 +6958,11 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         ret = lyxp_atomize(when[u]->cond, LY_PREF_SCHEMA, when[u]->module, when[u]->context ? when[u]->context : node,
                            when[u]->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
-            LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[u]->cond->expr);
+	    if (when[u]->cond == NULL) {
+                LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid, when condition shouldn't be NULL");
+	    } else {
+                LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[u]->cond->expr);
+	    }
             goto cleanup;
         }
 
