@@ -1378,22 +1378,6 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     struct lyd_json_ctx *lydctx;
     size_t i, line = 1;
 
-    /* starting top-level */
-    for (i = 0; in->current[i] != '\0' && is_jsonws(in->current[i]); i++) {
-        if (in->current[i] == 0x0a) { /* new line */
-            line++;
-        };
-    }
-    if (in->current[i] == '\0') {
-        /* empty data input */
-        return LY_SUCCESS;
-    }
-    if (in->current[i] != '{') {
-        LOGVAL(ctx, LY_VLOG_LINE, &line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(&in->current[i]), &in->current[i],
-               "a top-level JSON object ('{') holding encoded YANG data");
-        return LY_EVALID;
-    }
-
     /* init context */
     lydctx = calloc(1, sizeof *lydctx);
     LY_CHECK_ERR_RET(!lydctx, LOGMEM(ctx), LY_EMEM);
@@ -1401,8 +1385,19 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     lydctx->validate_options = validate_options;
     lydctx->free = lyd_json_ctx_free;
 
-    LY_CHECK_ERR_RET(ret = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), free(lydctx), ret);
+    /* starting top-level */
+    for (i = 0; in->current[i] != '\0' && is_jsonws(in->current[i]); i++) {
+        if (in->current[i] == 0x0a) { /* new line */
+            line++;
+        };
+    }
 
+    LY_CHECK_ERR_RET(ret = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), free(lydctx), ret);
+    if (lyjson_ctx_status(lydctx->jsonctx, 0) == LYJSON_END) {
+        /* empty data input */
+        *lydctx_p = lydctx;
+        return LY_SUCCESS;
+    }
     *lydctx_p = lydctx;
     return LY_SUCCESS;
 }
@@ -1419,9 +1414,10 @@ lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     *tree_p = NULL;
 
     ret = lyd_parse_json_init(ctx, in, parse_options, validate_options, &lydctx);
-    LY_CHECK_GOTO(ret || !lydctx, cleanup);
+    LY_CHECK_GOTO(ret, cleanup);
 
     status = lyjson_ctx_status(lydctx->jsonctx, 0);
+    LY_CHECK_GOTO(status == LYJSON_END, cleanup);
     assert(status == LYJSON_OBJECT);
 
     /* read subtree(s) */
