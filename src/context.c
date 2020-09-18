@@ -546,8 +546,8 @@ ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, cons
     }
 
     /* parse */
-    exp = lyxp_expr_parse(ctx, data_path, strlen(data_path), 0);
-    LY_CHECK_GOTO(!exp, cleanup);
+    ret = lyxp_expr_parse(ctx, data_path, strlen(data_path), 0, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;

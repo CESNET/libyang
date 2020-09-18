@@ -301,7 +301,7 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t 
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
-    struct lyxp_expr *exp;
+    struct lyxp_expr *exp = NULL;
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
@@ -312,8 +312,8 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t 
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
-    exp = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1);
-    LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
+    ret = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
     ret = lyxp_atomize(exp, LY_PREF_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
@@ -346,7 +346,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
-    struct lyxp_expr *exp;
+    struct lyxp_expr *exp = NULL;
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
@@ -357,8 +357,8 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
-    exp = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1);
-    LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
+    ret = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
     ret = lyxp_atomize(exp, LY_PREF_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
