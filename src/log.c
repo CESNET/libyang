@@ -313,10 +313,6 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         return;
     }
 
-    if (((no & ~LY_EPLUGIN) == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
-        /* assume we are inheriting the error, so inherit vecode as well */
-        vecode = ly_vecode(ctx);
-    }
 
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
     if ((level < LY_LLVRB) && ctx && (ly_log_opts & LY_LOSTORE)) {
@@ -325,6 +321,10 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
             LOGMEM(ctx);
             free(path);
             return;
+        }
+        if (((no & ~LY_EPLUGIN) == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
+            /* assume we are inheriting the error, so inherit vecode as well */
+            vecode = ly_vecode(ctx);
         }
         if (log_store(ctx, level, no, vecode, msg, path, NULL)) {
             return;
