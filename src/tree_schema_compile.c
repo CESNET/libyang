@@ -909,13 +909,13 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
     LY_ERR ret = LY_SUCCESS;
 
     *when = calloc(1, sizeof **when);
+    LY_CHECK_ERR_RET(!(*when), LOGMEM(ctx->ctx), LY_EMEM);
     (*when)->refcount = 1;
-    (*when)->cond = lyxp_expr_parse(ctx->ctx, when_p->cond, 0, 1);
+    LY_CHECK_RET(lyxp_expr_parse(ctx->ctx, when_p->cond, 0, 1, &(*when)->cond));
     (*when)->module = ctx->mod_def;
     (*when)->context = lysc_xpath_context(node);
     DUP_STRING_GOTO(ctx->ctx, when_p->dsc, (*when)->dsc, ret, done);
     DUP_STRING_GOTO(ctx->ctx, when_p->ref, (*when)->ref, ret, done);
-    LY_CHECK_ERR_GOTO(!(*when)->cond, ret = ly_errcode(ctx->ctx), done);
     COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), LYEXT_PAR_WHEN, ret, done);
     (*when)->flags = flags & LYS_STATUS_MASK;
 
@@ -935,8 +935,7 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_mu
 {
     LY_ERR ret = LY_SUCCESS;
 
-    must->cond = lyxp_expr_parse(ctx->ctx, must_p->arg, 0, 1);
-    LY_CHECK_ERR_GOTO(!must->cond, ret = ly_errcode(ctx->ctx), done);
+    LY_CHECK_RET(lyxp_expr_parse(ctx->ctx, must_p->arg, 0, 1, &must->cond));
     must->module = ctx->mod_def;
     DUP_STRING_GOTO(ctx->ctx, must_p->eapptag, must->eapptag, ret, done);
     DUP_STRING_GOTO(ctx->ctx, must_p->emsg, must->emsg, ret, done);

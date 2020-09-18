@@ -3341,7 +3341,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
-    struct lyxp_expr *exp;
+    struct lyxp_expr *exp = NULL;
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
@@ -3349,8 +3349,8 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
-    exp = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(ctx_node), xpath, 0, 1);
-    LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
+    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(ctx_node), xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
     ret = lyxp_eval(exp, LY_PREF_JSON, ctx_node->schema->module, ctx_node, LYXP_NODE_ELEM, ctx_node, &xp_set, 0);

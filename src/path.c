@@ -228,7 +228,8 @@ LY_ERR
 ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
         uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
 {
-    struct lyxp_expr *exp;
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *exp = NULL;
     uint16_t tok_idx, cur_len;
     const char *cur_node, *prev_prefix = NULL, *ptr;
 
@@ -239,8 +240,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
     /* parse as a generic XPath expression */
-    exp = lyxp_expr_parse(ctx, str_path, path_len, 1);
-    LY_CHECK_GOTO(!exp, error);
+    LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 1, &exp), error);
     tok_idx = 0;
 
     if (begin == LY_PATH_BEGIN_EITHER) {
@@ -249,17 +249,17 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
             /* '..' */
             while ((lref == LY_PATH_LREF_TRUE) && !lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_DDOT)) {
                 /* '/' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), error);
+                LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
             }
         }
     } else {
         /* '/' */
-        LY_CHECK_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), error);
+        LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
     }
 
     do {
         /* NameTest */
-        LY_CHECK_GOTO(lyxp_check_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), error);
+        LY_CHECK_ERR_GOTO(lyxp_check_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), ret = LY_EVALID, error);
 
         /* check prefix based on the options */
         cur_node = exp->expr + exp->tok_pos[tok_idx];
@@ -267,6 +267,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         if (prefix == LY_PATH_PREFIX_MANDATORY) {
             if (!strnstr(cur_node, ":", cur_len)) {
                 LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
+                ret = LY_EVALID;
                 goto error;
             }
         } else if (prefix == LY_PATH_PREFIX_STRICT_INHERIT) {
@@ -274,6 +275,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
                 /* the first node must have a prefix */
                 if (!strnstr(cur_node, ":", cur_len)) {
                     LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
+                    ret = LY_EVALID;
                     goto error;
                 }
 
@@ -285,6 +287,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
                 if (ptr) {
                     if (!strncmp(prev_prefix, cur_node, ptr - cur_node) && (prev_prefix[ptr - cur_node] == ':')) {
                         LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Duplicate prefix for \"%.*s\" in path.", cur_len, cur_node);
+                        ret = LY_EVALID;
                         goto error;
                     }
 
@@ -297,7 +300,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         ++tok_idx;
 
         /* Predicate* */
-        LY_CHECK_GOTO(ly_path_check_predicate(ctx, ctx_node, exp, &tok_idx, prefix, pred), error);
+        LY_CHECK_GOTO(ret = ly_path_check_predicate(ctx, ctx_node, exp, &tok_idx, prefix, pred), error);
 
         /* '/' */
     } while (!lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_OPER_PATH));
@@ -306,6 +309,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     if (exp->used > tok_idx) {
         LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of path.",
                  exp->expr + exp->tok_pos[tok_idx]);
+        ret = LY_EVALID;
         goto error;
     }
 
@@ -314,30 +318,31 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
 error:
     lyxp_expr_free(ctx, exp);
-    return LY_EVALID;
+    return ret;
 }
 
 LY_ERR
 ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const char *str_path,
         size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
 {
-    struct lyxp_expr *exp;
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *exp = NULL;
     uint16_t tok_idx;
 
     assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
     /* parse as a generic XPath expression */
-    exp = lyxp_expr_parse(ctx, str_path, path_len, 0);
-    LY_CHECK_GOTO(!exp, error);
+    LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 0, &exp), error);
     tok_idx = 0;
 
-    LY_CHECK_GOTO(ly_path_check_predicate(ctx, cur_node, exp, &tok_idx, prefix, pred), error);
+    LY_CHECK_GOTO(ret = ly_path_check_predicate(ctx, cur_node, exp, &tok_idx, prefix, pred), error);
 
     /* trailing token check */
     if (exp->used > tok_idx) {
         LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of predicate.",
                  exp->expr + exp->tok_pos[tok_idx]);
+        ret = LY_EVALID;
         goto error;
     }
 
@@ -346,7 +351,7 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
 error:
     lyxp_expr_free(ctx, exp);
-    return LY_EVALID;
+    return ret;
 }
 
 /**
