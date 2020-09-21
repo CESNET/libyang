@@ -5230,7 +5230,8 @@ lyd_validate_value(struct lys_node *node, const char *value)
 }
 
 int
-lyd_value_type_internal(struct lys_node *node, const char *value, int schema, struct lys_type **type)
+lyd_value_type_internal(struct lys_node *node, const char *value, const struct lys_module *local_mod,
+                        struct lys_type **type)
 {
     FUN_IN;
 
@@ -5264,7 +5265,8 @@ repeat:
         sleaf = sleaf->type.info.lref.target;
         goto repeat;
     } else {
-        t = lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, schema);
+        t = lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, (struct lys_module *)local_mod, 0,
+                            local_mod ? 1 : 0);
     }
 
 cleanup:
@@ -5278,7 +5280,7 @@ cleanup:
 API int
 lyd_value_type(struct lys_node *node, const char *value, struct lys_type **type)
 {
-    return lyd_value_type_internal(node, value, 0, type);
+    return lyd_value_type_internal(node, value, NULL, type);
 }
 
 /* create an attribute copy */

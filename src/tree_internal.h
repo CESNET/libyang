@@ -416,11 +416,13 @@ const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_a
  *
  * @param[in] node Schema node of the value.
  * @param[in] value String value to get the type of.
- * @param[in] schema Whether the value is from a schema or from data.
+ * @param[in] local_mod Local module for the value prefix resolution in case it is a default value (defined in schema).
+ * Otherwise set to NULL.
  * @param[out] type Optionally the resolved type of the value.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */
-int lyd_value_type_internal(struct lys_node *node, const char *value, int schema, struct lys_type **type);
+int lyd_value_type_internal(struct lys_node *node, const char *value, const struct lys_module *local_mod,
+                            struct lys_type **type);
 
 /**
  * @brief Internal version of lyd_unlink().
