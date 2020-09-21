@@ -2771,10 +2771,10 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             lref->require_instance = 1;
         }
         if (type_p->path) {
-            lref->path = lyxp_expr_dup(ctx->ctx, type_p->path);
+            lyxp_expr_dup(ctx->ctx, type_p->path, &lref->path);
             lref->path_context = module;
         } else if (base) {
-            lref->path = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path);
+            lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, &lref->path);
             lref->path_context = ((struct lysc_type_leafref *)base)->path_context;
         } else if (tpdfname) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
@@ -2843,7 +2843,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                             lref = (struct lysc_type_leafref *)un->types[u + additional];
 
                             lref->basetype = LY_TYPE_LEAFREF;
-                            lref->path = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path);
+                            lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, &lref->path);
                             lref->refcount = 1;
                             lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
                             lref->path_context = ((struct lysc_type_leafref *)un_aux->types[v])->path_context;
