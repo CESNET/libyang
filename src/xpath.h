@@ -374,13 +374,16 @@ void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
  * https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex
  *
  * @param[in] ctx Context for errors.
- * @param[in] expr XPath expression to parse. It is duplicated.
+ * @param[in] expr_str XPath expression to parse. It is duplicated.
  * @param[in] expr_len Length of @p expr, can be 0 if @p expr is 0-terminated.
  * @param[in] reparse Whether to re-parse the expression to finalize full XPath parsing and fill
  * information about expressions and their operators (fill repeat).
- * @return Filled expression structure or NULL on error.
+ * @param[out] expr_p Pointer to return the filled expression structure.
+ * @return LY_SUCCESS in case of success.
+ * @return LY_EMEM in case of memory allocation failure.
+ * @return LY_EVALID in case of invalid XPath expression in @p expr_str.
  */
-struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_bool reparse);
+LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len, ly_bool reparse, struct lyxp_expr **expr_p);
 
 /**
  * @brief Duplicate parsed XPath expression.

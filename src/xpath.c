@@ -2653,146 +2653,150 @@ lyxp_expr_free(const struct ly_ctx *ctx, struct lyxp_expr *expr)
     free(expr);
 }
 
-struct lyxp_expr *
-lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_bool reparse)
+LY_ERR
+lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len, ly_bool reparse, struct lyxp_expr **expr_p)
 {
-    struct lyxp_expr *ret;
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *expr;
     size_t parsed = 0, tok_len;
     enum lyxp_token tok_type;
     ly_bool prev_function_check = 0;
     uint16_t tok_idx = 0;
 
-    if (!expr[0]) {
+    assert(expr_p);
+
+    if (!expr_str[0]) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOF);
-        return NULL;
+        return LY_EVALID;
     }
 
     if (!expr_len) {
-        expr_len = strlen(expr);
+        expr_len = strlen(expr_str);
     }
     if (expr_len > UINT16_MAX) {
-        LOGERR(ctx, LY_EINVAL, "XPath expression cannot be longer than %ud characters.", UINT16_MAX);
-        return NULL;
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "XPath expression cannot be longer than %ud characters.", UINT16_MAX);
+        return LY_EVALID;
     }
 
     /* init lyxp_expr structure */
-    ret = calloc(1, sizeof *ret);
-    LY_CHECK_ERR_GOTO(!ret, LOGMEM(ctx), error);
-    LY_CHECK_GOTO(lydict_insert(ctx, expr, expr_len, &ret->expr), error);
-    LY_CHECK_ERR_GOTO(!ret->expr, LOGMEM(ctx), error);
-    ret->used = 0;
-    ret->size = LYXP_EXPR_SIZE_START;
-    ret->tokens = malloc(ret->size * sizeof *ret->tokens);
-    LY_CHECK_ERR_GOTO(!ret->tokens, LOGMEM(ctx), error);
+    expr = calloc(1, sizeof *expr);
+    LY_CHECK_ERR_GOTO(!expr, LOGMEM(ctx); ret = LY_EMEM, error);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, expr_str, expr_len, &expr->expr), error);
+    expr->used = 0;
+    expr->size = LYXP_EXPR_SIZE_START;
+    expr->tokens = malloc(expr->size * sizeof *expr->tokens);
+    LY_CHECK_ERR_GOTO(!expr->tokens, LOGMEM(ctx); ret = LY_EMEM, error);
 
-    ret->tok_pos = malloc(ret->size * sizeof *ret->tok_pos);
-    LY_CHECK_ERR_GOTO(!ret->tok_pos, LOGMEM(ctx), error);
+    expr->tok_pos = malloc(expr->size * sizeof *expr->tok_pos);
+    LY_CHECK_ERR_GOTO(!expr->tok_pos, LOGMEM(ctx); ret = LY_EMEM, error);
 
-    ret->tok_len = malloc(ret->size * sizeof *ret->tok_len);
-    LY_CHECK_ERR_GOTO(!ret->tok_len, LOGMEM(ctx), error);
+    expr->tok_len = malloc(expr->size * sizeof *expr->tok_len);
+    LY_CHECK_ERR_GOTO(!expr->tok_len, LOGMEM(ctx); ret = LY_EMEM, error);
 
     /* make expr 0-terminated */
-    expr = ret->expr;
+    expr_str = expr->expr;
 
-    while (is_xmlws(expr[parsed])) {
+    while (is_xmlws(expr_str[parsed])) {
         ++parsed;
     }
 
     do {
-        if (expr[parsed] == '(') {
+        if (expr_str[parsed] == '(') {
 
             /* '(' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_PAR1;
 
-            if (prev_function_check && ret->used && (ret->tokens[ret->used - 1] == LYXP_TOKEN_NAMETEST)) {
+            if (prev_function_check && expr->used && (expr->tokens[expr->used - 1] == LYXP_TOKEN_NAMETEST)) {
                 /* it is a NodeType/FunctionName after all */
-                if (((ret->tok_len[ret->used - 1] == 4)
-                        && (!strncmp(&expr[ret->tok_pos[ret->used - 1]], "node", 4)
-                        || !strncmp(&expr[ret->tok_pos[ret->used - 1]], "text", 4))) ||
-                        ((ret->tok_len[ret->used - 1] == 7)
-                        && !strncmp(&expr[ret->tok_pos[ret->used - 1]], "comment", 7))) {
-                    ret->tokens[ret->used - 1] = LYXP_TOKEN_NODETYPE;
+                if (((expr->tok_len[expr->used - 1] == 4)
+                        && (!strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "node", 4)
+                        || !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "text", 4))) ||
+                        ((expr->tok_len[expr->used - 1] == 7)
+                        && !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "comment", 7))) {
+                    expr->tokens[expr->used - 1] = LYXP_TOKEN_NODETYPE;
                 } else {
-                    ret->tokens[ret->used - 1] = LYXP_TOKEN_FUNCNAME;
+                    expr->tokens[expr->used - 1] = LYXP_TOKEN_FUNCNAME;
                 }
                 prev_function_check = 0;
             }
 
-        } else if (expr[parsed] == ')') {
+        } else if (expr_str[parsed] == ')') {
 
             /* ')' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_PAR2;
 
-        } else if (expr[parsed] == '[') {
+        } else if (expr_str[parsed] == '[') {
 
             /* '[' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_BRACK1;
 
-        } else if (expr[parsed] == ']') {
+        } else if (expr_str[parsed] == ']') {
 
             /* ']' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_BRACK2;
 
-        } else if (!strncmp(&expr[parsed], "..", 2)) {
+        } else if (!strncmp(&expr_str[parsed], "..", 2)) {
 
             /* '..' */
             tok_len = 2;
             tok_type = LYXP_TOKEN_DDOT;
 
-        } else if ((expr[parsed] == '.') && (!isdigit(expr[parsed + 1]))) {
+        } else if ((expr_str[parsed] == '.') && (!isdigit(expr_str[parsed + 1]))) {
 
             /* '.' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_DOT;
 
-        } else if (expr[parsed] == '@') {
+        } else if (expr_str[parsed] == '@') {
 
             /* '@' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_AT;
 
-        } else if (expr[parsed] == ',') {
+        } else if (expr_str[parsed] == ',') {
 
             /* ',' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_COMMA;
 
-        } else if (expr[parsed] == '\'') {
+        } else if (expr_str[parsed] == '\'') {
 
             /* Literal with ' */
-            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\''); ++tok_len) {}
-            LY_CHECK_ERR_GOTO(expr[parsed + tok_len] == '\0',
-                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr[parsed], &expr[parsed]), error);
+            for (tok_len = 1; (expr_str[parsed + tok_len] != '\0') && (expr_str[parsed + tok_len] != '\''); ++tok_len) {}
+            LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == '\0',
+                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
+                              error);
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
-        } else if (expr[parsed] == '\"') {
+        } else if (expr_str[parsed] == '\"') {
 
             /* Literal with " */
-            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\"'); ++tok_len) {}
-            LY_CHECK_ERR_GOTO(expr[parsed + tok_len] == '\0',
-                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr[parsed], &expr[parsed]), error);
+            for (tok_len = 1; (expr_str[parsed + tok_len] != '\0') && (expr_str[parsed + tok_len] != '\"'); ++tok_len) {}
+            LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == '\0',
+                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
+                              error);
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
-        } else if ((expr[parsed] == '.') || (isdigit(expr[parsed]))) {
+        } else if ((expr_str[parsed] == '.') || (isdigit(expr_str[parsed]))) {
 
             /* Number */
-            for (tok_len = 0; isdigit(expr[parsed + tok_len]); ++tok_len) {}
-            if (expr[parsed + tok_len] == '.') {
+            for (tok_len = 0; isdigit(expr_str[parsed + tok_len]); ++tok_len) {}
+            if (expr_str[parsed + tok_len] == '.') {
                 ++tok_len;
-                for ( ; isdigit(expr[parsed + tok_len]); ++tok_len) {}
+                for ( ; isdigit(expr_str[parsed + tok_len]); ++tok_len) {}
             }
             tok_type = LYXP_TOKEN_NUMBER;
 
-        } else if (expr[parsed] == '/') {
+        } else if (expr_str[parsed] == '/') {
 
             /* Operator '/', '//' */
-            if (!strncmp(&expr[parsed], "//", 2)) {
+            if (!strncmp(&expr_str[parsed], "//", 2)) {
                 tok_len = 2;
                 tok_type = LYXP_TOKEN_OPER_RPATH;
             } else {
@@ -2800,81 +2804,83 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_
                 tok_type = LYXP_TOKEN_OPER_PATH;
             }
 
-        } else if (!strncmp(&expr[parsed], "!=", 2)) {
+        } else if (!strncmp(&expr_str[parsed], "!=", 2)) {
 
             /* Operator '!=' */
             tok_len = 2;
             tok_type = LYXP_TOKEN_OPER_NEQUAL;
 
-        } else if (!strncmp(&expr[parsed], "<=", 2) || !strncmp(&expr[parsed], ">=", 2)) {
+        } else if (!strncmp(&expr_str[parsed], "<=", 2) || !strncmp(&expr_str[parsed], ">=", 2)) {
 
             /* Operator '<=', '>=' */
             tok_len = 2;
             tok_type = LYXP_TOKEN_OPER_COMP;
 
-        } else if (expr[parsed] == '|') {
+        } else if (expr_str[parsed] == '|') {
 
             /* Operator '|' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_OPER_UNI;
 
-        } else if ((expr[parsed] == '+') || (expr[parsed] == '-')) {
+        } else if ((expr_str[parsed] == '+') || (expr_str[parsed] == '-')) {
 
             /* Operator '+', '-' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_OPER_MATH;
 
-        } else if (expr[parsed] == '=') {
+        } else if (expr_str[parsed] == '=') {
 
             /* Operator '=' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_OPER_EQUAL;
 
-        } else if ((expr[parsed] == '<') || (expr[parsed] == '>')) {
+        } else if ((expr_str[parsed] == '<') || (expr_str[parsed] == '>')) {
 
             /* Operator '<', '>' */
             tok_len = 1;
             tok_type = LYXP_TOKEN_OPER_COMP;
 
-        } else if (ret->used && (ret->tokens[ret->used - 1] != LYXP_TOKEN_AT)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_PAR1)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_BRACK1)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_COMMA)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_LOG)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_EQUAL)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_NEQUAL)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_COMP)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_MATH)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_UNI)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_PATH)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
+        } else if (expr->used && (expr->tokens[expr->used - 1] != LYXP_TOKEN_AT)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_PAR1)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_BRACK1)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_COMMA)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_LOG)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_EQUAL)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_NEQUAL)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_COMP)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_MATH)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_UNI)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_PATH)
+                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
 
             /* Operator '*', 'or', 'and', 'mod', or 'div' */
-            if (expr[parsed] == '*') {
+            if (expr_str[parsed] == '*') {
                 tok_len = 1;
                 tok_type = LYXP_TOKEN_OPER_MATH;
 
-            } else if (!strncmp(&expr[parsed], "or", 2)) {
+            } else if (!strncmp(&expr_str[parsed], "or", 2)) {
                 tok_len = 2;
                 tok_type = LYXP_TOKEN_OPER_LOG;
 
-            } else if (!strncmp(&expr[parsed], "and", 3)) {
+            } else if (!strncmp(&expr_str[parsed], "and", 3)) {
                 tok_len = 3;
                 tok_type = LYXP_TOKEN_OPER_LOG;
 
-            } else if (!strncmp(&expr[parsed], "mod", 3) || !strncmp(&expr[parsed], "div", 3)) {
+            } else if (!strncmp(&expr_str[parsed], "mod", 3) || !strncmp(&expr_str[parsed], "div", 3)) {
                 tok_len = 3;
                 tok_type = LYXP_TOKEN_OPER_MATH;
 
             } else if (prev_function_check) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
-                       expr[parsed], expr[parsed], ret->tok_len[ret->used - 1], &ret->expr[ret->tok_pos[ret->used - 1]]);
+                       expr_str[parsed], expr_str[parsed], expr->tok_len[expr->used - 1], &expr->expr[expr->tok_pos[expr->used - 1]]);
+                ret = LY_EVALID;
                 goto error;
             } else {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed + 1, expr);
+                LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed + 1, expr_str);
+                ret = LY_EVALID;
                 goto error;
             }
-        } else if (expr[parsed] == '*') {
+        } else if (expr_str[parsed] == '*') {
 
             /* NameTest '*' */
             tok_len = 1;
@@ -2883,17 +2889,21 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_
         } else {
 
             /* NameTest (NCName ':' '*' | QName) or NodeType/FunctionName */
-            long int ncname_len = parse_ncname(&expr[parsed]);
-            LY_CHECK_ERR_GOTO(ncname_len < 0, LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr), error);
+            long int ncname_len = parse_ncname(&expr_str[parsed]);
+            LY_CHECK_ERR_GOTO(ncname_len < 0,
+                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr_str); ret = LY_EVALID,
+                              error);
             tok_len = ncname_len;
 
-            if (expr[parsed + tok_len] == ':') {
+            if (expr_str[parsed + tok_len] == ':') {
                 ++tok_len;
-                if (expr[parsed + tok_len] == '*') {
+                if (expr_str[parsed + tok_len] == '*') {
                     ++tok_len;
                 } else {
-                    ncname_len = parse_ncname(&expr[parsed + tok_len]);
-                    LY_CHECK_ERR_GOTO(ncname_len < 0, LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr), error);
+                    ncname_len = parse_ncname(&expr_str[parsed + tok_len]);
+                    LY_CHECK_ERR_GOTO(ncname_len < 0,
+                                      LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr_str); ret = LY_EVALID,
+                                      error);
                     tok_len += ncname_len;
                 }
                 /* remove old flag to prevent ambiguities */
@@ -2907,35 +2917,36 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, ly_
         }
 
         /* store the token, move on to the next one */
-        LY_CHECK_GOTO(exp_add_token(ctx, ret, tok_type, parsed, tok_len), error);
+        LY_CHECK_GOTO(ret = exp_add_token(ctx, expr, tok_type, parsed, tok_len), error);
         parsed += tok_len;
-        while (is_xmlws(expr[parsed])) {
+        while (is_xmlws(expr_str[parsed])) {
             ++parsed;
         }
 
-    } while (expr[parsed]);
+    } while (expr_str[parsed]);
 
     if (reparse) {
         /* prealloc repeat */
-        ret->repeat = calloc(ret->size, sizeof *ret->repeat);
-        LY_CHECK_ERR_GOTO(!ret->repeat, LOGMEM(ctx), error);
+        expr->repeat = calloc(expr->size, sizeof *expr->repeat);
+        LY_CHECK_ERR_GOTO(!expr->repeat, LOGMEM(ctx); ret = LY_EMEM, error);
 
         /* fill repeat */
-        LY_CHECK_GOTO(reparse_or_expr(ctx, ret, &tok_idx), error);
-        if (ret->used > tok_idx) {
+        LY_CHECK_ERR_GOTO(reparse_or_expr(ctx, expr, &tok_idx), ret = LY_EVALID, error);
+        if (expr->used > tok_idx) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of an XPath expression.",
-                &ret->expr[ret->tok_pos[tok_idx]]);
+                &expr->expr[expr->tok_pos[tok_idx]]);
+            ret = LY_EVALID;
             goto error;
         }
     }
 
-    print_expr_struct_debug(ret);
-
-    return ret;
+    print_expr_struct_debug(expr);
+    *expr_p = expr;
+    return LY_SUCCESS;
 
 error:
-    lyxp_expr_free(ctx, ret);
-    return NULL;
+    lyxp_expr_free(ctx, expr);
+    return ret;
 }
 
 LY_ERR
