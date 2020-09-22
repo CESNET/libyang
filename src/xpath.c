@@ -2949,29 +2949,30 @@ error:
     return ret;
 }
 
-struct lyxp_expr *
-lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp)
+LY_ERR
+lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp_expr **dup_p)
 {
-    struct lyxp_expr *dup;
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *dup = NULL;
     uint32_t i, j;
 
     dup = calloc(1, sizeof *dup);
-    LY_CHECK_ERR_GOTO(!dup, LOGMEM(ctx), error);
+    LY_CHECK_ERR_GOTO(!dup, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 
     dup->tokens = malloc(exp->used * sizeof *dup->tokens);
-    LY_CHECK_ERR_GOTO(!dup->tokens, LOGMEM(ctx), error);
+    LY_CHECK_ERR_GOTO(!dup->tokens, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     memcpy(dup->tokens, exp->tokens, exp->used * sizeof *dup->tokens);
 
     dup->tok_pos = malloc(exp->used * sizeof *dup->tok_pos);
-    LY_CHECK_ERR_GOTO(!dup->tok_pos, LOGMEM(ctx), error);
+    LY_CHECK_ERR_GOTO(!dup->tok_pos, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     memcpy(dup->tok_pos, exp->tok_pos, exp->used * sizeof *dup->tok_pos);
 
     dup->tok_len = malloc(exp->used * sizeof *dup->tok_len);
-    LY_CHECK_ERR_GOTO(!dup->tok_len, LOGMEM(ctx), error);
+    LY_CHECK_ERR_GOTO(!dup->tok_len, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     memcpy(dup->tok_len, exp->tok_len, exp->used * sizeof *dup->tok_len);
 
     dup->repeat = malloc(exp->used * sizeof *dup->repeat);
-    LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx), error);
+    LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     for (i = 0; i < exp->used; ++i) {
         if (!exp->repeat[i]) {
             dup->repeat[i] = NULL;
@@ -2981,7 +2982,7 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp)
             ++j;
 
             dup->repeat[i] = malloc(j * sizeof **dup->repeat);
-            LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx), error);
+            LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx); ret = LY_EMEM, cleanup);
             memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
             dup->repeat[i][j - 1] = 0;
         }
@@ -2989,13 +2990,15 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp)
 
     dup->used = exp->used;
     dup->size = exp->used;
-    LY_CHECK_GOTO(lydict_insert(ctx, exp->expr, 0, &dup->expr), error);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, exp->expr, 0, &dup->expr), cleanup);
 
-    return dup;
-
-error:
-    lyxp_expr_free(ctx, dup);
-    return NULL;
+cleanup:
+    if (ret) {
+        lyxp_expr_free(ctx, dup);
+    } else {
+        *dup_p = dup;
+    }
+    return ret;
 }
 
 /*

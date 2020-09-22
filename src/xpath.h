@@ -390,9 +390,10 @@ LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t ex
  *
  * @param[in] ctx Context with a dictionary.
  * @param[in] exp Parsed expression.
- * @return Duplicated structure, NULL on error.
+ * @param[out] dup Duplicated structure.
+ * @return LY_ERR value.
  */
-struct lyxp_expr *lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp);
+LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp_expr **dup);
 
 /**
  * @brief Look at the next token and check its kind.
