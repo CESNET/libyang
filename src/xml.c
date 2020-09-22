@@ -1448,15 +1448,22 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options,
     for (a = e->attr; a; a = a->next) {
         if (a->type == LYXML_ATTR_NS) {
             if (a->name) {
-                size += ly_print(out, " xmlns:%s=\"%s\"", a->name, a->value ? a->value : "");
+                size += ly_print(out, " xmlns:%s=\"", a->name);
             } else {
-                size += ly_print(out, " xmlns=\"%s\"", a->value ? a->value : "");
+                size += ly_print(out, " xmlns=\"");
             }
         } else if (a->ns && a->ns->prefix) {
-            size += ly_print(out, " %s:%s=\"%s\"", a->ns->prefix, a->name, a->value);
+            size += ly_print(out, " %s:%s=\"", a->ns->prefix, a->name);
         } else {
-            size += ly_print(out, " %s=\"%s\"", a->name, a->value);
+            size += ly_print(out, " %s=\"", a->name);
         }
+
+        if (a->value) {
+            size += lyxml_dump_text(out, a->value, LYXML_DATA_ATTR);
+        } else {
+            size += ly_print(out, "&quot;&quot;");
+        }
+        size += ly_print(out, "\"");
     }
 
     /* apply options */
