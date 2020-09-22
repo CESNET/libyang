@@ -142,10 +142,16 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
 
     /* put attribute into the parent's attributes list */
     if (parent->attr) {
-        /* go to the end of the list */
-        for (a = parent->attr; a->next; a = a->next);
-        /* and append new attribute */
-        a->next = result;
+        if (result->type == LYXML_ATTR_STD) {
+            /* go to the end of the list */
+            for (a = parent->attr; a->next; a = a->next);
+            /* and append new attribute */
+            a->next = result;
+        } else {
+            /* add NS attribute to the head of the list */
+            result->next = parent->attr;
+            parent->attr = result;
+        }
     } else {
         /* add the first attribute in the list */
         parent->attr = result;
