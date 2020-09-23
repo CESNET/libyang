@@ -398,22 +398,23 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
     do {
         switch (data[len]) {
         case '{':
-            if (skip == 0) {
+            if (!skip) {
                 c++;
             }
             break;
         case '}':
-            if (skip == 0) {
+            if (!skip) {
                 c--;
             }
             break;
         case '\\':
-            if (skip == 1 && data[len + 1]) {
+            /* when parsing a string, ignore escaped quotes to not end it prematurely */
+            if (skip && data[len + 1]) {
                 len++;
             }
             break;
         case '\"':
-            skip = (skip == 1) ? 0 : 1;
+            skip = !skip;
             break;
         default:
             break;
