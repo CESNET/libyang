@@ -369,7 +369,7 @@ static unsigned int
 json_get_anydata(struct lyd_node_anydata *any, const char *data)
 {
     struct ly_ctx *ctx = any->schema->module->ctx;
-    unsigned int len = 0, c = 0;
+    unsigned int len = 0, c = 0, skip = 0;
     char *str;
 
     if (data[len] == '"') {
@@ -398,10 +398,22 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
     do {
         switch (data[len]) {
         case '{':
-            c++;
+            if (skip == 0) {
+                c++;
+            }
             break;
         case '}':
-            c--;
+            if (skip == 0) {
+                c--;
+            }
+            break;
+        case '\\':
+            if (skip == 1 && data[len + 1]) {
+                len++;
+            }
+            break;
+        case '\"':
+            skip = (skip == 1) ? 0 : 1;
             break;
         default:
             break;
