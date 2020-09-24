@@ -2370,6 +2370,18 @@ test_uses(void **state)
     assert_non_null(cs->child);
     assert_string_equal("gch", cs->child->name);
 
+    /* top-level uses with augment and refine */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module i {namespace urn:i;prefix i; grouping grp {container g;}"
+                                        "uses grp {augment g {leaf x {type int8;}} refine g {description \"dsc\";}}}",
+                                        LYS_IN_YANG, &mod));
+    assert_non_null(mod->compiled->data);
+    child = mod->compiled->data;
+    assert_string_equal("g", child->name);
+    cont = (const struct lysc_node_container *)child;
+    assert_string_equal("dsc", cont->dsc);
+    assert_non_null(child = lysc_node_children(child, 0));
+    assert_string_equal("x", child->name);
+
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG, &mod));
     logbuf_assert("Grouping \"missinggrp\" referenced by a uses statement not found. /aa:{uses='missinggrp'}");
@@ -2402,7 +2414,7 @@ test_uses(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
                               "leaf g {type string;}"
                               "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - absolute-schema-nodeid used. /gg:top/{uses='grp'}/{augment='/g'}");
+    logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - name test expected instead of \"/\". /gg:top/{uses='grp'}/{augment='/g'}");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
                                         "grouping grp {notification g { description \"super g\";}}"
@@ -2732,7 +2744,7 @@ test_augment(void **state)
                                         "augment /func {leaf x {type int8;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Augment's absolute-schema-nodeid \"/func\" refers to a RPC node which is not an allowed augment's target. /gg:{augment='/func'}");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module hh {namespace urn:i;prefix i;import himp {prefix hi;}"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module hh {namespace urn:i;prefix i;import himp {prefix hi;}"
                                         "augment /hi:func/input {leaf x {type string;}}"
                                         "augment /hi:func/output {leaf y {type string;}}}", LYS_IN_YANG, NULL));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/hi:func/input\" - target node not found. /hh:{augment='/hi:func/input'}");

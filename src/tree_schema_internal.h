@@ -170,7 +170,10 @@ struct lysc_unres_dflt {
 
 struct lysc_augment {
     struct lyxp_expr *nodeid;
-    const struct lys_module *nodeid_mod;
+    union {
+        const struct lys_module *nodeid_mod;
+        const struct lysc_node *nodeid_ctx_node;
+    };
 
     struct lysp_augment *aug_p;
 };
@@ -189,7 +192,7 @@ struct lysc_deviation {
  */
 struct lysc_ctx {
     struct ly_ctx *ctx;
-    struct lys_module *mod;
+    struct lys_module *mod;     /**< module currently being compiled */
     struct lys_module *mod_def; /**< context module for the definitions of the nodes being currently
                                      processed - groupings are supposed to be evaluated in place where
                                      defined, but its content instances are supposed to be placed into
@@ -199,8 +202,9 @@ struct lysc_ctx {
     struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
-    struct ly_set augs;         /**< set of compiled non-applied augments */
+    struct ly_set augs;         /**< set of compiled non-applied top-level augments */
     struct ly_set devs;         /**< set of compiled non-applied deviations */
+    struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
     uint32_t path_len;
     uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
@@ -499,15 +503,13 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
  * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
  * The value can be even an ORed value to allow multiple nodetypes.
- * @param[in] implement Flag if the modules mentioned in the nodeid are supposed to be made implemented.
- * @param[out] target Found target node if any. In case of RPC/action input/output node, LYS_RPC or LYS_ACTION node is actually returned
- * since the input/output has not a standalone node structure and it is part of ::lysc_action which is better compatible with ::lysc_node.
+ * @param[out] target Found target node if any.
  * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
  * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
-LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, uint16_t nodetype, ly_bool implement,
+LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len,
+        const struct lysc_node *context_node, const struct lys_module *context_module, uint16_t nodetype,
         const struct lysc_node **target, uint16_t *result_flag);
 
 /**

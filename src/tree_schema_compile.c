@@ -3261,7 +3261,8 @@ error:
 #undef CHECK_NODE
 }
 
-static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status);
+static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent,
+        uint16_t uses_status, struct ly_set *child_set);
 
 static LY_ERR lys_compile_node_deviations(struct lysc_ctx *ctx, const struct lysp_node *node_p,
         const struct lysc_node *parent, struct lysp_node **dev_node_p, uint8_t *not_supported);
@@ -3361,7 +3362,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
         LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)&action->input));
 
         LY_LIST_FOR(inout_p->data, child_p) {
-            LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node *)action, uses_status));
+            LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node *)action, uses_status, NULL));
         }
         ctx->options = opt_prev;
     }
@@ -3392,7 +3393,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
         LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)&action->output));
 
         LY_LIST_FOR(inout_p->data, child_p) {
-            LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node *)action, uses_status));
+            LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node *)action, uses_status, NULL));
         }
         ctx->options = opt_prev;
     }
@@ -3490,7 +3491,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)notif));
 
     LY_LIST_FOR(notif_p->data, child_p) {
-        ret = lys_compile_node(ctx, child_p, (struct lysc_node *)notif, uses_status);
+        ret = lys_compile_node(ctx, child_p, (struct lysc_node *)notif, uses_status, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -3551,7 +3552,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, struc
      */
 
     LY_LIST_FOR(cont_p->child, child_p) {
-        ret = lys_compile_node(ctx, child_p, node, 0);
+        ret = lys_compile_node(ctx, child_p, node, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
 
@@ -3756,7 +3757,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_nodeid *uniques, 
 
             /* unique node must be present */
             LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
-            ret = lysc_resolve_schema_nodeid(ctx, keystr, len, (struct lysc_node *)list, uniques[v].mod, LYS_LEAF, 0,
+            ret = lysc_resolve_schema_nodeid(ctx, keystr, len, (struct lysc_node *)list, uniques[v].mod, LYS_LEAF,
                             (const struct lysc_node **)key, &flags);
             if (ret != LY_SUCCESS) {
                 if (ret == LY_EDENIED) {
@@ -3835,7 +3836,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     list->max = list_p->max ? list_p->max : (uint32_t)-1;
 
     LY_LIST_FOR(list_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0));
+        LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0, NULL));
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, u, lys_compile_must, ret, done);
@@ -4060,7 +4061,8 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, struct lysp_nodeid *dflt, str
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, struct lysc_node *node)
+lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, struct lysc_node *node,
+        struct ly_set *child_set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p_next = child_p->next;
@@ -4068,7 +4070,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
 
     if (child_p->nodetype == LYS_CASE) {
         /* standard case under choice */
-        ret = lys_compile_node(ctx, child_p, node, 0);
+        ret = lys_compile_node(ctx, child_p, node, 0, child_set);
     } else {
         /* we need the implicit case first, so create a fake parsed case */
         cs_p = calloc(1, sizeof *cs_p);
@@ -4080,7 +4082,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         child_p->next = NULL;
 
         /* compile it normally */
-        ret = lys_compile_node(ctx, (struct lysp_node *)cs_p, node, 0);
+        ret = lys_compile_node(ctx, (struct lysp_node *)cs_p, node, 0, child_set);
 
 free_fake_node:
         /* free the fake parsed node and correct pointers back */
@@ -4112,7 +4114,7 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, struct l
     assert(node->nodetype == LYS_CHOICE);
 
     LY_LIST_FOR(ch_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node_choice_child(ctx, child_p, node));
+        LY_CHECK_RET(lys_compile_node_choice_child(ctx, child_p, node, NULL));
     }
 
     /* default branch */
@@ -4300,7 +4302,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     } else if (node_p->nodetype == LYS_CASE) {
         /* explicit parent case */
         LY_LIST_FOR(cs_p->child, child_p) {
-            LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0));
+            LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0, NULL));
         }
     } else {
         LOGINT_RET(ctx->ctx);
@@ -4402,85 +4404,6 @@ lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add)
 }
 
 /**
- * @brief Internal sorting process for the lys_compile_augment_sort().
- * @param[in] aug_p The parsed augment structure to insert into the sorter sized array @p result.
- * @param[in,out] result Sized array to store the sorted list of augments. The array is expected
- * to be allocated to hold the complete list, its size is just incremented by adding another item.
- */
-static void
-lys_compile_augment_sort_(struct lysp_augment *aug_p, struct lysp_augment **result)
-{
-    LY_ARRAY_COUNT_TYPE v;
-    size_t len;
-
-    len = strlen(aug_p->nodeid);
-    LY_ARRAY_FOR(result, v) {
-        if (strlen(result[v]->nodeid) <= len) {
-            continue;
-        }
-        if (v < LY_ARRAY_COUNT(result)) {
-            /* move the rest of array */
-            memmove(&result[v + 1], &result[v], (LY_ARRAY_COUNT(result) - v) * sizeof *result);
-            break;
-        }
-    }
-    result[v] = aug_p;
-    LY_ARRAY_INCREMENT(result);
-}
-
-/**
- * @brief Sort augments to apply /a/b before /a/b/c (where the /a/b/c was added by the first augment).
- *
- * The sorting is based only on the length of the augment's path since it guarantee the correct order
- * (it doesn't matter the /a/x is done before /a/b/c from the example above).
- *
- * @param[in] ctx Compile context.
- * @param[in] mod_p Parsed module with the global augments (also augments from the submodules are taken).
- * @param[in] aug_p Parsed sized array of augments to sort (no matter if global or uses's)
- * @param[in] inc_p In case of global augments, sized array of module includes (submodules) to get global augments from submodules.
- * @param[out] augments Resulting sorted sized array of pointers to the augments.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lysp_include *inc_p, struct lysp_augment ***augments)
-{
-    struct lysp_augment **result = NULL;
-    LY_ARRAY_COUNT_TYPE u, v, count = 0;
-
-    assert(augments);
-
-    /* get count of the augments in module and all its submodules */
-    if (aug_p) {
-        count += LY_ARRAY_COUNT(aug_p);
-    }
-    LY_ARRAY_FOR(inc_p, u) {
-        if (inc_p[u].submodule->augments) {
-            count += LY_ARRAY_COUNT(inc_p[u].submodule->augments);
-        }
-    }
-
-    if (!count) {
-        *augments = NULL;
-        return LY_SUCCESS;
-    }
-    LY_ARRAY_CREATE_RET(ctx->ctx, result, count, LY_EMEM);
-
-    /* sort by the length of schema-nodeid - we need to solve /x before /x/xy. It is not necessary to group them
-     * together, so there can be even /z/y betwwen them. */
-    LY_ARRAY_FOR(aug_p, u) {
-        lys_compile_augment_sort_(&aug_p[u], result);
-    }
-    LY_ARRAY_FOR(inc_p, u) {
-        LY_ARRAY_FOR(inc_p[u].submodule->augments, v) {
-            lys_compile_augment_sort_(&inc_p[u].submodule->augments[v], result);
-        }
-    }
-
-    *augments = result;
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Compile the parsed augment connecting it into its target.
  *
  * It is expected that all the data referenced in path are present - augments are ordered so that augment B
@@ -4489,37 +4412,28 @@ lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struc
  *
  * @param[in] ctx Compile context.
  * @param[in] aug_p Parsed augment to compile.
- * @param[in] parent Parent node to provide the augment's context. It is NULL for the top level augments and a node holding uses's
- * children in case of the augmenting uses data.
+ * @param[in] target Target node of the augment.
  * @return LY_SUCCESS on success.
  * @return LY_EVALID on failure.
  */
 static LY_ERR
-lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const struct lysc_node *parent)
+lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lysc_node *target)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *node_p;
-    struct lysc_node *target; /* target of the augment */
     struct lysc_node *node;
     struct lysc_when **when, *when_shared;
     ly_bool allow_mandatory = 0;
-    uint16_t flags = 0;
     LY_ARRAY_COUNT_TYPE u;
-    uint32_t opt_prev = ctx->options;
+    struct ly_set child_set = {0};
+    uint32_t i;
 
-    lysc_update_path(ctx, NULL, "{augment}");
-    lysc_update_path(ctx, NULL, aug_p->nodeid);
-
-    ret = lysc_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent, parent ? parent->module : ctx->mod_def,
-                                               LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
-                                               1, (const struct lysc_node **)&target, &flags);
-    if (ret != LY_SUCCESS) {
-        if (ret == LY_EDENIED) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
-                   parent ? "descendant" : "absolute", aug_p->nodeid, lys_nodetype2str(target->nodetype));
-        }
-        return LY_EVALID;
+    if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF))) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
+                aug_p->nodeid[0] == '/' ? "absolute" : "descendant", aug_p->nodeid, lys_nodetype2str(target->nodetype));
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     /* check for mandatory nodes
@@ -4540,94 +4454,88 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid augment of %s node which is not allowed to contain %s node \"%s\".",
                    lys_nodetype2str(target->nodetype), lys_nodetype2str(node_p->nodetype), node_p->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
 
         /* compile the children */
-        ctx->options |= flags;
         if (target->nodetype == LYS_CHOICE) {
-            LY_CHECK_RET(lys_compile_node_choice_child(ctx, node_p, target));
+            LY_CHECK_GOTO(ret = lys_compile_node_choice_child(ctx, node_p, target, &child_set), cleanup);
         } else {
-            LY_CHECK_RET(lys_compile_node(ctx, node_p, target, 0));
+            LY_CHECK_GOTO(ret = lys_compile_node(ctx, node_p, target, 0, &child_set), cleanup);
         }
-        ctx->options = opt_prev;
 
         /* since the augment node is not present in the compiled tree, we need to pass some of its
          * statements to all its children */
-        node = (struct lysc_node *)lys_find_child(target, ctx->mod, node_p->name, 0, 0,
-                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_NOSTATECHECK);
-        LY_CHECK_ERR_GOTO(!node, LOGINT(ctx->ctx), error);
+        for (i = 0; i < child_set.count; ++i) {
+            node = child_set.snodes[i];
+            if (!allow_mandatory && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
+                node->flags &= ~LYS_MAND_TRUE;
+                lys_compile_mandatory_parents(target, 0);
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                    "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.", node->name);
+                ret = LY_EVALID;
+                goto cleanup;
+            }
 
-        if (!allow_mandatory && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
-            node->flags &= ~LYS_MAND_TRUE;
-            lys_compile_mandatory_parents(target, 0);
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.", node->name);
-            return LY_EVALID;
-        }
+            /* pass augment's when to all the children TODO this way even action and notif should have "when" (code below) */
+            if (aug_p->when) {
+                LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, cleanup);
+                if (!when_shared) {
+                    LY_CHECK_GOTO(ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, when), cleanup);
 
-        /* pass augment's when to all the children TODO this way even action and notif should have "when" */
-        if (!(node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && aug_p->when) {
-            LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
-            if (!when_shared) {
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, when);
-                LY_CHECK_GOTO(ret, error);
+                    if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                        /* do not check "when" semantics in a grouping */
+                        LY_CHECK_GOTO(ret = ly_set_add(&ctx->xpath, node, 0, NULL), cleanup);
+                    }
 
-                if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                    /* do not check "when" semantics in a grouping */
-                    ret = ly_set_add(&ctx->xpath, node, 0, NULL);
-                    LY_CHECK_GOTO(ret, error);
-                }
+                    when_shared = *when;
+                } else {
+                    ++when_shared->refcount;
+                    (*when) = when_shared;
 
-                when_shared = *when;
-            } else {
-                ++when_shared->refcount;
-                (*when) = when_shared;
-
-                if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                    /* in this case check "when" again for all children because of dummy node check */
-                    ret = ly_set_add(&ctx->xpath, node, 0, NULL);
-                    LY_CHECK_GOTO(ret, error);
+                    if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                        /* in this case check "when" again for all children because of dummy node check */
+                        LY_CHECK_GOTO(ret = ly_set_add(&ctx->xpath, node, 0, NULL), cleanup);
+                    }
                 }
             }
         }
+        ly_set_erase(&child_set, NULL);
     }
 
-    ctx->options |= flags;
     switch (target->nodetype) {
     case LYS_CONTAINER:
         COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, ((struct lysc_node_container *)target)->actions, target,
-                            u, lys_compile_action, 0, ret, error);
+                            u, lys_compile_action, 0, ret, cleanup);
         COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, ((struct lysc_node_container *)target)->notifs, target,
-                            u, lys_compile_notif, 0, ret, error);
+                            u, lys_compile_notif, 0, ret, cleanup);
         break;
     case LYS_LIST:
         COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, ((struct lysc_node_list *)target)->actions, target,
-                            u, lys_compile_action, 0, ret, error);
+                            u, lys_compile_action, 0, ret, cleanup);
         COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, ((struct lysc_node_list *)target)->notifs, target,
-                            u, lys_compile_notif, 0, ret, error);
+                            u, lys_compile_notif, 0, ret, cleanup);
         break;
     default:
-        ctx->options = opt_prev;
         if (aug_p->actions) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid augment of %s node which is not allowed to contain RPC/action node \"%s\".",
                    lys_nodetype2str(target->nodetype), aug_p->actions[0].name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
         if (aug_p->notifs) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
                    lys_nodetype2str(target->nodetype), aug_p->notifs[0].name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
     }
 
-    lysc_update_path(ctx, NULL, NULL);
-    lysc_update_path(ctx, NULL, NULL);
-
-error:
-    ctx->options = opt_prev;
+cleanup:
+    ly_set_erase(&child_set, NULL);
     return ret;
 }
 
@@ -4797,7 +4705,7 @@ lys_compile_refines(struct lysc_ctx *ctx, struct lysp_refine *refines, const str
         lysc_update_path(ctx, NULL, rfn->nodeid);
 
         ret = lysc_resolve_schema_nodeid(ctx, rfn->nodeid, 0, context_node, ctx->mod,
-                0, 0, (const struct lysc_node **)&node, &flags);
+                0, (const struct lysc_node **)&node, &flags);
         LY_CHECK_GOTO(ret, cleanup);
         ret = ly_set_add(&refined, node, LY_SET_OPT_USEASLIST, NULL);
         LY_CHECK_GOTO(ret, cleanup);
@@ -5012,6 +4920,125 @@ cleanup:
     return ret;
 }
 
+static const struct lys_module *lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest,
+        size_t nametest_len, const struct lys_module *local_mod, const char **name, size_t *name_len);
+
+static LY_ERR
+lys_nodeid_check(struct lysc_ctx *ctx, const char *nodeid, ly_bool abs, struct lys_module **target_mod,
+        struct lyxp_expr **expr)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *e = NULL;
+    struct lys_module *tmod = NULL, *mod;
+    const char *nodeid_type = abs ? "absolute-schema-nodeid" : "descendant-schema-nodeid";
+    uint32_t i;
+
+    /* parse */
+    ret = lyxp_expr_parse(ctx->ctx, nodeid, strlen(nodeid), 0, &e);
+    if (ret) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid %s value \"%s\" - invalid syntax.",
+                nodeid_type, nodeid);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    if (abs) {
+        /* absolute schema nodeid */
+        i = 0;
+    } else {
+        /* descendant schema nodeid */
+        if (e->tokens[0] != LYXP_TOKEN_NAMETEST) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
+                    nodeid_type, nodeid, e->tok_len[0], e->expr + e->tok_pos[0]);
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+        i = 1;
+    }
+
+    /* check all the tokens */
+    for ( ; i < e->used; i += 2) {
+        if (e->tokens[i] != LYXP_TOKEN_OPER_PATH) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s value \"%s\" - \"/\" expected instead of \"%.*s\".",
+                    nodeid_type, nodeid, e->tok_len[i], e->expr + e->tok_pos[i]);
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (e->used == i + 1) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid %s value \"%s\" - unexpected end of expression.", nodeid_type, e->expr);
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (e->tokens[i + 1] != LYXP_TOKEN_NAMETEST) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
+                    nodeid_type, nodeid, e->tok_len[i + 1], e->expr + e->tok_pos[i + 1]);
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (abs) {
+            mod = (struct lys_module *)lys_schema_node_get_module(ctx->ctx, e->expr + e->tok_pos[i + 1],
+                    e->tok_len[i + 1], ctx->mod_def, NULL, NULL);
+            LY_CHECK_ERR_GOTO(!mod, ret = LY_EVALID, cleanup);
+
+            /* only keep the first module */
+            if (!tmod) {
+                tmod = mod;
+            }
+
+            /* all the modules must be implemented */
+            if (!mod->implemented) {
+                ret = lys_set_implemented_internal(mod, ctx->ctx->module_set_id);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+        }
+    }
+
+cleanup:
+    if (ret || !expr) {
+        lyxp_expr_free(ctx->ctx, e);
+        e = NULL;
+    }
+    if (expr) {
+        *expr = ret ? NULL : e;
+    }
+    if (target_mod) {
+        *target_mod = ret ? NULL : tmod;
+    }
+    return ret;
+}
+
+static LY_ERR
+lys_compile_uses_augments(struct lysc_ctx *ctx, struct lysp_augment *augs, const struct lysc_node *ctx_node)
+{
+    LY_ERR ret = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyxp_expr *exp = NULL;
+    struct lysc_augment *aug;
+
+    LY_ARRAY_FOR(augs, u) {
+        lysc_update_path(ctx, NULL, "{augment}");
+        lysc_update_path(ctx, NULL, augs[u].nodeid);
+
+        /* parse the nodeid */
+        LY_CHECK_GOTO(ret = lys_nodeid_check(ctx, augs[u].nodeid, 0, NULL, &exp), cleanup);
+
+        /* allocate new compiled augment and store it in the set */
+        aug = calloc(1, sizeof *aug);
+        LY_CHECK_ERR_GOTO(!aug, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = ly_set_add(&ctx->uses_augs, aug, LY_SET_OPT_USEASLIST, NULL), cleanup);
+
+        aug->nodeid = exp;
+        exp = NULL;
+        aug->nodeid_ctx_node = ctx_node;
+        aug->aug_p = &augs[u];
+
+        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(ctx, NULL, NULL);
+    }
+
+cleanup:
+    lyxp_expr_free(ctx->ctx, exp);
+    return ret;
+}
+
 /**
  * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
  * If present, also apply uses's modificators.
@@ -5024,7 +5051,8 @@ cleanup:
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct lysc_node **first_p)
+lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct ly_set *child_set,
+        struct lysc_node **first_p)
 {
     struct lysp_node *node_p;
     struct lysc_node *child = NULL, *iter;
@@ -5037,13 +5065,12 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         .prev = (struct lysc_node *)&context_node_fake,
         .actions = NULL, .notifs = NULL};
     struct lysp_grp *grp = NULL;
-    LY_ARRAY_COUNT_TYPE u;
     uint32_t grp_stack_count;
     struct lys_module *grp_mod, *mod_old;
     LY_ERR ret = LY_SUCCESS;
     struct lysc_when **when, *when_shared;
     struct lysp_augment **augments = NULL;
-    LY_ARRAY_COUNT_TYPE actions_index = 0, notifs_index = 0;
+    LY_ARRAY_COUNT_TYPE u, actions_index = 0, notifs_index = 0;
     struct lysc_notif **notifs = NULL;
     struct lysc_action **actions = NULL;
 
@@ -5060,12 +5087,8 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         return LY_EVALID;
     }
 
-    /* switch context's mod_def */
-    mod_old = ctx->mod_def;
-    ctx->mod_def = grp_mod;
-
     /* check status */
-    ret = lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, grp_mod, grp->name);
+    ret = lysc_check_status(ctx, uses_p->flags, ctx->mod_def, uses_p->name, grp->flags, grp_mod, grp->name);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* remember the currently last child before processing the uses - it is needed to split the siblings to corretly
@@ -5082,10 +5105,18 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         child = child->prev;
     }
 
+    /* compile any augments so they can be applied during the grouping nodes compilation */
+    ret = lys_compile_uses_augments(ctx, uses_p->augments, parent);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* switch context's mod_def */
+    mod_old = ctx->mod_def;
+    ctx->mod_def = grp_mod;
+
     /* compile data nodes */
     LY_LIST_FOR(grp->data, node_p) {
         /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
-        ret = lys_compile_node(ctx, node_p, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3);
+        ret = lys_compile_node(ctx, node_p, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3, child_set);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -5160,16 +5191,17 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         }
     }
 
-    /* sort and apply augments */
-    ret = lys_compile_augment_sort(ctx, uses_p->augments, NULL, &augments);
-    LY_CHECK_GOTO(ret, cleanup);
-    LY_ARRAY_FOR(augments, u) {
-        ret = lys_compile_augment(ctx, augments[u], (struct lysc_node *)&context_node_fake);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
     /* reload previous context's mod_def */
     ctx->mod_def = mod_old;
+
+    /* check that all augments were applied */
+    for (uint32_t i = 0; i < ctx->uses_augs.count; ++i) {
+        LOGVAL(ctx->ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
+                "Augment target node \"%s\" in grouping \"%s\" was not found.",
+               ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
+        ret = LY_EVALID;
+    }
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* apply all refines */
     ret = lys_compile_refines(ctx, uses_p->refines, (struct lysc_node *)&context_node_fake);
@@ -5304,7 +5336,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysp
 
     lysc_update_path(ctx, NULL, "{grouping}");
     lysc_update_path(ctx, NULL, grp->name);
-    ret = lys_compile_uses(ctx, &fake_uses, (struct lysc_node *)&fake_container, NULL);
+    ret = lys_compile_uses(ctx, &fake_uses, (struct lysc_node *)&fake_container, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
 
@@ -6237,7 +6269,7 @@ cleanup:
 }
 
 static const struct lys_module *
-lys_abs_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_t nametest_len,
+lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_t nametest_len,
         const struct lys_module *local_mod, const char **name, size_t *name_len)
 {
     const struct lys_module *target_mod;
@@ -6268,7 +6300,7 @@ lys_abs_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, s
 }
 
 static ly_bool
-lysp_abs_schema_nodeid_match_node_p(const struct lys_module *node_p_mod, const struct lysp_node *node_p,
+lysp_schema_nodeid_match_node_p(const struct lys_module *node_p_mod, const struct lysp_node *node_p,
         const struct lys_module *mod, const char *name, size_t name_len)
 {
     const char *name_p;
@@ -6294,7 +6326,7 @@ lysp_abs_schema_nodeid_match_node_p(const struct lys_module *node_p_mod, const s
 }
 
 static ly_bool
-lysp_abs_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_module *mod, const char *name,
+lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_module *mod, const char *name,
         size_t name_len)
 {
     const struct lys_module *node_mod;
@@ -6347,7 +6379,7 @@ lysp_abs_schema_nodeid_match_node(const struct lysc_node **node, const struct ly
 }
 
 static ly_bool
-lysp_abs_schema_nodeid_match(const struct lyxp_expr *exp, const struct lys_module *exp_mod,
+lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lys_module *exp_mod, const struct lysc_node *ctx_node,
         const struct lysc_node *parent, const struct lysp_node *node_p, const struct lys_module *node_p_mod)
 {
     uint32_t i;
@@ -6355,21 +6387,21 @@ lysp_abs_schema_nodeid_match(const struct lyxp_expr *exp, const struct lys_modul
     const char *name;
     size_t name_len;
 
-    /* compare last node in the node ID - parsed only for now */
+    /* compare last node in the node ID */
     i = exp->used - 1;
 
     /* get exp node ID module */
-    mod = lys_abs_schema_node_get_module(exp_mod->ctx, exp->expr + exp->tok_pos[i], exp->tok_len[i], exp_mod, &name, &name_len);
+    mod = lys_schema_node_get_module(exp_mod->ctx, exp->expr + exp->tok_pos[i], exp->tok_len[i], exp_mod, &name, &name_len);
     assert(mod);
 
     if (node_p) {
         /* compare on the last parsed-only node */
-        if (!lysp_abs_schema_nodeid_match_node_p(node_p_mod, node_p, mod, name, name_len)) {
+        if (!lysp_schema_nodeid_match_node_p(node_p_mod, node_p, mod, name, name_len)) {
             return 0;
         }
     } else {
         /* using parent directly */
-        if (!lysp_abs_schema_nodeid_match_node(&parent, mod, name, name_len)) {
+        if (!lysp_schema_nodeid_match_node(&parent, mod, name, name_len)) {
             return 0;
         }
     }
@@ -6385,17 +6417,20 @@ lysp_abs_schema_nodeid_match(const struct lyxp_expr *exp, const struct lys_modul
         }
 
         /* get exp node ID module */
-        mod = lys_abs_schema_node_get_module(exp_mod->ctx, exp->expr + exp->tok_pos[i], exp->tok_len[i], exp_mod, &name,
+        mod = lys_schema_node_get_module(exp_mod->ctx, exp->expr + exp->tok_pos[i], exp->tok_len[i], exp_mod, &name,
                 &name_len);
         assert(mod);
 
         /* compare with the parent */
-        if (!lysp_abs_schema_nodeid_match_node(&parent, mod, name, name_len)) {
+        if (!lysp_schema_nodeid_match_node(&parent, mod, name, name_len)) {
             return 0;
         }
     }
 
-    if (parent) {
+    if (ctx_node && (ctx_node != parent)) {
+        /* descendant path has not finished in the context node */
+        return 0;
+    } else if (!ctx_node && parent) {
         /* some parent was not matched */
         return 0;
     }
@@ -6495,7 +6530,7 @@ lys_compile_node_deviations(struct lysc_ctx *ctx, const struct lysp_node *node_p
     for (i = 0; i < ctx->devs.count; ++i) {
         dev = ctx->devs.objs[i];
 
-        if (!lysp_abs_schema_nodeid_match(dev->nodeid, dev->nodeid_mod, parent, node_p, ctx->mod_def)) {
+        if (!lysp_schema_nodeid_match(dev->nodeid, dev->nodeid_mod, NULL, parent, node_p, ctx->mod_def)) {
             /* not our target node */
             continue;
         }
@@ -6593,28 +6628,54 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
     char orig_path[LYSC_CTX_BUFSIZE];
     struct lysc_augment *aug;
 
-    for (i = 0; i < ctx->augs.count; ) {
-        aug = ctx->augs.objs[i];
+    /* uses augments */
+    for (i = 0; i < ctx->uses_augs.count; ) {
+        aug = ctx->uses_augs.objs[i];
 
-        if (!lysp_abs_schema_nodeid_match(aug->nodeid, aug->nodeid_mod, node, NULL, NULL)) {
+        if (!lysp_schema_nodeid_match(aug->nodeid, ctx->mod_def, aug->nodeid_ctx_node, node, NULL, NULL)) {
             /* not our target node */
             ++i;
             continue;
         }
 
-        /* apply augment */
+        /* apply augment, keep the current path and add to it */
+        lysc_update_path(ctx, NULL, "{augment}");
+        lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
+        ret = lys_compile_augment(ctx, aug->aug_p, node);
+        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(ctx, NULL, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* augment was applied, remove it (index may have changed because other augments could have been applied) */
+        lysc_augment_free(ctx->ctx, aug);
+        ly_set_rm(&ctx->uses_augs, aug, NULL);
+    }
+
+    /* top-level augments */
+    for (i = 0; i < ctx->augs.count; ) {
+        aug = ctx->augs.objs[i];
+
+        if (!lysp_schema_nodeid_match(aug->nodeid, aug->nodeid_mod, NULL, node, NULL, NULL)) {
+            /* not our target node */
+            ++i;
+            continue;
+        }
+
+        /* apply augment, use the path and modules from the augment */
         strcpy(orig_path, ctx->path);
         ctx->path_len = 1;
+        lysc_update_path(ctx, NULL, "{augment}");
+        lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
         ctx->mod = (struct lys_module *)aug->nodeid_mod;
         ctx->mod_def = (struct lys_module *)aug->nodeid_mod;
-        ret = lys_compile_augment(ctx, aug->aug_p, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
+        ret = lys_compile_augment(ctx, aug->aug_p, node);
         strcpy(ctx->path, orig_path);
         ctx->path_len = strlen(ctx->path);
+        LY_CHECK_GOTO(ret, cleanup);
 
         /* augment was applied, remove it */
         lysc_augment_free(ctx->ctx, aug);
-        ly_set_rm_index(&ctx->augs, i, NULL);
+        ly_set_rm(&ctx->augs, aug, NULL);
     }
 
 cleanup:
@@ -6641,10 +6702,10 @@ lys_abs_schema_nodeid_match(const struct ly_ctx *ctx, const struct lyxp_expr *ex
 
         if (exp1->tokens[i] == LYXP_TOKEN_NAMETEST) {
             /* check modules of all the nodes in the node ID */
-            mod1 = lys_abs_schema_node_get_module(ctx, exp1->expr + exp1->tok_pos[i], exp1->tok_len[i], exp1_mod,
+            mod1 = lys_schema_node_get_module(ctx, exp1->expr + exp1->tok_pos[i], exp1->tok_len[i], exp1_mod,
                     &name1, &name1_len);
             assert(mod1);
-            mod2 = lys_abs_schema_node_get_module(ctx, exp2->expr + exp2->tok_pos[i], exp2->tok_len[i], exp2_mod,
+            mod2 = lys_schema_node_get_module(ctx, exp2->expr + exp2->tok_pos[i], exp2->tok_len[i], exp2_mod,
                     &name2, &name2_len);
             assert(mod2);
 
@@ -6670,37 +6731,22 @@ lys_compile_own_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const 
     struct lyxp_expr *exp = NULL;
     struct lysc_augment *aug;
     const struct lys_module *mod;
-    size_t len;
-    uint32_t i;
 
     /* parse its target, it was already parsed and fully checked (except for the existence of the nodes) */
     ret = lyxp_expr_parse(ctx->ctx, aug_p->nodeid, strlen(aug_p->nodeid), 0, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
-    mod = lys_abs_schema_node_get_module(ctx->ctx, exp->expr + exp->tok_pos[1], exp->tok_len[1], mod_def, NULL, NULL);
+    mod = lys_schema_node_get_module(ctx->ctx, exp->expr + exp->tok_pos[1], exp->tok_len[1], mod_def, NULL, NULL);
     LY_CHECK_ERR_GOTO(!mod, LOGINT(ctx->ctx); ret = LY_EINT, cleanup);
     if (mod != ctx->mod) {
         /* augment for another module, ignore */
         goto cleanup;
     }
 
-    /* add the augment into the set at the right place */
-    len = strlen(aug_p->nodeid);
-    for (i = 0; i < ctx->augs.count; ++i) {
-        if (strlen(((struct lysc_augment *)ctx->augs.objs[i])->aug_p->nodeid) > len) {
-            break;
-        }
-    }
-
     /* allocate new compiled augment and store it in the set */
     aug = calloc(1, sizeof *aug);
     LY_CHECK_ERR_GOTO(!aug, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-    //LY_CHECK_GOTO(ret = ly_set_add_index(&ctx->augs, aug, i), cleanup);
     LY_CHECK_GOTO(ret = ly_set_add(&ctx->augs, aug, LY_SET_OPT_USEASLIST, NULL), cleanup);
-    if (i < ctx->augs.count - 1) {
-        memmove(ctx->augs.objs + i + 1, ctx->augs.objs + i, ((ctx->augs.count - i) - 1) * sizeof *ctx->augs.objs);
-        ctx->augs.objs[i] = aug;
-    }
 
     aug->nodeid = exp;
     exp = NULL;
@@ -6751,7 +6797,7 @@ lys_compile_own_deviation(struct lysc_ctx *ctx, struct lysp_deviation *dev_p, co
     ret = lyxp_expr_parse(ctx->ctx, dev_p->nodeid, strlen(dev_p->nodeid), 0, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
-    mod = lys_abs_schema_node_get_module(ctx->ctx, exp->expr + exp->tok_pos[1], exp->tok_len[1], mod_def, NULL, NULL);
+    mod = lys_schema_node_get_module(ctx->ctx, exp->expr + exp->tok_pos[1], exp->tok_len[1], mod_def, NULL, NULL);
     LY_CHECK_ERR_GOTO(!mod, LOGINT(ctx->ctx); ret = LY_EINT, cleanup);
     if (mod != ctx->mod) {
         /* deviation for another module, ignore */
@@ -6855,7 +6901,8 @@ lys_compile_own_deviations(struct lysc_ctx *ctx)
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status)
+lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status,
+        struct ly_set *child_set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node = NULL;
@@ -6903,7 +6950,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
         node_compile_spec = lys_compile_node_any;
         break;
     case LYS_USES:
-        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)node_p, parent, &node);
+        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)node_p, parent, child_set, &node);
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
         return ret;
@@ -6983,6 +7030,11 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
         lys_compile_mandatory_parents(parent, 1);
     }
 
+    if (child_set) {
+        /* add the new node into set */
+        LY_CHECK_GOTO(ret = ly_set_add(child_set, node, LY_SET_OPT_USEASLIST, NULL), cleanup);
+    }
+
     lysc_update_path(ctx, NULL, NULL);
     lysp_dev_node_free(ctx->ctx, dev_node_p);
     return LY_SUCCESS;
@@ -7019,74 +7071,17 @@ lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_m
 }
 
 static LY_ERR
-lys_nodeid_get_target_module(struct lysc_ctx *ctx, const char *nodeid, struct lys_module **target_mod)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lyxp_expr *exp = NULL;
-    struct lys_module *tmod = NULL, *mod;
-    uint32_t i;
-
-    /* parse */
-    ret = lyxp_expr_parse(ctx->ctx, nodeid, strlen(nodeid), 0, &exp);
-    if (ret) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid absolute-schema-nodeid value \"%s\" - invalid syntax.", nodeid);
-        ret = LY_EVALID;
-        goto cleanup;
-    }
-
-    /* check all the tokens */
-    for (i = 0; i < exp->used; i += 2) {
-        if (exp->tokens[i] != LYXP_TOKEN_OPER_PATH) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid absolute-schema-nodeid value \"%s\" - \"/\" expected instead of \"%.*s\".", nodeid, exp->tok_len[i], exp->expr + exp->tok_pos[i]);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (exp->used == i + 1) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                    "Invalid absolute-schema-nodeid value \"%s\" - unexpected end of expression.", exp->expr);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (exp->tokens[i + 1] != LYXP_TOKEN_NAMETEST) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid absolute-schema-nodeid value \"%s\" - name test expected instead of \"%.*s\".", nodeid, exp->tok_len[i + 1], exp->expr + exp->tok_pos[i + 1]);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else {
-            mod = (struct lys_module *)lys_abs_schema_node_get_module(ctx->ctx, exp->expr + exp->tok_pos[i + 1],
-                    exp->tok_len[i + 1], ctx->mod_def, NULL, NULL);
-            LY_CHECK_ERR_GOTO(!mod, ret = LY_EVALID, cleanup);
-
-            /* only keep the first module */
-            if (!tmod) {
-                tmod = mod;
-            }
-
-            /* all the modules must be implemented */
-            if (!mod->implemented) {
-                ret = lys_set_implemented_internal(mod, ctx->ctx->module_set_id);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-        }
-    }
-
-cleanup:
-    lyxp_expr_free(ctx->ctx, exp);
-    if (ret) {
-        *target_mod = NULL;
-    } else {
-        *target_mod = tmod;
-    }
-    return ret;
-}
-
-static LY_ERR
 lys_compile_augments_deviations(struct lysc_ctx *ctx)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lysp_module *mod_p;
+    const struct lysc_node *target;
     struct lys_module *mod;
     struct lysp_submodule *submod;
-    uint32_t idx;
-    int has_dev = 0;
+    ly_bool has_dev = 0;
+    uint16_t flags;
+    uint32_t idx, opt_prev = ctx->options;
 
     mod_p = ctx->mod->parsed;
 
@@ -7096,12 +7091,11 @@ lys_compile_augments_deviations(struct lysc_ctx *ctx)
     }
 
     LY_ARRAY_FOR(mod_p->augments, u) {
-        /* get target module */
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, mod_p->augments[u].nodeid);
-        ret = lys_nodeid_get_target_module(ctx, mod_p->augments[u].nodeid, &mod);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+
+        /* get target module */
+        ret = lys_nodeid_check(ctx, mod_p->augments[u].nodeid, 1, &mod, NULL);
         LY_CHECK_RET(ret);
 
         /* add this module into the target module augmented_by, if not there already from previous augments */
@@ -7109,17 +7103,27 @@ lys_compile_augments_deviations(struct lysc_ctx *ctx)
 
         /* if we are compiling this module, we cannot add augments to it yet */
         if (mod != ctx->mod) {
-            /* new augment added to the target module, also apply it now */
-            ret = lys_compile_augment(ctx, &mod_p->augments[u], NULL);
-            LY_CHECK_GOTO(ret, cleanup);
+            /* apply the augment, find the target node first */
+            flags = 0;
+            ret = lysc_resolve_schema_nodeid(ctx, mod_p->augments[u].nodeid, 0, NULL, ctx->mod_def, 0, &target, &flags);
+            LY_CHECK_RET(ret);
+
+            /* apply the augment */
+            ctx->options |= flags;
+            ret = lys_compile_augment(ctx, &mod_p->augments[u], (struct lysc_node *)target);
+            ctx->options = opt_prev;
+            LY_CHECK_RET(ret);
         }
+
+        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(ctx, NULL, NULL);
     }
 
     LY_ARRAY_FOR(mod_p->deviations, u) {
         /* get target module */
         lysc_update_path(ctx, NULL, "{deviation}");
         lysc_update_path(ctx, NULL, mod_p->deviations[u].nodeid);
-        ret = lys_nodeid_get_target_module(ctx, mod_p->deviations[u].nodeid, &mod);
+        ret = lys_nodeid_check(ctx, mod_p->deviations[u].nodeid, 1, &mod, NULL);
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
         LY_CHECK_RET(ret);
@@ -7137,22 +7141,30 @@ lys_compile_augments_deviations(struct lysc_ctx *ctx)
         LY_ARRAY_FOR(submod->augments, u) {
             lysc_update_path(ctx, NULL, "{augment}");
             lysc_update_path(ctx, NULL, submod->augments[u].nodeid);
-            ret = lys_nodeid_get_target_module(ctx, submod->augments[u].nodeid, &mod);
-            lysc_update_path(ctx, NULL, NULL);
-            lysc_update_path(ctx, NULL, NULL);
+
+            ret = lys_nodeid_check(ctx, submod->augments[u].nodeid, 1, &mod, NULL);
             LY_CHECK_RET(ret);
 
             lys_array_add_mod_ref(ctx, ctx->mod, &mod->augmented_by);
             if (mod != ctx->mod) {
-                ret = lys_compile_augment(ctx, &mod_p->augments[u], NULL);
-                LY_CHECK_GOTO(ret, cleanup);
+                flags = 0;
+                ret = lysc_resolve_schema_nodeid(ctx, mod_p->augments[u].nodeid, 0, NULL, ctx->mod_def, 0, &target, &flags);
+                LY_CHECK_RET(ret);
+
+                ctx->options |= flags;
+                ret = lys_compile_augment(ctx, &submod->augments[u], (struct lysc_node *)target);
+                ctx->options = opt_prev;
+                LY_CHECK_RET(ret);
             }
+
+            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(ctx, NULL, NULL);
         }
 
         LY_ARRAY_FOR(submod->deviations, u) {
             lysc_update_path(ctx, NULL, "{deviation}");
             lysc_update_path(ctx, NULL, submod->deviations[u].nodeid);
-            ret = lys_nodeid_get_target_module(ctx, submod->deviations[u].nodeid, &mod);
+            ret = lys_nodeid_check(ctx, submod->deviations[u].nodeid, 1, &mod, NULL);
             lysc_update_path(ctx, NULL, NULL);
             lysc_update_path(ctx, NULL, NULL);
             LY_CHECK_RET(ret);
@@ -8060,7 +8072,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
 
     /* data nodes */
     LY_LIST_FOR(sp->data, node_p) {
-        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, node_p, NULL, 0), error);
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, node_p, NULL, 0, NULL), error);
     }
 
     /* top-level RPCs and notifications */
@@ -8074,7 +8086,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
     LY_ARRAY_FOR(sp->includes, u) {
         submod = sp->includes[u].submodule;
         LY_LIST_FOR(submod->data, node_p) {
-            ret = lys_compile_node(&ctx, node_p, NULL, 0);
+            ret = lys_compile_node(&ctx, node_p, NULL, 0, NULL);
             LY_CHECK_GOTO(ret, error);
         }
 
@@ -8151,6 +8163,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
     ly_set_erase(&ctx.tpdf_chain, NULL);
     ly_set_erase(&ctx.augs, NULL);
     ly_set_erase(&ctx.devs, NULL);
+    ly_set_erase(&ctx.uses_augs, NULL);
 
     if (ctx.options & LYSC_OPT_FREE_SP) {
         lysp_module_free(mod->parsed);
@@ -8188,6 +8201,10 @@ error:
         lysc_deviation_free(ctx.ctx, ctx.devs.objs[i]);
     }
     ly_set_erase(&ctx.devs, NULL);
+    for (i = 0; i < ctx.uses_augs.count; ++i) {
+        lysc_augment_free(ctx.ctx, ctx.uses_augs.objs[i]);
+    }
+    ly_set_erase(&ctx.uses_augs, NULL);
     lysc_module_free(mod_c, NULL);
     mod->compiled = NULL;
 

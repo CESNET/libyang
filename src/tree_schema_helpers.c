@@ -36,8 +36,7 @@
 
 LY_ERR
 lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, uint16_t nodetype, ly_bool implement,
-        const struct lysc_node **target, uint16_t *result_flag)
+        const struct lys_module *context_module, uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
@@ -90,11 +89,6 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         } else {
             mod = context_module;
         }
-        if (implement && !mod->implemented) {
-            /* make the module implemented */
-            ret = lys_set_implemented_internal((struct lys_module *)mod, ctx->ctx->module_set_id);
-            LY_CHECK_RET(ret);
-        }
         if (context_node && (context_node->nodetype & (LYS_RPC | LYS_ACTION))) {
             /* move through input/output manually */
             if (mod != context_node->module) {
@@ -103,30 +97,34 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 return LY_ENOTFOUND;
             }
             if (!ly_strncmp("input", name, name_len)) {
-                (*result_flag) |= LYSC_OPT_RPC_INPUT;
+                context_node = (struct lysc_node *)&((struct lysc_action *)context_node)->input;
             } else if (!ly_strncmp("output", name, name_len)) {
-                (*result_flag) |= LYSC_OPT_RPC_OUTPUT;
+                context_node = (struct lysc_node *)&((struct lysc_action *)context_node)->output;
                 getnext_extra_flag = LYS_GETNEXT_OUTPUT;
             } else {
-                goto getnext;
+                /* only input or output is valid */
+                context_node = NULL;
             }
-            current_nodetype = LYS_INOUT;
         } else {
-getnext:
             context_node = lys_find_child(context_node, mod, name, name_len, 0,
-                                     getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
-            if (!context_node) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                       "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
-                return LY_ENOTFOUND;
-            }
+                    getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
             getnext_extra_flag = 0;
-            current_nodetype = context_node->nodetype;
-
-            if (current_nodetype == LYS_NOTIF) {
-                (*result_flag) |= LYSC_OPT_NOTIFICATION;
-            }
         }
+        if (!context_node) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+            return LY_ENOTFOUND;
+        }
+        current_nodetype = context_node->nodetype;
+
+        if (current_nodetype == LYS_NOTIF) {
+            (*result_flag) |= LYSC_OPT_NOTIFICATION;
+        } else if (current_nodetype == LYS_INPUT) {
+            (*result_flag) |= LYSC_OPT_RPC_INPUT;
+        } else if (current_nodetype == LYS_OUTPUT) {
+            (*result_flag) |= LYSC_OPT_RPC_OUTPUT;
+        }
+
         if (!*id || (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len))) {
             break;
         }
@@ -141,9 +139,6 @@ getnext:
 
     if (ret == LY_SUCCESS) {
         *target = context_node;
-        if (nodetype & LYS_INOUT) {
-            /* instead of input/output nodes, the RPC/action node is actually returned */
-        }
         if (nodetype && !(current_nodetype & nodetype)) {
             return LY_EDENIED;
         }
@@ -1368,6 +1363,9 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
             /* LYS_CONFIG_W, but also the default case */
             return &((struct lysc_action *)node)->input.data;
         }
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        return &((struct lysc_action_inout *)node)->data;
     case LYS_NOTIF:
         return &((struct lysc_notif *)node)->data;
     default:

@@ -117,11 +117,6 @@ next:
     }
 
 repeat:
-    if (next && parent && parent->nodetype == LYS_CASE && next->parent != parent) {
-        /* inside case (as an explicit parent, not when diving into it from choice),
-         * limit the list of children only to the specific case */
-        next = NULL;
-    }
     if (!next) {
         /* possibly go back to parent */
         if (last && last->parent != parent) {
