@@ -42,7 +42,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 	}
 	mod->ctx = ctx;
 
-	yang_parse_module(&context, data, mod);
+	yang_parse_module(&context, (const char *) data, mod);
 
 	free(data);
 	free(mod);

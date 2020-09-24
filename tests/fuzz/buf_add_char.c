@@ -42,7 +42,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 
 	memcpy(data, buf, len);
 	old_data = data;
-	err = buf_add_char(ctx, &data, len, &dest, &dest_len, &used);
+	err = buf_add_char(ctx, (const char **) &data, len, (char **) &dest, &dest_len, &used);
 
 	free(old_data);
 	free(dest);
