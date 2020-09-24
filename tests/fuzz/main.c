@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len);
+
 #ifdef  __AFL_COMPILER
 
 int main(void) {
