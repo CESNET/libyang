@@ -2419,12 +2419,12 @@ test_uses(void **state)
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
                                         "grouping grp {notification g { description \"super g\";}}"
                                         "container top {notification h; uses grp {refine h {description \"ultra h\";}}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid descendant-schema-nodeid value \"h\" - target node not found. /hh:top/{uses='grp'}/{refine='h'}");
+    logbuf_assert("Refine(s) target node \"h\" in grouping \"grp\" was not found. /hh:top/{uses='grp'}");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module ii {yang-version 1.1;namespace urn:ii;prefix ii;"
                                         "grouping grp {action g { description \"super g\";}}"
                                         "container top {action i; uses grp {refine i {description \"ultra i\";}}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid descendant-schema-nodeid value \"i\" - target node not found. /ii:top/{uses='grp'}/{refine='i'}");
+    logbuf_assert("Refine(s) target node \"i\" in grouping \"grp\" was not found. /ii:top/{uses='grp'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj {yang-version 1.1;namespace urn:jj;prefix jj;"
                               "grouping grp {leaf j { when \"1\"; type invalid;}}"
@@ -2459,10 +2459,11 @@ test_refine(void **state)
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}feature fa;"
                                         "uses g:grp {refine c/l {default hello; config false;}"
-                                        "refine c/ll {default hello;default world; min-elements 2; max-elements 5;}"
+                                        "refine c/ll {default hello;default world;}"
                                         "refine c/ch {default cb;config true; if-feature fa;}"
                                         "refine c/x {mandatory false; must ../ll;description refined; reference refined;}"
                                         "refine c/a {mandatory true; must 1; if-feature fa;description refined; reference refined;}"
+                                        "refine c/ll {max-elements 5;}"
                                         "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG, &mod));
     assert_non_null((parent = mod->compiled->data));
     assert_int_equal(LYS_CONTAINER, parent->nodetype);
@@ -2481,7 +2482,6 @@ test_refine(void **state)
     assert_int_equal(0, dynamic);
     assert_string_equal("world", llist->dflts[1]->realtype->plugin->print(llist->dflts[1], LY_PREF_SCHEMA, NULL, &dynamic));
     assert_int_equal(0, dynamic);
-    assert_int_equal(2, llist->min);
     assert_int_equal(5, llist->max);
     assert_non_null(child = llist->next);
     assert_int_equal(LYS_CHOICE, child->nodetype);
@@ -2530,38 +2530,43 @@ test_refine(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;import grp {prefix g;}"
                                         "uses g:grp {refine c {default hello;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of default - container cannot hold default value(s). /aa:{uses='g:grp'}/{refine='c'}");
+    logbuf_assert("Invalid refine of container node - it is not possible to replace \"default\" property. /aa:{uses='g:grp'}/aa:c/{refine='c'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;import grp {prefix g;}"
                                         "uses g:grp {refine c/l {default hello; default world;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of default - leaf cannot hold 2 default values. /bb:{uses='g:grp'}/{refine='c/l'}");
+    logbuf_assert("Invalid refine of leaf with too many (2) default properties. /bb:{uses='g:grp'}/bb:c/l/{refine='c/l'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;import grp {prefix g;}"
                                         "uses g:grp {refine c/ll {default hello; default world;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules. /cc:{uses='g:grp'}/{refine='c/ll'}");
+    logbuf_assert("Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules. /cc:{uses='g:grp'}/cc:c/ll/{refine='c/ll'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;import grp {prefix g;}"
                                         "uses g:grp {refine c/ll {mandatory true;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of mandatory - leaf-list cannot hold mandatory statement. /dd:{uses='g:grp'}/{refine='c/ll'}");
+    logbuf_assert("Invalid refine of leaf-list node - it is not possible to replace \"mandatory\" property. /dd:{uses='g:grp'}/dd:c/ll/{refine='c/ll'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;import grp {prefix g;}"
                                         "uses g:grp {refine c/l {mandatory true;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of mandatory - leaf already has \"default\" statement. /ee:{uses='g:grp'}/{refine='c/l'}");
+    //logbuf_assert("Invalid refine of mandatory - leaf already has \"default\" statement. /ee:{uses='g:grp'}/{refine='c/l'}");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /ee:{uses='g:grp'}/ee:c/l");
+
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ef {namespace urn:ef;prefix ef;import grp {prefix g;}"
                                         "uses g:grp {refine c/ch {mandatory true;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of mandatory - choice already has \"default\" statement. /ef:{uses='g:grp'}/{refine='c/ch'}");
+    //logbuf_assert("Invalid refine of mandatory - choice already has \"default\" statement. /ef:{uses='g:grp'}/{refine='c/ch'}");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /ef:{uses='g:grp'}/ef:c/ch");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;import grp {prefix g;}"
                                         "uses g:grp {refine c/ch/ca/ca {mandatory true;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of mandatory under the default case. /ff:{uses='g:grp'}/{refine='c/ch/ca/ca'}");
+    logbuf_assert("Mandatory node \"ca\" under the default case \"ca\". /ff:{uses='g:grp'}/ff:c/ch");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;import grp {prefix g;}"
                                         "uses g:grp {refine c/x {default hello;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of default - the node is mandatory. /gg:{uses='g:grp'}/{refine='c/x'}");
+    //logbuf_assert("Invalid refine of default - the node is mandatory. /gg:{uses='g:grp'}/{refine='c/x'}");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /gg:{uses='g:grp'}/gg:c/x");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh;import grp {prefix g;}"
                                         "uses g:grp {refine c/c/l {config true;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of config - configuration node cannot be child of any state data node. /hh:{uses='g:grp'}/{refine='c/c/l'}");
+    //logbuf_assert("Invalid refine of config - configuration node cannot be child of any state data node. /hh:{uses='g:grp'}/{refine='c/c/l'}");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /hh:{uses='g:grp'}/hh:c/c/l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ii {namespace urn:ii;prefix ii;grouping grp {leaf l {type string; status deprecated;}}"
                                         "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
@@ -2569,19 +2574,20 @@ test_refine(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj {namespace urn:jj;prefix jj;import grp {prefix g;}"
                                         "uses g:grp {refine c/x {presence nonsence;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of presence statement - leaf cannot hold the presence statement. /jj:{uses='g:grp'}/{refine='c/x'}");
+    logbuf_assert("Invalid refine of leaf node - it is not possible to replace \"presence\" property. /jj:{uses='g:grp'}/jj:c/x/{refine='c/x'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module kk {namespace urn:kk;prefix kk;import grp {prefix g;}"
                                         "uses g:grp {refine c/ch {must 1;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of must statement - choice cannot hold any must statement. /kk:{uses='g:grp'}/{refine='c/ch'}");
+    logbuf_assert("Invalid refine of choice node - it is not possible to add \"must\" property. /kk:{uses='g:grp'}/kk:c/ch/{refine='c/ch'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ll {namespace urn:ll;prefix ll;import grp {prefix g;}"
                                         "uses g:grp {refine c/x {min-elements 1;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of min-elements statement - leaf cannot hold this statement. /ll:{uses='g:grp'}/{refine='c/x'}");
+    logbuf_assert("Invalid refine of leaf node - it is not possible to replace \"min-elements\" property. /ll:{uses='g:grp'}/ll:c/x/{refine='c/x'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module mm {namespace urn:mm;prefix mm;import grp {prefix g;}"
                                         "uses g:grp {refine c/ll {min-elements 10;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of min-elements statement - \"min-elements\" is bigger than \"max-elements\". /mm:{uses='g:grp'}/{refine='c/ll'}");
+    //logbuf_assert("Invalid refine of min-elements statement - \"min-elements\" is bigger than \"max-elements\". /mm:{uses='g:grp'}/{refine='c/ll'}");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /mm:{uses='g:grp'}/mm:c/ll");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -2716,7 +2722,7 @@ test_augment(void **state)
                                         "augment /x/ {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/x/\" - unexpected end of expression. /aa:{augment='/x/'}");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Augment target node \"/x\" from module \"aa\" was not found.");
 
@@ -3084,7 +3090,7 @@ test_deviation(void **state)
     assert_string_equal("/s:y", str);
     if (dynamic) { free((char*)str); }
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG, &mod));
     logbuf_assert("Deviation(s) target node \"/a:top/a:z\" from module \"aa1\" was not found.");
 
@@ -3146,22 +3152,22 @@ test_deviation(void **state)
                               "deviation /e:a {deviate add {default x:a;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation adding \"default\" property \"x:a\" of choice. "
                   "The prefix does not match any imported module of the deviation module. /gg2:{deviation='/e:a'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /e:a");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /e:a");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg3 {namespace urn:gg3;prefix gg3; import e {prefix e;}"
                               "deviation /e:a {deviate add {default a;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation adding \"default\" property \"a\" of choice - the specified case does not exists. /gg3:{deviation='/e:a'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /e:a");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /e:a");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
                               "deviation /e:c {deviate add {default hi;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation adding \"default\" property which already exists (with value \"hello\"). /gg4:{deviation='/e:c'}");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
                               "deviation /e:a {deviate add {default e:ac;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation adding \"default\" property \"e:ac\" of choice - mandatory node \"ac\" under the default case. /gg4:{deviation='/e:a'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /e:a");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /e:a");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}"
                               "deviation /x {deviate add {default error;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation combining default value and mandatory leaf. /gg5:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /gg5:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /gg5:x");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module hh1 {yang-version 1.1; namespace urn:hh1;prefix hh1; import e {prefix e;}"
                               "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG, &mod));
@@ -3186,7 +3192,7 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj2 {namespace urn:jj2;prefix jj2; container top {config false; leaf x {type string;}}"
                               "deviation /top/x {deviate add {config true;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation of config - configuration node cannot be child of any state data node. /jj2:{deviation='/top/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /jj2:top/x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /jj2:top/x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj3 {namespace urn:jj3;prefix jj3; container top {leaf x {type string;}}"
                               "deviation /top/x {deviate replace {config false;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation replacing \"config\" property \"config false\" which is not present. /jj3:{deviation='/top/x'}");
@@ -3196,7 +3202,7 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}"
                               "deviation /top {deviate add {config false;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation of config - configuration node cannot be child of any state data node. /jj5:{deviation='/top'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /jj5:top/x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /jj5:top/x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj6 {namespace urn:jj6;prefix jj6; leaf x {config false; type string;}"
                               "deviation /x {deviate add {config true;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation adding \"config\" property which already exists (with value \"config false\"). /jj6:{deviation='/x'}");
@@ -3217,32 +3223,32 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ll1 {namespace urn:ll1;prefix ll1; leaf x {default test; type string;}"
                               "deviation /x {deviate add {mandatory true;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation combining default value and mandatory leaf. /ll1:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /ll1:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /ll1:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ll2 {yang-version 1.1; namespace urn:ll2;prefix ll2; leaf-list x {default test; type string;}"
                               "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation combining default value and mandatory leaf-list. /ll2:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /ll2:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /ll2:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ll2 {namespace urn:ll2;prefix ll2; choice ch {default a; leaf a {type string;} leaf b {type string;}}"
                               "deviation /ch {deviate add {mandatory true;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation combining default case and mandatory choice. /ll2:{deviation='/ch'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /ll2:ch");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /ll2:ch");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module mm1 {namespace urn:mm1;prefix mm1; leaf-list x {min-elements 10; type string;}"
                               "deviation /x {deviate add {max-elements 5;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid combination of min-elements and max-elements after deviation: min value 10 is bigger than max value 5. /mm1:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /mm1:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /mm1:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module mm2 {namespace urn:mm2;prefix mm2; leaf-list x {max-elements 10; type string;}"
                               "deviation /x {deviate add {min-elements 20;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid combination of min-elements and max-elements after deviation: min value 20 is bigger than max value 10. /mm2:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /mm2:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /mm2:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module mm3 {namespace urn:mm3;prefix mm3; list x {min-elements 5; max-elements 10; config false;}"
                               "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid combination of min-elements and max-elements after deviation: min value 5 is bigger than max value 1. /mm3:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /mm3:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /mm3:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module mm4 {namespace urn:mm4;prefix mm4; list x {min-elements 5; max-elements 10; config false;}"
                               "deviation /x {deviate replace {min-elements 20;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid combination of min-elements and max-elements after deviation: min value 20 is bigger than max value 10. /mm4:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /mm4:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /mm4:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module mm5 {namespace urn:mm5;prefix mm5; leaf-list x {type string; min-elements 5;}"
                               "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation adding \"min-elements\" property which already exists (with value \"5\"). /mm5:{deviation='/x'}");
@@ -3274,7 +3280,7 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module nn2 {namespace urn:nn2;prefix nn2; leaf-list x {type string;}"
                               "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules. /nn2:{deviation='/x'}");*/
-    logbuf_assert("Compilation of a deviated node failed. /nn2:x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /nn2:x");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module oo1 {namespace urn:oo1;prefix oo1; leaf x {type uint16; default 300;}"
                                   "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));

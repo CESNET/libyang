@@ -891,7 +891,7 @@ test_enum_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.enums->name, "enum-name");
-    assert_string_equal(*type.enums->iffeatures, "feature");
+    assert_string_equal(type.enums->iffeatures[0].str, "feature");
     assert_int_equal(type.enums->value, 55);
     assert_true((type.enums->flags & LYS_STATUS_DEPRC) && (type.enums->flags & LYS_SET_VALUE));
     assert_string_equal(type.enums->dsc, "desc...");
@@ -931,7 +931,7 @@ test_bit_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.bits->name, "bit-name");
-    assert_string_equal(*type.bits->iffeatures, "feature");
+    assert_string_equal(type.bits->iffeatures[0].str, "feature");
     assert_int_equal(type.bits->value, 55);
     assert_true((type.bits->flags & LYS_STATUS_DEPRC) && (type.bits->flags & LYS_SET_VALUE));
     assert_string_equal(type.bits->dsc, "desc...");
@@ -2283,7 +2283,7 @@ test_any_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
@@ -2316,7 +2316,7 @@ test_any_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
@@ -2375,7 +2375,7 @@ test_leaf_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
@@ -2430,7 +2430,7 @@ test_leaf_list_elem(void **state)
     assert_string_equal(parsed->dflts[0].str, "def-val0");
     assert_string_equal(parsed->dflts[1].str, "def-val1");
     assert_string_equal(parsed->dsc, "desc");
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_int_equal(parsed->max, 5);
     assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->name, "llist");
@@ -2469,7 +2469,7 @@ test_leaf_list_elem(void **state)
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
     assert_string_equal(parsed->dsc, "desc");
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_int_equal(parsed->min, 5);
     assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->name, "llist");
@@ -2508,7 +2508,7 @@ test_leaf_list_elem(void **state)
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
     assert_string_equal(parsed->dsc, "desc");
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_int_equal(parsed->min, 5);
     assert_int_equal(parsed->max, 15);
     assert_string_equal(parsed->musts->arg.str, "must-cond");
@@ -2705,7 +2705,7 @@ test_refine_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &refines, NULL, NULL), LY_SUCCESS);
     assert_string_equal(refines->nodeid, "target");
-    assert_string_equal(refines->dflts->str, "def");
+    assert_string_equal(refines->dflts[0], "def");
     assert_string_equal(refines->dsc, "desc");
     assert_true(refines->flags & LYS_CONFIG_W);
     assert_true(refines->flags & LYS_MAND_TRUE);
@@ -2758,7 +2758,7 @@ test_uses_elem(void **state)
     assert_string_equal(parsed->name, "uses-name");
     assert_string_equal(parsed->dsc, "desc");
     assert_true(parsed->flags & LYS_STATUS_OBSLT);
-    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_null(parsed->next);
     assert_int_equal(parsed->nodetype, LYS_USES);
     assert_null(parsed->parent);
@@ -2953,7 +2953,7 @@ test_list_elem(void **state)
     assert_true(parsed->flags & LYS_ORDBY_USER);
     assert_true(parsed->flags & LYS_STATUS_DEPRC);
     assert_true(parsed->flags & LYS_CONFIG_W);
-    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->key, "key");
     assert_int_equal(parsed->min, 10);
     assert_string_equal(parsed->musts->arg.str, "must-cond");
@@ -3035,7 +3035,7 @@ test_notification_elem(void **state)
     assert_int_equal(notifs->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     assert_string_equal(notifs->data->next->next->next->next->next->next->next->name, "choice");
     assert_null(notifs->data->next->next->next->next->next->next->next->next);
-    assert_string_equal(*notifs->iffeatures, "iff");
+    assert_string_equal(notifs->iffeatures[0].str, "iff");
     assert_string_equal(notifs->musts->arg.str, "cond");
     assert_int_equal(notifs->nodetype, LYS_NOTIF);
     assert_null(notifs->parent);
@@ -3171,7 +3171,7 @@ test_container_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
-    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->musts->arg.str, "cond");
     assert_string_equal(parsed->presence, "presence");
     assert_string_equal(parsed->typedefs->name, "tpdf");
@@ -3252,7 +3252,7 @@ test_case_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
-    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->child->name, "anyd");
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
     assert_string_equal(parsed->child->next->name, "anyx");
@@ -3329,7 +3329,7 @@ test_choice_elem(void **state)
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
-    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_string_equal(parsed->iffeatures[0].str, "iff");
     assert_string_equal(parsed->child->name, "anyd");
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
     assert_string_equal(parsed->child->next->name, "anyx");
@@ -3519,7 +3519,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->name, "act");
     assert_string_equal(actions->dsc, "desc");
     assert_string_equal(actions->ref, "ref");
-    assert_string_equal(*actions->iffeatures, "iff");
+    assert_string_equal(actions->iffeatures[0].str, "iff");
     assert_string_equal(actions->typedefs->name, "tpdf");
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.data->name, "uses-name");
@@ -3551,7 +3551,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->name, "act");
     assert_string_equal(actions->dsc, "desc");
     assert_string_equal(actions->ref, "ref");
-    assert_string_equal(*actions->iffeatures, "iff");
+    assert_string_equal(actions->iffeatures[0].str, "iff");
     assert_string_equal(actions->typedefs->name, "tpdf");
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.data->name, "uses-name");

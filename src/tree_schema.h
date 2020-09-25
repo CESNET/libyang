@@ -131,26 +131,25 @@ struct ly_set;
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
-#define LYS_UNKNOWN 0x0000        /**< uninitalized unknown statement node */
-#define LYS_CONTAINER 0x0001      /**< container statement node */
-#define LYS_CHOICE 0x0002         /**< choice statement node */
-#define LYS_LEAF 0x0004           /**< leaf statement node */
-#define LYS_LEAFLIST 0x0008       /**< leaf-list statement node */
-#define LYS_LIST 0x0010           /**< list statement node */
-#define LYS_ANYXML 0x0020         /**< anyxml statement node */
-#define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
+#define LYS_UNKNOWN     0x0000    /**< uninitalized unknown statement node */
+#define LYS_CONTAINER   0x0001    /**< container statement node */
+#define LYS_CHOICE      0x0002    /**< choice statement node */
+#define LYS_LEAF        0x0004    /**< leaf statement node */
+#define LYS_LEAFLIST    0x0008    /**< leaf-list statement node */
+#define LYS_LIST        0x0010    /**< list statement node */
+#define LYS_ANYXML      0x0020    /**< anyxml statement node */
+#define LYS_ANYDATA     0x0060    /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
+#define LYS_CASE        0x0080    /**< case statement node */
 
-#define LYS_RPC 0x400             /**< RPC statement node */
-#define LYS_ACTION 0x800          /**< action statement node */
-#define LYS_NOTIF 0x1000           /**< notification statement node */
+#define LYS_RPC         0x0100    /**< RPC statement node */
+#define LYS_ACTION      0x0200    /**< action statement node */
+#define LYS_NOTIF       0x0400    /**< notification statement node */
 
-#define LYS_CASE 0x0040           /**< case statement node */
-#define LYS_USES 0x0080           /**< uses statement node */
-#define LYS_INPUT 0x100
-#define LYS_OUTPUT 0x200
-#define LYS_INOUT 0x300
-#define LYS_GROUPING 0x2000
-#define LYS_AUGMENT 0x4000
+#define LYS_USES        0x0800    /**< uses statement node */
+#define LYS_INPUT       0x1000    /**< RPC/action input node */
+#define LYS_OUTPUT      0x2000    /**< RPC/action output node */
+#define LYS_GROUPING    0x4000
+#define LYS_AUGMENT     0x8000
 
 /**
  * @brief List of YANG statements
@@ -403,7 +402,7 @@ struct lysp_ext_instance {
  */
 struct lysp_feature {
     const char *name;                /**< feature name (mandatory) */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement  */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -426,7 +425,7 @@ struct lysp_nodeid {
  */
 struct lysp_ident {
     const char *name;                /**< identity name (mandatory), including possible prefix */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     const char **bases;              /**< list of base identifiers ([sized array](@ref sizedarrays)) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
@@ -466,7 +465,7 @@ struct lysp_type_enum {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     int64_t value;                   /**< enum's value or bit's position */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_SET_VALUE
                                           values are allowed */
@@ -548,7 +547,7 @@ struct lysp_refine {
     const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     const char *presence;            /**< presence description */
-    struct lysp_nodeid *dflts;       /**< list of default values ([sized array](@ref sizedarrays)) */
+    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -824,7 +823,8 @@ struct lysp_node {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)),
+                                          must be nodeid because of refines */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -840,7 +840,7 @@ struct lysp_node_container {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* container */
@@ -862,7 +862,7 @@ struct lysp_node_leaf {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* leaf */
@@ -881,7 +881,7 @@ struct lysp_node_leaflist {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* leaf-list */
@@ -902,7 +902,7 @@ struct lysp_node_list {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* list */
@@ -927,7 +927,7 @@ struct lysp_node_choice {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* choice */
@@ -944,7 +944,7 @@ struct lysp_node_case {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* case */
@@ -953,14 +953,14 @@ struct lysp_node_case {
 
 struct lysp_node_anydata {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
-    uint16_t nodetype;               /**< LYS_ANYXML || LYS_ANYDATA */
+    uint16_t nodetype;               /**< LYS_ANYXML or LYS_ANYDATA */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* anyxml/anydata */
@@ -976,7 +976,7 @@ struct lysp_node_uses {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     /* uses */
@@ -989,7 +989,7 @@ struct lysp_node_uses {
  */
 struct lysp_action_inout {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
-    uint16_t nodetype;               /**< LYS_INOUT */
+    uint16_t nodetype;               /**< LYS_INPUT or LYS_OUTPUT */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
@@ -1004,15 +1004,17 @@ struct lysp_action {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_RPC or LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     const char *name;                /**< grouping name reference (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-    struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    /* action */
     struct lysp_action_inout input;  /**< RPC's/Action's input */
     struct lysp_action_inout output; /**< RPC's/Action's output */
-    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -1022,15 +1024,17 @@ struct lysp_notif {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_NOTIF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
+    struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     const char *name;                /**< grouping name reference (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-    struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
-    struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
-    struct lysp_node *data;          /**< list of data nodes (linked list) */
+    struct lysp_nodeid *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    /* notif */
+    struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysp_node *data;          /**< list of data nodes (linked list) */
 };
 
 /**

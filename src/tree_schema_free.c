@@ -104,7 +104,7 @@ void
 lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
 {
     FREE_STRING(ctx, feat->name);
-    FREE_STRINGS(ctx, feat->iffeatures);
+    FREE_ARRAY(ctx, feat->iffeatures, lysp_nodeid_free);
     FREE_STRING(ctx, feat->dsc);
     FREE_STRING(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
@@ -114,7 +114,7 @@ void
 lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident)
 {
     FREE_STRING(ctx, ident->name);
-    FREE_STRINGS(ctx, ident->iffeatures);
+    FREE_ARRAY(ctx, ident->iffeatures, lysp_nodeid_free);
     FREE_STRINGS(ctx, ident->bases);
     FREE_STRING(ctx, ident->dsc);
     FREE_STRING(ctx, ident->ref);
@@ -138,7 +138,7 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
     FREE_STRING(ctx, item->name);
     FREE_STRING(ctx, item->dsc);
     FREE_STRING(ctx, item->ref);
-    FREE_STRINGS(ctx, item->iffeatures);
+    FREE_ARRAY(ctx, item->iffeatures, lysp_nodeid_free);
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
 
@@ -197,7 +197,7 @@ lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action)
     FREE_STRING(ctx, action->name);
     FREE_STRING(ctx, action->dsc);
     FREE_STRING(ctx, action->ref);
-    FREE_STRINGS(ctx, action->iffeatures);
+    FREE_ARRAY(ctx, action->iffeatures, lysp_nodeid_free);
     FREE_ARRAY(ctx, action->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, action->groupings, lysp_grp_free);
     lysp_action_inout_free(ctx, &action->input);
@@ -213,7 +213,7 @@ lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif)
     FREE_STRING(ctx, notif->name);
     FREE_STRING(ctx, notif->dsc);
     FREE_STRING(ctx, notif->ref);
-    FREE_STRINGS(ctx, notif->iffeatures);
+    FREE_ARRAY(ctx, notif->iffeatures, lysp_nodeid_free);
     FREE_ARRAY(ctx, notif->musts, lysp_restr_free);
     FREE_ARRAY(ctx, notif->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, notif->groupings, lysp_grp_free);
@@ -329,7 +329,7 @@ lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
     FREE_STRINGS(ctx, ref->iffeatures);
     FREE_ARRAY(ctx, ref->musts, lysp_restr_free);
     FREE_STRING(ctx, ref->presence);
-    FREE_ARRAY(ctx, ref->dflts, lysp_nodeid_free);
+    FREE_STRINGS(ctx, ref->dflts);
     FREE_ARRAY(ctx, ref->exts, lysp_ext_instance_free);
 }
 
@@ -342,7 +342,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
     FREE_STRING(ctx, node->dsc);
     FREE_STRING(ctx, node->ref);
     FREE_MEMBER(ctx, node->when, lysp_when_free);
-    FREE_STRINGS(ctx, node->iffeatures);
+    FREE_ARRAY(ctx, node->iffeatures, lysp_nodeid_free);
     FREE_ARRAY(ctx, node->exts, lysp_ext_instance_free);
 
     switch (node->nodetype) {

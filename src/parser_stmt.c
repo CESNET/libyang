@@ -141,6 +141,50 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
 }
 
 /**
+ * @brief Parse a nodeid that can have more instances such as if-feature.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] substmt Type of this substatement.
+ * @param[in,out] nodeids Parsed nodeids to add to.
+ * @param[in] arg Type of the expected argument.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+lysp_stmt_nodeids(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt,
+        struct lysp_nodeid **nodeids, enum yang_arg arg, struct lysp_ext_instance **exts)
+{
+    struct lysp_nodeid *item;
+    const struct lysp_stmt *child;
+
+    LY_CHECK_RET(lysp_stmt_validate_value(ctx, arg, stmt->arg));
+
+    /* allocate new pointer */
+    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *nodeids, item, LY_EMEM);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &item->str));
+    item->mod = ctx->main_mod;
+
+    for (child = stmt->child; child; child = child->next) {
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
+
+        switch (kw) {
+        case LY_STMT_EXTENSION_INSTANCE:
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, substmt, LY_ARRAY_COUNT(*nodeids) - 1, exts));
+            break;
+        default:
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));
+            return LY_EVALID;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Parse a generic text field that can have more instances such as base.
  *
  * @param[in] ctx yang parser context for logging.
@@ -428,7 +472,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
             break;
         case LY_STMT_IF_FEATURE:
             PARSER_CHECK_STMTVER2_RET(ctx, "if-feature", ly_stmt2str(enum_kw));
-            LY_CHECK_RET(lysp_stmt_text_fields(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
+            LY_CHECK_RET(lysp_stmt_nodeids(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
             break;
         case LY_STMT_REFERENCE:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_REFERENCE, 0, &enm->ref, Y_STR_ARG, &enm->exts));

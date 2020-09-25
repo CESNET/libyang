@@ -187,6 +187,13 @@ struct lysc_deviation {
     uint8_t not_supported;
 };
 
+struct lysc_refine {
+    struct lyxp_expr *nodeid;
+    const struct lysc_node *nodeid_ctx_node;
+
+    struct lysp_refine **rfns;
+};
+
 /**
  * @brief internal context for compilation
  */
@@ -205,6 +212,7 @@ struct lysc_ctx {
     struct ly_set augs;         /**< set of compiled non-applied top-level augments */
     struct ly_set devs;         /**< set of compiled non-applied deviations */
     struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
+    struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines */
     uint32_t path_len;
     uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078

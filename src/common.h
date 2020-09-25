@@ -195,7 +195,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_XP_INOP_2      LYVE_XPATH, "Cannot apply XPath operation %s on %s and %s."
 #define LY_VCODE_XP_INMOD       LYVE_XPATH, "Unknown/non-implemented module \"%.*s\"."
 
-#define LY_VCODE_DEV_NODETYPE   LYVE_REFERENCE, "Invalid deviation of %s node - it is not possible to %s \"%s\" property."
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
 #define LY_VCODE_NOWHEN         LYVE_DATA, "When condition \"%s\" not satisfied."

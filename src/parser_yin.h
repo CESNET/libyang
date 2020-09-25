@@ -57,6 +57,7 @@ enum yin_argument {
 #define YIN_SUBELEM_UNIQUE      0x02    /**< is set when subelement is unique */
 #define YIN_SUBELEM_FIRST       0x04    /**< is set when subelement is actually yang argument mapped to yin element */
 #define YIN_SUBELEM_VER2        0x08    /**< subelemnt is allowed only in modules with version at least 2 (YANG 1.1) */
+#define YIN_SUBELEM_TEXT        0x10    /**< is set when a statement should be parsed into text instead of nodeid */
 
 #define YIN_SUBELEM_PARSED      0x80    /**< is set during parsing when given subelement is encountered for the first
                                              time to simply check validity of given constraints */
@@ -64,7 +65,7 @@ enum yin_argument {
 struct yin_subelement {
     enum ly_stmt type;      /**< type of keyword */
     void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
-    uint8_t flags;          /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST and YIN_SUBELEM_VER2 */
+    uint16_t flags;         /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST, YIN_SUBELEM_VER2, and YIN_SUBELEM_DEFAULT_TEXT */
 };
 
 /* Meta information passed to yin_parse_argument function,

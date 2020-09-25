@@ -1156,7 +1156,8 @@ lysp_node_typedefs(const struct lysp_node *node)
     case LYS_RPC:
     case LYS_ACTION:
         return ((struct lysp_action *)node)->typedefs;
-    case LYS_INOUT:
+    case LYS_INPUT:
+    case LYS_OUTPUT:
         return ((struct lysp_action_inout *)node)->typedefs;
     case LYS_NOTIF:
         return ((struct lysp_notif *)node)->typedefs;
@@ -1178,7 +1179,8 @@ lysp_node_groupings(const struct lysp_node *node)
     case LYS_RPC:
     case LYS_ACTION:
         return ((struct lysp_action *)node)->groupings;
-    case LYS_INOUT:
+    case LYS_INPUT:
+    case LYS_OUTPUT:
         return ((struct lysp_action_inout *)node)->groupings;
     case LYS_NOTIF:
         return ((struct lysp_notif *)node)->groupings;
@@ -1191,6 +1193,7 @@ struct lysp_action **
 lysp_node_actions_p(struct lysp_node *node)
 {
     assert(node);
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysp_node_container *)node)->actions;
@@ -1264,7 +1267,8 @@ lysp_node_children_p(struct lysp_node *node)
         return &((struct lysp_grp *)node)->data;
     case LYS_AUGMENT:
         return &((struct lysp_augment *)node)->child;
-    case LYS_INOUT:
+    case LYS_INPUT:
+    case LYS_OUTPUT:
         return &((struct lysp_action_inout *)node)->data;
     case LYS_NOTIF:
         return &((struct lysp_notif *)node)->data;

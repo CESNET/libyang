@@ -69,7 +69,7 @@ test_identity(void **state)
     assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->identities));
     assert_string_equal(mod->parsed->identities[0].name, "ident-name");
     assert_string_equal(mod->parsed->identities[0].bases[0], "base-name");
-    assert_string_equal(mod->parsed->identities[0].iffeatures[0], "iff");
+    assert_string_equal(mod->parsed->identities[0].iffeatures[0].str, "iff");
     assert_string_equal(mod->parsed->identities[0].dsc, "desc");
     assert_string_equal(mod->parsed->identities[0].ref, "ref");
     assert_true(mod->parsed->identities[0].flags & LYS_STATUS_DEPRC);
@@ -197,7 +197,7 @@ test_feature(void **state)
     assert_string_equal(mod->parsed->features[0].name, "feature-name");
     assert_string_equal(mod->parsed->features[0].dsc, "desc");
     assert_true(mod->parsed->features[0].flags & LYS_STATUS_DEPRC);
-    assert_string_equal(mod->parsed->features[0].iffeatures[0], "iff");
+    assert_string_equal(mod->parsed->features[0].iffeatures[0].str, "iff");
     assert_string_equal(mod->parsed->features[0].ref, "ref");
     /*assert_string_equal(mod->parsed->features[0].exts[0].name, "ext");
     assert_int_equal(mod->parsed->features[0].exts[0].insubstmt_index, 0);
