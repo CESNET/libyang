@@ -166,6 +166,15 @@ lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
     return NULL;
 }
 
+/**
+ * @brief Add/replace a leaf default value in unres.
+ * Can also be used for a single leaf-list default value.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] leaf Leaf with the default value.
+ * @param[in] dflt Default value to use.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, struct lysp_nodeid *dflt)
 {
@@ -196,6 +205,14 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Add/replace a leaf-list default value(s) in unres.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] llist Leaf-list with the default value.
+ * @param[in] dflts Sized array of the default values.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llist, struct lysp_nodeid *dflts)
 {
@@ -3266,7 +3283,7 @@ static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, s
         uint16_t uses_status, struct ly_set *child_set);
 
 static LY_ERR lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node *node_p,
-        const struct lysc_node *parent, struct lysp_node **dev_node_p, uint8_t *not_supported);
+        const struct lysc_node *parent, struct lysp_node **dev_node_p, ly_bool *not_supported);
 
 static LY_ERR lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node);
 
@@ -3293,7 +3310,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
     struct lysp_action *orig_action_p = action_p;
     struct lysp_action_inout *inout_p;
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t not_supported;
+    ly_bool not_supported;
     uint32_t opt_prev = ctx->options;
 
     lysc_update_path(ctx, parent, action_p->name);
@@ -3437,7 +3454,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     struct lysp_node *child_p, *dev_node_p = NULL;
     struct lysp_notif *orig_notif_p = notif_p;
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t not_supported;
+    ly_bool not_supported;
     uint32_t opt_prev = ctx->options;
 
     lysc_update_path(ctx, parent, notif_p->name);
@@ -4664,6 +4681,16 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Check whether 2 schema nodeids match.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] exp1 First schema nodeid.
+ * @param[in] exp1_mod Module of @p exp1 nodes without any prefix.
+ * @param[in] exp2 Second schema nodeid.
+ * @param[in] exp2_mod Module of @p exp2 nodes without any prefix.
+ * @return Whether the schema nodeids match or not.
+ */
 static ly_bool
 lys_abs_schema_nodeid_match(const struct ly_ctx *ctx, const struct lyxp_expr *exp1, const struct lys_module *exp1_mod,
         const struct lyxp_expr *exp2, const struct lys_module *exp2_mod)
@@ -4704,6 +4731,14 @@ lys_abs_schema_nodeid_match(const struct ly_ctx *ctx, const struct lyxp_expr *ex
     return 1;
 }
 
+/**
+ * @brief Prepare any uses augments and refines in the context to be applied during uses descendant node compilation.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] uses_p Parsed uses structure with augments and refines.
+ * @param[in] ctx_node Context node of @p uses_p meaning its first data definiition parent.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, const struct lysc_node *ctx_node)
 {
@@ -5379,6 +5414,15 @@ lysp_notif_dup(const struct ly_ctx *ctx, struct lysp_notif *notif, const struct 
     return ret;
 }
 
+/**
+ * @brief Duplicate a single parsed node. Only attributes that are used in compilation are copied.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] node_p Node to duplicate.
+ * @param[in] with_links Whether to also copy any links (child, parent pointers).
+ * @param[out] dup_p Duplicated parsed node.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *node_p, ly_bool with_links, struct lysp_node **dup_p)
 {
@@ -5488,6 +5532,14 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *node_p, ly_boo
         goto cleanup; \
     }
 
+/**
+ * @brief Apply refine.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] rfn Refine to apply.
+ * @param[in,out] target Refine target.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node *target)
 {
@@ -5510,7 +5562,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
             ((struct lysp_node_leaf *)target)->dflt.mod = ctx->mod;
             break;
         case LYS_LEAFLIST:
-            if (ctx->mod->version < 2) {
+            if (ctx->mod->version < LYS_VERSION_1_1) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                         "Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.");
                 ret = LY_EVALID;
@@ -5666,9 +5718,8 @@ cleanup:
  * @brief Apply deviate add.
  *
  * @param[in] ctx Compile context.
- * @param[in] target Deviation target.
- * @param[in] dev_flags Internal deviation flags.
  * @param[in] d Deviate add to apply.
+ * @param[in,out] target Deviation target.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -5872,9 +5923,8 @@ cleanup:
  * @brief Apply deviate delete.
  *
  * @param[in] ctx Compile context.
- * @param[in] target Deviation target.
- * @param[in] dev_flags Internal deviation flags.
  * @param[in] d Deviate delete to apply.
+ * @param[in,out] target Deviation target.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -6007,8 +6057,8 @@ cleanup:
  * @brief Apply deviate replace.
  *
  * @param[in] ctx Compile context.
- * @param[in] target Deviation target.
  * @param[in] d Deviate replace to apply.
+ * @param[in,out] target Deviation target.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -6156,6 +6206,17 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Get module of a single nodeid node name test.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] nametest Nametest with an optional prefix.
+ * @param[in] nametest_len Length of @p nametest.
+ * @param[in] local_mod Module to return in case of no prefix.
+ * @param[out] name Optional pointer to the name test without the prefix.
+ * @param[out] name_len Length of @p name.
+ * @return Resolved module.
+ */
 static const struct lys_module *
 lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_t nametest_len,
         const struct lys_module *local_mod, const char **name, size_t *name_len)
@@ -6187,8 +6248,18 @@ lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_
     return target_mod;
 }
 
+/**
+ * @brief Check whether a parsed node matches a single schema nodeid name test.
+ *
+ * @param[in] node_p Parsed node to consider.
+ * @param[in] node_p_mod Compiled @p node_p to-be module.
+ * @param[in] mod Expected module.
+ * @param[in] name Expected name.
+ * @param[in] name_len Length of @p name.
+ * @return Whether it is a match or not.
+ */
 static ly_bool
-lysp_schema_nodeid_match_node_p(const struct lys_module *node_p_mod, const struct lysp_node *node_p,
+lysp_schema_nodeid_match_node_p(const struct lysp_node *node_p, const struct lys_module *node_p_mod,
         const struct lys_module *mod, const char *name, size_t name_len)
 {
     const char *name_p;
@@ -6213,6 +6284,15 @@ lysp_schema_nodeid_match_node_p(const struct lys_module *node_p_mod, const struc
     return 1;
 }
 
+/**
+ * @brief Check whether a compiled node matches a single schema nodeid name test.
+ *
+ * @param[in,out] node Compiled node to consider. On a match it is moved to its parent.
+ * @param[in] mod Expected module.
+ * @param[in] name Expected name.
+ * @param[in] name_len Length of @p name.
+ * @return Whether it is a match or not.
+ */
 static ly_bool
 lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_module *mod, const char *name,
         size_t name_len)
@@ -6266,6 +6346,17 @@ lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_mo
     return 1;
 }
 
+/**
+ * @brief Check whether a node matches specific schema nodeid.
+ *
+ * @param[in] exp Parsed nodeid to match.
+ * @param[in] exp_mod Module to use for nodes in @p exp without a prefix.
+ * @param[in] ctx_node Initial context node that should match, only for descendant paths.
+ * @param[in] parent First compiled parent to consider. If @p node_p is NULL, it is condered the node to be matched.
+ * @param[in] node_p Parsed node to be matched. May be NULL if the target node was already compiled.
+ * @param[in] node_p_mod Compiled @p node_p to-be module.
+ * @return Whether it is a match or not.
+ */
 static ly_bool
 lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lys_module *exp_mod, const struct lysc_node *ctx_node,
         const struct lysc_node *parent, const struct lysp_node *node_p, const struct lys_module *node_p_mod)
@@ -6284,7 +6375,7 @@ lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lys_module *e
 
     if (node_p) {
         /* compare on the last parsed-only node */
-        if (!lysp_schema_nodeid_match_node_p(node_p_mod, node_p, mod, name, name_len)) {
+        if (!lysp_schema_nodeid_match_node_p(node_p, node_p_mod, mod, name, name_len)) {
             return 0;
         }
     } else {
@@ -6411,9 +6502,19 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_node_p)
     lysp_node_free((struct ly_ctx *)ctx, dev_node_p);
 }
 
+/**
+ * @brief Compile and apply any precompiled deviations and refines targetting a node.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node_p Parsed node to consider.
+ * @param[in] parent First compiled parent of @p node_p.
+ * @param[out] dev_node_p Copy of parsed node @p node_p with deviations and refines, if any. NULL if there are none.
+ * @param[out] no_supported Whether a not-supported deviation is defined for the node.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node *node_p, const struct lysc_node *parent,
-        struct lysp_node **dev_node_p, uint8_t *not_supported)
+        struct lysp_node **dev_node_p, ly_bool *not_supported)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
@@ -6534,6 +6635,13 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Compile and apply any precompiled top-level or uses augments targetting a node.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Compiled node to consider.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
 {
@@ -6599,6 +6707,14 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Prepare a top-level augment to be applied during data nodes compilation.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] aug_p Parsed augment to be applied.
+ * @param[in] mod_def Local module for @p aug_p.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const struct lys_module *mod_def)
 {
@@ -6633,6 +6749,12 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Prepare all top-level augments for the current module to be applied during data nodes compilation.
+ *
+ * @param[in] ctx Compile context.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_precompile_own_augments(struct lysc_ctx *ctx)
 {
@@ -6658,6 +6780,14 @@ lys_precompile_own_augments(struct lysc_ctx *ctx)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Prepare a deviation to be applied during data nodes compilation.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] dev_p Parsed deviation to be applied.
+ * @param[in] mod_def Local module for @p dev_p.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_precompile_own_deviation(struct lysc_ctx *ctx, struct lysp_deviation *dev_p, const struct lys_module *mod_def)
 {
@@ -6710,6 +6840,12 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Prepare all deviations for the current module to be applied during data nodes compilation.
+ *
+ * @param[in] ctx Compile context.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_precompile_own_deviations(struct lysc_ctx *ctx)
 {
@@ -6784,7 +6920,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
     struct lysc_when **when;
     struct lysp_node *dev_node_p = NULL, *orig_node_p = node_p;
     LY_ARRAY_COUNT_TYPE u;
-    uint8_t not_supported;
+    ly_bool not_supported;
     LY_ERR (*node_compile_spec)(struct lysc_ctx *, struct lysp_node *, struct lysc_node *);
 
     if (node_p->nodetype != LYS_USES) {
@@ -6925,6 +7061,14 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Add a module reference into an array, checks for duplicities.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] mod Module reference to add.
+ * @param[in,out] mod_array Module sized array to add to.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_module ***mod_array)
 {
@@ -6945,6 +7089,13 @@ lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_m
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Compile top-level augments and deviations defined in the current module.
+ * Generally, just add the module refence to the target modules.
+ *
+ * @param[in] ctx Compile context.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_precompile_augments_deviations(struct lysc_ctx *ctx)
 {
@@ -7239,6 +7390,7 @@ cleanup:
 
 /**
  * @brief Check when for cyclic dependencies.
+ *
  * @param[in] set Set with all the referenced nodes.
  * @param[in] node Node whose "when" referenced nodes are in @p set.
  * @return LY_ERR value
@@ -7327,7 +7479,8 @@ cleanup:
 }
 
 /**
- * @brief Check when/must expressions of a node on a compiled schema tree.
+ * @brief Check when/must expressions of a node on a complete compiled schema tree.
+ *
  * @param[in] ctx Compile context.
  * @param[in] node Node to check.
  * @return LY_ERR value
@@ -7470,6 +7623,14 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Check leafref for its target existence on a complete compiled schema tree.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Context node for the leafref.
+ * @param[in] lref Leafref to resolve.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, struct lysc_type_leafref *lref)
 {
@@ -7575,6 +7736,17 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Compile default value(s) for leaf or leaf-list expecting a complete compiled schema tree.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Leaf or leaf-list to compile the default value(s) for.
+ * @param[in] type Type of the default value.
+ * @param[in] dflt Default value.
+ * @param[in] dflt_mod Local module for @p dflt.
+ * @param[in,out] storage Storage for the compiled default value.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_type *type, const char *dflt,
         const struct lys_module *dflt_mod, struct lyd_value *storage)
@@ -7599,6 +7771,14 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     return ret;
 }
 
+/**
+ * @brief Compile default value of a leaf expecting a complete compiled schema tree.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] leaf Leaf that the default value is for.
+ * @param[in] dflt Default value to compile.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_unres_leaf_dlft(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, struct lysp_nodeid *dflt)
 {
@@ -7625,6 +7805,15 @@ lys_compile_unres_leaf_dlft(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, s
     return ret;
 }
 
+/**
+ * @brief Compile default values of a leaf-list expecting a complete compiled schema tree.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] llist Leaf-list that the default value(s) are for.
+ * @param[in] dflt Default value to compile, in case of a single value.
+ * @param[in] dflts Sized array of default values, in case of more values.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *llist, struct lysp_nodeid *dflt,
         struct lysp_nodeid *dflts)
@@ -7686,6 +7875,12 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Finish compilation of all the unres sets of a compile context.
+ *
+ * @param[in] ctx Compile context with unres sets.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_unres(struct lysc_ctx *ctx)
 {
@@ -7775,6 +7970,13 @@ lys_compile_unres(struct lysc_ctx *ctx)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from
+ * all the target modules.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] mod Mod whose precompilation to revert.
+ */
 static void
 lys_precompile_augments_deviations_revert(struct lysc_ctx *ctx, const struct lys_module *mod)
 {
@@ -7823,6 +8025,12 @@ lys_precompile_augments_deviations_revert(struct lysc_ctx *ctx, const struct lys
     }
 }
 
+/**
+ * @brief Compile features in the current module and all its submodules.
+ *
+ * @param[in] ctx Compile context.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_features(struct lysc_ctx *ctx)
 {
@@ -7861,6 +8069,12 @@ lys_compile_features(struct lysc_ctx *ctx)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Compile identites in the current module and all its submodules.
+ *
+ * @param[in] ctx Compile context.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_identities(struct lysc_ctx *ctx)
 {
