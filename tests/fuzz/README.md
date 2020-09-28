@@ -32,7 +32,7 @@ $ make
 The target executables will then be available in tests/fuzz of the build directory that was used.
 
 The libyang yang test files available in the `tests/modules/` subdirectory can be used as initial
-test cases for fuzzing the targets. However, a smaller corpus of YANG models should probably
+test cases for fuzzing targets that receive YANG models, like the lys_parse_mem_fuzz_harness. However, a smaller corpus of YANG models should probably
 be used, as larger models decrease execution speed. A good place to start would be to collect
 small YANG files, each of which uses only a single YANG feature.
 
@@ -47,8 +47,8 @@ The total number of instances should usually be equal to the number of cores.
 
 Below is an example of running 2 instances. The -i flag specifies the testcase input directory, and the -o file specifies the directory the fuzzer will use for output.
 ```
-afl-fuzz -i minimised_testcases/ -o syncdir/ -M fuzzer1 -- libyang/build/fuzz/yangfuzz @@
-afl-fuzz -i minimised_testcases/ -o syncdir/ -S fuzzer2 -- libyang/build/fuzz/yangfuzz @@
+afl-fuzz -i minimised_testcases/ -o syncdir/ -M fuzzer1 -- libyang/build/tests/fuzz/lyd_parse_mem_fuzz_harness
+afl-fuzz -i minimised_testcases/ -o syncdir/ -S fuzzer2 -- libyang/build/tests/fuzz/lyd_parse_mem_fuzz_harness
 ```
 
 To fuzz with LibFuzzer, at the most basic level, everything that is required is
@@ -60,3 +60,5 @@ The options are described in the official LibFuzzer documentation (https://llvm.
 
 ## Fuzzing corpus and regression testing
 The `tests/fuzz/corpus` directory contains subdirectories for every fuzz target. Those subdirectories contain a collection of previous inputs that were found by fuzzing and caused visible issues or crashes. Every input file is named after the issue or pull request where it was originally reported. When a new issue is discovered, the input causing the issue should be added to the appropriate directory.
+
+These input files are then used by the fuzz_regression_test test which sends the corpus into the corresponding fuzz harness, to test whether any of the files crash and cause regressions.
