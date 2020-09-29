@@ -9011,7 +9011,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
     set->type = LYXP_SET_SNODE_SET;
     set_snode_insert_node(set, _ctx_snode, ctx_snode_type);
 
-    rc = eval_expr_select(exp, &exp_idx, 0, (struct lyd_node *)_ctx_snode, lys_node_module(_ctx_snode), set, options);
+    rc = eval_expr_select(exp, &exp_idx, 0, (struct lyd_node *)_ctx_snode, lys_node_module(cur_snode), set, options);
     if (rc == 2) {
         rc = EXIT_SUCCESS;
     }
