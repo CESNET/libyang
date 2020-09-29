@@ -192,7 +192,7 @@ print_set_debug(struct lyxp_set *set)
                 if ((item->node->schema->nodetype == LYS_LIST)
                         && (((struct lyd_node_inner *)item->node)->child->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
-                           item->node->schema->name, LYD_CANON_VALUE(lyd_node_children(item->node, 0)));
+                           item->node->schema->name, LYD_CANON_VALUE(lyd_child(item->node)));
                 } else if (((struct lyd_node_inner *)item->node)->schema->nodetype == LYS_LEAFLIST) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
                            item->node->schema->name, LYD_CANON_VALUE(item->node));
@@ -351,7 +351,7 @@ cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
-        for (child = lyd_node_children(node, 0); child; child = child->next) {
+        for (child = lyd_child(node); child; child = child->next) {
             rc = cast_string_recursive(child, 0, root_type, indent + 1, str, used, size);
             LY_CHECK_RET(rc);
         }
@@ -5463,7 +5463,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *mod, const char *ncna
             siblings = set->tree;
         } else {
             /* search in children */
-            siblings = lyd_node_children(set->val.nodes[i].node, 0);
+            siblings = lyd_child(set->val.nodes[i].node);
         }
 
         for (sub = siblings; sub; sub = sub->next) {
@@ -5546,7 +5546,7 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
             siblings = set->tree;
         } else if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
             /* search in children */
-            siblings = lyd_node_children(set->val.nodes[i].node, 0);
+            siblings = lyd_child(set->val.nodes[i].node);
         }
 
         /* find the node using hashes */
@@ -5734,7 +5734,7 @@ moveto_node_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
 
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
-            next = lyd_node_children(elem, 0);
+            next = lyd_child(elem);
             if (!next) {
 skip_children:
                 /* no children, so try siblings, but only if it's not the start,
@@ -6079,7 +6079,7 @@ moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, e
         }
 
         /* add all the children of this node */
-        first = lyd_node_children(parent, 0);
+        first = lyd_child(parent);
         break;
     default:
         LOGINT_RET(parent->schema->module->ctx);

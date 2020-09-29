@@ -45,7 +45,7 @@ loop_next:
         /* LYD_TREE_DFS_END */
 
         /* select element for the next run - children first */
-        *next = lyd_node_children(*elem, 0);
+        *next = lyd_child(*elem);
         if (!*next) {
             /* no children */
             if (*elem == *start) {

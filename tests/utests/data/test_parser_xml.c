@@ -437,15 +437,15 @@ test_rpc(void **state)
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc");
     assert_non_null(((struct lyd_node_opaq *)tree)->attr);
-    node = lyd_node_children(tree, 0);
+    node = lyd_child(tree);
     assert_string_equal(node->schema->name, "edit-config");
-    node = lyd_node_children(node, 0)->next;
+    node = lyd_child(node)->next;
     assert_string_equal(node->schema->name, "config");
 
     node = ((struct lyd_node_any *)node)->value.tree;
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "cp");
-    node = lyd_node_children(node, 0);
+    node = lyd_child(node);
     /* z has no value */
     assert_null(node->schema);
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "z");
@@ -519,7 +519,7 @@ test_action(void **state)
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc");
     assert_non_null(((struct lyd_node_opaq *)tree)->attr);
-    node = lyd_node_children(tree, 0);
+    node = lyd_child(tree);
     assert_null(node->schema);
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "action");
     assert_null(((struct lyd_node_opaq *)node)->attr);
@@ -580,7 +580,7 @@ test_notification(void **state)
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "notification");
     assert_null(((struct lyd_node_opaq *)tree)->attr);
-    node = lyd_node_children(tree, 0);
+    node = lyd_child(tree);
     assert_null(node->schema);
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "eventTime");
     assert_string_equal(((struct lyd_node_opaq *)node)->value, "2037-07-08T00:01:00Z");
@@ -654,7 +654,7 @@ test_reply(void **state)
 
     assert_non_null(op);
     assert_string_equal(op->schema->name, "act");
-    node = lyd_node_children(op, 0);
+    node = lyd_child(op);
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "al");
     assert_true(node->schema->flags & LYS_CONFIG_R);
@@ -663,12 +663,12 @@ test_reply(void **state)
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc-reply");
     assert_non_null(((struct lyd_node_opaq *)tree)->attr);
-    node = lyd_node_children(tree, 0);
+    node = lyd_child(tree);
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "c");
 
     /* TODO print only rpc-reply node and then output subtree */
-    lyd_print_tree(out, lyd_node_children(op, 0), LYD_XML, LYD_PRINT_SHRINK);
+    lyd_print_tree(out, lyd_child(op), LYD_XML, LYD_PRINT_SHRINK);
     assert_string_equal(str,
         "<al xmlns=\"urn:tests:a\">25</al>");
     ly_out_reset(out);

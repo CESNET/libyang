@@ -83,21 +83,56 @@ lyd_node_children_p(struct lyd_node *node)
 }
 
 API struct lyd_node *
-lyd_node_children(const struct lyd_node *node, uint32_t options)
+lyd_parent(const struct lyd_node *node)
 {
-    struct lyd_node **children, *child;
+    if (!node) {
+        return NULL;
+    }
+
+    return (struct lyd_node *)(node)->parent;
+}
+
+API struct lyd_node *
+lyd_child(const struct lyd_node *node)
+{
+    struct lyd_node **children;
 
     if (!node) {
         return NULL;
     }
 
+    if (!node->schema) {
+        /* opaq node */
+        return ((struct lyd_node_opaq *)(node))->child;
+    }
+
     children = lyd_node_children_p((struct lyd_node *)node);
     if (children) {
-        child = *children;
-        if (options & LYD_CHILDREN_SKIP_KEYS) {
-            while (child && child->schema && (child->schema->flags & LYS_KEY)) {
-                child = child->next;
-            }
+        return *children;
+    } else {
+        return NULL;
+    }
+}
+
+API struct lyd_node *
+lyd_child_no_keys(const struct lyd_node *node)
+{
+    struct lyd_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        /* opaq node */
+        return ((struct lyd_node_opaq *)(node))->child;
+    }
+
+    children = lyd_node_children_p((struct lyd_node *)node);
+    if (children) {
+        struct lyd_node *child = *children;
+        while (child && child->schema && (child->schema->flags & LYS_KEY)) {
+            child = child->next;
         }
         return child;
     } else {
@@ -185,7 +220,7 @@ lyd_parse_check_keys(struct lyd_node *node)
 
     assert(node->schema->nodetype == LYS_LIST);
 
-    key = lyd_node_children(node, 0);
+    key = lyd_child(node);
     while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
         if (!key || (key->schema != skey)) {
             LOGVAL(LYD_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOKEY, skey->name);

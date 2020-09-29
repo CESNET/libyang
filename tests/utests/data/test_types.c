@@ -1016,7 +1016,7 @@ test_leafref(void **state)
     TEST_DATA("<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
               "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>y</lr1></l></c>", LY_SUCCESS, "");
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
-    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree, 0)->next, 0)->prev);
+    leaf = (struct lyd_node_term*)(lyd_child(lyd_child(tree)->next)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("lr1", leaf->schema->name);
     assert_string_equal("y", leaf->value.canonical);
@@ -1026,7 +1026,7 @@ test_leafref(void **state)
               "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
               "<l><id>x</id><value>x</value><lr2>y</lr2></l></c>", LY_SUCCESS, "");
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
-    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree, 0)->prev, 0)->prev);
+    leaf = (struct lyd_node_term*)(lyd_child(lyd_child(tree)->prev)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("lr2", leaf->schema->name);
     assert_string_equal("y", leaf->value.canonical);
@@ -1037,7 +1037,7 @@ test_leafref(void **state)
               "<c xmlns=\"urn:tests:leafrefs\"><x><x>y</x></x>"
               "<l><id>x</id><value>x</value><lr3>c</lr3></l></c>", LY_SUCCESS, "");
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
-    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree, 0)->prev, 0)->prev);
+    leaf = (struct lyd_node_term*)(lyd_child(lyd_child(tree)->prev)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("lr3", leaf->schema->name);
     assert_string_equal("c", leaf->value.canonical);

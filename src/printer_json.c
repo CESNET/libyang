@@ -591,7 +591,7 @@ static LY_ERR
 json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_node *child;
-    struct lyd_node *children = lyd_node_children(node, 0);
+    struct lyd_node *children = lyd_child(node);
     ly_bool has_content = 0;
 
     if (node->meta || children) {
@@ -670,7 +670,7 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
     }
 
     if (node->schema->nodetype == LYS_LIST) {
-        if (!lyd_node_children(node, 0)) {
+        if (!lyd_child(node)) {
             /* empty, e.g. in case of filter */
             ly_print_(ctx->out, "%s%snull", (ctx->level_printed >= ctx->level) ? "," : "", DO_FORMAT ? " " : "");
             LEVEL_PRINTED;
