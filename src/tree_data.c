@@ -1777,7 +1777,7 @@ lyd_insert_only_child(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lyd_node_inner *par;
 
-    assert(parent && !lyd_node_children(parent, 0) && !node->next && (node->prev == node));
+    assert(parent && !lyd_child(parent) && !node->next && (node->prev == node));
     assert(!parent->schema || (parent->schema->nodetype & LYD_NODE_INNER));
 
     par = (struct lyd_node_inner *)parent;
@@ -1811,7 +1811,7 @@ lyd_insert_has_keys(const struct lyd_node *list)
     const struct lysc_node *skey = NULL;
 
     assert(list->schema->nodetype == LYS_LIST);
-    key = lyd_node_children(list, 0);
+    key = lyd_child(list);
     while ((skey = lys_getnext(skey, list->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
         if (!key || (key->schema != skey)) {
             /* key missing */
@@ -2815,7 +2815,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
             match_trg->flags = sibling_src->flags | LYD_NEW;
         } else {
             /* check descendants, recursively */
-            LY_LIST_FOR_SAFE(LYD_CHILD_NO_KEYS(sibling_src), tmp, child_src) {
+            LY_LIST_FOR_SAFE(lyd_child_no_keys(sibling_src), tmp, child_src) {
                 LY_CHECK_RET(lyd_merge_sibling_r(lyd_node_children_p(match_trg), match_trg, &child_src, options));
             }
         }
@@ -2923,7 +2923,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
     const char *val;
     char quot;
 
-    for (key = lyd_node_children(node, 0); key && (key->schema->flags & LYS_KEY); key = key->next) {
+    for (key = lyd_child(node); key && (key->schema->flags & LYS_KEY); key = key->next) {
         val = LYD_CANON_VALUE(key);
         len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
         LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));

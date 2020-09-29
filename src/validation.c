@@ -391,7 +391,7 @@ lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct 
                     /* add into diff */
                     if ((match->schema->nodetype == LYS_CONTAINER) && !(match->schema->flags & LYS_PRESENCE)) {
                         /* we do not want to track NP container changes, but remember any removed children */
-                        LY_LIST_FOR(LYD_CHILD(match), iter) {
+                        LY_LIST_FOR(lyd_child(match), iter) {
                             lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
                         }
                     } else {
@@ -553,7 +553,7 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
 
         /* find iter instance in children */
         assert(iter->nodetype & (LYS_CONTAINER | LYS_LEAF));
-        lyd_find_sibling_val(lyd_node_children(node, 0), iter, NULL, 0, &node);
+        lyd_find_sibling_val(lyd_child(node), iter, NULL, 0, &node);
         --depth;
     }
 
@@ -997,11 +997,11 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
 
     LY_LIST_FOR(first, node) {
         /* validate all children recursively */
-        LY_CHECK_RET(lyd_validate_final_r(lyd_node_children(node, 0), node->schema, NULL, val_opts, op));
+        LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node->schema, NULL, val_opts, op));
 
         /* set default for containers */
         if ((node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
-            LY_LIST_FOR(lyd_node_children(node, 0), next) {
+            LY_LIST_FOR(lyd_child(node), next) {
                 if (!(next->flags & LYD_DEFAULT)) {
                     break;
                 }
@@ -1193,7 +1193,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
         }
 
         /* move tree_iter */
-        tree_iter = lyd_node_children(match, 0);
+        tree_iter = lyd_child(match);
 
         /* move depth */
         --cur_depth;
@@ -1268,7 +1268,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
     LY_CHECK_GOTO(ret = lyd_validate_must(op_node, op), cleanup);
 
     /* final validation of all the descendants */
-    LY_CHECK_GOTO(ret = lyd_validate_final_r(lyd_node_children(op_node, 0), op_node->schema, NULL, 0, op), cleanup);
+    LY_CHECK_GOTO(ret = lyd_validate_final_r(lyd_child(op_node), op_node->schema, NULL, 0, op), cleanup);
 
 cleanup:
     /* restore operation tree */

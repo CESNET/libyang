@@ -263,7 +263,7 @@ test_invalid(void **state)
     assert_non_null(st->first);
     st->second = NULL;
 
-    assert_int_equal(lyd_diff_siblings(st->first, lyd_node_children(st->first, 0), 0, &st->diff1), LY_EINVAL);
+    assert_int_equal(lyd_diff_siblings(st->first, lyd_child(st->first), 0, &st->diff1), LY_EINVAL);
 
     assert_int_equal(lyd_diff_siblings(NULL, NULL, 0, NULL), LY_EINVAL);
 }
@@ -375,7 +375,7 @@ test_empty_nested(void **state)
     assert_int_equal(lyd_diff_siblings(NULL, NULL, 0, &st->diff1), LY_SUCCESS);
     assert_null(st->diff1);
 
-    assert_int_equal(lyd_diff_siblings(NULL, lyd_node_children(st->first, 0), 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(NULL, lyd_child(st->first), 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
@@ -386,7 +386,7 @@ test_empty_nested(void **state)
     );
 
     free(st->xml);
-    assert_int_equal(lyd_diff_siblings(lyd_node_children(st->first, 0), NULL, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(lyd_child(st->first), NULL, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);

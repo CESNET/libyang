@@ -98,7 +98,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         diff_parent = match;
 
         /* move down in the diff */
-        siblings = LYD_CHILD_NO_KEYS(match);
+        siblings = lyd_child_no_keys(match);
     }
 
     /* duplicate the subtree (and connect to the diff if possible) */
@@ -591,7 +591,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
 
         /* check descendants, if any, recursively */
         if (match_second) {
-            LY_CHECK_GOTO(lyd_diff_siblings_r(LYD_CHILD_NO_KEYS(iter_first), LYD_CHILD_NO_KEYS(match_second), options,
+            LY_CHECK_GOTO(lyd_diff_siblings_r(lyd_child_no_keys(iter_first), lyd_child_no_keys(match_second), options,
                                               0, diff), cleanup);
         }
 
@@ -909,7 +909,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
             }
         } else {
             /* none operation on nodes without children is redundant and hence forbidden */
-            if (!LYD_CHILD_NO_KEYS(diff_node)) {
+            if (!lyd_child_no_keys(diff_node)) {
                 LOGINT_RET(ctx);
             }
         }
@@ -971,7 +971,7 @@ next_iter_r:
     }
 
     /* apply diff recursively */
-    LY_LIST_FOR(LYD_CHILD_NO_KEYS(diff_node), diff_child) {
+    LY_LIST_FOR(lyd_child_no_keys(diff_node), diff_child) {
         LY_CHECK_RET(lyd_diff_apply_r(lyd_node_children_p(match), match, diff_child, diff_cb, cb_data));
     }
 
@@ -1238,7 +1238,7 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
             diff_match->flags |= src_diff->flags & LYD_DEFAULT;
         } else {
             /* but the operation of its children should remain DELETE */
-            LY_LIST_FOR(LYD_CHILD_NO_KEYS(diff_match), child) {
+            LY_LIST_FOR(lyd_child_no_keys(diff_match), child) {
                 LY_CHECK_RET(lyd_diff_change_op(child, LYD_DIFF_OP_DELETE));
             }
         }
@@ -1278,7 +1278,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
                                       diff_match->flags & LYD_DEFAULT ? "true" : "false", NULL));
         } else {
             /* keep operation for all descendants (for now) */
-            LY_LIST_FOR(LYD_CHILD_NO_KEYS(diff_match), child) {
+            LY_LIST_FOR(lyd_child_no_keys(diff_match), child) {
                 LY_CHECK_RET(lyd_diff_change_op(child, cur_op));
             }
         }
@@ -1292,8 +1292,8 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_DELETE));
 
         /* all descendants not in the diff will be deleted and redundant in the diff, so remove them */
-        LY_LIST_FOR_SAFE(LYD_CHILD_NO_KEYS(diff_match), next, child) {
-            if (lyd_find_sibling_first(LYD_CHILD(src_diff), child, NULL) == LY_ENOTFOUND) {
+        LY_LIST_FOR_SAFE(lyd_child_no_keys(diff_match), next, child) {
+            if (lyd_find_sibling_first(lyd_child(src_diff), child, NULL) == LY_ENOTFOUND) {
                 lyd_free_tree(child);
             }
         }
@@ -1323,7 +1323,7 @@ lyd_diff_is_redundant(struct lyd_node *diff)
 
     assert(diff);
 
-    child = LYD_CHILD_NO_KEYS(diff);
+    child = lyd_child_no_keys(diff);
     mod = ly_ctx_get_module_latest(LYD_CTX(diff), "yang");
     assert(mod);
 
@@ -1397,7 +1397,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     LY_CHECK_RET(lyd_diff_get_op(src_diff, &src_op));
 
     /* find an equal node in the current diff */
-    lyd_diff_find_node(diff_parent ? LYD_CHILD_NO_KEYS(diff_parent) : *diff, src_diff, &diff_node);
+    lyd_diff_find_node(diff_parent ? lyd_child_no_keys(diff_parent) : *diff, src_diff, &diff_node);
 
     if (diff_node) {
         /* get target (current) operation */
@@ -1434,7 +1434,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
         diff_parent = diff_node;
 
         /* merge src_diff recursively */
-        LY_LIST_FOR(LYD_CHILD_NO_KEYS(src_diff), child) {
+        LY_LIST_FOR(lyd_child_no_keys(src_diff), child) {
             LY_CHECK_RET(lyd_diff_merge_r(child, diff_parent, diff_cb, cb_data, diff));
         }
     } else {

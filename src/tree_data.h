@@ -40,27 +40,6 @@ struct lysc_node;
  * Data structures and functions to manipulate and access instance data tree.
  */
 
-/**
- * @brief Macro for getting child pointer of a generic data node.
- *
- * @param[in] node Node whose child pointer to get.
- */
-#define LYD_CHILD(node) ((node)->schema ? (lyd_node_children(node, 0)) : ((struct lyd_node_opaq *)(node))->child)
-
-/**
- * @brief Macro for getting child pointer of a generic data node but skipping its keys in case it is ::LYS_LIST.
- *
- * @param[in] node Node whose child pointer to get.
- */
-#define LYD_CHILD_NO_KEYS(node) ((node)->schema ? (lyd_node_children(node, LYD_CHILDREN_SKIP_KEYS)) : ((struct lyd_node_opaq *)(node))->child)
-
-/**
- * @brief Macro for getting generic parent pointer of a node.
- *
- * @param[in] node Node whose parent pointer to get.
- */
-#define LYD_PARENT(node) ((struct lyd_node *)(node)->parent)
-
 /* *INDENT-OFF* */
 
 /**
@@ -113,7 +92,7 @@ struct lysc_node;
     if (LYD_TREE_DFS_continue) { \
         (LYD_TREE_DFS_next) = NULL; \
     } else { \
-        (LYD_TREE_DFS_next) = lyd_node_children(ELEM, 0); \
+        (LYD_TREE_DFS_next) = lyd_child(ELEM); \
     }\
     if (!(LYD_TREE_DFS_next)) { \
         /* no children */ \
@@ -475,23 +454,37 @@ struct lyd_node_opaq {
 };
 
 /**
- * @defgroup children_options Children traversal options.
- * @ingroup datatree
+ * @brief Get the generic parent pointer of a data node.
+ *
+ * @param[in] node Node whose parent pointer to get.
+ * @return Pointer to the parent node of the @p node.
+ * @return NULL in case of the top-level node or if the @p node is NULL itself.
  */
-
-#define LYD_CHILDREN_SKIP_KEYS  0x01    /**< If list children are returned, skip its keys. */
-
-/** @} children_options */
+struct lyd_node *lyd_parent(const struct lyd_node *node);
 
 /**
- * @brief Get the node's children list if any.
+ * @brief Get the child pointer of a generic data node.
  *
- * Decides the node's type and in case it has a children list, returns it.
- * @param[in] node Node to check.
- * @param[in] options Bitmask of options, see @ref
- * @return Pointer to the first child node (if any) of the \p node.
+ * Decides the node's type and in case it has a children list, returns it. Supports even the opaq nodes (::lyd_node_opaq).
+ *
+ * If you need to skip key children, use ::lyd_child_no_keys().
+ *
+ * @param[in] node Node to use.
+ * @return Pointer to the first child node (if any) of the @p node.
  */
-struct lyd_node *lyd_node_children(const struct lyd_node *node, uint32_t options);
+struct lyd_node *lyd_child(const struct lyd_node *node);
+
+/**
+ * @brief Get the child pointer of a generic data node but skip its keys in case it is ::LYS_LIST.
+ *
+ * Decides the node's type and in case it has a children list, returns it. Supports even the opaq nodes (::lyd_node_opaq).
+ *
+ * If you need to take key children into account, use ::lyd_child().
+ *
+ * @param[in] node Node to use.
+ * @return Pointer to the first child node (if any) of the @p node.
+ */
+struct lyd_node *lyd_child_no_keys(const struct lyd_node *node);
 
 /**
  * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,

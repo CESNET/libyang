@@ -929,7 +929,7 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     }
 
     /* recursively write all the descendants */
-    LY_LIST_FOR(lyd_node_children(node, 0), node) {
+    LY_LIST_FOR(lyd_child(node), node) {
         LY_CHECK_RET(lyb_print_subtree(out, node, &child_ht, lybctx));
     }
 

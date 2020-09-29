@@ -820,7 +820,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
 
     if (lysc_data_parent(path[0].node)) {
         /* relative path, start from the parent children */
-        start = lyd_node_children(start, 0);
+        start = lyd_child(start);
     } else {
         /* absolute path, start from the first top-level sibling */
         while (start->parent) {
@@ -870,7 +870,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
         prev_node = node;
 
         /* next path segment, if any */
-        start = lyd_node_children(node, 0);
+        start = lyd_child(node);
     }
 
     if (node) {
