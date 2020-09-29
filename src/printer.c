@@ -102,6 +102,7 @@ ly_print(struct lyout *out, const char *format, ...)
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
+                free(msg);
                 va_end(ap);
                 return -1;
             }
