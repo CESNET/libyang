@@ -1188,6 +1188,10 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
         return NULL;
     }
 
+    if (module) {
+        module = lys_main_module(module);
+    }
+
     siblings = lyd_new_find_schema(parent, module, 0);
     if (!siblings) {
         LOGARG;
@@ -1277,6 +1281,10 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
     if ((!parent && !module) || !name) {
         LOGARG;
         return NULL;
+    }
+
+    if (module) {
+        module = lys_main_module(module);
     }
 
     siblings = lyd_new_find_schema(parent, module, 0);
@@ -1487,6 +1495,10 @@ lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const 
         return NULL;
     }
 
+    if (module) {
+        module = lys_main_module(module);
+    }
+
     siblings = lyd_new_find_schema(parent, module, 0);
     if (!siblings) {
         LOGARG;
@@ -1514,6 +1526,8 @@ lyd_new_yangdata(const struct lys_module *module, const char *name_template, con
         return NULL;
     }
 
+    module = lys_main_module(module);
+
     schema = lyp_get_yang_data_template(module, name_template, strlen(name_template));
     if (!schema) {
         LOGERR(module->ctx, LY_EINVAL, "Failed to find yang-data template \"%s\".", name_template);
@@ -1539,6 +1553,10 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
     if ((!parent && !module) || !name) {
         LOGARG;
         return NULL;
+    }
+
+    if (module) {
+        module = lys_main_module(module);
     }
 
     siblings = lyd_new_find_schema(parent, module, 1);
@@ -1569,6 +1587,10 @@ lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, co
         return NULL;
     }
 
+    if (module) {
+        module = lys_main_module(module);
+    }
+
     siblings = lyd_new_find_schema(parent, module, 1);
     if (!siblings) {
         LOGARG;
@@ -1595,6 +1617,10 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
     if ((!parent && !module) || !name) {
         LOGARG;
         return NULL;
+    }
+
+    if (module) {
+        module = lys_main_module(module);
     }
 
     siblings = lyd_new_find_schema(parent, module, 1);
