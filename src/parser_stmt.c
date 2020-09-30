@@ -141,28 +141,28 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
 }
 
 /**
- * @brief Parse a nodeid that can have more instances such as if-feature.
+ * @brief Parse a qname that can have more instances such as if-feature.
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] substmt Type of this substatement.
- * @param[in,out] nodeids Parsed nodeids to add to.
+ * @param[in,out] qnames Parsed qnames to add to.
  * @param[in] arg Type of the expected argument.
  * @param[in,out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_nodeids(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt,
-        struct lysp_nodeid **nodeids, enum yang_arg arg, struct lysp_ext_instance **exts)
+lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt,
+        struct lysp_qname **qnames, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
-    struct lysp_nodeid *item;
+    struct lysp_qname *item;
     const struct lysp_stmt *child;
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, arg, stmt->arg));
 
     /* allocate new pointer */
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *nodeids, item, LY_EMEM);
+    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *qnames, item, LY_EMEM);
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &item->str));
     item->mod = ctx->main_mod;
 
@@ -174,7 +174,7 @@ lysp_stmt_nodeids(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEX
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, substmt, LY_ARRAY_COUNT(*nodeids) - 1, exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, substmt, LY_ARRAY_COUNT(*qnames) - 1, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));
@@ -472,7 +472,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
             break;
         case LY_STMT_IF_FEATURE:
             PARSER_CHECK_STMTVER2_RET(ctx, "if-feature", ly_stmt2str(enum_kw));
-            LY_CHECK_RET(lysp_stmt_nodeids(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
+            LY_CHECK_RET(lysp_stmt_qnames(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
             break;
         case LY_STMT_REFERENCE:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_REFERENCE, 0, &enm->ref, Y_STR_ARG, &enm->exts));

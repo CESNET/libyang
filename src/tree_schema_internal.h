@@ -159,39 +159,52 @@ struct lys_yin_parser_ctx {
  */
 void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
 
+/**
+ * @brief Structure for remembering default values of leaves and leaf-lists. They are resolved at schema compilation
+ * end when the whole schema tree is available.
+ */
 struct lysc_unres_dflt {
     union {
         struct lysc_node_leaf *leaf;
         struct lysc_node_leaflist *llist;
     };
-    struct lysp_nodeid *dflt;
-    struct lysp_nodeid *dflts;           /**< this is a sized array */
+    struct lysp_qname *dflt;
+    struct lysp_qname *dflts;           /**< this is a sized array */
 };
 
+/**
+ * @brief Compiled parsed augment structure. Just a temporary storage for applying the augment to data.
+ */
 struct lysc_augment {
-    struct lyxp_expr *nodeid;
+    struct lyxp_expr *nodeid;       /**< augment target */
     union {
-        const struct lys_module *nodeid_mod;
-        const struct lysc_node *nodeid_ctx_node;
+        const struct lys_module *nodeid_mod;        /**< nodeid local module for absolute targets */
+        const struct lysc_node *nodeid_ctx_node;    /**< nodeid context node for relative targets */
     };
 
-    struct lysp_augment *aug_p;
+    struct lysp_augment *aug_p;     /**< pointer to the parsed augment to apply */
 };
 
+/**
+ * @brief Compiled parsed deviation structure. Just a temporary storage for applying the deviation to data.
+ */
 struct lysc_deviation {
-    struct lyxp_expr *nodeid;
-    const struct lys_module *nodeid_mod;
+    struct lyxp_expr *nodeid;               /**< deviation target */
+    const struct lys_module *nodeid_mod;    /**< nodeid local module */
 
-    struct lysp_deviation **devs;
-    const struct lys_module **dev_mods;
-    uint8_t not_supported;
+    struct lysp_deviation **devs;           /**< sized array of all the parsed deviations for one target node */
+    const struct lys_module **dev_mods;     /**< sized array of modules of @p devs */
+    ly_bool not_supported;                  /**< whether this is a not-supported deviation */
 };
 
+/**
+ * @brief Compiled parsed refine structure. Just a temporary storage for applying the refine to data.
+ */
 struct lysc_refine {
-    struct lyxp_expr *nodeid;
-    const struct lysc_node *nodeid_ctx_node;
+    struct lyxp_expr *nodeid;                   /**< refine target */
+    const struct lysc_node *nodeid_ctx_node;    /**< nodeid context node */
 
-    struct lysp_refine **rfns;
+    struct lysp_refine **rfns;                  /**< sized array of parsed refines to apply */
 };
 
 /**
@@ -354,12 +367,12 @@ LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc
 void lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr);
 
 /**
- * @brief Free a parsed node ID.
+ * @brief Free a parsed qualified name.
  *
  * @param[in] ctx libyang context.
- * @param[in] nodeid Node ID to free.
+ * @param[in] qname Qualified name to free.
  */
-void lysp_nodeid_free(struct ly_ctx *ctx, struct lysp_nodeid *nodeid);
+void lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname);
 
 /**
  * @brief Free a parsed node.

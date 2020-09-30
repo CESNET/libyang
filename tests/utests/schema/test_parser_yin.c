@@ -605,7 +605,7 @@ test_yin_parse_content(void **state)
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
     const char *value, *err_msg, *app_tag, *units;
-    struct lysp_nodeid def = {0};
+    struct lysp_qname def = {0};
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
     struct lysp_type_enum pos_enum = {}, val_enum = {};
@@ -1430,7 +1430,7 @@ test_default_elem(void **state)
 {
     struct test_parser_yin_state *st = *state;
     const char *data;
-    struct lysp_nodeid val = {0};
+    struct lysp_qname val = {0};
     struct lysp_ext_instance *exts = NULL;
 
     data = ELEMENT_WRAPPER_START "<default value=\"defaul-value\">"EXT_SUBELEM"</default>" ELEMENT_WRAPPER_END;
@@ -2709,7 +2709,7 @@ test_refine_elem(void **state)
     assert_string_equal(refines->dsc, "desc");
     assert_true(refines->flags & LYS_CONFIG_W);
     assert_true(refines->flags & LYS_MAND_TRUE);
-    assert_string_equal(*refines->iffeatures, "feature");
+    assert_string_equal(refines->iffeatures[0].str, "feature");
     assert_int_equal(refines->max, 20);
     assert_int_equal(refines->min, 10);
     assert_string_equal(refines->musts->arg.str, "cond");
@@ -3610,7 +3610,7 @@ test_augment_elem(void **state)
     assert_string_equal(augments->dsc, "desc");
     assert_string_equal(augments->ref, "ref");
     assert_string_equal(augments->when->cond, "when-cond");
-    assert_string_equal(*augments->iffeatures, "iff");
+    assert_string_equal(augments->iffeatures[0].str, "iff");
     assert_string_equal(augments->child->name, "anyd");
     assert_int_equal(augments->child->nodetype, LYS_ANYDATA);
     assert_string_equal(augments->child->next->name, "anyx");

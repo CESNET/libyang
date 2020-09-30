@@ -185,7 +185,8 @@ test_yin(void **state)
     struct lyext_metadata *ant;
     const char *data;
 
-    /* TODO data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\">\n"
+    /* TODO yin-extension-prefix-compilation-bug
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\">\n"
             "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:a\"/><prefix value=\"a\"/>\n"
             "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
             "<feature name=\"f\"/>\n"

@@ -886,10 +886,10 @@ yin_parse_must(struct lys_yin_parser_ctx *ctx, struct lysp_restr **restrs)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_nodeid(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
+yin_parse_qname(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
         struct lysp_ext_instance **exts)
 {
-    struct lysp_nodeid *nodeid, **nodeids;
+    struct lysp_qname *qname, **qnames;
 
     switch (kw) {
     case LY_STMT_DEFAULT:
@@ -901,23 +901,23 @@ yin_parse_nodeid(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_sub
             }
         } else {
             if (subinfo->flags & YIN_SUBELEM_UNIQUE) {
-                nodeid = (struct lysp_nodeid *)subinfo->dest;
+                qname = (struct lysp_qname *)subinfo->dest;
             } else {
-                nodeids = (struct lysp_nodeid **)subinfo->dest;
-                LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *nodeids, nodeid, LY_EMEM);
+                qnames = (struct lysp_qname **)subinfo->dest;
+                LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *qnames, qname, LY_EMEM);
             }
-            nodeid->mod = ctx->main_mod;
-            return yin_parse_simple_element(ctx, kw, &nodeid->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
+            qname->mod = ctx->main_mod;
+            return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
         }
     case LY_STMT_IF_FEATURE:
         assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
         if (subinfo->flags & YIN_SUBELEM_TEXT) {
             return yin_parse_simple_elements(ctx, kw, (const char ***)subinfo->dest, YIN_ARG_NAME, Y_STR_ARG, exts);
         } else {
-            nodeids = (struct lysp_nodeid **)subinfo->dest;
-            LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *nodeids, nodeid, LY_EMEM);
-            nodeid->mod = ctx->main_mod;
-            return yin_parse_simple_element(ctx, kw, &nodeid->str, YIN_ARG_NAME, Y_STR_ARG, exts);
+            qnames = (struct lysp_qname **)subinfo->dest;
+            LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *qnames, qname, LY_EMEM);
+            qname->mod = ctx->main_mod;
+            return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_NAME, Y_STR_ARG, exts);
         }
     default:
         break;
@@ -2965,7 +2965,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
                 ret = yin_parse_container(ctx, (struct tree_node_meta *)subelem->dest);
                 break;
             case LY_STMT_DEFAULT:
-                ret = yin_parse_nodeid(ctx, kw, subelem, exts);
+                ret = yin_parse_qname(ctx, kw, subelem, exts);
                 break;
             case LY_STMT_ERROR_APP_TAG:
             case LY_STMT_KEY:
@@ -3000,7 +3000,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
                 ret = yin_parse_identity(ctx, (struct lysp_ident **)subelem->dest);
                 break;
             case LY_STMT_IF_FEATURE:
-                ret = yin_parse_nodeid(ctx, kw, subelem, exts);
+                ret = yin_parse_qname(ctx, kw, subelem, exts);
                 break;
             case LY_STMT_UNITS:
                 ret = yin_parse_simple_elem(ctx, kw, subelem, YIN_ARG_NAME, Y_STR_ARG, exts);

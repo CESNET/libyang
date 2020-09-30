@@ -64,7 +64,7 @@ test_identity(void **state)
                        "<status value=\"deprecated\"/>"
                        "<description><text>desc</text></description>"
                        "<reference><text>ref</text></reference>"
-                       /* TODO "<myext:ext xmlns:myext=\"urn:libyang:test:identityone-yin\"/>" */
+                       /* TODO yin-extension-prefix-compilation-bug "<myext:ext xmlns:myext=\"urn:libyang:test:identityone-yin\"/>" */
                    "</identity><extension name=\"ext\"/><identity name=\"base-name\"/><feature name=\"iff\"/>", mod);
     assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->identities));
     assert_string_equal(mod->parsed->identities[0].name, "ident-name");
@@ -191,7 +191,7 @@ test_feature(void **state)
                        "<status value=\"deprecated\"/>"
                        "<description><text>desc</text></description>"
                        "<reference><text>ref</text></reference>"
-                       /* TODO "<myext:ext xmlns:myext=\"urn:libyang:test:featureone-yin\"/>" */
+                       /* TODO yin-extension-prefix-compilation-bug "<myext:ext xmlns:myext=\"urn:libyang:test:featureone-yin\"/>" */
                    "</feature><extension name=\"ext\"/><feature name=\"iff\"/>", mod);
     assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->features));
     assert_string_equal(mod->parsed->features[0].name, "feature-name");
