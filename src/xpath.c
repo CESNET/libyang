@@ -51,7 +51,7 @@ static int eval_expr_select(struct lyxp_expr *exp, uint16_t *exp_idx, enum lyxp_
 void
 lyxp_expr_free(struct lyxp_expr *expr)
 {
-    uint16_t i;
+    uint32_t i;
 
     if (!expr) {
         return;
@@ -757,7 +757,7 @@ static struct lyxp_set *
 set_copy(struct lyxp_set *set)
 {
     struct lyxp_set *ret;
-    uint16_t i;
+    uint32_t i;
 
     if (!set) {
         return NULL;
@@ -960,7 +960,7 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
 static void
 set_remove_none_nodes(struct lyxp_set *set)
 {
-    uint16_t i, orig_used, end = 0;
+    uint32_t i, orig_used, end = 0;
     int32_t start;
 
     assert(set && (set->type == LYXP_SET_NODE_SET));
@@ -3725,7 +3725,7 @@ static int
 xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *cur_node, struct lys_module *local_mod,
                    struct lyxp_set *set, int options)
 {
-    uint16_t i, j;
+    uint32_t i, j;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
     lyd_val *val;
@@ -3814,7 +3814,7 @@ static int
 xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *cur_node,
                            struct lys_module *local_mod, struct lyxp_set *set, int options)
 {
-    uint16_t i, j;
+    uint32_t i, j;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
     lyd_val *val;
@@ -5051,7 +5051,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *c
 {
     long double num;
     char *str;
-    uint16_t i;
+    uint32_t i;
     struct lyxp_set set_item;
     struct lys_node_leaf *sleaf;
     int ret = EXIT_SUCCESS;
@@ -5335,7 +5335,7 @@ static struct lys_module *
 moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly_ctx *ctx, struct lys_node *cur_snode,
                      int is_name, int import_and_disabled_model)
 {
-    uint16_t i;
+    uint32_t i;
     const char *str;
     struct lys_module *mod, *mainmod;
 
@@ -5364,7 +5364,7 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
         }
     }
 
-    for (i = 0; i < ctx->models.used; ++i) {
+    for (i = 0; i < (unsigned)ctx->models.used; ++i) {
         if (!import_and_disabled_model && (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled)) {
             /* skip not implemented or disabled modules */
             continue;
@@ -7250,8 +7250,8 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                struct lyxp_set *set, int options, int parent_pos_pred)
 {
     int ret;
-    uint16_t i, orig_exp;
-    uint32_t orig_pos, orig_size, pred_in_ctx;
+    uint16_t orig_exp;
+    uint32_t i, orig_pos, orig_size, pred_in_ctx;
     struct lyxp_set set2;
     struct lyd_node *orig_parent;
 
