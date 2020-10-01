@@ -131,8 +131,8 @@ struct lyxp_expr {
     uint16_t *tok_len;       /* array of token lengths in expr */
     enum lyxp_expr_type **repeat; /* array of expression types that this token begins and is repeated ended with 0,
                                      more in the comment after this declaration */
-    uint16_t used;           /* used array items */
-    uint16_t size;           /* allocated array items */
+    uint32_t used;           /* used array items */
+    uint32_t size;           /* allocated array items */
 
     char *expr;              /* the original XPath expression */
 };
