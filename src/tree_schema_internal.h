@@ -159,14 +159,52 @@ struct lys_yin_parser_ctx {
  */
 void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
 
-struct lysc_incomplete_dflt {
+/**
+ * @brief Structure for remembering default values of leaves and leaf-lists. They are resolved at schema compilation
+ * end when the whole schema tree is available.
+ */
+struct lysc_unres_dflt {
     union {
         struct lysc_node_leaf *leaf;
         struct lysc_node_leaflist *llist;
     };
-    const char *dflt;
-    const char **dflts;
-    struct lys_module *dflt_mod;
+    struct lysp_qname *dflt;
+    struct lysp_qname *dflts;           /**< this is a sized array */
+};
+
+/**
+ * @brief Compiled parsed augment structure. Just a temporary storage for applying the augment to data.
+ */
+struct lysc_augment {
+    struct lyxp_expr *nodeid;       /**< augment target */
+    union {
+        const struct lys_module *nodeid_mod;        /**< nodeid local module for absolute targets */
+        const struct lysc_node *nodeid_ctx_node;    /**< nodeid context node for relative targets */
+    };
+
+    struct lysp_augment *aug_p;     /**< pointer to the parsed augment to apply */
+};
+
+/**
+ * @brief Compiled parsed deviation structure. Just a temporary storage for applying the deviation to data.
+ */
+struct lysc_deviation {
+    struct lyxp_expr *nodeid;               /**< deviation target */
+    const struct lys_module *nodeid_mod;    /**< nodeid local module */
+
+    struct lysp_deviation **devs;           /**< sized array of all the parsed deviations for one target node */
+    const struct lys_module **dev_mods;     /**< sized array of modules of @p devs */
+    ly_bool not_supported;                  /**< whether this is a not-supported deviation */
+};
+
+/**
+ * @brief Compiled parsed refine structure. Just a temporary storage for applying the refine to data.
+ */
+struct lysc_refine {
+    struct lyxp_expr *nodeid;                   /**< refine target */
+    const struct lysc_node *nodeid_ctx_node;    /**< nodeid context node */
+
+    struct lysp_refine **rfns;                  /**< sized array of parsed refines to apply */
 };
 
 /**
@@ -174,16 +212,20 @@ struct lysc_incomplete_dflt {
  */
 struct lysc_ctx {
     struct ly_ctx *ctx;
-    struct lys_module *mod;
+    struct lys_module *mod;     /**< module currently being compiled */
     struct lys_module *mod_def; /**< context module for the definitions of the nodes being currently
                                      processed - groupings are supposed to be evaluated in place where
                                      defined, but its content instances are supposed to be placed into
                                      the target module (mod) */
     struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set xpath;        /**< to validate leafref's targets */
-    struct ly_set leafrefs;     /**< when/must to check */
+    struct ly_set xpath;        /**< when/must to check */
+    struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
+    struct ly_set augs;         /**< set of compiled non-applied top-level augments */
+    struct ly_set devs;         /**< set of compiled non-applied deviations */
+    struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
+    struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines */
     uint32_t path_len;
     uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
@@ -317,6 +359,54 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc);
 
 /**
+ * @brief Free a parsed restriction.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] restr Restriction to free.
+ */
+void lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr);
+
+/**
+ * @brief Free a parsed qualified name.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] qname Qualified name to free.
+ */
+void lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname);
+
+/**
+ * @brief Free a parsed node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] node Node to free.
+ */
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+
+/**
+ * @brief Free a parsed input/output node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] inout Input/output to free.
+ */
+void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
+
+/**
+ * @brief Free a parsed action node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] action Action to free.
+ */
+void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
+
+/**
+ * @brief Free a parsed notification node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] notif Notification to free.
+ */
+void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
+
+/**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
@@ -434,15 +524,13 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
  * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
  * The value can be even an ORed value to allow multiple nodetypes.
- * @param[in] implement Flag if the modules mentioned in the nodeid are supposed to be made implemented.
- * @param[out] target Found target node if any. In case of RPC/action input/output node, LYS_RPC or LYS_ACTION node is actually returned
- * since the input/output has not a standalone node structure and it is part of ::lysc_action which is better compatible with ::lysc_node.
+ * @param[out] target Found target node if any.
  * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
  * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
-LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, uint16_t nodetype, ly_bool implement,
+LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len,
+        const struct lysc_node *context_node, const struct lys_module *context_module, uint16_t nodetype,
         const struct lysc_node **target, uint16_t *result_flag);
 
 /**

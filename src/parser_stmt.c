@@ -141,6 +141,50 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
 }
 
 /**
+ * @brief Parse a qname that can have more instances such as if-feature.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] substmt Type of this substatement.
+ * @param[in,out] qnames Parsed qnames to add to.
+ * @param[in] arg Type of the expected argument.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt,
+        struct lysp_qname **qnames, enum yang_arg arg, struct lysp_ext_instance **exts)
+{
+    struct lysp_qname *item;
+    const struct lysp_stmt *child;
+
+    LY_CHECK_RET(lysp_stmt_validate_value(ctx, arg, stmt->arg));
+
+    /* allocate new pointer */
+    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *qnames, item, LY_EMEM);
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &item->str));
+    item->mod = ctx->main_mod;
+
+    for (child = stmt->child; child; child = child->next) {
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
+
+        switch (kw) {
+        case LY_STMT_EXTENSION_INSTANCE:
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, substmt, LY_ARRAY_COUNT(*qnames) - 1, exts));
+            break;
+        default:
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));
+            return LY_EVALID;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Parse a generic text field that can have more instances such as base.
  *
  * @param[in] ctx yang parser context for logging.
@@ -251,7 +295,8 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum l
     const struct lysp_stmt *child;
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
-    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &restr->arg));
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &restr->arg.str));
+    restr->arg.mod = ctx->main_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -427,7 +472,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
             break;
         case LY_STMT_IF_FEATURE:
             PARSER_CHECK_STMTVER2_RET(ctx, "if-feature", ly_stmt2str(enum_kw));
-            LY_CHECK_RET(lysp_stmt_text_fields(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
+            LY_CHECK_RET(lysp_stmt_qnames(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
             break;
         case LY_STMT_REFERENCE:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_REFERENCE, 0, &enm->ref, Y_STR_ARG, &enm->exts));
@@ -652,7 +697,8 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     memmove(buf + 1, stmt->arg, arg_len);
     buf[0] = 0x06; /* pattern's default regular-match flag */
     buf[arg_len + 1] = '\0'; /* terminating NULL byte */
-    LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg));
+    LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
+    restr->arg.mod = ctx->main_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -675,7 +721,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
             break;
         case LY_STMT_MODIFIER:
             PARSER_CHECK_STMTVER2_RET(ctx, "modifier", "pattern");
-            LY_CHECK_RET(lysp_stmt_type_pattern_modifier(ctx, child, &restr->arg, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_type_pattern_modifier(ctx, child, &restr->arg.str, &restr->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, LYEXT_SUBSTMT_SELF, 0, &restr->exts));

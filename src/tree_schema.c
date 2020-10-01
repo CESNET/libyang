@@ -117,11 +117,6 @@ next:
     }
 
 repeat:
-    if (next && parent && parent->nodetype == LYS_CASE && next->parent != parent) {
-        /* inside case (as an explicit parent, not when diving into it from choice),
-         * limit the list of children only to the specific case */
-        next = NULL;
-    }
     if (!next) {
         /* possibly go back to parent */
         if (last && last->parent != parent) {
@@ -1050,7 +1045,9 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
             ret = LY_EDENIED;
             goto error;
         }
-        mod->implemented = 1;
+
+        /* being implemented */
+        mod->implemented = ctx->module_set_id;
     }
 
     /* check for duplicity in the context */

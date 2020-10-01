@@ -195,7 +195,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_XP_INOP_2      LYVE_XPATH, "Cannot apply XPath operation %s on %s and %s."
 #define LY_VCODE_XP_INMOD       LYVE_XPATH, "Unknown/non-implemented module \"%.*s\"."
 
-#define LY_VCODE_DEV_NODETYPE   LYVE_REFERENCE, "Invalid deviation of %s node - it is not possible to %s \"%s\" property."
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
 #define LY_VCODE_NOWHEN         LYVE_DATA, "When condition \"%s\" not satisfied."
@@ -227,21 +226,6 @@ struct ly_ctx {
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
 };
-
-/**
- * @defgroup contextflags Context flags
- * @ingroup context
- *
- * Internal context flags.
- *
- * Note that the flags 0x00FF are reserved for @ref contextoptions.
- * @{
- */
-
-#define LY_CTX_CHANGED_TREE 0x8000    /**< Deviation changed tree of a module(s) in the context, it is necessary to recompile
-                                           leafref paths, default values and must/when expressions to check that they are still valid */
-
-/** @} contextflags */
 
 /**
  * @brief Try to find submodule in the context. Submodules are present only in the parsed (lysp_) schema trees, if only
