@@ -200,9 +200,15 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
     }
 
     r->dflt = malloc(sizeof *r->dflt);
-    lysp_qname_dup(ctx->ctx, r->dflt, dflt);
+    LY_CHECK_GOTO(!r->dflt, error);
+    LY_CHECK_GOTO(lysp_qname_dup(ctx->ctx, r->dflt, dflt), error);
 
     return LY_SUCCESS;
+
+error:
+    free(r->dflt);
+    LOGMEM(ctx->ctx);
+    return LY_EMEM;
 }
 
 /**
@@ -4834,7 +4840,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     struct lysc_node *child;
     struct lysp_grp *grp = NULL;
     uint32_t i, grp_stack_count;
-    struct lys_module *grp_mod, *mod_old;
+    struct lys_module *grp_mod, *mod_old = ctx->mod_def;
     LY_ERR ret = LY_SUCCESS;
     struct lysc_when **when, *when_shared;
     LY_ARRAY_COUNT_TYPE u;
@@ -4864,7 +4870,6 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_CHECK_GOTO(ret, cleanup);
 
     /* switch context's mod_def */
-    mod_old = ctx->mod_def;
     ctx->mod_def = grp_mod;
 
     /* compile data nodes */
@@ -5426,7 +5431,8 @@ lysp_notif_dup(const struct ly_ctx *ctx, struct lysp_notif *notif, const struct 
 static LY_ERR
 lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *pnode, ly_bool with_links, struct lysp_node **dup_p)
 {
-    void *mem;
+    LY_ERR ret = LY_SUCCESS;
+    void *mem = NULL;
 
     if (!pnode) {
         *dup_p = NULL;
@@ -5436,56 +5442,56 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *pnode, ly_bool
     switch (pnode->nodetype) {
     case LYS_CONTAINER:
         mem = calloc(1, sizeof(struct lysp_node_container));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_LEAF:
         mem = calloc(1, sizeof(struct lysp_node_leaf));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_LEAFLIST:
         mem = calloc(1, sizeof(struct lysp_node_leaflist));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_LIST:
         mem = calloc(1, sizeof(struct lysp_node_list));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_CHOICE:
         mem = calloc(1, sizeof(struct lysp_node_choice));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_CASE:
         mem = calloc(1, sizeof(struct lysp_node_case));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
         mem = calloc(1, sizeof(struct lysp_node_anydata));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_node_dup(ctx, mem, pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
         mem = calloc(1, sizeof(struct lysp_action_inout));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_action_inout_dup(ctx, mem, (struct lysp_action_inout *)pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_action_inout_dup(ctx, mem, (struct lysp_action_inout *)pnode), cleanup);
         break;
     case LYS_ACTION:
     case LYS_RPC:
         mem = calloc(1, sizeof(struct lysp_action));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_action_dup(ctx, mem, (struct lysp_action *)pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_action_dup(ctx, mem, (struct lysp_action *)pnode), cleanup);
         break;
     case LYS_NOTIF:
         mem = calloc(1, sizeof(struct lysp_notif));
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_notif_dup(ctx, mem, (struct lysp_notif *)pnode));
+        LY_CHECK_ERR_GOTO(!mem, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        LY_CHECK_GOTO(ret = lysp_notif_dup(ctx, mem, (struct lysp_notif *)pnode), cleanup);
         break;
     default:
         LOGINT_RET(ctx);
@@ -5512,8 +5518,13 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *pnode, ly_bool
         }
     }
 
-    *dup_p = mem;
-    return LY_SUCCESS;
+cleanup:
+    if (ret) {
+        free(mem);
+    } else {
+        *dup_p = mem;
+    }
+    return ret;
 }
 
 #define AMEND_WRONG_NODETYPE(AMEND_STR, OP_STR, PROPERTY) \
@@ -6711,8 +6722,8 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* augment was applied, remove it (index may have changed because other augments could have been applied) */
-        lysc_augment_free(ctx->ctx, aug);
         ly_set_rm(&ctx->uses_augs, aug, NULL);
+        lysc_augment_free(ctx->ctx, aug);
     }
 
     /* top-level augments */
@@ -6738,8 +6749,8 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* augment was applied, remove it */
-        lysc_augment_free(ctx->ctx, aug);
         ly_set_rm(&ctx->augs, aug, NULL);
+        lysc_augment_free(ctx->ctx, aug);
     }
 
 cleanup:
