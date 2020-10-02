@@ -1515,7 +1515,7 @@ set_comp_cast(struct lyxp_set *trg, struct lyxp_set *src, enum lyxp_set_type typ
 static LY_ERR
 set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct lyxp_set_node *xp_node)
 {
-    struct lysc_type *type = NULL;
+    const struct lysc_type *type = NULL;
     struct lyd_value val;
     struct ly_err_item *err = NULL;
     char *str, *ptr;
@@ -1547,8 +1547,8 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     }
 
     /* ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_DYNAMIC,
-                             LY_PREF_JSON, NULL, NULL, NULL, &val, &err);
+    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_OPTS_DYNAMIC, LY_PREF_JSON, NULL, LYD_HINT_DATA,
+            xp_node->node->schema, &val, &err);
     ly_err_free(err);
     if (rc) {
         /* invalid value */
@@ -3333,8 +3333,8 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            rc = type->plugin->store(set->ctx, type, value, strlen(value), LY_TYPE_OPTS_SCHEMA, LY_PREF_SCHEMA,
-                            (void *)set->local_mod, NULL, NULL, &storage, &err);
+            rc = type->plugin->store(set->ctx, type, value, strlen(value), 0, LY_PREF_SCHEMA, (void *)set->local_mod,
+                    LYD_HINT_DATA, scnode, &storage, &err);
 
             if (err) {
                 LOGWRN(set->ctx, "Invalid value \"%s\" which does not fit the type (%s).", value, err->msg);
@@ -3807,8 +3807,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
 
             /* store args[1] as ident */
             rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
-                                              0, set->format, (void *)set->local_mod,
-                            (struct lyd_node *)leaf, set->tree, &data, &err);
+                    0, set->format, (void *)set->local_mod, LYD_HINT_DATA, leaf->schema, &data, &err);
         } else {
             meta = args[0]->val.meta[i].meta;
             val = &meta->value;
@@ -3818,9 +3817,8 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
             }
 
             /* store args[1] as ident */
-            rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
-                                              0, set->format, (void *)meta->annotation->module,
-                                              meta->parent, set->tree, &data, &err);
+            rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str), 0,
+                    set->format, (void *)meta->annotation->module, LYD_HINT_DATA, meta->parent->schema, &data, &err);
         }
 
         if (err) {

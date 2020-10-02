@@ -274,7 +274,8 @@ main(int argc, char* argv[])
     }
 
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    match = type->plugin->store(ctx, type, str, strlen(str), 0, LY_PREF_JSON, NULL, NULL, NULL, &storage, &err);
+    match = type->plugin->store(ctx, type, str, strlen(str), 0, LY_PREF_JSON, NULL, LYD_HINT_SCHEMA,
+            mod->compiled->data, &storage, &err);
     if ((match == LY_SUCCESS) || (match == LY_EINCOMPLETE)) {
         storage.realtype->plugin->free(ctx, &storage);
     }

@@ -105,7 +105,6 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
 static const char *
 xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_prefix *prefix, uint32_t prefix_opts)
 {
-
     switch (format) {
     case LYD_XML:
         return xml_print_ns(ctx, prefix->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : prefix->id, prefix_opts);

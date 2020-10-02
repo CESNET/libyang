@@ -870,10 +870,12 @@ test_instanceid(void **state)
               "Invalid instance-identifier \"/cont/leaftarget\" value - syntax error. /types:inst");
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
-    TEST_DATA( "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>", LY_EVALID, "Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /types:inst");
+    TEST_DATA("<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>", LY_ENOTFOUND,
+              "Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /types:inst");
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
-    TEST_DATA( "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>", LY_EVALID, "Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /types:inst");
+    TEST_DATA("<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>", LY_ENOTFOUND,
+              "Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /types:inst");
 
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><t:inst xmlns:t=\"urn:tests:types\">/t:leaflisttarget[1</t:inst>", LY_EVALID,
               "Invalid instance-identifier \"/t:leaflisttarget[1\" value - syntax error. /types:inst");
@@ -906,7 +908,7 @@ test_instanceid(void **state)
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
     TEST_DATA("<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
-              "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>", LY_EVALID,
+              "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>", LY_ENOTFOUND,
               "Invalid instance-identifier \"/types:cont/leaflisttarget[.='2']\" value - required instance not found. /types:inst");
     TEST_DATA("<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
               "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='x']</t:inst>", LY_EVALID,
@@ -917,7 +919,7 @@ test_instanceid(void **state)
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
     TEST_DATA("<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
-              "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>", LY_EVALID,
+              "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>", LY_ENOTFOUND,
               "Invalid instance-identifier \"/types:cont/listtarget[id='2']\" value - required instance not found. /types:inst");
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
               "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
@@ -947,17 +949,17 @@ test_instanceid(void **state)
     data = "/types:list2[id='a'][value='b']/id";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - required instance not found. /types:inst");
     /* leaf-list-predicate */
     data = "/types:leaflisttarget[.='c']";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - required instance not found. /types:inst");
     /* position predicate */
     data = "/types:list_keyless[4]";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/types:list_keyless[4]\" value - instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/types:list_keyless[4]\" value - required instance not found. /types:inst");
 
     lyd_free_all(tree);
 
@@ -1107,9 +1109,9 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
-    assert_int_equal(LY_TYPE_INT8, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("12", leaf->value.subvalue->value->canonical);
-    assert_int_equal(12, leaf->value.subvalue->value->int8);
+    assert_int_equal(LY_TYPE_INT8, leaf->value.subvalue->value.realtype->basetype);
+    assert_string_equal("12", leaf->value.subvalue->value.canonical);
+    assert_int_equal(12, leaf->value.subvalue->value.int8);
 
     test_printed_value(&leaf->value, "12", LY_PREF_SCHEMA, NULL);
 
@@ -1118,9 +1120,9 @@ test_union(void **state)
     assert_string_equal("12", value.canonical);
     assert_non_null(value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
-    assert_int_equal(LY_TYPE_INT8, value.subvalue->value->realtype->basetype);
-    assert_string_equal("12", value.subvalue->value->canonical);
-    assert_int_equal(12, leaf->value.subvalue->value->int8);
+    assert_int_equal(LY_TYPE_INT8, value.subvalue->value.realtype->basetype);
+    assert_string_equal("12", value.subvalue->value.canonical);
+    assert_int_equal(12, leaf->value.subvalue->value.int8);
     value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
@@ -1133,8 +1135,8 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
-    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("2", leaf->value.subvalue->value->canonical);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value.realtype->basetype);
+    assert_string_equal("2", leaf->value.subvalue->value.canonical);
     lyd_free_all(tree);
 
     TEST_DATA("<un1 xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</un1>", LY_SUCCESS, "");
@@ -1145,20 +1147,20 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
-    assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("defs:fast-ethernet", leaf->value.subvalue->value->canonical);
+    assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->value.realtype->basetype);
+    assert_string_equal("defs:fast-ethernet", leaf->value.subvalue->value.canonical);
 
     test_printed_value(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs);
-    test_printed_value(leaf->value.subvalue->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs);
+    test_printed_value(&leaf->value.subvalue->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs);
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("defs:fast-ethernet", value.canonical);
-    assert_string_equal("defs:fast-ethernet", value.subvalue->value->canonical);
+    assert_string_equal("defs:fast-ethernet", value.subvalue->value.canonical);
     assert_non_null(value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
-    assert_int_equal(LY_TYPE_IDENT, value.subvalue->value->realtype->basetype);
-    assert_string_equal("fast-ethernet", value.subvalue->value->ident->name);
+    assert_int_equal(LY_TYPE_IDENT, value.subvalue->value.realtype->basetype);
+    assert_string_equal("fast-ethernet", value.subvalue->value.ident->name);
     value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
@@ -1170,8 +1172,8 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
-    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("d:superfast-ethernet", leaf->value.subvalue->value->canonical);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value.realtype->basetype);
+    assert_string_equal("d:superfast-ethernet", leaf->value.subvalue->value.canonical);
     lyd_free_all(tree);
 
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
@@ -1184,8 +1186,8 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
-    assert_int_equal(LY_TYPE_INST, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("/types:leaflisttarget[.='y']", leaf->value.subvalue->value->canonical);
+    assert_int_equal(LY_TYPE_INST, leaf->value.subvalue->value.realtype->basetype);
+    assert_string_equal("/types:leaflisttarget[.='y']", leaf->value.subvalue->value.canonical);
     lyd_free_all(tree);
 
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
@@ -1198,8 +1200,8 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
-    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("/a:leaflisttarget[3]", leaf->value.subvalue->value->canonical);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value.realtype->basetype);
+    assert_string_equal("/a:leaflisttarget[3]", leaf->value.subvalue->value.canonical);
     lyd_free_all(tree);
 
     TEST_DATA("<un1 xmlns=\"urn:tests:types\">123456789012345678901</un1>", LY_EVALID, "Invalid union value \"123456789012345678901\" - no matching subtype found. /types:un1");

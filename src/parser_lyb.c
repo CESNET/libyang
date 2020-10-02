@@ -337,12 +337,11 @@ cleanup:
  * @brief Parse YANG node metadata.
  *
  * @param[in] lybctx LYB context.
- * @param[in] sparent Schema parent node.
  * @param[out] meta Parsed metadata.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, struct lyd_meta **meta)
+lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 {
     LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic;
@@ -381,7 +380,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
-                                     ly_strlen(meta_value), &dynamic, 0, LY_PREF_JSON, NULL, sparent);
+                                     ly_strlen(meta_value), &dynamic, LY_PREF_JSON, NULL, LYD_HINT_DATA);
 
         /* free strings */
         free(meta_name);
@@ -507,8 +506,8 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         dynamic = 1;
 
         /* attr2 is always changed to the created attribute */
-        ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), value, ly_strlen(value), &dynamic, 0, format,
-                              val_prefs, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
+        ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), value, ly_strlen(value), &dynamic, format,
+                              0, val_prefs, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
         LY_CHECK_GOTO(ret, cleanup);
 
         free(prefix);
@@ -714,7 +713,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
     /* create metadata/attributes */
     if (snode) {
-        ret = lyb_parse_metadata(lybctx, snode, &meta);
+        ret = lyb_parse_metadata(lybctx, &meta);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         ret = lyb_parse_attributes(lybctx->lybctx, &attr);
@@ -747,7 +746,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         dynamic = 1;
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), &dynamic, 0, format, val_prefs, prefix,
+        ret = lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), &dynamic, format, 0, val_prefs, prefix,
                               ly_strlen(prefix), module_key, ly_strlen(module_key), &node);
         LY_CHECK_GOTO(ret, cleanup);
 
@@ -763,8 +762,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         dynamic = 1;
 
         /* create node */
-        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, 0,
-                                     LY_PREF_JSON, NULL, &node);
+        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, LY_PREF_JSON,
+                                     NULL, LYD_HINT_DATA, &node);
         if (dynamic) {
             free(value);
             dynamic = 0;

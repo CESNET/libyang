@@ -134,7 +134,8 @@ const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char 
 const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
- * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to all the type's callbacks used together.
+ * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to
+ * all the type's callbacks used together.
  *
  * Options applicable to ly_type_store_clb().
  * @{
@@ -144,70 +145,59 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
                                             (e.g. in case of canonization).
                                             In any case, the caller of the callback does not free the provided string value after calling
                                             the type's callbacks with this option */
-#define LY_TYPE_OPTS_SCHEMA       0x02 /**< Flag for the value used in schema instead of the data tree. With this flag also the meaning of
-                                            LY_TYPE_OPTS_INCOMPLETE_DATA changes and means that the schema tree is not complete (data tree
-                                            is not taken into account at all). */
-#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x04 /**< Flag for the case the data trees (schema trees in case it is used in combination with
-                                            LY_TYPE_OPTS_SCHEMA) are not yet complete. In this case the plugin should do what it
-                                            can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
-                                            data trees (checking require-instance), it returns LY_EINCOMPLETE.
-                                            Caller is supposed to call such validation callback again later with complete data trees. */
-#define LY_TYPE_OPTS_SECOND_CALL  0x08 /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
-                                            other options should be the same as for the first call. **!!** Note that this second call
-                                            can occur even if the first call succeeded, in which case the plugin should immediately
-                                            return LY_SUCCESS. */
-#define LY_TYPE_OPTS_ISSTRING     LYD_NODE_OPAQ_ISSTRING /**< Hint flag from the parser in case the source format provides some additional information
-                                            about the type of the data. The flag is expected to be used in combination with the format information. */
-#define LY_TYPE_OPTS_ISNUMBER     LYD_NODE_OPAQ_ISNUMBER /**< Hint flag from the parser in case the source format provides some additional information
-                                            about the type of the data. The flag is expected to be used in combination with the format information. */
-#define LY_TYPE_OPTS_ISBOOLEAN    LYD_NODE_OPAQ_ISBOOLEAN /**< Hint flag from the parser in case the source format provides some additional information
-                                            about the type of the data. The flag is expected to be used in combination with the format information. */
-#define LY_TYPE_OPTS_ISEMPTY      LYD_NODE_OPAQ_ISEMPTY /**< Hint flag from the parser in case the source format provides some additional information
-                                            about the type of the data. The flag is expected to be used in combination with the format information. */
-#define LY_TYPE_PARSER_HINTS_MASK (LY_TYPE_OPTS_ISSTRING | LY_TYPE_OPTS_ISNUMBER | LY_TYPE_OPTS_ISBOOLEAN | LY_TYPE_OPTS_ISEMPTY)
-
 /** @} plugintypeopts */
 
 /**
- * @brief Callback to validate, canonize and store (optionally, according to the given @p options) the given @p value
- * according to the given @p type.
+ * @brief Callback to store and canonize the given @p value according to the given @p type.
  *
- * Even when the callback returns #LY_EINCOMPLETE, the value must be normally stored in the structure
- * (meaning it can be printed/duplicated/compared). That basically means that the #LY_TYPE_OPTS_SECOND_CALL
- * should only validate the value but not change the internal value! The only exception is union, when this could
- * happen. However, even on the first call it is stored as a potentially matching value, which means the value
- * structure is valid. That is all that is required.
+ * Value must always be correctly stored meaning all the other type callbacks (such as print or compare)
+ * must function as expected.
  *
  * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
  *
  * @param[in] ctx libyang Context
- * @param[in] type Type of the value being canonized.
- * @param[in] value Lexical representation of the value to be validated (and canonized).
+ * @param[in] type Type of the value being stored.
+ * @param[in] value Lexical representation of the value to be stored.
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
  * @param[in] value_len Length (number of bytes) of the given \p value.
  * @param[in] options [Type plugin options](@ref plugintypeopts).
- * @param[in] format Input format of the data.
+ * @param[in] format Input format of the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
- * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
- *            This argument is a lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options)
- *            or lyd_node structure.
- * @param[in] tree External data tree (e.g. when validating RPC/Notification) where the required data instance can be placed.
- * @param[in] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
+ * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
+ * @param[in] ctx_node The @p value schema context node.
+ * @param[out] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
- *             error message is prepared instead.
- *             The error structure can be created by ly_err_new().
- * @return LY_SUCCESS on success
- * @return LY_EINCOMPLETE in case the option included LY_TYPE_OPTS_INCOMPLETE_DATA flag and the data @p trees are needed to finish the validation.
- * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
+ *             error message is prepared instead. The error structure can be created by ly_err_new().
+ * @return LY_SUCCESS on success,
+ * @return LY_EINCOMPLETE in case the ::ly_type_resolve_clb should be called to finish value validation in data,
+ * @return LY_ERR value on error.
  */
-typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
-        const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value,
+        size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct ly_err_item **err);
+
+/**
+ * @brief Callback to validate the stored value in data.
+ *
+ * This callback is optional for types that can only be validated in a data tree. The must be called and succeed
+ * in case the ::ly_type_store_clb callback returned ::LY_EINCOMPLETE for the value to be valid. However, this
+ * callback can be called even in other cases (such as separate/repeated validation).
+ *
+ * @param[in] ctx libyang Context
+ * @param[in] type Original type of the value (not necessarily the stored one) being validated.
+ * @param[in] ctx_node The value data context node for validation.
+ * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
+ * @param[in,out] storage Storage of the value successfully filled by ::ly_type_store_clb. May be modified.
+ * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
+ *             error message is prepared instead. The error structure can be created by ly_err_new().
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+typedef LY_ERR (*ly_type_validate_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.
- * Must be able to compare values that are not fully resolved! Meaning, whose storing callback returned
- * #LY_EINCOMPLETE and the was not called again.
  *
  * Caller is responsible to provide values of the SAME type.
  *
@@ -219,9 +209,7 @@ typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *
 typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
- * @brief Callback to receive printed (canonical) value of the data stored in @p value.
- * Must be able to print values that are not fully resolved! Meaning, whose storing callback returned
- * #LY_EINCOMPLETE and the was not called again.
+ * @brief Callback to getting the canonical value of the data stored in @p value.
  *
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
@@ -237,15 +225,14 @@ typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LY_PREFI
         ly_bool *dynamic);
 
 /**
- * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
- * Must be able to duplicate values that are not fully resolved! Meaning, whose storing callback returned
- * #LY_EINCOMPLETE and the was not called again.
+ * @brief Callback to duplicate data in data structure. Note that callback is even responsible for
+ * duplicating lyd_value::canonized.
  *
  * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
  * @param[in] original Original data structure to be duplicated.
  * @param[in,out] dup Prepared data structure to be filled with the duplicated data of @p original.
  * @return LY_SUCCESS after successful duplication.
- * @return other LY_ERR values on error.
+ * @return LY_ERR value on error.
  */
 typedef LY_ERR (*ly_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
@@ -268,7 +255,8 @@ typedef void (*ly_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *val
  */
 struct lysc_type_plugin {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
-    ly_type_store_clb store;         /**< function to validate, canonize and store (according to the options) the value in the type-specific way */
+    ly_type_store_clb store;         /**< store and canonize the value in the type-specific way */
+    ly_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
     ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
     ly_type_print_clb print;         /**< printer callback to get string representing the value */
     ly_type_dup_clb duplicate;       /**< data duplication callback */

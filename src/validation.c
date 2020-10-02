@@ -25,6 +25,7 @@
 #include "hash_table.h"
 #include "log.h"
 #include "parser_data.h"
+#include "plugins_exts_metadata.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
@@ -111,7 +112,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
 
 LY_ERR
 lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff)
+        struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
@@ -170,10 +171,10 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             --i;
 
             struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[i];
+            struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
-            /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.canonical, strlen(node->value.canonical), 0, 1, 0, format,
-                                  prefix_data, *tree);
+            /* resolve the value of the node */
+            ret = lyd_value_resolve(LYD_CTX(node), type, &node->value, (struct lyd_node *)node, *tree, LY_VLOG_LYD, node);
             LY_CHECK_RET(ret);
 
             /* remove this node from the set */
@@ -188,10 +189,10 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             --i;
 
             struct lyd_meta *meta = (struct lyd_meta *)meta_types->objs[i];
+            struct lysc_type *type = ((struct lyext_metadata *)meta->annotation->data)->type;
 
             /* validate and store the value of the metadata */
-            ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.canonical,
-                                       strlen(meta->value.canonical), 0, 1, 0, format, prefix_data, NULL, *tree);
+            ret = lyd_value_resolve(LYD_CTX(meta->parent), type, &meta->value, meta->parent, *tree, LY_VLOG_NONE, NULL);
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */
@@ -1037,11 +1038,13 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
         /* skip added default nodes */
         if ((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) {
             LY_LIST_FOR(node->meta, meta) {
-                /* metadata type resolution */
-                LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, LY_SET_OPT_USEASLIST, NULL));
+                if (((struct lyext_metadata *)meta->annotation->data)->type->plugin->validate) {
+                    /* metadata type resolution */
+                    LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, LY_SET_OPT_USEASLIST, NULL));
+                }
             }
 
-            if (node->schema->nodetype & LYD_NODE_TERM) {
+            if ((node->schema->nodetype & LYD_NODE_TERM) && ((struct lysc_node_leaf *)node->schema)->type->plugin->validate) {
                 /* node type resolution */
                 LY_CHECK_RET(ly_set_add(type_check, (void *)node, LY_SET_OPT_USEASLIST, NULL));
             } else if (node->schema->nodetype & LYD_NODE_INNER) {
@@ -1125,7 +1128,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         }
 
         /* finish incompletely validated terminal values/attributes and when conditions */
-        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_meta_check, LY_PREF_JSON, NULL, diff);
+        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_meta_check, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* perform final validation that assumes the data tree is final */
@@ -1256,7 +1259,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree */
     LY_CHECK_GOTO(ret = lyd_validate_unres((struct lyd_node **)&tree, &when_check, &type_check, &type_meta_check,
-                                           LY_PREF_JSON, NULL, diff), cleanup);
+            diff), cleanup);
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);

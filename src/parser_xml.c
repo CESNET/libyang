@@ -62,7 +62,7 @@ lyd_xml_ctx_free(struct lyd_ctx *lydctx)
 }
 
 static LY_ERR
-lydxml_metadata(struct lyd_xml_ctx *lydctx, const struct lysc_node *sparent, struct lyd_meta **meta)
+lydxml_metadata(struct lyd_xml_ctx *lydctx, struct lyd_meta **meta)
 {
     LY_ERR ret = LY_EVALID;
     const struct lyxml_ns *ns;
@@ -119,7 +119,7 @@ skip_attr:
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, NULL, meta, mod, name, name_len, xmlctx->value,
-                                     xmlctx->value_len, &xmlctx->dynamic, 0, LY_PREF_XML, &xmlctx->ns, sparent);
+                xmlctx->value_len, &xmlctx->dynamic, LY_PREF_XML, &xmlctx->ns, LYD_HINT_DATA);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* next attribute */
@@ -181,7 +181,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
 
         /* attr2 is always changed to the created attribute */
         ret = lyd_create_attr(NULL, &attr2, xmlctx->ctx, name, name_len, xmlctx->value, xmlctx->value_len,
-                              &xmlctx->dynamic, 0, LYD_XML, val_prefs, prefix, prefix_len,
+                              &xmlctx->dynamic, LYD_XML, 0, val_prefs, prefix, prefix_len,
                               ns ? ns->uri : NULL, ns ? strlen(ns->uri) : 0);
         LY_CHECK_GOTO(ret, cleanup);
 
@@ -448,7 +448,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     /* create metadata/attributes */
     if (xmlctx->status == LYXML_ATTRIBUTE) {
         if (snode) {
-            ret = lydxml_metadata(lydctx, snode, &meta);
+            ret = lydxml_metadata(lydctx, &meta);
             LY_CHECK_GOTO(ret, error);
         } else {
             assert(lydctx->parse_options & LYD_PARSE_OPAQ);
@@ -472,8 +472,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         }
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, 0, LYD_XML,
-                              val_prefs, prefix, prefix_len, ns->uri, strlen(ns->uri), &node);
+        ret = lyd_create_opaq(ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, LYD_XML,
+                              LYD_HINT_DATA, val_prefs, prefix, prefix_len, ns->uri, strlen(ns->uri), &node);
         LY_CHECK_GOTO(ret, error);
 
         /* parser next */
@@ -487,7 +487,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* create node */
         LY_CHECK_GOTO(ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, xmlctx->value, xmlctx->value_len,
-                                        &xmlctx->dynamic, 0, LY_PREF_XML, &xmlctx->ns, &node), error);
+                                        &xmlctx->dynamic, LY_PREF_XML, &xmlctx->ns, LYD_HINT_DATA, &node), error);
 
         if (parent && (node->schema->flags & LYS_KEY)) {
             /* check the key order, the anchor must never be a key */
@@ -701,8 +701,8 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, str
     LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, name, strlen(name), "", 0, NULL, 0, LYD_XML, NULL, prefix, prefix_len,
-                          uri, strlen(uri), envp);
+    ret = lyd_create_opaq(xmlctx->ctx, name, strlen(name), "", 0, NULL, LYD_XML, LYD_NODEHINT_ENVELOPE, NULL, prefix,
+            prefix_len, uri, strlen(uri), envp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* assign atributes */
@@ -872,8 +872,8 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
     }*/
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, xmlctx->value, xmlctx->value_len, NULL, 0, LYD_XML, NULL,
-                          prefix, prefix_len, ns->uri, strlen(ns->uri), &et);
+    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, xmlctx->value, xmlctx->value_len, NULL, LYD_XML,
+            LYD_NODEHINT_ENVELOPE, NULL, prefix, prefix_len, ns->uri, strlen(ns->uri), &et);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* assign atributes */

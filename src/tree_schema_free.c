@@ -718,7 +718,7 @@ lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
     FREE_STRING(ctx, node->units);
     if (node->dflt) {
         node->dflt->realtype->plugin->free(ctx, node->dflt);
-        lysc_type_free(ctx, node->dflt->realtype);
+        lysc_type_free(ctx, (struct lysc_type *)node->dflt->realtype);
         free(node->dflt);
     }
 }
@@ -735,7 +735,7 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
     FREE_STRING(ctx, node->units);
     LY_ARRAY_FOR(node->dflts, u) {
         node->dflts[u]->realtype->plugin->free(ctx, node->dflts[u]);
-        lysc_type_free(ctx, node->dflts[u]->realtype);
+        lysc_type_free(ctx, (struct lysc_type *)node->dflts[u]->realtype);
         free(node->dflts[u]);
     }
     LY_ARRAY_FREE(node->dflts);
