@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 if (ENABLE_FUZZ_TARGETS)
-	set(fuzz_targets lys_parse_mem lyd_parse_mem buf_add_char yang_parse_module)
+	set(fuzz_targets lys_parse_mem lyd_parse_mem_xml lyd_parse_mem_json buf_add_char yang_parse_module)
 
 	if(FUZZER STREQUAL "AFL")
 		foreach(target_name IN LISTS fuzz_targets)
@@ -20,7 +20,7 @@ endif()
 
 if (ENABLE_BUILD_TESTS)
 	add_executable(fuzz_regression_test fuzz_regression_test.c)
-	set(fuzz_regression_tests lys_parse_mem lyd_parse_mem)
+	set(fuzz_regression_tests lys_parse_mem lyd_parse_mem_xml lyd_parse_mem_json)
 	foreach(target_name IN LISTS fuzz_regression_tests)
 	    file(COPY ${CMAKE_SOURCE_DIR}/tests/fuzz/corpus/${target_name} DESTINATION ${CMAKE_BINARY_DIR}/tests/fuzz/)
 	    add_executable(regress_fuzz_${target_name} ${target_name}.c main.c $<TARGET_OBJECTS:yangobj>)
