@@ -535,7 +535,7 @@ test_opaq(void **state)
     /* invalid value, no flags */
     data = "{\"a:foo3\":[null]}";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
-    logbuf_assert("Invalid non-number-encoded uint32 value. /a:foo3");
+    logbuf_assert("Invalid non-number-encoded uint32 value \"\". /a:foo3");
     assert_null(tree);
 
     /* opaq flag */
@@ -571,7 +571,7 @@ test_opaq(void **state)
     /* invalid key, no flags */
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
-    logbuf_assert("Invalid non-number-encoded int16 value. /a:l1/c");
+    logbuf_assert("Invalid non-number-encoded int16 value \"val_c\". /a:l1/c");
     assert_null(tree);
 
     /* opaq flag */

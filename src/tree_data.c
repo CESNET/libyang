@@ -88,7 +88,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
 }
 
 LY_ERR
-lyd_value_resolve(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
+lyd_value_complete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, enum LY_VLOG_ELEM log_elem_type, const void *log_elem)
 {
     LY_ERR ret;

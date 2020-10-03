@@ -169,7 +169,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  *             error message is prepared instead. The error structure can be created by ly_err_new().
  * @return LY_SUCCESS on success,
- * @return LY_EINCOMPLETE in case the ::ly_type_resolve_clb should be called to finish value validation in data,
+ * @return LY_EINCOMPLETE in case the ::ly_type_validate_clb should be called to finish value validation in data,
  * @return LY_ERR value on error.
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value,
@@ -179,7 +179,7 @@ typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_
 /**
  * @brief Callback to validate the stored value in data.
  *
- * This callback is optional for types that can only be validated in a data tree. The must be called and succeed
+ * This callback is optional for types that can only be validated in a data tree. It must be called and succeed
  * in case the ::ly_type_store_clb callback returned ::LY_EINCOMPLETE for the value to be valid. However, this
  * callback can be called even in other cases (such as separate/repeated validation).
  *

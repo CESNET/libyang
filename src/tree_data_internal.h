@@ -310,7 +310,7 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const st
         const struct lysc_node *ctx_node, ly_bool *incomplete, enum LY_VLOG_ELEM log_elem_type, const void *log_elem);
 
 /**
- * @brief Resolve previously incompletely stored value.
+ * @brief Complete previously incompletely stored value.
  *
  * @param[in] ctx libyang context.
  * @param[in] type Schema type of the value (not the stored one, but the original one).
@@ -322,7 +322,7 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const st
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_value_resolve(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
+LY_ERR lyd_value_complete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, enum LY_VLOG_ELEM log_elem_type, const void *log_elem);
 
 /* generic function lys_value_validate */

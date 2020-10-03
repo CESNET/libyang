@@ -533,7 +533,7 @@ type_get_hints_base(uint32_t hints)
  * @brief Answer if the type is suitable for the parser's hit (if any) in the specified format
  */
 static LY_ERR
-type_check_hints(uint32_t hints, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
+type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
 {
     char *msg;
 
@@ -545,7 +545,7 @@ type_check_hints(uint32_t hints, LY_DATA_TYPE type, int *base, struct ly_err_ite
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
         if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM))) {
-            asprintf(&msg, "Invalid non-number-encoded %s value.", lys_datatype2str(type));
+            asprintf(&msg, "Invalid non-number-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
             return LY_EVALID;
         }
@@ -554,7 +554,7 @@ type_check_hints(uint32_t hints, LY_DATA_TYPE type, int *base, struct ly_err_ite
     case LY_TYPE_UINT64:
     case LY_TYPE_INT64:
         if (!(hints & LYD_VALHINT_NUM64)) {
-            asprintf(&msg, "Invalid non-num64-encoded %s value.", lys_datatype2str(type));
+            asprintf(&msg, "Invalid non-num64-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
             return LY_EVALID;
         }
@@ -568,21 +568,21 @@ type_check_hints(uint32_t hints, LY_DATA_TYPE type, int *base, struct ly_err_ite
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
         if (!(hints & LYD_VALHINT_STRING)) {
-            asprintf(&msg, "Invalid non-string-encoded %s value.", lys_datatype2str(type));
+            asprintf(&msg, "Invalid non-string-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
             return LY_EVALID;
         }
         break;
     case LY_TYPE_BOOL:
         if (!(hints & LYD_VALHINT_BOOLEAN)) {
-            asprintf(&msg, "Invalid non-boolean-encoded %s value.", lys_datatype2str(type));
+            asprintf(&msg, "Invalid non-boolean-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
             return LY_EVALID;
         }
         break;
     case LY_TYPE_EMPTY:
         if (!(hints & LYD_VALHINT_EMPTY)) {
-            asprintf(&msg, "Invalid non-empty-encoded %s value.", lys_datatype2str(type));
+            asprintf(&msg, "Invalid non-empty-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
             return LY_EVALID;
         }
@@ -613,7 +613,7 @@ ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const 
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, &base, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, &base, err));
 
     switch (type->basetype) {
     case LY_TYPE_INT8:
@@ -669,7 +669,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const
     char *str;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, &base, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, &base, err));
 
     switch (type->basetype) {
     case LY_TYPE_UINT8:
@@ -726,7 +726,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     LY_CHECK_RET(ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
     /* prepare canonized value */
@@ -792,7 +792,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
     *err = NULL;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     /* validate characters and remember the number of octets for length validation */
     if (value_len) {
@@ -886,7 +886,7 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     /* length restriction of the string */
     if (type_str->length) {
@@ -939,7 +939,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     int rc = 0;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     /* remember the present items for further work */
     LY_CHECK_RET(ly_set_new(&items));
@@ -1119,7 +1119,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
     int rc = 0;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     /* find the matching enumeration value item */
     LY_ARRAY_FOR(type_enum->enums, u) {
@@ -1177,7 +1177,7 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     int8_t i;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     if (value_len == 4 && !strncmp(value, "true", 4)) {
         i = 1;
@@ -1216,7 +1216,7 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
 {
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     if (value_len) {
         char *errmsg;
@@ -1288,7 +1288,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     ly_bool dyn;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     /* locate prefix if any */
     for (prefix_len = 0; prefix_len < value_len && value[prefix_len] != ':'; ++prefix_len) {}
@@ -1426,7 +1426,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     *err = NULL;
 
     /* check hints */
-    LY_CHECK_RET(type_check_hints(hints, type->basetype, NULL, err));
+    LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     switch (format) {
     case LY_PREF_SCHEMA:
