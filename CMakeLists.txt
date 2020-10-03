@@ -15,6 +15,38 @@ include(CheckSymbolExists)
 include(UseCompat)
 include(ABICheck)
 include(SourceFormat)
+include(Doc)
+
+# set default build type if not specified by user
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+# normalize build type string
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
+if ("${BUILD_TYPE_UPPER}" STREQUAL "RELEASE")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO")
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBUG")
+  set(CMAKE_BUILD_TYPE "RelWithDebug" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
+  set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
+  set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
+else ()
+  message(FATAL_ERROR "Unknown CMAKE_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\".")
+endif ()
+
+# check the supported platform
+if(NOT UNIX)
+    message(FATAL_ERROR "Only *nix like systems are supported.")
+endif()
+
+#
+# variables
+#
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -33,55 +65,6 @@ set(LIBYANG_MICRO_SOVERSION 0)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
-# set default build type if not specified by user
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
-# normalize build type string
-string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
-if ("${BUILD_TYPE_UPPER}" STREQUAL "RELEASE")
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
-  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO")
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBUG")
-  set(CMAKE_BUILD_TYPE "RelWithDebug" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-  set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
-else ()
-  message(FATAL_ERROR "Unknown CMAKE_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\".")
-endif ()
-
-# options
-if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
-    option(ENABLE_BUILD_TESTS "Build tests" ON)
-    option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
-    set(INTERNAL_DOCS YES)
-else()
-    option(ENABLE_BUILD_TESTS "Build tests" OFF)
-    option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
-    set(INTERNAL_DOCS NO)
-endif()
-option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
-option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
-#option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
-
-#option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
-#option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
-#option(ENABLE_LYD_PRIV "Add a private pointer also to struct lyd_node (data node structure), just like in struct lys_node, for arbitrary user data" OFF)
-#set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
-
-#if(ENABLE_CACHE)
-#    set(LY_ENABLED_CACHE 1)
-#endif()
-#if(ENABLE_LATEST_REVISIONS)
-#    set(LY_ENABLED_LATEST_REVISIONS 1)
-#endif()
-#if(ENABLE_LYD_PRIV)
-#    set(LY_ENABLED_LYD_PRIV 1)
-#endif()
-
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __attribute__((__unused__))")
     set(COMPILER_PACKED_ATTR "__attribute__((__packed__))")
@@ -91,34 +74,6 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 else()
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x")
     set(COMPILER_PACKED_ATTR "")
-endif()
-
-if(ENABLE_COVERAGE)
-    find_program(PATH_GCOV NAMES gcov)
-    if(NOT PATH_GCOV)
-        message(WARNING "'gcov' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_LCOV NAMES lcov)
-    if(NOT PATH_LCOV)
-        message(WARNING "'lcov' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_GENHTML NAMES genhtml)
-    if(NOT PATH_GENHTML)
-        message(WARNING "'genhtml' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    if(NOT CMAKE_COMPILER_IS_GNUCC)
-        message(WARNING "Compiler is not gcc! Coverage may break the tests!")
-    endif()
-
-    if(ENABLE_COVERAGE)
-        set(CMAKE_C_FLAGS_COVERAGE "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
-    endif()
 endif()
 
 set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_COVERAGE} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
@@ -138,15 +93,6 @@ configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/
 #set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 #set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 #set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
-
-# by default build shared library
-# static build requires static libpcre2 library
-option(ENABLE_STATIC "Build static (.a) library" OFF)
-
-# check the supported platform
-if(NOT UNIX)
-    message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
 
 set(libsrc
     src/common.c
@@ -216,6 +162,79 @@ set(headers
     src/tree_data.h
     src/tree_schema.h)
 
+#
+# options
+#
+
+if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
+    libyang_doc()
+    return()
+endif()
+
+if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
+    option(ENABLE_BUILD_TESTS "Build tests" ON)
+    option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
+    set(INTERNAL_DOCS YES)
+else()
+    option(ENABLE_BUILD_TESTS "Build tests" OFF)
+    option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
+    set(INTERNAL_DOCS NO)
+endif()
+option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
+option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
+#option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
+
+#option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
+#option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
+#option(ENABLE_LYD_PRIV "Add a private pointer also to struct lyd_node (data node structure), just like in struct lys_node, for arbitrary user data" OFF)
+#set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
+
+#if(ENABLE_CACHE)
+#    set(LY_ENABLED_CACHE 1)
+#endif()
+#if(ENABLE_LATEST_REVISIONS)
+#    set(LY_ENABLED_LATEST_REVISIONS 1)
+#endif()
+#if(ENABLE_LYD_PRIV)
+#    set(LY_ENABLED_LYD_PRIV 1)
+#endif()
+
+if(ENABLE_COVERAGE)
+    find_program(PATH_GCOV NAMES gcov)
+    if(NOT PATH_GCOV)
+        message(WARNING "'gcov' executable not found! Disabling building code coverage report.")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
+    find_program(PATH_LCOV NAMES lcov)
+    if(NOT PATH_LCOV)
+        message(WARNING "'lcov' executable not found! Disabling building code coverage report.")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
+    find_program(PATH_GENHTML NAMES genhtml)
+    if(NOT PATH_GENHTML)
+        message(WARNING "'genhtml' executable not found! Disabling building code coverage report.")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
+    if(NOT CMAKE_COMPILER_IS_GNUCC)
+        message(WARNING "Compiler is not gcc! Coverage may break the tests!")
+    endif()
+
+    if(ENABLE_COVERAGE)
+        set(CMAKE_C_FLAGS_COVERAGE "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
+    endif()
+endif()
+
+# by default build shared library
+# static build requires static libpcre2 library
+option(ENABLE_STATIC "Build static (.a) library" OFF)
+
+#
+# targets
+#
+
 # link compat
 use_compat()
 
@@ -280,25 +299,11 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 # generate doxygen documentation for libyang API
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-    find_program(DOT_PATH dot PATH_SUFFIXES graphviz2.38/bin graphviz/bin)
-    if(DOT_PATH)
-        set(HAVE_DOT "YES")
-    else()
-        set(HAVE_DOT "NO")
-        message(AUTHOR_WARNING "Doxygen: to generate UML diagrams please install graphviz")
-    endif()
-    add_custom_target(doc
-            COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    string(REPLACE ";" " " DOXY_HEADERS "${headers};${PROJECT_BINARY_DIR}/src/version.h")
-    configure_file(Doxyfile.in Doxyfile)
-endif()
+libyang_doc()
 
 # generate API/ABI report
 if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-	libyang_abicheck()
+    libyang_abicheck()
 endif()
 
 # source code format
