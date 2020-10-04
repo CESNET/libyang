@@ -185,14 +185,6 @@ LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t
 LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
 /**
- * @brief Check whether a node value equals to its default one.
- *
- * @param[in] node Term node to test.
- * @return false (no, it is not a default node) or true (yes, it is default)
- */
-ly_bool ly_is_default(const struct lyd_node *node);
-
-/**
  * @brief Check whether the node should even be printed.
  *
  * @param[in] node Node to check.

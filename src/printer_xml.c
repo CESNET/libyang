@@ -149,7 +149,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
         if (((node->flags & LYD_DEFAULT) && (ctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
-                ((ctx->options & LYD_PRINT_WD_ALL_TAG) && ly_is_default(node))) {
+                ((ctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
             /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
             mod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
             if (mod) {

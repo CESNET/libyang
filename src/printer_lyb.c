@@ -699,7 +699,7 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
         if (((node->flags & LYD_DEFAULT) && (lybctx->print_options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
-                ((lybctx->print_options & LYD_PRINT_WD_ALL_TAG) && ly_is_default(node))) {
+                ((lybctx->print_options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
             /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
             wd_mod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
         }

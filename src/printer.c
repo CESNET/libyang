@@ -72,44 +72,6 @@ struct ext_substmt_info_s ext_substmt_info[] = {
 };
 
 ly_bool
-ly_is_default(const struct lyd_node *node)
-{
-    const struct lysc_node_leaf *leaf;
-    const struct lysc_node_leaflist *llist;
-    const struct lyd_node_term *term;
-    LY_ARRAY_COUNT_TYPE u;
-
-    assert(node->schema->nodetype & LYD_NODE_TERM);
-    term = (const struct lyd_node_term *)node;
-
-    if (node->schema->nodetype == LYS_LEAF) {
-        leaf = (const struct lysc_node_leaf *)node->schema;
-        if (!leaf->dflt) {
-            return 0;
-        }
-
-        /* compare with the default value */
-        if (leaf->type->plugin->compare(&term->value, leaf->dflt)) {
-            return 0;
-        }
-    } else {
-        llist = (const struct lysc_node_leaflist *)node->schema;
-        if (!llist->dflts) {
-            return 0;
-        }
-
-        LY_ARRAY_FOR(llist->dflts, u) {
-            /* compare with each possible default value */
-            if (llist->type->plugin->compare(&term->value, llist->dflts[u])) {
-                return 0;
-            }
-        }
-    }
-
-    return 1;
-}
-
-ly_bool
 ly_should_print(const struct lyd_node *node, uint32_t options)
 {
     const struct lyd_node *elem;
@@ -120,7 +82,7 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
             /* implicit default node/NP container with only default nodes */
             return 0;
         } else if (node->schema->nodetype & LYD_NODE_TERM) {
-            if (ly_is_default(node)) {
+            if (lyd_is_default(node)) {
                 /* explicit default node */
                 return 0;
             }
