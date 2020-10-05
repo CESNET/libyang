@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.8.12)
-
 # generate API/ABI report
 macro(LIBYANG_ABICHECK)
     find_program(ABI_DUMPER abi-dumper)

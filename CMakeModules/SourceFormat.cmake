@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.8.12)
-
 # format source files with uncrustify
 # files are expected to be a list and relative paths are resolved wtih respect to CMAKE_SOURCE DIR
 macro(SOURCE_FORMAT)
