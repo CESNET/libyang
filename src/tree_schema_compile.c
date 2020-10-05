@@ -3947,7 +3947,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         /* ignore default values of the key */
         if (key->dflt) {
             key->dflt->realtype->plugin->free(ctx->ctx, key->dflt);
-            lysc_type_free(ctx->ctx, key->dflt->realtype);
+            lysc_type_free(ctx->ctx, (struct lysc_type *)key->dflt->realtype);
             free(key->dflt);
             key->dflt = NULL;
         }
@@ -7806,21 +7806,29 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     LY_ERR ret;
     struct ly_err_item *err = NULL;
 
-    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), LY_TYPE_OPTS_SCHEMA,
-                              LY_PREF_SCHEMA, (void *)dflt_mod, node, NULL, storage, &err);
-    if (err) {
-        ly_err_print(err);
+    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), 0, LY_PREF_SCHEMA, (void *)dflt_mod, LYD_HINT_SCHEMA,
+                              node, storage, &err);
+    if (ret == LY_EINCOMPLETE) {
+        /* we have no data so we will not be resolving it */
+        ret = LY_SUCCESS;
+    }
+
+    if (ret) {
         ctx->path[0] = '\0';
         lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-               "Invalid default - value does not fit the type (%s).", err->msg);
-        ly_err_free(err);
+        if (err) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                "Invalid default - value does not fit the type (%s).", err->msg);
+            ly_err_free(err);
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                "Invalid default - value does not fit the type.");
+        }
+        return ret;
     }
-    if (!ret) {
-        ++storage->realtype->refcount;
-        return LY_SUCCESS;
-    }
-    return ret;
+
+    ++((struct lysc_type *)storage->realtype)->refcount;
+    return LY_SUCCESS;
 }
 
 /**

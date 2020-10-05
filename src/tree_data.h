@@ -159,25 +159,6 @@ typedef enum {
 /** @} */
 
 /**
- * @brief Special lyd_value structure for union.
- *
- * Represents data with multiple types (union). Original value is stored in the main lyd_value:canonical_cache while
- * the lyd_value_subvalue::value contains representation according to one of the union's types.
- * The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes in the original value to YANG modules.
- * These prefixes are necessary to parse original value to the union's subtypes.
- */
-struct lyd_value_subvalue {
-    struct lyd_value *value;     /**< representation of the value according to the selected union's subtype
-                                      (stored as lyd_value::realpath here, in subvalue structure */
-    const char *original;        /**< Original value in the dictionary. */
-    LY_PREFIX_FORMAT format;     /**< Prefix format of the value. However, this information is also used to decide
-                                      whether a value is valid for the specific format or not on later validations
-                                      (instance-identifier in XML looks different than in JSON). */
-    void *prefix_data;           /**< Format-specific data for prefix resolution (see ::ly_resolve_prefix) */
-    uint32_t parser_hint;        /**< Hint options from the parser */
-};
-
-/**
  * @brief YANG data representation
  */
 struct lyd_value {
@@ -203,13 +184,13 @@ struct lyd_value {
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the lyd_value::realtype
              plugin's callbacks to work with the data. */
 
-    struct lysc_type *realtype;      /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
-                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
-                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
-                                          target type. In contrast, union type also use its subtype's callbacks, but inside an internal data
-                                          lyd_value::subvalue structure, so here is the pointer to the union type.
-                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
-                                          the type used to store data directly in the same lyd_value instance. */
+    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+                                           in the schema node of the data node since the type's store plugin can use other types/plugins for
+                                           storing data. Speaking about built-in types, this is the case of leafref which stores data as its
+                                           target type. In contrast, union type also use its subtype's callbacks, but inside an internal data
+                                           lyd_value::subvalue structure, so here is the pointer to the union type.
+                                           In general, this type is used to get free callback for this lyd_value structure, so it must reflect
+                                           the type used to store data directly in the same lyd_value instance. */
 };
 
 /**
@@ -219,6 +200,26 @@ struct lyd_value {
  * @return Canonical value.
  */
 #define LYD_CANON_VALUE(node) ((struct lyd_node_term *)(node))->value.canonical
+
+/**
+ * @brief Special lyd_value structure for union.
+ *
+ * Represents data with multiple types (union). Original value is stored in the main lyd_value:canonical_cache while
+ * the lyd_value_subvalue::value contains representation according to one of the union's types.
+ * The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes in the original value to YANG modules.
+ * These prefixes are necessary to parse original value to the union's subtypes.
+ */
+struct lyd_value_subvalue {
+    struct lyd_value value;      /**< representation of the value according to the selected union's subtype
+                                      (stored as lyd_value::realtype here, in subvalue structure */
+    const char *original;        /**< Original value in the dictionary. */
+    LY_PREFIX_FORMAT format;     /**< Prefix format of the value. However, this information is also used to decide
+                                      whether a value is valid for the specific format or not on later validations
+                                      (instance-identifier in XML looks different than in JSON). */
+    void *prefix_data;           /**< Format-specific data for prefix resolution (see ::ly_resolve_prefix) */
+    uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
+    const struct lysc_node *ctx_node;   /**< Context schema node. */
+};
 
 /**
  * @brief Metadata structure.
@@ -264,7 +265,7 @@ struct lyd_attr {
     const char *value;
 
     LYD_FORMAT format;              /**< format of the prefixes, only LYD_XML and LYD_JSON values can appear at this place */
-    uint32_t hint;                  /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
+    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
 
 };
@@ -375,7 +376,7 @@ struct lyd_node_term {
     void *priv;                      /**< private user data, not used by libyang */
 #endif
 
-    struct lyd_value value;            /**< node's value representation */
+    struct lyd_value value;          /**< node's value representation */
 };
 
 /**
@@ -394,7 +395,7 @@ struct lyd_node_any {
                                           never NULL. If there is no sibling node, pointer points to the node
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
-    struct lyd_meta *meta;           /**< pointer to the list of attributes of this node */
+    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
@@ -411,21 +412,53 @@ struct lyd_node_any {
 };
 
 /**
- * @defgroup lydopaqhints Opaq data node hints.
+ * @defgroup lydvalhints Value format hints. Any information about value types encoded in the format
+ * is hinted this way.
  *
- * Additional information about the opaq nodes from their source. The flags are stored in lyd_node_opaq::hint
- * and they can have a slightly different meaning for the specific lyd_node_opaq::format.
  * @{
  */
-#define LYD_NODE_OPAQ_ISLIST       0x001 /**< LYD_JSON: node is expected to be a list or leaf-list */
-#define LYD_NODE_OPAQ_ISENVELOPE   0x002 /**< LYD_JSON, LYD_XML: RPC/Action/Notification envelope out of the YANG schemas */
+#define LYD_VALHINT_STRING     0x0001 /**< value is allowed to be a string */
+#define LYD_VALHINT_DECNUM     0x0002 /**< value is allowed to be a decimal number */
+#define LYD_VALHINT_OCTNUM     0x0004 /**< value is allowed to be an octal number */
+#define LYD_VALHINT_HEXNUM     0x0008 /**< value is allowed to be a hexadecimal number */
+#define LYD_VALHINT_NUM64      0x0010 /**< value is allowed to be an int64 or uint64 */
+#define LYD_VALHINT_BOOLEAN    0x0020 /**< value is allowed to be a boolean */
+#define LYD_VALHINT_EMPTY      0x0040 /**< value is allowed to be empty */
+/**
+ * @} lydvalhints
+ */
 
-#define LYD_NODE_OPAQ_ISSTRING     0x100 /**< LYD_JSON: value is expected to be string as defined in JSON encoding. */
-#define LYD_NODE_OPAQ_ISNUMBER     0x200 /**< LYD_JSON: value is expected to be number as defined in JSON encoding. */
-#define LYD_NODE_OPAQ_ISBOOLEAN    0x400 /**< LYD_JSON: value is expected to be boolean as defined in JSON encoding. */
-#define LYD_NODE_OPAQ_ISEMPTY      0x800 /**< LYD_JSON: value is expected to be empty as defined in JSON encoding. */
+/**
+ * @defgroup lydnodehints Node type format hints. Any information about node types encoded in the format
+ * is hinted this way.
+ *
+ * @{
+ */
+#define LYD_NODEHINT_LIST       0x0080 /**< node is allowed to be a list instance */
+#define LYD_NODEHINT_LEAFLIST   0x0100 /**< node is allowed to be a leaf-list instance */
+#define LYD_NODEHINT_ENVELOPE   0x8000 /**< only found in opaque node hints; node is a special protocol-dependent
+                                            RPC/Action/Notification envelope */
+/**
+ * @} lydnodehints
+ */
 
-/** @} lydopaqhints */
+/**
+ * @defgroup lydhints Value and node type format hints. Any information about value and node types encoded in the format
+ * is hinted this way. It combines [value hints](@ref lydvalhints) and [node hints](@ref lydnodehints).
+ *
+ * @{
+ */
+#define LYD_HINT_DATA       0x01F3 /**< special node/value hint to be used for generic data node/value (for cases when
+                                        there is no encoding or it does not provide any additional information about
+                                        a node/value type); do not combine with specific [value hints](@ref lydvalhints)
+                                        or [node hints](@ref lydnodehints). */
+#define LYD_HINT_SCHEMA     0x01FF /**< special node/value hint to be used for generic schema node/value(for cases when
+                                        there is no encoding or it does not provide any additional information about
+                                        a node/value type); do not combine with specific [value hints](@ref lydvalhints)
+                                        or [node hints](@ref lydnodehints). */
+/**
+ * @} lydhints
+ */
 
 /**
  * @brief Data node structure for unparsed (opaque) nodes.
@@ -437,7 +470,7 @@ struct lyd_node_opaq {
     struct lyd_node *parent;        /**< pointer to the parent node (NULL in case of root node) */
     struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
     struct lyd_node *prev;          /**< pointer to the previous sibling node (last sibling if there is none) */
-    struct lyd_attr *attr;
+    struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                     /**< private user data, not used by libyang */
@@ -449,7 +482,7 @@ struct lyd_node_opaq {
     struct ly_prefix prefix;        /**< name prefix */
     struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
     const char *value;              /**< original value */
-    uint32_t hint;                  /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
+    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     const struct ly_ctx *ctx;       /**< libyang context */
 };
 
@@ -926,25 +959,21 @@ void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-        const struct lyd_node *tree, struct lysc_type **realtype);
+        const struct lyd_node *tree, const struct lysc_type **realtype);
 
 /**
- * @brief Compare the node's value with the given string value. The string value is first validated according to the node's type.
+ * @brief Compare the node's value with the given string value. The string value is first validated according to
+ * the (current) node's type.
  *
  * @param[in] node Data node to compare.
  * @param[in] value String value to be compared. It does not need to be in a canonical form - as part of the process,
  * it is validated and canonized if possible. But it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
- * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
- *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
- *            then LY_EINCOMPLETE can be returned.
- * @return LY_SUCCESS on success
- * @return LY_EINCOMPLETE in case of success when the @p trees is not provided and it was needed to finish the validation of
- * the given string @p value (e.g. due to require-instance).
- * @return LY_ENOT if the values do not match.
+ * @return LY_SUCCESS on success,
+ * @return LY_ENOT if the values do not match,
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len, const struct lyd_node *tree);
+LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len);
 
 /**
  * @defgroup datacompareoptions Data compare options

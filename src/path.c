@@ -490,8 +490,9 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
             /* Literal */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL);
-            LY_CHECK_RET(lyd_value_store(&p->value, key, expr->expr + expr->tok_pos[*tok_idx] + 1,
-                                         expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data));
+            LY_CHECK_RET(lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type,
+                    expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
+                    LYD_HINT_DATA, key, NULL, LY_VLOG_LYSC, key));
             ++(*tok_idx);
 
             /* ']' */
@@ -533,8 +534,9 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL);
         /* store the value */
-        LY_CHECK_RET(lyd_value_store(&p->value, ctx_node, expr->expr + expr->tok_pos[*tok_idx] + 1,
-                                     expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data));
+        LY_CHECK_RET(lyd_value_store(ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type,
+                expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
+                LYD_HINT_DATA, ctx_node, NULL, LY_VLOG_LYSC, ctx_node));
         ++(*tok_idx);
 
         /* ']' */

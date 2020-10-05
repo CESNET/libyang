@@ -407,31 +407,30 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 
 LY_ERR
 lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        ly_bool *dynamic, uint32_t value_hints, LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node)
+        ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node)
 {
-    LY_ERR ret;
+    ly_bool incomplete;
 
-    ret = lyd_create_term(schema, value, value_len, dynamic, value_hints, format, prefix_data, node);
-    if (ret == LY_EINCOMPLETE) {
-        if (!(lydctx->parse_options & LYD_PARSE_ONLY)) {
-            LY_CHECK_RET(ly_set_add(&lydctx->unres_node_type, *node, LY_SET_OPT_USEASLIST, NULL));
-        }
-        ret = LY_SUCCESS;
+    LY_CHECK_RET(lyd_create_term(schema, value, value_len, dynamic, format, prefix_data, hints, &incomplete, node));
+
+    if (incomplete && !(lydctx->parse_options & LYD_PARSE_ONLY)) {
+        LY_CHECK_RET(ly_set_add(&lydctx->unres_node_type, *node, LY_SET_OPT_USEASLIST, NULL));
     }
-    return ret;
+    return LY_SUCCESS;
 }
 
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
-        const char *name, size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, uint32_t value_hints,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode)
+        const char *name, size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format,
+        void *prefix_data, uint32_t hints)
 {
-    LY_ERR ret;
-    ret = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, value_hints, format, prefix_data,
-                          ctx_snode);
-    if (ret == LY_EINCOMPLETE) {
+    ly_bool incomplete;
+
+    LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
+            hints, &incomplete));
+
+    if (incomplete && !(lydctx->parse_options & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->unres_meta_type, *meta, LY_SET_OPT_USEASLIST, NULL));
-        ret = LY_SUCCESS;
     }
-    return ret;
+    return LY_SUCCESS;
 }
