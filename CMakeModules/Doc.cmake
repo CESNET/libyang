@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.8.12)
-
 # Prepare building doxygen documentation
 macro(LIBYANG_DOC)
     find_package(Doxygen)
