@@ -174,7 +174,8 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
             /* resolve the value of the node */
-            ret = lyd_value_complete(LYD_CTX(node), type, &node->value, (struct lyd_node *)node, *tree, LY_VLOG_LYD, node);
+            ret = lyd_value_validate_incomplete(LYD_CTX(node), type, &node->value, (struct lyd_node *)node, *tree,
+                    LY_VLOG_LYD, node);
             LY_CHECK_RET(ret);
 
             /* remove this node from the set */
@@ -192,7 +193,8 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             struct lysc_type *type = ((struct lyext_metadata *)meta->annotation->data)->type;
 
             /* validate and store the value of the metadata */
-            ret = lyd_value_complete(LYD_CTX(meta->parent), type, &meta->value, meta->parent, *tree, LY_VLOG_NONE, NULL);
+            ret = lyd_value_validate_incomplete(LYD_CTX(meta->parent), type, &meta->value, meta->parent, *tree,
+                    LY_VLOG_NONE, NULL);
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */
