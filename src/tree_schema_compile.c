@@ -7143,7 +7143,8 @@ lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_m
 
 /**
  * @brief Compile top-level augments and deviations defined in the current module.
- * Generally, just add the module refence to the target modules.
+ * Generally, just add the module refence to the target modules. But in case
+ * of foreign augments, they are directly applied.
  *
  * @param[in] ctx Compile context.
  * @return LY_ERR value.
@@ -7161,12 +7162,17 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     uint16_t flags;
     uint32_t idx, opt_prev = ctx->options;
 
-    mod_p = ctx->mod->parsed;
-
-    if (mod_p->mod->implemented == 1) {
+    for (idx = 0; idx < ctx->ctx->implementing.count; ++idx) {
+        if (ctx->mod == ctx->ctx->implementing.objs[idx]) {
+            break;
+        }
+    }
+    if (idx == ctx->ctx->implementing.count) {
         /* it was already implemented and all the augments and deviations fully applied */
         return LY_SUCCESS;
     }
+
+    mod_p = ctx->mod->parsed;
 
     LY_ARRAY_FOR(mod_p->augments, u) {
         lysc_update_path(ctx, NULL, "{augment}");

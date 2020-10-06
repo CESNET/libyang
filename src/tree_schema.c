@@ -814,7 +814,7 @@ lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv
 API LY_ERR
 lys_set_implemented(struct lys_module *mod)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *m;
     uint32_t i;
 
@@ -836,11 +836,11 @@ lys_set_implemented(struct lys_module *mod)
         return LY_EDENIED;
     }
 
-    /* mark the module implemented, check for collision was already done */
-    mod->implemented = mod->ctx->module_set_id;
-
     /* add the module into newly implemented module set */
     LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, LY_SET_OPT_USEASLIST, NULL));
+
+    /* mark the module implemented, check for collision was already done */
+    mod->implemented = mod->ctx->module_set_id;
 
     /* compile the schema */
     LY_CHECK_GOTO(ret = lys_compile(mod, 0), cleanup);
@@ -855,6 +855,8 @@ cleanup:
                 if (m->implemented > 1) {
                     /* make the module non-implemented again */
                     m->implemented = 0;
+                    r = ly_set_rm(&mod->ctx->implementing, m, NULL);
+                    assert(!r);
                 }
 
                 /* free the compiled version of the module, if any */
@@ -865,7 +867,7 @@ cleanup:
                     /* recompile, must succeed because it was already compiled; hide messages because any
                      * warnings were already printed, are not really relevant, and would hide the real error */
                     uint32_t prev_lo = ly_log_options(0);
-                    LY_ERR r = lys_compile(m, 0);
+                    r = lys_compile(m, 0);
                     ly_log_options(prev_lo);
                     if (r) {
                         LOGERR(mod->ctx, r, "Recompilation of module \"%s\" failed.", m->name);
