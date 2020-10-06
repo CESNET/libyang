@@ -1012,13 +1012,21 @@ error:
 static LY_ERR
 yin_parse_belongs_to(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod, struct lysp_ext_instance **exts)
 {
+    const char *belongsto;
     struct yin_subelement subelems[2] = {
         {LY_STMT_PREFIX, &submod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
     };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
-    LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_MODULE, &submod->belongsto, Y_IDENTIF_ARG, LY_STMT_BELONGS_TO));
+    LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_MODULE, &belongsto, Y_IDENTIF_ARG, LY_STMT_BELONGS_TO));
+    if (ctx->main_mod->name != belongsto) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YIN, "Submodule \"belongs-to\" value \"%s\" does not match its module name \"%s\".",
+                belongsto, ctx->main_mod->name);
+        lydict_remove(ctx->xmlctx->ctx, belongsto);
+        return LY_EVALID;
+    }
+    lydict_remove(ctx->xmlctx->ctx, belongsto);
 
     return yin_parse_content(ctx, subelems, 2, LY_STMT_BELONGS_TO, NULL, exts);
 }
@@ -3470,6 +3478,8 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
     struct yin_subelement *subelems = NULL;
     struct lysp_submodule *dup;
 
+    mod->is_submod = 0;
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &mod->mod->name, Y_IDENTIF_ARG, LY_STMT_MODULE));
     LY_CHECK_RET(subelems_allocator(ctx, 28, NULL, &subelems,
@@ -3528,6 +3538,8 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
     struct yin_subelement *subelems = NULL;
     struct lysp_submodule *dup;
 
+    submod->is_submod = 1;
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &submod->name, Y_IDENTIF_ARG, LY_STMT_SUBMODULE));
     LY_CHECK_RET(subelems_allocator(ctx, 27, NULL, &subelems,
@@ -3570,7 +3582,7 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
     dup = ly_ctx_get_submodule(ctx->xmlctx->ctx, NULL, submod->name, NULL);
-    if (dup && strcmp(dup->belongsto, submod->belongsto)) {
+    if (dup && strcmp(dup->mod->name, submod->mod->name)) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YANG, "Name collision between submodules of name \"%s\".", dup->name);
         return LY_EVALID;
     }
@@ -3612,6 +3624,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+    mod_p->mod = main_ctx->main_mod;
     mod_p->parsing = 1;
 
     ret = yin_parse_submod(*yin_ctx, mod_p);

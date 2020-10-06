@@ -495,24 +495,32 @@ ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
 }
 
 struct lysp_submodule *
-ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision)
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const struct lys_module *module, const char *submodule, const char *revision)
 {
     const struct lys_module *mod;
     struct lysp_include *inc;
     uint32_t v;
     LY_ARRAY_COUNT_TYPE u;
 
-    assert(submodule);
+    assert((ctx || module) && submodule);
+
+    if (module) {
+        if (!module->parsed) {
+            return NULL;
+        }
+
+        /* check only this module */
+        mod = module;
+        goto check_mod;
+    }
 
     for (v = 0; v < ctx->list.count; ++v) {
         mod = ctx->list.objs[v];
         if (!mod->parsed) {
             continue;
         }
-        if (module && strcmp(module, mod->name)) {
-            continue;
-        }
 
+check_mod:
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             if (mod->parsed->includes[u].submodule && !strcmp(submodule, mod->parsed->includes[u].submodule->name)) {
                 inc = &mod->parsed->includes[u];
@@ -524,6 +532,11 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
                     return inc->submodule;
                 }
             }
+        }
+
+        if (module) {
+            /* do not check other modules */
+            break;
         }
     }
 

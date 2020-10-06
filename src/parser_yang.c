@@ -950,29 +950,33 @@ parse_yangversion(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t *ve
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in,out] in Input structure.
- * @param[in,out] belongsto Place to store the parsed value.
  * @param[in,out] prefix Place to store the parsed belongs-to prefix value.
  * @param[in,out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_belongsto(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char **belongsto, const char **prefix, struct lysp_ext_instance **exts)
+parse_belongsto(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char **prefix, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
     enum ly_stmt kw;
 
-    if (*belongsto) {
+    if (*prefix) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "belongs-to");
         return LY_EVALID;
     }
 
-    /* get value */
+    /* get value, it must match the main module */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
-
-    INSERT_WORD_RET(ctx, buf, *belongsto, word, word_len);
+    if (ly_strncmp(ctx->main_mod->name, word, word_len)) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Submodule \"belongs-to\" value \"%.*s\" does not match its module name \"%s\".",
+                (int)word_len, word, ctx->main_mod->name);
+        free(buf);
+        return LY_EVALID;
+    }
+    free(buf);
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, goto checks) {
         switch (kw) {
@@ -4078,7 +4082,9 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_modu
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
     struct lysp_submodule *dup;
 
-    /* (sub)module name */
+    mod->is_submod = 0;
+
+    /* module name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_RET(ctx, buf, mod->mod->name, word, word_len);
 
@@ -4288,6 +4294,8 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_s
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
     struct lysp_submodule *dup;
 
+    submod->is_submod = 1;
+
     /* submodule name */
     LY_CHECK_RET(get_argument(ctx, in, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_RET(ctx, buf, submod->name, word, word_len);
@@ -4357,7 +4365,7 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_s
             ctx->mod_version = submod->version;
             break;
         case LY_STMT_BELONGS_TO:
-            LY_CHECK_RET(parse_belongsto(ctx, in, &submod->belongsto, &submod->prefix, &submod->exts));
+            LY_CHECK_RET(parse_belongsto(ctx, in, &submod->prefix, &submod->exts));
             break;
 
         /* linkage */
@@ -4457,7 +4465,7 @@ checks:
                                                  submod->rpcs, submod->notifs));
 
     /* mandatory substatements */
-    if (!submod->belongsto) {
+    if (!submod->prefix) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "belongs-to", "submodule");
         return LY_EVALID;
     }
@@ -4465,7 +4473,8 @@ checks:
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
     dup = ly_ctx_get_submodule(ctx->ctx, NULL, submod->name, NULL);
-    if (dup && strcmp(dup->belongsto, submod->belongsto)) {
+    /* main modules may have different revisions */
+    if (dup && strcmp(dup->mod->name, submod->mod->name)) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Name collision between submodules of name \"%s\".", dup->name);
         return LY_EVALID;
     }
@@ -4512,6 +4521,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM((*context)->ctx); ret = LY_EMEM, cleanup);
+    mod_p->mod = main_ctx->main_mod;
     mod_p->parsing = 1;
 
     /* substatements */

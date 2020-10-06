@@ -434,7 +434,6 @@ lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod)
     FREE_ARRAY(ctx, submod->deviations, lysp_deviation_free);
     FREE_ARRAY(ctx, submod->exts, lysp_ext_instance_free);
 
-    FREE_STRING(ctx, submod->belongsto);
     FREE_STRING(ctx, submod->name);
     FREE_STRING(ctx, submod->filepath);
     FREE_STRING(ctx, submod->prefix);

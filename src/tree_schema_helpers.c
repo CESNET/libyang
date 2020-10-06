@@ -708,9 +708,9 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
         assert(info->submoduleof);
 
         /* check that the submodule belongs-to our module */
-        if (strcmp(info->submoduleof, submod->belongsto)) {
+        if (strcmp(info->submoduleof, submod->mod->name)) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
-                   submod->name, info->submoduleof, submod->belongsto);
+                   submod->name, info->submoduleof, submod->mod->name);
             return LY_EVALID;
         }
         /* check circular dependency */
