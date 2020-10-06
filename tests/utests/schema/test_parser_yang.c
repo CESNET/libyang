@@ -876,6 +876,7 @@ submod_renew(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
     lysp_submodule_free(ctx->ctx, submod);
     submod = calloc(1, sizeof *submod);
     assert_non_null(submod);
+    submod->mod = ctx->main_mod;
     return submod;
 }
 
@@ -1022,7 +1023,7 @@ test_module(void **state)
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\".");
+    logbuf_assert("Submodule \"belongs-to\" value \"wrong-name\" does not match its module name \"name\". Line number 1.");
     store = -1;
 
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
@@ -1114,6 +1115,8 @@ test_module(void **state)
     mod = mod_renew(&ctx);
 
     /* submodule */
+    mod->mod->name = "name";
+    ctx.main_mod = mod->mod;
     submod = submod_renew(&ctx, submod);
 
     /* missing mandatory substatements */
@@ -1127,7 +1130,7 @@ test_module(void **state)
     in.current = " subname {belongs-to name {prefix x;}}";
     lydict_remove(ctx.ctx, submod->name);
     assert_int_equal(LY_SUCCESS, parse_submodule(&ctx, &in, submod));
-    assert_string_equal("name", submod->belongsto);
+    assert_string_equal("name", submod->mod->name);
     submod = submod_renew(&ctx, submod);
 
 #undef SCHEMA_BEGINNING

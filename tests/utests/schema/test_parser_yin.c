@@ -234,8 +234,10 @@ setup_element_test(void **state)
     setup_logger(state);
     struct test_parser_yin_state *st = *state;
 
-    st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
+    st->yin_ctx = calloc(1, sizeof *st->yin_ctx);
     st->yin_ctx->format = LYS_IN_YIN;
+    st->yin_ctx->main_mod = calloc(1, sizeof *st->yin_ctx->main_mod);
+    lydict_insert(st->ctx, "module-name", 0, &st->yin_ctx->main_mod->name);
 
     return EXIT_SUCCESS;
 }
@@ -245,6 +247,8 @@ teardown_element_test(void **state)
 {
     struct test_parser_yin_state *st = *(struct test_parser_yin_state **)state;
 
+    lydict_remove(st->ctx, st->yin_ctx->main_mod->name);
+    free(st->yin_ctx->main_mod);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     free(st->yin_ctx);
     ly_in_free(st->in, 0);
@@ -1377,20 +1381,17 @@ test_belongsto_elem(void **state)
                 "<belongs-to module=\"module-name\"><prefix value=\"pref\"/>"EXT_SUBELEM"</belongs-to>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &submod, NULL, &exts), LY_SUCCESS);
-    assert_string_equal(submod.belongsto, "module-name");
     assert_string_equal(submod.prefix, "pref");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_BELONGSTO);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(st->ctx, submod.belongsto);
     FREE_STRING(st->ctx, submod.prefix);
 
     data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &submod, NULL, NULL), LY_EVALID);
     logbuf_assert("Missing mandatory sub-element \"prefix\" of \"belongs-to\" element. Line number 1.");
-    FREE_STRING(st->ctx, submod.belongsto);
 
     st->finished_correctly = true;
 }
@@ -4010,7 +4011,7 @@ test_submodule_elem(void **state)
     lysp_submod = calloc(1, sizeof *lysp_submod);
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
                 "<yang-version value=\"1.1\"/>\n"
-                "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
+                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
                 "<include module=\"b-mod\"/>\n"
                 "<import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
                 "<organization><text>org</text></organization>\n"
@@ -4090,13 +4091,12 @@ test_submodule_elem(void **state)
     lysp_submod = calloc(1, sizeof *lysp_submod);
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
                 "<yang-version value=\"1\"/>"
-                "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
+                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
            "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_SUCCESS);
     assert_string_equal(lysp_submod->prefix, "pref");
-    assert_string_equal(lysp_submod->belongsto, "mod-name");
     assert_int_equal(lysp_submod->version, LYS_VERSION_1_0);
     lysp_submodule_free(st->ctx, lysp_submod);
 
@@ -4107,7 +4107,7 @@ test_submodule_elem(void **state)
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
                 "<yang-version value=\"1\"/>"
                 "<reference><text>ref</text></reference>\n"
-                "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
+                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
            "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
@@ -4252,8 +4252,11 @@ test_yin_parse_submodule(void **state)
     const char *data;
     struct lys_yin_parser_ctx *yin_ctx = NULL;
     struct lysp_submodule *submod = NULL;
-    struct lys_parser_ctx main_ctx = {};
+    struct lys_module mod = {0};
+    struct lys_parser_ctx main_ctx = {.main_mod = &mod};
     struct ly_in *in;
+
+    lydict_insert(st->ctx, "a", 0, &mod.name);
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<submodule name=\"asub\""
@@ -4336,6 +4339,7 @@ test_yin_parse_submodule(void **state)
     yin_ctx = NULL;
     submod = NULL;
 
+    lydict_remove(st->ctx, mod.name);
     st->finished_correctly = true;
 }
 

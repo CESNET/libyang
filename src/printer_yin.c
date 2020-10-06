@@ -1502,7 +1502,7 @@ yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, con
 static void
 yprp_belongsto(struct ypr_ctx *ctx, const struct lysp_submodule *submodp)
 {
-    ypr_open(ctx, "belongs-to", "module", submodp->belongsto, 1);
+    ypr_open(ctx, "belongs-to", "module", submodp->mod->name, 1);
     LEVEL++;
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_BELONGSTO, 0, submodp->exts, NULL, 0);
     ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, submodp->prefix, submodp->exts);

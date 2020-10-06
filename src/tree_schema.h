@@ -1068,13 +1068,14 @@ struct lysp_module {
     struct lysp_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
-    struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    uint8_t parsing : 1;               /**< flag for circular check */
+    uint8_t parsing : 1;             /**< flag for circular check */
+    uint8_t is_submod : 1;           /**< always 0 */
 };
 
 struct lysp_submodule {
-    const char *belongsto;           /**< belongs to parent module (submodule - mandatory) */
+    struct lys_module *mod;          /**< belongs to parent module (submodule - mandatory) */
 
     struct lysp_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
                                           in the list is always the last (newest) revision of the module */
@@ -1090,11 +1091,12 @@ struct lysp_submodule {
     struct lysp_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
-    struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    uint8_t parsing : 1;               /**< flag for circular check */
+    uint8_t parsing : 1;             /**< flag for circular check */
+    uint8_t is_submod : 1;           /**< always 1 */
 
-    uint8_t latest_revision : 2;       /**< flag to mark the latest available revision:
+    uint8_t latest_revision : 2;     /**< flag to mark the latest available revision:
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context
                                           2 - searchdirs were searched and this is the latest available revision */

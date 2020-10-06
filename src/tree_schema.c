@@ -947,7 +947,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     lysp_sort_revisions(submod->revs);
 
     /* decide the latest revision */
-    latest_sp = ly_ctx_get_submodule(ctx, submod->belongsto, submod->name, NULL);
+    latest_sp = ly_ctx_get_submodule(NULL, submod->mod, submod->name, NULL);
     if (latest_sp) {
         if (submod->revs) {
             if (!latest_sp->revs) {
