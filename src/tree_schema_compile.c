@@ -8176,7 +8176,6 @@ lys_compile(struct lys_module *mod, uint32_t options)
     struct lysp_submodule *submod;
     struct lysp_node *pnode;
     struct lysp_grp *grps;
-    struct lys_module *m;
     LY_ARRAY_COUNT_TYPE u, v;
     uint32_t i;
     LY_ERR ret = LY_SUCCESS;
@@ -8323,16 +8322,6 @@ lys_compile(struct lys_module *mod, uint32_t options)
         mod->parsed = NULL;
     }
 
-    if (!(ctx.options & LYSC_OPT_INTERNAL)) {
-        /* remove flag of the modules implemented by dependency */
-        for (i = 0; i < ctx.ctx->list.count; ++i) {
-            m = ctx.ctx->list.objs[i];
-            if (m->implemented > 1) {
-                m->implemented = 1;
-            }
-        }
-    }
-
     return LY_SUCCESS;
 
 error:
@@ -8364,32 +8353,6 @@ error:
     ly_set_erase(&ctx.uses_rfns, NULL);
     lysc_module_free(mod_c, NULL);
     mod->compiled = NULL;
-
-    /* revert compilation of modules implemented by dependency */
-    if (!(ctx.options & LYSC_OPT_INTERNAL)) {
-        for (i = 0; i < ctx.ctx->list.count; ++i) {
-            m = ctx.ctx->list.objs[i];
-            if (m->implemented > 1) {
-                /* make the module non-implemented */
-                m->implemented = 0;
-            }
-
-            /* free the compiled version of the module, if any */
-            lysc_module_free(m->compiled, NULL);
-            m->compiled = NULL;
-
-            if (m->implemented) {
-                /* recompile, must succeed because it was already compiled; hide messages because any
-                 * warnings were already printed, are not really relevant, and would hide the real error */
-                uint32_t prev_lo = ly_log_options(0);
-                LY_ERR r = lys_compile(m, LYSC_OPT_INTERNAL);
-                ly_log_options(prev_lo);
-                if (r) {
-                    LOGERR(ctx.ctx, r, "Recompilation of module \"%s\" failed.", m->name);
-                }
-            }
-        }
-    }
 
     return ret;
 }
