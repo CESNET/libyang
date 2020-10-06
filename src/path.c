@@ -398,7 +398,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
                 LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
                 return LY_EVALID;
             }
-            LY_CHECK_RET(lys_set_implemented_internal((struct lys_module *)*mod, ctx->module_set_id));
+            LY_CHECK_RET(lys_set_implemented((struct lys_module *)*mod));
         }
     } else {
         switch (format) {

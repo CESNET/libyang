@@ -4667,7 +4667,7 @@ lys_nodeid_check(struct lysc_ctx *ctx, const char *nodeid, ly_bool abs, struct l
 
             /* all the modules must be implemented */
             if (!mod->implemented) {
-                ret = lys_set_implemented_internal(mod, ctx->ctx->module_set_id);
+                ret = lys_set_implemented(mod);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }

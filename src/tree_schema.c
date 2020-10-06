@@ -811,8 +811,8 @@ lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv
     return LY_SUCCESS;
 }
 
-LY_ERR
-lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
+API LY_ERR
+lys_set_implemented(struct lys_module *mod)
 {
     struct lys_module *m;
 
@@ -837,18 +837,12 @@ lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
     }
 
     /* mark the module implemented, check for collision was already done */
-    mod->implemented = value;
+    mod->implemented = mod->ctx->module_set_id;
 
     /* compile the schema */
     LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
 
     return LY_SUCCESS;
-}
-
-API LY_ERR
-lys_set_implemented(struct lys_module *mod)
-{
-    return lys_set_implemented_internal(mod, 1);
 }
 
 static LY_ERR
