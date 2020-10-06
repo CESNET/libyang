@@ -2051,6 +2051,9 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_type *
     LY_CHECK_RET(get_argument(ctx, in, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_RET(ctx, buf, type->name, word, word_len);
 
+    /* set module */
+    type->mod = ctx->main_mod;
+
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_BASE:
