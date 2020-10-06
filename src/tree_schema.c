@@ -692,6 +692,9 @@ next:
         }
     }
 
+    /* success */
+    ++mod->ctx->module_set_id;
+
 cleanup:
     ly_set_free(changed, NULL);
     return ret;
