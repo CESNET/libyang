@@ -219,7 +219,9 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 struct ly_ctx {
     struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
-    struct ly_set list;               /**< set of YANG schemas */
+    struct ly_set list;               /**< set of loaded YANG schemas */
+    struct ly_set implementing;       /**< set of YANG schemas being atomically implemented (compiled); the first added
+                                           module is always the explcitly implemented module, the other ones are dependencies */
     ly_module_imp_clb imp_clb;        /**< Optional callback for retrieving missing included or imported models in a custom way. */
     void *imp_clb_data;               /**< Optional private data for imp_clb() */
     uint16_t module_set_id;           /**< ID of the current set of schemas */

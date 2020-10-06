@@ -407,6 +407,15 @@ void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 
 /**
+ * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from
+ * all the target modules.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] mod Mod whose precompilation to revert.
+ */
+void lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_module *mod);
+
+/**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
@@ -832,16 +841,6 @@ void lysc_module_free(struct lysc_module *module, void (*private_destructor)(con
  * @param[in] private_destructor Function to remove private data from the compiled schema tree.
  */
 void lys_module_free(struct lys_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv));
-
-/**
- * @brief Make the specific module implemented, use the provided value as flag.
- *
- * @param[in] mod Module to make implemented. It is not an error to provide already implemented module, it just does nothing.
- * @param[in] implemented Flag value for the ::lys_module::implemented item.
- * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
- * same module which is already implemented.
- */
-LY_ERR lys_set_implemented_internal(struct lys_module *mod, uint8_t implemented);
 
 /**
  * @brief match yang keyword

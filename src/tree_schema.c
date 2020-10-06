@@ -811,44 +811,75 @@ lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv
     return LY_SUCCESS;
 }
 
-LY_ERR
-lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
+API LY_ERR
+lys_set_implemented(struct lys_module *mod)
 {
+    LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *m;
+    uint32_t i, idx;
 
     LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
 
     if (mod->implemented) {
+        /* mod is already implemented */
         return LY_SUCCESS;
     }
 
     /* we have module from the current context */
     m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
     if (m) {
-        if (m != mod) {
-            /* check collision with other implemented revision */
-            LOGERR(mod->ctx, LY_EDENIED, "Module \"%s\" is present in the context in other implemented revision (%s).",
-                   mod->name, mod->revision ? mod->revision : "module without revision");
-            return LY_EDENIED;
-        } else {
-            /* mod is already implemented */
-            return LY_SUCCESS;
-        }
+        assert(m != mod);
+
+        /* check collision with other implemented revision */
+        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s%s%s\" is present in the context in other implemented revision (%s).",
+                mod->name, mod->revision ? "@" : "", mod->revision ? mod->revision : "", m->revision ? m->revision : "none");
+        return LY_EDENIED;
     }
 
+    /* add the module into newly implemented module set */
+    LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, LY_SET_OPT_USEASLIST, NULL));
+
     /* mark the module implemented, check for collision was already done */
-    mod->implemented = value;
+    mod->implemented = 1;
 
     /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
+    ret = lys_compile(mod, 0);
 
-    return LY_SUCCESS;
-}
+    if (mod == mod->ctx->implementing.objs[0]) {
+        /* the first module being implemented, consolidate the set */
+        if (ret) {
+            /* failure, full compile revert */
+            for (i = 0; i < mod->ctx->list.count; ++i) {
+                m = mod->ctx->list.objs[i];
+                if (ly_set_contains(&mod->ctx->implementing, m, &idx)) {
+                    assert(m->implemented);
 
-API LY_ERR
-lys_set_implemented(struct lys_module *mod)
-{
-    return lys_set_implemented_internal(mod, 1);
+                    /* make the module correctly non-implemented again */
+                    m->implemented = 0;
+                    ly_set_rm_index(&mod->ctx->implementing, idx, NULL);
+                    lys_precompile_augments_deviations_revert(mod->ctx, m);
+                }
+
+                /* free the compiled version of the module, if any */
+                lysc_module_free(m->compiled, NULL);
+                m->compiled = NULL;
+
+                if (m->implemented) {
+                    /* recompile, must succeed because it was already compiled; hide messages because any
+                     * warnings were already printed, are not really relevant, and would hide the real error */
+                    uint32_t prev_lo = ly_log_options(0);
+                    r = lys_compile(m, 0);
+                    ly_log_options(prev_lo);
+                    if (r) {
+                        LOGERR(mod->ctx, r, "Recompilation of module \"%s\" failed.", m->name);
+                    }
+                }
+            }
+        }
+
+        ly_set_erase(&mod->ctx->implementing, NULL);
+    }
+    return ret;
 }
 
 static LY_ERR
@@ -1048,9 +1079,6 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
             ret = LY_EDENIED;
             goto error;
         }
-
-        /* being implemented */
-        mod->implemented = ctx->module_set_id;
     }
 
     /* check for duplicity in the context */
@@ -1118,7 +1146,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
 
-    if (!mod->implemented) {
+    if (!implement) {
         /* pre-compile features and identities of the module */
         LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->features), error);
         LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->identities), error);
@@ -1137,7 +1165,7 @@ finish_parsing:
     /* resolve imports and includes */
     LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), error_ctx);
 
-    if (!mod->implemented) {
+    if (!implement) {
         /* pre-compile features and identities of any submodules */
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
@@ -1150,10 +1178,9 @@ finish_parsing:
     /* check name collisions - typedefs and TODO groupings */
     LY_CHECK_GOTO(ret = lysp_check_typedefs(pctx, mod->parsed), error_ctx);
 
-    /* compile */
-    if (!mod->compiled) {
-        ret = lys_compile(mod, 0);
-        LY_CHECK_GOTO(ret, error_ctx);
+    if (implement) {
+        /* implement (compile) */
+        LY_CHECK_GOTO(ret = lys_set_implemented(mod), error_ctx);
     }
 
     if (format == LYS_IN_YANG) {
