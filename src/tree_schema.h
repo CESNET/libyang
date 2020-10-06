@@ -1176,7 +1176,7 @@ struct lysc_iffeature {
  * @brief YANG when-stmt
  */
 struct lysc_when {
-    struct lys_module *module;       /**< module where the must was defined */
+    struct lys_module *module;       /**< module where the when was defined */
     struct lyxp_expr *cond;          /**< XPath when condition */
     struct lysc_node *context;       /**< context node for evaluating the expression, NULL if the context is root node */
     const char *dsc;                 /**< description */
