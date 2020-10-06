@@ -1140,12 +1140,12 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_module, const char **bases_p,
+lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lys_module *context_module, const char **bases_p,
         struct lysc_ident *ident, struct lysc_ident ***bases)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     const char *s, *name;
-    struct lys_module *mod;
+    const struct lys_module *mod;
     struct lysc_ident **idref;
 
     assert(ident || bases);
@@ -2749,7 +2749,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             lref->path_mod = type_p->mod;
         } else if (base) {
             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, &lref->path));
-            lref->path_context = ((struct lysc_type_leafref *)base)->path_context;
+            lref->path_mod = ((struct lysc_type_leafref *)base)->path_mod;
         } else if (tpdfname) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
             return LY_EVALID;
@@ -2807,7 +2807,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, &lref->path));
                             lref->refcount = 1;
                             lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
-                            lref->path_context = ((struct lysc_type_leafref *)un_aux->types[v])->path_context;
+                            lref->path_mod = ((struct lysc_type_leafref *)un_aux->types[v])->path_mod;
                             /* TODO extensions */
 
                         } else {
@@ -7707,7 +7707,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     /* try to find the target */
     LY_CHECK_RET(ly_path_compile(ctx->ctx, node->module, node, lref->path, LY_PATH_LREF_TRUE,
                                  lysc_is_output(node) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
-                                 LY_PREF_SCHEMA, lref->path_context, &p));
+                                 LY_PREF_SCHEMA, (void *)lref->path_mod, &p));
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;

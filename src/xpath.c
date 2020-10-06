@@ -3698,7 +3698,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 
             /* it was already evaluated on schema, it must succeed */
             rc = ly_path_compile(set->ctx, sleaf->module, (struct lysc_node *)sleaf, lref->path, LY_PATH_LREF_TRUE,
-                                 oper, LY_PATH_TARGET_MANY, set->format, lref->path_context, &p);
+                    oper, LY_PATH_TARGET_MANY, set->format, (void *)lref->path_mod, &p);
             assert(!rc);
 
             /* get the target node */
