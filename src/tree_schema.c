@@ -843,7 +843,7 @@ lys_set_implemented(struct lys_module *mod)
     LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, LY_SET_OPT_USEASLIST, NULL));
 
     /* compile the schema */
-    LY_CHECK_GOTO(ret = lys_compile(mod, LYSC_OPT_INTERNAL), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile(mod, 0), cleanup);
 
 cleanup:
     if (mod == mod->ctx->implementing.objs[0]) {
@@ -865,7 +865,7 @@ cleanup:
                     /* recompile, must succeed because it was already compiled; hide messages because any
                      * warnings were already printed, are not really relevant, and would hide the real error */
                     uint32_t prev_lo = ly_log_options(0);
-                    LY_ERR r = lys_compile(m, LYSC_OPT_INTERNAL);
+                    LY_ERR r = lys_compile(m, 0);
                     ly_log_options(prev_lo);
                     if (r) {
                         LOGERR(mod->ctx, r, "Recompilation of module \"%s\" failed.", m->name);

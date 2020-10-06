@@ -7288,7 +7288,7 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
 
         if (mod->implemented) {
             /* compile */
-            LY_CHECK_GOTO(ret = lys_compile(mod, LYSC_OPT_INTERNAL), cleanup);
+            LY_CHECK_GOTO(ret = lys_compile(mod, 0), cleanup);
         }
     }
 
