@@ -2166,7 +2166,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
 
     /* store format-specific data for later prefix resolution */
     subvalue->format = format;
-    subvalue->prefix_data = ly_type_union_store_prefix_data(ctx, value, value_len, format, prefix_data);
+    subvalue->prefix_data = ly_type_union_store_prefix_data(ctx, subvalue->original, value_len, format, prefix_data);
     subvalue->hints = hints;
     subvalue->ctx_node = ctx_node;
 
