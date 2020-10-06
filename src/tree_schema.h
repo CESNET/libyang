@@ -1746,11 +1746,11 @@ ly_bool lysc_is_userordered(const struct lysc_node *schema);
  *
  * @param[in] node Node, whose private field will be assigned. Works also for RPCs, actions, and notifications.
  * @param[in] priv Arbitrary user-specified pointer.
- * @param[out] prev Optional previous private object of the \p node. Note, that
+ * @param[out] prev_priv_p Optional previous private object of the \p node. Note, that
  * the caller is in this case responsible (if it is necessary) for freeing the replaced private object.
  * @return LY_ERR value.
  */
-LY_ERR lysc_set_private(const struct lysc_node *node, void *priv, void **prev);
+LY_ERR lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.
@@ -2034,17 +2034,6 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
  * @return pointer to the node with the unsatisfied (disabled) if-feature expression.
  */
 const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, ly_bool recursive);
-
-/**
- * @brief Set a schema private pointer to a user pointer.
- *
- * @param[in] node Node, whose private field will be assigned.
- * @param[in] priv Arbitrary user-specified pointer.
- * @param[out] prev_priv_p Pointer to the previous private data being returned after replacinf by @p priv.
- * @return LY_EINVAL in case of invalid @p node.
- * @return LY_SUCCESS on success.
- */
-LY_ERR lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

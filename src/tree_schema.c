@@ -799,14 +799,45 @@ lysc_node_is_disabled(const struct lysc_node *node, ly_bool recursive)
 }
 
 API LY_ERR
-lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
+lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 {
+    struct lysc_action *act;
+    struct lysc_notif *notif;
+
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
-    if (prev_priv_p) {
-        *prev_priv_p = node->priv;
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_CHOICE:
+    case LYS_CASE:
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+    case LYS_LIST:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        if (prev_priv_p) {
+            *prev_priv_p = node->priv;
+        }
+        ((struct lysc_node *)node)->priv = priv;
+        break;
+    case LYS_RPC:
+    case LYS_ACTION:
+        act = (struct lysc_action *)node;
+        if (prev_priv_p) {
+            *prev_priv_p = act->priv;
+        }
+        act->priv = priv;
+        break;
+    case LYS_NOTIF:
+        notif = (struct lysc_notif *)node;
+        if (prev_priv_p) {
+            *prev_priv_p = notif->priv;
+        }
+        notif->priv = priv;
+        break;
+    default:
+        return LY_EINVAL;
     }
-    ((struct lysc_node *)node)->priv = priv;
 
     return LY_SUCCESS;
 }
