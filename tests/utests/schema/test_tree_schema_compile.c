@@ -3090,6 +3090,18 @@ test_deviation(void **state)
     assert_string_equal("/s:y", str);
     if (dynamic) { free((char*)str); }
 
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module t {namespace urn:t;prefix t;"
+                              "leaf l {type string;}}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module u {namespace urn:u;prefix u;import t {prefix t;}"
+                                  "identity ident;"
+                                  "deviation /t:l {deviate replace {type identityref {base ident;}}}"
+                                  "}", LYS_IN_YANG, NULL));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "t")));
+    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_string_equal("l", leaf->name);
+    assert_int_equal(LY_TYPE_IDENT, leaf->type->basetype);
+    assert_string_equal("ident", ((struct lysc_type_identityref *)leaf->type)->bases[0]->name);
+
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG, &mod));
     logbuf_assert("Deviation(s) target node \"/a:top/a:z\" from module \"aa1\" was not found.");

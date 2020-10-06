@@ -2538,7 +2538,6 @@ static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_p
  * @param[in] context_mod Module of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
  * @param[in] type_p Parsed type to compile.
- * @param[in] module Context module for the leafref path and identityref (to correctly resolve prefixes)
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
  * @param[in] base The latest base (compiled) type from which the current type is being derived.
@@ -2547,8 +2546,8 @@ static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_p
  */
 static LY_ERR
 lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags,
-        struct lysp_module *context_mod, const char *context_name, struct lysp_type *type_p, struct lys_module *module,
-        LY_DATA_TYPE basetype, const char *tpdfname, struct lysc_type *base, struct lysc_type **type)
+        struct lysp_module *context_mod, const char *context_name, struct lysp_type *type_p, LY_DATA_TYPE basetype,
+        const char *tpdfname, struct lysc_type *base, struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_bin *bin;
@@ -2709,7 +2708,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 }
                 return LY_EVALID;
             }
-            LY_CHECK_RET(lys_compile_identity_bases(ctx, module, type_p->bases, NULL, &idref->bases));
+            LY_CHECK_RET(lys_compile_identity_bases(ctx, type_p->mod, type_p->bases, NULL, &idref->bases));
         }
 
         if (!base && !type_p->flags) {
@@ -2747,7 +2746,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         }
         if (type_p->path) {
             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, type_p->path, &lref->path));
-            lref->path_context = module;
+            lref->path_mod = type_p->mod;
         } else if (base) {
             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, &lref->path));
             lref->path_context = ((struct lysc_type_leafref *)base)->path_context;
@@ -2964,6 +2963,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         if (dflt && !*dflt && tctx->tpdf->dflt.str) {
             /* inherit default */
             *dflt = (struct lysp_qname *)&tctx->tpdf->dflt;
+            assert((*dflt)->mod);
         }
         if (dummyloops && (!units || *units) && dflt && *dflt) {
             basetype = ((struct type_context *)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
@@ -3117,9 +3117,8 @@ preparenext:
         /* TODO user type plugins */
         (*type)->plugin = &ly_builtin_type_plugins[basetype];
         prev_type = *type;
-        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->mod, tctx->tpdf->name, &((struct lysp_tpdf *)tctx->tpdf)->type,
-                                basetype & (LY_TYPE_LEAFREF | LY_TYPE_UNION) ? lysp_find_module(ctx->ctx, tctx->mod) : NULL,
-                                basetype, tctx->tpdf->name, base, type);
+        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->mod, tctx->tpdf->name,
+                &((struct lysp_tpdf *)tctx->tpdf)->type, basetype, tctx->tpdf->name, base, type);
         LY_CHECK_GOTO(ret, cleanup);
         base = prev_type;
     }
@@ -3133,7 +3132,8 @@ preparenext:
         /* TODO user type plugins */
         (*type)->plugin = &ly_builtin_type_plugins[basetype];
         ++(*type)->refcount;
-        ret = lys_compile_type_(ctx, context_pnode, context_flags, context_mod, context_name, type_p, ctx->mod_def, basetype, NULL, base, type);
+        ret = lys_compile_type_(ctx, context_pnode, context_flags, context_mod, context_name, type_p, basetype, NULL,
+                base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else if (basetype != LY_TYPE_BOOL && basetype != LY_TYPE_EMPTY) {
         /* no specific restriction in leaf's type definition, copy from the base */
@@ -5176,7 +5176,12 @@ lysp_qname_dup(const struct ly_ctx *ctx, struct lysp_qname *qname, const struct 
 {
     LY_ERR ret = LY_SUCCESS;
 
+    if (!orig_qname->str) {
+        return LY_SUCCESS;
+    }
+
     DUP_STRING(ctx, orig_qname->str, qname->str, ret);
+    assert(orig_qname->mod);
     qname->mod = orig_qname->mod;
 
     return ret;
@@ -5225,6 +5230,7 @@ lysp_type_dup(const struct ly_ctx *ctx, struct lysp_type *type, const struct lys
     DUP_ARRAY(ctx, orig_type->types, type->types, lysp_type_dup);
     DUP_ARRAY(ctx, orig_type->exts, type->exts, lysp_ext_dup);
 
+    type->mod = orig_type->mod;
     type->compiled = orig_type->compiled;
 
     type->fraction_digits = orig_type->fraction_digits;
@@ -5314,7 +5320,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         DUP_ARRAY(ctx, orig_leaf->musts, leaf->musts, lysp_restr_dup);
         LY_CHECK_RET(lysp_type_dup(ctx, &leaf->type, &orig_leaf->type));
         DUP_STRING(ctx, orig_leaf->units, leaf->units, ret);
-        DUP_STRING(ctx, orig_leaf->dflt.str, leaf->dflt.str, ret);
+        LY_CHECK_RET(lysp_qname_dup(ctx, &leaf->dflt, &orig_leaf->dflt));
         break;
     case LYS_LEAFLIST:
         llist = (struct lysp_node_leaflist *)node;

@@ -756,6 +756,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
         return LY_EVALID;
     }
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &type->name));
+    type->mod = ctx->main_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;

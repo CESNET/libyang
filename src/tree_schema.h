@@ -486,6 +486,7 @@ struct lysp_type {
     struct lysp_type *types;         /**< list of sub-types ([sized array](@ref sizedarrays)) - union */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
+    const struct lys_module *mod;    /**< local module of the type (needed for deviations) */
     struct lysc_type *compiled;      /**< pointer to the compiled type */
 
     uint8_t fraction_digits;         /**< number of fraction digits - decimal64 */
