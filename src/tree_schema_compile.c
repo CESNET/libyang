@@ -576,7 +576,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
 
     ext->insubstmt = ext_p->insubstmt;
     ext->insubstmt_index = ext_p->insubstmt_index;
-    ext->module = ctx->mod_def;
+    ext->module = ctx->mod;
     ext->parent = parent;
     ext->parent_type = parent_type;
 
