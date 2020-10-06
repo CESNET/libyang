@@ -407,6 +407,15 @@ void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 
 /**
+ * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from
+ * all the target modules.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] mod Mod whose precompilation to revert.
+ */
+void lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_module *mod);
+
+/**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed

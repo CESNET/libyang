@@ -831,8 +831,8 @@ lys_set_implemented(struct lys_module *mod)
         assert(m != mod);
 
         /* check collision with other implemented revision */
-        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s\" is present in the context in other implemented revision (%s).",
-                mod->name, mod->revision ? mod->revision : "module without revision");
+        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s%s%s\" is present in the context in other implemented revision (%s).",
+                mod->name, mod->revision ? "@" : "", mod->revision ? mod->revision : "", m->revision ? m->revision : "none");
         return LY_EDENIED;
     }
 
@@ -843,9 +843,8 @@ lys_set_implemented(struct lys_module *mod)
     mod->implemented = 1;
 
     /* compile the schema */
-    LY_CHECK_GOTO(ret = lys_compile(mod, 0), cleanup);
+    ret = lys_compile(mod, 0);
 
-cleanup:
     if (mod == mod->ctx->implementing.objs[0]) {
         /* the first module being implemented, consolidate the set */
         if (ret) {
@@ -855,9 +854,10 @@ cleanup:
                 if (ly_set_contains(&mod->ctx->implementing, m, &idx)) {
                     assert(m->implemented);
 
-                    /* make the module non-implemented again */
+                    /* make the module correctly non-implemented again */
                     m->implemented = 0;
                     ly_set_rm_index(&mod->ctx->implementing, idx, NULL);
+                    lys_precompile_augments_deviations_revert(mod->ctx, m);
                 }
 
                 /* free the compiled version of the module, if any */

@@ -8036,22 +8036,15 @@ lys_compile_unres(struct lysc_ctx *ctx)
     return LY_SUCCESS;
 }
 
-/**
- * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from
- * all the target modules.
- *
- * @param[in] ctx Compile context.
- * @param[in] mod Mod whose precompilation to revert.
- */
-static void
-lys_precompile_augments_deviations_revert(struct lysc_ctx *ctx, const struct lys_module *mod)
+void
+lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_module *mod)
 {
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u, count;
     struct lys_module *m;
 
-    for (i = 0; i < ctx->ctx->list.count; ++i) {
-        m = ctx->ctx->list.objs[i];
+    for (i = 0; i < ctx->list.count; ++i) {
+        m = ctx->list.objs[i];
 
         if (m->augmented_by) {
             count = LY_ARRAY_COUNT(m->augmented_by);
@@ -8331,7 +8324,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
     return LY_SUCCESS;
 
 error:
-    lys_precompile_augments_deviations_revert(&ctx, mod);
+    lys_precompile_augments_deviations_revert(ctx.ctx, mod);
     lys_feature_precompile_revert(&ctx, mod);
     for (i = 0; i < ctx.dflts.count; ++i) {
         lysc_unres_dflt_free(ctx.ctx, ctx.dflts.objs[i]);
