@@ -1856,10 +1856,7 @@ struct lys_module {
     struct lys_module **augmented_by;/**< List of modules that augment this module ([sized array](@ref sizedarrays)) */
     struct lys_module **deviated_by; /**< List of modules that deviate this module ([sized array](@ref sizedarrays)) */
 
-    uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
-                                          the flag has non-zero value. Specific values are used internally:
-                                          1 - implemented module
-                                          >1 - recently implemented module by dependency, it can be reverted in rollback procedure */
+    ly_bool implemented;             /**< flag if the module is implemented, not just imported */
     uint8_t latest_revision;         /**< flag to mark the latest available revision:
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context

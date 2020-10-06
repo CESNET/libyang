@@ -816,7 +816,7 @@ lys_set_implemented(struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *m;
-    uint32_t i;
+    uint32_t i, idx;
 
     LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
 
@@ -840,23 +840,24 @@ lys_set_implemented(struct lys_module *mod)
     LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, LY_SET_OPT_USEASLIST, NULL));
 
     /* mark the module implemented, check for collision was already done */
-    mod->implemented = mod->ctx->module_set_id;
+    mod->implemented = 1;
 
     /* compile the schema */
     LY_CHECK_GOTO(ret = lys_compile(mod, 0), cleanup);
 
 cleanup:
     if (mod == mod->ctx->implementing.objs[0]) {
-        /* the first module being implemented, consolidate the context */
+        /* the first module being implemented, consolidate the set */
         if (ret) {
             /* failure, full compile revert */
             for (i = 0; i < mod->ctx->list.count; ++i) {
                 m = mod->ctx->list.objs[i];
-                if (m->implemented > 1) {
+                if (ly_set_contains(&mod->ctx->implementing, m, &idx)) {
+                    assert(m->implemented);
+
                     /* make the module non-implemented again */
                     m->implemented = 0;
-                    r = ly_set_rm(&mod->ctx->implementing, m, NULL);
-                    assert(!r);
+                    ly_set_rm_index(&mod->ctx->implementing, idx, NULL);
                 }
 
                 /* free the compiled version of the module, if any */
@@ -872,14 +873,6 @@ cleanup:
                     if (r) {
                         LOGERR(mod->ctx, r, "Recompilation of module \"%s\" failed.", m->name);
                     }
-                }
-            }
-        } else {
-            /* success, correct all module implemented flags */
-            for (i = 0; i < mod->ctx->list.count; ++i) {
-                m = mod->ctx->list.objs[i];
-                if (m->implemented > 1) {
-                    m->implemented = 1;
                 }
             }
         }
