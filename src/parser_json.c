@@ -1393,7 +1393,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     for (i = 0; in->current[i] != '\0' && is_jsonws(in->current[i]); i++) {
         if (in->current[i] == 0x0a) { /* new line */
             line++;
-        };
+        }
     }
 
     LY_CHECK_ERR_RET(ret = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), free(lydctx), ret);
