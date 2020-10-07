@@ -922,7 +922,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ERR r, ret = LY_EVALID;
+    LY_ERR ret = LY_SUCCESS;
     size_t item_len;
     const char *item;
     struct ly_set *items = NULL, *items_ordered = NULL;
@@ -968,25 +968,25 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
                     if (lysc_iffeature_value(&type_bits->bits[u].iffeatures[v]) == LY_ENOT) {
                         rc = asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
                                        type_bits->bits[u].name, v + 1);
-                        goto error;
+                        goto cleanup;
                     }
                 }
 
                 if (iscanonical && items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position) {
                     iscanonical = 0;
                 }
-                r = ly_set_add(items, &type_bits->bits[u], 0, &inserted);
-                LY_CHECK_ERR_GOTO(r, ret = r, error);
+                ret = ly_set_add(items, &type_bits->bits[u], 0, &inserted);
+                LY_CHECK_GOTO(ret, cleanup);
                 if (inserted != items->count - 1) {
                     rc = asprintf(&errmsg, "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
-                    goto error;
+                    goto cleanup;
                 }
                 goto next;
             }
         }
         /* item not found */
         rc = asprintf(&errmsg, "Invalid bit value \"%.*s\".", (int)item_len, item);
-        goto error;
+        goto cleanup;
 next:
         /* remember for canonized form: item + space/termination-byte */
         buf_size += item_len + 1;
@@ -1000,66 +1000,63 @@ next:
         items = NULL;
 
         if (!ws_count && !lws_count && (options & LY_TYPE_OPTS_DYNAMIC)) {
-            r = lydict_insert_zc(ctx, (char *)value, &can);
-            LY_CHECK_ERR_GOTO(r, ret = r, error);
+            ret = lydict_insert_zc(ctx, (char *)value, &can);
+            LY_CHECK_GOTO(ret, cleanup);
             value = NULL;
             options &= ~LY_TYPE_OPTS_DYNAMIC;
         } else {
-            r = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count, &can);
-            LY_CHECK_ERR_GOTO(r, ret = r, error);
+            ret = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count, &can);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
         buf = malloc(buf_size * sizeof *buf);
-        LY_CHECK_ERR_GOTO(!buf, LOGMEM(ctx); ret = LY_EMEM, error);
+        LY_CHECK_ERR_GOTO(!buf, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         index = 0;
 
-        r = ly_set_dup(items, NULL, &items_ordered);
-        LY_CHECK_ERR_GOTO(r, ret = r, error);
+        ret = ly_set_dup(items, NULL, &items_ordered);
+        LY_CHECK_GOTO(ret, cleanup);
         items_ordered->count = 0;
 
         /* generate ordered bits list */
         LY_ARRAY_FOR(type_bits->bits, u) {
             if (ly_set_contains(items, &type_bits->bits[u], NULL)) {
                 int c = sprintf(&buf[index], "%s%s", index ? " " : "", type_bits->bits[u].name);
-                LY_CHECK_ERR_GOTO(c < 0, LOGERR(ctx, LY_ESYS, "sprintf() failed."); ret = LY_ESYS, error);
+                LY_CHECK_ERR_GOTO(c < 0, LOGERR(ctx, LY_ESYS, "sprintf() failed."); ret = LY_ESYS, cleanup);
                 index += c;
-                r = ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST, NULL);
-                LY_CHECK_ERR_GOTO(r, ret = r, error);
+                ret = ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
             }
         }
         assert(buf_size == index + 1);
         /* termination NULL-byte */
         buf[index] = '\0';
 
-        r = lydict_insert_zc(ctx, buf, &can);
-        LY_CHECK_ERR_GOTO(r, ret = r, error);
+        ret = lydict_insert_zc(ctx, buf, &can);
         buf = NULL;
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* store all data */
     storage->canonical = can;
     can = NULL;
-    LY_ARRAY_CREATE_GOTO(ctx, storage->bits_items, items_ordered->count, ret, error);
+    LY_ARRAY_CREATE_GOTO(ctx, storage->bits_items, items_ordered->count, ret, cleanup);
     for (uint32_t x = 0; x < items_ordered->count; x++) {
         storage->bits_items[x] = items_ordered->objs[x];
         LY_ARRAY_INCREMENT(storage->bits_items);
     }
-    ly_set_free(items_ordered, NULL);
     storage->realtype = type;
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char *)value);
     }
 
-    ly_set_free(items, NULL);
-    return LY_SUCCESS;
-
-error:
+cleanup:
     if (rc == -1) {
         *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
         ret = LY_EMEM;
     } else if (errmsg) {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        ret = LY_EVALID;
     }
     ly_set_free(items, NULL);
     ly_set_free(items_ordered, NULL);
