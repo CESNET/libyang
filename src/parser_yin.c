@@ -2933,7 +2933,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             /* call responsible function */
             case LY_STMT_EXTENSION_INSTANCE:
                 ret = yin_parse_extension_instance(ctx, kw2lyext_substmt(current_element),
-                                (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE *)subelem->dest) : 0, exts);
+                        (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE *)subelem->dest) : 0, exts);
                 break;
             case LY_STMT_ACTION:
             case LY_STMT_RPC:
@@ -3611,7 +3611,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
     /* check submodule */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
-                    (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
+            (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
     if (kw == LY_STMT_MODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
         ret = LY_EINVAL;
@@ -3669,7 +3669,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
 
     /* check module */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
-                    (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
+            (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
     if (kw == LY_STMT_SUBMODULE) {
         LOGERR(mod->ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;

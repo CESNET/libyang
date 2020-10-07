@@ -457,8 +457,8 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     errmsg = strdup(range->emsg);
                 } else {
                     rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
+                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
@@ -470,8 +470,8 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     errmsg = strdup(range->emsg);
                 } else {
                     rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
+                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
             }
@@ -1324,7 +1324,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     } else if (!mod->compiled) {
         /* non-implemented module */
         rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                        (int)value_len, value, mod->name);
+                (int)value_len, value, mod->name);
         goto error;
     }
 
@@ -1338,7 +1338,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     if (u == LY_ARRAY_COUNT(type_ident->bases)) {
         /* no match */
         rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not accepted by the type specification.",
-                        (int)value_len, value);
+                (int)value_len, value);
         goto error;
     }
 

@@ -779,10 +779,10 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     check_data.submoduleof = main_name;
     if (main_ctx) {
         ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
-                        (struct lysp_submodule **)&mod);
+                (struct lysp_submodule **)&mod);
     } else {
         ret = lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data,
-                        (struct lys_module **)&mod);
+                (struct lys_module **)&mod);
 
     }
     ly_in_free(in, 1);
