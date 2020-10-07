@@ -491,11 +491,11 @@ lyjson_object_name(struct lyjson_ctx *jsonctx)
 
     LY_CHECK_RET(lyjson_string_(jsonctx));
     LY_CHECK_RET(skip_ws(jsonctx));
-    LY_CHECK_ERR_RET(
-            *jsonctx->in->current != ':',
-            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INSTREXP,
-                   LY_VCODE_INSTREXP_len(jsonctx->in->current), jsonctx->in->current, "a JSON object's name-separator ':'"),
-            LY_EVALID);
+    if (*jsonctx->in->current != ':') {
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INSTREXP,
+                LY_VCODE_INSTREXP_len(jsonctx->in->current), jsonctx->in->current, "a JSON object's name-separator ':'");
+        return LY_EVALID;
+    }
     ly_in_skip(jsonctx->in, 1);
     LY_CHECK_RET(skip_ws(jsonctx));
 
