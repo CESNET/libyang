@@ -245,7 +245,7 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
         }
         if (!mod) {
             LOGERR(ctx, LY_EINVAL, "Invalid qpath - unable to find module connected with the prefix of the node \"%.*s\".",
-                   id - qpath, qpath);
+                    id - qpath, qpath);
             return NULL;
         }
 
@@ -566,7 +566,7 @@ lys_feature_change(const struct lys_module *mod, const char *name, ly_bool value
 
     if (!mod->compiled) {
         LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled without a chance to change it.",
-               mod->name);
+                mod->name);
         return LY_EINVAL;
     }
     if (!mod->features) {
@@ -605,8 +605,8 @@ run:
                                 goto next;
                             } else {
                                 LOGERR(ctx, LY_EDENIED,
-                                    "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                                    f->name);
+                                        "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
+                                        f->name);
                                 ret = LY_EDENIED;
                                 goto cleanup;
                             }
@@ -646,8 +646,8 @@ next:
             for (u = 0; disabled_count && u < LY_ARRAY_COUNT(mod->features); ++u) {
                 if (!(mod->features[u].flags & LYS_FENABLED)) {
                     LOGERR(ctx, LY_EDENIED,
-                           "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                           mod->features[u].name);
+                            "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
+                            mod->features[u].name);
                     --disabled_count;
                 }
             }
@@ -1119,10 +1119,10 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
             /* error */
             if (mod->parsed->revs) {
                 LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
-                       mod->name, mod->parsed->revs[0].date);
+                        mod->name, mod->parsed->revs[0].date);
             } else {
                 LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
-                       mod->name);
+                        mod->name);
             }
             ret = LY_EEXIST;
             goto error;
@@ -1159,7 +1159,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
             len = dot - ++rev;
             if (!mod->parsed->revs || (len != 10) || strncmp(mod->parsed->revs[0].date, rev, len)) {
                 LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                       mod->parsed->revs ? mod->parsed->revs[0].date : "none");
+                        mod->parsed->revs ? mod->parsed->revs[0].date : "none");
             }
         }
 
@@ -1200,9 +1200,9 @@ finish_parsing:
         /* pre-compile features and identities of any submodules */
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
-                                                       &mod->features), error);
+                    &mod->features), error);
             LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
-                                                        &mod->identities), error);
+                    &mod->identities), error);
         }
     }
 
@@ -1295,7 +1295,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const 
     LY_CHECK_ARG_RET(ctx, path, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
     LY_CHECK_ERR_RET(ret = ly_in_new_filepath(path, 0, &in),
-                     LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), ret);
+            LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), ret);
 
     ret = lys_parse(ctx, in, format, module);
     ly_in_free(in, 0);
@@ -1387,7 +1387,7 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 }
                 if (stat(wn, &st) == -1) {
                     LOGWRN(NULL, "Unable to get information about \"%s\" file in \"%s\" when searching for (sub)modules (%s)",
-                           file->d_name, wd, strerror(errno));
+                            file->d_name, wd, strerror(errno));
                     continue;
                 }
                 if (S_ISDIR(st.st_mode) && (dirs->count || !implicit_cwd)) {

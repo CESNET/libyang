@@ -39,7 +39,7 @@ lysp_stmt_validate_value(struct lys_parser_ctx *ctx, enum yang_arg val_type, con
 
     while (*val) {
         LY_CHECK_ERR_RET(ly_getutf8(&val, &c, &utf8_char_len),
-                         LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
+                LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
 
         switch (val_type) {
         case Y_IDENTIF_ARG:
@@ -482,12 +482,12 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
             break;
         case LY_STMT_VALUE:
             LY_CHECK_ERR_RET(enum_kw == LY_STMT_BIT, LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
-                             ly_stmt2str(enum_kw)), LY_EVALID);
+                    ly_stmt2str(enum_kw)), LY_EVALID);
             LY_CHECK_RET(lysp_stmt_type_enum_value_pos(ctx, child, kw, &enm->value, &enm->flags, &enm->exts));
             break;
         case LY_STMT_POSITION:
             LY_CHECK_ERR_RET(enum_kw == LY_STMT_ENUM, LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
-                             ly_stmt2str(enum_kw)), LY_EVALID);
+                    ly_stmt2str(enum_kw)), LY_EVALID);
             LY_CHECK_RET(lysp_stmt_type_enum_value_pos(ctx, child, kw, &enm->value, &enm->flags, &enm->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
@@ -795,7 +795,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
         case LY_STMT_PATH:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_PATH, 0, &str_path, Y_STR_ARG, &type->exts));
             ret = ly_path_parse(PARSER_CTX(ctx), NULL, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
-                                LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
+                    LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
             lydict_remove(PARSER_CTX(ctx), str_path);
             LY_CHECK_RET(ret);
             type->flags |= LYS_SET_PATH;

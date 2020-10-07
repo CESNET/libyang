@@ -207,7 +207,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
         }
     } else {
         LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, parent, LYVE_SYNTAX_JSON, "Top-level JSON object member \"%.*s\" must be namespace-qualified.",
-               is_attr ? name_len + 1 : name_len, is_attr ? name - 1 : name);
+                is_attr ? name_len + 1 : name_len, is_attr ? name - 1 : name);
         return LY_EVALID;
     }
     if (!mod) {
@@ -231,7 +231,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
         if (!*snode_p) {
             if (lydctx->parse_options & LYD_PARSE_STRICT) {
                 LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, parent, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
-                    name_len, name, mod->name);
+                        name_len, name, mod->name);
                 return LY_EVALID;
             } else if (!(lydctx->parse_options & LYD_PARSE_OPAQ)) {
                 /* skip element with children */
@@ -585,7 +585,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 
                 if (((struct lyd_node_opaq *)node)->hints & LYD_NODEHINT_LIST) {
                     LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, node, LYVE_SYNTAX,
-                           "Metadata container references a sibling list node %s.", ((struct lyd_node_opaq *)node)->name);
+                            "Metadata container references a sibling list node %s.", ((struct lyd_node_opaq *)node)->name);
                     ret = LY_EVALID;
                     goto cleanup;
                 }
@@ -641,13 +641,13 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->prefix.id);
                     if (mod) {
                         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod,
-                                                     meta->name, strlen(meta->name), meta->value, ly_strlen(meta->value),
-                                                     &dynamic, LY_PREF_JSON, NULL, meta->hints);
+                                meta->name, strlen(meta->name), meta->value, ly_strlen(meta->value),
+                                &dynamic, LY_PREF_JSON, NULL, meta->hints);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_options & LYD_PARSE_STRICT) {
                         LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, node, LYVE_REFERENCE,
-                               "Unknown (or not implemented) YANG module \"%s\" for metadata \"%s%s%s\".",
-                               meta->prefix.id, meta->prefix.id, ly_strlen(meta->prefix.id) ? ":" : "", meta->name);
+                                "Unknown (or not implemented) YANG module \"%s\" for metadata \"%s%s%s\".",
+                                meta->prefix.id, meta->prefix.id, ly_strlen(meta->prefix.id) ? ":" : "", meta->name);
                         ret = LY_EVALID;
                         goto cleanup;
                     }
@@ -664,11 +664,11 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             /* there is no corresponding data node for the metadata */
             if (instance > 1) {
                 LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, *first_p ? (*first_p)->parent : NULL, LYVE_REFERENCE,
-                       "Missing %d%s JSON data instance to be coupled with %s metadata.", instance,
-                       instance == 2 ? "nd" : (instance == 3 ? "rd" : "th"), meta_container->name);
+                        "Missing %d%s JSON data instance to be coupled with %s metadata.", instance,
+                        instance == 2 ? "nd" : (instance == 3 ? "rd" : "th"), meta_container->name);
             } else {
                 LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, *first_p ? (*first_p)->parent : NULL, LYVE_REFERENCE,
-                       "Missing JSON data instance to be coupled with %s metadata.", meta_container->name);
+                        "Missing JSON data instance to be coupled with %s metadata.", meta_container->name);
             }
             ret = LY_EVALID;
         } else {
@@ -745,8 +745,8 @@ next_entry:
 
         if (!node || (node->schema != prev->schema)) {
             LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, prev->parent, LYVE_REFERENCE,
-                   "Missing JSON data instance no. %u of %s:%s to be coupled with metadata.",
-                   instance, prev->schema->module->name, prev->schema->name);
+                    "Missing JSON data instance no. %u of %s:%s to be coupled with metadata.",
+                    instance, prev->schema->module->name, prev->schema->name);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -785,14 +785,14 @@ next_entry:
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
         if (!prefix) {
             LOGVAL(ctx, LY_VLOG_LYD, (void *)node, LYVE_SYNTAX_JSON,
-                   "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
-                   lydctx->jsonctx->value_len, lydctx->jsonctx->value);
+                    "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
+                    lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             ret = LY_EVALID;
             goto cleanup;
         } else if (is_attr) {
             LOGVAL(ctx, LY_VLOG_LYD, (void *)node, LYVE_SYNTAX_JSON,
-                   "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\"",
-                   lydctx->jsonctx->value_len, lydctx->jsonctx->value);
+                    "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\"",
+                    lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -802,8 +802,8 @@ next_entry:
         if (!mod) {
             if (lydctx->parse_options & LYD_PARSE_STRICT) {
                 LOGVAL(ctx, LY_VLOG_LYD, (void *)node, LYVE_REFERENCE,
-                       "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
-                       prefix_len, prefix, name_len, name);
+                        "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
+                        prefix_len, prefix, name_len, name);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -825,8 +825,8 @@ next_entry:
             /* create metadata */
             meta = NULL;
             ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, &meta, mod, name, name_len, lydctx->jsonctx->value,
-                                         lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, NULL,
-                                         LYD_HINT_DATA);
+                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, NULL,
+                    LYD_HINT_DATA);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add/correct flags */
@@ -844,7 +844,7 @@ next_entry:
 
             /* attr2 is always changed to the created attribute */
             ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, name, name_len, lydctx->jsonctx->value, lydctx->jsonctx->value_len,
-                                  &lydctx->jsonctx->dynamic, LYD_JSON, 0, val_prefs, prefix, prefix_len, module_name, module_name_len);
+                    &lydctx->jsonctx->dynamic, LYD_JSON, 0, val_prefs, prefix, prefix_len, module_name, module_name_len);
             LY_CHECK_GOTO(ret, cleanup);
         }
         /* next member */
@@ -869,9 +869,9 @@ cleanup:
 
 representation_error:
     LOGVAL(ctx, LY_VLOG_LYD, (void *)node, LYVE_SYNTAX_JSON,
-           "The attribute(s) of %s \"%s\" is expected to be represented as JSON %s, but input data contains @%s/%s.",
-           lys_nodetype2str(nodetype), node->schema ? node->schema->name : ((struct lyd_node_opaq *)node)->name,
-           expected, lyjson_token2str(status), in_parent ? "" : "name");
+            "The attribute(s) of %s \"%s\" is expected to be represented as JSON %s, but input data contains @%s/%s.",
+            lys_nodetype2str(nodetype), node->schema ? node->schema->name : ((struct lyd_node_opaq *)node)->name,
+            expected, lyjson_token2str(status), in_parent ? "" : "name");
 
     return LY_EVALID;
 }
@@ -1056,7 +1056,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         lydctx->parse_options |= LYD_PARSE_OPAQ;
 
         ret = lydjson_parse_opaq(lydctx, prefix ? prefix - 1 : name - 1, prefix ? prefix_len + name_len + 2 : name_len + 1,
-                                 NULL, 0, parent, status_p, status_inner == LYJSON_ERROR ? status_p : &status_inner, first_p, node_p);
+                NULL, 0, parent, status_p, status_inner == LYJSON_ERROR ? status_p : &status_inner, first_p, node_p);
 
         /* restore the parser options */
         lydctx->parse_options = prev_opts;
@@ -1101,8 +1101,8 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
         if (snode->nodetype & LYD_NODE_TERM) {
             /* create terminal node */
             ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, lydctx->jsonctx->value,
-                                         lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, NULL,
-                                         type_hints, node);
+                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, NULL,
+                    type_hints, node);
             LY_CHECK_RET(ret);
 
             /* move JSON parser */
@@ -1139,7 +1139,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
 
                 /* add any missing default children */
                 ret = lyd_new_implicit_r(*node, lyd_node_children_p(*node), NULL, NULL, &lydctx->unres_node_type,
-                                         &lydctx->when_check, (lydctx->validate_options & LYD_VALIDATE_NO_STATE)
+                        &lydctx->when_check, (lydctx->validate_options & LYD_VALIDATE_NO_STATE)
                                             ? LYD_IMPLICIT_NO_STATE : 0, NULL);
                 LY_CHECK_RET(ret);
             }
@@ -1177,7 +1177,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
     } else if (ret == LY_ENOT) {
         /* parse it again as an opaq node */
         ret = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent,
-                                 status, status, first_p, node);
+                status, status, first_p, node);
         LY_CHECK_RET(ret);
 
         if (snode->nodetype == LYS_LIST) {
@@ -1243,7 +1243,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
             /* parent's metadata without a name - use the schema from the parent */
             if (!parent) {
                 LOGVAL(ctx, LY_VLOG_LYD, NULL, LYVE_SYNTAX_JSON,
-                       "Invalid metadata format - \"@\" can be used only inside anydata, container or list entries.");
+                        "Invalid metadata format - \"@\" can be used only inside anydata, container or list entries.");
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -1251,7 +1251,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
             snode = attr_node->schema;
         }
         ret = lydjson_parse_attribute(lydctx, attr_node, snode, name, name_len, prefix, prefix_len, parent, &status,
-                                      first_p, &node);
+                first_p, &node);
         LY_CHECK_GOTO(ret, cleanup);
     } else if (!snode) {
         /* parse as an opaq node */
@@ -1271,7 +1271,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
         }
 
         ret = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len,
-                                 parent, &status, status_inner == LYJSON_ERROR ? &status : &status_inner, first_p, &node);
+                parent, &status, status_inner == LYJSON_ERROR ? &status : &status_inner, first_p, &node);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* parse as a standard lyd_node but it can still turn out to be an opaque node */
@@ -1301,7 +1301,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
                 lydjson_maintain_children(parent, first_p, &node);
 
                 ret = lydjson_parse_instance(lydctx, parent, first_p, snode, name, name_len, prefix, prefix_len,
-                                             &status, &node);
+                        &status, &node);
                 if (ret == LY_EINVAL) {
                     goto representation_error;
                 } else if (ret) {
@@ -1357,8 +1357,8 @@ cleanup:
 
 representation_error:
     LOGVAL(ctx, LY_VLOG_LYD, parent, LYVE_SYNTAX_JSON,
-           "The %s \"%s\" is expected to be represented as JSON %s, but input data contains name/%s.",
-           lys_nodetype2str(snode->nodetype), snode->name, expected, lyjson_token2str(status));
+            "The %s \"%s\" is expected to be represented as JSON %s, but input data contains name/%s.",
+            lys_nodetype2str(snode->nodetype), snode->name, expected, lyjson_token2str(status));
 
     ret = LY_EVALID;
     goto cleanup;
@@ -1508,11 +1508,11 @@ lydjson_notif_envelope(struct lyjson_ctx *jsonctx, struct lyd_node **envp_p)
 
     /* create notification envelope */
     ret = lyd_create_opaq(jsonctx->ctx, "notification", 12, "", 0, NULL, LYD_JSON, LYD_NODEHINT_ENVELOPE, NULL, NULL,
-                          0, "ietf-restconf", 13, envp_p);
+            0, "ietf-restconf", 13, envp_p);
     LY_CHECK_GOTO(ret, cleanup);
     /* create notification envelope */
     ret = lyd_create_opaq(jsonctx->ctx, "eventTime", 9, value, value_len, &dynamic, LYD_JSON, LYD_VALHINT_STRING, NULL,
-                          NULL, 0, "ietf-restconf", 13, &et);
+            NULL, 0, "ietf-restconf", 13, &et);
     LY_CHECK_GOTO(ret, cleanup);
     /* insert eventTime into notification */
     lyd_insert_node(*envp_p, NULL, et);
@@ -1569,7 +1569,7 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
         goto cleanup;
     } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
-               tree->schema->name);
+                tree->schema->name);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1584,7 +1584,7 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
             goto cleanup;
         } else if (status != LYJSON_OBJECT_CLOSED) {
             LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling member \"%.*s\" of \"notification\".",
-                   lydctx->jsonctx->value_len, lydctx->jsonctx->value);
+                    lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1652,7 +1652,7 @@ lydjson_object_envelope(struct lyjson_ctx *jsonctx, struct lyd_node *parent, con
 
     /* create the object envelope */
     ret = lyd_create_opaq(jsonctx->ctx, object_id, strlen(object_id), "", 0, NULL, LYD_JSON, LYD_NODEHINT_ENVELOPE,
-                          NULL, NULL, 0, module_key, ly_strlen(module_key), envp_p);
+            NULL, NULL, 0, module_key, ly_strlen(module_key), envp_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (parent) {
@@ -1675,7 +1675,7 @@ lydjson_object_envelope_close(struct lyjson_ctx *jsonctx, const char *object_id)
         return LY_EVALID;
     } else if (status != LYJSON_OBJECT_CLOSED) {
         LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX, "Unexpected sibling member \"%.*s\" of \"%s\".",
-               jsonctx->value_len, jsonctx->value, object_id);
+                jsonctx->value_len, jsonctx->value, object_id);
         return LY_EVALID;
     }
     return LY_SUCCESS;
@@ -1730,12 +1730,12 @@ parse_content:
     /* make sure we have parsed some operation */
     if (!lydctx->op_node) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the %s node.",
-               act_e ? "action" : (rpc_e ? "rpc" : "rpc/action"));
+                act_e ? "action" : (rpc_e ? "rpc" : "rpc/action"));
         ret = LY_EVALID;
         goto cleanup;
     } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
-               tree->schema->name);
+                tree->schema->name);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1746,7 +1746,7 @@ parse_content:
         LY_CHECK_GOTO(ret, cleanup);
         if (lydctx->op_node->schema->nodetype != LYS_ACTION) {
             LOGVAL(ctx, LY_VLOG_LYD, lydctx->op_node, LYVE_DATA, "Unexpected %s element, an \"action\" expected.",
-                   lys_nodetype2str(lydctx->op_node->schema->nodetype));
+                    lys_nodetype2str(lydctx->op_node->schema->nodetype));
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1757,7 +1757,7 @@ parse_content:
         LY_CHECK_GOTO(ret, cleanup);
         if (!act_e && (lydctx->op_node->schema->nodetype != LYS_RPC)) {
             LOGVAL(ctx, LY_VLOG_LYD, lydctx->op_node, LYVE_DATA, "Unexpected %s element, an \"rpc\" expected.",
-                   lys_nodetype2str(lydctx->op_node->schema->nodetype));
+                    lys_nodetype2str(lydctx->op_node->schema->nodetype));
             ret = LY_EVALID;
             goto cleanup;
         }

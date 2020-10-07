@@ -317,10 +317,10 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
         if (parse_options & LYD_PARSE_STRICT) {
             if (!*mod) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, missing module \"%s%s%s\".",
-                    mod_name, rev ? "@" : "", rev ? mod_rev : "");
+                        mod_name, rev ? "@" : "", rev ? mod_rev : "");
             } else if (!(*mod)->implemented) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",
-                    mod_name, rev ? "@" : "", rev ? mod_rev : "");
+                        mod_name, rev ? "@" : "", rev ? mod_rev : "");
             }
             ret = LY_EINVAL;
             goto cleanup;
@@ -380,7 +380,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
-                                     ly_strlen(meta_value), &dynamic, LY_PREF_JSON, NULL, LYD_HINT_DATA);
+                ly_strlen(meta_value), &dynamic, LY_PREF_JSON, NULL, LYD_HINT_DATA);
 
         /* free strings */
         free(meta_name);
@@ -507,7 +507,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
 
         /* attr2 is always changed to the created attribute */
         ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), value, ly_strlen(value), &dynamic, format,
-                              0, val_prefs, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
+                0, val_prefs, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
         LY_CHECK_GOTO(ret, cleanup);
 
         free(prefix);
@@ -632,10 +632,10 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     if (!sibling && (lybctx->parse_options & LYD_PARSE_STRICT)) {
         if (mod) {
             LOGVAL(lybctx->lybctx->ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Failed to find matching hash for a top-level node"
-                   " from \"%s\".", mod->name);
+                    " from \"%s\".", mod->name);
         } else {
             LOGVAL(lybctx->lybctx->ctx, LY_VLOG_LYSC, sparent, LYVE_REFERENCE, "Failed to find matching hash for a child node"
-                   " of \"%s\".", sparent->name);
+                    " of \"%s\".", sparent->name);
         }
         return LY_EVALID;
     } else if (sibling && (ret = lyd_parser_check_schema((struct lyd_ctx *)lybctx, sibling))) {
@@ -747,7 +747,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
         /* create node */
         ret = lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), &dynamic, format, 0, val_prefs, prefix,
-                              ly_strlen(prefix), module_key, ly_strlen(module_key), &node);
+                ly_strlen(prefix), module_key, ly_strlen(module_key), &node);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process children */
@@ -763,7 +763,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
         /* create node */
         ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, LY_PREF_JSON,
-                                     NULL, LYD_HINT_DATA, &node);
+                NULL, LYD_HINT_DATA, &node);
         if (dynamic) {
             free(value);
             dynamic = 0;
@@ -788,7 +788,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
             /* add any missing default children */
             ret = lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, &lybctx->unres_node_type,
-                                     &lybctx->when_check, (lybctx->validate_options & LYD_VALIDATE_NO_STATE)
+                    &lybctx->when_check, (lybctx->validate_options & LYD_VALIDATE_NO_STATE)
                                         ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
@@ -961,7 +961,7 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
 
     if ((byte & LYB_VERSION_MASK) != LYB_VERSION_NUM) {
         LOGERR(lybctx->ctx, LY_EINVAL, "Invalid LYB format version \"0x%02x\", expected \"0x%02x\".",
-               byte & LYB_VERSION_MASK, LYB_VERSION_NUM);
+                byte & LYB_VERSION_MASK, LYB_VERSION_NUM);
         return LY_EINVAL;
     }
 

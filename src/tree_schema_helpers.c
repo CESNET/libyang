@@ -60,8 +60,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
 
         if (*id == '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid descendant-schema-nodeid value \"%.*s\" - absolute-schema-nodeid used.",
-                   nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+                    "Invalid descendant-schema-nodeid value \"%.*s\" - absolute-schema-nodeid used.",
+                    nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
             return LY_EVALID;
         }
     } else {
@@ -70,8 +70,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
 
         if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid absolute-schema-nodeid value \"%.*s\" - missing starting \"/\".",
-                   nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+                    "Invalid absolute-schema-nodeid value \"%.*s\" - missing starting \"/\".",
+                    nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
             return LY_EVALID;
         }
         ++id;
@@ -82,8 +82,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
             mod = lys_module_find_prefix(context_module, prefix, prefix_len);
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                       "Invalid %s-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
-                       nodeid_type, id - nodeid, nodeid, prefix_len, prefix, context_module->name);
+                        "Invalid %s-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
+                        nodeid_type, id - nodeid, nodeid, prefix_len, prefix, context_module->name);
                 return LY_ENOTFOUND;
             }
         } else {
@@ -93,7 +93,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
             /* move through input/output manually */
             if (mod != context_node->module) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                       "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+                        "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
                 return LY_ENOTFOUND;
             }
             if (!ly_strncmp("input", name, name_len)) {
@@ -130,8 +130,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         }
         if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid %s-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
-                   nodeid_type, id - nodeid + 1, nodeid);
+                    "Invalid %s-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
+                    nodeid_type, id - nodeid + 1, nodeid);
             return LY_EVALID;
         }
         ++id;
@@ -144,8 +144,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         }
     } else {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-               "Invalid %s-schema-nodeid value \"%.*s\" - unexpected end of expression.",
-               nodeid_type, nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+                "Invalid %s-schema-nodeid value \"%.*s\" - unexpected end of expression.",
+                nodeid_type, nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
     }
 
     return ret;
@@ -182,9 +182,9 @@ lysc_check_status(struct lysc_ctx *ctx,
     if ((flg1 < flg2) && (mod1 == mod2)) {
         if (ctx) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "A %s definition \"%s\" is not allowed to reference %s definition \"%s\".",
-                   flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
-                   flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
+                    "A %s definition \"%s\" is not allowed to reference %s definition \"%s\".",
+                    flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
+                    flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
         }
         return LY_EVALID;
     }
@@ -432,13 +432,13 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
         return LY_EVALID;
     } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
-                    name_len, name);
+                name_len, name);
         return LY_EVALID;
     } else {
         for (size_t u = 0; u < name_len; ++u) {
             if (iscntrl(name[u])) {
                 LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
-                    name_len, name, u + 1);
+                        name_len, name, u + 1);
                 break;
             }
         }
@@ -697,7 +697,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
         /* check revision of the parsed model */
         if (!revs || strcmp(info->revision, revs[0].date)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", name,
-                   revs ? revs[0].date : "none", info->revision);
+                    revs ? revs[0].date : "none", info->revision);
             return LY_EINVAL;
         }
     } else if (!latest_revision) {
@@ -710,7 +710,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
         /* check that the submodule belongs-to our module */
         if (strcmp(info->submoduleof, submod->mod->name)) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
-                   submod->name, info->submoduleof, submod->mod->name);
+                    submod->name, info->submoduleof, submod->mod->name);
             return LY_EVALID;
         }
         /* check circular dependency */
@@ -740,7 +740,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
             len = dot - ++rev;
             if (!revs || (len != 10) || strncmp(revs[0].date, rev, len)) {
                 LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                       revs ? revs[0].date : "none");
+                        revs ? revs[0].date : "none");
             }
         }
     }
@@ -759,11 +759,11 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     struct lysp_load_module_check_data check_data = {0};
 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
-                                      &filepath, &format));
+            &filepath, &format));
     if (!filepath) {
         if (required) {
             LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
-                   revision ? revision : "");
+                    revision ? revision : "");
         }
         return LY_ENOTFOUND;
     }
@@ -772,7 +772,7 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
 
     /* get the (sub)module */
     LY_CHECK_ERR_GOTO(ret = ly_in_new_filepath(filepath, 0, &in),
-                      LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
+            LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
     check_data.name = name;
     check_data.revision = revision;
     check_data.path = filepath;
@@ -845,7 +845,7 @@ latest_in_the_context:
         /* check collision with other implemented revision */
         if (implement && ly_ctx_get_module_implemented(ctx, name)) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
-                   "Module \"%s\" is already present in other implemented revision.", name);
+                    "Module \"%s\" is already present in other implemented revision.", name);
             return LY_EDENIED;
         }
 
@@ -854,7 +854,7 @@ latest_in_the_context:
 search_clb:
             if (ctx->imp_clb) {
                 if (ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data,
-                                      &format, &module_data, &module_data_free) == LY_SUCCESS) {
+                        &format, &module_data, &module_data_free) == LY_SUCCESS) {
                     LY_CHECK_RET(ly_in_new_memory(module_data, &in));
                     check_data.name = name;
                     check_data.revision = revision;
@@ -895,7 +895,7 @@ search_file:
             if (m && (m != *mod)) {
                 /* check collision with other implemented revision */
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
-                       "Module \"%s\" is already present in other implemented revision.", name);
+                        "Module \"%s\" is already present in other implemented revision.", name);
                 *mod = NULL;
                 return LY_EDENIED;
             }
@@ -973,7 +973,7 @@ lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 search_clb:
         if (ctx->imp_clb) {
             if (ctx->imp_clb(pctx->main_mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
-                                  &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
+                    &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                 LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
@@ -1010,7 +1010,7 @@ search_file:
     }
     if (!inc->submodule) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.",
-               inc->name, pctx->main_mod->name);
+                inc->name, pctx->main_mod->name);
         return LY_EVALID;
     }
 

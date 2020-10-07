@@ -79,7 +79,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
 
     /* evaluate when */
     ret = lyxp_eval(when->cond, LY_PREF_SCHEMA, when->module, ctx_node, ctx_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG,
-                    *tree, &xp_set, LYXP_SCHEMA);
+            *tree, &xp_set, LYXP_SCHEMA);
     lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
 
     /* return error or LY_EINCOMPLETE for dependant unresolved when */
@@ -641,7 +641,7 @@ uniquecheck:
                     ++ptr;
                 }
                 ptr = lysc_path_until((struct lysc_node *)slist->uniques[u][v], (struct lysc_node *)slist, LYSC_PATH_LOG,
-                                      ptr, 1024 - (ptr - uniq_str));
+                        ptr, 1024 - (ptr - uniq_str));
                 if (!ptr) {
                     /* path will be incomplete, whatever */
                     break;
@@ -934,7 +934,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
 
         /* evaluate must */
         LY_CHECK_RET(lyxp_eval(musts[u].cond, LY_PREF_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, tree, &xp_set,
-                               LYXP_SCHEMA));
+                LYXP_SCHEMA));
 
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
@@ -1055,8 +1055,8 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
 
                 /* add nested defaults */
                 LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, type_check,
-                                                when_check, val_opts & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0,
-                                                diff));
+                        when_check, val_opts & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0,
+                        diff));
             }
 
             if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {

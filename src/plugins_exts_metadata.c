@@ -50,13 +50,13 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     /* annotations can appear only at the top level of a YANG module or submodule */
     if (c_ext->parent_type != LYEXT_PAR_MODULE) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
-                  p_ext->name, lyext_parent2str(c_ext->parent_type));
+                p_ext->name, lyext_parent2str(c_ext->parent_type));
         return LY_EVALID;
     }
     /* check mandatory argument */
     if (!c_ext->argument) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated without mandatory argument representing metadata name.",
-                  p_ext->name);
+                p_ext->name);
         return LY_EVALID;
     }
 

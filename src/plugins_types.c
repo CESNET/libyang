@@ -301,7 +301,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
         goto error;
     } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
         if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
-                     len + 1, (int)value_len, value) == -1) {
+                len + 1, (int)value_len, value) == -1) {
             errmsg = NULL;
             rc = LY_EMEM;
         }
@@ -335,7 +335,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
 decimal:
     if (fraction && (len - 1 - fraction > fraction_digits)) {
         if (asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.", (int)len, value,
-                     fraction_digits) == -1) {
+                fraction_digits) == -1) {
             errmsg = NULL;
             rc = LY_EMEM;
         }
@@ -353,7 +353,7 @@ decimal:
         for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u) {}
         if (u != value_len) {
             if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
-                         u + 1, (int)value_len, value) == -1) {
+                    u + 1, (int)value_len, value) == -1) {
                 errmsg = NULL;
                 rc = LY_EMEM;
             }
@@ -431,7 +431,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
             goto cleanup;
         }
 
-    cleanup:
+cleanup:
         pcre2_match_data_free(match_data);
         if (ret) {
             break;
@@ -967,7 +967,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
                 LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
                     if (lysc_iffeature_value(&type_bits->bits[u].iffeatures[v]) == LY_ENOT) {
                         rc = asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
-                                       type_bits->bits[u].name, v + 1);
+                                type_bits->bits[u].name, v + 1);
                         goto cleanup;
                     }
                 }
@@ -1127,7 +1127,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
             LY_ARRAY_FOR(type_enum->enums[u].iffeatures, v) {
                 if (lysc_iffeature_value(&type_enum->enums[u].iffeatures[v]) == LY_ENOT) {
                     rc = asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
-                                   type_enum->enums[u].name, v + 1);
+                            type_enum->enums[u].name, v + 1);
                     goto error;
                 }
             }
@@ -1437,7 +1437,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     /* parse the value */
     ret = ly_path_parse(ctx, ctx_node, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE,
-                        prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
+            prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
         rc = asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
         goto error;
@@ -1601,7 +1601,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
         /* everything is prefixed */
         LY_ARRAY_FOR(value->target, u) {
             ly_strcat(&result, "/%s:%s", ly_get_prefix(value->target[u].node->module, format, prefix_data),
-                      value->target[u].node->name);
+                    value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
 
@@ -1621,7 +1621,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                         quot = '"';
                     }
                     ly_strcat(&result, "[%s:%s=%c%s%c]", ly_get_prefix(pred->key->module, format, prefix_data),
-                              pred->key->name, quot, value, quot);
+                            pred->key->name, quot, value, quot);
                     if (d) {
                         free((char *)value);
                     }
@@ -1770,7 +1770,7 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
         ret = LY_ENOTFOUND;
         val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.", val_str,
-                     lref->path->expr) == -1) {
+                lref->path->expr) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
         }
@@ -2088,8 +2088,8 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
         ret = types[u]->plugin->store(ctx, types[u], subvalue->original, strlen(subvalue->original),
-                                              0, subvalue->format, subvalue->prefix_data,
-                                              subvalue->hints, subvalue->ctx_node, &subvalue->value, err);
+                0, subvalue->format, subvalue->prefix_data,
+                subvalue->hints, subvalue->ctx_node, &subvalue->value, err);
         if ((ret == LY_SUCCESS) || (ret == LY_EINCOMPLETE)) {
             if (resolve && (ret == LY_EINCOMPLETE)) {
                 /* we need the value resolved */
@@ -2270,7 +2270,7 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
             &dup->subvalue->original));
     dup->subvalue->format = original->subvalue->format;
     dup->subvalue->prefix_data = ly_type_union_dup_prefix_data(ctx, original->subvalue->format,
-                                                               original->subvalue->prefix_data);
+            original->subvalue->prefix_data);
 
     dup->realtype = original->realtype;
     return LY_SUCCESS;

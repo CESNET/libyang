@@ -267,10 +267,10 @@ json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bool i
     if ((LEVEL == 1) || json_nscmp(node, (const struct lyd_node *)node->parent)) {
         /* print "namespace" */
         ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
-                 node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
+                node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
     } else {
         ly_print_(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "",
-                 node->schema->name, DO_FORMAT ? " " : "");
+                node->schema->name, DO_FORMAT ? " " : "");
     }
 
     return LY_SUCCESS;
@@ -478,7 +478,7 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bo
             LY_CHECK_RET(json_print_member2(ctx, NULL, LYD_JSON, NULL, "", 1));
         } else {
             LY_CHECK_RET(json_print_member2(ctx, node, ((struct lyd_node_opaq *)node)->format,
-                                            &((struct lyd_node_opaq *)node)->prefix, ((struct lyd_node_opaq *)node)->name, 1));
+                    &((struct lyd_node_opaq *)node)->prefix, ((struct lyd_node_opaq *)node)->name, 1));
         }
         ly_print_(ctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
@@ -605,7 +605,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
                 (DO_FORMAT && has_content) ? "\n" : "");
     } else {
         ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
-                 INDENT, (DO_FORMAT && has_content) ? "\n" : "");
+                INDENT, (DO_FORMAT && has_content) ? "\n" : "");
     }
     LEVEL_INC;
 

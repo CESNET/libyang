@@ -149,7 +149,7 @@ buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg 
 
     /* get UTF8 code point (and number of bytes coding the character) */
     LY_CHECK_ERR_RET(ly_getutf8(&in->current, &c, &len),
-                     LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, in->current[-len]), LY_EVALID);
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, in->current[-len]), LY_EVALID);
     in->current -= len;
     if (c == '\n') {
         ctx->indent = 0;
@@ -431,7 +431,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
                 break;
             default:
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Double-quoted string unknown special character '\\%c'.",
-                              in->current[0]);
+                        in->current[0]);
                 return LY_EVALID;
             }
 
@@ -532,7 +532,7 @@ get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
             if (*word_len) {
                 /* invalid - quotes cannot be in unquoted string and only optsep, ; or { can follow it */
                 LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, 1, in->current,
-                            "unquoted string character, optsep, semicolon or opening brace");
+                        "unquoted string character, optsep, semicolon or opening brace");
                 return LY_EVALID;
             }
             if (flags) {
@@ -596,7 +596,7 @@ get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
         case '}':
             /* invalid - braces cannot be in unquoted string (opening braces terminates the string and can follow it) */
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, 1, in->current,
-                        "unquoted string character, optsep, semicolon or opening brace");
+                    "unquoted string character, optsep, semicolon or opening brace");
             return LY_EVALID;
         default:
             LY_CHECK_RET(buf_store_char(ctx, in, arg, word_p, word_len, word_b, &buf_len, 0, &prefix));
@@ -714,7 +714,7 @@ keyword_start:
         default:
             MOVE_INPUT(ctx, in, 1);
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, (int)(in->current - word_start), word_start,
-                        "a keyword followed by a separator");
+                    "a keyword followed by a separator");
             return LY_EVALID;
         }
     } else {
@@ -726,11 +726,11 @@ extension:
             uint32_t c = 0;
 
             LY_CHECK_ERR_RET(ly_getutf8(&in->current, &c, &len),
-                             LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, in->current[-len]), LY_EVALID);
+                    LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, in->current[-len]), LY_EVALID);
             ++ctx->indent;
             /* check character validity */
             LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c,
-                                                   in->current - len == word_start ? 1 : 0, &prefix));
+                    in->current - len == word_start ? 1 : 0, &prefix));
         }
         if (!in->current[0]) {
             LOGVAL_PARSER(ctx, LY_VCODE_EOF);
@@ -1772,12 +1772,12 @@ parse_type_enum(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt 
             break;
         case LY_STMT_VALUE:
             LY_CHECK_ERR_RET(enum_kw == LY_STMT_BIT, LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
-                             ly_stmt2str(enum_kw)), LY_EVALID);
+                    ly_stmt2str(enum_kw)), LY_EVALID);
             LY_CHECK_RET(parse_type_enum_value_pos(ctx, in, kw, &enm->value, &enm->flags, &enm->exts));
             break;
         case LY_STMT_POSITION:
             LY_CHECK_ERR_RET(enum_kw == LY_STMT_ENUM, LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
-                             ly_stmt2str(enum_kw)), LY_EVALID);
+                    ly_stmt2str(enum_kw)), LY_EVALID);
             LY_CHECK_RET(parse_type_enum_value_pos(ctx, in, kw, &enm->value, &enm->flags, &enm->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
@@ -2095,7 +2095,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_type *
 
             LY_CHECK_RET(parse_text_field(ctx, in, LYEXT_SUBSTMT_PATH, 0, &str_path, Y_STR_ARG, &type->exts));
             ret = ly_path_parse(ctx->ctx, NULL, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
-                                LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
+                    LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
             lydict_remove(ctx->ctx, str_path);
             LY_CHECK_RET(ret);
             type->flags |= LYS_SET_PATH;
@@ -4462,7 +4462,7 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_s
 checks:
     /* finalize parent pointers to the reallocated items */
     LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, submod->groupings, submod->augments,
-                                                 submod->rpcs, submod->notifs));
+            submod->rpcs, submod->notifs));
 
     /* mandatory substatements */
     if (!submod->prefix) {

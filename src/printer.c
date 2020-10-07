@@ -645,7 +645,7 @@ repeat:
         written = 0;
     } else if ((size_t)written != len) {
         LOGERR(NULL, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__,
-               len - (size_t)written, len);
+                len - (size_t)written, len);
         ret = LY_ESYS;
     } else {
         if (out->type == LY_OUT_FDSTREAM) {

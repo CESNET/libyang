@@ -51,7 +51,7 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
     /* check that the extension is instantiated at an allowed place - data node */
     if (c_ext->parent_type != LYEXT_PAR_NODE) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
-                  p_ext->name, lyext_parent2str(c_ext->parent_type));
+                p_ext->name, lyext_parent2str(c_ext->parent_type));
         return LY_EVALID;
     } else {
         parent = (struct lysc_node *)c_ext->parent;
@@ -61,7 +61,7 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
              * passes all their extensions to their children nodes */
 invalid_parent:
             lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
-                      "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
+                    "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
             return LY_EVALID;
         }
         if ((c_ext->data == (void *)&nacm_deny_write) && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
