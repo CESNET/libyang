@@ -15,7 +15,7 @@
 #ifndef LY_TREE_H_
 #define LY_TREE_H_
 
-#include "inttypes.h"
+#include <inttypes.h>
 
 #include "tree_data.h"
 
