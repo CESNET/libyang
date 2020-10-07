@@ -229,7 +229,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
                 rc = LY_SUCCESS;
             }
         }
-        if (*dir && rc == LY_SUCCESS) {
+        if (*dir && (rc == LY_SUCCESS)) {
             rc = ly_ctx_set_searchdir(ctx, dir);
             if (rc == LY_EEXIST) {
                 /* ignore duplication */
@@ -358,7 +358,7 @@ ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_
     for ( ; *index < ctx->list.count; ++(*index)) {
         mod = ctx->list.objs[*index];
         value = *(const char **)(((int8_t *)(mod)) + key_offset);
-        if ((!key_size && !strcmp(key, value)) || (key_size && !strncmp(key, value, key_size) && value[key_size] == '\0')) {
+        if ((!key_size && !strcmp(key, value)) || (key_size && !strncmp(key, value, key_size) && (value[key_size] == '\0'))) {
             /* increment index for the next run */
             ++(*index);
             return mod;

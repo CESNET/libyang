@@ -386,7 +386,7 @@ lysp_stmt_type_enum_value_pos(struct lys_parser_ctx *ctx, const struct lysp_stmt
     errno = 0;
     if (val_kw == LY_STMT_VALUE) {
         num = strtol(stmt->arg, &ptr, 10);
-        if (num < INT64_C(-2147483648) || num > INT64_C(2147483647)) {
+        if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, ly_stmt2str(val_kw));
             goto error;
         }

@@ -693,7 +693,7 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
             /* enlarge */
             ret = lyht_resize(ht, 1);
             /* if hash_table was resized, we need to find new matching value */
-            if (ret == LY_SUCCESS && match_p) {
+            if ((ret == LY_SUCCESS) && match_p) {
                 lyht_find(ht, val_p, hash, match_p);
             }
 

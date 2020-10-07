@@ -419,7 +419,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                     for (n = 0; isdigit(in[offset]); offset++) {
                         n = (10 * n) + (in[offset] - '0');
                     }
-                } else if (in[offset] == 'x' && isxdigit(in[offset + 1])) {
+                } else if ((in[offset] == 'x') && isxdigit(in[offset + 1])) {
                     for (n = 0, ++offset; isxdigit(in[offset]); offset++) {
                         if (isdigit(in[offset])) {
                             u = (in[offset] - '0');

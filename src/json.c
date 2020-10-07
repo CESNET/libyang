@@ -104,17 +104,17 @@ lyjson_check_next(struct lyjson_ctx *jsonctx)
 {
     if (jsonctx->status.count == 1) {
         /* top level value (JSON-text), ws expected */
-        if (*jsonctx->in->current == '\0' || is_jsonws(*jsonctx->in->current)) {
+        if ((*jsonctx->in->current == '\0') || is_jsonws(*jsonctx->in->current)) {
             return LY_SUCCESS;
         }
     } else if (lyjson_ctx_status(jsonctx, 1) == LYJSON_OBJECT) {
         LY_CHECK_RET(skip_ws(jsonctx));
-        if (*jsonctx->in->current == ',' || *jsonctx->in->current == '}') {
+        if ((*jsonctx->in->current == ',') || (*jsonctx->in->current == '}')) {
             return LY_SUCCESS;
         }
     } else if (lyjson_ctx_status(jsonctx, 1) == LYJSON_ARRAY) {
         LY_CHECK_RET(skip_ws(jsonctx));
-        if (*jsonctx->in->current == ',' || *jsonctx->in->current == ']') {
+        if ((*jsonctx->in->current == ',') || (*jsonctx->in->current == ']')) {
             return LY_SUCCESS;
         }
     } else {
@@ -553,25 +553,25 @@ lyjson_array(struct lyjson_ctx *jsonctx)
 static LY_ERR
 lyjson_value(struct lyjson_ctx *jsonctx)
 {
-    if (jsonctx->status.count && lyjson_ctx_status(jsonctx, 0) == LYJSON_END) {
+    if (jsonctx->status.count && (lyjson_ctx_status(jsonctx, 0) == LYJSON_END)) {
         return LY_SUCCESS;
     }
 
-    if (*jsonctx->in->current == 'f' && !strncmp(jsonctx->in->current, "false", 5)) {
+    if ((*jsonctx->in->current == 'f') && !strncmp(jsonctx->in->current, "false", 5)) {
         /* false */
         lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 5, 0);
         ly_in_skip(jsonctx->in, 5);
         JSON_PUSH_STATUS_RET(jsonctx, LYJSON_FALSE);
         LY_CHECK_RET(lyjson_check_next(jsonctx));
 
-    } else if (*jsonctx->in->current == 't' && !strncmp(jsonctx->in->current, "true", 4)) {
+    } else if ((*jsonctx->in->current == 't') && !strncmp(jsonctx->in->current, "true", 4)) {
         /* true */
         lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 4, 0);
         ly_in_skip(jsonctx->in, 4);
         JSON_PUSH_STATUS_RET(jsonctx, LYJSON_TRUE);
         LY_CHECK_RET(lyjson_check_next(jsonctx));
 
-    } else if (*jsonctx->in->current == 'n' && !strncmp(jsonctx->in->current, "null", 4)) {
+    } else if ((*jsonctx->in->current == 'n') && !strncmp(jsonctx->in->current, "null", 4)) {
         /* none */
         lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 0, 0);
         ly_in_skip(jsonctx->in, 4);
@@ -593,7 +593,7 @@ lyjson_value(struct lyjson_ctx *jsonctx)
         ly_in_skip(jsonctx->in, 1);
         LY_CHECK_RET(lyjson_object(jsonctx));
 
-    } else if (*jsonctx->in->current == '-' || (*jsonctx->in->current >= '0' && *jsonctx->in->current <= '9')) {
+    } else if ((*jsonctx->in->current == '-') || ((*jsonctx->in->current >= '0') && (*jsonctx->in->current <= '9'))) {
         /* number */
         LY_CHECK_RET(lyjson_number(jsonctx));
 
@@ -633,7 +633,7 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyjson_ctx **j
 
     ret = lyjson_value(jsonctx);
 
-    if (jsonctx->status.count > 1 && lyjson_ctx_status(jsonctx, 0) == LYJSON_END) {
+    if ((jsonctx->status.count > 1) && (lyjson_ctx_status(jsonctx, 0) == LYJSON_END)) {
         LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_EOF);
         ret = LY_EVALID;
     }
@@ -688,7 +688,7 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
 
     prev = lyjson_ctx_status(jsonctx, 0);
 
-    if (prev == LYJSON_OBJECT || prev == LYJSON_ARRAY) {
+    if ((prev == LYJSON_OBJECT) || (prev == LYJSON_ARRAY)) {
         /* get value for the object's member OR the first value in the array */
         ret = lyjson_value(jsonctx);
         goto result;
@@ -730,7 +730,7 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
             /* ... array - get another complete value */
             ret = lyjson_value(jsonctx);
         }
-    } else if ((prev == LYJSON_OBJECT && *jsonctx->in->current == '}') || (prev == LYJSON_ARRAY && *jsonctx->in->current == ']')) {
+    } else if (((prev == LYJSON_OBJECT) && (*jsonctx->in->current == '}')) || ((prev == LYJSON_ARRAY) && (*jsonctx->in->current == ']'))) {
         ly_in_skip(jsonctx->in, 1);
         JSON_POP_STATUS_RET(jsonctx);
         JSON_PUSH_STATUS_RET(jsonctx, prev + 1);
@@ -742,12 +742,12 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
     }
 
 result:
-    if (ret == LY_SUCCESS && jsonctx->status.count > 1 && lyjson_ctx_status(jsonctx, 0) == LYJSON_END) {
+    if ((ret == LY_SUCCESS) && (jsonctx->status.count > 1) && (lyjson_ctx_status(jsonctx, 0) == LYJSON_END)) {
         LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_EOF);
         ret = LY_EVALID;
     }
 
-    if (ret == LY_SUCCESS && status) {
+    if ((ret == LY_SUCCESS) && status) {
         *status = lyjson_ctx_status(jsonctx, 0);
     }
 

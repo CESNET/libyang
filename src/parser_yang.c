@@ -489,7 +489,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
     }
 
 string_end:
-    if (arg <= Y_PREF_IDENTIF_ARG && !(*word_len)) {
+    if ((arg <= Y_PREF_IDENTIF_ARG) && !(*word_len)) {
         /* empty identifier */
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Statement argument is required.");
         return LY_EVALID;
@@ -686,7 +686,7 @@ keyword_start:
     word_start = in->current;
     *kw = lysp_match_kw(ctx, in);
 
-    if (*kw == LY_STMT_SYNTAX_SEMICOLON || *kw == LY_STMT_SYNTAX_LEFT_BRACE || *kw == LY_STMT_SYNTAX_RIGHT_BRACE) {
+    if ((*kw == LY_STMT_SYNTAX_SEMICOLON) || (*kw == LY_STMT_SYNTAX_LEFT_BRACE) || (*kw == LY_STMT_SYNTAX_RIGHT_BRACE)) {
         goto success;
     }
 
@@ -707,7 +707,7 @@ keyword_start:
             goto extension;
         case '{':
             /* allowed only for input and output statements which can be without arguments */
-            if (*kw == LY_STMT_INPUT || *kw == LY_STMT_OUTPUT) {
+            if ((*kw == LY_STMT_INPUT) || (*kw == LY_STMT_OUTPUT)) {
                 break;
             }
         /* fallthrough */
@@ -1680,7 +1680,7 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enu
     errno = 0;
     if (val_kw == LY_STMT_VALUE) {
         num = strtol(word, &ptr, 10);
-        if (num < INT64_C(-2147483648) || num > INT64_C(2147483647)) {
+        if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
             goto error;
         }
@@ -4046,7 +4046,7 @@ parse_identity(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_id
             LY_CHECK_RET(parse_status(ctx, in, &ident->flags, &ident->exts));
             break;
         case LY_STMT_BASE:
-            if (ident->bases && ctx->mod_version < 2) {
+            if (ident->bases && (ctx->mod_version < 2)) {
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Identity can be derived from multiple base identities only in YANG 1.1 modules");
                 return LY_EVALID;
             }

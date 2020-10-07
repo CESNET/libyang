@@ -291,7 +291,7 @@ remove_nodelevel:
         ctx->path[ctx->path_len] = '\0';
     } else {
         if (ctx->path_len > 1) {
-            if (!parent && ctx->path[ctx->path_len - 1] == '}' && ctx->path[ctx->path_len - 2] != '\'') {
+            if (!parent && (ctx->path[ctx->path_len - 1] == '}') && (ctx->path[ctx->path_len - 2] != '\'')) {
                 /* extension of the special tag */
                 nextlevel = 2;
                 --ctx->path_len;
@@ -302,7 +302,7 @@ remove_nodelevel:
         } /* else the path is just initiated with '/', so do not add additional slash in case of top-level nodes */
 
         if (nextlevel != 2) {
-            if ((parent && parent->module == ctx->mod) || (!parent && ctx->path_len > 1 && name[0] == '{')) {
+            if ((parent && (parent->module == ctx->mod)) || (!parent && (ctx->path_len > 1) && (name[0] == '{'))) {
                 /* module not changed, print the name unprefixed */
                 len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s", nextlevel ? "/" : "", name);
             } else {
@@ -703,7 +703,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     ext_p->compiled = ext;
 
 cleanup:
-    if (prefixed_name && prefixed_name != ext_p->name) {
+    if (prefixed_name && (prefixed_name != ext_p->name)) {
         lydict_remove(ctx->ctx, prefixed_name);
     }
 
@@ -787,7 +787,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, struct lys
         expr_size++;
 
         while (!isspace(c[i])) {
-            if (!c[i] || c[i] == ')' || c[i] == '(') {
+            if (!c[i] || (c[i] == ')') || (c[i] == '(')) {
                 i--;
                 break;
             }
@@ -808,7 +808,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, struct lys
         return LY_EVALID;
     }
 
-    if (checkversion || expr_size > 1) {
+    if (checkversion || (expr_size > 1)) {
         /* check that we have 1.1 module */
         if (qname->mod->version != LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
@@ -849,7 +849,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, struct lys
         i++; /* go back by one step */
 
         if (!strncmp(&c[i], "not", 3) && isspace(c[i + 3])) {
-            if (stack.index && stack.stack[stack.index - 1] == LYS_IFF_NOT) {
+            if (stack.index && (stack.stack[stack.index - 1] == LYS_IFF_NOT)) {
                 /* double not */
                 iff_stack_pop(&stack);
             } else {
@@ -1150,7 +1150,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lys_module *contex
 
     assert(ident || bases);
 
-    if (LY_ARRAY_COUNT(bases_p) > 1 && ctx->mod_def->version < 2) {
+    if ((LY_ARRAY_COUNT(bases_p) > 1) && (ctx->mod_def->version < 2)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                "Multiple bases in %s are allowed only in YANG 1.1 modules.", ident ? "identity" : "identityref type");
         return LY_EVALID;
@@ -1521,11 +1521,11 @@ static LY_ERR
 range_part_check_ascendancy(ly_bool unsigned_value, ly_bool max, int64_t value, int64_t prev_value)
 {
     if (unsigned_value) {
-        if ((max && (uint64_t)prev_value > (uint64_t)value) || (!max && (uint64_t)prev_value >= (uint64_t)value)) {
+        if ((max && ((uint64_t)prev_value > (uint64_t)value)) || (!max && ((uint64_t)prev_value >= (uint64_t)value))) {
             return LY_EEXIST;
         }
     } else {
-        if ((max && prev_value > value) || (!max && prev_value >= value)) {
+        if ((max && (prev_value > value)) || (!max && (prev_value >= value))) {
             return LY_EEXIST;
         }
     }
@@ -1734,7 +1734,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                        "Invalid %s restriction - unexpected end of the expression after \"..\" (%s).",
                        length_restr ? "length" : "range", range_p->arg);
                 goto cleanup;
-            } else if (!parts || parts_done == LY_ARRAY_COUNT(parts)) {
+            } else if (!parts || (parts_done == LY_ARRAY_COUNT(parts))) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid %s restriction - unexpected end of the expression (%s).",
                        length_restr ? "length" : "range", range_p->arg);
@@ -1769,7 +1769,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             while (isspace(*expr)) {
                 expr++;
             }
-            if (!parts || LY_ARRAY_COUNT(parts) == parts_done) {
+            if (!parts || (LY_ARRAY_COUNT(parts) == parts_done)) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid %s restriction - unexpected \"..\" without a lower bound.", length_restr ? "length" : "range");
                 goto cleanup;
@@ -1841,7 +1841,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             goto cleanup;
         }
         for (u = v = 0; u < parts_done && v < LY_ARRAY_COUNT(base_range->parts); ++u) {
-            if ((uns && parts[u].min_u64 < base_range->parts[v].min_u64) || (!uns && parts[u].min_64 < base_range->parts[v].min_64)) {
+            if ((uns && (parts[u].min_u64 < base_range->parts[v].min_u64)) || (!uns && (parts[u].min_64 < base_range->parts[v].min_64))) {
                 goto baseerror;
             }
             /* current lower bound is not lower than the base */
@@ -1869,7 +1869,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                 /* base is the range */
                 if (parts[u].min_64 == parts[u].max_64) {
                     /* current is a single value */
-                    if ((uns && parts[u].max_u64 > base_range->parts[v].max_u64) || (!uns && parts[u].max_64 > base_range->parts[v].max_64)) {
+                    if ((uns && (parts[u].max_u64 > base_range->parts[v].max_u64)) || (!uns && (parts[u].max_64 > base_range->parts[v].max_64))) {
                         /* current is behind the base range, so base range is omitted,
                          * move the base and keep the current for further check */
                         ++v;
@@ -1878,9 +1878,9 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                     continue;
                 } else {
                     /* both are ranges - check the higher bound, the lower was already checked */
-                    if ((uns && parts[u].max_u64 > base_range->parts[v].max_u64) || (!uns && parts[u].max_64 > base_range->parts[v].max_64)) {
+                    if ((uns && (parts[u].max_u64 > base_range->parts[v].max_u64)) || (!uns && (parts[u].max_64 > base_range->parts[v].max_64))) {
                         /* higher bound is higher than the current higher bound */
-                        if ((uns && parts[u].min_u64 > base_range->parts[v].max_u64) || (!uns && parts[u].min_64 > base_range->parts[v].max_64)) {
+                        if ((uns && (parts[u].min_u64 > base_range->parts[v].max_u64)) || (!uns && (parts[u].min_64 > base_range->parts[v].max_64))) {
                             /* but the current lower bound is also higher, so the base range is omitted,
                              * continue with the same current, but move the base */
                             --u;
@@ -2273,7 +2273,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     uint32_t position = 0;
     struct lysc_type_bitenum_item *e, storage;
 
-    if (base_enums && ctx->mod_def->version < 2) {
+    if (base_enums && (ctx->mod_def->version < 2)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "%s type can be subtyped only in YANG 1.1 modules.",
                basetype == LY_TYPE_ENUM ? "Enumeration" : "Bits");
         return LY_EVALID;
@@ -2305,7 +2305,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             e->flags |= LYS_ISENUM;
             if (enums_p[u].flags & LYS_SET_VALUE) {
                 e->value = (int32_t)enums_p[u].value;
-                if (!u || e->value >= value) {
+                if (!u || (e->value >= value)) {
                     value = e->value + 1;
                 }
                 /* check collision with other values */
@@ -2320,12 +2320,12 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             } else if (base_enums) {
                 /* inherit the assigned value */
                 e->value = base_enums[match].value;
-                if (!u || e->value >= value) {
+                if (!u || (e->value >= value)) {
                     value = e->value + 1;
                 }
             } else {
                 /* assign value automatically */
-                if (u && value == INT32_MIN) {
+                if (u && (value == INT32_MIN)) {
                     /* counter overflow */
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                            "Invalid enumeration - it is not possible to auto-assign enum value for "
@@ -2337,7 +2337,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         } else { /* LY_TYPE_BITS */
             if (enums_p[u].flags & LYS_SET_VALUE) {
                 e->value = (int32_t)enums_p[u].value;
-                if (!u || (uint32_t)e->value >= position) {
+                if (!u || ((uint32_t)e->value >= position)) {
                     position = (uint32_t)e->value + 1;
                 }
                 /* check collision with other values */
@@ -2352,12 +2352,12 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             } else if (base_enums) {
                 /* inherit the assigned value */
                 e->value = base_enums[match].value;
-                if (!u || (uint32_t)e->value >= position) {
+                if (!u || ((uint32_t)e->value >= position)) {
                     position = (uint32_t)e->value + 1;
                 }
             } else {
                 /* assign value automatically */
-                if (u && position == 0) {
+                if (u && (position == 0)) {
                     /* counter overflow */
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                            "Invalid bits - it is not possible to auto-assign bit position for "
@@ -2465,7 +2465,7 @@ lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const
     /* node-identifier ([prefix:]name) */
     LY_CHECK_RET(ly_parse_nodeid(path, prefix, prefix_len, name, name_len));
 
-    if ((**path == '/' && (*path)[1]) || !**path) {
+    if (((**path == '/') && (*path)[1]) || !**path) {
         /* path continues by another token or this is the last token */
         return LY_SUCCESS;
     } else if ((*path)[0] != '[') {
@@ -2993,7 +2993,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         for (uint32_t u = 0; u < tpdf_chain.count; u++) {
             /* local part */
             tctx_iter = (struct type_context *)tpdf_chain.objs[u];
-            if (tctx_iter->mod == tctx->mod && tctx_iter->node == tctx->node && tctx_iter->tpdf == tctx->tpdf) {
+            if ((tctx_iter->mod == tctx->mod) && (tctx_iter->node == tctx->node) && (tctx_iter->tpdf == tctx->tpdf)) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
                 free(tctx);
@@ -3004,7 +3004,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         for (uint32_t u = 0; u < ctx->tpdf_chain.count; u++) {
             /* global part for unions corner case */
             tctx_iter = (struct type_context *)ctx->tpdf_chain.objs[u];
-            if (tctx_iter->mod == tctx->mod && tctx_iter->node == tctx->node && tctx_iter->tpdf == tctx->tpdf) {
+            if ((tctx_iter->mod == tctx->mod) && (tctx_iter->node == tctx->node) && (tctx_iter->tpdf == tctx->tpdf)) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
                 free(tctx);
@@ -3095,7 +3095,7 @@ preparenext:
         if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if (basetype != LY_TYPE_LEAFREF && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+        } else if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
             /* no change, just use the type information from the base */
             base = ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = ((struct type_context *)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
@@ -3108,7 +3108,7 @@ preparenext:
                    tctx->tpdf->name, ly_data_type2str[basetype]);
             ret = LY_EVALID;
             goto cleanup;
-        } else if (basetype == LY_TYPE_EMPTY && tctx->tpdf->dflt.str) {
+        } else if ((basetype == LY_TYPE_EMPTY) && tctx->tpdf->dflt.str) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Invalid type \"%s\" - \"empty\" type must not have a default value (%s).",
                    tctx->tpdf->name, tctx->tpdf->dflt.str);
@@ -3129,7 +3129,7 @@ preparenext:
     ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
     /* process the type definition in leaf */
-    if (type_p->flags || !base || basetype == LY_TYPE_LEAFREF) {
+    if (type_p->flags || !base || (basetype == LY_TYPE_LEAFREF)) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         /* TODO user type plugins */
@@ -3138,7 +3138,7 @@ preparenext:
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_mod, context_name, type_p, basetype, NULL,
                 base, type);
         LY_CHECK_GOTO(ret, cleanup);
-    } else if (basetype != LY_TYPE_BOOL && basetype != LY_TYPE_EMPTY) {
+    } else if ((basetype != LY_TYPE_BOOL) && (basetype != LY_TYPE_EMPTY)) {
         /* no specific restriction in leaf's type definition, copy from the base */
         free(*type);
         (*type) = base;
@@ -3630,7 +3630,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
             }
         }
     } else if (leaf->type->basetype == LY_TYPE_EMPTY) {
-        if (leaf->nodetype == LYS_LEAFLIST && ctx->mod_def->version < LYS_VERSION_1_1) {
+        if ((leaf->nodetype == LYS_LEAFLIST) && (ctx->mod_def->version < LYS_VERSION_1_1)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
             return LY_EVALID;
@@ -3807,7 +3807,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             }
 
             /* all referenced leafs must be of the same config type */
-            if (config != -1 && ((((*key)->flags & LYS_CONFIG_W) && config == 0) || (((*key)->flags & LYS_CONFIG_R) && config == 1))) {
+            if ((config != -1) && ((((*key)->flags & LYS_CONFIG_W) && (config == 0)) || (((*key)->flags & LYS_CONFIG_R) && (config == 1)))) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                        "Unique statement \"%s\" refers to leaves with different config type.", uniques[v].str);
                 return LY_EVALID;
@@ -3958,7 +3958,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         key->flags |= LYS_KEY;
 
         /* move it to the correct position */
-        if ((prev_key && (struct lysc_node *)prev_key != key->prev) || (!prev_key && key->prev->next)) {
+        if ((prev_key && ((struct lysc_node *)prev_key != key->prev)) || (!prev_key && key->prev->next)) {
             /* fix links in closest previous siblings of the key */
             if (key->next) {
                 key->next->prev = key->prev;
@@ -4415,16 +4415,16 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
      * - new cases augmenting some choice can have mandatory nodes
      * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
      */
-    if (aug_p->when || target->nodetype == LYS_CHOICE || ctx->mod == target->module) {
+    if (aug_p->when || (target->nodetype == LYS_CHOICE) || (ctx->mod == target->module)) {
         allow_mandatory = 1;
     }
 
     when_shared = NULL;
     LY_LIST_FOR(aug_p->child, pnode) {
         /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
-        if ((pnode->nodetype == LYS_CASE && target->nodetype != LYS_CHOICE)
+        if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE))
                 || ((pnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && !(target->nodetype & (LYS_CONTAINER | LYS_LIST)))
-                || (pnode->nodetype == LYS_USES && target->nodetype == LYS_CHOICE)) {
+                || ((pnode->nodetype == LYS_USES) && (target->nodetype == LYS_CHOICE))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid augment of %s node which is not allowed to contain %s node \"%s\".",
                    lys_nodetype2str(target->nodetype), lys_nodetype2str(pnode->nodetype), pnode->name);
@@ -7443,7 +7443,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
             }
         }
 
-        if ((substmts[u].cardinality == LY_STMT_CARD_MAND || substmts[u].cardinality == LY_STMT_CARD_SOME) && !stmt_present) {
+        if (((substmts[u].cardinality == LY_STMT_CARD_MAND) || (substmts[u].cardinality == LY_STMT_CARD_SOME)) && !stmt_present) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s%s%s\".",
                    ly_stmt2str(substmts[u].stmt), ext->name, ext->argument ? " " : "", ext->argument ? ext->argument : "");
             goto cleanup;

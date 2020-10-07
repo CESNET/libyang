@@ -77,7 +77,7 @@ matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
         /* compare node names */
         struct lyd_node_opaq *onode1 = (struct lyd_node_opaq *)node1;
         struct lyd_node_opaq *onode2 = (struct lyd_node_opaq *)node2;
-        if (onode1->name != onode2->name || onode1->prefix.id != onode2->prefix.id) {
+        if ((onode1->name != onode2->name) || (onode1->prefix.id != onode2->prefix.id)) {
             return 0;
         }
     }
@@ -133,7 +133,7 @@ json_print_array_close(struct jsonpr_ctx *ctx)
 
     LEVEL_DEC;
     ly_set_rm_index(&ctx->open, ctx->open.count - 1, NULL);
-    if (schema && schema->nodetype == LYS_LEAFLIST) {
+    if (schema && (schema->nodetype == LYS_LEAFLIST)) {
         /* leaf-list's content is always printed on a single line */
         ly_print_(ctx->out, "]");
     } else {
@@ -203,7 +203,7 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
     } else {
         const char *pref1 = node_prefix(node1);
         const char *pref2 = node_prefix(node2);
-        if ((pref1 && pref2) && pref1 == pref2) {
+        if ((pref1 && pref2) && (pref1 == pref2)) {
             return 0;
         } else {
             return 1;
@@ -264,7 +264,7 @@ static LY_ERR
 json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bool is_attr)
 {
     PRINT_COMMA;
-    if (LEVEL == 1 || json_nscmp(node, (const struct lyd_node *)node->parent)) {
+    if ((LEVEL == 1) || json_nscmp(node, (const struct lyd_node *)node->parent)) {
         /* print "namespace" */
         ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
                  node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
@@ -317,7 +317,7 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FO
     }
 
     /* print the member */
-    if (module_name && (!parent || node_prefix(parent) != module_name)) {
+    if (module_name && (!parent || (node_prefix(parent) != module_name))) {
         ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name, DO_FORMAT ? " " : "");
     } else {
         ly_print_(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name, DO_FORMAT ? " " : "");
@@ -600,7 +600,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         has_content = 1;
     }
 
-    if (!node->schema || node->schema->nodetype != LYS_LIST) {
+    if (!node->schema || (node->schema->nodetype != LYS_LIST)) {
         ly_print_(ctx->out, "%s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
                 (DO_FORMAT && has_content) ? "\n" : "");
     } else {
@@ -687,7 +687,7 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         }
     }
 
-    if (is_open_array(ctx, node) && (!node->next || node->next->schema != node->schema)) {
+    if (is_open_array(ctx, node) && (!node->next || (node->next->schema != node->schema))) {
         json_print_array_close(ctx);
     }
 
@@ -811,7 +811,7 @@ static LY_ERR
 json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     if (!ly_should_print(node, ctx->options)) {
-        if (is_open_array(ctx, node) && (!node->next || node->next->schema != node->schema)) {
+        if (is_open_array(ctx, node) && (!node->next || (node->next->schema != node->schema))) {
             json_print_array_close(ctx);
         }
         return LY_SUCCESS;

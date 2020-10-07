@@ -538,7 +538,7 @@ xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     struct xmlpr_ctx ctx = {0};
 
     if (!root) {
-        if (out->type == LY_OUT_MEMORY || out->type == LY_OUT_CALLBACK) {
+        if ((out->type == LY_OUT_MEMORY) || (out->type == LY_OUT_CALLBACK)) {
             ly_print_(out, "");
         }
         goto finish;

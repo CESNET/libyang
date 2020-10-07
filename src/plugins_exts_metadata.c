@@ -64,7 +64,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 
     /* check for duplication */
     LY_ARRAY_FOR(mod_c->exts, u) {
-        if (&mod_c->exts[u] != c_ext && mod_c->exts[u].def == c_ext->def && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
+        if ((&mod_c->exts[u] != c_ext) && (mod_c->exts[u].def == c_ext->def) && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
             /* duplication of the same annotation extension in a single module */
             lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
             return LY_EVALID;

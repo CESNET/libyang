@@ -454,7 +454,7 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
         *type_hint_p = LYD_VALHINT_STRING | LYD_VALHINT_NUM64;
     } else if (*status_p == LYJSON_NUMBER) {
         *type_hint_p = LYD_VALHINT_DECNUM;
-    } else if (*status_p == LYJSON_FALSE || *status_p == LYJSON_TRUE) {
+    } else if ((*status_p == LYJSON_FALSE) || (*status_p == LYJSON_TRUE)) {
         *type_hint_p = LYD_VALHINT_BOOLEAN;
     } else if (*status_p == LYJSON_NULL) {
         *type_hint_p = 0;
@@ -561,7 +561,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         size_t name_len, prefix_len;
         const struct lysc_node *snode;
 
-        if (attr->schema || meta_container->name[0] != '@') {
+        if (attr->schema || (meta_container->name[0] != '@')) {
             /* not an opaq metadata node */
             continue;
         }
@@ -743,7 +743,7 @@ next_entry:
         }
         LY_CHECK_GOTO(status != LYJSON_OBJECT && status != LYJSON_NULL, representation_error);
 
-        if (!node || node->schema != prev->schema) {
+        if (!node || (node->schema != prev->schema)) {
             LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, prev->parent, LYVE_REFERENCE,
                    "Missing JSON data instance no. %u of %s:%s to be coupled with metadata.",
                    instance, prev->schema->module->name, prev->schema->name);
@@ -936,7 +936,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     ly_bool dynamic = 0;
     uint32_t type_hint = 0;
 
-    if (*status_inner_p != LYJSON_OBJECT && *status_inner_p != LYJSON_OBJECT_EMPTY) {
+    if ((*status_inner_p != LYJSON_OBJECT) && (*status_inner_p != LYJSON_OBJECT_EMPTY)) {
         /* prepare for creating opaq node with a value */
         value = lydctx->jsonctx->value;
         value_len = lydctx->jsonctx->value_len;
@@ -960,18 +960,18 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     }
     LY_CHECK_RET(ret);
 
-    if (*status_p == LYJSON_OBJECT || *status_p == LYJSON_OBJECT_EMPTY) {
+    if ((*status_p == LYJSON_OBJECT) || (*status_p == LYJSON_OBJECT_EMPTY)) {
         /* process children */
         while (*status_p != LYJSON_OBJECT_CLOSED && *status_p != LYJSON_OBJECT_EMPTY) {
             LY_CHECK_RET(lydjson_subtree_r(lydctx, (struct lyd_node_inner *)(*node_p), lyd_node_children_p(*node_p)));
             *status_p = lyjson_ctx_status(lydctx->jsonctx, 0);
         }
-    } else if (*status_p == LYJSON_ARRAY || *status_p == LYJSON_ARRAY_EMPTY) {
+    } else if ((*status_p == LYJSON_ARRAY) || (*status_p == LYJSON_ARRAY_EMPTY)) {
         /* process another instance of the same node */
         /* but first mark the node to be expected a list or a leaf-list */
         ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST;
 
-        if (*status_inner_p == LYJSON_OBJECT || *status_inner_p == LYJSON_OBJECT_EMPTY) {
+        if ((*status_inner_p == LYJSON_OBJECT) || (*status_inner_p == LYJSON_OBJECT_EMPTY)) {
             /* but first process children of the object in the array */
             while (*status_inner_p != LYJSON_OBJECT_CLOSED && *status_inner_p != LYJSON_OBJECT_EMPTY) {
                 LY_CHECK_RET(lydjson_subtree_r(lydctx, (struct lyd_node_inner *)(*node_p), lyd_node_children_p(*node_p)));
@@ -1567,7 +1567,7 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"notification\" node.");
         ret = LY_EVALID;
         goto cleanup;
-    } else if (lydctx->jsonctx->in->current[0] && lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED) {
+    } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
                tree->schema->name);
         ret = LY_EVALID;
@@ -1733,7 +1733,7 @@ parse_content:
                act_e ? "action" : (rpc_e ? "rpc" : "rpc/action"));
         ret = LY_EVALID;
         goto cleanup;
-    } else if (lydctx->jsonctx->in->current[0] && lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED) {
+    } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
                tree->schema->name);
         ret = LY_EVALID;
@@ -1755,7 +1755,7 @@ parse_content:
         /* finish rpc envelope */
         ret = lydjson_object_envelope_close(lydctx->jsonctx, "rpc");
         LY_CHECK_GOTO(ret, cleanup);
-        if (!act_e && lydctx->op_node->schema->nodetype != LYS_RPC) {
+        if (!act_e && (lydctx->op_node->schema->nodetype != LYS_RPC)) {
             LOGVAL(ctx, LY_VLOG_LYD, lydctx->op_node, LYVE_DATA, "Unexpected %s element, an \"rpc\" expected.",
                    lys_nodetype2str(lydctx->op_node->schema->nodetype));
             ret = LY_EVALID;

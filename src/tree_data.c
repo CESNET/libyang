@@ -265,7 +265,7 @@ static LYD_FORMAT
 lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
 {
 
-    if (!format && in->type == LY_IN_FILEPATH) {
+    if (!format && (in->type == LY_IN_FILEPATH)) {
         /* unknown format - try to detect it from filename's suffix */
         const char *path = in->method.fpath.filepath;
         size_t len = strlen(path);
@@ -273,11 +273,11 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         /* ignore trailing whitespaces */
         for ( ; len > 0 && isspace(path[len - 1]); len--) {}
 
-        if (len >= 5 && !strncmp(&path[len - 4], ".xml", 4)) {
+        if ((len >= 5) && !strncmp(&path[len - 4], ".xml", 4)) {
             format = LYD_XML;
-        } else if (len >= 6 && !strncmp(&path[len - 5], ".json", 5)) {
+        } else if ((len >= 6) && !strncmp(&path[len - 5], ".json", 5)) {
             format = LYD_JSON;
-        } else if (len >= 5 && !strncmp(&path[len - 4], ".lyb", 4)) {
+        } else if ((len >= 5) && !strncmp(&path[len - 4], ".lyb", 4)) {
             format = LYD_LYB;
         } /* else still unknown */
     }
@@ -2115,7 +2115,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     assert((parent || meta) && mod);
 
     LY_ARRAY_FOR(mod->compiled->exts, u) {
-        if (mod->compiled->exts[u].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
+        if ((mod->compiled->exts[u].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin) &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             /* we have the annotation definition */
             ant = &mod->compiled->exts[u];
@@ -2397,14 +2397,14 @@ all_children_compare:
             case LYD_ANYDATA_JSON:
                 len1 = strlen(any1->value.str);
                 len2 = strlen(any2->value.str);
-                if (len1 != len2 || strcmp(any1->value.str, any2->value.str)) {
+                if ((len1 != len2) || strcmp(any1->value.str, any2->value.str)) {
                     return LY_ENOT;
                 }
                 return LY_SUCCESS;
             case LYD_ANYDATA_LYB:
                 len1 = lyd_lyb_data_length(any1->value.mem);
                 len2 = lyd_lyb_data_length(any2->value.mem);
-                if (len1 != len2 || memcmp(any1->value.mem, any2->value.mem, len1)) {
+                if ((len1 != len2) || memcmp(any1->value.mem, any2->value.mem, len1)) {
                     return LY_ENOT;
                 }
                 return LY_SUCCESS;
@@ -2561,7 +2561,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
             LY_LIST_FOR(orig->child, child) {
                 LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, NULL, options, NULL), error);
             }
-        } else if (dup->schema->nodetype == LYS_LIST && !(dup->schema->flags & LYS_KEYLESS)) {
+        } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
             child = orig->child;
             for (struct lysc_node *key = ((struct lysc_node_list *)dup->schema)->child;
@@ -2676,7 +2676,7 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t opt
 
     /* rehash if needed */
     for ( ; local_parent; local_parent = local_parent->parent) {
-        if (local_parent->schema->nodetype == LYS_LIST && (local_parent->schema->flags & LYS_KEYLESS)) {
+        if ((local_parent->schema->nodetype == LYS_LIST) && (local_parent->schema->flags & LYS_KEYLESS)) {
             lyd_hash((struct lyd_node *)local_parent);
         }
     }
@@ -3026,7 +3026,7 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
 iter_print:
             /* print prefix and name */
             mod = NULL;
-            if (iter->schema && (!iter->parent || iter->schema->module != iter->parent->schema->module)) {
+            if (iter->schema && (!iter->parent || (iter->schema->module != iter->parent->schema->module))) {
                 mod = iter->schema->module;
             }
 

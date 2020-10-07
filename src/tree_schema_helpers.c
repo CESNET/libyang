@@ -156,12 +156,12 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
 {
     struct lysp_import *i;
 
-    if (module_prefix && &module_prefix != value && !strcmp(module_prefix, *value)) {
+    if (module_prefix && (&module_prefix != value) && !strcmp(module_prefix, *value)) {
         LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used as module prefix.", *value);
         return LY_EEXIST;
     }
     LY_ARRAY_FOR(imports, struct lysp_import, i) {
-        if (i->prefix && &i->prefix != value && !strcmp(i->prefix, *value)) {
+        if (i->prefix && (&i->prefix != value) && !strcmp(i->prefix, *value)) {
             LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.", *value, i->name);
             return LY_EEXIST;
         }
@@ -203,7 +203,7 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, 
 
     /* check format */
     for (uint8_t i = 0; i < date_len; i++) {
-        if (i == 4 || i == 7) {
+        if ((i == 4) || (i == 7)) {
             if (date[i] != '-') {
                 goto error;
             }
@@ -215,7 +215,7 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, 
     /* check content, e.g. 2018-02-31 */
     memset(&tm, 0, sizeof tm);
     r = strptime(date, "%Y-%m-%d", &tm);
-    if (!r || r != &date[LY_REV_SIZE - 1]) {
+    if (!r || (r != &date[LY_REV_SIZE - 1])) {
         goto error;
     }
     memcpy(&tm_, &tm, sizeof tm);
@@ -282,27 +282,27 @@ lysp_type_str2builtin(const char *name, size_t len)
     if (len >= 4) { /* otherwise it does not match any built-in type */
         if (name[0] == 'b') {
             if (name[1] == 'i') {
-                if (len == 6 && !strncmp(&name[2], "nary", 4)) {
+                if ((len == 6) && !strncmp(&name[2], "nary", 4)) {
                     return LY_TYPE_BINARY;
-                } else if (len == 4 && !strncmp(&name[2], "ts", 2)) {
+                } else if ((len == 4) && !strncmp(&name[2], "ts", 2)) {
                     return LY_TYPE_BITS;
                 }
-            } else if (len == 7 && !strncmp(&name[1], "oolean", 6)) {
+            } else if ((len == 7) && !strncmp(&name[1], "oolean", 6)) {
                 return LY_TYPE_BOOL;
             }
         } else if (name[0] == 'd') {
-            if (len == 9 && !strncmp(&name[1], "ecimal64", 8)) {
+            if ((len == 9) && !strncmp(&name[1], "ecimal64", 8)) {
                 return LY_TYPE_DEC64;
             }
         } else if (name[0] == 'e') {
-            if (len == 5 && !strncmp(&name[1], "mpty", 4)) {
+            if ((len == 5) && !strncmp(&name[1], "mpty", 4)) {
                 return LY_TYPE_EMPTY;
-            } else if (len == 11 && !strncmp(&name[1], "numeration", 10)) {
+            } else if ((len == 11) && !strncmp(&name[1], "numeration", 10)) {
                 return LY_TYPE_ENUM;
             }
         } else if (name[0] == 'i') {
             if (name[1] == 'n') {
-                if (len == 4 && !strncmp(&name[2], "t8", 2)) {
+                if ((len == 4) && !strncmp(&name[2], "t8", 2)) {
                     return LY_TYPE_INT8;
                 } else if (len == 5) {
                     if (!strncmp(&name[2], "t16", 3)) {
@@ -312,27 +312,27 @@ lysp_type_str2builtin(const char *name, size_t len)
                     } else if (!strncmp(&name[2], "t64", 3)) {
                         return LY_TYPE_INT64;
                     }
-                } else if (len == 19 && !strncmp(&name[2], "stance-identifier", 17)) {
+                } else if ((len == 19) && !strncmp(&name[2], "stance-identifier", 17)) {
                     return LY_TYPE_INST;
                 }
-            } else if (len == 11 && !strncmp(&name[1], "dentityref", 10)) {
+            } else if ((len == 11) && !strncmp(&name[1], "dentityref", 10)) {
                 return LY_TYPE_IDENT;
             }
         } else if (name[0] == 'l') {
-            if (len == 7 && !strncmp(&name[1], "eafref", 6)) {
+            if ((len == 7) && !strncmp(&name[1], "eafref", 6)) {
                 return LY_TYPE_LEAFREF;
             }
         } else if (name[0] == 's') {
-            if (len == 6 && !strncmp(&name[1], "tring", 5)) {
+            if ((len == 6) && !strncmp(&name[1], "tring", 5)) {
                 return LY_TYPE_STRING;
             }
         } else if (name[0] == 'u') {
             if (name[1] == 'n') {
-                if (len == 5 && !strncmp(&name[2], "ion", 3)) {
+                if ((len == 5) && !strncmp(&name[2], "ion", 3)) {
                     return LY_TYPE_UNION;
                 }
-            } else if (name[1] == 'i' && name[2] == 'n' && name[3] == 't') {
-                if (len == 5 && name[4] == '8') {
+            } else if ((name[1] == 'i') && (name[2] == 'n') && (name[3] == 't')) {
+                if ((len == 5) && (name[4] == '8')) {
                     return LY_TYPE_UINT8;
                 } else if (len == 6) {
                     if (!strncmp(&name[4], "16", 2)) {
@@ -385,7 +385,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     }
     LY_CHECK_RET(!(*module), LY_ENOTFOUND);
 
-    if (start_node && *module == start_module) {
+    if (start_node && (*module == start_module)) {
         /* search typedefs in parent's nodes */
         *node = start_node;
         while (*node) {
@@ -732,13 +732,13 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
         rev = strchr(filename, '@');
         dot = strrchr(info->path, '.');
         if (strncmp(filename, name, len) ||
-                ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+                ((rev && (rev != &filename[len])) || (!rev && (dot != &filename[len])))) {
             LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, name);
         }
         /* revision */
         if (rev) {
             len = dot - ++rev;
-            if (!revs || len != 10 || strncmp(revs[0].date, rev, len)) {
+            if (!revs || (len != 10) || strncmp(revs[0].date, rev, len)) {
                 LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
                        revs ? revs[0].date : "none");
             }
@@ -831,7 +831,7 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_
             /* get the requested module of the latest revision in the context */
 latest_in_the_context:
             *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
-            if (*mod && (*mod)->latest_revision == 1) {
+            if (*mod && ((*mod)->latest_revision == 1)) {
                 /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
                 m = *mod;
                 *mod = NULL;
@@ -892,7 +892,7 @@ search_file:
         /* we have module from the current context */
         if (implement) {
             m = ly_ctx_get_module_implemented(ctx, name);
-            if (m && m != *mod) {
+            if (m && (m != *mod)) {
                 /* check collision with other implemented revision */
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
                        "Module \"%s\" is already present in other implemented revision.", name);
@@ -934,7 +934,7 @@ lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
 LY_ERR
 lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix)
 {
-    if (first || (prefix && (*prefix) == 1)) {
+    if (first || (prefix && ((*prefix) == 1))) {
         if (!is_yangidentstartchar(c)) {
             LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c' (0x%04x).", (char)c, c);
             return LY_EVALID;
@@ -946,7 +946,7 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
                 (*prefix) = 2;
             }
         }
-    } else if (c == ':' && prefix && (*prefix) == 0) {
+    } else if ((c == ':') && prefix && ((*prefix) == 0)) {
         (*prefix) = 1;
     } else if (!is_yangidentchar(c)) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c' (0x%04x).", (char)c, c);

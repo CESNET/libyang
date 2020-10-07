@@ -1223,14 +1223,14 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
 
     /* find the operation/notification */
     LYD_TREE_DFS_BEGIN(op_tree, op_node) {
-        if ((op == LYD_VALIDATE_OP_RPC || op == LYD_VALIDATE_OP_REPLY) && (op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+        if (((op == LYD_VALIDATE_OP_RPC) || (op == LYD_VALIDATE_OP_REPLY)) && (op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
             break;
         } else if ((op == LYD_VALIDATE_OP_NOTIF) && (op_node->schema->nodetype == LYS_NOTIF)) {
             break;
         }
         LYD_TREE_DFS_END(op_tree, op_node);
     }
-    if (op == LYD_VALIDATE_OP_RPC || op == LYD_VALIDATE_OP_REPLY) {
+    if ((op == LYD_VALIDATE_OP_RPC) || (op == LYD_VALIDATE_OP_REPLY)) {
         if (!(op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
             LOGERR(LYD_CTX(op_tree), LY_EINVAL, "No RPC/action to validate found.");
             return LY_EINVAL;

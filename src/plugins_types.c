@@ -317,7 +317,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
     }
 
     trailing_zeros = 0;
-    if (len < value_len && ((value[len] != '.') || !isdigit(value[len + 1]))) {
+    if ((len < value_len) && ((value[len] != '.') || !isdigit(value[len + 1]))) {
         goto decimal;
     }
     fraction = len;
@@ -502,7 +502,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
     return LY_SUCCESS;
 
 error:
-    if (rc == -1 || !errmsg) {
+    if ((rc == -1) || !errmsg) {
         *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
         return LY_EMEM;
     } else {
@@ -732,8 +732,8 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     /* prepare canonized value */
     if (d) {
         int count = sprintf(buf, "%" PRId64 " ", d);
-        if ((d > 0 && (count - 1) <= type_dec->fraction_digits)
-                || (count - 2) <= type_dec->fraction_digits) {
+        if (((d > 0) && ((count - 1) <= type_dec->fraction_digits))
+                || ((count - 2) <= type_dec->fraction_digits)) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
              * to fraction-digits value)
@@ -741,7 +741,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
             count = sprintf(buf, "%0*" PRId64 " ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
         }
         for (uint8_t i = type_dec->fraction_digits, j = 1; i > 0; i--) {
-            if (j && i > 1 && buf[count - 2] == '0') {
+            if (j && (i > 1) && (buf[count - 2] == '0')) {
                 /* we have trailing zero to skip */
                 buf[count - 1] = '\0';
             } else {
@@ -811,13 +811,13 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
             }
             count++;
 
-            if ((value[u] < '/' && value[u] != '+') ||
-                    (value[u] > '9' && value[u] < 'A') ||
-                    (value[u] > 'Z' && value[u] < 'a') || value[u] > 'z') {
+            if (((value[u] < '/') && (value[u] != '+')) ||
+                    ((value[u] > '9') && (value[u] < 'A')) ||
+                    ((value[u] > 'Z') && (value[u] < 'a')) || (value[u] > 'z')) {
                 /* non-encoding characters */
                 if (value[u] == '=') {
                     /* padding */
-                    if (u == stop - 1 && value[stop] == '=') {
+                    if ((u == stop - 1) && (value[stop] == '=')) {
                         termination = 2;
                         count++;
                         u++;
@@ -849,7 +849,7 @@ finish:
         LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, buf, err));
     }
 
-    if (start != 0 || (value_len && stop != value_len - 1)) {
+    if ((start != 0) || (value_len && (stop != value_len - 1))) {
         LY_CHECK_RET(lydict_insert(ctx, &value[start], stop + 1 - start, &storage->canonical));
     } else {
         LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
@@ -864,7 +864,7 @@ finish:
 
 error:
     if (!*err) {
-        if (rc == -1 || !errmsg) {
+        if ((rc == -1) || !errmsg) {
             *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
         } else {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -972,7 +972,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
                     }
                 }
 
-                if (iscanonical && items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position) {
+                if (iscanonical && items->count && (type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position)) {
                     iscanonical = 0;
                 }
                 ret = ly_set_add(items, &type_bits->bits[u], 0, &inserted);
@@ -1176,9 +1176,9 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     /* check hints */
     LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
-    if (value_len == 4 && !strncmp(value, "true", 4)) {
+    if ((value_len == 4) && !strncmp(value, "true", 4)) {
         i = 1;
-    } else if (value_len == 5 && !strncmp(value, "false", 5)) {
+    } else if ((value_len == 5) && !strncmp(value, "false", 5)) {
         i = 0;
     } else {
         char *errmsg;
@@ -1356,7 +1356,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     return LY_SUCCESS;
 
 error:
-    if (rc == -1 || !errmsg) {
+    if ((rc == -1) || !errmsg) {
         *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
         return LY_EMEM;
     } else {
@@ -1536,7 +1536,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
 
     if (val1 == val2) {
         return LY_SUCCESS;
-    } else if (!val1->target || !val2->target || LY_ARRAY_COUNT(val1->target) != LY_ARRAY_COUNT(val2->target)) {
+    } else if (!val1->target || !val2->target || (LY_ARRAY_COUNT(val1->target) != LY_ARRAY_COUNT(val2->target))) {
         return LY_ENOT;
     }
 
@@ -1544,8 +1544,8 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
         struct ly_path *s1 = &val1->target[u];
         struct ly_path *s2 = &val2->target[u];
 
-        if (s1->node != s2->node || (s1->pred_type != s2->pred_type) ||
-                (s1->predicates && LY_ARRAY_COUNT(s1->predicates) != LY_ARRAY_COUNT(s2->predicates))) {
+        if ((s1->node != s2->node) || (s1->pred_type != s2->pred_type) ||
+                (s1->predicates && (LY_ARRAY_COUNT(s1->predicates) != LY_ARRAY_COUNT(s2->predicates)))) {
             return LY_ENOT;
         }
         if (s1->predicates) {
@@ -1564,7 +1564,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
                     break;
                 case LY_PATH_PREDTYPE_LIST:
                     /* key-predicate */
-                    if (pred1->key != pred2->key || ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                    if ((pred1->key != pred2->key) || ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
                         return LY_ENOT;
                     }
                     break;

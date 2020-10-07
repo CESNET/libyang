@@ -68,7 +68,7 @@ vasprintf(char **strp, const char *fmt, va_list ap)
 
     va_end(ap2);
 
-    if (l < 0 || !(*strp = malloc(l + 1U))) {
+    if ((l < 0) || !(*strp = malloc(l + 1U))) {
         return -1;
     }
 

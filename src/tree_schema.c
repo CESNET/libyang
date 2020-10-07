@@ -58,7 +58,7 @@ next:
         /* get know where to start */
         if (parent) {
             /* schema subtree */
-            if (parent->nodetype == LYS_CHOICE && (options & LYS_GETNEXT_WITHCASE)) {
+            if ((parent->nodetype == LYS_CHOICE) && (options & LYS_GETNEXT_WITHCASE)) {
                 if (((struct lysc_node_choice *)parent)->cases) {
                     next = last = (const struct lysc_node *)&((struct lysc_node_choice *)parent)->cases[0];
                 }
@@ -119,7 +119,7 @@ next:
 repeat:
     if (!next) {
         /* possibly go back to parent */
-        if (last && last->parent != parent) {
+        if (last && (last->parent != parent)) {
             last = last->parent;
             goto next;
         } else if (!action_flag) {
@@ -413,7 +413,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
             } else {
                 slash = "/";
             }
-            if (!iter->parent || iter->parent->module != iter->module) {
+            if (!iter->parent || (iter->parent->module != iter->module)) {
                 /* print prefix */
                 if (buffer) {
                     len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
@@ -431,7 +431,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
             free(s);
             free(id);
 
-            if (buffer && buflen <= (size_t)len) {
+            if (buffer && (buflen <= (size_t)len)) {
                 /* not enough space in buffer */
                 break;
             }
@@ -1152,12 +1152,12 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         /* name */
         len = strlen(mod->name);
         if (strncmp(filename, mod->name, len) ||
-                ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+                ((rev && (rev != &filename[len])) || (!rev && (dot != &filename[len])))) {
             LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->name);
         }
         if (rev) {
             len = dot - ++rev;
-            if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].date, rev, len)) {
+            if (!mod->parsed->revs || (len != 10) || strncmp(mod->parsed->revs[0].date, rev, len)) {
                 LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
                        mod->parsed->revs ? mod->parsed->revs[0].date : "none");
             }
@@ -1406,7 +1406,7 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
 
                 /* here we know that the item is a file which can contain a module */
                 if (strncmp(name, file->d_name, len) ||
-                        (file->d_name[len] != '.' && file->d_name[len] != '@')) {
+                        ((file->d_name[len] != '.') && (file->d_name[len] != '@'))) {
                     /* different filename than the module we search for */
                     continue;
                 }
@@ -1452,10 +1452,10 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 } else {
                     /* remember the revision and try to find the newest one */
                     if (match_name) {
-                        if (file->d_name[len] != '@' ||
-                                lysp_check_date(NULL, &file->d_name[len + 1], flen - (format_aux == LYS_IN_YANG ? 5 : 4) - len - 1, NULL)) {
+                        if ((file->d_name[len] != '@') ||
+                                lysp_check_date(NULL, &file->d_name[len + 1], flen - ((format_aux == LYS_IN_YANG) ? 5 : 4) - len - 1, NULL)) {
                             continue;
-                        } else if (match_name[match_len] == '@' &&
+                        } else if ((match_name[match_len] == '@') &&
                                 (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {
                             continue;
                         }

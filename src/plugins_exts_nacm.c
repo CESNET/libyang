@@ -64,14 +64,14 @@ invalid_parent:
                       "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
             return LY_EVALID;
         }
-        if (c_ext->data == (void *)&nacm_deny_write && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        if ((c_ext->data == (void *)&nacm_deny_write) && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             goto invalid_parent;
         }
     }
 
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        if (&parent->exts[u] != c_ext && parent->exts[u].def->plugin == c_ext->def->plugin) {
+        if ((&parent->exts[u] != c_ext) && (parent->exts[u].def->plugin == c_ext->def->plugin)) {
             /* duplication of a NACM extension on a single node
              * We check plugin since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */
