@@ -37,7 +37,7 @@ enum lyd_diff_op {
     LYD_DIFF_OP_CREATE,    /**< Subtree created. */
     LYD_DIFF_OP_DELETE,    /**< Subtree deleted. */
     LYD_DIFF_OP_REPLACE,   /**< Node value changed or (leaf-)list instance moved. */
-    LYD_DIFF_OP_NONE,      /**< No change of an existing inner node or default flag change of a term node. */
+    LYD_DIFF_OP_NONE       /**< No change of an existing inner node or default flag change of a term node. */
 };
 
 /**

@@ -129,7 +129,7 @@ typedef enum {
     LYD_UNKNOWN = 0,     /**< unknown data format, invalid value */
     LYD_XML,             /**< XML instance data format */
     LYD_JSON,            /**< JSON instance data format */
-    LYD_LYB,             /**< LYB instance data format */
+    LYD_LYB              /**< LYB instance data format */
 } LYD_FORMAT;
 
 /**
@@ -138,7 +138,7 @@ typedef enum {
 typedef enum {
     LY_PREF_SCHEMA,          /**< value prefixes map to YANG import prefixes */
     LY_PREF_XML,             /**< value prefixes map to XML namespace prefixes */
-    LY_PREF_JSON,            /**< value prefixes map to module names */
+    LY_PREF_JSON             /**< value prefixes map to module names */
 } LY_PREFIX_FORMAT;
 
 /**
@@ -153,7 +153,7 @@ typedef enum {
                                           is printed in XML format. */
     LYD_ANYDATA_XML,                 /**< Value is a string containing the serialized XML data. */
     LYD_ANYDATA_JSON,                /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
-    LYD_ANYDATA_LYB,                 /**< Value is a memory chunk with the serialized data tree in LYB format. */
+    LYD_ANYDATA_LYB                  /**< Value is a memory chunk with the serialized data tree in LYB format. */
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
@@ -1288,7 +1288,7 @@ const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct 
  */
 typedef enum {
     LYD_PATH_LOG, /**< Descriptive path format used in log messages */
-    LYD_PATH_LOG_NO_LAST_PRED, /**< Similar to ::LYD_PATH_LOG except there is never a predicate on the last node */
+    LYD_PATH_LOG_NO_LAST_PRED  /**< Similar to ::LYD_PATH_LOG except there is never a predicate on the last node */
 } LYD_PATH_TYPE;
 
 /**

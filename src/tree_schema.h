@@ -257,7 +257,7 @@ typedef enum {
     LYEXT_PAR_WHEN,      /**< ::lysc_when */
     LYEXT_PAR_IDENT,     /**< ::lysc_ident */
     LYEXT_PAR_EXT,       /**< ::lysc_ext */
-    LYEXT_PAR_IMPORT,    /**< ::lysp_import */
+    LYEXT_PAR_IMPORT     /**< ::lysp_import */
 // LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
 // LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
 // LYEXT_PAR_REFINE,    /**< ::lysp_refine */
@@ -321,7 +321,7 @@ typedef enum {
                                       lys_node_leaflist and lys_deviate */
     LYEXT_SUBSTMT_POSITION,      /**< extension of the position statement, can appear in lys_type_bit */
     LYEXT_SUBSTMT_UNIQUE,        /**< extension of the unique statement, can appear in lys_node_list and lys_deviate */
-    LYEXT_SUBSTMT_IFFEATURE,     /**< extension of the if-feature statement */
+    LYEXT_SUBSTMT_IFFEATURE      /**< extension of the if-feature statement */
 } LYEXT_SUBSTMT;
 
 /**

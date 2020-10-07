@@ -128,7 +128,7 @@ enum lyxp_expr_type {
     LYXP_EXPR_ADDITIVE,
     LYXP_EXPR_MULTIPLICATIVE,
     LYXP_EXPR_UNARY,
-    LYXP_EXPR_UNION,
+    LYXP_EXPR_UNION
 };
 
 /**
