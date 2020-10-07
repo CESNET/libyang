@@ -1611,8 +1611,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     /* position predicate */
                     ly_strcat(&result, "[%" PRIu64 "]", pred->position);
                     break;
-                case LY_PATH_PREDTYPE_LIST:
-                {
+                case LY_PATH_PREDTYPE_LIST: {
                     /* key-predicate */
                     ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
@@ -1627,8 +1626,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     }
                     break;
                 }
-                case LY_PATH_PREDTYPE_LEAFLIST:
-                {
+                case LY_PATH_PREDTYPE_LEAFLIST: {
                     /* leaf-list-predicate */
                     ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
@@ -1664,8 +1662,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     /* position predicate */
                     ly_strcat(&result, "[%" PRIu64 "]", pred->position);
                     break;
-                case LY_PATH_PREDTYPE_LIST:
-                {
+                case LY_PATH_PREDTYPE_LIST: {
                     /* key-predicate */
                     ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
@@ -1679,8 +1676,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     }
                     break;
                 }
-                case LY_PATH_PREDTYPE_LEAFLIST:
-                {
+                case LY_PATH_PREDTYPE_LEAFLIST: {
                     /* leaf-list-predicate */
                     ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
