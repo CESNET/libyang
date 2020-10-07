@@ -544,7 +544,7 @@ check_mod:
 }
 
 API const struct lysc_node *
-ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *data_path, ly_bool output)
+ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output)
 {
     const struct lysc_node *snode = NULL;
     struct lyxp_expr *exp = NULL;
@@ -559,7 +559,7 @@ ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, cons
     }
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, data_path, strlen(data_path), 0, &exp);
+    ret = lyxp_expr_parse(ctx, path, strlen(path), 0, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile */
