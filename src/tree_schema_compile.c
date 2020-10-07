@@ -2247,9 +2247,11 @@ static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
 /**
  * @brief stringification of the YANG built-in data types
  */
-const char *ly_data_type2str[LY_DATA_TYPE_COUNT] = {"unknown", "binary", "8bit unsigned integer", "16bit unsigned integer",
+const char *ly_data_type2str[LY_DATA_TYPE_COUNT] = {
+    "unknown", "binary", "8bit unsigned integer", "16bit unsigned integer",
     "32bit unsigned integer", "64bit unsigned integer", "string", "bits", "boolean", "decimal64", "empty", "enumeration",
-    "identityref", "instance-identifier", "leafref", "union", "8bit integer", "16bit integer", "32bit integer", "64bit integer"};
+    "identityref", "instance-identifier", "leafref", "union", "8bit integer", "16bit integer", "32bit integer", "64bit integer"
+};
 
 /**
  * @brief Compile parsed type's enum structures (for enumeration and bits types).
