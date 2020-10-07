@@ -382,7 +382,7 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
     if (!out->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
         out->method.fpath.f = f;
-        return ((void *)-1);
+        return (void *)-1;
     }
     fclose(f);
     free(out->method.fpath.filepath);

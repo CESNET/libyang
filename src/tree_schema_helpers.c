@@ -1405,7 +1405,7 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 {
     for (uint32_t u = 0; u < ctx->list.count; ++u) {
         if (((struct lys_module *)ctx->list.objs[u])->parsed == mod) {
-            return ((struct lys_module *)ctx->list.objs[u]);
+            return (struct lys_module *)ctx->list.objs[u];
         }
     }
     return NULL;
