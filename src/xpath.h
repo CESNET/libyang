@@ -15,8 +15,8 @@
 #ifndef LY_XPATH_H
 #define LY_XPATH_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "compat.h"
 #include "log.h"

@@ -16,8 +16,8 @@
 #define LY_PRINTER_INTERNAL_H_
 
 #include "printer.h"
-#include "printer_schema.h"
 #include "printer_data.h"
+#include "printer_schema.h"
 
 struct lysp_module;
 struct lysp_submodule;

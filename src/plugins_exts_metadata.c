@@ -16,8 +16,8 @@
 #include <stdlib.h>
 
 #include "plugins_exts.h"
-#include "tree_schema.h"
 #include "plugins_exts_metadata.h"
+#include "tree_schema.h"
 
 /**
  * @brief Storage for ID used to check plugin API version compatibility.

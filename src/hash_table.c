@@ -14,14 +14,14 @@
 
 #include "hash_table.h"
 
-#include <string.h>
+#include <assert.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
-#include <assert.h>
+#include <string.h>
 
-#include "compat.h"
 #include "common.h"
+#include "compat.h"
 #include "dict.h"
 #include "log.h"
 

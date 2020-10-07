@@ -17,8 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "compat.h"
 #include "common.h"
+#include "compat.h"
 #include "hash_table.h"
 #include "log.h"
 #include "plugins_types.h"

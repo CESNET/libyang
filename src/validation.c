@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "compat.h"
 #include "common.h"
+#include "compat.h"
 #include "diff.h"
 #include "hash_table.h"
 #include "log.h"

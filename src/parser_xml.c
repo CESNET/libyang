@@ -12,10 +12,10 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "common.h"
 #include "context.h"

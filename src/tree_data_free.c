@@ -17,10 +17,10 @@
 
 #include "common.h"
 #include "hash_table.h"
-#include "tree.h"
-#include "tree_schema.h"
-#include "tree_data_internal.h"
 #include "plugins_types.h"
+#include "tree.h"
+#include "tree_data_internal.h"
+#include "tree_schema.h"
 
 void
 ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)

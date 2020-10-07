@@ -15,8 +15,8 @@
 #ifndef LY_PLUGINS_EXTS_INTERNAL_H_
 #define LY_PLUGINS_EXTS_INTERNAL_H_
 
-#include "tree_schema.h"
 #include "plugins_exts.h"
+#include "tree_schema.h"
 
 #include "plugins_exts_metadata.h"
 

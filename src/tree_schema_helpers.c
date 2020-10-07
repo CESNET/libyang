@@ -21,14 +21,14 @@
 #include <string.h>
 #include <time.h>
 
-#include "compat.h"
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
 #include "parser.h"
-#include "parser_schema.h"
 #include "parser_internal.h"
+#include "parser_schema.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"

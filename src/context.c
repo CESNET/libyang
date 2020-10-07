@@ -39,12 +39,12 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-#include "../models/ietf-yang-metadata@2016-08-05.h"
-#include "../models/yang@2020-06-17.h"
-#include "../models/ietf-inet-types@2013-07-15.h"
-#include "../models/ietf-yang-types@2013-07-15.h"
 #include "../models/ietf-datastores@2018-02-14.h"
+#include "../models/ietf-inet-types@2013-07-15.h"
 #include "../models/ietf-yang-library@2019-01-04.h"
+#include "../models/ietf-yang-metadata@2016-08-05.h"
+#include "../models/ietf-yang-types@2013-07-15.h"
+#include "../models/yang@2020-06-17.h"
 #define IETF_YANG_LIB_REV "2019-01-04"
 
 static struct internal_modules_s {
