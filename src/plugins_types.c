@@ -1604,6 +1604,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                       value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
+
                 switch (value->target[u].pred_type) {
                 case LY_PATH_PREDTYPE_NONE:
                     break;
@@ -1655,6 +1656,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
             }
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
+
                 switch (value->target[u].pred_type) {
                 case LY_PATH_PREDTYPE_NONE:
                     break;

@@ -135,6 +135,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     struct lyd_meta *meta;
     const struct lys_module *mod;
     struct ly_set ns_list = {0};
+
 #if 0
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;

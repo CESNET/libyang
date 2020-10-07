@@ -4117,6 +4117,7 @@ static LY_ERR
 xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uint32_t options)
 {
     struct lyxp_set_node *item;
+
     /* suppress unused variable warning */
     (void)options;
 
@@ -4279,6 +4280,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
 {
     struct lyxp_set_node *item;
     struct lys_module *mod;
+
     /* suppress unused variable warning */
     (void)options;
 
@@ -7316,6 +7318,7 @@ static LY_ERR
 eval_function_call(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
+
     LY_ERR (*xpath_func)(struct lyxp_set **, uint16_t, struct lyxp_set *, uint32_t) = NULL;
     uint16_t arg_count = 0, i;
     struct lyxp_set **args = NULL, **args_aux;

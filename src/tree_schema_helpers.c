@@ -803,6 +803,7 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
+
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
     struct lys_module *m = NULL;
@@ -962,6 +963,7 @@ lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
     struct lysp_submodule *submod = NULL;
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
+
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
     struct ly_in *in;
@@ -1212,6 +1214,7 @@ API const struct lysp_action *
 lysp_node_actions(const struct lysp_node *node)
 {
     struct lysp_action **actions;
+
     actions = lysp_node_actions_p((struct lysp_node *)node);
     if (actions) {
         return *actions;
@@ -1242,6 +1245,7 @@ API const struct lysp_notif *
 lysp_node_notifs(const struct lysp_node *node)
 {
     struct lysp_notif **notifs;
+
     notifs = lysp_node_notifs_p((struct lysp_node *)node);
     if (notifs) {
         return *notifs;
@@ -1312,6 +1316,7 @@ API const struct lysc_action *
 lysc_node_actions(const struct lysc_node *node)
 {
     struct lysc_action **actions;
+
     actions = lysc_node_actions_p((struct lysc_node *)node);
     if (actions) {
         return *actions;
@@ -1338,6 +1343,7 @@ API const struct lysc_notif *
 lysc_node_notifs(const struct lysc_node *node)
 {
     struct lysc_notif **notifs;
+
     notifs = lysc_node_notifs_p((struct lysc_node *)node);
     if (notifs) {
         return *notifs;

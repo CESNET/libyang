@@ -517,6 +517,7 @@ get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
 {
     size_t buf_len = 0;
     uint8_t prefix = 0;
+
     /* word buffer - dynamically allocated */
     *word_b = NULL;
 

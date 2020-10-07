@@ -178,6 +178,7 @@ int
 ly_strncmp(const char *refstr, const char *str, size_t str_len)
 {
     int rc = strncmp(refstr, str, str_len);
+
     if (!rc && refstr[str_len] == '\0') {
         return 0;
     } else {
@@ -356,6 +357,7 @@ size_t
 LY_VCODE_INSTREXP_len(const char *str)
 {
     size_t len = 0;
+
     if (!str) {
         return len;
     } else if (!str[0]) {

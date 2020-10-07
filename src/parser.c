@@ -243,6 +243,7 @@ void
 lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath)
 {
     char path[PATH_MAX];
+
 #ifndef __APPLE__
     char proc_path[32];
     int len;

@@ -98,6 +98,7 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     }
 
     struct lyext_metadata *annotation = (struct lyext_metadata *)ext->data;
+
     annotation_substmt[0].storage = &annotation->iffeatures;
     annotation_substmt[1].storage = &annotation->units;
     annotation_substmt[2].storage = &annotation->flags;

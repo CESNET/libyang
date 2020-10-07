@@ -1957,6 +1957,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const c
     const char *orig_ptr;
     PCRE2_SIZE err_offset;
     pcre2_code *code_local;
+
 #define URANGE_LEN 19
     char *ublock2urange[][2] = {
         {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
@@ -6981,6 +6982,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
     struct lysp_node *dev_pnode = NULL, *orig_pnode = pnode;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported;
+
     LY_ERR (*node_compile_spec)(struct lysc_ctx *, struct lysp_node *, struct lysc_node *);
 
     if (pnode->nodetype != LYS_USES) {
