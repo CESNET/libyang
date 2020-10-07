@@ -136,7 +136,8 @@ ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **out)
     return LY_SUCCESS;
 }
 
-API ly_write_clb ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
+API ly_write_clb
+ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
 {
     void *prev_clb;
 

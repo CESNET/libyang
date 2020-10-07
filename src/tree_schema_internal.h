@@ -297,8 +297,7 @@ LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
  * @param[in] mod Parsed module to be updated.
  * @return LY_ERR value (currently only LY_SUCCESS, but it can change in future).
  */
-LY_ERR
-lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
+LY_ERR lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
         struct lysp_action *actions, struct lysp_notif *notifs);
 
 /**
