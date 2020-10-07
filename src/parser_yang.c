@@ -1553,7 +1553,6 @@ parse_when(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_when *
     CHECK_NONEMPTY(ctx, word_len, "when");
     INSERT_WORD_RET(ctx, buf, when->cond, word, word_len);
 
-
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:

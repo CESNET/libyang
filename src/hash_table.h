@@ -246,5 +246,4 @@ LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
  */
 LY_ERR lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal);
 
-
 #endif /* LY_HASH_TABLE_H_ */

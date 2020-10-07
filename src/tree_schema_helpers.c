@@ -1666,4 +1666,3 @@ lysc_is_userordered(const struct lysc_node *schema)
 
     return 1;
 }
-

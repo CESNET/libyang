@@ -313,7 +313,6 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         return;
     }
 
-
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
     if ((level < LY_LLVRB) && ctx && (ly_log_opts & LY_LOSTORE)) {
         assert(format);

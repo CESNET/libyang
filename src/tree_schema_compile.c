@@ -4945,7 +4945,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     for (i = 0; i < ctx->uses_augs.count; ++i) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Augment target node \"%s\" in grouping \"%s\" was not found.",
-               ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
+                ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
         ret = LY_ENOTFOUND;
     }
     LY_CHECK_GOTO(ret, cleanup);
@@ -4954,7 +4954,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     for (i = 0; i < ctx->uses_rfns.count; ++i) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
-               ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->expr, grp->name);
+                ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->expr, grp->name);
         ret = LY_ENOTFOUND;
     }
     LY_CHECK_GOTO(ret, cleanup);
@@ -7009,7 +7009,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_choice));
         node_compile_spec = lys_compile_node_choice;
         break;
-      case LYS_CASE:
+    case LYS_CASE:
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_case));
         node_compile_spec = lys_compile_node_case;
         break;
