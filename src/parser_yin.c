@@ -2274,7 +2274,7 @@ yin_parse_case(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_case *cas;
     LY_ERR ret = LY_SUCCESS;
-    struct yin_subelement *subelems = NULL;;
+    struct yin_subelement *subelems = NULL;
 
     /* create new case */
     LY_LIST_NEW_RET(ctx->xmlctx->ctx, node_meta->nodes, cas, next, LY_EMEM);
