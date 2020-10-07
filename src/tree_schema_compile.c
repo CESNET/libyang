@@ -750,7 +750,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, struct lys
 
         if (!strncmp(&c[i], "not", op_len = 3) || !strncmp(&c[i], "and", op_len = 3) || !strncmp(&c[i], "or", op_len = 2)) {
             uint64_t spaces;
-            for (spaces = 0; c[i + op_len + spaces] && isspace(c[i + op_len + spaces]); spaces++);
+            for (spaces = 0; c[i + op_len + spaces] && isspace(c[i + op_len + spaces]); spaces++) {}
             if (c[i + op_len + spaces] == '\0') {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid value \"%s\" of if-feature - unexpected end of expression.", qname->str);
@@ -7565,7 +7565,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     memset(&tmp_set, 0, sizeof tmp_set);
     opts = LYXP_SCNODE_SCHEMA;
     if (node->flags & LYS_CONFIG_R) {
-        for (op = node->parent; op && !(op->nodetype & (LYS_RPC | LYS_ACTION)); op = op->parent);
+        for (op = node->parent; op && !(op->nodetype & (LYS_RPC | LYS_ACTION)); op = op->parent) {}
         if (op) {
             /* we are actually in output */
             opts = LYXP_SCNODE_OUTPUT;
