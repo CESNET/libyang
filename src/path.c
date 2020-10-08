@@ -412,6 +412,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             *mod = prev_ctx_node->module;
             break;
         case LY_PREF_XML:
+        case LY_PREF_SCHEMA_RESOLVED:
             /* not really defined */
             LOGINT_RET(ctx);
         }

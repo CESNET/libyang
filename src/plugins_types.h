@@ -106,13 +106,14 @@ void ly_err_free(void *ptr);
  * @brief Resolve format-specific prefixes to modules.
  *
  * @param[in] ctx libyang context.
- * @param[in] prefix Prefix to resolve.
+ * @param[in] prefix Prefix to resolve. If NULL, resolve an identifier without a prefix (get local module).
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA  - const struct lys_module * (local module)
- *      LY_PREF_XML     - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON    - NULL
+ *      LY_PREF_SCHEMA          - const struct lys_module * (local module)
+ *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
+ *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_PREF_JSON            - NULL (does not support empty prefix)
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
@@ -125,9 +126,10 @@ const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char 
  * @param[in] mod Module whose prefix to get.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA  - const struct lys_module * (local module)
- *      LY_PREF_XML     - struct ly_set * (set of all returned modules as ::struct lys_module)
- *      LY_PREF_JSON    - NULL
+ *      LY_PREF_SCHEMA          - const struct lys_module * (local module)
+ *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
+ *      LY_PREF_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)
+ *      LY_PREF_JSON            - NULL
  * @return Module prefix to print.
  * @return NULL on error.
  */

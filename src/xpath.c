@@ -4252,6 +4252,7 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uin
         case LY_PREF_JSON:
             rc = asprintf(&str, "%s:%s", mod->name, name);
             break;
+        case LY_PREF_SCHEMA_RESOLVED:
         case LY_PREF_XML:
             LOGINT_RET(set->ctx);
         }

@@ -137,6 +137,7 @@ typedef enum {
  */
 typedef enum {
     LY_PREF_SCHEMA,          /**< value prefixes map to YANG import prefixes */
+    LY_PREF_SCHEMA_RESOLVED, /**< value prefixes map to module structures directly */
     LY_PREF_XML,             /**< value prefixes map to XML namespace prefixes */
     LY_PREF_JSON             /**< value prefixes map to module names */
 } LY_PREFIX_FORMAT;
@@ -219,6 +220,15 @@ struct lyd_value_subvalue {
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ::ly_resolve_prefix) */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
+};
+
+/**
+ * @brief Prefix data pair mapping of prefixes to modules. In case the format is ::LY_PREF_SCHEMA_RESOLVED,
+ * the expected prefix data is a sized array of these structures.
+ */
+struct lyd_value_prefix {
+    char *prefix;                   /**< used prefix */
+    const struct lys_module *mod;   /**< mapping to a module */
 };
 
 /**
