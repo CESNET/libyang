@@ -1408,13 +1408,12 @@ struct lysc_action {
     const char *name;                /**< action/RPC name (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_action_inout input;  /**< RPC's/action's input */
     struct lysc_action_inout output; /**< RPC's/action's output */
-
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /** private arbitrary user data, not used by libyang */
 
 };
@@ -1433,10 +1432,9 @@ struct lysc_notif {
     const char *name;                /**< Notification name (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /** private arbitrary user data, not used by libyang */
 };
 

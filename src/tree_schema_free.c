@@ -672,6 +672,7 @@ lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action)
     FREE_STRING(ctx, action->ref);
     FREE_ARRAY(ctx, action->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, action->exts, lysc_ext_instance_free);
+    FREE_ARRAY(ctx, action->when, lysc_when_free);
     FREE_ARRAY(ctx, action->input_exts, lysc_ext_instance_free);
     lysc_action_inout_free(ctx, &action->input);
     FREE_ARRAY(ctx, action->output_exts, lysc_ext_instance_free);
@@ -688,6 +689,7 @@ lysc_notif_free(struct ly_ctx *ctx, struct lysc_notif *notif)
     FREE_STRING(ctx, notif->ref);
     FREE_ARRAY(ctx, notif->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, notif->exts, lysc_ext_instance_free);
+    FREE_ARRAY(ctx, notif->when, lysc_when_free);
     FREE_ARRAY(ctx, notif->musts, lysc_must_free);
     LY_LIST_FOR_SAFE(notif->data, child_next, child) {
         lysc_node_free(ctx, child);
