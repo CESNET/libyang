@@ -530,8 +530,8 @@ lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_
     }
 
     e = (struct lyxml_elem *)xmlctx->elements.objs[xmlctx->elements.count - 1];
-    if ((e->prefix_len != prefix_len) || (e->name_len != name_len)
-            || (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len)) {
+    if ((e->prefix_len != prefix_len) || (e->name_len != name_len) ||
+            (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len)) {
         LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_SYNTAX,
                 "Opening (\"%.*s%s%.*s\") and closing (\"%.*s%s%.*s\") elements tag mismatch.",
                 e->prefix_len, e->prefix ? e->prefix : "", e->prefix ? ":" : "", e->name_len, e->name,

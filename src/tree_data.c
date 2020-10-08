@@ -1214,8 +1214,8 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             LY_PATH_TARGET_MANY, LY_PREF_JSON, NULL, &p), cleanup);
 
     schema = p[LY_ARRAY_COUNT(p) - 1].node;
-    if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE)
-            && !(options & LYD_NEWOPT_OPAQ)) {
+    if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE) &&
+            !(options & LYD_NEWOPT_OPAQ)) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                 lys_nodetype2str(schema->nodetype), schema->name);
         ret = LY_EINVAL;
@@ -1413,8 +1413,8 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
             }
             break;
         case LYS_LEAF:
-            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)iter)->dflt
-                    && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)iter)->dflt &&
+                    lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create default leaf */
                 ret = lyd_create_term2(iter, ((struct lysc_node_leaf *)iter)->dflt, &node);
                 if (ret == LY_EINCOMPLETE) {
@@ -1439,8 +1439,8 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
             }
             break;
         case LYS_LEAFLIST:
-            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaflist *)iter)->dflts
-                    && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaflist *)iter)->dflts &&
+                    lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create all default leaf-lists */
                 dflts = ((struct lysc_node_leaflist *)iter)->dflts;
                 LY_ARRAY_FOR(dflts, u) {
@@ -1489,8 +1489,8 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
 
     LYD_TREE_DFS_BEGIN(tree, node) {
         /* skip added default nodes */
-        if (((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW))
-                && (node->schema->nodetype & LYD_NODE_INNER)) {
+        if (((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) &&
+                (node->schema->nodetype & LYD_NODE_INNER)) {
             LY_CHECK_GOTO(ret = lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, NULL,
                     NULL, implicit_options, diff), cleanup);
         }
@@ -2046,8 +2046,8 @@ lyd_unlink_tree(struct lyd_node *node)
         }
 
         /* check for NP container whether its last non-default node is not being unlinked */
-        if (node->parent->schema && (node->parent->schema->nodetype == LYS_CONTAINER)
-                && !(node->parent->flags & LYD_DEFAULT) && !(node->parent->schema->flags & LYS_PRESENCE)) {
+        if (node->parent->schema && (node->parent->schema->nodetype == LYS_CONTAINER) &&
+                !(node->parent->flags & LYD_DEFAULT) && !(node->parent->schema->flags & LYS_PRESENCE)) {
             LY_LIST_FOR(node->parent->child, iter) {
                 if ((iter != node) && !(iter->flags & LYD_DEFAULT)) {
                     break;

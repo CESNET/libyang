@@ -622,8 +622,8 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     sibling = NULL;
     while ((sibling = lys_getnext(sibling, sparent, mod ? mod->compiled : NULL, getnext_opts))) {
         /* skip schema nodes from models not present during printing */
-        if (lyb_has_schema_model(sibling, lybctx->lybctx->models)
-                && lyb_is_schema_hash_match((struct lysc_node *)sibling, hash, i + 1)) {
+        if (lyb_has_schema_model(sibling, lybctx->lybctx->models) &&
+                lyb_is_schema_hash_match((struct lysc_node *)sibling, hash, i + 1)) {
             /* match found */
             break;
         }
@@ -788,8 +788,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
             /* add any missing default children */
             ret = lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, &lybctx->unres_node_type,
-                    &lybctx->when_check, (lybctx->validate_options & LYD_VALIDATE_NO_STATE)
-                                        ? LYD_IMPLICIT_NO_STATE : 0, NULL);
+                    &lybctx->when_check, (lybctx->validate_options & LYD_VALIDATE_NO_STATE) ?
+                    LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
 

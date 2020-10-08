@@ -641,8 +641,8 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_op
 
 cleanup:
     /* there should be no unresolved types stored */
-    assert(!(parse_options & LYD_PARSE_ONLY) || (!lydctx->unres_node_type.count && !lydctx->unres_meta_type.count
-            && !lydctx->when_check.count));
+    assert(!(parse_options & LYD_PARSE_ONLY) || (!lydctx->unres_node_type.count && !lydctx->unres_meta_type.count &&
+            !lydctx->when_check.count));
 
     if (ret) {
         lyd_xml_ctx_free((struct lyd_ctx *)lydctx);

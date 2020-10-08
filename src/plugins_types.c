@@ -732,8 +732,8 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     /* prepare canonized value */
     if (d) {
         int count = sprintf(buf, "%" PRId64 " ", d);
-        if (((d > 0) && ((count - 1) <= type_dec->fraction_digits))
-                || ((count - 2) <= type_dec->fraction_digits)) {
+        if (((d > 0) && ((count - 1) <= type_dec->fraction_digits)) ||
+                ((count - 2) <= type_dec->fraction_digits)) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
              * to fraction-digits value)

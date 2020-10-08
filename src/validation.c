@@ -1119,8 +1119,8 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add all top-level defaults for this module */
-        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, &type_check, &when_check, val_opts & LYD_VALIDATE_NO_STATE
-                                 ? LYD_IMPLICIT_NO_STATE : 0, diff);
+        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, &type_check, &when_check, val_opts & LYD_VALIDATE_NO_STATE ?
+                LYD_IMPLICIT_NO_STATE : 0, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process nested nodes */

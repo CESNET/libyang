@@ -3564,8 +3564,8 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
             LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning as a case of choice \"%s\".",
                     cont_p->name, cont_p->parent->name);
             cont->flags |= LYS_PRESENCE;
-        } else if ((cont_p->parent->nodetype == LYS_CASE)
-                && (((struct lysp_node_case *)cont_p->parent)->child == pnode) && !cont_p->next) {
+        } else if ((cont_p->parent->nodetype == LYS_CASE) &&
+                (((struct lysp_node_case *)cont_p->parent)->child == pnode) && !cont_p->next) {
             /* container is the only node in a case, so its existence decides the existence of the whole case */
             LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning as a case of choice \"%s\".",
                     cont_p->name, cont_p->parent->name);
@@ -4248,8 +4248,8 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
                 /* check that we have not found the last augment node from our module or
                  * the first augment node from a "smaller" module or
                  * the first node from a local module */
-                if ((anchor->module == node->module) || (strcmp(anchor->module->name, node->module->name) < 0)
-                        || (anchor->module == parent->module)) {
+                if ((anchor->module == node->module) || (strcmp(anchor->module->name, node->module->name) < 0) ||
+                        (anchor->module == parent->module)) {
                     /* insert after */
                     insert_after = 1;
                     break;
@@ -4422,9 +4422,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
     when_shared = NULL;
     LY_LIST_FOR(aug_p->child, pnode) {
         /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
-        if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE))
-                || ((pnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && !(target->nodetype & (LYS_CONTAINER | LYS_LIST)))
-                || ((pnode->nodetype == LYS_USES) && (target->nodetype == LYS_CHOICE))) {
+        if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE)) ||
+                ((pnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && !(target->nodetype & (LYS_CONTAINER | LYS_LIST))) ||
+                ((pnode->nodetype == LYS_USES) && (target->nodetype == LYS_CHOICE))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                     "Invalid augment of %s node which is not allowed to contain %s node \"%s\".",
                     lys_nodetype2str(target->nodetype), lys_nodetype2str(pnode->nodetype), pnode->name);
@@ -7492,8 +7492,8 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             continue;
         }
 
-        if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                || !xp_scnode->scnode->when) {
+        if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) ||
+                !xp_scnode->scnode->when) {
             /* no when to check */
             xp_scnode->in_ctx = 0;
             continue;

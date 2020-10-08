@@ -159,8 +159,8 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     }
 #if 0
     /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
-    if (!strcmp(node->schema->name, "filter")
-            && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
+    if (!strcmp(node->schema->name, "filter") &&
+            (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
         rpc_filter = 1;
     }
 #endif

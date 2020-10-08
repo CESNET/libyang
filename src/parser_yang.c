@@ -721,8 +721,8 @@ keyword_start:
         /* still can be an extension */
         prefix = 0;
 extension:
-        while (in->current[0] && (in->current[0] != ' ') && (in->current[0] != '\t') && (in->current[0] != '\n')
-                && (in->current[0] != '{') && (in->current[0] != ';')) {
+        while (in->current[0] && (in->current[0] != ' ') && (in->current[0] != '\t') && (in->current[0] != '\n') &&
+                (in->current[0] != '{') && (in->current[0] != ';')) {
             uint32_t c = 0;
 
             LY_CHECK_ERR_RET(ly_getutf8(&in->current, &c, &len),

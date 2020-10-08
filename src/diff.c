@@ -293,9 +293,9 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
 
     /* orig-default */
-    if ((options & LYD_DIFF_DEFAULTS) && (schema->nodetype == LYS_LEAFLIST)
-            && ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE))
-            && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
+    if ((options & LYD_DIFF_DEFAULTS) && (schema->nodetype == LYS_LEAFLIST) &&
+            ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE)) &&
+            ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
         if (first->flags & LYD_DEFAULT) {
             *orig_default = "true";
         } else {
@@ -454,9 +454,9 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
      */
 
     /* orig-default */
-    if ((options & LYD_DIFF_DEFAULTS) && (schema->nodetype & LYD_NODE_TERM)
-            && ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE))
-            && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
+    if ((options & LYD_DIFF_DEFAULTS) && (schema->nodetype & LYD_NODE_TERM) &&
+            ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE)) &&
+            ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
         if (first->flags & LYD_DEFAULT) {
             *orig_default = "true";
         } else {
@@ -1199,8 +1199,8 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
             sleaf = NULL;
         }
 
-        if (sleaf && sleaf->dflt
-                && !sleaf->dflt->realtype->plugin->compare(sleaf->dflt, &((struct lyd_node_term *)src_diff)->value)) {
+        if (sleaf && sleaf->dflt &&
+                !sleaf->dflt->realtype->plugin->compare(sleaf->dflt, &((struct lyd_node_term *)src_diff)->value)) {
             /* we deleted it, so a default value was in-use, and it matches the created value -> operation NONE */
             LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
 

@@ -55,8 +55,8 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
         return LY_EVALID;
     } else {
         parent = (struct lysc_node *)c_ext->parent;
-        if (!(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA
-                | LYS_CASE | LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        if (!(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA |
+                LYS_CASE | LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             /* note LYS_AUGMENT and LYS_USES is not in the list since they are not present in the compiled tree. Instead, libyang
              * passes all their extensions to their children nodes */
 invalid_parent:

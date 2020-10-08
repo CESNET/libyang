@@ -189,8 +189,8 @@ print_set_debug(struct lyxp_set *set)
                 LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ROOT CONFIG", i + 1, item->pos);
                 break;
             case LYXP_NODE_ELEM:
-                if ((item->node->schema->nodetype == LYS_LIST)
-                        && (((struct lyd_node_inner *)item->node)->child->schema->nodetype == LYS_LEAF)) {
+                if ((item->node->schema->nodetype == LYS_LIST) &&
+                        (((struct lyd_node_inner *)item->node)->child->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
                             item->node->schema->name, LYD_CANON_VALUE(lyd_child(item->node)));
                 } else if (((struct lyd_node_inner *)item->node)->schema->nodetype == LYS_LEAFLIST) {
@@ -1468,11 +1468,11 @@ set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2)
 
     /* 1st TEXT - 2nd ELEM, 1st TEXT - any pos - 2nd META, 1st META - any pos - 2nd ELEM, 1st META - >pos> - 2nd META */
     /* 2nd is before 1st */
-    if (((item1->type == LYXP_NODE_TEXT)
-            && ((item2->type == LYXP_NODE_ELEM) || (item2->type == LYXP_NODE_META)))
-            || ((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_ELEM))
-            || (((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_META))
-            && (meta_pos1 > meta_pos2))) {
+    if (((item1->type == LYXP_NODE_TEXT) &&
+            ((item2->type == LYXP_NODE_ELEM) || (item2->type == LYXP_NODE_META))) ||
+            ((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_ELEM)) ||
+            (((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_META)) &&
+            (meta_pos1 > meta_pos2))) {
         return 1;
     }
 
@@ -1683,8 +1683,8 @@ set_sorted_dup_node_clean(struct lyxp_set *set)
 
     if (set->used > 1) {
         while (i < set->used - 1) {
-            if ((set->val.nodes[i].node == set->val.nodes[i + 1].node)
-                    && (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
+            if ((set->val.nodes[i].node == set->val.nodes[i + 1].node) &&
+                    (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
                 set_remove_node_none(set, i + 1);
                 ret = LY_EEXIST;
             }
@@ -2397,8 +2397,8 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *to
 
     /* ('-')* */
     prev_exp = *tok_idx;
-    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH)
-            && (exp->expr[exp->tok_pos[*tok_idx]] == '-')) {
+    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) &&
+            (exp->expr[exp->tok_pos[*tok_idx]] == '-')) {
         exp_repeat_push(exp, prev_exp, LYXP_EXPR_UNARY);
         ++(*tok_idx);
     }
@@ -2446,8 +2446,8 @@ reparse_additive_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
     goto reparse_multiplicative_expr;
 
     /* ('+' / '-' MultiplicativeExpr)* */
-    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH)
-            && ((exp->expr[exp->tok_pos[*tok_idx]] == '+') || (exp->expr[exp->tok_pos[*tok_idx]] == '-'))) {
+    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) &&
+            ((exp->expr[exp->tok_pos[*tok_idx]] == '+') || (exp->expr[exp->tok_pos[*tok_idx]] == '-'))) {
         exp_repeat_push(exp, prev_add_exp, LYXP_EXPR_ADDITIVE);
         ++(*tok_idx);
 
@@ -2458,8 +2458,8 @@ reparse_multiplicative_expr:
         LY_CHECK_RET(rc);
 
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
-        while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH)
-                && ((exp->expr[exp->tok_pos[*tok_idx]] == '*') || (exp->tok_len[*tok_idx] == 3))) {
+        while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) &&
+                ((exp->expr[exp->tok_pos[*tok_idx]] == '*') || (exp->tok_len[*tok_idx] == 3))) {
             exp_repeat_push(exp, prev_mul_exp, LYXP_EXPR_MULTIPLICATIVE);
             ++(*tok_idx);
 
@@ -2709,11 +2709,11 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
 
             if (prev_function_check && expr->used && (expr->tokens[expr->used - 1] == LYXP_TOKEN_NAMETEST)) {
                 /* it is a NodeType/FunctionName after all */
-                if (((expr->tok_len[expr->used - 1] == 4)
-                        && (!strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "node", 4)
-                        || !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "text", 4))) ||
-                        ((expr->tok_len[expr->used - 1] == 7)
-                        && !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "comment", 7))) {
+                if (((expr->tok_len[expr->used - 1] == 4) &&
+                        (!strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "node", 4) ||
+                        !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "text", 4))) ||
+                        ((expr->tok_len[expr->used - 1] == 7) &&
+                        !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "comment", 7))) {
                     expr->tokens[expr->used - 1] = LYXP_TOKEN_NODETYPE;
                 } else {
                     expr->tokens[expr->used - 1] = LYXP_TOKEN_FUNCNAME;
@@ -2840,18 +2840,18 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             tok_len = 1;
             tok_type = LYXP_TOKEN_OPER_COMP;
 
-        } else if (expr->used && (expr->tokens[expr->used - 1] != LYXP_TOKEN_AT)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_PAR1)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_BRACK1)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_COMMA)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_LOG)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_EQUAL)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_NEQUAL)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_COMP)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_MATH)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_UNI)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_PATH)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
+        } else if (expr->used && (expr->tokens[expr->used - 1] != LYXP_TOKEN_AT) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_PAR1) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_BRACK1) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_COMMA) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_LOG) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_EQUAL) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_NEQUAL) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_COMP) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_MATH) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_UNI) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_PATH) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
 
             /* Operator '*', 'or', 'and', 'mod', or 'div' */
             if (expr_str[parsed] == '*') {
@@ -3277,10 +3277,10 @@ warn_operands(struct ly_ctx *ctx, struct lyxp_set *set1, struct lyxp_set *set2, 
     }
 
     if (node1 && node2 && leaves && !numbers_only) {
-        if ((warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type))
-                || (!warn_is_numeric_type(node1->type) && warn_is_numeric_type(node2->type))
-                || (!warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type)
-                && !warn_is_equal_type(node1->type, node2->type))) {
+        if ((warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type)) ||
+                (!warn_is_numeric_type(node1->type) && warn_is_numeric_type(node2->type)) ||
+                (!warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type) &&
+                !warn_is_equal_type(node1->type, node2->type))) {
             LOGWRN(ctx, "Incompatible types of operands \"%s\" and \"%s\" for comparison.", node1->name, node2->name);
             warning = 1;
         }
@@ -3310,8 +3310,8 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
     LY_ERR rc;
     struct ly_err_item *err = NULL;
 
-    if ((scnode = warn_get_scnode_in_ctx(set)) && (scnode->nodetype & (LYS_LEAF | LYS_LEAFLIST))
-            && ((exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) || (exp->tokens[val_exp] == LYXP_TOKEN_NUMBER))) {
+    if ((scnode = warn_get_scnode_in_ctx(set)) && (scnode->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
+            ((exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) || (exp->tokens[val_exp] == LYXP_TOKEN_NUMBER))) {
         /* check that the node can have the specified value */
         if (exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) {
             value = strndup(exp->expr + exp->tok_pos[val_exp] + 1, exp->tok_len[val_exp] - 2);
@@ -3407,8 +3407,8 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
     set_fill_boolean(set, 0);
     if (args[0]->used) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
-        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
-                && (((struct lysc_node_leaf *)leaf->schema)->type->basetype == LY_TYPE_BITS)) {
+        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
+                (((struct lysc_node_leaf *)leaf->schema)->type->basetype == LY_TYPE_BITS)) {
             bits = (struct lysc_type_bits *)((struct lysc_node_leaf *)leaf->schema)->type;
             LY_ARRAY_FOR(bits->bits, u) {
                 if (!strcmp(bits->bits[u].name, args[1]->val.str)) {
@@ -4840,8 +4840,8 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set
             }
         }
 
-        if ((arg_count == 3) && (args[2]->type == LYXP_SET_SCNODE_SET)
-                && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[2]))) {
+        if ((arg_count == 3) && (args[2]->type == LYXP_SET_SCNODE_SET) &&
+                (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[2]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN(set->ctx, "Argument #3 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
             } else if (!warn_is_numeric_type(sleaf->type)) {
@@ -5527,8 +5527,8 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
     if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (scnode->flags & LYS_CONFIG_R)) {
         lyxp_set_free_content(set);
         goto cleanup;
-    } else if (set->context_op && (scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-            && (scnode != set->context_op)) {
+    } else if (set->context_op && (scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) &&
+            (scnode != set->context_op)) {
         lyxp_set_free_content(set);
         goto cleanup;
     }
@@ -6982,8 +6982,8 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool 
         for (uint32_t i = 0; i < set->used; ++i) {
             if (set->val.nodes[i].type == set->root_type) {
                 tmp = lys_find_child(NULL, moveto_mod, ncname, ncname_len, 0, 0);
-            } else if ((set->val.nodes[i].type == LYXP_NODE_ELEM)
-                    && (!scnode || (lysc_data_parent(scnode) != set->val.nodes[i].node->schema))) {
+            } else if ((set->val.nodes[i].type == LYXP_NODE_ELEM) &&
+                    (!scnode || (lysc_data_parent(scnode) != set->val.nodes[i].node->schema))) {
                 /* do not repeat the same search */
                 tmp = lys_find_child(set->val.nodes[i].node->schema, moveto_mod, ncname, ncname_len, 0, 0);
             } else {

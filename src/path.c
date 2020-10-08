@@ -57,8 +57,8 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     if (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[' */
 
-        if (((pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_KEYS))
-                && !lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_NAMETEST)) {
+        if (((pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_KEYS)) &&
+                !lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_NAMETEST)) {
             ret = ly_set_new(&set);
             LY_CHECK_GOTO(ret, cleanup);
 
@@ -235,8 +235,8 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     assert((begin == LY_PATH_BEGIN_ABSOLUTE) || (begin == LY_PATH_BEGIN_EITHER));
     assert((lref == LY_PATH_LREF_TRUE) || (lref == LY_PATH_LREF_FALSE));
-    assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY)
-            || (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
+    assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY) ||
+            (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
     /* parse as a generic XPath expression */
@@ -795,8 +795,8 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     } while (!lyxp_next_token(NULL, expr, &tok_idx, LYXP_TOKEN_OPER_PATH));
 
     /* check last compiled node */
-    if ((lref == LY_PATH_LREF_FALSE) && (target == LY_PATH_TARGET_SINGLE)
-            && (p->node->nodetype & (LYS_LIST | LYS_LEAFLIST)) && !p->predicates) {
+    if ((lref == LY_PATH_LREF_FALSE) && (target == LY_PATH_TARGET_SINGLE) &&
+            (p->node->nodetype & (LYS_LIST | LYS_LEAFLIST)) && !p->predicates) {
         LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                 lys_nodetype2str(p->node->nodetype), p->node->name);
         return LY_EVALID;
