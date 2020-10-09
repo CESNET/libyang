@@ -924,15 +924,17 @@ lysc_xpath_context(struct lysc_node *start)
 
 /**
  * @brief Compile information from the when statement
+ *
  * @param[in] ctx Compile context.
- * @param[in] when_p The parsed when statement structure.
- * @param[in] flags Flags of the node with the "when" defiition.
- * @param[in] node Node that inherited the "when" definition, must be connected to parents.
+ * @param[in] when_p Parsed when structure.
+ * @param[in] flags Flags of the parsed node with the when statement.
+ * @param[in] ctx_node Context node for the when statement.
  * @param[out] when Pointer where to store pointer to the created compiled when structure.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, struct lysc_node *node, struct lysc_when **when)
+lys_compile_when_(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, const struct lysc_node *ctx_node,
+        struct lysc_when **when)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -941,7 +943,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
     (*when)->refcount = 1;
     LY_CHECK_RET(lyxp_expr_parse(ctx->ctx, when_p->cond, 0, 1, &(*when)->cond));
     (*when)->module = ctx->mod_def;
-    (*when)->context = lysc_xpath_context(node);
+    (*when)->context = (struct lysc_node *)ctx_node;
     DUP_STRING_GOTO(ctx->ctx, when_p->dsc, (*when)->dsc, ret, done);
     DUP_STRING_GOTO(ctx->ctx, when_p->ref, (*when)->ref, ret, done);
     COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), LYEXT_PAR_WHEN, ret, done);
@@ -949,6 +951,65 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
 
 done:
     return ret;
+}
+
+/**
+ * @brief Compile information from the when statement by either standard compilation or by reusing
+ * another compiled when structure.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] when_p Parsed when structure.
+ * @param[in] flags Flags of the parsed node with the when statement.
+ * @param[in] ctx_node Context node for the when statement.
+ * @param[in] node Compiled node to which add the compiled when.
+ * @param[in,out] when_c Optional, pointer to the previously compiled @p when_p to be reused. Set to NULL
+ * for the first call.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, const struct lysc_node *ctx_node,
+        struct lysc_node *node, struct lysc_when **when_c)
+{
+    struct lysc_when **new_when, ***node_when;
+
+    assert(when_p);
+
+    /* get the when array */
+    if (node->nodetype & LYS_ACTION) {
+        node_when = &((struct lysc_action *)node)->when;
+    } else if (node->nodetype == LYS_NOTIF) {
+        node_when = &((struct lysc_notif *)node)->when;
+    } else {
+        node_when = &node->when;
+    }
+
+    /* create new when pointer */
+    LY_ARRAY_NEW_RET(ctx->ctx, *node_when, new_when, LY_EMEM);
+    if (!when_c || !(*when_c)) {
+        /* compile when */
+        LY_CHECK_RET(lys_compile_when_(ctx, when_p, flags, ctx_node, new_when));
+
+        if (!(ctx->options & LYSC_OPT_GROUPING)) {
+            /* do not check "when" semantics in a grouping */
+            LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
+        }
+
+        /* remember the compiled when for sharing */
+        if (when_c) {
+            *when_c = *new_when;
+        }
+    } else {
+        /* use the previously compiled when */
+        ++(*when_c)->refcount;
+        *new_when = *when_c;
+
+        if (!(ctx->options & LYSC_OPT_GROUPING)) {
+            /* in this case check "when" again for all children because of dummy node check */
+            LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
+        }
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -4397,7 +4458,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *pnode;
     struct lysc_node *node;
-    struct lysc_when **when, *when_shared;
+    struct lysc_when *when_shared = NULL;
+    struct lysc_action **actions;
+    struct lysc_notif **notifs;
     ly_bool allow_mandatory = 0;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_set child_set = {0};
@@ -4419,7 +4482,6 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         allow_mandatory = 1;
     }
 
-    when_shared = NULL;
     LY_LIST_FOR(aug_p->child, pnode) {
         /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
         if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE)) ||
@@ -4452,27 +4514,10 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
                 goto cleanup;
             }
 
-            /* pass augment's when to all the children TODO this way even action and notif should have "when" (code below) */
             if (aug_p->when) {
-                LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, cleanup);
-                if (!when_shared) {
-                    LY_CHECK_GOTO(ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, when), cleanup);
-
-                    if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                        /* do not check "when" semantics in a grouping */
-                        LY_CHECK_GOTO(ret = ly_set_add(&ctx->xpath, node, 0, NULL), cleanup);
-                    }
-
-                    when_shared = *when;
-                } else {
-                    ++when_shared->refcount;
-                    (*when) = when_shared;
-
-                    if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                        /* in this case check "when" again for all children because of dummy node check */
-                        LY_CHECK_GOTO(ret = ly_set_add(&ctx->xpath, node, 0, NULL), cleanup);
-                    }
-                }
+                /* pass augment's when to all the children */
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_xpath_context(target), node, &when_shared);
+                LY_CHECK_GOTO(ret, cleanup);
             }
         }
         ly_set_erase(&child_set, NULL);
@@ -4480,31 +4525,59 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
 
     switch (target->nodetype) {
     case LYS_CONTAINER:
-        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, ((struct lysc_node_container *)target)->actions, target,
-                u, lys_compile_action, 0, ret, cleanup);
-        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, ((struct lysc_node_container *)target)->notifs, target,
-                u, lys_compile_notif, 0, ret, cleanup);
+        actions = &((struct lysc_node_container *)target)->actions;
+        notifs = &((struct lysc_node_container *)target)->notifs;
         break;
     case LYS_LIST:
-        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, ((struct lysc_node_list *)target)->actions, target,
-                u, lys_compile_action, 0, ret, cleanup);
-        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, ((struct lysc_node_list *)target)->notifs, target,
-                u, lys_compile_notif, 0, ret, cleanup);
+        actions = &((struct lysc_node_list *)target)->actions;
+        notifs = &((struct lysc_node_list *)target)->notifs;
         break;
     default:
-        if (aug_p->actions) {
+        actions = NULL;
+        notifs = NULL;
+        break;
+    }
+
+    if (aug_p->actions) {
+        if (!actions) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                     "Invalid augment of %s node which is not allowed to contain RPC/action node \"%s\".",
                     lys_nodetype2str(target->nodetype), aug_p->actions[0].name);
             ret = LY_EVALID;
             goto cleanup;
         }
-        if (aug_p->notifs) {
+
+        /* compile actions into the target */
+        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, *actions, target, u, lys_compile_action, 0, ret, cleanup);
+
+        if (aug_p->when) {
+            /* inherit when */
+            LY_ARRAY_FOR(*actions, u) {
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_xpath_context(target),
+                        (struct lysc_node *)&(*actions)[u], &when_shared);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+        }
+    }
+    if (aug_p->notifs) {
+        if (!notifs) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                     "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
                     lys_nodetype2str(target->nodetype), aug_p->notifs[0].name);
             ret = LY_EVALID;
             goto cleanup;
+        }
+
+        /* compile notifications into the target */
+        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, *notifs, target, u, lys_compile_notif, 0, ret, cleanup);
+
+        if (aug_p->when) {
+            /* inherit when */
+            LY_ARRAY_FOR(*notifs, u) {
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_xpath_context(target),
+                        (struct lysc_node *)&(*notifs)[u], &when_shared);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
         }
     }
 
@@ -4845,7 +4918,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     uint32_t i, grp_stack_count;
     struct lys_module *grp_mod, *mod_old = ctx->mod_def;
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_when **when, *when_shared;
+    struct lysc_when *when_shared = NULL;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_notif **notifs = NULL;
     struct lysc_action **actions = NULL;
@@ -4888,33 +4961,12 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     }
 
     if (uses_p->when) {
-        /* pass uses's when to all the data children, actions and notifications are ignored */
-        when_shared = NULL;
+        /* pass uses's when to all the data children */
         for (i = 0; i < uses_child_set.count; ++i) {
             child = uses_child_set.snodes[i];
 
-            LY_ARRAY_NEW_GOTO(ctx->ctx, child->when, when, ret, cleanup);
-            if (!when_shared) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, when);
-                LY_CHECK_GOTO(ret, cleanup);
-
-                if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                    /* do not check "when" semantics in a grouping */
-                    ret = ly_set_add(&ctx->xpath, child, 0, NULL);
-                    LY_CHECK_GOTO(ret, cleanup);
-                }
-
-                when_shared = *when;
-            } else {
-                ++when_shared->refcount;
-                (*when) = when_shared;
-
-                if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                    /* in this case check "when" again for all children because of dummy node check */
-                    ret = ly_set_add(&ctx->xpath, child, 0, NULL);
-                    LY_CHECK_GOTO(ret, cleanup);
-                }
-            }
+            ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_xpath_context(parent), child, &when_shared);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -4929,6 +4981,15 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             goto cleanup;
         }
         COMPILE_OP_ARRAY_GOTO(ctx, grp->actions, *actions, parent, u, lys_compile_action, 0, ret, cleanup);
+
+        if (uses_p->when) {
+            /* inherit when */
+            LY_ARRAY_FOR(*actions, u) {
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_xpath_context(parent),
+                        (struct lysc_node *)&(*actions)[u], &when_shared);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+        }
     }
 
     /* compile notifications */
@@ -4942,6 +5003,15 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             goto cleanup;
         }
         COMPILE_OP_ARRAY_GOTO(ctx, grp->notifs, *notifs, parent, u, lys_compile_notif, 0, ret, cleanup);
+
+        if (uses_p->when) {
+            /* inherit when */
+            LY_ARRAY_FOR(*notifs, u) {
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_xpath_context(parent),
+                        (struct lysc_node *)&(*notifs)[u], &when_shared);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+        }
     }
 
     /* check that all augments were applied */
@@ -6978,7 +7048,6 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node = NULL;
-    struct lysc_when **when;
     struct lysp_node *dev_pnode = NULL, *orig_pnode = pnode;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported;
@@ -7078,13 +7147,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
     DUP_STRING_GOTO(ctx->ctx, pnode->dsc, node->dsc, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->ref, node->ref, ret, error);
     if (pnode->when) {
-        LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
-        LY_CHECK_GOTO(ret = lys_compile_when(ctx, pnode->when, pnode->flags, node, when), error);
-
-        if (!(ctx->options & LYSC_OPT_GROUPING)) {
-            /* do not check "when" semantics in a grouping */
-            LY_CHECK_GOTO(ret = ly_set_add(&ctx->xpath, node, 0, NULL), error);
-        }
+        ret = lys_compile_when(ctx, pnode->when, pnode->flags, lysc_xpath_context(node), node, NULL);
+        LY_CHECK_GOTO(ret, error);
     }
     COMPILE_ARRAY_GOTO(ctx, pnode->iffeatures, node->iffeatures, u, lys_compile_iffeature, ret, error);
 
@@ -7605,11 +7669,13 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         when = ((struct lysc_node_case *)node)->when;
         break;
     case LYS_NOTIF:
+        when = ((struct lysc_notif *)node)->when;
         musts = ((struct lysc_notif *)node)->musts;
         break;
     case LYS_RPC:
     case LYS_ACTION:
-        /* first process input musts */
+        /* first process when and input musts */
+        when = ((struct lysc_action *)node)->when;
         musts = ((struct lysc_action *)node)->input.musts;
         break;
     default:
@@ -7681,6 +7747,7 @@ check_musts:
     if ((node->nodetype & (LYS_RPC | LYS_ACTION)) && !input_done) {
         /* now check output musts */
         input_done = 1;
+        when = NULL;
         musts = ((struct lysc_action *)node)->output.musts;
         opts = LYXP_SCNODE_OUTPUT;
         goto check_musts;
