@@ -49,7 +49,7 @@ enum yin_argument {
     YIN_ARG_URI,           /**< argument uri */
     YIN_ARG_DATE,          /**< argument data */
     YIN_ARG_TAG,           /**< argument tag */
-    YIN_ARG_NONE,          /**< empty (special value) */
+    YIN_ARG_NONE           /**< empty (special value) */
 };
 
 /* flags to set constraints of subelements */

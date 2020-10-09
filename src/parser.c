@@ -190,7 +190,7 @@ ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
 
     fd = open(fp, O_RDONLY);
     LY_CHECK_ERR_RET(fd == -1, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp),
-                     LY_ESYS);
+            LY_ESYS);
 
     LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, in), free(fp), ret);
 
@@ -243,6 +243,7 @@ void
 lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath)
 {
     char path[PATH_MAX];
+
 #ifndef __APPLE__
     char proc_path[32];
     int len;
@@ -378,26 +379,26 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
         if (lydctx->int_opts & LYD_INTOPT_RPC) {
             if (lydctx->op_node) {
                 LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
-                       lys_nodetype2str(snode->nodetype), snode->name,
-                       lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
+                        lys_nodetype2str(snode->nodetype), snode->name,
+                        lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
                 return LY_EVALID;
             }
         } else {
             LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\".",
-                   lys_nodetype2str(snode->nodetype), snode->name);
+                    lys_nodetype2str(snode->nodetype), snode->name);
             return LY_EVALID;
         }
     } else if (snode->nodetype == LYS_NOTIF) {
         if (lydctx->int_opts & LYD_INTOPT_NOTIF) {
             if (lydctx->op_node) {
                 LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
-                       lys_nodetype2str(snode->nodetype), snode->name,
-                       lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
+                        lys_nodetype2str(snode->nodetype), snode->name,
+                        lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
                 return LY_EVALID;
             }
         } else {
             LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\".",
-                   lys_nodetype2str(snode->nodetype), snode->name);
+                    lys_nodetype2str(snode->nodetype), snode->name);
             return LY_EVALID;
         }
     }

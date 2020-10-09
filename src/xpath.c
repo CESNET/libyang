@@ -141,7 +141,7 @@ print_expr_struct_debug(struct lyxp_expr *exp)
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
         sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", lyxp_print_token(exp->tokens[i]), exp->tok_len[i],
-               &exp->expr[exp->tok_pos[i]]);
+                &exp->expr[exp->tok_pos[i]]);
         if (exp->repeat[i]) {
             sprintf(tmp + strlen(tmp), " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
@@ -189,13 +189,13 @@ print_set_debug(struct lyxp_set *set)
                 LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ROOT CONFIG", i + 1, item->pos);
                 break;
             case LYXP_NODE_ELEM:
-                if ((item->node->schema->nodetype == LYS_LIST)
-                        && (((struct lyd_node_inner *)item->node)->child->schema->nodetype == LYS_LEAF)) {
+                if ((item->node->schema->nodetype == LYS_LIST) &&
+                        (((struct lyd_node_inner *)item->node)->child->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
-                           item->node->schema->name, LYD_CANON_VALUE(lyd_child(item->node)));
+                            item->node->schema->name, LYD_CANON_VALUE(lyd_child(item->node)));
                 } else if (((struct lyd_node_inner *)item->node)->schema->nodetype == LYS_LEAFLIST) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
-                           item->node->schema->name, LYD_CANON_VALUE(item->node));
+                            item->node->schema->name, LYD_CANON_VALUE(item->node));
                 } else {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s", i + 1, item->pos, item->node->schema->name);
                 }
@@ -203,14 +203,14 @@ print_set_debug(struct lyxp_set *set)
             case LYXP_NODE_TEXT:
                 if (item->node->schema->nodetype & LYS_ANYDATA) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT <%s>", i + 1, item->pos,
-                           item->node->schema->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
+                            item->node->schema->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
                 } else {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT %s", i + 1, item->pos, LYD_CANON_VALUE(item->node));
                 }
                 break;
             case LYXP_NODE_META:
                 LOGDBG(LY_LDGXPATH, "\t%d (pos %u): META %s = %s", i + 1, item->pos, set->val.meta[i].meta->name,
-                       set->val.meta[i].meta->value);
+                        set->val.meta[i].meta->value);
                 break;
             }
         }
@@ -1468,11 +1468,11 @@ set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2)
 
     /* 1st TEXT - 2nd ELEM, 1st TEXT - any pos - 2nd META, 1st META - any pos - 2nd ELEM, 1st META - >pos> - 2nd META */
     /* 2nd is before 1st */
-    if (((item1->type == LYXP_NODE_TEXT)
-            && ((item2->type == LYXP_NODE_ELEM) || (item2->type == LYXP_NODE_META)))
-            || ((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_ELEM))
-            || (((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_META))
-            && (meta_pos1 > meta_pos2))) {
+    if (((item1->type == LYXP_NODE_TEXT) &&
+            ((item2->type == LYXP_NODE_ELEM) || (item2->type == LYXP_NODE_META))) ||
+            ((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_ELEM)) ||
+            (((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_META)) &&
+            (meta_pos1 > meta_pos2))) {
         return 1;
     }
 
@@ -1683,8 +1683,8 @@ set_sorted_dup_node_clean(struct lyxp_set *set)
 
     if (set->used > 1) {
         while (i < set->used - 1) {
-            if ((set->val.nodes[i].node == set->val.nodes[i + 1].node)
-                    && (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
+            if ((set->val.nodes[i].node == set->val.nodes[i + 1].node) &&
+                    (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
                 set_remove_node_none(set, i + 1);
                 ret = LY_EEXIST;
             }
@@ -1848,7 +1848,7 @@ lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t
     if (want_tok && (exp->tokens[tok_idx] != want_tok)) {
         if (ctx) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                   lyxp_print_token(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
+                    lyxp_print_token(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
         }
         return LY_ENOT;
     }
@@ -1882,7 +1882,7 @@ exp_check_token2(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t tok_i
     if ((exp->tokens[tok_idx] != want_tok1) && (exp->tokens[tok_idx] != want_tok2)) {
         if (ctx) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                   lyxp_print_token(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
+                    lyxp_print_token(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
         }
         return LY_ENOT;
     }
@@ -1989,7 +1989,7 @@ step:
             LY_CHECK_RET(rc);
             if ((exp->tokens[*tok_idx] != LYXP_TOKEN_NAMETEST) && (exp->tokens[*tok_idx] != LYXP_TOKEN_NODETYPE)) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                       lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+                        lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
                 return LY_EVALID;
             }
         /* fall through */
@@ -2020,7 +2020,7 @@ reparse_predicate:
             break;
         default:
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                   lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+                    lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
     } while (!exp_check_token2(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH));
@@ -2276,7 +2276,7 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
 
     if ((arg_count < (uint32_t)min_arg_count) || (arg_count > max_arg_count)) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INARGCOUNT, arg_count, exp->tok_len[func_tok_idx],
-               &exp->expr[exp->tok_pos[func_tok_idx]]);
+                &exp->expr[exp->tok_pos[func_tok_idx]]);
         return LY_EVALID;
     }
 
@@ -2352,7 +2352,7 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
         break;
     default:
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-               lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+                lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EVALID;
     }
 
@@ -2397,8 +2397,8 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *to
 
     /* ('-')* */
     prev_exp = *tok_idx;
-    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH)
-            && (exp->expr[exp->tok_pos[*tok_idx]] == '-')) {
+    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) &&
+            (exp->expr[exp->tok_pos[*tok_idx]] == '-')) {
         exp_repeat_push(exp, prev_exp, LYXP_EXPR_UNARY);
         ++(*tok_idx);
     }
@@ -2446,8 +2446,8 @@ reparse_additive_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
     goto reparse_multiplicative_expr;
 
     /* ('+' / '-' MultiplicativeExpr)* */
-    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH)
-            && ((exp->expr[exp->tok_pos[*tok_idx]] == '+') || (exp->expr[exp->tok_pos[*tok_idx]] == '-'))) {
+    while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) &&
+            ((exp->expr[exp->tok_pos[*tok_idx]] == '+') || (exp->expr[exp->tok_pos[*tok_idx]] == '-'))) {
         exp_repeat_push(exp, prev_add_exp, LYXP_EXPR_ADDITIVE);
         ++(*tok_idx);
 
@@ -2458,8 +2458,8 @@ reparse_multiplicative_expr:
         LY_CHECK_RET(rc);
 
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
-        while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH)
-                && ((exp->expr[exp->tok_pos[*tok_idx]] == '*') || (exp->tok_len[*tok_idx] == 3))) {
+        while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) &&
+                ((exp->expr[exp->tok_pos[*tok_idx]] == '*') || (exp->tok_len[*tok_idx] == 3))) {
             exp_repeat_push(exp, prev_mul_exp, LYXP_EXPR_MULTIPLICATIVE);
             ++(*tok_idx);
 
@@ -2709,11 +2709,11 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
 
             if (prev_function_check && expr->used && (expr->tokens[expr->used - 1] == LYXP_TOKEN_NAMETEST)) {
                 /* it is a NodeType/FunctionName after all */
-                if (((expr->tok_len[expr->used - 1] == 4)
-                        && (!strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "node", 4)
-                        || !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "text", 4))) ||
-                        ((expr->tok_len[expr->used - 1] == 7)
-                        && !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "comment", 7))) {
+                if (((expr->tok_len[expr->used - 1] == 4) &&
+                        (!strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "node", 4) ||
+                        !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "text", 4))) ||
+                        ((expr->tok_len[expr->used - 1] == 7) &&
+                        !strncmp(&expr_str[expr->tok_pos[expr->used - 1]], "comment", 7))) {
                     expr->tokens[expr->used - 1] = LYXP_TOKEN_NODETYPE;
                 } else {
                     expr->tokens[expr->used - 1] = LYXP_TOKEN_FUNCNAME;
@@ -2768,8 +2768,8 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             /* Literal with ' */
             for (tok_len = 1; (expr_str[parsed + tok_len] != '\0') && (expr_str[parsed + tok_len] != '\''); ++tok_len) {}
             LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == '\0',
-                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
-                              error);
+                    LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
+                    error);
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
@@ -2778,8 +2778,8 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             /* Literal with " */
             for (tok_len = 1; (expr_str[parsed + tok_len] != '\0') && (expr_str[parsed + tok_len] != '\"'); ++tok_len) {}
             LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == '\0',
-                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
-                              error);
+                    LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
+                    error);
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
@@ -2840,18 +2840,18 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             tok_len = 1;
             tok_type = LYXP_TOKEN_OPER_COMP;
 
-        } else if (expr->used && (expr->tokens[expr->used - 1] != LYXP_TOKEN_AT)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_PAR1)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_BRACK1)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_COMMA)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_LOG)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_EQUAL)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_NEQUAL)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_COMP)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_MATH)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_UNI)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_PATH)
-                && (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
+        } else if (expr->used && (expr->tokens[expr->used - 1] != LYXP_TOKEN_AT) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_PAR1) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_BRACK1) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_COMMA) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_LOG) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_EQUAL) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_NEQUAL) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_COMP) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_MATH) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_UNI) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_PATH) &&
+                (expr->tokens[expr->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
 
             /* Operator '*', 'or', 'and', 'mod', or 'div' */
             if (expr_str[parsed] == '*') {
@@ -2872,7 +2872,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
 
             } else if (prev_function_check) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
-                       expr_str[parsed], expr_str[parsed], expr->tok_len[expr->used - 1], &expr->expr[expr->tok_pos[expr->used - 1]]);
+                        expr_str[parsed], expr_str[parsed], expr->tok_len[expr->used - 1], &expr->expr[expr->tok_pos[expr->used - 1]]);
                 ret = LY_EVALID;
                 goto error;
             } else {
@@ -2891,8 +2891,8 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             /* NameTest (NCName ':' '*' | QName) or NodeType/FunctionName */
             long int ncname_len = parse_ncname(&expr_str[parsed]);
             LY_CHECK_ERR_GOTO(ncname_len < 0,
-                              LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr_str); ret = LY_EVALID,
-                              error);
+                    LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr_str); ret = LY_EVALID,
+                    error);
             tok_len = ncname_len;
 
             if (expr_str[parsed + tok_len] == ':') {
@@ -2902,8 +2902,8 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 } else {
                     ncname_len = parse_ncname(&expr_str[parsed + tok_len]);
                     LY_CHECK_ERR_GOTO(ncname_len < 0,
-                                      LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr_str); ret = LY_EVALID,
-                                      error);
+                            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr_str); ret = LY_EVALID,
+                            error);
                     tok_len += ncname_len;
                 }
                 /* remove old flag to prevent ambiguities */
@@ -2934,7 +2934,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
         LY_CHECK_ERR_GOTO(reparse_or_expr(ctx, expr, &tok_idx), ret = LY_EVALID, error);
         if (expr->used > tok_idx) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of an XPath expression.",
-                &expr->expr[expr->tok_pos[tok_idx]]);
+                    &expr->expr[expr->tok_pos[tok_idx]]);
             ret = LY_EVALID;
             goto error;
         }
@@ -3277,10 +3277,10 @@ warn_operands(struct ly_ctx *ctx, struct lyxp_set *set1, struct lyxp_set *set2, 
     }
 
     if (node1 && node2 && leaves && !numbers_only) {
-        if ((warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type))
-                || (!warn_is_numeric_type(node1->type) && warn_is_numeric_type(node2->type))
-                || (!warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type)
-                && !warn_is_equal_type(node1->type, node2->type))) {
+        if ((warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type)) ||
+                (!warn_is_numeric_type(node1->type) && warn_is_numeric_type(node2->type)) ||
+                (!warn_is_numeric_type(node1->type) && !warn_is_numeric_type(node2->type) &&
+                !warn_is_equal_type(node1->type, node2->type))) {
             LOGWRN(ctx, "Incompatible types of operands \"%s\" and \"%s\" for comparison.", node1->name, node2->name);
             warning = 1;
         }
@@ -3310,8 +3310,8 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
     LY_ERR rc;
     struct ly_err_item *err = NULL;
 
-    if ((scnode = warn_get_scnode_in_ctx(set)) && (scnode->nodetype & (LYS_LEAF | LYS_LEAFLIST))
-            && ((exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) || (exp->tokens[val_exp] == LYXP_TOKEN_NUMBER))) {
+    if ((scnode = warn_get_scnode_in_ctx(set)) && (scnode->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
+            ((exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) || (exp->tokens[val_exp] == LYXP_TOKEN_NUMBER))) {
         /* check that the node can have the specified value */
         if (exp->tokens[val_exp] == LYXP_TOKEN_LITERAL) {
             value = strndup(exp->expr + exp->tok_pos[val_exp] + 1, exp->tok_len[val_exp] - 2);
@@ -3325,10 +3325,10 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
 
         if ((((struct lysc_node_leaf *)scnode)->type->basetype == LY_TYPE_IDENT) && !strchr(value, ':')) {
             LOGWRN(set->ctx, "Identityref \"%s\" comparison with identity \"%s\" without prefix, consider adding"
-                   " a prefix or best using \"derived-from(-or-self)()\" functions.", scnode->name, value);
+                    " a prefix or best using \"derived-from(-or-self)()\" functions.", scnode->name, value);
             LOGWRN(set->ctx, "Previous warning generated by XPath subexpression[%u] \"%.*s\".", exp->tok_pos[equal_exp],
                     (exp->tok_pos[last_equal_exp] - exp->tok_pos[equal_exp]) + exp->tok_len[last_equal_exp],
-                   exp->expr + exp->tok_pos[equal_exp]);
+                    exp->expr + exp->tok_pos[equal_exp]);
         }
 
         type = ((struct lysc_node_leaf *)scnode)->type;
@@ -3345,7 +3345,7 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
             if (rc != LY_SUCCESS) {
                 LOGWRN(set->ctx, "Previous warning generated by XPath subexpression[%u] \"%.*s\".", exp->tok_pos[equal_exp],
                         (exp->tok_pos[last_equal_exp] - exp->tok_pos[equal_exp]) + exp->tok_len[last_equal_exp],
-                    exp->expr + exp->tok_pos[equal_exp]);
+                        exp->expr + exp->tok_pos[equal_exp]);
             } else {
                 type->plugin->free(set->ctx, &storage);
             }
@@ -3407,8 +3407,8 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
     set_fill_boolean(set, 0);
     if (args[0]->used) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
-        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
-                && (((struct lysc_node_leaf *)leaf->schema)->type->basetype == LY_TYPE_BITS)) {
+        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
+                (((struct lysc_node_leaf *)leaf->schema)->type->basetype == LY_TYPE_BITS)) {
             bits = (struct lysc_type_bits *)((struct lysc_node_leaf *)leaf->schema)->type;
             LY_ARRAY_FOR(bits->bits, u) {
                 if (!strcmp(bits->bits[u].name, args[1]->val.str)) {
@@ -3512,7 +3512,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, u
             if ((args[i]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[i]))) {
                 if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                     LOGWRN(set->ctx, "Argument #%u of %s is a %s node \"%s\".",
-                           i + 1, __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                            i + 1, __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
                 } else if (!warn_is_string_type(sleaf->type)) {
                     LOGWRN(set->ctx, "Argument #%u of %s is node \"%s\", not of string-type.", i + 1, __func__, sleaf->name);
                 }
@@ -3689,7 +3689,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
         } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) && !warn_is_specific_type(sleaf->type, LY_TYPE_INST)) {
             LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"leafref\" nor \"instance-identifier\".",
-                   __func__, sleaf->name);
+                    __func__, sleaf->name);
         }
         set_scnode_clear_ctx(set);
         if (sleaf && (sleaf->type->basetype == LY_TYPE_LEAFREF)) {
@@ -3724,7 +3724,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 /* find leafref target */
                 if (ly_type_find_leafref((struct lysc_type_leafref *)sleaf->type, (struct lyd_node *)leaf,
-                                         &leaf->value, set->tree, &node, &errmsg)) {
+                        &leaf->value, set->tree, &node, &errmsg)) {
                     LOGERR(set->ctx, LY_EVALID, errmsg);
                     free(errmsg);
                     return LY_EVALID;
@@ -3733,7 +3733,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
                 assert(sleaf->type->basetype == LY_TYPE_INST);
                 if (ly_path_eval(leaf->value.target, set->tree, &node)) {
                     LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.",
-                           LYD_CANON_VALUE(leaf));
+                            LYD_CANON_VALUE(leaf));
                     return LY_EVALID;
                 }
             }
@@ -3764,7 +3764,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", func);
         } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
             LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", func, lys_nodetype2str(sleaf->nodetype),
-                   sleaf->name);
+                    sleaf->name);
         } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_IDENT)) {
             LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"identityref\".", func, sleaf->name);
         }
@@ -3772,7 +3772,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
         if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", func, lys_nodetype2str(sleaf->nodetype),
-                       sleaf->name);
+                        sleaf->name);
             } else if (!warn_is_string_type(sleaf->type)) {
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", func, sleaf->name);
             }
@@ -3783,7 +3783,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
         LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
-               "derived-from(-or-self)(node-set, string)");
+                "derived-from(-or-self)(node-set, string)");
         return LY_EVALID;
     }
     rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
@@ -4117,6 +4117,7 @@ static LY_ERR
 xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uint32_t options)
 {
     struct lyxp_set_node *item;
+
     /* suppress unused variable warning */
     (void)options;
 
@@ -4279,6 +4280,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
 {
     struct lyxp_set_node *item;
     struct lys_module *mod;
+
     /* suppress unused variable warning */
     (void)options;
 
@@ -4290,7 +4292,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
     if (arg_count) {
         if (args[0]->type != LYXP_SET_NODE_SET) {
             LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
-                   "namespace-uri(node-set?)");
+                    "namespace-uri(node-set?)");
             return LY_EVALID;
         } else if (!args[0]->used) {
             set_fill_string(set, "", 0);
@@ -4838,8 +4840,8 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set
             }
         }
 
-        if ((arg_count == 3) && (args[2]->type == LYXP_SET_SCNODE_SET)
-                && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[2]))) {
+        if ((arg_count == 3) && (args[2]->type == LYXP_SET_SCNODE_SET) &&
+                (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[2]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN(set->ctx, "Argument #3 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
             } else if (!warn_is_numeric_type(sleaf->type)) {
@@ -5030,7 +5032,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *s
                     sleaf = (struct lysc_node_leaf *)args[0]->val.scnodes[i].scnode;
                     if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                         LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__,
-                               lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                                lys_nodetype2str(sleaf->nodetype), sleaf->name);
                     } else if (!warn_is_numeric_type(sleaf->type)) {
                         LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of numeric type.", __func__, sleaf->name);
                     }
@@ -5525,8 +5527,8 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
     if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (scnode->flags & LYS_CONFIG_R)) {
         lyxp_set_free_content(set);
         goto cleanup;
-    } else if (set->context_op && (scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-            && (scnode != set->context_op)) {
+    } else if (set->context_op && (scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) &&
+            (scnode != set->context_op)) {
         lyxp_set_free_content(set);
         goto cleanup;
     }
@@ -6153,7 +6155,7 @@ moveto_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 
         /* add all the children */
         rc = moveto_self_add_children_r(set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, &ret_set,
-                                        set, options);
+                set, options);
         if (rc != LY_SUCCESS) {
             lyxp_set_free_content(&ret_set);
             return rc;
@@ -6690,7 +6692,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, u
 
     /* '[' */
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     if (!set) {
@@ -6811,7 +6813,7 @@ only_parse:
     /* ']' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     return LY_SUCCESS;
@@ -6835,7 +6837,7 @@ eval_literal(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set)
         }
     }
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 }
 
@@ -6916,11 +6918,11 @@ eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, 
 
     /* parse the predicate(s) */
     LY_CHECK_GOTO(ret = ly_path_parse_predicate(scnode->module->ctx, scnode, exp->expr + exp->tok_pos[*tok_idx], pred_len,
-                                                LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp2), cleanup);
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp2), cleanup);
 
     /* compile */
     ret = ly_path_compile_predicate(scnode->module->ctx, scnode, scnode->module, scnode, exp2, &pred_idx,
-                                    format, scnode->module, predicates, pred_type);
+            format, scnode->module, predicates, pred_type);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* success, the predicate must include all the needed information for hash-based search */
@@ -6961,7 +6963,7 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool 
     LY_ERR rc = LY_SUCCESS;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     if (!set) {
@@ -6980,8 +6982,8 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool 
         for (uint32_t i = 0; i < set->used; ++i) {
             if (set->val.nodes[i].type == set->root_type) {
                 tmp = lys_find_child(NULL, moveto_mod, ncname, ncname_len, 0, 0);
-            } else if ((set->val.nodes[i].type == LYXP_NODE_ELEM)
-                    && (!scnode || (lysc_data_parent(scnode) != set->val.nodes[i].node->schema))) {
+            } else if ((set->val.nodes[i].type == LYXP_NODE_ELEM) &&
+                    (!scnode || (lysc_data_parent(scnode) != set->val.nodes[i].node->schema))) {
                 /* do not repeat the same search */
                 tmp = lys_find_child(set->val.nodes[i].node->schema, moveto_mod, ncname, ncname_len, 0, 0);
             } else {
@@ -7052,7 +7054,7 @@ moveto:
             if (i == -1) {
                 path = lysc_path(set->ctx_scnode, LYSC_PATH_LOG, NULL, 0);
                 LOGWRN(set->ctx, "Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
-                       ncname_len, ncname, ncname - exp->expr, exp->expr, path);
+                        ncname_len, ncname, ncname - exp->expr, exp->expr, path);
                 free(path);
             }
         } else {
@@ -7126,19 +7128,19 @@ eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool 
         }
     }
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* '(' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR1);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* ')' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* Predicate* */
@@ -7180,7 +7182,7 @@ eval_relative_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool al
             all_desc = 1;
         }
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
 step:
@@ -7189,7 +7191,7 @@ step:
             attr_axis = 1;
 
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-                   lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                    lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
         } else {
             attr_axis = 0;
@@ -7206,7 +7208,7 @@ step:
             }
             LY_CHECK_RET(rc);
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-                   lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                    lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
             break;
 
@@ -7219,7 +7221,7 @@ step:
             }
             LY_CHECK_RET(rc);
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-                   lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                    lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
             break;
 
@@ -7269,7 +7271,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyx
         /* evaluate '/' - deferred */
         all_desc = 0;
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_NONE)) {
@@ -7292,7 +7294,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyx
         /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         LY_CHECK_RET(eval_relative_location_path(exp, tok_idx, all_desc, set, options));
@@ -7316,6 +7318,7 @@ static LY_ERR
 eval_function_call(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
+
     LY_ERR (*xpath_func)(struct lyxp_set **, uint16_t, struct lyxp_set *, uint32_t) = NULL;
     uint16_t arg_count = 0, i;
     struct lyxp_set **args = NULL, **args_aux;
@@ -7440,13 +7443,13 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *se
     }
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* '(' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR1);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* ( Expr ( ',' Expr )* )? */
@@ -7470,7 +7473,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *se
     }
     while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_COMMA)) {
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (set) {
@@ -7495,7 +7498,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *se
     /* ')' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     if (set) {
@@ -7543,12 +7546,12 @@ eval_number(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, struct
         if (errno) {
             LOGVAL(ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
             LOGVAL(ctx, LY_VLOG_LYD, set->ctx_node, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double (%s).",
-                   exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]], strerror(errno));
+                    exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]], strerror(errno));
             return LY_EVALID;
         } else if (endptr - &exp->expr[exp->tok_pos[*tok_idx]] != exp->tok_len[*tok_idx]) {
             LOGVAL(ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
             LOGVAL(ctx, LY_VLOG_LYD, set->ctx_node, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double.",
-                   exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
+                    exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
 
@@ -7556,7 +7559,7 @@ eval_number(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, struct
     }
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
     return LY_SUCCESS;
 }
@@ -7588,7 +7591,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, u
 
         /* '(' */
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         /* Expr */
@@ -7598,7 +7601,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, u
         /* ')' */
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR2);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         parent_pos_pred = 0;
@@ -7664,7 +7667,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, u
 
     default:
         LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*tok_idx]),
-               &exp->expr[exp->tok_pos[*tok_idx]]);
+                &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EVALID;
     }
 
@@ -7688,7 +7691,7 @@ predicate:
         }
 
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         rc = eval_relative_location_path(exp, tok_idx, all_desc, set, options);
@@ -7731,7 +7734,7 @@ eval_union_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struc
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_UNI);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (!set) {
@@ -7785,7 +7788,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struc
         assert(!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) && (exp->expr[exp->tok_pos[*tok_idx]] == '-'));
 
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
     }
 
@@ -7843,7 +7846,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repe
 
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_MATH);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (!set) {
@@ -7911,7 +7914,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, st
 
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_MATH);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (!set) {
@@ -7981,7 +7984,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, 
 
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_COMP);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (!set) {
@@ -8048,7 +8051,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, st
 
         assert((exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_EQUAL) || (exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_NEQUAL));
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         if (!set) {
@@ -8120,7 +8123,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct 
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_LOG);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || !set->val.bln ? "skipped" : "parsed"),
-            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         /* lazy evaluation */
@@ -8190,7 +8193,7 @@ eval_or_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct l
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_LOG);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || set->val.bln ? "skipped" : "parsed"),
-            lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
+                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         /* lazy evaluation */

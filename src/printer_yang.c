@@ -235,7 +235,7 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
         }
 
         count--;
-        if (ext->insubstmt != substmt || ext->insubstmt_index != substmt_index) {
+        if ((ext->insubstmt != substmt) || (ext->insubstmt_index != substmt_index)) {
             continue;
         }
 
@@ -326,7 +326,7 @@ ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, c
 
     LEVEL++;
     LY_ARRAY_FOR(ext, u) {
-        if (((struct lysp_ext_instance *)ext)[u].insubstmt != substmt || ((struct lysp_ext_instance *)ext)[u].insubstmt_index != substmt_index) {
+        if ((((struct lysp_ext_instance *)ext)[u].insubstmt != substmt) || (((struct lysp_ext_instance *)ext)[u].insubstmt_index != substmt_index)) {
             continue;
         }
         if (ctx->schema == YPR_PARSED) {
@@ -485,7 +485,7 @@ yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, size_t *index_e
     case LYS_IFF_AND:
         if (brackets_flag) {
             /* AND need brackets only if previous op was not */
-            if (*index_e < 2 || lysc_iff_getop(feat->expr, *index_e - 2) != LYS_IFF_NOT) {
+            if ((*index_e < 2) || (lysc_iff_getop(feat->expr, *index_e - 2) != LYS_IFF_NOT)) {
                 brackets_flag = 0;
             }
         }
@@ -522,7 +522,7 @@ yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext
         /* extensions */
         LEVEL++;
         LY_ARRAY_FOR(exts, v) {
-            if (exts[v].insubstmt != LYEXT_SUBSTMT_IFFEATURE || exts[v].insubstmt_index != u) {
+            if ((exts[v].insubstmt != LYEXT_SUBSTMT_IFFEATURE) || (exts[v].insubstmt_index != u)) {
                 continue;
             }
             yprc_extension_instances(ctx, LYEXT_SUBSTMT_IFFEATURE, u, &exts[v], &extflag, 1);
@@ -556,7 +556,7 @@ yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
             }
         }
         if ((ext->flags & LYS_YINELEM_MASK) ||
-                (ext->exts && lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_COUNT(ext->exts))) {
+                (ext->exts && (lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_COUNT(ext->exts)))) {
             ypr_open(ctx->out, &flag2);
             ypr_substmt(ctx, LYEXT_SUBSTMT_YINELEM, 0, (ext->flags & LYS_YINELEM_TRUE) ? "true" : "false", ext->exts);
         }

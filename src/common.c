@@ -178,7 +178,8 @@ int
 ly_strncmp(const char *refstr, const char *str, size_t str_len)
 {
     int rc = strncmp(refstr, str, str_len);
-    if (!rc && refstr[str_len] == '\0') {
+
+    if (!rc && (refstr[str_len] == '\0')) {
         return 0;
     } else {
         return rc ? rc : 1;
@@ -202,7 +203,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         /* one byte character */
         len = 1;
 
-        if (c < 0x20 && c != 0x9 && c != 0xa && c != 0xd) {
+        if ((c < 0x20) && (c != 0x9) && (c != 0xa) && (c != 0xd)) {
             return LY_EINVAL;
         }
     } else if ((c & 0xe0) == 0xc0) {
@@ -232,7 +233,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
             c = (c << 6) | (aux & 0x3f);
         }
 
-        if (c < 0x800 || (c > 0xd7ff && c < 0xe000) || c > 0xfffd) {
+        if ((c < 0x800) || ((c > 0xd7ff) && (c < 0xe000)) || (c > 0xfffd)) {
             return LY_EINVAL;
         }
     } else if ((c & 0xf8) == 0xf0) {
@@ -249,7 +250,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
             c = (c << 6) | (aux & 0x3f);
         }
 
-        if (c < 0x1000 || c > 0x10ffff) {
+        if ((c < 0x1000) || (c > 0x10ffff)) {
             return LY_EINVAL;
         }
     } else {
@@ -269,10 +270,10 @@ ly_pututf8(char *dst, uint32_t value, size_t *bytes_written)
 {
     if (value < 0x80) {
         /* one byte character */
-        if (value < 0x20 &&
-                value != 0x09 &&
-                value != 0x0a &&
-                value != 0x0d) {
+        if ((value < 0x20) &&
+                (value != 0x09) &&
+                (value != 0x0a) &&
+                (value != 0x0d)) {
             return LY_EINVAL;
         }
 
@@ -286,7 +287,7 @@ ly_pututf8(char *dst, uint32_t value, size_t *bytes_written)
     } else if (value < 0xfffe) {
         /* three bytes character */
         if (((value & 0xf800) == 0xd800) ||
-                (value >= 0xfdd0 && value <= 0xfdef)) {
+                ((value >= 0xfdd0) && (value <= 0xfdef))) {
             /* exclude surrogate blocks %xD800-DFFF */
             /* exclude noncharacters %xFDD0-FDEF */
             return LY_EINVAL;
@@ -356,6 +357,7 @@ size_t
 LY_VCODE_INSTREXP_len(const char *str)
 {
     size_t len = 0;
+
     if (!str) {
         return len;
     } else if (!str[0]) {
@@ -391,7 +393,7 @@ ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr)
     pagesize = sysconf(_SC_PAGESIZE);
 
     m = sb.st_size % pagesize;
-    if (m && pagesize - m >= 1) {
+    if (m && (pagesize - m >= 1)) {
         /* there will be enough space (at least 1 byte) after the file content mapping to provide zeroed NULL-termination byte */
         *length = sb.st_size + 1;
         *addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -463,7 +465,7 @@ ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int 
 
     /* parse the value */
     i = strtoll(val_str, &strptr, base);
-    if (errno || strptr == val_str) {
+    if (errno || (strptr == val_str)) {
         return LY_EVALID;
     } else if ((i < min) || (i > max)) {
         return LY_EDENIED;
@@ -471,7 +473,7 @@ ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int 
         while (isspace(*strptr)) {
             ++strptr;
         }
-        if (*strptr && strptr < val_str + val_len) {
+        if (*strptr && (strptr < val_str + val_len)) {
             return LY_EVALID;
         }
     }
@@ -491,15 +493,15 @@ ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint6
     errno = 0;
     strptr = NULL;
     u = strtoull(val_str, &strptr, base);
-    if (errno || strptr == val_str) {
+    if (errno || (strptr == val_str)) {
         return LY_EVALID;
-    } else if ((u > max) || (u && val_str[0] == '-')) {
+    } else if ((u > max) || (u && (val_str[0] == '-'))) {
         return LY_EDENIED;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
-        if (*strptr && strptr < val_str + val_len) {
+        if (*strptr && (strptr < val_str + val_len)) {
             return LY_EVALID;
         }
     }
@@ -614,7 +616,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
             *errmsg = "Invalid node-identifier.";
             goto error;
         }
-        if (format == LYD_XML && !(*prefix)) {
+        if ((format == LYD_XML) && !(*prefix)) {
             /* all node names MUST be qualified with explicit namespace prefix */
             *errmsg = "Missing prefix of a node name.";
             goto error;
@@ -641,7 +643,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
 
         /* quoted-string */
         quot = in[offset++];
-        if (quot != '\'' && quot != '\"') {
+        if ((quot != '\'') && (quot != '\"')) {
             *errmsg = "String value is not quoted.";
             goto error;
         }

@@ -51,27 +51,27 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
     /* check that the extension is instantiated at an allowed place - data node */
     if (c_ext->parent_type != LYEXT_PAR_NODE) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
-                  p_ext->name, lyext_parent2str(c_ext->parent_type));
+                p_ext->name, lyext_parent2str(c_ext->parent_type));
         return LY_EVALID;
     } else {
         parent = (struct lysc_node *)c_ext->parent;
-        if (!(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA
-                | LYS_CASE | LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        if (!(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA |
+                LYS_CASE | LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             /* note LYS_AUGMENT and LYS_USES is not in the list since they are not present in the compiled tree. Instead, libyang
              * passes all their extensions to their children nodes */
 invalid_parent:
             lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
-                      "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
+                    "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
             return LY_EVALID;
         }
-        if (c_ext->data == (void *)&nacm_deny_write && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        if ((c_ext->data == (void *)&nacm_deny_write) && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             goto invalid_parent;
         }
     }
 
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        if (&parent->exts[u] != c_ext && parent->exts[u].def->plugin == c_ext->def->plugin) {
+        if ((&parent->exts[u] != c_ext) && (parent->exts[u].def->plugin == c_ext->def->plugin)) {
             /* duplication of a NACM extension on a single node
              * We check plugin since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */

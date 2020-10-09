@@ -15,8 +15,8 @@
 #ifndef LY_XPATH_H
 #define LY_XPATH_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "compat.h"
 #include "log.h"
@@ -128,7 +128,7 @@ enum lyxp_expr_type {
     LYXP_EXPR_ADDITIVE,
     LYXP_EXPR_MULTIPLICATIVE,
     LYXP_EXPR_UNARY,
-    LYXP_EXPR_UNION,
+    LYXP_EXPR_UNION
 };
 
 /**

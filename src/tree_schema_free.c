@@ -14,8 +14,8 @@
 
 #include <stdlib.h>
 
-#include "compat.h"
 #include "common.h"
+#include "compat.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "tree.h"

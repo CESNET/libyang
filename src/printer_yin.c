@@ -108,7 +108,7 @@ ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, c
 
     LEVEL++;
     LY_ARRAY_FOR(ext, u) {
-        if (((struct lysp_ext_instance *)ext)[u].insubstmt != substmt || ((struct lysp_ext_instance *)ext)[u].insubstmt_index != substmt_index) {
+        if ((((struct lysp_ext_instance *)ext)[u].insubstmt != substmt) || (((struct lysp_ext_instance *)ext)[u].insubstmt_index != substmt_index)) {
             continue;
         }
         yprp_extension_instances(ctx, substmt, substmt_index, &((struct lysp_ext_instance *)ext)[u], &extflag, 1);
@@ -127,6 +127,7 @@ static void
 ypr_unsigned(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value)
 {
     char *str;
+
     if (asprintf(&str, "%lu", attr_value) == -1) {
         LOGMEM(ctx->module->ctx);
         return;
@@ -268,7 +269,7 @@ yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
             }
         }
         if ((ext->flags & LYS_YINELEM_MASK) ||
-                (ext->exts && lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_COUNT(ext->exts))) {
+                (ext->exts && (lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_COUNT(ext->exts)))) {
             ypr_close_parent(ctx, &flag2);
             ypr_substmt(ctx, LYEXT_SUBSTMT_YINELEM, 0, (ext->flags & LYS_YINELEM_TRUE) ? "true" : "false", ext->exts);
         }
@@ -365,6 +366,7 @@ static void
 yprp_when(struct ypr_ctx *ctx, struct lysp_when *when, int8_t *flag)
 {
     int8_t inner_flag = 0;
+
     (void)flag;
 
     if (!when) {
@@ -388,6 +390,7 @@ yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE 
 {
     LY_ARRAY_COUNT_TYPE u;
     int8_t inner_flag;
+
     (void)flag;
 
     LY_ARRAY_FOR(items, u) {
@@ -769,6 +772,7 @@ yprp_leaf(struct ypr_ctx *ctx, const struct lysp_node *node)
     struct lysp_node_leaf *leaf = (struct lysp_node_leaf *)node;
 
     int8_t flag = 1;
+
     yprp_node_common1(ctx, node, &flag);
 
     yprp_type(ctx, &leaf->type);
@@ -1313,7 +1317,7 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
         }
 
         count--;
-        if (ext->insubstmt != substmt || ext->insubstmt_index != substmt_index) {
+        if ((ext->insubstmt != substmt) || (ext->insubstmt_index != substmt_index)) {
             continue;
         }
 

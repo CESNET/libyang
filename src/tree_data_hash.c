@@ -17,8 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "compat.h"
 #include "common.h"
+#include "compat.h"
 #include "hash_table.h"
 #include "log.h"
 #include "plugins_types.h"
@@ -138,8 +138,8 @@ lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_
     }
 
     /* add first instance of a (leaf-)list */
-    if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST))
-            && (!node->prev->next || (node->prev->schema != node->schema))) {
+    if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) &&
+            (!node->prev->next || (node->prev->schema != node->schema))) {
         /* get the simple hash */
         hash = dict_hash_multi(0, node->schema->module->name, strlen(node->schema->module->name));
         hash = dict_hash_multi(hash, node->schema->name, strlen(node->schema->name));

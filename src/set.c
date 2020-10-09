@@ -14,9 +14,9 @@
 
 #include "common.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 #include "log.h"
 #include "set.h"

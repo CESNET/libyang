@@ -16,8 +16,8 @@
 #include <stdlib.h>
 
 #include "plugins_exts.h"
-#include "tree_schema.h"
 #include "plugins_exts_metadata.h"
+#include "tree_schema.h"
 
 /**
  * @brief Storage for ID used to check plugin API version compatibility.
@@ -50,13 +50,13 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     /* annotations can appear only at the top level of a YANG module or submodule */
     if (c_ext->parent_type != LYEXT_PAR_MODULE) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
-                  p_ext->name, lyext_parent2str(c_ext->parent_type));
+                p_ext->name, lyext_parent2str(c_ext->parent_type));
         return LY_EVALID;
     }
     /* check mandatory argument */
     if (!c_ext->argument) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated without mandatory argument representing metadata name.",
-                  p_ext->name);
+                p_ext->name);
         return LY_EVALID;
     }
 
@@ -64,7 +64,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 
     /* check for duplication */
     LY_ARRAY_FOR(mod_c->exts, u) {
-        if (&mod_c->exts[u] != c_ext && mod_c->exts[u].def == c_ext->def && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
+        if ((&mod_c->exts[u] != c_ext) && (mod_c->exts[u].def == c_ext->def) && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
             /* duplication of the same annotation extension in a single module */
             lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
             return LY_EVALID;
@@ -98,6 +98,7 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     }
 
     struct lyext_metadata *annotation = (struct lyext_metadata *)ext->data;
+
     annotation_substmt[0].storage = &annotation->iffeatures;
     annotation_substmt[1].storage = &annotation->units;
     annotation_substmt[2].storage = &annotation->flags;

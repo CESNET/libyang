@@ -19,10 +19,10 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #ifndef HAVE_VDPRINTF
@@ -62,11 +62,13 @@ int
 vasprintf(char **strp, const char *fmt, va_list ap)
 {
     va_list ap2;
+
     va_copy(ap2, ap);
     int l = vsnprintf(0, 0, fmt, ap2);
+
     va_end(ap2);
 
-    if (l < 0 || !(*strp = malloc(l + 1U))) {
+    if ((l < 0) || !(*strp = malloc(l + 1U))) {
         return -1;
     }
 

@@ -135,6 +135,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     struct lyd_meta *meta;
     const struct lys_module *mod;
     struct ly_set ns_list = {0};
+
 #if 0
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;
@@ -158,8 +159,8 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     }
 #if 0
     /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
-    if (!strcmp(node->schema->name, "filter")
-            && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
+    if (!strcmp(node->schema->name, "filter") &&
+            (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
         rpc_filter = 1;
     }
 #endif
@@ -537,7 +538,7 @@ xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     struct xmlpr_ctx ctx = {0};
 
     if (!root) {
-        if (out->type == LY_OUT_MEMORY || out->type == LY_OUT_CALLBACK) {
+        if ((out->type == LY_OUT_MEMORY) || (out->type == LY_OUT_CALLBACK)) {
             ly_print_(out, "");
         }
         goto finish;

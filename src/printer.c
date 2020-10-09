@@ -136,7 +136,8 @@ ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **out)
     return LY_SUCCESS;
 }
 
-API ly_write_clb ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
+API ly_write_clb
+ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
 {
     void *prev_clb;
 
@@ -308,11 +309,11 @@ ly_out_reset(struct ly_out *out)
         LOGINT(NULL);
         return LY_EINT;
     case LY_OUT_FD:
-        if ((lseek(out->method.fd, 0, SEEK_SET) == -1) && errno != ESPIPE) {
+        if ((lseek(out->method.fd, 0, SEEK_SET) == -1) && (errno != ESPIPE)) {
             LOGERR(NULL, LY_ESYS, "Seeking output file descriptor failed (%s).", strerror(errno));
             return LY_ESYS;
         }
-        if (errno != ESPIPE && ftruncate(out->method.fd, 0) == -1) {
+        if ((errno != ESPIPE) && (ftruncate(out->method.fd, 0) == -1)) {
             LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
             return LY_ESYS;
         }
@@ -320,11 +321,11 @@ ly_out_reset(struct ly_out *out)
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILE:
     case LY_OUT_FILEPATH:
-        if ((fseek(out->method.f, 0, SEEK_SET) == -1) && errno != ESPIPE) {
+        if ((fseek(out->method.f, 0, SEEK_SET) == -1) && (errno != ESPIPE)) {
             LOGERR(NULL, LY_ESYS, "Seeking output file stream failed (%s).", strerror(errno));
             return LY_ESYS;
         }
-        if (errno != ESPIPE && ftruncate(fileno(out->method.f), 0) == -1) {
+        if ((errno != ESPIPE) && (ftruncate(fileno(out->method.f), 0) == -1)) {
             LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
             return LY_ESYS;
         }
@@ -381,7 +382,7 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
     if (!out->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
         out->method.fpath.f = f;
-        return ((void *)-1);
+        return (void *)-1;
     }
     fclose(f);
     free(out->method.fpath.filepath);
@@ -636,7 +637,7 @@ repeat:
     }
 
     if (ret) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
             ret = LY_SUCCESS;
             goto repeat;
         }
@@ -644,7 +645,7 @@ repeat:
         written = 0;
     } else if ((size_t)written != len) {
         LOGERR(NULL, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__,
-               len - (size_t)written, len);
+                len - (size_t)written, len);
         ret = LY_ESYS;
     } else {
         if (out->type == LY_OUT_FDSTREAM) {
