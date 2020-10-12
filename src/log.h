@@ -57,7 +57,7 @@ typedef enum
  * @param[in] level Verbosity level.
  * @return Previous verbosity level.
  */
-LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
+LY_LOG_LEVEL ly_log_level(LY_LOG_LEVEL level);
 
 /**
  * @defgroup logopts Logging options

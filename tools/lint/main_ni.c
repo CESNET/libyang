@@ -686,7 +686,7 @@ main_ni(int argc, char* argv[])
     }
 
     /* derefered setting of verbosity in libyang after context initiation */
-    ly_verb(verbose);
+    ly_log_level(verbose);
 
     if (ly_set_new(&mods)) {
         fprintf(stderr, "yanglint error: Preparing storage for the parsed modules failed.\n");

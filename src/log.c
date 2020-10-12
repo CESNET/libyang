@@ -31,7 +31,7 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 
-volatile LY_LOG_LEVEL ly_log_level = LY_LLWRN;
+volatile LY_LOG_LEVEL ly_ll = LY_LLWRN;
 volatile uint32_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
 static ly_log_clb log_clb;
 static volatile ly_bool path_flag = 1;
@@ -193,11 +193,11 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 }
 
 API LY_LOG_LEVEL
-ly_verb(LY_LOG_LEVEL level)
+ly_log_level(LY_LOG_LEVEL level)
 {
-    LY_LOG_LEVEL prev = ly_log_level;
+    LY_LOG_LEVEL prev = ly_ll;
 
-    ly_log_level = level;
+    ly_ll = level;
     return prev;
 }
 
@@ -307,7 +307,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     char *msg = NULL;
     ly_bool free_strs;
 
-    if (level > ly_log_level) {
+    if (level > ly_ll) {
         /* do not print or store the message */
         free(path);
         return;
@@ -480,7 +480,7 @@ lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no
     char *plugin_msg;
     int ret;
 
-    if (ly_log_level < level) {
+    if (ly_ll < level) {
         return;
     }
     ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s)", ext->def->plugin->id, format);

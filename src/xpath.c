@@ -134,7 +134,7 @@ print_expr_struct_debug(struct lyxp_expr *exp)
     uint16_t i, j;
     char tmp[128];
 
-    if (!exp || (ly_log_level < LY_LLDBG)) {
+    if (!exp || (ly_ll < LY_LLDBG)) {
         return;
     }
 
@@ -168,7 +168,7 @@ print_set_debug(struct lyxp_set *set)
     struct lyxp_set_node *item;
     struct lyxp_set_scnode *sitem;
 
-    if (ly_log_level < LY_LLDBG) {
+    if (ly_ll < LY_LLDBG) {
         return;
     }
 
