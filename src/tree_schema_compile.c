@@ -196,7 +196,7 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
         LY_CHECK_ERR_RET(!r, LOGMEM(ctx->ctx), LY_EMEM);
         r->leaf = leaf;
 
-        LY_CHECK_RET(ly_set_add(&ctx->dflts, r, LY_SET_OPT_USEASLIST, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->dflts, r, 1, NULL));
     }
 
     r->dflt = malloc(sizeof *r->dflt);
@@ -242,7 +242,7 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
         LY_CHECK_ERR_RET(!r, LOGMEM(ctx->ctx), LY_EMEM);
         r->llist = llist;
 
-        LY_CHECK_RET(ly_set_add(&ctx->dflts, r, LY_SET_OPT_USEASLIST, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->dflts, r, 1, NULL));
     }
 
     DUP_ARRAY(ctx->ctx, dflts, r->dflts, lysp_qname_dup);
@@ -3038,7 +3038,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
             /* it is not necessary to continue, the rest of the chain was already compiled,
              * but we still may need to inherit default and units values, so start dummy loops */
             basetype = tctx->tpdf->type.compiled->basetype;
-            ret = ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST, NULL);
+            ret = ly_set_add(&tpdf_chain, tctx, 1, NULL);
             LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
 
             if ((units && !*units) || (dflt && !*dflt)) {
@@ -3075,7 +3075,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         }
 
         /* store information for the following processing */
-        ret = ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST, NULL);
+        ret = ly_set_add(&tpdf_chain, tctx, 1, NULL);
         LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
 
 preparenext:
@@ -3150,7 +3150,7 @@ preparenext:
         tctx = (struct type_context *)tpdf_chain.objs[u];
 
         /* remember the typedef context for circular check */
-        ret = ly_set_add(&ctx->tpdf_chain, tctx, LY_SET_OPT_USEASLIST, NULL);
+        ret = ly_set_add(&ctx->tpdf_chain, tctx, 1, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (tctx->tpdf->type.compiled) {
@@ -4842,7 +4842,7 @@ lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses
         /* allocate new compiled augment and store it in the set */
         aug = calloc(1, sizeof *aug);
         LY_CHECK_ERR_GOTO(!aug, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-        LY_CHECK_GOTO(ret = ly_set_add(&ctx->uses_augs, aug, LY_SET_OPT_USEASLIST, NULL), cleanup);
+        LY_CHECK_GOTO(ret = ly_set_add(&ctx->uses_augs, aug, 1, NULL), cleanup);
 
         aug->nodeid = exp;
         exp = NULL;
@@ -4874,7 +4874,7 @@ lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses
             /* allocate new compiled refine */
             rfn = calloc(1, sizeof *rfn);
             LY_CHECK_ERR_GOTO(!rfn, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-            LY_CHECK_GOTO(ret = ly_set_add(&ctx->uses_rfns, rfn, LY_SET_OPT_USEASLIST, NULL), cleanup);
+            LY_CHECK_GOTO(ret = ly_set_add(&ctx->uses_rfns, rfn, 1, NULL), cleanup);
 
             rfn->nodeid = exp;
             exp = NULL;
@@ -4957,7 +4957,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     if (child_set) {
         /* add these children to our compiled child_set as well since uses is a schema-only node */
-        LY_CHECK_GOTO(ret = ly_set_merge(child_set, &uses_child_set, LY_SET_OPT_USEASLIST, NULL), cleanup);
+        LY_CHECK_GOTO(ret = ly_set_merge(child_set, &uses_child_set, 1, NULL), cleanup);
     }
 
     if (uses_p->when) {
@@ -6868,7 +6868,7 @@ lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, con
     /* allocate new compiled augment and store it in the set */
     aug = calloc(1, sizeof *aug);
     LY_CHECK_ERR_GOTO(!aug, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-    LY_CHECK_GOTO(ret = ly_set_add(&ctx->augs, aug, LY_SET_OPT_USEASLIST, NULL), cleanup);
+    LY_CHECK_GOTO(ret = ly_set_add(&ctx->augs, aug, 1, NULL), cleanup);
 
     aug->nodeid = exp;
     exp = NULL;
@@ -6953,7 +6953,7 @@ lys_precompile_own_deviation(struct lysc_ctx *ctx, struct lysp_deviation *dev_p,
         /* allocate new compiled deviation */
         dev = calloc(1, sizeof *dev);
         LY_CHECK_ERR_GOTO(!dev, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-        LY_CHECK_GOTO(ret = ly_set_add(&ctx->devs, dev, LY_SET_OPT_USEASLIST, NULL), cleanup);
+        LY_CHECK_GOTO(ret = ly_set_add(&ctx->devs, dev, 1, NULL), cleanup);
 
         dev->nodeid = exp;
         exp = NULL;
@@ -7170,7 +7170,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
 
     if (child_set) {
         /* add the new node into set */
-        LY_CHECK_GOTO(ret = ly_set_add(child_set, node, LY_SET_OPT_USEASLIST, NULL), cleanup);
+        LY_CHECK_GOTO(ret = ly_set_add(child_set, node, 1, NULL), cleanup);
     }
 
     lysc_update_path(ctx, NULL, NULL);

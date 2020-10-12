@@ -55,12 +55,6 @@ struct ly_set
 };
 
 /**
- * @brief Option for ly_set_add() to allow duplicities in the ly_set structure so the
- * set is not used as a set, but as a list of (container for) items.
- */
-#define LY_SET_OPT_USEASLIST 0x01
-
-/**
  * @brief Create and initiate new ::ly_set structure.
  *
  * @param[out] set Pointer to store the created ::ly_set structure.
@@ -86,8 +80,7 @@ LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), stru
  *
  * @param[in] set Set where the \p object will be added.
  * @param[in] object Object to be added into the \p set;
- * @param[in] options Options to change behavior of the function. Accepted options are:
- * - #LY_SET_OPT_USEASLIST - do not check for duplicities
+ * @param[in] list flag to handle set as a list (without checking for (ignoring) duplicit items)
  * @param[out] index_p Optional pointer to return index of the added @p object. Usually it is the last index (::ly_set::count - 1),
  * but in case the duplicities are checked and the object is already in the set, the @p object is not added and index of the
  * already present object is returned.
@@ -95,7 +88,7 @@ LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), stru
  * @return LY_EINVAL in case of invalid input parameters.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR ly_set_add(struct ly_set *set, void *object, uint32_t options, uint32_t *index_p);
+LY_ERR ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p);
 
 /**
  * @brief Add all objects from \p src to \p trg.

@@ -1023,7 +1023,7 @@ next:
                 int c = sprintf(&buf[index], "%s%s", index ? " " : "", type_bits->bits[u].name);
                 LY_CHECK_ERR_GOTO(c < 0, LOGERR(ctx, LY_ESYS, "sprintf() failed."); ret = LY_ESYS, cleanup);
                 index += c;
-                ret = ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST, NULL);
+                ret = ly_set_add(items_ordered, &type_bits->bits[u], 1, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
@@ -1988,7 +1988,7 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
                         /* store a new prefix - namespace pair */
                         ns = calloc(1, sizeof *ns);
                         LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
-                        LY_CHECK_GOTO(ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST, NULL), error);
+                        LY_CHECK_GOTO(ly_set_add(ns_list, ns, 1, NULL), error);
 
                         ns->prefix = strndup(start, len);
                         LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx), error);
@@ -2006,7 +2006,7 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
     if (mod) {
         ns = calloc(1, sizeof *ns);
         LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
-        LY_CHECK_GOTO(ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST, NULL), error);
+        LY_CHECK_GOTO(ly_set_add(ns_list, ns, 1, NULL), error);
 
         ns->uri = strdup(mod->ns);
         LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx), error);
@@ -2052,7 +2052,7 @@ ly_type_union_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format,
     for (i = 0; i < orig->count; ++i) {
         ns = calloc(1, sizeof *ns);
         LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
-        LY_CHECK_GOTO(ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST, NULL), error);
+        LY_CHECK_GOTO(ly_set_add(ns_list, ns, 1, NULL), error);
 
         if (((struct lyxml_ns *)orig->objs[i])->prefix) {
             ns->prefix = strdup(((struct lyxml_ns *)orig->objs[i])->prefix);

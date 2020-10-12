@@ -164,7 +164,7 @@ lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, ch
         ns->prefix = NULL;
     }
 
-    ret = ly_set_add(&xmlctx->ns, ns, LY_SET_OPT_USEASLIST, NULL);
+    ret = ly_set_add(&xmlctx->ns, ns, 1, NULL);
     LY_CHECK_ERR_RET(ret, free(ns->prefix); free(ns->uri); free(ns), ret);
 
     return LY_SUCCESS;
@@ -594,7 +594,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
     e->prefix = prefix;
     e->name_len = name_len;
     e->prefix_len = prefix_len;
-    LY_CHECK_RET(ly_set_add(&xmlctx->elements, e, LY_SET_OPT_USEASLIST, NULL));
+    LY_CHECK_RET(ly_set_add(&xmlctx->elements, e, 1, NULL));
 
     /* skip WS */
     ign_xmlws(xmlctx);

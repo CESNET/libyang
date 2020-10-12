@@ -95,7 +95,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 }
 
                 /* add it into the set */
-                ret = ly_set_add(set, (void *)name, LY_SET_OPT_USEASLIST, NULL);
+                ret = ly_set_add(set, (void *)name, 1, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* NameTest */
@@ -159,7 +159,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 }
 
                 /* add it into the set */
-                ret = ly_set_add(set, (void *)name, LY_SET_OPT_USEASLIST, NULL);
+                ret = ly_set_add(set, (void *)name, 1, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* NameTest */

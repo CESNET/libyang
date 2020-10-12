@@ -193,14 +193,14 @@ test_add(void **state)
     assert_int_equal(LY_SUCCESS, ly_set_add(&set, str, 0, &index));
     assert_int_equal(0, index);
     assert_int_equal(1, set.count);
-    assert_int_equal(LY_SUCCESS, ly_set_add(&set, str, LY_SET_OPT_USEASLIST, &index));
+    assert_int_equal(LY_SUCCESS, ly_set_add(&set, str, 1, &index));
     assert_int_equal(1, index);
     assert_int_equal(2, set.count);
 
     /* test array resizing */
     u = set.size;
     for (uint32_t expected_index = 2; expected_index <= u; ++expected_index) {
-        assert_int_equal(LY_SUCCESS, ly_set_add(&set, str, LY_SET_OPT_USEASLIST, &index));
+        assert_int_equal(LY_SUCCESS, ly_set_add(&set, str, 1, &index));
         assert_int_equal(expected_index, index);
     }
     assert_true(u != set.size);
@@ -242,7 +242,7 @@ test_merge(void **state)
 
     /* merge without checking duplicities - two items are added into one;
      * here also with duplicator */
-    assert_int_equal(LY_SUCCESS, ly_set_merge(&one, &two, LY_SET_OPT_USEASLIST, (void*(*)(void*))strdup));
+    assert_int_equal(LY_SUCCESS, ly_set_merge(&one, &two, 1, (void*(*)(void*))strdup));
     assert_int_equal(3, one.count);
     assert_ptr_not_equal(one.objs[1], two.objs[0]);
     assert_string_equal(one.objs[1], two.objs[0]);

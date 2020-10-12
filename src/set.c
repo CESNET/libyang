@@ -121,13 +121,13 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_s
 }
 
 API LY_ERR
-ly_set_add(struct ly_set *set, void *object, uint32_t options, uint32_t *index_p)
+ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p)
 {
     void **new;
 
     LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
 
-    if (!(options & LY_SET_OPT_USEASLIST)) {
+    if (!list) {
         /* search for duplication */
         for (uint32_t i = 0; i < set->count; i++) {
             if (set->objs[i] == object) {
