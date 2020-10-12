@@ -156,7 +156,7 @@ ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p)
 }
 
 API LY_ERR
-ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj))
+ly_set_merge(struct ly_set *trg, struct ly_set *src, ly_bool list, void *(*duplicator)(void *obj))
 {
     uint32_t u;
     void *obj;
@@ -174,7 +174,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*d
         } else {
             obj = src->objs[u];
         }
-        LY_CHECK_RET(ly_set_add(trg, obj, options, NULL));
+        LY_CHECK_RET(ly_set_add(trg, obj, list, NULL));
     }
 
     return LY_SUCCESS;

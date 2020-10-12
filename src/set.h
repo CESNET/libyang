@@ -97,8 +97,7 @@ LY_ERR ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *inde
  *
  * @param[in] trg Target (result) set.
  * @param[in] src Source set.
- * @param[in] options Options to change behavior of the function. Accepted options are:
- * - #LY_SET_OPT_USEASLIST - add without checking for duplicities
+ * @param[in] list flag to handle set as a list (without checking for (ignoring) duplicit items)
  * @param[in] duplicator Optional pointer to function that duplicates the objects being added
  * from \p src into \p trg set. If not provided, the \p trg set will point to the exact same
  * objects as the \p src set.
@@ -106,7 +105,7 @@ LY_ERR ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *inde
  * @return LY_EINVAL in case of invalid input parameters.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj));
+LY_ERR ly_set_merge(struct ly_set *trg, struct ly_set *src, ly_bool list, void *(*duplicator)(void *obj));
 
 /**
  * @brief Learn whether the set contains the specified object.
