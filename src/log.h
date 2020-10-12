@@ -111,7 +111,7 @@ uint32_t ly_log_options(uint32_t opts);
  * @brief Enable specific debugging messages (independent of log level).
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  */
-void ly_verb_dbg(uint32_t dbg_groups);
+void ly_log_dbg_groups(uint32_t dbg_groups);
 
 #endif
 

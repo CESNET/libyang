@@ -36,7 +36,7 @@ volatile uint32_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
 static ly_log_clb log_clb;
 static volatile ly_bool path_flag = 1;
 #ifndef NDEBUG
-volatile uint32_t ly_log_dbg_groups = 0;
+volatile uint32_t ly_ldbg_groups = 0;
 #endif
 
 /* how many bytes add when enlarging buffers */
@@ -211,10 +211,10 @@ ly_log_options(uint32_t opts)
 }
 
 API void
-ly_verb_dbg(uint32_t dbg_groups)
+ly_log_dbg_groups(uint32_t dbg_groups)
 {
 #ifndef NDEBUG
-    ly_log_dbg_groups = dbg_groups;
+    ly_ldbg_groups = dbg_groups;
 #else
     (void)dbg_groups;
 #endif
@@ -365,7 +365,7 @@ ly_log_dbg(uint32_t group, const char *format, ...)
     const char *str_group;
     va_list ap;
 
-    if (!(ly_log_dbg_groups & group)) {
+    if (!(ly_ldbg_groups & group)) {
         return;
     }
 

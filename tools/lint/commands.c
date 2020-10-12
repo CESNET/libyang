@@ -1399,22 +1399,22 @@ cmd_verb(const char *arg)
     if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
         ly_log_level(LY_LLERR);
 #ifndef NDEBUG
-        ly_verb_dbg(0);
+        ly_log_dbg_groups(0);
 #endif
     } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
         ly_log_level(LY_LLWRN);
 #ifndef NDEBUG
-        ly_verb_dbg(0);
+        ly_log_dbg_groups(0);
 #endif
     } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
         ly_log_level(LY_LLVRB);
 #ifndef NDEBUG
-        ly_verb_dbg(0);
+        ly_log_dbg_groups(0);
 #endif
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_log_level(LY_LLDBG);
 #ifndef NDEBUG
-        ly_verb_dbg(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
+        ly_log_dbg_groups(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
 #endif
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
@@ -1460,7 +1460,7 @@ cmd_debug(const char *arg)
             return 1;
         }
     }
-    ly_verb_dbg(grps);
+    ly_log_dbg_groups(grps);
 
     return 0;
 }

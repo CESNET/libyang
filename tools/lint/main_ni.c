@@ -578,7 +578,7 @@ main_ni(int argc, char* argv[])
                     ++ptr;
                 }
             }
-            ly_verb_dbg(u);
+            ly_log_dbg_groups(u);
             break;
 #endif
 #if 0
