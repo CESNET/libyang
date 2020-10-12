@@ -678,15 +678,15 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
  * @{
  */
 
-#define LYD_NEWOPT_UPDATE 0x01 /**< If the target node exists, is a leaf, and it is updated with a new value or its
-                                    default flag is changed, it is returned. If the target node exists and is not
-                                    a leaf or generally no change occurs in the @p parent tree, NULL is returned and
-                                    no error set. */
-#define LYD_NEWOPT_OUTPUT 0x02 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only
-                                    output ones. */
-#define LYD_NEWOPT_OPAQ   0x04 /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
-                                    in the path is not uniquely defined ((leaf-)list without a predicate) or has an
-                                    invalid value (leaf/leaf-list), it is created as opaque. */
+#define LYD_NEW_PATH_UPDATE 0x01 /**< If the target node exists, is a leaf, and it is updated with a new value or its
+                                      default flag is changed, it is returned. If the target node exists and is not
+                                      a leaf or generally no change occurs in the @p parent tree, NULL is returned and
+                                      no error set. */
+#define LYD_NEW_PATH_OUTPUT 0x02 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only
+                                      output ones. */
+#define LYD_NEW_PATH_OPAQ   0x04 /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
+                                      in the path is not uniquely defined ((leaf-)list without a predicate) or has an
+                                      invalid value (leaf/leaf-list), it is created as opaque. */
 
 /** @} pathoptions */
 

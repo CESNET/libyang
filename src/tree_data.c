@@ -1210,12 +1210,12 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
 
     /* compile path */
     LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, exp, LY_PATH_LREF_FALSE,
-            options & LYD_NEWOPT_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT,
+            options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT,
             LY_PATH_TARGET_MANY, LY_PREF_JSON, NULL, &p), cleanup);
 
     schema = p[LY_ARRAY_COUNT(p) - 1].node;
     if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE) &&
-            !(options & LYD_NEWOPT_OPAQ)) {
+            !(options & LYD_NEW_PATH_OPAQ)) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                 lys_nodetype2str(schema->nodetype), schema->name);
         ret = LY_EINVAL;
@@ -1230,7 +1230,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         }
 
         r = LY_SUCCESS;
-        if (options & LYD_NEWOPT_OPAQ) {
+        if (options & LYD_NEW_PATH_OPAQ) {
             r = lys_value_validate(NULL, schema, value, strlen(value));
         }
         if (!r) {
@@ -1245,7 +1245,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         ret = ly_path_eval_partial(p, parent, &path_idx, &node);
         if (ret == LY_SUCCESS) {
             /* the node exists, are we supposed to update it or is it just a default? */
-            if (!(options & LYD_NEWOPT_UPDATE) && !(node->flags & LYD_DEFAULT)) {
+            if (!(options & LYD_NEW_PATH_UPDATE) && !(node->flags & LYD_DEFAULT)) {
                 LOGERR(ctx, LY_EEXIST, "Path \"%s\" already exists", path);
                 ret = LY_EEXIST;
                 goto cleanup;
@@ -1276,7 +1276,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         switch (schema->nodetype) {
         case LYS_LIST:
             if (!(schema->flags & LYS_KEYLESS)) {
-                if ((options & LYD_NEWOPT_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
+                if ((options & LYD_NEW_PATH_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
                     /* creating opaque list without keys */
                     LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LYD_JSON,
                             LYD_NODEHINT_LIST, NULL, NULL, 0, schema->module->name, strlen(schema->module->name), &node),
@@ -1295,7 +1295,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             LY_CHECK_GOTO(ret = lyd_create_inner(schema, &node), cleanup);
             break;
         case LYS_LEAFLIST:
-            if ((options & LYD_NEWOPT_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
+            if ((options & LYD_NEW_PATH_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
                 /* creating opaque leaf-list without value */
                 LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LYD_JSON,
                         LYD_NODEHINT_LEAFLIST, NULL, NULL, 0, schema->module->name, strlen(schema->module->name), &node),
@@ -1312,7 +1312,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             }
 
             r = LY_SUCCESS;
-            if (options & LYD_NEWOPT_OPAQ) {
+            if (options & LYD_NEW_PATH_OPAQ) {
                 r = lys_value_validate(NULL, schema, value, strlen(value));
             }
             if (!r) {
