@@ -64,11 +64,11 @@ cmd_print_help(void)
     printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");
     printf("\t             \t--tree-print-uses\t(print uses nodes instead the resolved grouping nodes)\n");
     printf("\t             \t--tree-no-leafref-target\t(do not print the target nodes of leafrefs)\n");
-    printf("\t             \t--tree-path <schema-path>\t(print only the specified subtree)\n");
+    printf("\t             \t--tree-path <data-path>\t(print only the specified subtree)\n");
     printf("\t             \t--tree-line-length <line-length>\t(wrap lines if longer than line-length,\n");
     printf("\t             \t\tnot a strict limit, longer lines can often appear)\n");
     printf("\n");
-    printf("\tinfo-path:\t<schema-path> | identity/<identity-name> | feature/<feature-name>\n");
+    printf("\tinfo-path:\t<data-path> | identity/<identity-name> | feature/<feature-name>\n");
     printf("\n");
     printf("\tschema-path:\t( /<module-name>:<node-identifier> )+\n");
 }
@@ -503,7 +503,7 @@ cmd_print(const char *arg)
     }
 
     if (target_path) {
-        const struct lysc_node *node = lys_find_node(ctx, NULL, target_path);
+        const struct lysc_node *node = ly_ctx_get_node(ctx, NULL, target_path, 0);
         if (node) {
             ret = lys_print_node(out, node, format, tree_ll, output_opts);
         } else {
