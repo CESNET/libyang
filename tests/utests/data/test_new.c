@@ -249,7 +249,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_EINVAL);
     logbuf_assert("Predicate missing for list \"l1\" in path.");
 
-    ret = lyd_new_path2(NULL, ctx, "/a:l1", NULL, 0, LYD_NEWOPT_OPAQ, NULL, &root);
+    ret = lyd_new_path2(NULL, ctx, "/a:l1", NULL, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_null(root->schema);
@@ -260,7 +260,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Invalid empty uint16 value. /a:foo");
 
-    ret = lyd_new_path2(NULL, ctx, "/a:foo", NULL, 0, LYD_NEWOPT_OPAQ, NULL, &root);
+    ret = lyd_new_path2(NULL, ctx, "/a:foo", NULL, 0, LYD_NEW_PATH_OPAQ, NULL, &root);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_null(root->schema);
@@ -277,11 +277,11 @@ test_path(void **state)
     ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
 
-    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, LYD_NEWOPT_UPDATE, NULL, &node);
+    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, LYD_NEW_PATH_UPDATE, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_null(node);
 
-    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val2", 0, LYD_NEWOPT_UPDATE, NULL, &node);
+    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val2", 0, LYD_NEW_PATH_UPDATE, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "x");
