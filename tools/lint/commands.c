@@ -1397,22 +1397,22 @@ cmd_verb(const char *arg)
 
     verb = arg + 5;
     if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
-        ly_verb(LY_LLERR);
+        ly_log_level(LY_LLERR);
 #ifndef NDEBUG
         ly_verb_dbg(0);
 #endif
     } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
-        ly_verb(LY_LLWRN);
+        ly_log_level(LY_LLWRN);
 #ifndef NDEBUG
         ly_verb_dbg(0);
 #endif
     } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
-        ly_verb(LY_LLVRB);
+        ly_log_level(LY_LLVRB);
 #ifndef NDEBUG
         ly_verb_dbg(0);
 #endif
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
-        ly_verb(LY_LLDBG);
+        ly_log_level(LY_LLDBG);
 #ifndef NDEBUG
         ly_verb_dbg(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
 #endif
