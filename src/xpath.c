@@ -5598,6 +5598,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
     uint32_t orig_used, i;
     uint32_t mod_idx;
     const struct lysc_node *iter, *start_parent;
+    const struct lys_module *moveto_mod;
 
     if (!set) {
         return LY_SUCCESS;
@@ -5632,14 +5633,15 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
         start_parent = set->val.scnodes[i].scnode;
 
         if ((set->val.scnodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.scnodes[i].type == LYXP_NODE_ROOT)) {
-            /* it can actually be in any module, it's all <running>, but we know it's mod (if set),
-             * so use it directly (root node itself is useless in this case) */
+            /* it can actually be in any module, it's all <running>, and even if it's mod (if set),
+             * it can be in a top-level augment (the root node itself is useless in this case) */
             mod_idx = 0;
-            while (mod || (mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
+            moveto_mod = mod;
+            while ((mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
                 iter = NULL;
                 /* module may not be implemented */
                 while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
-                    if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, mod)) {
+                    if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, moveto_mod)) {
                         LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, &idx));
 
                         /* we need to prevent these nodes from being considered in this moveto */
@@ -5649,19 +5651,13 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
                         }
                     }
                 }
-
-                if (!mod_idx) {
-                    /* mod was specified, we are not going through the whole context */
-                    break;
-                }
-                /* next iteration */
-                mod = NULL;
             }
 
         } else if (set->val.scnodes[i].type == LYXP_NODE_ELEM) {
             iter = NULL;
+            moveto_mod = mod ? mod : set->local_mod;
             while ((iter = lys_getnext(iter, start_parent, NULL, getnext_opts))) {
-                if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, (mod ? mod : set->local_mod))) {
+                if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, moveto_mod)) {
                     LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, &idx));
 
                     if ((idx < orig_used) && (idx > i)) {
@@ -7052,7 +7048,9 @@ moveto:
                 }
             }
             if (i == -1) {
-                path = lysc_path(set->ctx_scnode, LYSC_PATH_LOG, NULL, 0);
+                const struct lysc_node *real_ctx_scnode = set->ctx_scnode->nodetype & (LYS_CHOICE | LYS_CASE) ?
+                        lysc_data_parent(set->ctx_scnode) : set->ctx_scnode;
+                path = lysc_path(real_ctx_scnode, LYSC_PATH_LOG, NULL, 0);
                 LOGWRN(set->ctx, "Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
                         ncname_len, ncname, ncname - exp->expr, exp->expr, path);
                 free(path);
