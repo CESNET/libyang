@@ -95,8 +95,8 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
     if (new_prefix) {
         LY_CHECK_RET(lydict_insert(ctx->ctx, new_prefix, 0, &new_prefix), NULL);
     }
-    LY_CHECK_RET(ly_set_add(&ctx->prefix, (void *)new_prefix, LY_SET_OPT_USEASLIST, NULL), NULL);
-    LY_CHECK_RET(ly_set_add(&ctx->ns, (void *)ns, LY_SET_OPT_USEASLIST, &i), NULL);
+    LY_CHECK_RET(ly_set_add(&ctx->prefix, (void *)new_prefix, 1, NULL), NULL);
+    LY_CHECK_RET(ly_set_add(&ctx->ns, (void *)ns, 1, &i), NULL);
 
     /* return it */
     return ctx->prefix.objs[i];

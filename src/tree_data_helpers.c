@@ -244,7 +244,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
             node->flags |= LYD_WHEN_TRUE;
         } else {
             /* remember we need to evaluate this node's when */
-            LY_CHECK_RET(ly_set_add(when_check, node, LY_SET_OPT_USEASLIST, NULL), );
+            LY_CHECK_RET(ly_set_add(when_check, node, 1, NULL), );
         }
     }
 

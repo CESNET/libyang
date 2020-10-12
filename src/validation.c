@@ -694,7 +694,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     LY_CHECK_RET(ly_set_new(&set));
     LY_LIST_FOR(first, diter) {
         if (diter->schema == snode) {
-            ret = ly_set_add(set, (void *)diter, LY_SET_OPT_USEASLIST, NULL);
+            ret = ly_set_add(set, (void *)diter, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -1042,13 +1042,13 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
             LY_LIST_FOR(node->meta, meta) {
                 if (((struct lyext_metadata *)meta->annotation->data)->type->plugin->validate) {
                     /* metadata type resolution */
-                    LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, LY_SET_OPT_USEASLIST, NULL));
+                    LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, 1, NULL));
                 }
             }
 
             if ((node->schema->nodetype & LYD_NODE_TERM) && ((struct lysc_node_leaf *)node->schema)->type->plugin->validate) {
                 /* node type resolution */
-                LY_CHECK_RET(ly_set_add(type_check, (void *)node, LY_SET_OPT_USEASLIST, NULL));
+                LY_CHECK_RET(ly_set_add(type_check, (void *)node, 1, NULL));
             } else if (node->schema->nodetype & LYD_NODE_INNER) {
                 /* new node validation, autodelete */
                 LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
@@ -1061,7 +1061,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
 
             if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
                 /* when evaluation */
-                LY_CHECK_RET(ly_set_add(when_check, (void *)node, LY_SET_OPT_USEASLIST, NULL));
+                LY_CHECK_RET(ly_set_add(when_check, (void *)node, 1, NULL));
             }
         }
 

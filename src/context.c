@@ -97,7 +97,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 return LY_EEXIST;
             }
         }
-        if (ly_set_add(&ctx->search_paths, new_dir, LY_SET_OPT_USEASLIST, NULL)) {
+        if (ly_set_add(&ctx->search_paths, new_dir, 1, NULL)) {
             free(new_dir);
             return LY_EMEM;
         }

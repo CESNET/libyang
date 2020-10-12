@@ -259,7 +259,7 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t 
 
     for (i = 0; i < xp_set.used; ++i) {
         if (xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) {
-            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST, NULL);
+            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -304,7 +304,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 
     for (i = 0; i < xp_set.used; ++i) {
         if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == 1)) {
-            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST, NULL);
+            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -555,7 +555,7 @@ run:
             }
 
             /* remember the changed feature */
-            ret = ly_set_add(changed, f, LY_SET_OPT_USEASLIST, NULL);
+            ret = ly_set_add(changed, f, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
             if (!all) {
@@ -618,7 +618,7 @@ next:
                     /* the feature must be disabled now */
                     (*df)->flags &= ~LYS_FENABLED;
                     /* add the feature into the list of changed features */
-                    ret = ly_set_add(changed, *df, LY_SET_OPT_USEASLIST, NULL);
+                    ret = ly_set_add(changed, *df, 1, NULL);
                     LY_CHECK_GOTO(ret, cleanup);
                     break;
                 }
@@ -802,7 +802,7 @@ lys_set_implemented(struct lys_module *mod)
     }
 
     /* add the module into newly implemented module set */
-    LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, LY_SET_OPT_USEASLIST, NULL));
+    LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, 1, NULL));
 
     /* mark the module implemented, check for collision was already done */
     mod->implemented = 1;
@@ -1122,7 +1122,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     }
 
     /* add into context */
-    ret = ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST, NULL);
+    ret = ly_set_add(&ctx->list, mod, 1, NULL);
     LY_CHECK_GOTO(ret, error);
     ctx->module_set_id++;
 

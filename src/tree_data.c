@@ -1420,7 +1420,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 if (ret == LY_EINCOMPLETE) {
                     if (node_types) {
                         /* remember to resolve type */
-                        LY_CHECK_RET(ly_set_add(node_types, node, LY_SET_OPT_USEASLIST, NULL));
+                        LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
                     }
                 } else if (ret) {
                     return ret;
@@ -1430,7 +1430,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 
                 if (iter->when && node_when) {
                     /* remember to resolve when */
-                    LY_CHECK_RET(ly_set_add(node_when, node, LY_SET_OPT_USEASLIST, NULL));
+                    LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
                 }
                 if (diff) {
                     /* add into diff */
@@ -1448,7 +1448,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                     if (ret == LY_EINCOMPLETE) {
                         if (node_types) {
                             /* remember to resolve type */
-                            LY_CHECK_RET(ly_set_add(node_types, node, LY_SET_OPT_USEASLIST, NULL));
+                            LY_CHECK_RET(ly_set_add(node_types, node, 1, NULL));
                         }
                     } else if (ret) {
                         return ret;
@@ -1458,7 +1458,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 
                     if (iter->when && node_when) {
                         /* remember to resolve when */
-                        LY_CHECK_RET(ly_set_add(node_when, node, LY_SET_OPT_USEASLIST, NULL));
+                        LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
                     }
                     if (diff) {
                         /* add into diff */
@@ -3347,7 +3347,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 
         for (i = 0; i < xp_set.used; ++i) {
             if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
-                ret = ly_set_add(*set, xp_set.val.nodes[i].node, LY_SET_OPT_USEASLIST, NULL);
+                ret = ly_set_add(*set, xp_set.val.nodes[i].node, 1, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
