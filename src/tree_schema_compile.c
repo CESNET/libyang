@@ -7146,14 +7146,16 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
     DUP_STRING_GOTO(ctx->ctx, pnode->name, node->name, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->dsc, node->dsc, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->ref, node->ref, ret, error);
-    if (pnode->when) {
-        ret = lys_compile_when(ctx, pnode->when, pnode->flags, lysc_xpath_context(node), node, NULL);
-        LY_CHECK_GOTO(ret, error);
-    }
     COMPILE_ARRAY_GOTO(ctx, pnode->iffeatures, node->iffeatures, u, lys_compile_iffeature, ret, error);
 
     /* insert into parent's children/compiled module (we can no longer free the node separately on error) */
     LY_CHECK_GOTO(ret = lys_compile_node_connect(ctx, parent, node), cleanup);
+
+    if (pnode->when) {
+        /* compile when */
+        ret = lys_compile_when(ctx, pnode->when, pnode->flags, lysc_xpath_context(node), node, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
 
     /* connect any augments */
     LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), cleanup);
