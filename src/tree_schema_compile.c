@@ -47,6 +47,25 @@ static LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ex
 static LY_ERR lysp_qname_dup(const struct ly_ctx *ctx, struct lysp_qname *qname, const struct lysp_qname *orig_qname);
 
 /**
+ * @defgroup scflags Schema compile flags
+ *
+ * Flags are currently used only internally - the compilation process does not have a public interface and it is
+ * integrated in the schema parsers. The current options set does not make sense for public used, but it can be a way
+ * to modify behavior of the compilation process in future.
+ *
+ * @{
+ */
+#define LYS_COMPILE_RPC_INPUT  LYS_CONFIG_W       /**< Internal option when compiling schema tree of RPC/action input */
+#define LYS_COMPILE_RPC_OUTPUT LYS_CONFIG_R       /**< Internal option when compiling schema tree of RPC/action output */
+#define LYS_COMPILE_RPC_MASK   LYS_CONFIG_MASK    /**< mask for the internal RPC options */
+#define LYS_COMPILE_NOTIFICATION 0x08             /**< Internal option when compiling schema tree of Notification */
+
+#define LYS_COMPILE_GROUPING   0x10               /** Compiling (validation) of a non-instantiated grouping.
+                                                      In this case not all the restrictions are checked since they can be valid only
+                                                      in the real placement of the grouping. TODO - what specifically is not done */
+/** @} scflags */
+
+/**
  * @brief Duplicate string into dictionary
  * @param[in] CTX libyang context of the dictionary.
  * @param[in] ORIG String to duplicate.
@@ -989,7 +1008,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
         /* compile when */
         LY_CHECK_RET(lys_compile_when_(ctx, when_p, flags, ctx_node, new_when));
 
-        if (!(ctx->options & LYSC_OPT_GROUPING)) {
+        if (!(ctx->options & LYS_COMPILE_GROUPING)) {
             /* do not check "when" semantics in a grouping */
             LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
         }
@@ -1003,7 +1022,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
         ++(*when_c)->refcount;
         *new_when = *when_c;
 
-        if (!(ctx->options & LYSC_OPT_GROUPING)) {
+        if (!(ctx->options & LYS_COMPILE_GROUPING)) {
             /* in this case check "when" again for all children because of dummy node check */
             LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
         }
@@ -3401,16 +3420,14 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
 
     LY_CHECK_RET(lys_compile_node_uniqness(ctx, parent, action_p->name, (struct lysc_node *)action));
 
-    if (ctx->options & (LYSC_OPT_RPC_MASK | LYSC_OPT_NOTIFICATION)) {
+    if (ctx->options & (LYS_COMPILE_RPC_MASK | LYS_COMPILE_NOTIFICATION)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                 "Action \"%s\" is placed inside %s.", action_p->name,
-                ctx->options & LYSC_OPT_RPC_MASK ? "another RPC/action" : "notification");
+                ctx->options & LYS_COMPILE_RPC_MASK ? "another RPC/action" : "notification");
         return LY_EVALID;
     }
 
-    if (!(ctx->options & LYSC_OPT_FREE_SP)) {
-        action->sp = orig_action_p;
-    }
+    action->sp = orig_action_p;
     action->flags = action_p->flags & LYS_FLAGS_COMPILED_MASK;
 
     /* status - it is not inherited by specification, but it does not make sense to have
@@ -3444,7 +3461,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
         action->input.nodetype = LYS_INPUT;
         COMPILE_ARRAY_GOTO(ctx, inout_p->musts, action->input.musts, u, lys_compile_must, ret, cleanup);
         COMPILE_EXTS_GOTO(ctx, inout_p->exts, action->input_exts, &action->input, LYEXT_PAR_INPUT, ret, cleanup);
-        ctx->options |= LYSC_OPT_RPC_INPUT;
+        ctx->options |= LYS_COMPILE_RPC_INPUT;
 
         /* connect any input augments */
         LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)&action->input));
@@ -3475,7 +3492,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
         action->output.nodetype = LYS_OUTPUT;
         COMPILE_ARRAY_GOTO(ctx, inout_p->musts, action->output.musts, u, lys_compile_must, ret, cleanup);
         COMPILE_EXTS_GOTO(ctx, inout_p->exts, action->output_exts, &action->output, LYEXT_PAR_OUTPUT, ret, cleanup);
-        ctx->options |= LYSC_OPT_RPC_OUTPUT;
+        ctx->options |= LYS_COMPILE_RPC_OUTPUT;
 
         /* connect any output augments */
         LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)&action->output));
@@ -3488,7 +3505,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
 
     lysc_update_path(ctx, NULL, NULL);
 
-    if ((action->input.musts || action->output.musts) && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if ((action->input.musts || action->output.musts) && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, action, 0, NULL);
         LY_CHECK_GOTO(ret, cleanup);
@@ -3544,16 +3561,14 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
 
     LY_CHECK_RET(lys_compile_node_uniqness(ctx, parent, notif_p->name, (struct lysc_node *)notif));
 
-    if (ctx->options & (LYSC_OPT_RPC_MASK | LYSC_OPT_NOTIFICATION)) {
+    if (ctx->options & (LYS_COMPILE_RPC_MASK | LYS_COMPILE_NOTIFICATION)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                 "Notification \"%s\" is placed inside %s.", notif_p->name,
-                ctx->options & LYSC_OPT_RPC_MASK ? "RPC/action" : "another notification");
+                ctx->options & LYS_COMPILE_RPC_MASK ? "RPC/action" : "another notification");
         return LY_EVALID;
     }
 
-    if (!(ctx->options & LYSC_OPT_FREE_SP)) {
-        notif->sp = orig_notif_p;
-    }
+    notif->sp = orig_notif_p;
     notif->flags = notif_p->flags & LYS_FLAGS_COMPILED_MASK;
 
     /* status - it is not inherited by specification, but it does not make sense to have
@@ -3566,14 +3581,14 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     DUP_STRING_GOTO(ctx->ctx, notif_p->ref, notif->ref, ret, cleanup);
     COMPILE_ARRAY_GOTO(ctx, notif_p->iffeatures, notif->iffeatures, u, lys_compile_iffeature, ret, cleanup);
     COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, u, lys_compile_must, ret, cleanup);
-    if (notif_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if (notif_p->musts && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, notif, 0, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
     COMPILE_EXTS_GOTO(ctx, notif_p->exts, notif->exts, notif, LYEXT_PAR_NODE, ret, cleanup);
 
-    ctx->options |= LYSC_OPT_NOTIFICATION;
+    ctx->options |= LYS_COMPILE_NOTIFICATION;
 
     /* connect any notification augments */
     LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)notif));
@@ -3645,7 +3660,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
     }
 
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, u, lys_compile_must, ret, done);
-    if (cont_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if (cont_p->musts && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, cont, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -3718,7 +3733,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, u, lys_compile_must, ret, done);
-    if (leaf_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if (leaf_p->musts && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, leaf, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -3766,7 +3781,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, u, lys_compile_must, ret, done);
-    if (llist_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if (llist_p->musts && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, llist, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -3812,6 +3827,141 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     }
 
 done:
+    return ret;
+}
+
+/**
+ * @brief Find the node according to the given descendant/absolute schema nodeid.
+ * Used in unique, refine and augment statements.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
+ * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
+ * @param[in] context_node Node where the nodeid is specified to correctly resolve prefixes and to start searching.
+ * If no context node is provided, the nodeid is actually expected to be the absolute schema node .
+ * @param[in] context_module Explicit module to resolve prefixes in @nodeid.
+ * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
+ * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
+ * The value can be even an ORed value to allow multiple nodetypes.
+ * @param[out] target Found target node if any.
+ * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
+ * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
+ * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
+ */
+static LY_ERR
+lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
+        const struct lys_module *context_module, uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag)
+{
+    LY_ERR ret = LY_EVALID;
+    const char *name, *prefix, *id;
+    size_t name_len, prefix_len;
+    const struct lys_module *mod;
+    const char *nodeid_type;
+    uint32_t getnext_extra_flag = 0;
+    uint16_t current_nodetype = 0;
+
+    assert(nodeid);
+    assert(target);
+    assert(result_flag);
+    *target = NULL;
+    *result_flag = 0;
+
+    id = nodeid;
+
+    if (context_node) {
+        /* descendant-schema-nodeid */
+        nodeid_type = "descendant";
+
+        if (*id == '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid descendant-schema-nodeid value \"%.*s\" - absolute-schema-nodeid used.",
+                    nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+            return LY_EVALID;
+        }
+    } else {
+        /* absolute-schema-nodeid */
+        nodeid_type = "absolute";
+
+        if (*id != '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid absolute-schema-nodeid value \"%.*s\" - missing starting \"/\".",
+                    nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+            return LY_EVALID;
+        }
+        ++id;
+    }
+
+    while (*id && (ret = ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
+        if (prefix) {
+            mod = lys_module_find_prefix(context_module, prefix, prefix_len);
+            if (!mod) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                        "Invalid %s-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
+                        nodeid_type, id - nodeid, nodeid, prefix_len, prefix, context_module->name);
+                return LY_ENOTFOUND;
+            }
+        } else {
+            mod = context_module;
+        }
+        if (context_node && (context_node->nodetype & (LYS_RPC | LYS_ACTION))) {
+            /* move through input/output manually */
+            if (mod != context_node->module) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                        "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+                return LY_ENOTFOUND;
+            }
+            if (!ly_strncmp("input", name, name_len)) {
+                context_node = (struct lysc_node *)&((struct lysc_action *)context_node)->input;
+            } else if (!ly_strncmp("output", name, name_len)) {
+                context_node = (struct lysc_node *)&((struct lysc_action *)context_node)->output;
+                getnext_extra_flag = LYS_GETNEXT_OUTPUT;
+            } else {
+                /* only input or output is valid */
+                context_node = NULL;
+            }
+        } else {
+            context_node = lys_find_child(context_node, mod, name, name_len, 0,
+                    getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
+            getnext_extra_flag = 0;
+        }
+        if (!context_node) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+            return LY_ENOTFOUND;
+        }
+        current_nodetype = context_node->nodetype;
+
+        if (current_nodetype == LYS_NOTIF) {
+            (*result_flag) |= LYS_COMPILE_NOTIFICATION;
+        } else if (current_nodetype == LYS_INPUT) {
+            (*result_flag) |= LYS_COMPILE_RPC_INPUT;
+        } else if (current_nodetype == LYS_OUTPUT) {
+            (*result_flag) |= LYS_COMPILE_RPC_OUTPUT;
+        }
+
+        if (!*id || (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len))) {
+            break;
+        }
+        if (*id != '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid %s-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
+                    nodeid_type, id - nodeid + 1, nodeid);
+            return LY_EVALID;
+        }
+        ++id;
+    }
+
+    if (ret == LY_SUCCESS) {
+        *target = context_node;
+        if (nodetype && !(current_nodetype & nodetype)) {
+            return LY_EDENIED;
+        }
+    } else {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                "Invalid %s-schema-nodeid value \"%.*s\" - unexpected end of expression.",
+                nodeid_type, nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+    }
+
     return ret;
 }
 
@@ -3863,7 +4013,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             } else if (flags) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                         "Unique's descendant-schema-nodeid \"%.*s\" refers into %s node.",
-                        len, keystr, flags & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action");
+                        len, keystr, flags & LYS_COMPILE_NOTIFICATION ? "notification" : "RPC/action");
                 return LY_EVALID;
             }
 
@@ -3934,7 +4084,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, u, lys_compile_must, ret, done);
-    if (list_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if (list_p->musts && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         LY_CHECK_RET(ly_set_add(&ctx->xpath, list, 0, NULL));
     }
@@ -4236,7 +4386,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, u, lys_compile_must, ret, done);
-    if (any_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+    if (any_p->musts && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, any, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -4668,7 +4818,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
         return LY_EVALID;
     }
 
-    if (!(ctx->options & LYSC_OPT_GROUPING)) {
+    if (!(ctx->options & LYS_COMPILE_GROUPING)) {
         /* remember that the grouping is instantiated to avoid its standalone validation */
         grp->flags |= LYS_USED_GRP;
     }
@@ -5174,11 +5324,11 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_nod
         assert(parent);
     }
 
-    if (ctx->options & (LYSC_OPT_RPC_INPUT | LYSC_OPT_RPC_OUTPUT)) {
+    if (ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT)) {
         /* ignore config statements inside RPC/action data */
         node->flags &= ~LYS_CONFIG_MASK;
-        node->flags |= (ctx->options & LYSC_OPT_RPC_INPUT) ? LYS_CONFIG_W : LYS_CONFIG_R;
-    } else if (ctx->options & LYSC_OPT_NOTIFICATION) {
+        node->flags |= (ctx->options & LYS_COMPILE_RPC_INPUT) ? LYS_CONFIG_W : LYS_CONFIG_R;
+    } else if (ctx->options & LYS_COMPILE_NOTIFICATION) {
         /* ignore config statements inside Notification data */
         node->flags &= ~LYS_CONFIG_MASK;
         node->flags |= LYS_CONFIG_R;
@@ -5689,9 +5839,9 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
 
     /* config */
     if (rfn->flags & LYS_CONFIG_MASK) {
-        if (ctx->options & (LYSC_OPT_NOTIFICATION | LYSC_OPT_RPC_INPUT | LYSC_OPT_RPC_OUTPUT)) {
+        if (ctx->options & (LYS_COMPILE_NOTIFICATION | LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT)) {
             LOGWRN(ctx->ctx, "Refining config inside %s has no effect (%s).",
-                    ctx->options & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action", ctx->path);
+                    ctx->options & LYS_COMPILE_NOTIFICATION ? "notification" : "RPC/action", ctx->path);
         } else {
             target->flags &= ~LYS_CONFIG_MASK;
             target->flags |= rfn->flags & LYS_CONFIG_MASK;
@@ -7126,8 +7276,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
     if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         if ((node->flags & LYS_CONFIG_R) && (node->flags & LYS_ORDBY_MASK)) {
             LOGWRN(ctx->ctx, "The ordered-by statement is ignored in lists representing %s (%s).",
-                    (ctx->options & LYSC_OPT_RPC_OUTPUT) ? "RPC/action output parameters" :
-                    (ctx->options & LYSC_OPT_NOTIFICATION) ? "notification content" : "state data", ctx->path);
+                    (ctx->options & LYS_COMPILE_RPC_OUTPUT) ? "RPC/action output parameters" :
+                    (ctx->options & LYS_COMPILE_NOTIFICATION) ? "notification content" : "state data", ctx->path);
             node->flags &= ~LYS_ORDBY_MASK;
             node->flags |= LYS_ORDBY_SYSTEM;
         } else if (!(node->flags & LYS_ORDBY_MASK)) {
@@ -7140,9 +7290,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     LY_CHECK_GOTO(ret = lys_compile_status(ctx, &node->flags, uses_status ? uses_status : (parent ? parent->flags : 0)), error);
 
-    if (!(ctx->options & LYSC_OPT_FREE_SP)) {
-        node->sp = orig_pnode;
-    }
+    node->sp = orig_pnode;
     DUP_STRING_GOTO(ctx->ctx, pnode->name, node->name, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->dsc, node->dsc, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->ref, node->ref, ret, error);
@@ -8328,7 +8476,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
 
     /* validate non-instantiated groupings from the parsed schema,
      * without it we would accept even the schemas with invalid grouping specification */
-    ctx.options |= LYSC_OPT_GROUPING;
+    ctx.options |= LYS_COMPILE_GROUPING;
     LY_ARRAY_FOR(sp->groupings, u) {
         if (!(sp->groupings[u].flags & LYS_USED_GRP)) {
             LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, &sp->groupings[u]), error);
@@ -8392,11 +8540,6 @@ lys_compile(struct lys_module *mod, uint32_t options)
     ly_set_erase(&ctx.devs, NULL);
     ly_set_erase(&ctx.uses_augs, NULL);
     ly_set_erase(&ctx.uses_rfns, NULL);
-
-    if (ctx.options & LYSC_OPT_FREE_SP) {
-        lysp_module_free(mod->parsed);
-        mod->parsed = NULL;
-    }
 
     return LY_SUCCESS;
 

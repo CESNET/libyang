@@ -336,9 +336,12 @@ test_models(void **state)
     assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, &mod1));
     ly_in_free(in, 0);
     mod1->implemented = 1;
-    assert_int_equal(LY_SUCCESS, lys_compile(mod1, LYSC_OPT_FREE_SP));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod1, 0));
     assert_non_null(mod1->compiled);
-    assert_null(mod1->parsed);
+    assert_non_null(mod1->parsed);
+
+#if 0
+    /* TODO in case we are able to remove the parsed schema, here we will test how it will handle missing import parsed schema */
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", &in));
     /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
@@ -348,6 +351,7 @@ test_models(void **state)
     logbuf_assert("Recompilation of module \"w\" failed.");
     assert_null(mod2);
     ly_in_free(in, 0);
+#endif
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", &in));
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
