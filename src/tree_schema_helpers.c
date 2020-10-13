@@ -251,7 +251,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     *node = NULL;
     str = strchr(id, ':');
     if (str) {
-        mod = lys_module_find_prefix(start_module->mod, id, str - id);
+        mod = lysp_module_find_prefix(start_module, id, str - id);
         *module = mod ? mod->parsed : NULL;
         name = str + 1;
         *type = LY_TYPE_UNKNOWN;
@@ -855,12 +855,12 @@ lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
     if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
         if (ctx->imp_clb) {
-            if (ctx->imp_clb(pctx->main_mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
+            if (ctx->imp_clb(pctx->parsed_mod->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
                     &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                 LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                check_data.submoduleof = pctx->main_mod->name;
+                check_data.submoduleof = pctx->parsed_mod->mod->name;
                 lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
                 ly_in_free(in, 0);
                 if (submodule_data_free) {
@@ -875,7 +875,7 @@ search_clb:
 search_file:
         if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, pctx->main_mod->name, 1,
+            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, pctx->parsed_mod->mod->name, 1,
                     (void **)&submod);
         }
         if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
@@ -893,7 +893,7 @@ search_file:
     }
     if (!inc->submodule) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.",
-                inc->name, pctx->main_mod->name);
+                inc->name, pctx->parsed_mod->mod->name);
         return LY_EVALID;
     }
 
@@ -901,51 +901,29 @@ search_file:
 }
 
 struct lys_module *
-lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t len)
+lysp_module_find_prefix(const struct lysp_module *prefix_mod, const char *prefix, size_t len)
 {
     struct lys_module *m = NULL;
     LY_ARRAY_COUNT_TYPE u;
+    const char *local_prefix;
 
-    if (!len || !ly_strncmp(mod->prefix, prefix, len)) {
+    local_prefix = prefix_mod->is_submod ? ((struct lysp_submodule *)prefix_mod)->prefix : prefix_mod->mod->prefix;
+    if (!len || !ly_strncmp(local_prefix, prefix, len)) {
         /* it is the prefix of the module itself */
-        m = (struct lys_module *)mod;
+        m = prefix_mod->mod;
     }
 
     /* search in imports */
-    if (!m && mod->parsed) {
-        LY_ARRAY_FOR(mod->parsed->imports, u) {
-            if (!ly_strncmp(mod->parsed->imports[u].prefix, prefix, len)) {
-                m = mod->parsed->imports[u].module;
+    if (!m) {
+        LY_ARRAY_FOR(prefix_mod->imports, u) {
+            if (!ly_strncmp(prefix_mod->imports[u].prefix, prefix, len)) {
+                m = prefix_mod->imports[u].module;
                 break;
             }
         }
     }
 
     return m;
-}
-
-const char *
-lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    if (import == mod) {
-        return mod->prefix;
-    }
-
-    if (mod->parsed) {
-        LY_ARRAY_FOR(mod->parsed->imports, u) {
-            if (mod->parsed->imports[u].module == import) {
-                return mod->parsed->imports[u].prefix;
-            }
-        }
-    } else {
-        /* we don't have original information about the import's prefix,
-         * so the prefix of the import module itself is returned instead */
-        return import->prefix;
-    }
-
-    return NULL;
 }
 
 API const char *

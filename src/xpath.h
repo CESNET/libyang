@@ -253,14 +253,15 @@ struct lyxp_set {
     /* general context */
     struct ly_ctx *ctx;
     union {
-        const struct lyd_node *ctx_node;
-        const struct lysc_node *ctx_scnode;
+        const struct lyd_node *cur_node;
+        const struct lysc_node *cur_scnode;
     };
     enum lyxp_node_type root_type;
     const struct lysc_node *context_op;
-    const struct lys_module *local_mod;
     const struct lyd_node *tree;
+    const struct lys_module *cur_mod;
     LY_PREFIX_FORMAT format;
+    void *prefix_data;
 };
 
 /**
@@ -276,12 +277,10 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * be confusing without thorough understanding of XPath evaluation rules defined in RFC 7950.
  *
  * @param[in] exp Parsed XPath expression to be evaluated.
+ * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
- * @param[in] local_mod Local module relative to the @p expr.
- * @param[in] ctx_node Current (context) data node. In case of a root node, set @p ctx_node_type correctly,
- * but @p ctx_node must also be set to any node from the root node module - it will be used for resolving
- * unqualified names.
- * @param[in] ctx_node_type Current (context) data node type.
+ * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
+ * @param[in] ctx_node Current (context) data node, NULL in case of the root node.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node).
  * @param[out] set Result set.
@@ -290,9 +289,8 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @return LY_EINCOMPLETE for unresolved when,
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
-LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
-        const struct lyd_node *ctx_node, enum lyxp_node_type ctx_node_type, const struct lyd_node *tree,
-        struct lyxp_set *set, uint32_t options);
+LY_ERR lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options);
 
 #define LYXP_SCHEMA 0x01        /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
@@ -300,19 +298,16 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct ly
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
  *
  * @param[in] exp Parsed XPath expression to be evaluated.
+ * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
- * @param[in] local_mod Local module relative to the @p exp.
- * @param[in] ctx_scnode Current (context) schema node. In case of a root node, set @p ctx_scnode_type correctly,
- * but @p ctx_scnode must also be set to any node from the root node module - it will be used for resolving
- * unqualified names.
- * @param[in] ctx_scnode_type Current (context) schema node type.
+ * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
+ * @param[in] ctx_scnode Current (context) schema node, NULL in case of the root node.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as lyxp_eval()).
  */
-LY_ERR lyxp_atomize(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
-        const struct lysc_node *ctx_scnode, enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set,
-        uint32_t options);
+LY_ERR lyxp_atomize(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
 
 /* used only internally */
 #define LYXP_SCNODE_ALL 0x0E

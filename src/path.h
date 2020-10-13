@@ -146,7 +146,8 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
  *
  * @param[in] ctx libyang context.
- * @param[in] cur_mod Module of the current (original context) node. Used for nodes without prefix for ::LYD_SCHEMA format.
+ * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
+ * for ::LY_PREF_SCHEMA* format.
  * @param[in] ctx_node Optional context node.
  * @param[in] expr Parsed path.
  * @param[in] lref Lref option (@ref path_lref_options).
@@ -158,15 +159,16 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path **path);
+        const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target, LY_PREFIX_FORMAT format,
+        void *prefix_data, struct ly_path **path);
 
 /**
  * @brief Compile predicate into ly_path_predicate structure. Only simple predicates (not leafref) are supported.
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node.
- * @param[in] cur_mod Module of the current (original context) node. Used for nodes without prefix for ::LYD_SCHEMA format.
+ * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
+ * for ::LY_PREF_SCHEMA* format.
  * @param[in] ctx_node Context node, node for which the predicate is defined.
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
@@ -177,9 +179,8 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
-        enum ly_path_pred_type *pred_type);
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format,
+        void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type);
 
 /**
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!

@@ -245,7 +245,7 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(exp, LY_PREF_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
+    ret = lyxp_atomize(exp, NULL, LY_PREF_JSON, NULL, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -290,7 +290,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(exp, LY_PREF_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
+    ret = lyxp_atomize(exp, NULL, LY_PREF_JSON, NULL, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -958,7 +958,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     return LY_SUCCESS;
 
 error:
-    lysp_submodule_free(ctx, submod);
+    lysp_module_free((struct lysp_module *)submod);
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
@@ -973,6 +973,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         void *check_data, struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
+    struct lysp_submodule *submod;
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;
     struct lys_yang_parser_ctx *yangctx = NULL;
@@ -1113,8 +1114,8 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     if (!implement) {
         /* pre-compile features and identities of the module */
-        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->features), error);
-        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->identities), error);
+        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod->parsed, mod->parsed->features, &mod->features), error);
+        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), error);
     }
 
     if (latest) {
@@ -1133,10 +1134,11 @@ finish_parsing:
     if (!implement) {
         /* pre-compile features and identities of any submodules */
         LY_ARRAY_FOR(mod->parsed->includes, u) {
-            LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
-                    &mod->features), error);
-            LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
-                    &mod->identities), error);
+            submod = mod->parsed->includes[u].submodule;
+            ret = lys_feature_precompile(NULL, ctx, (struct lysp_module *)submod, submod->features, &mod->features);
+            LY_CHECK_GOTO(ret, error);
+            ret = lys_identity_precompile(NULL, ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
+            LY_CHECK_GOTO(ret, error);
         }
     }
 

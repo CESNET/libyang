@@ -359,8 +359,8 @@ error:
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node.
- * @param[in] cur_mod Module of the current (original context) node. Needed for ::LYD_SCHEMA.
- * @param[in] prev_ctx_node Previous context node. Needed for ::LYD_JSON.
+ * @param[in] cur_mod Current module of the path (where the path is "instantiated"). Needed for ::LY_PREF_SCHEMA*.
+ * @param[in] prev_ctx_node Previous context node. Needed for ::LY_PREF_JSON.
  * @param[in] expr Parsed path.
  * @param[in] tok_idx Index in @p expr.
  * @param[in] lref Lref option.
@@ -373,25 +373,27 @@ error:
  */
 static LY_ERR
 ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx,
-        uint8_t lref, LY_PREFIX_FORMAT format, void *prefix_data, const struct lys_module **mod,
-        const char **name, size_t *name_len)
+        const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx, uint8_t lref,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lys_module **mod, const char **name, size_t *name_len)
 {
-    const char *ptr;
+    const char *pref;
     size_t len;
 
     assert(expr->tokens[tok_idx] == LYXP_TOKEN_NAMETEST);
 
     /* get prefix */
-    ptr = strnstr(expr->expr + expr->tok_pos[tok_idx], ":", expr->tok_len[tok_idx]);
-    len = ptr ? ptr - (expr->expr + expr->tok_pos[tok_idx]) : 0;
+    if ((pref = strnstr(expr->expr + expr->tok_pos[tok_idx], ":", expr->tok_len[tok_idx]))) {
+        len = pref - (expr->expr + expr->tok_pos[tok_idx]);
+        pref = expr->expr + expr->tok_pos[tok_idx];
+    } else {
+        len = 0;
+    }
 
     /* find next node module */
-    if (ptr) {
-        *mod = ly_resolve_prefix(ctx, expr->expr + expr->tok_pos[tok_idx], len, format, prefix_data);
+    if (pref) {
+        *mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
         if (!*mod) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Prefix \"%.*s\" not found of a module in path.",
-                    len, expr->expr + expr->tok_pos[tok_idx]);
+            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Prefix \"%.*s\" not found of a module in path.", len, pref);
             return LY_EVALID;
         } else if (!(*mod)->implemented) {
             if (lref == LY_PATH_LREF_FALSE) {
@@ -403,24 +405,29 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
     } else {
         switch (format) {
         case LY_PREF_SCHEMA:
+        case LY_PREF_SCHEMA_RESOLVED:
+            if (!cur_mod) {
+                LOGINT_RET(ctx);
+            }
+            /* use current module */
             *mod = cur_mod;
             break;
         case LY_PREF_JSON:
             if (!prev_ctx_node) {
                 LOGINT_RET(ctx);
             }
+            /* inherit module of the previous node */
             *mod = prev_ctx_node->module;
             break;
         case LY_PREF_XML:
-        case LY_PREF_SCHEMA_RESOLVED:
             /* not really defined */
             LOGINT_RET(ctx);
         }
     }
 
     /* set name */
-    if (ptr) {
-        *name = ptr + 1;
+    if (pref) {
+        *name = pref + len + 1;
         *name_len = expr->tok_len[tok_idx] - len - 1;
     } else {
         *name = expr->expr + expr->tok_pos[tok_idx];
@@ -432,9 +439,8 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
 LY_ERR
 ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
-        enum ly_path_pred_type *pred_type)
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format,
+        void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     struct ly_path_predicate *p;
     const struct lysc_node *key;

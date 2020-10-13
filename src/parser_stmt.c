@@ -164,7 +164,7 @@ lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT
     /* allocate new pointer */
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *qnames, item, LY_EMEM);
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &item->str));
-    item->mod = ctx->main_mod;
+    item->mod = ctx->parsed_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -296,7 +296,7 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum l
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &restr->arg.str));
-    restr->arg.mod = ctx->main_mod;
+    restr->arg.mod = ctx->parsed_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -698,7 +698,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     buf[0] = 0x06; /* pattern's default regular-match flag */
     buf[arg_len + 1] = '\0'; /* terminating NULL byte */
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
-    restr->arg.mod = ctx->main_mod;
+    restr->arg.mod = ctx->parsed_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -756,7 +756,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
         return LY_EVALID;
     }
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &type->name));
-    type->mod = ctx->main_mod;
+    type->pmod = ctx->parsed_mod;
 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
@@ -842,8 +842,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
     struct lys_yang_parser_ctx pctx = {0};
 
     pctx.format = LYS_IN_YANG;
-    pctx.ctx = ctx->ctx;
-    pctx.mod_version = ctx->mod->version;
+    pctx.parsed_mod = ctx->pmod;
     pctx.pos_type = LY_VLOG_STR;
     pctx.path = ctx->path;
 

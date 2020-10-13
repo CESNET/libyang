@@ -414,7 +414,7 @@ struct lysp_feature {
  */
 struct lysp_qname {
     const char *str;                 /**< qualified name string */
-    const struct lys_module *mod;    /**< local module for any prefixes found in the string, it must be
+    const struct lysp_module *mod;   /**< module to resolve any prefixes found in the string, it must be
                                           stored explicitly because of deviations/refines */
 };
 
@@ -486,7 +486,7 @@ struct lysp_type {
     struct lysp_type *types;         /**< list of sub-types ([sized array](@ref sizedarrays)) - union */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    const struct lys_module *mod;    /**< local module of the type (needed for deviations) */
+    const struct lysp_module *pmod;  /**< (sub)module where the type is defined (needed for deviations) */
     struct lysc_type *compiled;      /**< pointer to the compiled type */
 
     uint8_t fraction_digits;         /**< number of fraction digits - decimal64 */
@@ -546,7 +546,7 @@ struct lysp_refine {
     struct lysp_qname *iffeatures;   /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     const char *presence;            /**< presence description */
-    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lysp_qname *dflts;        /**< list of default values ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -596,8 +596,8 @@ struct lysp_deviate_add {
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *units;               /**< units of the values */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
-    const char **uniques;            /**< list of uniques specifications ([sized array](@ref sizedarrays)) */
-    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lysp_qname *uniques;      /**< list of uniques specifications ([sized array](@ref sizedarrays)) */
+    struct lysp_qname *dflts;        /**< list of default values ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
@@ -609,8 +609,8 @@ struct lysp_deviate_del {
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *units;               /**< units of the values */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
-    const char **uniques;            /**< list of uniques specifications ([sized array](@ref sizedarrays)) */
-    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lysp_qname *uniques;      /**< list of uniques specifications ([sized array](@ref sizedarrays)) */
+    struct lysp_qname *dflts;        /**< list of default values ([sized array](@ref sizedarrays)) */
 };
 
 struct lysp_deviate_rpl {
@@ -619,7 +619,7 @@ struct lysp_deviate_rpl {
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysp_type *type;          /**< type of the node */
     const char *units;               /**< units of the values */
-    const char *dflt;                /**< default value */
+    struct lysp_qname dflt;          /**< default value */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
@@ -1070,6 +1070,7 @@ struct lysp_module {
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
+    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
     uint8_t parsing : 1;             /**< flag for circular check */
     uint8_t is_submod : 1;           /**< always 0 */
 };
@@ -1093,6 +1094,7 @@ struct lysp_submodule {
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
+    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
     uint8_t parsing : 1;             /**< flag for circular check */
     uint8_t is_submod : 1;           /**< always 1 */
 
@@ -1107,15 +1109,31 @@ struct lysp_submodule {
     const char *contact;             /**< contact information for the module */
     const char *dsc;                 /**< description of the module */
     const char *ref;                 /**< cross-reference for the module */
-    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 
 /**
- * @brief Free the printable YANG schema tree structure.
+ * @brief Get the parsed module or submodule name.
+ *
+ * @param[in] PMOD Parsed module or submodule.
+ * @return Module or submodule name.
+ */
+#define LYSP_MODULE_NAME(PMOD) (PMOD->is_submod ? ((struct lysp_submodule *)PMOD)->name : ((struct lysp_module *)PMOD)->mod->name)
+
+/**
+ * @brief Free the printable YANG schema tree structure. Works for both modules and submodules.
  *
  * @param[in] module Printable YANG schema tree structure to free.
  */
 void lysp_module_free(struct lysp_module *module);
+
+/**
+ * @brief Compiled prefix data pair mapping of prefixes to modules. In case the format is ::LY_PREF_SCHEMA_RESOLVED,
+ * the expected prefix data is a sized array of these structures.
+ */
+struct lysc_prefix {
+    char *prefix;                   /**< used prefix */
+    const struct lys_module *mod;   /**< mapping to a module */
+};
 
 /**
  * @brief Compiled YANG extension-stmt
@@ -1159,9 +1177,9 @@ struct lysc_iffeature {
  * @brief YANG when-stmt
  */
 struct lysc_when {
-    struct lys_module *module;       /**< module where the when was defined */
     struct lyxp_expr *cond;          /**< XPath when condition */
     struct lysc_node *context;       /**< context node for evaluating the expression, NULL if the context is root node */
+    struct lysc_prefix *prefixes;    /**< compiled used prefixes in the condition */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1249,8 +1267,8 @@ struct lysc_pattern {
 };
 
 struct lysc_must {
-    struct lys_module *module;       /**< module where the must was defined */
     struct lyxp_expr *cond;          /**< XPath when condition */
+    struct lysc_prefix *prefixes;    /**< compiled used prefixes in the condition */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */
@@ -1328,7 +1346,7 @@ struct lysc_type_leafref {
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lyxp_expr *path;          /**< parsed target path, compiled path cannot be stored because of type sharing */
-    const struct lys_module *path_mod; /**< module where the path is defined, so it provides context to resolve prefixes */
+    struct lysc_prefix *prefixes;    /**< resolved prefixes used in the path */
     struct lysc_type *realtype;      /**< pointer to the real (first non-leafref in possible leafrefs chain) type. */
     uint8_t require_instance;        /**< require-instance flag */
 };
@@ -1845,7 +1863,6 @@ struct lys_module {
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context
                                           2 - searchdirs were searched and this is the latest available revision */
-    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 
 /**
