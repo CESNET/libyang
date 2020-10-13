@@ -32,7 +32,7 @@
  * @param[in] PARENT parent statement where the KW is present - for logging.
  */
 #define PARSER_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
-    if ((CTX)->mod_version < 2) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
+    if ((CTX)->parsed_mod->version < LYS_VERSION_1_1) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
 
 /* These 2 macros checks YANG's identifier grammar rule */
 #define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
@@ -97,7 +97,7 @@ enum yang_arg {
     Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
 };
 
-#define PARSER_CTX(CTX) (CTX)->format == LYS_IN_YANG ? ((struct lys_yang_parser_ctx *)CTX)->ctx : ((struct ly_ctx *)((struct lys_yin_parser_ctx *)CTX)->xmlctx->ctx)
+#define PARSER_CTX(CTX) ((CTX)->parsed_mod->mod->ctx)
 
 #define LOGVAL_PARSER(CTX, ...) (CTX)->format == LYS_IN_YANG ? LOGVAL_YANG(CTX, __VA_ARGS__) : LOGVAL_YIN(CTX, __VA_ARGS__)
 
@@ -113,26 +113,23 @@ struct lys_parser_ctx {
     LYS_INFORMAT format;            /**< parser format */
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
-    struct lys_module *main_mod;    /**< main module (belongs-to module for submodules) */
-    uint8_t mod_version;            /**< module's version */
+    struct lysp_module *parsed_mod; /**< (sub)module being parsed */
 };
 
 /**
  * @brief Internal context for yang schema parser.
  */
 struct lys_yang_parser_ctx {
-    LYS_INFORMAT format;        /**< parser format */
-    struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
-    struct ly_set grps_nodes;   /**< set of grouping nodes */
-    struct lys_module *main_mod;    /**< main module (belongs-to module for submodules) */
-    uint8_t mod_version;        /**< module's version */
-    enum LY_VLOG_ELEM pos_type; /**< */
-    struct ly_ctx *ctx;         /**< context of then yang schemas */
+    LYS_INFORMAT format;            /**< parser format */
+    struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
+    struct ly_set grps_nodes;       /**< set of grouping nodes */
+    struct lysp_module *parsed_mod; /**< (sub)module being parsed */
+    enum LY_VLOG_ELEM pos_type;     /**< */
     union {
         uint64_t line;              /**< line number */
         const char *path;           /**< path */
     };
-    uint64_t indent;            /**< current position on the line for YANG indentation */
+    uint64_t indent;                /**< current position on the line for YANG indentation */
 };
 
 /**
@@ -147,8 +144,7 @@ struct lys_yin_parser_ctx {
     LYS_INFORMAT format;           /**< parser format */
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
-    struct lys_module *main_mod;    /**< main module (belongs-to module for submodules) */
-    uint8_t mod_version;           /**< module's version */
+    struct lysp_module *parsed_mod;/**< (sub)module being parsed */
     struct lyxml_ctx *xmlctx;      /**< context for xml parser */
 };
 
@@ -176,35 +172,36 @@ struct lysc_unres_dflt {
  * @brief Compiled parsed augment structure. Just a temporary storage for applying the augment to data.
  */
 struct lysc_augment {
-    struct lyxp_expr *nodeid;       /**< augment target */
-    union {
-        const struct lys_module *nodeid_mod;        /**< nodeid local module for absolute targets */
-        const struct lysc_node *nodeid_ctx_node;    /**< nodeid context node for relative targets */
-    };
+    struct lyxp_expr *nodeid;                    /**< augment target */
+    const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
+    const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node for relative targets */
 
-    struct lysp_augment *aug_p;     /**< pointer to the parsed augment to apply */
+    struct lysp_augment *aug_p;                  /**< pointer to the parsed augment to apply */
 };
 
 /**
  * @brief Compiled parsed deviation structure. Just a temporary storage for applying the deviation to data.
  */
 struct lysc_deviation {
-    struct lyxp_expr *nodeid;               /**< deviation target */
-    const struct lys_module *nodeid_mod;    /**< nodeid local module */
+    struct lyxp_expr *nodeid;                    /**< deviation target, taken from the first deviation in
+                                                      ::lysc_deviation.dev_pmods array, this module is used for resolving
+                                                      prefixes used in the nodeid. */
 
-    struct lysp_deviation **devs;           /**< sized array of all the parsed deviations for one target node */
-    const struct lys_module **dev_mods;     /**< sized array of modules of @p devs */
-    ly_bool not_supported;                  /**< whether this is a not-supported deviation */
+    struct lysp_deviation **devs;                /**< sized array of all the parsed deviations for one target node */
+    const struct lysp_module **dev_pmods;        /**< sized array of parsed modules of @p devs (where the specific deviations
+                                                      are defined). */
+    ly_bool not_supported;                       /**< whether this is a not-supported deviation */
 };
 
 /**
  * @brief Compiled parsed refine structure. Just a temporary storage for applying the refine to data.
  */
 struct lysc_refine {
-    struct lyxp_expr *nodeid;                   /**< refine target */
-    const struct lysc_node *nodeid_ctx_node;    /**< nodeid context node */
+    struct lyxp_expr *nodeid;                    /**< refine target */
+    const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
+    const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node */
 
-    struct lysp_refine **rfns;                  /**< sized array of parsed refines to apply */
+    struct lysp_refine **rfns;                   /**< sized array of parsed refines to apply */
 };
 
 /**
@@ -212,11 +209,8 @@ struct lysc_refine {
  */
 struct lysc_ctx {
     struct ly_ctx *ctx;
-    struct lys_module *mod;     /**< module currently being compiled */
-    struct lys_module *mod_def; /**< context module for the definitions of the nodes being currently
-                                     processed - groupings are supposed to be evaluated in place where
-                                     defined, but its content instances are supposed to be placed into
-                                     the target module (mod) */
+    struct lys_module *cur_mod; /**< module currently being compiled, used as the current module for unprefixed nodes */
+    struct lysp_module *pmod;   /**< parsed module being processed, used for searching imports to resolve prefixed nodes */
     struct ly_set groupings;    /**< stack for groupings circular check */
     struct ly_set xpath;        /**< when/must to check */
     struct ly_set leafrefs;     /**< to validate leafref's targets */
@@ -522,28 +516,12 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
 /**
  * @brief Find the module referenced by prefix in the provided mod.
  *
- * Reverse function to lys_prefix_find_module().
- *
- * @param[in] mod Schema module where the prefix was used.
+ * @param[in] prefix_mod Schema module where the prefix was used.
  * @param[in] prefix Prefix used to reference a module.
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lys_module *lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t len);
-
-/**
- * @brief Find the prefix used to referenced the import module in the provided mod.
- *
- * Reverse function to lys_module_find_prefix().
- *
- * Note that original prefixes are present only in the parsed schema. In case it is not available
- * (only compiled schema available), the own prefix of the import module is returned instead.
- *
- * @param[in] mod Schema module where the import module was used.
- * @param[in] import Module referenced in mod.
- * @return Prefix of the import module.
- */
-const char *lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import);
+struct lys_module *lysp_module_find_prefix(const struct lysp_module *prefix_mod, const char *prefix, size_t len);
 
 /**
  * @brief Stringify YANG built-in type.
@@ -626,16 +604,16 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  *
  * The backlinks to the identities derived from this one are supposed to be filled later via lys_compile_identity_bases().
  *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
  * @param[in] ctx libyang context.
- * @param[in] module Module of the features.
+ * @param[in] parsed_mod Module with the identities.
  * @param[in] identities_p Array of the parsed identity definitions to precompile.
  * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
  * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         struct lysp_ident *identities_p, struct lysc_ident **identities);
 
 /**
@@ -650,16 +628,16 @@ LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, stru
  * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
  * if-feature structures.
  *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
  * @param[in] ctx libyang context.
- * @param[in] module Module of the features.
+ * @param[in] parsed_mod Module with the features.
  * @param[in] features_p Array of the parsed features definitions to precompile.
  * @param[in,out] features Pointer to the storage of the (pre)compiled features array where the new features are
  * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed features are going
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
@@ -697,13 +675,6 @@ LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, 
  * but the memory is not sanitized.
  */
 #define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_COUNT_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
-
-/**
- * @brief Free the parsed submodule structure.
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] submod Parsed schema submodule structure to free.
- */
-void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
 
 /**
  * @brief Free the parsed type structure.

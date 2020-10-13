@@ -630,12 +630,12 @@ test_empty(void **state)
 
 static void
 test_printed_value(const struct lyd_value *value, const char *expected_value, LY_PREFIX_FORMAT format,
-                   const struct lys_module *mod)
+        const void *prefix_data)
 {
     const char *str;
     uint8_t dynamic;
 
-    assert_non_null(str = value->realtype->plugin->print(value, format, (void *)mod, &dynamic));
+    assert_non_null(str = value->realtype->plugin->print(value, format, (void *)prefix_data, &dynamic));
     assert_string_equal(expected_value, str);
     if (dynamic) {
         free((char*)str);
@@ -661,7 +661,7 @@ test_identityref(void **state)
     assert_non_null(leaf->value.canonical);
     assert_string_equal("types:gigabit-ethernet", leaf->value.canonical);
     assert_string_equal("gigabit-ethernet", leaf->value.ident->name);
-    test_printed_value(&leaf->value, "t:gigabit-ethernet", LY_PREF_SCHEMA, s->mod_types);
+    test_printed_value(&leaf->value, "t:gigabit-ethernet", LY_PREF_SCHEMA, s->mod_types->parsed);
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
@@ -675,7 +675,7 @@ test_identityref(void **state)
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("defs:fast-ethernet", leaf->value.canonical);
-    test_printed_value(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs);
+    test_printed_value(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs->parsed);
     lyd_free_all(tree);
 
     /* invalid value */
@@ -773,7 +773,7 @@ test_instanceid(void **state)
     assert_string_equal("value", leaf->value.target[1].node->name);
     assert_null(leaf->value.target[1].predicates);
 
-    test_printed_value(&leaf->value, "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LY_PREF_SCHEMA, s->mod_types);
+    test_printed_value(&leaf->value, "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LY_PREF_SCHEMA, s->mod_types->parsed);
     test_printed_value(&leaf->value, "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LY_PREF_JSON, NULL);
 
     value.realtype = leaf->value.realtype;
@@ -1107,7 +1107,7 @@ test_union(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("12", leaf->value.canonical);
     assert_non_null(leaf->value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 0);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_INT8, leaf->value.subvalue->value.realtype->basetype);
     assert_string_equal("12", leaf->value.subvalue->value.canonical);
@@ -1119,7 +1119,7 @@ test_union(void **state)
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("12", value.canonical);
     assert_non_null(value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 0);
     assert_int_equal(LY_TYPE_INT8, value.subvalue->value.realtype->basetype);
     assert_string_equal("12", value.subvalue->value.canonical);
     assert_int_equal(12, leaf->value.subvalue->value.int8);
@@ -1133,7 +1133,7 @@ test_union(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("2", leaf->value.canonical);
     assert_non_null(leaf->value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 0);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value.realtype->basetype);
     assert_string_equal("2", leaf->value.subvalue->value.canonical);
@@ -1145,20 +1145,20 @@ test_union(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("defs:fast-ethernet", leaf->value.canonical);
     assert_non_null(leaf->value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->value.realtype->basetype);
     assert_string_equal("defs:fast-ethernet", leaf->value.subvalue->value.canonical);
 
-    test_printed_value(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs);
-    test_printed_value(&leaf->value.subvalue->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs);
+    test_printed_value(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs->parsed);
+    test_printed_value(&leaf->value.subvalue->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs->parsed);
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("defs:fast-ethernet", value.canonical);
     assert_string_equal("defs:fast-ethernet", value.subvalue->value.canonical);
     assert_non_null(value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_IDENT, value.subvalue->value.realtype->basetype);
     assert_string_equal("fast-ethernet", value.subvalue->value.ident->name);
     value.realtype->plugin->free(s->ctx, &value);
@@ -1170,7 +1170,7 @@ test_union(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("d:superfast-ethernet", leaf->value.canonical);
     assert_non_null(leaf->value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value.realtype->basetype);
     assert_string_equal("d:superfast-ethernet", leaf->value.subvalue->value.canonical);
@@ -1184,7 +1184,7 @@ test_union(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("/types:leaflisttarget[.='y']", leaf->value.canonical);
     assert_non_null(leaf->value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_INST, leaf->value.subvalue->value.realtype->basetype);
     assert_string_equal("/types:leaflisttarget[.='y']", leaf->value.subvalue->value.canonical);
@@ -1198,7 +1198,7 @@ test_union(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("/a:leaflisttarget[3]", leaf->value.canonical);
     assert_non_null(leaf->value.subvalue->prefix_data);
-    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 2);
+    assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value.realtype->basetype);
     assert_string_equal("/a:leaflisttarget[3]", leaf->value.subvalue->value.canonical);

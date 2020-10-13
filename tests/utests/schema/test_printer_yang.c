@@ -115,7 +115,6 @@ test_module(void **state)
             "    \"some reference\";\n"
             "}\n";
     char *compiled = "module a {\n"
-            "  yang-version 1.1;\n"
             "  namespace \"urn:test:a\";\n"
             "  prefix a;\n\n"
             "  organization\n"
@@ -170,7 +169,6 @@ test_module(void **state)
             "  }\n"
             "}\n";
     compiled = "module b {\n"
-            "  yang-version 1.1;\n"
             "  namespace \"urn:test:b\";\n"
             "  prefix b;\n\n"
             "  revision 2019-04-16;\n\n"

@@ -71,7 +71,7 @@ void
 lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
     if (include->submodule) {
-        lysp_submodule_free(ctx, include->submodule);
+        lysp_module_free((struct lysp_module *)include->submodule);
     }
     FREE_STRING(ctx, include->name);
     FREE_STRING(ctx, include->dsc);
@@ -291,13 +291,13 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
     case LYS_DEV_DELETE: /* compatible for dynamically allocated data */
         FREE_STRING(ctx, add->units);
         FREE_ARRAY(ctx, add->musts, lysp_restr_free);
-        FREE_STRINGS(ctx, add->uniques);
-        FREE_STRINGS(ctx, add->dflts);
+        FREE_ARRAY(ctx, add->uniques, lysp_qname_free);
+        FREE_ARRAY(ctx, add->dflts, lysp_qname_free);
         break;
     case LYS_DEV_REPLACE:
         FREE_MEMBER(ctx, rpl->type, lysp_type_free);
         FREE_STRING(ctx, rpl->units);
-        FREE_STRING(ctx, rpl->dflt);
+        lysp_qname_free(ctx, &rpl->dflt);
         break;
     default:
         LOGINT(ctx);
@@ -329,7 +329,7 @@ lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
     FREE_ARRAY(ctx, ref->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, ref->musts, lysp_restr_free);
     FREE_STRING(ctx, ref->presence);
-    FREE_STRINGS(ctx, ref->dflts);
+    FREE_ARRAY(ctx, ref->dflts, lysp_qname_free);
     FREE_ARRAY(ctx, ref->exts, lysp_ext_instance_free);
 }
 
@@ -407,44 +407,6 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
     free(node);
 }
 
-void
-lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod)
-{
-    struct lysp_node *node, *next;
-
-    if (!submod) {
-        return;
-    }
-
-    FREE_ARRAY(ctx, submod->imports, lysp_import_free);
-    FREE_ARRAY(ctx, submod->includes, lysp_include_free);
-
-    FREE_ARRAY(ctx, submod->revs, lysp_revision_free);
-    FREE_ARRAY(ctx, submod->extensions, lysp_ext_free);
-    FREE_ARRAY(ctx, submod->features, lysp_feature_free);
-    FREE_ARRAY(ctx, submod->identities, lysp_ident_free);
-    FREE_ARRAY(ctx, submod->typedefs, lysp_tpdf_free);
-    FREE_ARRAY(ctx, submod->groupings, lysp_grp_free);
-    LY_LIST_FOR_SAFE(submod->data, next, node) {
-        lysp_node_free(ctx, node);
-    }
-    FREE_ARRAY(ctx, submod->augments, lysp_augment_free);
-    FREE_ARRAY(ctx, submod->rpcs, lysp_action_free);
-    FREE_ARRAY(ctx, submod->notifs, lysp_notif_free);
-    FREE_ARRAY(ctx, submod->deviations, lysp_deviation_free);
-    FREE_ARRAY(ctx, submod->exts, lysp_ext_instance_free);
-
-    FREE_STRING(ctx, submod->name);
-    FREE_STRING(ctx, submod->filepath);
-    FREE_STRING(ctx, submod->prefix);
-    FREE_STRING(ctx, submod->org);
-    FREE_STRING(ctx, submod->contact);
-    FREE_STRING(ctx, submod->dsc);
-    FREE_STRING(ctx, submod->ref);
-
-    free(submod);
-}
-
 API void
 lysp_module_free(struct lysp_module *module)
 {
@@ -473,6 +435,18 @@ lysp_module_free(struct lysp_module *module)
     FREE_ARRAY(ctx, module->notifs, lysp_notif_free);
     FREE_ARRAY(ctx, module->deviations, lysp_deviation_free);
     FREE_ARRAY(ctx, module->exts, lysp_ext_instance_free);
+
+    if (module->is_submod) {
+        struct lysp_submodule *submod = (struct lysp_submodule *)module;
+
+        FREE_STRING(ctx, submod->name);
+        FREE_STRING(ctx, submod->filepath);
+        FREE_STRING(ctx, submod->prefix);
+        FREE_STRING(ctx, submod->org);
+        FREE_STRING(ctx, submod->contact);
+        FREE_STRING(ctx, submod->dsc);
+        FREE_STRING(ctx, submod->ref);
+    }
 
     free(module);
 }
@@ -516,6 +490,7 @@ lysc_when_free(struct ly_ctx *ctx, struct lysc_when **w)
         return;
     }
     lyxp_expr_free(ctx, (*w)->cond);
+    lysc_prefixes_free((*w)->prefixes);
     FREE_STRING(ctx, (*w)->dsc);
     FREE_STRING(ctx, (*w)->ref);
     FREE_ARRAY(ctx, (*w)->exts, lysc_ext_instance_free);
@@ -526,6 +501,7 @@ void
 lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
 {
     lyxp_expr_free(ctx, must->cond);
+    lysc_prefixes_free(must->prefixes);
     FREE_STRING(ctx, must->emsg);
     FREE_STRING(ctx, must->eapptag);
     FREE_STRING(ctx, must->dsc);
@@ -640,6 +616,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     case LY_TYPE_LEAFREF:
         lyxp_expr_free(ctx, ((struct lysc_type_leafref *)type)->path);
+        lysc_prefixes_free(((struct lysc_type_leafref *)type)->prefixes);
         break;
     case LY_TYPE_INST:
     case LY_TYPE_BOOL:

@@ -223,15 +223,6 @@ struct lyd_value_subvalue {
 };
 
 /**
- * @brief Prefix data pair mapping of prefixes to modules. In case the format is ::LY_PREF_SCHEMA_RESOLVED,
- * the expected prefix data is a sized array of these structures.
- */
-struct lyd_value_prefix {
-    char *prefix;                   /**< used prefix */
-    const struct lys_module *mod;   /**< mapping to a module */
-};
-
-/**
  * @brief Metadata structure.
  *
  * The structure provides information about metadata of a data element. Such attributes must map to

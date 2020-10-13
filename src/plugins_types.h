@@ -29,9 +29,11 @@ extern "C" {
 struct ly_ctx;
 struct lysc_ident;
 struct lysc_pattern;
+struct lysc_prefix;
 struct lysc_range;
 struct lysc_type;
 struct lysc_type_leafref;
+struct lysp_module;
 
 /**
  * @internal
@@ -106,14 +108,14 @@ void ly_err_free(void *ptr);
  * @brief Resolve format-specific prefixes to modules.
  *
  * @param[in] ctx libyang context.
- * @param[in] prefix Prefix to resolve. If NULL, resolve an identifier without a prefix (get local module).
+ * @param[in] prefix Prefix to resolve.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA          - const struct lys_module * (local module)
+ *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
  *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
  *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON            - NULL (does not support empty prefix)
+ *      LY_PREF_JSON            - NULL
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
@@ -126,7 +128,7 @@ const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char 
  * @param[in] mod Module whose prefix to get.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA          - const struct lys_module * (local module)
+ *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving imports to prefixes)
  *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
  *      LY_PREF_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)
  *      LY_PREF_JSON            - NULL
@@ -134,6 +136,36 @@ const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char 
  * @return NULL on error.
  */
 const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
+
+/**
+ * @brief Collect any possible used prefixes in a string into a sized array of pairs of prefixes and modules.
+ *
+ * @param[in] str String to look for prefixes in.
+ * @param[in] str_len Length of @p str.
+ * @param[in] prefix_mod Parsed module where to look for prefixes as imports.
+ * @param[out] prefixes Compiled prefixes.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR lysc_prefixes_compile(const char *str, size_t str_len, const struct lysp_module *prefix_mod,
+        struct lysc_prefix **prefixes);
+
+/**
+ * @brief Duplicate compiled prefixes.
+ *
+ * @param[in] orig Prefixes to duplicate.
+ * @param[out] dup Diplicated prefixes.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR lysc_prefixes_dup(const struct lysc_prefix *orig, struct lysc_prefix **dup);
+
+/**
+ * @brief Free compiled prefixes.
+ *
+ * @param[in] prefix Prefixes to free.
+ */
+void lysc_prefixes_free(struct lysc_prefix *prefixes);
 
 /**
  * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to

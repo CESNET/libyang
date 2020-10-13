@@ -48,7 +48,6 @@ void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
 void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
 void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
-void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
 void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 
 /* wrapping element used for mocking has nothing to do with real module structure */
@@ -57,8 +56,6 @@ void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 
 struct test_parser_yin_state {
     struct ly_ctx *ctx;
-    struct lys_module *mod;
-    struct lysp_module *lysp_mod;
     struct lys_yin_parser_ctx *yin_ctx;
     struct ly_in *in;
     bool finished_correctly;
@@ -139,18 +136,17 @@ setup_f(void **state)
     ly_set_log_clb(logger, 1);
 #endif
 
-    /* allocate new module */
-    st->mod = calloc(1, sizeof(*st->mod));
-    st->mod->ctx = st->ctx;
-
-    /* allocate new parsed module */
-    st->lysp_mod = calloc(1, sizeof(*st->lysp_mod));
-    st->lysp_mod->mod = calloc(1, sizeof(*st->lysp_mod->mod));
-    st->lysp_mod->mod->ctx = st->ctx;
-
     /* allocate parser context */
     st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
     st->yin_ctx->format = LYS_IN_YIN;
+
+    /* allocate new parsed module */
+    st->yin_ctx->parsed_mod = calloc(1, sizeof *st->yin_ctx->parsed_mod);
+
+    /* allocate new module */
+    st->yin_ctx->parsed_mod->mod = calloc(1, sizeof *st->yin_ctx->parsed_mod->mod);
+    st->yin_ctx->parsed_mod->mod->ctx = st->ctx;
+    st->yin_ctx->parsed_mod->mod->parsed = st->yin_ctx->parsed_mod;
 
     st->in = NULL;
 
@@ -161,7 +157,6 @@ static int
 teardown_f(void **state)
 {
     struct test_parser_yin_state *st = *(struct test_parser_yin_state **)state;
-    struct lys_module *temp;
 
 #if ENABLE_LOGGER_CHECKING
     /* teardown logger */
@@ -170,12 +165,8 @@ teardown_f(void **state)
     }
 #endif
 
-    temp = st->lysp_mod->mod;
-
     lyxml_ctx_free(st->yin_ctx->xmlctx);
-    lys_module_free(st->mod, NULL);
-    lysp_module_free(st->lysp_mod);
-    lys_module_free(temp, NULL);
+    lys_module_free(st->yin_ctx->parsed_mod->mod, NULL);
     free(st->yin_ctx);
     ly_in_free(st->in, 0);
 
@@ -200,60 +191,14 @@ logbuf_clean(void)
 }
 
 static int
-setup_logger(void **state)
-{
-    (void)state; /* unused */
-#if ENABLE_LOGGER_CHECKING
-    /* setup logger */
-    ly_set_log_clb(logger, 1);
-#endif
-
-    logbuf[0] = '\0';
-
-    return EXIT_SUCCESS;
-}
-
-static int
-teardown_logger(void **state)
-{
-    struct test_parser_yin_state *st = *state;
-
-#if ENABLE_LOGGER_CHECKING
-    /* teardown logger */
-    if (!st->finished_correctly && logbuf[0] != '\0') {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#endif
-
-    return EXIT_SUCCESS;
-}
-
-static int
 setup_element_test(void **state)
 {
-    setup_logger(state);
-    struct test_parser_yin_state *st = *state;
+    struct test_parser_yin_state *st;
 
-    st->yin_ctx = calloc(1, sizeof *st->yin_ctx);
-    st->yin_ctx->format = LYS_IN_YIN;
-    st->yin_ctx->main_mod = calloc(1, sizeof *st->yin_ctx->main_mod);
-    lydict_insert(st->ctx, "module-name", 0, &st->yin_ctx->main_mod->name);
+    setup_f(state);
+    st = *state;
 
-    return EXIT_SUCCESS;
-}
-
-static int
-teardown_element_test(void **state)
-{
-    struct test_parser_yin_state *st = *(struct test_parser_yin_state **)state;
-
-    lydict_remove(st->ctx, st->yin_ctx->main_mod->name);
-    free(st->yin_ctx->main_mod);
-    lyxml_ctx_free(st->yin_ctx->xmlctx);
-    free(st->yin_ctx);
-    ly_in_free(st->in, 0);
-
-    teardown_logger(state);
+    lydict_insert(st->ctx, "module-name", 0, &st->yin_ctx->parsed_mod->mod->name);
 
     return EXIT_SUCCESS;
 }
@@ -1234,12 +1179,10 @@ test_yangversion_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yang-version value=\"1\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &version, NULL, NULL), LY_SUCCESS);
     assert_true(version & LYS_VERSION_1_0);
-    assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_0);
 
     data = ELEMENT_WRAPPER_START "<yang-version value=\"1.1\">" EXT_SUBELEM "</yang-version>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &version, NULL, &exts), LY_SUCCESS);
     assert_true(version & LYS_VERSION_1_1);
-    assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_1);
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_VERSION);
@@ -2706,7 +2649,7 @@ test_refine_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &refines, NULL, NULL), LY_SUCCESS);
     assert_string_equal(refines->nodeid, "target");
-    assert_string_equal(refines->dflts[0], "def");
+    assert_string_equal(refines->dflts[0].str, "def");
     assert_string_equal(refines->dsc, "desc");
     assert_true(refines->flags & LYS_CONFIG_W);
     assert_true(refines->flags & LYS_MAND_TRUE);
@@ -2834,7 +2777,7 @@ test_include_elem(void **state)
     struct include_meta inc_meta = {"module-name", &includes};
 
     /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<include module=\"mod\">"
                     "<description><text>desc</text></description>"
@@ -2862,7 +2805,7 @@ test_include_elem(void **state)
     includes = NULL;
 
     /* invalid combinations */
-    st->yin_ctx->mod_version = LYS_VERSION_1_0;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_0;
     data = ELEMENT_WRAPPER_START
                 "<include module=\"mod\">"
                     "<description><text>desc</text></description>"
@@ -2874,7 +2817,7 @@ test_include_elem(void **state)
     FREE_ARRAY(st->ctx, includes, lysp_include_free);
     includes = NULL;
 
-    st->yin_ctx->mod_version = LYS_VERSION_1_0;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_0;
     data = ELEMENT_WRAPPER_START
                 "<include module=\"mod\">"
                     "<reference><text>ref</text></reference>"
@@ -2993,7 +2936,7 @@ test_notification_elem(void **state)
     struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&notifs};
 
     /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<notification name=\"notif-name\">"
                     "<anydata name=\"anyd\"/>"
@@ -3135,7 +3078,7 @@ test_container_elem(void **state)
     struct lysp_node_container *parsed = NULL;
 
     /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<container name=\"cont-name\">"
                     "<anydata name=\"anyd\"/>"
@@ -3224,7 +3167,7 @@ test_case_elem(void **state)
     struct lysp_node_case *parsed = NULL;
 
     /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<case name=\"case-name\">"
                     "<anydata name=\"anyd\"/>"
@@ -3298,7 +3241,7 @@ test_choice_elem(void **state)
     struct lysp_node_choice *parsed = NULL;
 
     /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<choice name=\"choice-name\">"
                     "<anydata name=\"anyd\"/>"
@@ -3374,7 +3317,7 @@ test_inout_elem(void **state)
     struct inout_meta inout_meta = {NULL, &inout};
 
     /* max subelements */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<input>"
                     "<anydata name=\"anyd\"/>"
@@ -3421,7 +3364,7 @@ test_inout_elem(void **state)
     memset(&inout, 0, sizeof inout);
 
     /* max subelements */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<output>"
                     "<anydata name=\"anyd\"/>"
@@ -3496,7 +3439,7 @@ test_action_elem(void **state)
     struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&actions};
 
     /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<action name=\"act\">"
                     "<description><text>desc</text></description>"
@@ -3531,7 +3474,7 @@ test_action_elem(void **state)
     FREE_ARRAY(st->ctx, actions, lysp_action_free)
     actions = NULL;
 
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<rpc name=\"act\">"
                     "<description><text>desc</text></description>"
@@ -3581,7 +3524,7 @@ test_augment_elem(void **state)
     struct lysp_augment *augments = NULL;
     struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&augments};
 
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
                 "<augment target-node=\"target\">"
                     "<action name=\"action\"/>"
@@ -3721,8 +3664,8 @@ test_deviate_elem(void **state)
     assert_null(d_add->next);
     assert_string_equal(d_add->units, "units");
     assert_string_equal(d_add->musts->arg.str, "cond");
-    assert_string_equal(*d_add->uniques, "utag");
-    assert_string_equal(*d_add->dflts, "def");
+    assert_string_equal(d_add->uniques[0].str, "utag");
+    assert_string_equal(d_add->dflts[0].str, "def");
     assert_true(d_add->flags & LYS_MAND_TRUE && d_add->flags & LYS_CONFIG_W);
     assert_int_equal(d_add->min, 5);
     assert_int_equal(d_add->max, 15);
@@ -3751,7 +3694,7 @@ test_deviate_elem(void **state)
     assert_null(d_rpl->next);
     assert_string_equal(d_rpl->type->name, "newtype");
     assert_string_equal(d_rpl->units, "uni");
-    assert_string_equal(d_rpl->dflt, "def");
+    assert_string_equal(d_rpl->dflt.str, "def");
     assert_true(d_rpl->flags & LYS_MAND_TRUE && d_rpl->flags & LYS_CONFIG_W);
     assert_int_equal(d_rpl->min, 5);
     assert_int_equal(d_rpl->max, 15);
@@ -3777,8 +3720,8 @@ test_deviate_elem(void **state)
     assert_null(d_del->next);
     assert_string_equal(d_del->units, "u");
     assert_string_equal(d_del->musts->arg.str, "c");
-    assert_string_equal(*d_del->uniques, "tag");
-    assert_string_equal(*d_del->dflts, "default");
+    assert_string_equal(d_del->uniques[0].str, "tag");
+    assert_string_equal(d_del->dflts[0].str, "default");
     assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(deviates->exts[0].insubstmt_index, 0);
     assert_int_equal(deviates->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
@@ -3867,19 +3810,28 @@ test_deviation_elem(void **state)
     st->finished_correctly = true;
 }
 
+static struct lysp_module *
+mod_renew(struct lys_yin_parser_ctx *ctx)
+{
+    struct ly_ctx *ly_ctx = ctx->parsed_mod->mod->ctx;
+
+    lys_module_free(ctx->parsed_mod->mod, NULL);
+    ctx->parsed_mod = calloc(1, sizeof *ctx->parsed_mod);
+    ctx->parsed_mod->mod = calloc(1, sizeof *ctx->parsed_mod->mod);
+    ctx->parsed_mod->mod->parsed = ctx->parsed_mod;
+    ctx->parsed_mod->mod->ctx = ly_ctx;
+
+    return ctx->parsed_mod;
+}
+
 static void
 test_module_elem(void **state)
 {
     struct test_parser_yin_state *st = *state;
     const char *data;
-    struct lys_module *lys_mod = NULL;
-    struct lysp_module *lysp_mod = NULL;
+    struct lysp_module *lysp_mod = mod_renew(st->yin_ctx);
 
     /* max subelems */
-    lys_mod = calloc(1, sizeof *lys_mod);
-    lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
                 "<yang-version value=\"1.1\"/>\n"
                 "<namespace uri=\"ns\"/>\n"
@@ -3923,7 +3875,7 @@ test_module_elem(void **state)
     assert_string_equal(lysp_mod->mod->contact, "contact");
     assert_string_equal(lysp_mod->mod->dsc, "desc");
     assert_string_equal(lysp_mod->mod->ref, "ref");
-    assert_int_equal(lysp_mod->mod->version, LYS_VERSION_1_1);
+    assert_int_equal(lysp_mod->version, LYS_VERSION_1_1);
     assert_string_equal(lysp_mod->imports->name, "a-mod");
     assert_string_equal(lysp_mod->includes->name, "b-mod");
     assert_string_equal(lysp_mod->extensions->name, "ext");
@@ -3955,16 +3907,11 @@ test_module_elem(void **state)
     assert_string_equal(lysp_mod->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(lysp_mod->exts[0].insubstmt_index, 0);
     assert_int_equal(lysp_mod->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
 
     /* min subelems */
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
-    lys_mod = calloc(1, sizeof *lys_mod);
-    lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
+    lysp_mod = mod_renew(st->yin_ctx);
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">"
                 "<namespace uri=\"ns\"/>"
                 "<prefix value=\"pref\"/>"
@@ -3974,16 +3921,11 @@ test_module_elem(void **state)
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, lysp_mod), LY_SUCCESS);
     assert_string_equal(lysp_mod->mod->name, "mod");
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
 
     /* incorrect subelem order */
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
-    lys_mod = calloc(1, sizeof *lys_mod);
-    lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
+    lysp_mod = mod_renew(st->yin_ctx);
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">"
                 "<feature name=\"feature\"/>\n"
                 "<namespace uri=\"ns\"/>"
@@ -3994,10 +3936,23 @@ test_module_elem(void **state)
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, lysp_mod), LY_EVALID);
     logbuf_assert("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\". Line number 2.");
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
 
     st->finished_correctly = true;
+}
+
+static struct lysp_submodule *
+submod_renew(struct lys_yin_parser_ctx *ctx, const char *belongs_to)
+{
+    struct ly_ctx *ly_ctx = ctx->parsed_mod->mod->ctx;
+
+    lys_module_free(ctx->parsed_mod->mod, NULL);
+    ctx->parsed_mod = calloc(1, sizeof(struct lysp_submodule));
+    ctx->parsed_mod->mod = calloc(1, sizeof *ctx->parsed_mod->mod);
+    lydict_insert(ly_ctx, belongs_to, 0, &ctx->parsed_mod->mod->name);
+    ctx->parsed_mod->mod->parsed = ctx->parsed_mod;
+    ctx->parsed_mod->mod->ctx = ly_ctx;
+
+    return (struct lysp_submodule *)ctx->parsed_mod;
 }
 
 static void
@@ -4005,10 +3960,9 @@ test_submodule_elem(void **state)
 {
     struct test_parser_yin_state *st = *state;
     const char *data;
-    struct lysp_submodule *lysp_submod = NULL;
+    struct lysp_submodule *lysp_submod = submod_renew(st->yin_ctx, "module-name");
 
     /* max subelements */
-    lysp_submod = calloc(1, sizeof *lysp_submod);
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
                 "<yang-version value=\"1.1\"/>\n"
                 "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
@@ -4040,8 +3994,8 @@ test_submodule_elem(void **state)
            "</submodule>\n";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
-    assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_SUCCESS);
 
+    assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_SUCCESS);
     assert_string_equal(lysp_submod->name, "mod");
     assert_string_equal(lysp_submod->revs, "2019-02-02");
     assert_string_equal(lysp_submod->prefix, "pref");
@@ -4083,12 +4037,10 @@ test_submodule_elem(void **state)
     assert_int_equal(lysp_submod->exts[0].insubstmt_index, 0);
     assert_int_equal(lysp_submod->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
 
-    lysp_submodule_free(st->ctx, lysp_submod);
-
     /* min subelemnts */
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
-    lysp_submod = calloc(1, sizeof *lysp_submod);
+    lysp_submod = submod_renew(st->yin_ctx, "module-name");
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
                 "<yang-version value=\"1\"/>"
                 "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
@@ -4098,12 +4050,11 @@ test_submodule_elem(void **state)
     assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_SUCCESS);
     assert_string_equal(lysp_submod->prefix, "pref");
     assert_int_equal(lysp_submod->version, LYS_VERSION_1_0);
-    lysp_submodule_free(st->ctx, lysp_submod);
 
     /* incorrect subelem order */
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
-    lysp_submod = calloc(1, sizeof *lysp_submod);
+    lysp_submod = submod_renew(st->yin_ctx, "module-name");
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
                 "<yang-version value=\"1\"/>"
                 "<reference><text>ref</text></reference>\n"
@@ -4113,7 +4064,6 @@ test_submodule_elem(void **state)
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_EVALID);
     logbuf_assert("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\". Line number 2.");
-    lysp_submodule_free(st->ctx, lysp_submod);
 
     st->finished_correctly = true;
 }
@@ -4252,11 +4202,9 @@ test_yin_parse_submodule(void **state)
     const char *data;
     struct lys_yin_parser_ctx *yin_ctx = NULL;
     struct lysp_submodule *submod = NULL;
-    struct lys_module mod = {0};
-    struct lys_parser_ctx main_ctx = {.main_mod = &mod};
     struct ly_in *in;
 
-    lydict_insert(st->ctx, "a", 0, &mod.name);
+    lydict_insert(st->ctx, "a", 0, &st->yin_ctx->parsed_mod->mod->name);
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<submodule name=\"asub\""
@@ -4283,8 +4231,8 @@ test_yin_parse_submodule(void **state)
                 "</augment>"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, in, &submod), LY_SUCCESS);
-    lysp_submodule_free(st->ctx, submod);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_SUCCESS);
+    lysp_module_free((struct lysp_module *)submod);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
@@ -4298,8 +4246,8 @@ test_yin_parse_submodule(void **state)
                 "</belongs-to>"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, in, &submod), LY_SUCCESS);
-    lysp_submodule_free(st->ctx, submod);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_SUCCESS);
+    lysp_module_free((struct lysp_module *)submod);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
@@ -4309,9 +4257,9 @@ test_yin_parse_submodule(void **state)
             "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, in, &submod), LY_EINVAL);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_EINVAL);
     logbuf_assert("Input data contains module in situation when a submodule is expected.");
-    lysp_submodule_free(st->ctx, submod);
+    lysp_module_free((struct lysp_module *)submod);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
@@ -4331,15 +4279,14 @@ test_yin_parse_submodule(void **state)
                 "</belongs-to>"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, in, &submod), LY_EVALID);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_EVALID);
     logbuf_assert("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input. Line number 2.");
-    lysp_submodule_free(st->ctx, submod);
+    lysp_module_free((struct lysp_module *)submod);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
     submod = NULL;
 
-    lydict_remove(st->ctx, mod.name);
     st->finished_correctly = true;
 }
 
@@ -4355,67 +4302,67 @@ main(void)
         cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),
 
         cmocka_unit_test(test_yin_match_argument_name),
-        cmocka_unit_test_setup_teardown(test_enum_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_bit_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_meta_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_import_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_status_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_ext_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_yin_element_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_yangversion_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_mandatory_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_argument_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_base_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_belongsto_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_config_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_default_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_err_app_tag_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_err_msg_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_fracdigits_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_iffeature_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_length_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_modifier_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_namespace_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_pattern_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_value_position_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_prefix_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_range_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_reqinstance_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_revision_date_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_unique_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_units_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_when_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_type_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_max_elems_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_min_elems_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_ordby_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_any_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_leaf_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_presence_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_key_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_typedef_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_refine_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_list_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_notification_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_grouping_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_container_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_case_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_choice_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_inout_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_action_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_augment_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_deviate_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_deviation_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_module_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_submodule_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_enum_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_bit_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_meta_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_import_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_status_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ext_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_element_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yangversion_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_mandatory_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_argument_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_base_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_belongsto_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_config_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_default_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_err_app_tag_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_err_msg_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_fracdigits_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_iffeature_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_length_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_modifier_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_namespace_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_pattern_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_value_position_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_prefix_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_range_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_reqinstance_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_revision_date_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_unique_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_units_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_when_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_type_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_max_elems_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_min_elems_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ordby_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_any_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_leaf_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_presence_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_key_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_typedef_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_refine_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_list_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_notification_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_grouping_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_container_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_case_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_choice_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_inout_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_action_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_augment_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_deviate_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_deviation_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_module_elem, setup_element_test, teardown_f),
+        cmocka_unit_test_setup_teardown(test_submodule_elem, setup_element_test, teardown_f),
 
-        cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_logger, teardown_logger),
-        cmocka_unit_test_setup_teardown(test_yin_parse_submodule, setup_logger, teardown_logger),
+        cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_submodule, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
