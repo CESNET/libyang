@@ -5577,7 +5577,8 @@ moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, c
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when, -1 on error.
  */
 static int
-moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int options)
+moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *local_mod, const char *qname,
+            uint16_t qname_len, int options)
 {
     uint32_t i;
     int replaced, pref_len, ret;
@@ -5617,7 +5618,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         moveto_mod = NULL;
     } else {
         /* content node module */
-        moveto_mod = lyd_node_module(cur_node);
+        moveto_mod = local_mod;
     }
 
     /* name */
@@ -5676,7 +5677,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 }
 
 static int
-moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len, int options)
+moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, struct lys_module *local_mod, const char *qname,
+             uint16_t qname_len, int options)
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
     uint32_t mod_idx;
@@ -5715,7 +5717,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         moveto_mod = NULL;
     } else {
         /* content node module */
-        moveto_mod = lys_node_module(cur_node);
+        moveto_mod = local_mod;
     }
 
     /* name */
@@ -5760,11 +5762,11 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             /* the target may be from an augment that was not connected */
             last_aug = NULL;
             tmp_mod = NULL;
-            if ((moveto_mod && !moveto_mod->implemented) || (!moveto_mod && !lys_node_module(cur_node)->implemented)) {
+            if ((moveto_mod && !moveto_mod->implemented) || (!moveto_mod && !local_mod->implemented)) {
                 if (moveto_mod) {
                     tmp_mod = moveto_mod;
                 } else {
-                    tmp_mod = lys_node_module(cur_node);
+                    tmp_mod = local_mod;
                 }
 
 get_next_augment:
@@ -5773,7 +5775,7 @@ get_next_augment:
 
             sub = NULL;
             while ((sub = lys_getnext(sub, (last_aug ? (struct lys_node *)last_aug : start_parent), NULL, LYS_GETNEXT_NOSTATECHECK))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
+                if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : local_mod), options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
                         set->val.snodes[idx].in_ctx = 2;
@@ -5816,8 +5818,8 @@ get_next_augment:
  * @return EXIT_SUCCESS on success, ECIT_FAILURE on unresolved when, -1 on error.
  */
 static int
-moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len,
-                    int options)
+moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *local_mod, const char *qname,
+                    uint16_t qname_len, int options)
 {
     uint32_t i;
     int pref_len, all = 0, match, ret;
@@ -5852,7 +5854,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     }
 
     /* replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
-    ret = moveto_node(set, cur_node, "*", 1, options);
+    ret = moveto_node(set, cur_node, local_mod, "*", 1, options);
     if (ret) {
         return ret;
     }
@@ -5886,7 +5888,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
             if (!all) {
                 if (moveto_mod && (lys_node_module(elem->schema) != moveto_mod)) {
                     match = 0;
-                } else if (!moveto_mod && (lys_node_module(elem->schema) != lyd_node_module(cur_node))) {
+                } else if (!moveto_mod && (lys_node_module(elem->schema) != local_mod)) {
                     match = 0;
                 }
             }
@@ -5945,8 +5947,8 @@ skip_children:
 }
 
 static int
-moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len,
-                     int options)
+moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, struct lys_module *local_mod, const char *qname,
+                     uint16_t qname_len, int options)
 {
     int i, orig_used, pref_len, all = 0, match, idx;
     struct lys_node *next, *elem, *start;
@@ -6034,7 +6036,7 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
             if (match && !all) {
                 if (moveto_mod && (lys_node_module(elem) != moveto_mod)) {
                     match = 0;
-                } else if (!moveto_mod && (lys_node_module(elem) != lys_node_module(cur_node))) {
+                } else if (!moveto_mod && (lys_node_module(elem) != local_mod)) {
                     match = 0;
                 }
             }
@@ -6236,8 +6238,8 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when, -1 on error.
  */
 static int
-moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len,
-                    int options)
+moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *local_mod, const char *qname,
+                    uint16_t qname_len, int options)
 {
     uint32_t i;
     int pref_len, replaced, all = 0, ret;
@@ -6273,7 +6275,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     /* copy the context */
     set_all_desc = set_copy(set);
     /* get all descendant nodes (the original context nodes are removed) */
-    ret = moveto_node_alldesc(set_all_desc, cur_node, "*", 1, options);
+    ret = moveto_node_alldesc(set_all_desc, cur_node, local_mod, "*", 1, options);
     if (ret) {
         lyxp_set_free(set_all_desc);
         return ret;
@@ -7137,7 +7139,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                 set_snode_clear_ctx(set);
             } else {
                 if (all_desc) {
-                    rc = moveto_attr_alldesc(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                    rc = moveto_attr_alldesc(set, cur_node, local_mod, &exp->expr[exp->expr_pos[*exp_idx]],
                                              exp->tok_len[*exp_idx], options);
                 } else {
                     rc = moveto_attr(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx],
@@ -7147,18 +7149,18 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         } else {
             if (all_desc) {
                 if (set && (options & LYXP_SNODE_ALL)) {
-                    rc = moveto_snode_alldesc(set, (struct lys_node *)cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                    rc = moveto_snode_alldesc(set, (struct lys_node *)cur_node, local_mod, &exp->expr[exp->expr_pos[*exp_idx]],
                                               exp->tok_len[*exp_idx], options);
                 } else {
-                    rc = moveto_node_alldesc(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                    rc = moveto_node_alldesc(set, cur_node, local_mod, &exp->expr[exp->expr_pos[*exp_idx]],
                                              exp->tok_len[*exp_idx], options);
                 }
             } else {
                 if (set && (options & LYXP_SNODE_ALL)) {
-                    rc = moveto_snode(set, (struct lys_node *)cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                    rc = moveto_snode(set, (struct lys_node *)cur_node, local_mod, &exp->expr[exp->expr_pos[*exp_idx]],
                                       exp->tok_len[*exp_idx], options);
                 } else {
-                    rc = moveto_node(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx],
+                    rc = moveto_node(set, cur_node, local_mod, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx],
                                      options);
                 }
             }
