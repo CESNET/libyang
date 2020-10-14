@@ -3102,6 +3102,24 @@ test_deviation(void **state)
     assert_int_equal(LY_TYPE_IDENT, leaf->type->basetype);
     assert_string_equal("ident", ((struct lysc_type_identityref *)leaf->type)->bases[0]->name);
 
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module v {namespace urn:v;prefix v;"
+                                  "identity ident; identity ident2 { base ident; }"
+                                  "}", LYS_IN_YANG, NULL));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule w-sub { belongs-to w { prefix w; }"
+                                  "import v { prefix v_pref; }"
+                                  "leaf l { type string; default \"v_pref:ident2\"; }"
+                                  "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module w {namespace urn:w;prefix w;"
+                                  "include w-sub;"
+                                  "}", LYS_IN_YANG, &mod));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module x {namespace urn:x;prefix x;"
+                                  "import w { prefix w_pref; } import v { prefix v_pref; }"
+                                  "deviation /w_pref:l { deviate replace { type identityref { base v_pref:ident; } } }"
+                                  "}", LYS_IN_YANG, NULL));
+    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_string_equal("l", leaf->name);
+    assert_int_equal(LY_TYPE_IDENT, leaf->type->basetype);
+
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG, &mod));
     logbuf_assert("Deviation(s) target node \"/a:top/a:z\" from module \"aa1\" was not found.");
