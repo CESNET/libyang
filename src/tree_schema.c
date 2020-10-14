@@ -498,9 +498,8 @@ lys_feature_change(const struct lys_module *mod, const char *name, ly_bool value
         all = 1;
     }
 
-    if (!mod->compiled) {
-        LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled without a chance to change it.",
-                mod->name);
+    if (!mod->implemented) {
+        LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled.", mod->name);
         return LY_EINVAL;
     }
     if (!mod->features) {
@@ -538,9 +537,8 @@ run:
                                 ++disabled_count;
                                 goto next;
                             } else {
-                                LOGERR(ctx, LY_EDENIED,
-                                        "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                                        f->name);
+                                LOGERR(ctx, LY_EDENIED, "Feature \"%s\" cannot be enabled since it is disabled by "
+                                        "its if-feature condition(s).", f->name);
                                 ret = LY_EDENIED;
                                 goto cleanup;
                             }
@@ -579,9 +577,8 @@ next:
             /* ... print errors */
             for (u = 0; disabled_count && u < LY_ARRAY_COUNT(mod->features); ++u) {
                 if (!(mod->features[u].flags & LYS_FENABLED)) {
-                    LOGERR(ctx, LY_EDENIED,
-                            "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                            mod->features[u].name);
+                    LOGERR(ctx, LY_EDENIED, "Feature \"%s\" cannot be enabled since it is disabled by its if-feature "
+                            "condition(s).", mod->features[u].name);
                     --disabled_count;
                 }
             }

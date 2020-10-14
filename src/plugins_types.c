@@ -1431,7 +1431,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
         /* no match */
         rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not found.", (int)value_len, value);
         goto error;
-    } else if (!mod->compiled) {
+    } else if (!mod->implemented) {
         /* non-implemented module */
         rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
                 (int)value_len, value, mod->name);
