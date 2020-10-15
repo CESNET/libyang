@@ -400,16 +400,16 @@ test_output_clb(void **state)
     assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
 
     /* manipulate with the handler */
-    assert_int_equal(LY_SUCCESS, ly_out_new_clb((ssize_t (*)(void *, const void *, size_t))write, (void*)(intptr_t)fd1, &out));
+    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void*)(intptr_t)fd1, &out));
     assert_int_equal(LY_OUT_CALLBACK, ly_out_type(out));
     assert_ptr_equal(fd1, ly_out_clb_arg(out, (void*)(intptr_t)fd2));
     assert_ptr_equal(fd2, ly_out_clb_arg(out, NULL));
     assert_ptr_equal(fd2, ly_out_clb_arg(out, (void*)(intptr_t)fd1));
-    assert_ptr_equal(write, ly_out_clb(out, (ssize_t (*)(void *, const void *, size_t))write));
+    assert_ptr_equal(write, ly_out_clb(out, (void *)write));
     ly_out_free(out, NULL, 0);
     assert_int_equal(0, close(fd2));
-    assert_int_equal(LY_SUCCESS, ly_out_new_clb((ssize_t (*)(void *, const void *, size_t))write, (void*)(intptr_t)fd1, &out));
-    ly_out_free(out, (void (*)(void *))close, 0);
+    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void*)(intptr_t)fd1, &out));
+    ly_out_free(out, (void *)close, 0);
 
     /* writing data */
     assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
@@ -417,14 +417,14 @@ test_output_clb(void **state)
     /* truncate file to start with no data */
     assert_int_equal(0, ftruncate(fd1, 0));
 
-    assert_int_equal(LY_SUCCESS, ly_out_new_clb((ssize_t (*)(void *, const void *, size_t))write, (void*)(intptr_t)fd1, &out));
+    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void*)(intptr_t)fd1, &out));
     assert_int_equal(LY_SUCCESS, ly_print(out, "test %s", "print"));
     assert_int_equal(10, ly_out_printed(out));
     assert_int_equal(10, read(fd2, buf, 30));
     assert_string_equal("test print", buf);
 
     close(fd2);
-    ly_out_free(out, (void (*)(void *))close, 0);
+    ly_out_free(out, (void *)close, 0);
 
     /* cleanup */
     *state = NULL;
