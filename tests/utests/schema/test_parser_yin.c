@@ -2005,7 +2005,7 @@ test_type_elem(void **state)
                     "<enum name=\"enum\"/>"
                     "<fraction-digits value=\"2\"/>"
                     "<length value=\"length\"/>"
-                    "<path value=\"path\"/>"
+                    "<path value=\"/path\"/>"
                     "<pattern value=\"pattern\"/>"
                     "<range value=\"range\" />"
                     "<require-instance value=\"true\"/>"
@@ -2020,7 +2020,7 @@ test_type_elem(void **state)
     assert_string_equal(type.enums->name,  "enum");
     assert_int_equal(type.fraction_digits, 2);
     assert_string_equal(type.length->arg.str, "length");
-    assert_string_equal(type.path->expr, "path");
+    assert_string_equal(type.path->expr, "/path");
     assert_string_equal(type.patterns->arg.str, "\006pattern");
     assert_string_equal(type.range->arg.str, "range");
     assert_int_equal(type.require_instance, 1);
