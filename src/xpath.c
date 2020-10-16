@@ -7006,6 +7006,7 @@ eval_name_test_with_predicate_get_scnode(const struct lyd_node *node, const char
     uint32_t idx = 0;
 
 continue_search:
+    scnode = NULL;
     if (!node) {
         if (no_prefix && (format == LY_PREF_JSON)) {
             /* search all modules for a single match */
@@ -7017,8 +7018,10 @@ continue_search:
                 }
             }
 
-            /* all modules searched */
-            idx = 0;
+            if (!scnode) {
+                /* all modules searched */
+                idx = 0;
+            }
         } else {
             /* search in top-level */
             scnode = lys_find_child(NULL, moveto_mod, name, name_len, 0, 0);
@@ -7031,10 +7034,7 @@ continue_search:
 
         /* search in children, do not repeat the same search */
         scnode = lys_find_child(node->schema, moveto_mod, name, name_len, 0, 0);
-    } else {
-        /* skip redundant search */
-        scnode = NULL;
-    }
+    } /* else skip redundant search */
 
     /* additional context check */
     if (scnode && (root_type == LYXP_NODE_ROOT_CONFIG) && (scnode->flags & LYS_CONFIG_R)) {
