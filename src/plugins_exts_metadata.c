@@ -17,6 +17,7 @@
 
 #include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
+#include "schema_compile.h"
 #include "tree_schema.h"
 
 /**

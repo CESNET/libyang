@@ -25,6 +25,7 @@
 #include "parser.h"
 #include "tests/config.h"
 #include "tree_schema_internal.h"
+#include "schema_compile.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

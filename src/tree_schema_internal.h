@@ -22,6 +22,8 @@
 #include "tree_schema.h"
 #include "xml.h"
 
+struct lysc_ctx;
+
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
 
 /**
@@ -154,77 +156,6 @@ struct lys_yin_parser_ctx {
  * @param[in] ctx Context to free.
  */
 void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
-
-/**
- * @brief Structure for remembering default values of leaves and leaf-lists. They are resolved at schema compilation
- * end when the whole schema tree is available.
- */
-struct lysc_unres_dflt {
-    union {
-        struct lysc_node_leaf *leaf;
-        struct lysc_node_leaflist *llist;
-    };
-    struct lysp_qname *dflt;
-    struct lysp_qname *dflts;           /**< this is a sized array */
-};
-
-/**
- * @brief Compiled parsed augment structure. Just a temporary storage for applying the augment to data.
- */
-struct lysc_augment {
-    struct lyxp_expr *nodeid;                    /**< augment target */
-    const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
-    const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node for relative targets */
-
-    struct lysp_augment *aug_p;                  /**< pointer to the parsed augment to apply */
-};
-
-/**
- * @brief Compiled parsed deviation structure. Just a temporary storage for applying the deviation to data.
- */
-struct lysc_deviation {
-    struct lyxp_expr *nodeid;                    /**< deviation target, taken from the first deviation in
-                                                      ::lysc_deviation.dev_pmods array, this module is used for resolving
-                                                      prefixes used in the nodeid. */
-
-    struct lysp_deviation **devs;                /**< sized array of all the parsed deviations for one target node */
-    const struct lysp_module **dev_pmods;        /**< sized array of parsed modules of @p devs (where the specific deviations
-                                                      are defined). */
-    ly_bool not_supported;                       /**< whether this is a not-supported deviation */
-};
-
-/**
- * @brief Compiled parsed refine structure. Just a temporary storage for applying the refine to data.
- */
-struct lysc_refine {
-    struct lyxp_expr *nodeid;                    /**< refine target */
-    const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
-    const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node */
-
-    struct lysp_refine **rfns;                   /**< sized array of parsed refines to apply */
-};
-
-/**
- * @brief internal context for compilation
- */
-struct lysc_ctx {
-    struct ly_ctx *ctx;
-    struct lys_module *cur_mod; /**< module currently being compiled, used as the current module for unprefixed nodes */
-    struct lysp_module *pmod;   /**< parsed module being processed, used for searching imports to resolve prefixed nodes */
-    struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set xpath;        /**< when/must to check */
-    struct ly_set leafrefs;     /**< to validate leafref's targets */
-    struct ly_set dflts;        /**< set of incomplete default values */
-    struct ly_set tpdf_chain;
-    struct ly_set augs;         /**< set of compiled non-applied top-level augments */
-    struct ly_set devs;         /**< set of compiled non-applied deviations */
-    struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
-    struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines */
-    uint32_t path_len;
-    uint32_t options;           /**< various @ref scflags. */
-#define LYSC_CTX_BUFSIZE 4078
-    char path[LYSC_CTX_BUFSIZE];
-};
 
 /**
  * @brief Check that \p c is valid UTF8 code point for YANG string.
@@ -400,25 +331,6 @@ void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 
 /**
- * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from
- * all the target modules.
- *
- * @param[in] ctx libyang context.
- * @param[in] mod Mod whose precompilation to revert.
- */
-void lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_module *mod);
-
-/**
- * @brief Compile printable schema into a validated schema linking all the references.
- *
- * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
- * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
- * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
- */
-LY_ERR lys_compile(struct lys_module *mod, uint32_t options);
-
-/**
  * @brief Get address of a node's actions list if any.
  *
  * Decides the node's type and in case it has an actions list, returns its address.
@@ -492,26 +404,6 @@ LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARR
  * @return Corresponding lys_module structure for the given parsed schema structure.
  */
 struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod);
-
-/**
- * @brief Check statement's status for invalid combination.
- *
- * The modX parameters are used just to determine if both flags are in the same module,
- * so any of the schema module structure can be used, but both modules must be provided
- * in the same type.
- *
- * @param[in] ctx Compile context for logging.
- * @param[in] flags1 Flags of the referencing node.
- * @param[in] mod1 Module of the referencing node,
- * @param[in] name1 Schema node name of the referencing node.
- * @param[in] flags2 Flags of the referenced node.
- * @param[in] mod2 Module of the referenced node,
- * @param[in] name2 Schema node name of the referenced node.
- * @return LY_ERR value
- */
-LY_ERR lysc_check_status(struct lysc_ctx *ctx,
-        uint16_t flags1, void *mod1, const char *name1,
-        uint16_t flags2, void *mod2, const char *name2);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.
@@ -600,64 +492,12 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
         struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result);
 
 /**
- * @brief Compile information from the identity statement
- *
- * The backlinks to the identities derived from this one are supposed to be filled later via lys_compile_identity_bases().
- *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
- * @param[in] ctx libyang context.
- * @param[in] parsed_mod Module with the identities.
- * @param[in] identities_p Array of the parsed identity definitions to precompile.
- * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
- * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
- * to be processed.
- * @return LY_ERR value.
- */
-LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
-        struct lysp_ident *identities_p, struct lysc_ident **identities);
-
-/**
- * @brief Create pre-compiled features array.
- *
- * Features are compiled in two steps to allow forward references between them via their if-feature statements.
- * In case of not implemented schemas, the precompiled list of features is stored in lys_module structure and
- * the compilation is not finished (if-feature and extensions are missing) and all the features are permanently
- * disabled without a chance to change it. The list is used as target for any if-feature statement in any
- * implemented module to get valid data to evaluate its result. The compilation is finished via
- * lys_feature_precompile_finish() in implemented modules. In case a not implemented module becomes implemented,
- * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
- * if-feature structures.
- *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
- * @param[in] ctx libyang context.
- * @param[in] parsed_mod Module with the features.
- * @param[in] features_p Array of the parsed features definitions to precompile.
- * @param[in,out] features Pointer to the storage of the (pre)compiled features array where the new features are
- * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed features are going
- * to be processed.
- * @return LY_ERR value.
- */
-LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
-        struct lysp_feature *features_p, struct lysc_feature **features);
-
-/**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
  * (libyang format of the if-feature expression).
  * @param[in] list The 2bits array with the compiled if-feature expression.
  * @param[in] pos Position (0-based) to specify from which position get the operator.
  */
 uint8_t lysc_iff_getop(uint8_t *list, size_t pos);
-
-/**
- * @brief Checks pattern syntax.
- *
- * @param[in] ctx Context.
- * @param[in] log_path Path for logging errors.
- * @param[in] pattern Pattern to check.
- * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
- * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
- */
-LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code);
 
 /**
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,

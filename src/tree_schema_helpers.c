@@ -53,29 +53,6 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
 }
 
 LY_ERR
-lysc_check_status(struct lysc_ctx *ctx,
-        uint16_t flags1, void *mod1, const char *name1,
-        uint16_t flags2, void *mod2, const char *name2)
-{
-    uint16_t flg1, flg2;
-
-    flg1 = (flags1 & LYS_STATUS_MASK) ? (flags1 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
-    flg2 = (flags2 & LYS_STATUS_MASK) ? (flags2 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
-
-    if ((flg1 < flg2) && (mod1 == mod2)) {
-        if (ctx) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                    "A %s definition \"%s\" is not allowed to reference %s definition \"%s\".",
-                    flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
-                    flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
-        }
-        return LY_EVALID;
-    }
-
-    return LY_SUCCESS;
-}
-
-LY_ERR
 lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, const char *stmt)
 {
     struct tm tm, tm_;
