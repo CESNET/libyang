@@ -246,10 +246,17 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     if (begin == LY_PATH_BEGIN_EITHER) {
         /* is the path relative? */
         if (lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_OPER_PATH)) {
-            /* '..' */
-            while ((lref == LY_PATH_LREF_TRUE) && !lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_DDOT)) {
-                /* '/' */
-                LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
+            /* relative path check specific to leafref */
+            if (lref == LY_PATH_LREF_TRUE) {
+                /* mandatory '..' */
+                LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_DDOT), ret = LY_EVALID, error);
+
+                do {
+                    /* '/' */
+                    LY_CHECK_ERR_GOTO(lyxp_next_token(ctx, exp, &tok_idx, LYXP_TOKEN_OPER_PATH), ret = LY_EVALID, error);
+
+                    /* optional '..' */
+                } while (!lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_DDOT));
             }
         }
     } else {
