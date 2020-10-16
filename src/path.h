@@ -96,7 +96,7 @@ struct ly_path {
  * @brief Parse path into XPath token structure and perform all additional checks.
  *
  * @param[in] ctx libyang context.
- * @param[in] ctx_node Optional context node.
+ * @param[in] ctx_node Optional context node, used for logging.
  * @param[in] str_path Path to parse.
  * @param[in] path_len Length of @p str_path.
  * @param[in] begin Begin option (@ref path_begin_options).
@@ -113,7 +113,7 @@ LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
  * @brief Parse predicate into XPath token structure and perform all additional checks.
  *
  * @param[in] ctx libyang context.
- * @param[in] cur_node Optional current (original context) node.
+ * @param[in] cur_node Optional current (original context) node, used for logging.
  * @param[in] str_path Path to parse.
  * @param[in] path_len Length of @p str_path.
  * @param[in] prefix Prefix option (@ref path_prefix_options).
