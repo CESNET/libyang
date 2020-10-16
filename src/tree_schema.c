@@ -34,6 +34,8 @@
 #include "parser.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
+#include "schema_compile.h"
+#include "schema_compile_amend.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema_internal.h"

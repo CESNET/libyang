@@ -24,7 +24,7 @@
 #include "parser_internal.h"
 #include "path.h"
 #include "plugins_types.h"
-#include "tree_schema_internal.h"
+#include "schema_compile.h"
 #include "xpath.h"
 
 void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);

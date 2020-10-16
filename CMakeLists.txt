@@ -115,9 +115,11 @@ set(libsrc
     src/printer_xml.c
     src/printer_json.c
     src/printer_lyb.c
+    src/schema_compile.c
+    src/schema_compile_node.c
+    src/schema_compile_amend.c
     src/tree_schema.c
     src/tree_schema_free.c
-    src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser.c
     src/parser_yang.c
