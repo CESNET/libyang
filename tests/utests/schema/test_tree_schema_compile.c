@@ -22,15 +22,13 @@
 
 #include "common.h"
 #include "parser_internal.h"
+#include "path.h"
 #include "plugins_types.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
 void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);
 void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
-
-LY_ERR lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
-                      int32_t *parent_times, uint8_t *has_predicate);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -1593,72 +1591,42 @@ test_type_leafref(void **state)
     struct ly_ctx *ctx;
     const struct lys_module *mod;
     struct lysc_type *type;
-    const char *path, *name, *prefix;
-    size_t prefix_len, name_len;
-    int32_t parent_times;
-    uint8_t has_predicate;
+    const char *path;
+    struct lyxp_expr *expr;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    /* lys_path_token() */
+    /* lys_path_parse() */
     path = "invalid_path";
-    parent_times = 0;
-    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_int_equal(LY_EVALID, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "..";
-    parent_times = 0;
-    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_int_equal(LY_EVALID, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "..[";
-    parent_times = 0;
-    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_int_equal(LY_EVALID, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "../";
-    parent_times = 0;
-    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_int_equal(LY_EVALID, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "/";
-    parent_times = 0;
-    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_int_equal(LY_EVALID, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
 
     path = "../../pref:id/xxx[predicate]/invalid!!!";
-    parent_times = 0;
-    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
-    assert_string_equal("/xxx[predicate]/invalid!!!", path);
-    assert_int_equal(4, prefix_len);
-    assert_int_equal(0, strncmp("pref", prefix, prefix_len));
-    assert_int_equal(2, name_len);
-    assert_int_equal(0, strncmp("id", name, name_len));
-    assert_int_equal(2, parent_times);
-    assert_int_equal(0, has_predicate);
-    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
-    assert_string_equal("[predicate]/invalid!!!", path);
-    assert_int_equal(0, prefix_len);
-    assert_null(prefix);
-    assert_int_equal(3, name_len);
-    assert_int_equal(0, strncmp("xxx", name, name_len));
-    assert_int_equal(1, has_predicate);
-    path += 11;
-    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
-    assert_string_equal("!!!", path);
-    assert_int_equal(0, prefix_len);
-    assert_null(prefix);
-    assert_int_equal(7, name_len);
-    assert_int_equal(0, strncmp("invalid", name, name_len));
+    assert_int_equal(LY_EVALID, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    logbuf_assert("Invalid character 0x21 ('!'), perhaps \"invalid\" is supposed to be a function call.");
 
     path = "/absolute/prefix:path";
-    parent_times = 0;
-    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
-    assert_string_equal("/prefix:path", path);
-    assert_int_equal(0, prefix_len);
-    assert_null(prefix);
-    assert_int_equal(8, name_len);
-    assert_int_equal(0, strncmp("absolute", name, name_len));
-    assert_int_equal(-1, parent_times);
-    assert_int_equal(0, has_predicate);
-    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
-    assert_int_equal(0, *path);
-    assert_int_equal(6, prefix_len);
-    assert_int_equal(0, strncmp("prefix", prefix, prefix_len));
-    assert_int_equal(4, name_len);
-    assert_int_equal(0, strncmp("path", name, name_len));
-    assert_int_equal(0, has_predicate);
+    assert_int_equal(LY_SUCCESS, ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
+    assert_int_equal(4, expr->used);
+    assert_int_equal(LYXP_TOKEN_OPER_PATH, expr->tokens[0]);
+    assert_int_equal(LYXP_TOKEN_NAMETEST, expr->tokens[1]);
+    assert_int_equal(LYXP_TOKEN_OPER_PATH, expr->tokens[2]);
+    assert_int_equal(LYXP_TOKEN_NAMETEST, expr->tokens[3]);
+    lyxp_expr_free(ctx, expr);
 
     /* complete leafref paths */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;"
