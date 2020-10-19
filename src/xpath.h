@@ -292,7 +292,6 @@ const char *lyxp_print_token(enum lyxp_token tok);
 LY_ERR lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options);
 
-#define LYXP_SCHEMA 0x01        /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
@@ -309,8 +308,12 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PRE
 LY_ERR lyxp_atomize(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
 
-/* used only internally */
-#define LYXP_SCNODE_ALL 0x0E
+/* used only internally, maps with @ref findxpathoptions */
+#define LYXP_SCHEMA 0x01                      /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE 0x02                      /**< No special tree access modifiers. */
+#define LYXP_SCNODE_SCHEMA LYS_FIND_XP_SCHEMA /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE_OUTPUT LYS_FIND_XP_OUTPUT /**< Search RPC/action output nodes instead of input ones. */
+#define LYXP_SCNODE_ALL 0x0E                  /**< mask for all the LYXP_* values */
 
 /**
  * @brief Cast XPath set to another type.

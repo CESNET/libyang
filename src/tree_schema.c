@@ -228,7 +228,7 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
 }
 
 API LY_ERR
-lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
+lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
