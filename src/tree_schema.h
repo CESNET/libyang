@@ -1898,30 +1898,35 @@ LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
  */
 LY_ERR lysc_feature_value(const struct lysc_feature *feature);
 
-#define LYXP_SCNODE 0x02        /**< No special tree access modifiers. */
-#define LYXP_SCNODE_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
+/**
+ * @defgroup findxpathoptions Atomize XPath options
+ * Options to modify behavior of ::lys_find_xpath() and ::lys_find_xpath_atoms() searching for schema nodes in schema tree.
+ * @{
+ */
+#define LYS_FIND_XP_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYS_FIND_XP_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
+/*
+ * }@
+ */
 
 /**
  * @brief Get all the schema nodes (atoms) that are required for \p xpath to be evaluated.
  *
  * @param[in] ctx_node XPath schema context node.
  * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
- * @param[in] options Whether to apply some node access restrictions, one of the options should always be used.
- * If none is set, ::LYXP_SCNODE is used.
+ * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found atoms (schema nodes).
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
+LY_ERR lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
 
 /**
  * @brief Evaluate an \p xpath expression on schema nodes.
  *
  * @param[in] ctx_node XPath schema context node.
  * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
- * @param[in] options Whether to apply some node access restrictions, one of the options should always be used.
- * If none is set, ::LYXP_SCNODE is used.
+ * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found schema nodes.
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.

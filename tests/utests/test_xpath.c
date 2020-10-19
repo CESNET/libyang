@@ -370,18 +370,18 @@ test_atomize(void **state)
     mod = ly_ctx_get_module_latest(ctx, "a");
 
     /* some random paths just making sure the API function works */
-    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data, "/a:*", 0, &set));
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(mod->compiled->data, "/a:*", 0, &set));
     assert_int_equal(4, set->count);
 
     ly_set_free(set, NULL);
 
     /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
-    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data, "//.", 0, &set));
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(mod->compiled->data, "//.", 0, &set));
     assert_in_range(set->count, 16, UINT32_MAX);
 
     ly_set_free(set, NULL);
 
-    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data->next->next, "/a:c/ll[a='val1']/ll[a='val2']/b",
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(mod->compiled->data->next->next, "/a:c/ll[a='val1']/ll[a='val2']/b",
                                                    0, &set));
     assert_int_equal(7, set->count);
 
