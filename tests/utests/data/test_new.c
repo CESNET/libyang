@@ -116,7 +116,7 @@ test_top_level(void **state)
     lyd_free_tree(node);
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[]", &node), LY_EVALID);
-    logbuf_assert("Unexpected XPath token ] (]).");
+    logbuf_assert("Unexpected XPath token \"]\" (\"]\").");
 
     assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[key1='a'][key2='b']", &node), LY_ENOTFOUND);
     logbuf_assert("Not found node \"key1\" in path.");

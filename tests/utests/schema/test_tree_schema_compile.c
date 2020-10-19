@@ -1864,14 +1864,14 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
                                         "leaf address {type leafref{ path \"/interface[name = ../ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Unexpected XPath token .. (../ifname]/ip).");
+    logbuf_assert("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"FunctionName\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module tt {namespace urn:tt;prefix tt;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
                                         "leaf address {type leafref{ path \"/interface[name = current()../ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Unexpected XPath token .. (../ifname]/ip).");
+    logbuf_assert("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"]\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module uu {namespace urn:uu;prefix uu;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -1885,14 +1885,14 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
                                         "leaf address {type leafref{ path \"/interface[name = current()/ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Unexpected XPath token NameTest (ifname]/ip).");
+    logbuf_assert("Unexpected XPath token \"NameTest\" (\"ifname]/ip\"), expected \"..\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ww {namespace urn:ww;prefix ww;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
                                         "leaf address {type leafref{ path \"/interface[name = current()/../]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Unexpected XPath token ] (]/ip).");
+    logbuf_assert("Unexpected XPath token \"]\" (\"]/ip\").");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module xx {namespace urn:xx;prefix xx;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"

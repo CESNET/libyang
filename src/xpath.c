@@ -1849,8 +1849,8 @@ lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t
 
     if (want_tok && (exp->tokens[tok_idx] != want_tok)) {
         if (ctx) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                    lyxp_print_token(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK2, lyxp_print_token(exp->tokens[tok_idx]),
+                    &exp->expr[exp->tok_pos[tok_idx]], lyxp_print_token(want_tok));
         }
         return LY_ENOT;
     }
@@ -1883,8 +1883,8 @@ exp_check_token2(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t tok_i
 
     if ((exp->tokens[tok_idx] != want_tok1) && (exp->tokens[tok_idx] != want_tok2)) {
         if (ctx) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                    lyxp_print_token(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[tok_idx]),
+                    &exp->expr[exp->tok_pos[tok_idx]]);
         }
         return LY_ENOT;
     }
