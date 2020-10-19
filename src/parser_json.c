@@ -728,6 +728,8 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first,
 
         if (iter->index) {
             flag_leaflist = 1;
+        } else {
+            flag_leaflist = 0;
         }
 
         LY_TREE_FOR(first, diter) {
