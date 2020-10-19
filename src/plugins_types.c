@@ -87,7 +87,7 @@ ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t pref
     return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
 }
 
-API const struct lys_module *
+const struct lys_module *
 ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data)
 {
     const struct lys_module *mod = NULL;
@@ -110,6 +110,13 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
     }
 
     return mod;
+}
+
+API const struct lys_module *
+ly_type_store_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+        LY_PREFIX_FORMAT format, void *prefix_data)
+{
+    return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
 }
 
 /**
@@ -178,7 +185,7 @@ ly_json_get_prefix(const struct lys_module *mod, void *UNUSED(data))
     return mod->name;
 }
 
-API const char *
+const char *
 ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
 {
     const char *prefix = NULL;
@@ -199,6 +206,12 @@ ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefi
     }
 
     return prefix;
+}
+
+API const char *
+ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
+{
+    return ly_get_prefix(mod, format, prefix_data);
 }
 
 /**
@@ -1395,7 +1408,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     }
 
     if (prefix_len) {
-        mod = ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
+        mod = ly_type_store_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
     } else {
         switch (format) {
         case LY_PREF_SCHEMA:
@@ -1500,7 +1513,7 @@ ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format
     char *result = NULL;
 
     *dynamic = 1;
-    if (asprintf(&result, "%s:%s", ly_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
+    if (asprintf(&result, "%s:%s", ly_type_print_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
         return NULL;
     } else {
         return result;
@@ -1711,7 +1724,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
     if ((format == LY_PREF_XML) || (format == LY_PREF_SCHEMA)) {
         /* everything is prefixed */
         LY_ARRAY_FOR(value->target, u) {
-            ly_strcat(&result, "/%s:%s", ly_get_prefix(value->target[u].node->module, format, prefix_data),
+            ly_strcat(&result, "/%s:%s", ly_type_print_get_prefix(value->target[u].node->module, format, prefix_data),
                     value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
@@ -1731,7 +1744,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     if (strchr(value, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[%s:%s=%c%s%c]", ly_get_prefix(pred->key->module, format, prefix_data),
+                    ly_strcat(&result, "[%s:%s=%c%s%c]", ly_type_print_get_prefix(pred->key->module, format, prefix_data),
                             pred->key->name, quot, value, quot);
                     if (d) {
                         free((char *)value);
@@ -1761,7 +1774,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
         LY_ARRAY_FOR(value->target, u) {
             if (mod != value->target[u].node->module) {
                 mod = value->target[u].node->module;
-                ly_strcat(&result, "/%s:%s", ly_get_prefix(mod, format, prefix_data), value->target[u].node->name);
+                ly_strcat(&result, "/%s:%s", ly_type_print_get_prefix(mod, format, prefix_data), value->target[u].node->name);
             } else {
                 ly_strcat(&result, "/%s", value->target[u].node->name);
             }
@@ -2179,9 +2192,9 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
                     size_t len = stop - start;
 
                     /* do we already have the prefix? */
-                    mod = ly_resolve_prefix(ctx, start, len, *format_p, *prefix_data_p);
+                    mod = ly_type_store_resolve_prefix(ctx, start, len, *format_p, *prefix_data_p);
                     if (!mod) {
-                        mod = ly_resolve_prefix(ctx, start, len, format, prefix_data);
+                        mod = ly_type_store_resolve_prefix(ctx, start, len, format, prefix_data);
                         if (mod) {
                             if (*format_p == LY_PREF_XML) {
                                 /* store a new prefix - namespace pair */

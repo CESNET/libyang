@@ -107,35 +107,31 @@ void ly_err_free(void *ptr);
 /**
  * @brief Resolve format-specific prefixes to modules.
  *
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
  * @param[in] ctx libyang context.
- * @param[in] prefix Prefix to resolve.
+ * @param[in] prefix Prefix to resolve - identified beginning of a prefix in ::ly_type_store_clb's value parameter.
  * @param[in] prefix_len Length of @p prefix.
- * @param[in] format Format of the prefix.
- * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
- *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON            - NULL
+ * @param[in] format Format of the prefix (::ly_type_store_clb's format parameter).
+ * @param[in] prefix_data Format-specific data (::ly_type_store_clb's prefix_data parameter).
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
-const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+const struct lys_module *ly_type_store_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
         LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Get format-specific prefix for a module.
  *
- * @param[in] mod Module whose prefix to get.
- * @param[in] format Format of the prefix.
- * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving imports to prefixes)
- *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_PREF_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)
- *      LY_PREF_JSON            - NULL
- * @return Module prefix to print.
+ * Use only in implementations of ::ly_type_print_clb which provide all the necessary parameters for this function.
+ *
+ * @param[in] mod Module whose prefix to get - the module somehow connected with the value to print.
+ * @param[in] format Format of the prefix (::ly_type_print_clb's format parameter).
+ * @param[in] prefix_data Format-specific data (::ly_type_print_clb's prefix_data parameter).
+ * @return Module's prefix to print.
  * @return NULL on error.
  */
-const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
+const char *ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Collect any possible used prefixes in a string into a sized array of pairs of prefixes and modules.
