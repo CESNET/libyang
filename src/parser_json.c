@@ -21,6 +21,7 @@
 #include "common.h"
 #include "compat.h"
 #include "context.h"
+#include "in_internal.h"
 #include "json.h"
 #include "parser_internal.h"
 #include "tree_data.h"

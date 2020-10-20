@@ -110,7 +110,7 @@ set(libsrc
     src/parser_xml.c
     src/parser_json.c
     src/parser_lyb.c
-    src/printer.c
+    src/out.c
     src/printer_data.c
     src/printer_xml.c
     src/printer_json.c
@@ -121,11 +121,10 @@ set(libsrc
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_helpers.c
-    src/parser.c
+    src/in.c
     src/parser_yang.c
     src/parser_yin.c
     src/parser_stmt.c
-    src/printer.c
     src/printer_schema.c
     src/printer_yang.c
     src/printer_yin.c
@@ -151,12 +150,12 @@ set(headers
     src/context.h
     src/dict.h
     src/log.h
-    src/parser.h
+    src/in.h
     src/parser_data.h
     src/parser_schema.h
     src/plugins_exts.h
     src/plugins_types.h
-    src/printer.h
+    src/out.h
     src/printer_data.h
     src/printer_schema.h
     src/set.h

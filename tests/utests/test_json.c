@@ -26,7 +26,7 @@
 
 #include "json.h"
 #include "context.h"
-#include "parser_internal.h"
+#include "in_internal.h"
 
 void *testfunc = NULL;
 

@@ -29,7 +29,7 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
-#include "parser.h"
+#include "in.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "plugins_exts.h"

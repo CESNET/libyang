@@ -1,9 +1,9 @@
 /**
- * @file printer.c
+ * @file in.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Generic libyang printers functions.
+ * @brief libyang input functions.
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -14,7 +14,8 @@
 
 #define _GNU_SOURCE
 
-#include "parser.h"
+#include "in.h"
+#include "in_internal.h"
 
 #include <errno.h>
 #include <fcntl.h>

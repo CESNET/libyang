@@ -36,7 +36,7 @@
 #include "parser_data.h"
 #include "path.h"
 #include "plugins_types.h"
-#include "printer.h"
+#include "out.h"
 #include "printer_data.h"
 #include "schema_compile_node.h"
 #include "tree.h"

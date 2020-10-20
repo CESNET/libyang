@@ -33,6 +33,7 @@
 #include "dict.h"
 #include "diff.h"
 #include "hash_table.h"
+#include "in_internal.h"
 #include "log.h"
 #include "parser_data.h"
 #include "parser_internal.h"
@@ -264,7 +265,6 @@ lyd_is_default(const struct lyd_node *node)
 static LYD_FORMAT
 lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
 {
-
     if (!format && (in->type == LY_IN_FILEPATH)) {
         /* unknown format - try to detect it from filename's suffix */
         const char *path = in->method.fpath.filepath;
@@ -359,7 +359,7 @@ lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, ui
     }
 
 cleanup:
-    lydctx->free((struct lyd_ctx *)lydctx);
+    lydctx->free(lydctx);
     if (ret) {
         lyd_free_all(*tree);
         *tree = NULL;

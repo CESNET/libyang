@@ -25,8 +25,7 @@
 #include <string.h>
 
 #include "context.h"
-#include "parser.h"
-#include "parser_internal.h"
+#include "in_internal.h"
 #include "xml.h"
 
 LY_ERR lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri);

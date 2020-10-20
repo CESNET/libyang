@@ -18,6 +18,7 @@
 
 #include "common.h"
 #include "log.h"
+#include "out_internal.h"
 #include "parser_data.h"
 #include "plugins_types.h"
 #include "printer_data.h"

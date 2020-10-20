@@ -15,21 +15,11 @@
 #ifndef LY_PARSER_INTERNAL_H_
 #define LY_PARSER_INTERNAL_H_
 
-#include "parser.h"
 #include "plugins_types.h"
 #include "tree_schema_internal.h"
 
-/**
- * @brief Mask for checking LYD_PARSE_ options (@ref dataparseroptions)
- */
-#define LYD_PARSE_OPTS_MASK    0xFFFF0000
-
-/**
- * @brief Mask for checking LYD_VALIDATE_ options (@ref datavalidationoptions)
- */
-#define LYD_VALIDATE_OPTS_MASK 0x0000FFFF
-
 struct lyd_ctx;
+struct ly_in;
 
 /**
  * @brief Callback for lyd_ctx to free the structure
@@ -64,49 +54,9 @@ struct lyd_ctx {
 };
 
 /**
- * @brief Parser input structure specifying where the data are read.
- */
-struct ly_in {
-    LY_IN_TYPE type;        /**< type of the output to select the output method */
-    const char *current;    /**< Current position in the input data */
-    const char *func_start; /**< Input data position when the last parser function was executed */
-    const char *start;      /**< Input data start */
-    size_t length;          /**< mmap() length (if used) */
-    union {
-        int fd;             /**< file descriptor for LY_IN_FD type */
-        FILE *f;            /**< file structure for LY_IN_FILE and LY_IN_FILEPATH types */
-        struct {
-            int fd;         /**< file descriptor for LY_IN_FILEPATH */
-            char *filepath; /**< stored original filepath */
-        } fpath;            /**< filepath structure for LY_IN_FILEPATH */
-    } method;               /**< type-specific information about the output */
-};
-
-/**
  * @brief Common part of the lyd_ctx_free_t callbacks.
  */
 void lyd_ctx_free(struct lyd_ctx *);
-
-/**
- * @brief Read bytes from an input.
- *
- * @param[in] in Input structure.
- * @param[in] buf Destination buffer.
- * @param[in] count Number of bytes to read.
- * @return LY_SUCCESS on success,
- * @return LY_EDENIED on EOF.
- */
-LY_ERR ly_in_read(struct ly_in *in, void *buf, size_t count);
-
-/**
- * @brief Just skip bytes in an input.
- *
- * @param[in] in Input structure.
- * @param[in] count Number of bytes to skip.
- * @return LY_SUCCESS on success,
- * @return LY_EDENIED on EOF.
- */
-LY_ERR ly_in_skip(struct ly_in *in, size_t count);
 
 /**
  * @brief Parse submodule from YANG data.
@@ -154,6 +104,166 @@ LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, s
  */
 LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod);
+
+/**
+ * @brief Parse XML string as YANG data tree.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] in Input structure.
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
+ * @param[out] tree_p Parsed data tree. Note that NULL can be a valid result.
+ * @param[out] lydctx_p Data parser context to finish validation.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+
+/**
+ * @brief Parse XML string as YANG RPC/action invocation.
+ *
+ * Optional \<rpc\> envelope element is accepted if present. It is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and all
+ * its XML attributes are parsed. As a content of the envelope, an RPC data or \<action\> envelope element is expected. The \<action\> envelope element is
+ * also [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action data is expected as a content of this envelope.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full RPC/action tree.
+ * @param[out] op_p Optional pointer to the actual operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+
+/**
+ * @brief Parse XML string as YANG notification.
+ *
+ * Optional \<notification\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc5277#page-25)
+ * and parsed. Specifically, its namespace and the child \<eventTime\> element and its value.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full notification tree.
+ * @param[out] op_p Optional pointer to the actual notification. Useful mainly for nested notifications.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p);
+
+/**
+ * @brief Parse XML string as YANG RPC/action reply.
+ *
+ * Optional \<rpc-reply\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.2)
+ * and all its XML attributes parsed.
+ *
+ * @param[in] request Data tree of the RPC/action request.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+
+/**
+ * @brief Parse JSON string as YANG data tree.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] in Input structure.
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
+ * @param[out] tree_p Parsed data tree. Note that NULL can be a valid result.
+ * @param[out] lydctx_p Data parser context to finish validation.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+
+/**
+ * @brief Parse JSON string as YANG notification.
+ *
+ * Optional top-level "notification" envelope object, if present, is [checked](https://tools.ietf.org/html/rfc5277#page-25)
+ * and parsed. Specifically the child "eventTime" member and its value.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full notification tree.
+ * @param[out] ntf_p Optional pointer to the actual notification. Useful mainly for nested notifications.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p);
+
+/**
+ * @brief Parse JSON string as YANG RPC/action invocation.
+ *
+ * Optional top-level "rpc" envelope object, if present is is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and the parser
+ * goes inside for the content, which is an RPC data or "action" envelope objects. The "action" envelope object is
+ * also [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action data is expected as a content of this envelope.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full RPC/action tree.
+ * @param[out] op_p Optional pointer to the actual operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+
+/**
+ * @brief Parse JSON string as YANG RPC/action reply.
+ *
+ * Optional "rpc-reply" envelope object, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.2).
+ *
+ * @param[in] request Data tree of the RPC/action request.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+
+/**
+ * @brief Parse binary data as YANG data tree.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] in Input structure.
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
+ * @param[out] tree_p Parsed data tree. Note that NULL can be a valid result.
+ * @param[out] lydctx_p Data parser context to finish validation.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+
+/**
+ * @brief Parse binary data as YANG RPC/action invocation.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full RPC/action tree.
+ * @param[out] op_p Optional pointer to the actual operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+
+/**
+ * @brief Parse binary data as YANG notification.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full notification tree.
+ * @param[out] ntf_p Optional pointer to the actual notification. Useful mainly for nested notifications.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p);
+
+/**
+ * @brief Parse binary data as YANG RPC/action reply.
+ *
+ * @param[in] request Data tree of the RPC/action request.
+ * @param[in] in Input structure.
+ * @param[out] tree_p Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
 
 /**
  * @brief Check that a data node representing the @p snode is suitable based on options.

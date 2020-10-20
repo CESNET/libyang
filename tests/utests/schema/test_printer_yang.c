@@ -22,7 +22,7 @@
 
 #include "common.h"
 #include "context.h"
-#include "printer.h"
+#include "out.h"
 #include "printer_schema.h"
 #include "tree_schema.h"
 

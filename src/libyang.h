@@ -24,11 +24,11 @@ extern "C" {
 #include "context.h"
 #include "dict.h"
 #include "log.h"
-#include "parser.h"
+#include "in.h"
 #include "parser_data.h"
 #include "parser_schema.h"
 #include "plugins_types.h"
-#include "printer.h"
+#include "out.h"
 #include "printer_data.h"
 #include "printer_schema.h"
 #include "set.h"
@@ -91,8 +91,8 @@ extern "C" {
  * - @subpage howtoLogger
  * - @subpage howtoThreads
  * - @subpage howtoContext
- * - @subpage howtoParsers
- * - @subpage howtoPrinters
+ * - @subpage howtoInput
+ * - @subpage howtoOutput
  * - @subpage howtoSchema
  * - @subpage howtoData
  * - @subpage howtoXPath

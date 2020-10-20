@@ -22,14 +22,85 @@
 #include <stdbool.h>
 
 #include "common.h"
+#include "in.h"
 #include "parser_internal.h"
-#include "parser_yin.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
 #include "xpath.h"
 
+/* copied from parser_yin.c */
+enum yin_argument {
+    YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
+    YIN_ARG_NAME,          /**< argument name */
+    YIN_ARG_TARGET_NODE,   /**< argument target-node */
+    YIN_ARG_MODULE,        /**< argument module */
+    YIN_ARG_VALUE,         /**< argument value */
+    YIN_ARG_TEXT,          /**< argument text */
+    YIN_ARG_CONDITION,     /**< argument condition */
+    YIN_ARG_URI,           /**< argument uri */
+    YIN_ARG_DATE,          /**< argument data */
+    YIN_ARG_TAG,           /**< argument tag */
+    YIN_ARG_NONE           /**< empty (special value) */
+};
+
+struct yin_subelement {
+    enum ly_stmt type;      /**< type of keyword */
+    void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
+    uint16_t flags;         /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST, YIN_SUBELEM_VER2, and YIN_SUBELEM_DEFAULT_TEXT */
+};
+
+struct import_meta {
+    const char *prefix;             /**< module prefix. */
+    struct lysp_import **imports;   /**< imports to add to. */
+};
+
+struct yin_argument_meta {
+    uint16_t *flags;        /**< Argument flags */
+    const char **argument;  /**< Argument value */
+};
+
+struct tree_node_meta {
+    struct lysp_node *parent;       /**< parent node */
+    struct lysp_node **nodes;    /**< linked list of siblings */
+};
+
+struct include_meta {
+    const char *name;               /**< Module/submodule name. */
+    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to. */
+};
+
+struct inout_meta {
+    struct lysp_node *parent;          /**< Parent node. */
+    struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
+};
+
+struct minmax_dev_meta {
+    uint32_t *lim;                      /**< min/max value to write to. */
+    uint16_t *flags;                    /**< min/max flags to write to. */
+    struct lysp_ext_instance **exts;    /**< extension instances to add to. */
+};
+
+#define YIN_SUBELEM_MANDATORY   0x01
+#define YIN_SUBELEM_UNIQUE      0x02
+#define YIN_SUBELEM_FIRST       0x04
+#define YIN_SUBELEM_VER2        0x08
+
+#define YIN_SUBELEM_PARSED      0x80
+
 /* prototypes of static functions */
+enum yin_argument yin_match_argument_name(const char *name, size_t len);
+LY_ERR yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+        enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
+LY_ERR yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type);
+enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
+        const char *prefix, size_t prefix_len, enum ly_stmt parrent);
+LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_COUNT_TYPE subelem_index,
+        struct lysp_ext_instance **exts);
+LY_ERR yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);
+LY_ERR yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod);
+
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 void lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);

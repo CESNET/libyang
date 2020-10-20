@@ -24,7 +24,7 @@
 #include "log.h"
 #include "parser_data.h"
 #include "plugins_types.h"
-#include "printer.h"
+#include "out_internal.h"
 #include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"

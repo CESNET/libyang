@@ -26,7 +26,7 @@
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
-#include "parser.h"
+#include "in_internal.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "set.h"

@@ -31,7 +31,7 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
-#include "parser.h"
+#include "in_internal.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "schema_compile.h"

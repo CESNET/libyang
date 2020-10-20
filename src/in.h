@@ -1,7 +1,7 @@
 /**
- * @file parser.h
+ * @file in.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Generic libyang parsers structures and functions
+ * @brief libyang input structures and functions
  *
  * Copyright (c) 2020 CESNET, z.s.p.o.
  *
@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LY_PARSER_H_
-#define LY_PARSER_H_
+#ifndef LY_IN_H_
+#define LY_IN_H_
 
 #include <stdio.h>
 
@@ -24,9 +24,9 @@ extern "C" {
 #endif
 
 /**
- * @page howtoParsers Input Processing
+ * @page howtoInput Input Processing
  *
- * libyang provides a mechanism to generalize work with the inputs (and [outputs](@ref howtoPrinters)) of
+ * libyang provides a mechanism to generalize work with the inputs (and [outputs](@ref howtoOutput)) of
  * the different types. The ::ly_in handler can be created providing necessary information connected with the specific
  * input type and then used throughout the parser functions processing the input data. Using a generic input handler avoids
  * need to have a set of functions for each parser functionality and results in simpler API.
@@ -221,4 +221,4 @@ void ly_in_free(struct ly_in *in, ly_bool destroy);
 }
 #endif
 
-#endif /* LY_PARSER_H_ */
+#endif /* LY_IN_H_ */
