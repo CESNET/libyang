@@ -2496,6 +2496,7 @@ lyp_check_date(struct ly_ctx *ctx, const char *date)
 {
     int i;
     struct tm tm, tm_;
+    time_t t;
     char *r;
 
     assert(date);
@@ -2511,14 +2512,15 @@ lyp_check_date(struct ly_ctx *ctx, const char *date)
         }
     }
 
+    /* pre-fill tm with valid data */
+    t = time(NULL);
+    localtime_r(&t, &tm);
+
     /* check content, e.g. 2018-02-31 */
-    memset(&tm, 0, sizeof tm);
     r = strptime(date, "%Y-%m-%d", &tm);
     if (!r || r != &date[LY_REV_SIZE - 1]) {
         goto error;
     }
-    /* set some arbitrary non-0 value in case DST changes, it could move the day otherwise */
-    tm.tm_hour = 12;
 
     memcpy(&tm_, &tm, sizeof tm);
     mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
