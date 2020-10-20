@@ -289,7 +289,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @return LY_EINCOMPLETE for unresolved when,
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
-LY_ERR lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+LY_ERR lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options);
 
 
@@ -305,7 +305,7 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PRE
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as ::lyxp_eval()).
  */
-LY_ERR lyxp_atomize(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+LY_ERR lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
 
 /* used only internally, maps with @ref findxpathoptions */

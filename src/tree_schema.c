@@ -34,6 +34,7 @@
 #include "parser.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
+#include "path.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
 #include "set.h"
@@ -273,10 +274,82 @@ cleanup:
 }
 
 API LY_ERR
+lys_find_path_atoms(const struct ly_path *path, struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    LY_CHECK_ARG_RET(NULL, path, set, LY_EINVAL);
+
+    /* allocate return set */
+    LY_CHECK_RET(ly_set_new(set));
+
+    LY_ARRAY_FOR(path, u) {
+        /* add nodes from the path */
+        LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].node, 0, NULL), cleanup);
+        if (path[u].pred_type == LY_PATH_PREDTYPE_LIST) {
+            LY_ARRAY_FOR(path[u].predicates, v) {
+                /* add all the keys in a predicate */
+                LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].predicates[v].key, 0, NULL), cleanup);
+            }
+        }
+    }
+
+cleanup:
+    if (ret) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
+    return ret;
+}
+
+API LY_ERR
+lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod, const struct lyxp_expr *expr,
+        const struct lysc_prefix *prefixes, uint32_t options, struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_set xp_set = {0};
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, cur_mod, expr, prefixes, set, LY_EINVAL);
+    if (!(options & LYXP_SCNODE_ALL)) {
+        options = LYXP_SCNODE;
+    }
+
+    /* atomize expression */
+    ret = lyxp_atomize(expr, cur_mod, LY_PREF_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, &xp_set, options);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* allocate return set */
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* transform into ly_set */
+    (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
+    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(cur_mod->ctx); ret = LY_EMEM, cleanup);
+    (*set)->size = xp_set.used;
+
+    for (i = 0; i < xp_set.used; ++i) {
+        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == 1)) {
+            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, 1, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    }
+
+cleanup:
+    lyxp_set_free_content(&xp_set);
+    if (ret) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
+    return ret;
+}
+
+API LY_ERR
 lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyxp_set xp_set;
+    struct lyxp_set xp_set = {0};
     struct lyxp_expr *exp = NULL;
     uint32_t i;
 
@@ -284,8 +357,6 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
     if (!(options & LYXP_SCNODE_ALL)) {
         options = LYXP_SCNODE;
     }
-
-    memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
     ret = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1, &exp);
@@ -314,6 +385,10 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 cleanup:
     lyxp_set_free_content(&xp_set);
     lyxp_expr_free(ctx_node->module->ctx, exp);
+     if (ret) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
     return ret;
 }
 

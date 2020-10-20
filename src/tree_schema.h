@@ -1910,22 +1910,47 @@ LY_ERR lysc_feature_value(const struct lysc_feature *feature);
  */
 
 /**
- * @brief Get all the schema nodes (atoms) that are required for \p xpath to be evaluated.
+ * @brief Get all the schema nodes that are required for @p xpath to be evaluated (atoms).
  *
  * @param[in] ctx_node XPath schema context node.
- * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_PREF_JSON prefix format is expected.
  * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found atoms (schema nodes).
  * @return LY_SUCCESS on success, @p set is returned.
- * @return LY_ERR value if an error occurred.
+ * @return LY_ERR value on error.
  */
 LY_ERR lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
 
 /**
- * @brief Evaluate an \p xpath expression on schema nodes.
+ * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
+ *
+ * @param[in] path Compiled path to use.
+ * @param[out] set Set of found atoms (schema nodes).
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lys_find_path_atoms(const struct ly_path *path, struct ly_set **set);
+
+/**
+ * @brief Get all the schema nodes that are required for @p expr to be evaluated (atoms).
  *
  * @param[in] ctx_node XPath schema context node.
- * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
+ * @param[in] cur_mod Current module for the expression (where it was "instantiated").
+ * @param[in] expr Parsed expression to use.
+ * @param[in] prefixes Sized array of compiled prefixes.
+ * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
+ * @param[out] set Set of found atoms (schema nodes).
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod,
+        const struct lyxp_expr *expr, const struct lysc_prefix *prefixes, uint32_t options, struct ly_set **set);
+
+/**
+ * @brief Evaluate an @p xpath expression on schema nodes.
+ *
+ * @param[in] ctx_node XPath schema context node.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_PREF_JSON prefix format is expected.
  * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found schema nodes.
  * @return LY_SUCCESS on success, @p set is returned.
