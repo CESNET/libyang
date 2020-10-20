@@ -45,7 +45,8 @@
 #include "xml.h"
 
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx);
-static LY_ERR eval_expr_select(struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype, struct lyxp_set *set, uint32_t options);
+static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype,
+        struct lyxp_set *set, uint32_t options);
 
 /**
  * @brief Print the type of an XPath \p set.
@@ -130,7 +131,7 @@ lyxp_print_token(enum lyxp_token tok)
  * @param[in] exp Expression to use.
  */
 static void
-print_expr_struct_debug(struct lyxp_expr *exp)
+print_expr_struct_debug(const struct lyxp_expr *exp)
 {
     uint16_t i, j;
     char tmp[128];
@@ -1871,7 +1872,7 @@ lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t 
 
 /* just like lyxp_check_token() but tests for 2 tokens */
 static LY_ERR
-exp_check_token2(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t tok_idx, enum lyxp_token want_tok1,
+exp_check_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t tok_idx, enum lyxp_token want_tok1,
         enum lyxp_token want_tok2)
 {
     if (exp->used == tok_idx) {
@@ -3303,7 +3304,8 @@ warn_operands(struct ly_ctx *ctx, struct lyxp_set *set1, struct lyxp_set *set2, 
  * @param[in] last_equal_exp Index of the end of the equality expression in @p exp.
  */
 static void
-warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_exp, uint16_t equal_exp, uint16_t last_equal_exp)
+warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_exp, uint16_t equal_exp,
+        uint16_t last_equal_exp)
 {
     struct lysc_node *scnode;
     struct lysc_type *type;
@@ -6726,7 +6728,7 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options, ly_bool parent_pos_pred)
+eval_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options, ly_bool parent_pos_pred)
 {
     LY_ERR rc;
     uint16_t i, orig_exp;
@@ -6872,7 +6874,7 @@ only_parse:
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  */
 static void
-eval_literal(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set)
+eval_literal(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set)
 {
     if (set) {
         if (exp->tok_len[*tok_idx] == 2) {
@@ -6902,7 +6904,7 @@ eval_literal(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set)
  * @return LY_ERR on any error.
  */
 static LY_ERR
-eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, const struct lysc_node *ctx_node,
+eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok_idx, const struct lysc_node *ctx_node,
         const struct lys_module *cur_mod, const struct lysc_node *cur_node, LY_PREFIX_FORMAT format, void *prefix_data,
         struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
@@ -7077,7 +7079,7 @@ continue_search:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc,
+eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc,
         struct lyxp_set *set, uint32_t options)
 {
     char *path;
@@ -7231,7 +7233,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc,
+eval_node_type_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc,
         struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
@@ -7296,7 +7298,8 @@ eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool 
  * @return LY_ERR (YL_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_relative_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool all_desc, struct lyxp_set *set, uint32_t options)
+eval_relative_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool all_desc, struct lyxp_set *set,
+        uint32_t options)
 {
     ly_bool attr_axis;
     LY_ERR rc;
@@ -7386,7 +7389,7 @@ step:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
+eval_absolute_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     ly_bool all_desc;
 
@@ -7444,7 +7447,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyx
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_function_call(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
+eval_function_call(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
 
@@ -7664,7 +7667,7 @@ cleanup:
  * @return LY_ERR
  */
 static LY_ERR
-eval_number(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set)
+eval_number(struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set)
 {
     long double num;
     char *endptr;
@@ -7709,7 +7712,7 @@ eval_number(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, struct
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_path_expr(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
+eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     ly_bool all_desc, parent_pos_pred;
     LY_ERR rc;
@@ -7843,7 +7846,7 @@ predicate:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_union_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_union_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxp_set orig_set, set2;
@@ -7904,7 +7907,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_unary_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_unary_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     uint16_t this_op, i;
@@ -7952,7 +7955,8 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struc
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_multiplicative_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set,
+        uint32_t options)
 {
     LY_ERR rc;
     uint16_t this_op;
@@ -8020,7 +8024,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_additive_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_additive_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     uint16_t this_op;
@@ -8090,7 +8094,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_relational_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_relational_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     uint16_t this_op;
@@ -8157,7 +8161,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_equality_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_equality_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     uint16_t this_op;
@@ -8225,7 +8229,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_and_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_and_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     struct lyxp_set orig_set, set2;
@@ -8295,7 +8299,7 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_or_expr(struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
+eval_or_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     struct lyxp_set orig_set, set2;
@@ -8365,7 +8369,8 @@ cleanup:
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static LY_ERR
-eval_expr_select(struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype, struct lyxp_set *set, uint32_t options)
+eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype, struct lyxp_set *set,
+        uint32_t options)
 {
     uint16_t i, count;
     enum lyxp_expr_type next_etype;
@@ -8466,7 +8471,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 }
 
 LY_ERR
-lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
@@ -8732,7 +8737,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target)
 }
 
 LY_ERR
-lyxp_atomize(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
