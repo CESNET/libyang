@@ -1373,6 +1373,53 @@ lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, const char 
 }
 
 /**
+ * @brief Check parsed expression for any prefixes of unimplemented modules.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] expr Parsed expression.
+ * @param[in] format Prefix format.
+ * @param[in] prefix_data Format-specific data (see ::ly_resolve_prefix()).
+ * @param[out] mod_p Optional module that is not implemented.
+ * @return Whether all the found modules are implemented or at least one is not.
+ */
+static ly_bool
+lys_compile_expr_target_is_implemented(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
+        void *prefix_data, const struct lys_module **mod_p)
+{
+    uint32_t i;
+    const char *ptr, *start;
+    const struct lys_module *mod;
+
+    for (i = 0; i < expr->used; ++i) {
+        if ((expr->tokens[i] != LYXP_TOKEN_NAMETEST) && (expr->tokens[i] != LYXP_TOKEN_LITERAL)) {
+            /* token cannot have a prefix */
+            continue;
+        }
+
+        start = expr->expr + expr->tok_pos[i];
+        if (!(ptr = ly_strnchr(start, ':', expr->tok_len[i]))) {
+            /* token without a prefix */
+            continue;
+        }
+
+        if (!(mod = ly_resolve_prefix(ctx, start, ptr - start, format, prefix_data))) {
+            /* unknown prefix, do not care right now */
+            continue;
+        }
+
+        if (!mod->implemented) {
+            /* unimplemented module found */
+            if (mod_p) {
+                *mod_p = mod;
+            }
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/**
  * @brief Check when/must expressions of a node on a complete compiled schema tree.
  *
  * @param[in] ctx Compile context.
@@ -1390,6 +1437,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     struct lysc_must *musts = NULL;
     LY_ERR ret = LY_SUCCESS;
     const struct lysc_node *op;
+    const struct lys_module *mod;
 
     memset(&tmp_set, 0, sizeof tmp_set);
     opts = LYXP_SCNODE_SCHEMA;
@@ -1444,8 +1492,16 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         break;
     }
 
-    /* check "when" */
     LY_ARRAY_FOR(when, u) {
+        /* first check whether all the referenced modules are implemented */
+        if (!lys_compile_expr_target_is_implemented(ctx->ctx, when[u]->cond, LY_PREF_SCHEMA_RESOLVED,
+                when[u]->prefixes, &mod)) {
+            LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
+                    when[u]->cond->expr, mod->name);
+            continue;
+        }
+
+        /* check "when" */
         ret = lyxp_atomize(when[u]->cond, node->module, LY_PREF_SCHEMA_RESOLVED, when[u]->prefixes, when[u]->context,
                 &tmp_set, opts);
         if (ret != LY_SUCCESS) {
@@ -1482,8 +1538,16 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     }
 
 check_musts:
-    /* check "must" */
     LY_ARRAY_FOR(musts, u) {
+        /* first check whether all the referenced modules are implemented */
+        if (!lys_compile_expr_target_is_implemented(ctx->ctx, musts[u].cond, LY_PREF_SCHEMA_RESOLVED,
+                musts[u].prefixes, &mod)) {
+            LOGWRN(ctx->ctx, "Must condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
+                    musts[u].cond->expr, mod->name);
+            continue;
+        }
+
+        /* check "must" */
         ret = lyxp_atomize(musts[u].cond, node->module, LY_PREF_SCHEMA_RESOLVED, musts[u].prefixes, node, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
