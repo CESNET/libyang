@@ -1,9 +1,9 @@
 /**
- * @file printer.h
+ * @file out.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Generic libyang printer structures and functions
+ * @brief libyang output structures and functions
  *
- * Copyright (c) 2015-2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LY_PRINTER_H_
-#define LY_PRINTER_H_
+#ifndef LY_OUT_H_
+#define LY_OUT_H_
 
 #include <stdio.h>
 #include <unistd.h>
@@ -25,9 +25,9 @@ extern "C" {
 #endif
 
 /**
- * @page howtoPrinters Output Processing
+ * @page howtoOutput Output Processing
  *
- * libyang provides a mechanism to generalize work with the outputs (and [inputs](@ref howtoParsers)) of
+ * libyang provides a mechanism to generalize work with the outputs (and [inputs](@ref howtoInput)) of
  * the different types. The ::ly_out handler can be created providing necessary information connected with the specific
  * output type and then used throughout the printers functions. The API allows to combine output from libyang (data or schema)
  * printers and output directly provided by the caller (via ::ly_print() or ::ly_write()).
@@ -301,4 +301,4 @@ void ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), ly_b
 }
 #endif
 
-#endif /* LY_PRINTER_H_ */
+#endif /* LY_OUT_H_ */

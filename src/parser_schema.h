@@ -63,7 +63,7 @@ struct lys_module;
  * are resolved, groupings are instantiated, types are resolved (and compiled by joining all the relevant restrictions
  * when derived from another types) and many other syntactical checks are done.
  *
- * There is the main parsing function ::lys_parse() wirking with the libyang [input handler](@ref howtoParsers). However,
+ * There is the main parsing function ::lys_parse() wirking with the libyang [input handler](@ref howtoInput). However,
  * to simplify some of the usecases, it is also possible to use other functions accepting input data from various sources.
  *
  * Functions List

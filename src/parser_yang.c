@@ -24,6 +24,7 @@
 #include "common.h"
 #include "context.h"
 #include "dict.h"
+#include "in_internal.h"
 #include "log.h"
 #include "parser_schema.h"
 #include "path.h"

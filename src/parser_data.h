@@ -154,6 +154,9 @@ struct ly_in;
 #define LYD_PARSE_LYB_MOD_UPDATE  0x200000  /**< Only for LYB format, allow parsing data printed using a specific module
                                                  revision to be loaded even with a module with the same name but newer
                                                  revision. */
+
+#define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
+
 /** @} dataparseroptions */
 
 /**
@@ -179,8 +182,10 @@ struct ly_in;
  *
  * @{
  */
-#define LYD_VALIDATE_NO_STATE     0x0001    /**< Consider state data not allowed and raise an error if they are found. */
-#define LYD_VALIDATE_PRESENT      0x0002    /**< Validate only modules whose data actually exist. */
+#define LYD_VALIDATE_NO_STATE   0x0001      /**< Consider state data not allowed and raise an error if they are found. */
+#define LYD_VALIDATE_PRESENT    0x0002      /**< Validate only modules whose data actually exist. */
+
+#define LYD_VALIDATE_OPTS_MASK  0x0000FFFF  /**< Mask for all the LYD_VALIDATE_* options. */
 
 /** @} datavalidationoptions */
 
@@ -275,7 +280,7 @@ LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMA
  * @brief Parse (and validate) data from the input handler as a YANG RPC/action invocation.
  *
  * In case o LYD_XML @p format, the \<rpc\> envelope element is accepted if present. It is [checked](https://tools.ietf.org/html/rfc6241#section-4.1), an opaq
- * data node (lyd_node_opaq) is created and all its XML attributes are parsed and inserted into the node. As a content of the enveloper, an RPC data or
+ * data node (lyd_node_opaq) is created and all its XML attributes are parsed and inserted into the node. As a content of the envelope, an RPC data or
  * \<action\> envelope element is expected. The \<action\> envelope element is also [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and parsed as
  * the \<rpc\> envelope. Inside the \<action\> envelope, only an action data are expected.
  *

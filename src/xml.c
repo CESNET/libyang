@@ -27,8 +27,8 @@
 #include "common.h"
 #include "compat.h"
 #include "dict.h"
-#include "parser_internal.h"
-#include "printer_internal.h"
+#include "in_internal.h"
+#include "out_internal.h"
 #include "tree.h"
 #include "tree_data.h"
 

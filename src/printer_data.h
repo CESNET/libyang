@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "log.h"
-#include "printer.h"
+#include "out.h"
 #include "tree_data.h"
 
 #ifdef __cplusplus
@@ -49,7 +49,7 @@ struct ly_out;
  *
  * Besides the legacy functions from libyang 1.x (::lyd_print_clb(), ::lyd_print_fd(), ::lyd_print_file(), ::lyd_print_mem()
  * and ::lyd_print_path()) printing data into the specified output, there are also new functions using
- * [output handler](@ref howtoPrinters) introduced in libyang 2.0. In contrast to
+ * [output handler](@ref howtoOutput) introduced in libyang 2.0. In contrast to
  * [schema printers](@ref howtoSchemaPrinters), there is no limit of the functionality and the functions can be used
  * interchangeable. The only think to note is that the new functions ::lyd_print_all() and ::lyd_print_tree() does not
  * accept ::LYD_PRINT_WITHSIBLINGS [printer option](@ref dataprinterflags)) since this flag differentiate the functions

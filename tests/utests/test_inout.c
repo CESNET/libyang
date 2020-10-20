@@ -28,8 +28,8 @@
 
 #include "common.h"
 #include "log.h"
-#include "printer.h"
-#include "parser.h"
+#include "out.h"
+#include "in.h"
 
 
 #define BUFSIZE 1024

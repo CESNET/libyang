@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "log.h"
-#include "printer.h"
+#include "out.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,7 +63,7 @@ struct lysp_submodule;
  * ::lys_print_fd(), ::lys_print_file() and ::lys_print_mem()) to print the complete module into the specified output. But note,
  * that these functions are limited to print only the complete module.
  *
- * The full functionality of the schema printers is available via functions using [output handler](@ref howtoPrinters). Besides
+ * The full functionality of the schema printers is available via functions using [output handler](@ref howtoOutput). Besides
  * the ::lys_print_module() function to print the complete module, there are functions to print a submodule
  * (::lys_print_submodule()) or a subtree (::lys_print_node()). Note that these functions might not support all the output
  * formats mentioned above.

@@ -24,7 +24,7 @@
 #include "compat.h"
 #include "log.h"
 #include "plugins_types.h"
-#include "printer.h"
+#include "out_internal.h"
 #include "printer_internal.h"
 #include "printer_schema.h"
 #include "tree.h"

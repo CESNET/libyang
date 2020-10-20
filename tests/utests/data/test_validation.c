@@ -21,9 +21,9 @@
 #include <string.h>
 
 #include "context.h"
-#include "parser.h"
+#include "in.h"
 #include "parser_data.h"
-#include "printer.h"
+#include "out.h"
 #include "printer_data.h"
 #include "tests/config.h"
 #include "tree_schema.h"

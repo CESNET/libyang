@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "in.h"
 #include "parser_internal.h"
 #include "path.h"
 #include "plugins_types.h"

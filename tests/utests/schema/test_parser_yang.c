@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "in_internal.h"
 #include "parser_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"

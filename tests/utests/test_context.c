@@ -22,7 +22,7 @@
 
 #include "common.h"
 #include "context.h"
-#include "parser.h"
+#include "in.h"
 #include "tests/config.h"
 #include "tree_schema_internal.h"
 #include "schema_compile.h"

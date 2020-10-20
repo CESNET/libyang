@@ -19,6 +19,7 @@
 
 #include "common.h"
 #include "context.h"
+#include "in_internal.h"
 #include "log.h"
 #include "parser_data.h"
 #include "parser_internal.h"
