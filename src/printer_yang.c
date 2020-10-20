@@ -1678,26 +1678,28 @@ yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
         ypr_substmt(ctx, LYEXT_SUBSTMT_UNIQUE, u, list->uniques[u].str, list->exts);
     }
 
-    ypr_config(ctx, node->flags, node->exts, NULL);
+    ypr_config(ctx, node->flags, node->exts, &flag);
 
     if (list->flags & LYS_SET_MIN) {
-        ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN, 0, list->exts, list->min, NULL);
+        ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN, 0, list->exts, list->min, &flag);
     }
     if (list->flags & LYS_SET_MAX) {
         if (list->max) {
-            ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX, 0, list->exts, list->max, NULL);
+            ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX, 0, list->exts, list->max, &flag);
         } else {
+            ypr_open(ctx->out, &flag);
             ypr_substmt(ctx, LYEXT_SUBSTMT_MAX, 0, "unbounded", list->exts);
         }
     }
 
     if (list->flags & LYS_ORDBY_MASK) {
+        ypr_open(ctx->out, &flag);
         ypr_substmt(ctx, LYEXT_SUBSTMT_ORDEREDBY, 0, (list->flags & LYS_ORDBY_USER) ? "user" : "system", list->exts);
     }
 
-    ypr_status(ctx, node->flags, node->exts, NULL);
-    ypr_description(ctx, node->dsc, node->exts, NULL);
-    ypr_reference(ctx, node->ref, node->exts, NULL);
+    ypr_status(ctx, node->flags, node->exts, &flag);
+    ypr_description(ctx, node->dsc, node->exts, &flag);
+    ypr_reference(ctx, node->ref, node->exts, &flag);
 
     LY_ARRAY_FOR(list->typedefs, u) {
         ypr_open(ctx->out, &flag);
@@ -1732,17 +1734,15 @@ static void
 yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
 {
     LY_ARRAY_COUNT_TYPE u, v;
-    ly_bool flag = 0;
     struct lysc_node *child;
     struct lysc_node_list *list = (struct lysc_node_list *)node;
 
-    yprc_node_common1(ctx, node, &flag);
+    yprc_node_common1(ctx, node, NULL);
 
     LY_ARRAY_FOR(list->musts, u) {
         yprc_must(ctx, &list->musts[u], NULL);
     }
     if (!(list->flags & LYS_KEYLESS)) {
-        ypr_open(ctx->out, &flag);
         ly_print_(ctx->out, "%*skey \"", INDENT);
         for (struct lysc_node *key = list->child; key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY); key = key->next) {
             ly_print_(ctx->out, "%s%s", u > 0 ? ", " : "", key->name);
@@ -1750,7 +1750,6 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
         ly_print_(ctx->out, "\";\n");
     }
     LY_ARRAY_FOR(list->uniques, u) {
-        ypr_open(ctx->out, &flag);
         ly_print_(ctx->out, "%*sunique \"", INDENT);
         LY_ARRAY_FOR(list->uniques[u], v) {
             ly_print_(ctx->out, "%s%s", v > 0 ? ", " : "", list->uniques[u][v]->name);
@@ -1775,23 +1774,20 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
 
     if (!(ctx->options & LYS_PRINT_NO_SUBSTMT)) {
         LY_LIST_FOR(list->child, child) {
-            ypr_open(ctx->out, &flag);
             yprc_node(ctx, child);
         }
 
         LY_ARRAY_FOR(list->actions, u) {
-            ypr_open(ctx->out, &flag);
             yprc_action(ctx, &list->actions[u]);
         }
 
         LY_ARRAY_FOR(list->notifs, u) {
-            ypr_open(ctx->out, &flag);
             yprc_notification(ctx, &list->notifs[u]);
         }
     }
 
     LEVEL--;
-    ypr_close(ctx, flag);
+    ypr_close(ctx, 1);
 }
 
 static void
