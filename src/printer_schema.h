@@ -30,7 +30,6 @@ struct lys_module;
 struct lysc_node;
 struct lysp_submodule;
 
-
 /**
  * @page howtoSchemaPrinters Module Printers
  *

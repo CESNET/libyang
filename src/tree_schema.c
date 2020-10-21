@@ -385,7 +385,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 cleanup:
     lyxp_set_free_content(&xp_set);
     lyxp_expr_free(ctx_node->module->ctx, exp);
-     if (ret) {
+    if (ret) {
         ly_set_free(*set, NULL);
         *set = NULL;
     }

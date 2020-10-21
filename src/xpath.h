@@ -292,7 +292,6 @@ const char *lyxp_print_token(enum lyxp_token tok);
 LY_ERR lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options);
 
-
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
  *
