@@ -1237,6 +1237,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             ret = lyd_value_store(ctx, &pred->value, ((struct lysc_node_leaflist *)schema)->type, value, strlen(value),
                     NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, schema, NULL, LY_VLOG_LYSC, schema);
             LY_CHECK_GOTO(ret, cleanup);
+            ++((struct lysc_type *)pred->value.realtype)->refcount;
         } /* else we have opaq flag and the value is not valid, leavne no predicate and then create an opaque node */
     }
 

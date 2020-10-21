@@ -509,6 +509,9 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                     LYD_HINT_DATA, key, NULL, LY_VLOG_LYSC, key));
             ++(*tok_idx);
 
+            /* "allocate" the type to avoid problems when freeing the value after the type was freed */
+            ++((struct lysc_type *)p->value.realtype)->refcount;
+
             /* ']' */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
             ++(*tok_idx);
@@ -552,6 +555,9 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                 expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
                 LYD_HINT_DATA, ctx_node, NULL, LY_VLOG_LYSC, ctx_node));
         ++(*tok_idx);
+
+        /* "allocate" the type to avoid problems when freeing the value after the type was freed */
+        ++((struct lysc_type *)p->value.realtype)->refcount;
 
         /* ']' */
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
@@ -973,6 +979,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
                     /* key-predicate or leaf-list-predicate */
                     (*dup)[u].predicates[v].key = pred->key;
                     pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].predicates[v].value);
+                    ++((struct lysc_type *)pred->value.realtype)->refcount;
                     break;
                 case LY_PATH_PREDTYPE_NONE:
                     break;
@@ -1001,7 +1008,10 @@ ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_ty
             break;
         case LY_PATH_PREDTYPE_LIST:
         case LY_PATH_PREDTYPE_LEAFLIST:
-            predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
+            if (predicates[u].value.realtype) {
+                predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
+                lysc_type_free((struct ly_ctx *)ctx, (struct lysc_type *)predicates[u].value.realtype);
+            }
             break;
         }
     }
