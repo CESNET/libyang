@@ -525,7 +525,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            ly_path_predicates_free(ctx, LY_PATH_PREDTYPE_LIST, NULL, *predicates);
+            ly_path_predicates_free(ctx, LY_PATH_PREDTYPE_LIST, *predicates);
             *predicates = NULL;
             return LY_EVALID;
         }
@@ -985,8 +985,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
 }
 
 void
-ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, const struct lysc_node *llist,
-        struct ly_path_predicate *predicates)
+ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, struct ly_path_predicate *predicates)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -1001,10 +1000,8 @@ ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_ty
             /* nothing to free */
             break;
         case LY_PATH_PREDTYPE_LIST:
-            ((struct lysc_node_leaf *)predicates[u].key)->type->plugin->free(ctx, &predicates[u].value);
-            break;
         case LY_PATH_PREDTYPE_LEAFLIST:
-            ((struct lysc_node_leaflist *)llist)->type->plugin->free(ctx, &predicates[u].value);
+            predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
             break;
         }
     }
@@ -1017,7 +1014,7 @@ ly_path_free(const struct ly_ctx *ctx, struct ly_path *path)
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(path, u) {
-        ly_path_predicates_free(ctx, path[u].pred_type, path[u].node, path[u].predicates);
+        ly_path_predicates_free(ctx, path[u].pred_type, path[u].predicates);
     }
     LY_ARRAY_FREE(path);
 }

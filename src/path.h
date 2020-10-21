@@ -224,10 +224,9 @@ LY_ERR ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct 
  *
  * @param[in] ctx libyang context.
  * @param[in] pred_type Predicate type.
- * @param[in] llist Leaf-list in case of leaf-list predicate.
  * @param[in] predicates Predicates ([sized array](@ref sizedarrays)) to free.
  */
-void ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, const struct lysc_node *llist,
+void ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type,
         struct ly_path_predicate *predicates);
 
 /**

@@ -638,7 +638,7 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
 
 cleanup:
     lyxp_expr_free(schema->module->ctx, expr);
-    ly_path_predicates_free(schema->module->ctx, pred_type, NULL, predicates);
+    ly_path_predicates_free(schema->module->ctx, pred_type, predicates);
     return ret;
 }
 
