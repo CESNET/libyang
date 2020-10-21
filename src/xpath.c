@@ -7212,7 +7212,7 @@ moveto:
 cleanup:
     if (set) {
         lydict_remove(set->ctx, ncname_dict);
-        ly_path_predicates_free(set->ctx, pred_type, scnode, predicates);
+        ly_path_predicates_free(set->ctx, pred_type, predicates);
     }
     return rc;
 }
