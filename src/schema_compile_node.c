@@ -3014,7 +3014,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
         LY_CHECK_GOTO(ret, done);
     }
 
-    if (any->flags & LYS_CONFIG_W) {
+    if (!(ctx->options & (LYS_COMPILE_RPC_MASK | LYS_COMPILE_NOTIFICATION)) && (any->flags & LYS_CONFIG_W)) {
         LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended. %s",
                 ly_stmt2str(any->nodetype == LYS_ANYDATA ? LY_STMT_ANYDATA : LY_STMT_ANYXML), ctx->path);
     }
