@@ -101,6 +101,8 @@ struct ly_set;
  * - ::lysc_set_private()
  *
  * - ::lysc_node_children()
+ * - ::lysc_node_children_all()
+ * - ::lysc_node_parent_all()
  * - ::lysc_node_actions()
  * - ::lysc_node_notifs()
  *
@@ -1857,12 +1859,34 @@ const struct lysc_notif *lysc_node_notifs(const struct lysc_node *node);
 
 /**
  * @brief Get the children linked list of the given (compiled) schema node.
- * Decides the node's type and in case it has a children list, returns it.
+ * Skips over input and output nodes.
+ *
  * @param[in] node Node to examine.
  * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) data in case of RPC/action node.
  * @return The node's children linked list if any, NULL otherwise.
  */
 const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
+
+/**
+ * @brief Get the children linked list of the given (compiled) schema node.
+ * Returns all children node types including input and output.
+ *
+ * @param[in] node Node to examine.
+ * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) child in case of RPC/action node.
+ * @return Children linked list if any,
+ * @return NULL otherwise.
+ */
+const struct lysc_node *lysc_node_children_all(const struct lysc_node *node, uint16_t flags);
+
+/**
+ * @brief Get the parent pointer from any type of (compiled) schema node.
+ * Returns input or output for direct descendants of these nodes.
+ *
+ * @param[in] node Node whose parent to get.
+ * @return Node parent.
+ * @return NULL is there is none.
+ */
+const struct lysc_node *lysc_node_parent_all(const struct lysc_node *node);
 
 /**
  * @brief Examine whether a node is user-ordered list or leaf-list.
