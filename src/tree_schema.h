@@ -101,8 +101,8 @@ struct ly_set;
  * - ::lysc_set_private()
  *
  * - ::lysc_node_children()
- * - ::lysc_node_children_all()
- * - ::lysc_node_parent_all()
+ * - ::lysc_node_children_full()
+ * - ::lysc_node_parent_full()
  * - ::lysc_node_actions()
  * - ::lysc_node_notifs()
  *
@@ -163,8 +163,11 @@ struct ly_set;
 /* *INDENT-OFF* */
 
 /**
- * @brief Macro to iterate via all elements in a schema tree which can be instantiated in data tree
- * (skips cases, input, output). This is the opening part to the #LYSC_TREE_DFS_END - they always have to be used together.
+ * @brief Macro to iterate via all elements in a schema (sub)tree including input and output.
+ * Note that __actions__ and __notifications__ of traversed nodes __are ignored__! To traverse
+ * on all the nodes including those, use ::lysc_tree_dfs_full() instead.
+ *
+ * This is the opening part to the #LYSC_TREE_DFS_END - they always have to be used together.
  *
  * The function follows deep-first search algorithm:
  * <pre>
@@ -206,51 +209,40 @@ struct ly_set;
  * @param START Pointer to the starting element processed first.
  * @param ELEM Iterator intended for use in the block.
  */
-
 #define LYSC_TREE_DFS_END(START, ELEM) \
     /* select element for the next run - children first */ \
     if (LYSC_TREE_DFS_continue) { \
         (LYSC_TREE_DFS_next) = NULL; \
     } else { \
-        (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, 0); \
-    }\
+        (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children_full(ELEM, 0); \
+    } \
     if (!(LYSC_TREE_DFS_next)) { \
-        /* in case of RPC/action, get also the output children */ \
-        if (!LYSC_TREE_DFS_continue && (ELEM)->nodetype & (LYS_RPC | LYS_ACTION)) { \
-            (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, LYS_CONFIG_R); \
-        } \
-        if (!(LYSC_TREE_DFS_next)) { \
-            /* no children */ \
-            if ((ELEM) == (struct lysc_node *)(START)) { \
-                /* we are done, (START) has no children */ \
-                break; \
-            } \
-            /* try siblings */ \
-            (LYSC_TREE_DFS_next) = (ELEM)->next; \
-        } \
+        /* no children, try siblings */ \
+        _LYSC_TREE_DFS_NEXT(START, ELEM, LYSC_TREE_DFS_next); \
     } \
     while (!(LYSC_TREE_DFS_next)) { \
         /* parent is already processed, go to its sibling */ \
-        if ((ELEM)->nodetype == LYS_INPUT) { \
-            (ELEM) = (struct lysc_node *)(((char *)(ELEM)) - offsetof(struct lysc_action, input)); \
-        } else if ((ELEM)->nodetype == LYS_OUTPUT) { \
-            (ELEM) = (struct lysc_node *)(((char *)(ELEM)) - offsetof(struct lysc_action, output)); \
-        } else { \
-            (ELEM) = (ELEM)->parent; \
-        } \
-        /* no siblings, go back through parents */ \
-        if ((ELEM) == (struct lysc_node *)(START)) { \
-            /* we are done, no next element to process */ \
-            break; \
-        } \
-        if ((ELEM)->nodetype & (LYS_RPC | LYS_ACTION)) { \
-            /* there is actually next node as a child of action's output */ \
-            (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, LYS_CONFIG_R); \
-        } \
-        if (!(LYSC_TREE_DFS_next)) { \
-            (LYSC_TREE_DFS_next) = (ELEM)->next; \
-        } \
-    } } \
+        (ELEM) = (struct lysc_node *)lysc_node_parent_full(ELEM); \
+        _LYSC_TREE_DFS_NEXT(START, ELEM, LYSC_TREE_DFS_next); \
+    } }
+
+/**
+ * @brief Helper macro for #LYSC_TREE_DFS_END, should not be used directly!
+ */
+#define _LYSC_TREE_DFS_NEXT(START, ELEM, NEXT) \
+    if ((ELEM) == (struct lysc_node *)(START)) { \
+        /* we are done, no next element to process */ \
+        break; \
+    } \
+    if ((ELEM)->nodetype == LYS_INPUT) { \
+        /* after input, get output */ \
+        (NEXT) = (struct lysc_node *)lysc_node_children_full(lysc_node_parent_full(ELEM), LYS_CONFIG_R); \
+    } else if ((ELEM)->nodetype == LYS_OUTPUT) { \
+        /* no sibling of output */ \
+        (NEXT) = NULL; \
+    } else { \
+        (NEXT) = (ELEM)->next; \
+    }
 
 /* *INDENT-ON* */
 
@@ -1859,7 +1851,7 @@ const struct lysc_notif *lysc_node_notifs(const struct lysc_node *node);
 
 /**
  * @brief Get the children linked list of the given (compiled) schema node.
- * Skips over input and output nodes.
+ * Skips over input and output nodes. To return them, use ::lysc_node_children_full().
  *
  * @param[in] node Node to examine.
  * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) data in case of RPC/action node.
@@ -1869,24 +1861,25 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
 
 /**
  * @brief Get the children linked list of the given (compiled) schema node.
- * Returns all children node types including input and output.
+ * Returns all children node types including input and output. To skip them, use ::lysc_node_children().
  *
  * @param[in] node Node to examine.
  * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) child in case of RPC/action node.
  * @return Children linked list if any,
  * @return NULL otherwise.
  */
-const struct lysc_node *lysc_node_children_all(const struct lysc_node *node, uint16_t flags);
+const struct lysc_node *lysc_node_children_full(const struct lysc_node *node, uint16_t flags);
 
 /**
  * @brief Get the parent pointer from any type of (compiled) schema node.
- * Returns input or output for direct descendants of these nodes.
+ * Returns input or output for direct descendants of RPC/action nodes.
+ * To skip them, use ::lysc_node.parent pointer directly.
  *
  * @param[in] node Node whose parent to get.
  * @return Node parent.
  * @return NULL is there is none.
  */
-const struct lysc_node *lysc_node_parent_all(const struct lysc_node *node);
+const struct lysc_node *lysc_node_parent_full(const struct lysc_node *node);
 
 /**
  * @brief Examine whether a node is user-ordered list or leaf-list.
