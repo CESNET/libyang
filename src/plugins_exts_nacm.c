@@ -86,7 +86,8 @@ invalid_parent:
 
     /* inherit the extension instance to all the children nodes */
     LYSC_TREE_DFS_BEGIN(parent, iter) {
-        if (iter != parent) { /* ignore the parent from which we inherit */
+        /* ignore the parent from which we inherit and input/output nodes */
+        if ((iter != parent) && !(iter->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
             /* check that the node does not have its own NACM extension instance */
             LY_ARRAY_FOR(iter->exts, u) {
                 if (iter->exts[u].def == c_ext->def) {

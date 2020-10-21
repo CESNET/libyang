@@ -1239,7 +1239,7 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
 }
 
 API const struct lysc_node *
-lysc_node_children_all(const struct lysc_node *node, uint16_t flags)
+lysc_node_children_full(const struct lysc_node *node, uint16_t flags)
 {
     switch (node->nodetype) {
     case LYS_CONTAINER:
@@ -1269,7 +1269,7 @@ lysc_node_children_all(const struct lysc_node *node, uint16_t flags)
 }
 
 API const struct lysc_node *
-lysc_node_parent_all(const struct lysc_node *node)
+lysc_node_parent_full(const struct lysc_node *node)
 {
     if (!node) {
         return NULL;

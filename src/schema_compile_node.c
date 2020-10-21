@@ -2077,7 +2077,6 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
     DUP_STRING_GOTO(ctx->ctx, action_p->dsc, action->dsc, ret, cleanup);
     DUP_STRING_GOTO(ctx->ctx, action_p->ref, action->ref, ret, cleanup);
     COMPILE_ARRAY_GOTO(ctx, action_p->iffeatures, action->iffeatures, u, lys_compile_iffeature, ret, cleanup);
-    COMPILE_EXTS_GOTO(ctx, action_p->exts, action->exts, action, LYEXT_PAR_NODE, ret, cleanup);
 
     /* connect any action augments */
     LY_CHECK_RET(lys_compile_node_augments(ctx, (struct lysc_node *)action));
@@ -2143,6 +2142,9 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
     }
 
     lysc_update_path(ctx, NULL, NULL);
+
+    /* wait with extensions compilation until all the children are compiled */
+    COMPILE_EXTS_GOTO(ctx, action_p->exts, action->exts, action, LYEXT_PAR_NODE, ret, cleanup);
 
     if ((action->input.musts || action->output.musts) && !(ctx->options & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
@@ -2213,7 +2215,6 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
         ret = ly_set_add(&ctx->xpath, notif, 0, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
-    COMPILE_EXTS_GOTO(ctx, notif_p->exts, notif->exts, notif, LYEXT_PAR_NODE, ret, cleanup);
 
     ctx->options |= LYS_COMPILE_NOTIFICATION;
 
@@ -2224,6 +2225,9 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
         ret = lys_compile_node(ctx, child_p, (struct lysc_node *)notif, uses_status, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
+
+    /* wait with extension compilation until all the children are compiled */
+    COMPILE_EXTS_GOTO(ctx, notif_p->exts, notif->exts, notif, LYEXT_PAR_NODE, ret, cleanup);
 
     lysc_update_path(ctx, NULL, NULL);
 
