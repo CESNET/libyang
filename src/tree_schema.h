@@ -210,16 +210,16 @@ struct ly_set;
     if (LYSC_TREE_DFS_continue) { \
         (LYSC_TREE_DFS_next) = NULL; \
     } else { \
-        (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, 0); \
+        (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, 0); \
     }\
     if (!(LYSC_TREE_DFS_next)) { \
         /* in case of RPC/action, get also the output children */ \
         if (!LYSC_TREE_DFS_continue && (ELEM)->nodetype & (LYS_RPC | LYS_ACTION)) { \
-            (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, LYS_CONFIG_R); \
+            (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, LYS_CONFIG_R); \
         } \
         if (!(LYSC_TREE_DFS_next)) { \
             /* no children */ \
-            if ((ELEM) == (struct lysc_node*)(START)) { \
+            if ((ELEM) == (struct lysc_node *)(START)) { \
                 /* we are done, (START) has no children */ \
                 break; \
             } \
@@ -229,15 +229,21 @@ struct ly_set;
     } \
     while (!(LYSC_TREE_DFS_next)) { \
         /* parent is already processed, go to its sibling */ \
-        (ELEM) = (ELEM)->parent; \
+        if ((ELEM)->nodetype == LYS_INPUT) { \
+            (ELEM) = (struct lysc_node *)(((char *)(ELEM)) - offsetof(struct lysc_action, input)); \
+        } else if ((ELEM)->nodetype == LYS_OUTPUT) { \
+            (ELEM) = (struct lysc_node *)(((char *)(ELEM)) - offsetof(struct lysc_action, output)); \
+        } else { \
+            (ELEM) = (ELEM)->parent; \
+        } \
         /* no siblings, go back through parents */ \
-        if ((ELEM) == (struct lysc_node*)(START)) { \
+        if ((ELEM) == (struct lysc_node *)(START)) { \
             /* we are done, no next element to process */ \
             break; \
         } \
         if ((ELEM)->nodetype & (LYS_RPC | LYS_ACTION)) { \
             /* there is actually next node as a child of action's output */ \
-            (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, LYS_CONFIG_R); \
+            (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, LYS_CONFIG_R); \
         } \
         if (!(LYSC_TREE_DFS_next)) { \
             (LYSC_TREE_DFS_next) = (ELEM)->next; \
