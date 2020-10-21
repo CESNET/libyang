@@ -1477,10 +1477,8 @@ lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_mo
     const char *node_name;
 
     /* compare with the module of the node */
-    if ((*node)->nodetype == LYS_INPUT) {
-        node_mod = ((struct lysc_node *)(((char *)*node) - offsetof(struct lysc_action, input)))->module;
-    } else if ((*node)->nodetype == LYS_OUTPUT) {
-        node_mod = ((struct lysc_node *)(((char *)*node) - offsetof(struct lysc_action, output)))->module;
+    if ((*node)->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+        node_mod = lysc_node_parent_all(*node)->module;
     } else {
         node_mod = (*node)->module;
     }
@@ -1500,24 +1498,8 @@ lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_mo
         return 0;
     }
 
-    if ((*node)->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-        /* move up from input/output */
-        if ((*node)->nodetype == LYS_INPUT) {
-            (*node) = (struct lysc_node *)(((char *)*node) - offsetof(struct lysc_action, input));
-        } else {
-            (*node) = (struct lysc_node *)(((char *)*node) - offsetof(struct lysc_action, output));
-        }
-    } else if ((*node)->parent && ((*node)->parent->nodetype & (LYS_RPC | LYS_ACTION))) {
-        /* move to the input/output */
-        if ((*node)->flags & LYS_CONFIG_W) {
-            *node = (struct lysc_node *)&((struct lysc_action *)(*node)->parent)->input;
-        } else {
-            *node = (struct lysc_node *)&((struct lysc_action *)(*node)->parent)->output;
-        }
-    } else {
-        /* move to next parent */
-        *node = (*node)->parent;
-    }
+    /* move to next parent */
+    *node = lysc_node_parent_all(*node);
 
     return 1;
 }
