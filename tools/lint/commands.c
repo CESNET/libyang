@@ -200,7 +200,7 @@ cmd_add(const char *arg)
 
     for (s = strstr(arg_ptr, "-i"); s ; s = strstr(s + 2, "-i")) {
         if (s[2] == '\0' || s[2] == ' ') {
-            ly_ctx_set_options(ctx, LY_CTX_ALLIMPLEMENTED);
+            ly_ctx_set_options(ctx, LY_CTX_ALL_IMPLEMENTED);
             s[0] = s[1] = ' ';
         }
     }
@@ -266,7 +266,7 @@ cmd_add(const char *arg)
 
 cleanup:
     free(s);
-    ly_ctx_unset_options(ctx, LY_CTX_ALLIMPLEMENTED);
+    ly_ctx_unset_options(ctx, LY_CTX_ALL_IMPLEMENTED);
 
     return ret;
 }
@@ -287,7 +287,7 @@ cmd_load(const char *arg)
 
     for (s = strstr(arg_ptr, "-i"); s ; s = strstr(s + 2, "-i")) {
         if (s[2] == '\0' || s[2] == ' ') {
-            ly_ctx_set_options(ctx, LY_CTX_ALLIMPLEMENTED);
+            ly_ctx_set_options(ctx, LY_CTX_ALL_IMPLEMENTED);
             s[0] = s[1] = ' ';
         }
     }
@@ -332,7 +332,7 @@ cmd_load(const char *arg)
 
 cleanup:
     free(s);
-    ly_ctx_unset_options(ctx, LY_CTX_ALLIMPLEMENTED);
+    ly_ctx_unset_options(ctx, LY_CTX_ALL_IMPLEMENTED);
 
     return ret;
 }

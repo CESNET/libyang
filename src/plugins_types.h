@@ -156,18 +156,19 @@ LY_ERR lysc_prefixes_dup(const struct lysc_prefix *orig, struct lysc_prefix **du
 void lysc_prefixes_free(struct lysc_prefix *prefixes);
 
 /**
- * @defgroup plugintypeopts Type store callback options.
+ * @defgroup plugintypestoreopts Type store callback options.
  *
  * Options applicable to ::ly_type_store_clb().
  *
  * @{
  */
-#define LY_TYPE_OPTS_DYNAMIC      0x01 /**< Flag for the dynamically allocated string value, in this case the value
-                                            is supposed to be freed or directly inserted into the context's dictionary
-                                            (e.g. in case of canonization).
-                                            In any case, the caller of the callback does not free the provided string value after calling
-                                            the type's callbacks with this option */
-/** @} plugintypeopts */
+#define LY_TYPE_STORE_DYNAMIC   0x01 /**< String value was dynamically allocated and is supposed to be freed or
+                                          directly inserted into the context's dictionary (e.g. in case of canonization).
+                                          In any case, the caller of the callback does not free the provided string
+                                          value after calling the type's store callback with this option */
+#define LY_TYPE_STORE_IMPLEMENT 0x02 /**< If a foreign module is needed to be implemented to successfully instantiate
+                                          the value, make the module implemented. */
+/** @} plugintypestoreopts */
 
 /**
  * @brief Callback to store and canonize the given @p value according to the given @p type.
@@ -182,7 +183,7 @@ void lysc_prefixes_free(struct lysc_prefix *prefixes);
  * @param[in] value Lexical representation of the value to be stored.
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
  * @param[in] value_len Length (number of bytes) of the given \p value.
- * @param[in] options [Type plugin options](@ref plugintypeopts).
+ * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
  * @param[in] format Input format of the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_type_store_resolve_prefix).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.

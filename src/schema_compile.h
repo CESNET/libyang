@@ -241,6 +241,22 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, cons
         void *mod2, const char *name2);
 
 /**
+ * @brief Check parsed expression for any prefixes of unimplemented modules.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] expr Parsed expression.
+ * @param[in] format Prefix format.
+ * @param[in] prefix_data Format-specific data (see ::ly_resolve_prefix()).
+ * @param[in] implement Whether all the non-implemented modules should are implemented or the first
+ * non-implemented module, if any, returned in @p mod_p.
+ * @param[out] mod_p Module that is not implemented.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
+        void *prefix_data, ly_bool implement, const struct lys_module **mod_p);
+
+/**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed

@@ -196,17 +196,22 @@ test_options(void **state)
     logbuf_assert("Invalid argument ctx (ly_ctx_unset_options()).");
 
     /* option not allowed to be changed */
-    assert_int_equal(LY_EINVAL, ly_ctx_set_options(ctx, LY_CTX_NOYANGLIBRARY));
+    assert_int_equal(LY_EINVAL, ly_ctx_set_options(ctx, LY_CTX_NO_YANGLIBRARY));
     logbuf_assert("Invalid argument option (ly_ctx_set_options()).");
-    assert_int_equal(LY_EINVAL, ly_ctx_set_options(ctx, LY_CTX_NOYANGLIBRARY));
+    assert_int_equal(LY_EINVAL, ly_ctx_set_options(ctx, LY_CTX_NO_YANGLIBRARY));
     logbuf_assert("Invalid argument option (ly_ctx_set_options()).");
 
 
     /* unset */
-    /* LY_CTX_ALLIMPLEMENTED */
-    assert_int_not_equal(0, ctx->flags & LY_CTX_ALLIMPLEMENTED);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(ctx, LY_CTX_ALLIMPLEMENTED));
-    assert_int_equal(0, ctx->flags & LY_CTX_ALLIMPLEMENTED);
+    /* LY_CTX_ALL_IMPLEMENTED */
+    assert_int_not_equal(0, ctx->flags & LY_CTX_ALL_IMPLEMENTED);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(ctx, LY_CTX_ALL_IMPLEMENTED));
+    assert_int_equal(0, ctx->flags & LY_CTX_ALL_IMPLEMENTED);
+
+    /* LY_CTX_REF_IMPLEMENTED */
+    assert_int_not_equal(0, ctx->flags & LY_CTX_REF_IMPLEMENTED);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(ctx, LY_CTX_REF_IMPLEMENTED));
+    assert_int_equal(0, ctx->flags & LY_CTX_REF_IMPLEMENTED);
 
     /* LY_CTX_DISABLE_SEARCHDIRS */
     assert_int_not_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIRS);
@@ -223,17 +228,16 @@ test_options(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(ctx, LY_CTX_PREFER_SEARCHDIRS));
     assert_int_equal(0, ctx->flags & LY_CTX_PREFER_SEARCHDIRS);
 
-    /* LY_CTX_TRUSTED */
-    assert_int_not_equal(0, ctx->flags & LY_CTX_TRUSTED);
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(ctx, LY_CTX_TRUSTED));
-    assert_int_equal(0, ctx->flags & LY_CTX_TRUSTED);
-
     assert_int_equal(ctx->flags, ly_ctx_get_options(ctx));
 
     /* set back */
-    /* LY_CTX_ALLIMPLEMENTED */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(ctx, LY_CTX_ALLIMPLEMENTED));
-    assert_int_not_equal(0, ctx->flags & LY_CTX_ALLIMPLEMENTED);
+    /* LY_CTX_ALL_IMPLEMENTED */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(ctx, LY_CTX_ALL_IMPLEMENTED));
+    assert_int_not_equal(0, ctx->flags & LY_CTX_ALL_IMPLEMENTED);
+
+    /* LY_CTX_REF_IMPLEMENTED */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(ctx, LY_CTX_REF_IMPLEMENTED));
+    assert_int_not_equal(0, ctx->flags & LY_CTX_REF_IMPLEMENTED);
 
     /* LY_CTX_DISABLE_SEARCHDIRS */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(ctx, LY_CTX_DISABLE_SEARCHDIRS));
@@ -246,10 +250,6 @@ test_options(void **state)
     /* LY_CTX_PREFER_SEARCHDIRS */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(ctx, LY_CTX_PREFER_SEARCHDIRS));
     assert_int_not_equal(0, ctx->flags & LY_CTX_PREFER_SEARCHDIRS);
-
-    /* LY_CTX_TRUSTED */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(ctx, LY_CTX_TRUSTED));
-    assert_int_not_equal(0, ctx->flags & LY_CTX_TRUSTED);
 
     assert_int_equal(ctx->flags, ly_ctx_get_options(ctx));
 

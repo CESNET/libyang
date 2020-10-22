@@ -1550,7 +1550,7 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     }
 
     /* ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_OPTS_DYNAMIC, LY_PREF_JSON, NULL, LYD_HINT_DATA,
+    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_STORE_DYNAMIC, LY_PREF_JSON, NULL, LYD_HINT_DATA,
             xp_node->node->schema, &val, &err);
     ly_err_free(err);
     if (rc) {

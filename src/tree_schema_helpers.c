@@ -671,7 +671,7 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_
 
     assert(mod);
 
-    if (ctx->flags & LY_CTX_ALLIMPLEMENTED) {
+    if (ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
         implement = 1;
     }
 

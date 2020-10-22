@@ -1372,23 +1372,15 @@ lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, const char 
     return LY_SUCCESS;
 }
 
-/**
- * @brief Check parsed expression for any prefixes of unimplemented modules.
- *
- * @param[in] ctx libyang context.
- * @param[in] expr Parsed expression.
- * @param[in] format Prefix format.
- * @param[in] prefix_data Format-specific data (see ::ly_resolve_prefix()).
- * @param[out] mod_p Optional module that is not implemented.
- * @return Whether all the found modules are implemented or at least one is not.
- */
-static ly_bool
-lys_compile_expr_target_is_implemented(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
-        void *prefix_data, const struct lys_module **mod_p)
+LY_ERR
+lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
+        void *prefix_data, ly_bool implement, const struct lys_module **mod_p)
 {
     uint32_t i;
     const char *ptr, *start;
     const struct lys_module *mod;
+
+    assert(implement || mod_p);
 
     for (i = 0; i < expr->used; ++i) {
         if ((expr->tokens[i] != LYXP_TOKEN_NAMETEST) && (expr->tokens[i] != LYXP_TOKEN_LITERAL)) {
@@ -1409,14 +1401,16 @@ lys_compile_expr_target_is_implemented(const struct ly_ctx *ctx, const struct ly
 
         if (!mod->implemented) {
             /* unimplemented module found */
-            if (mod_p) {
+            if (implement) {
+                LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod));
+            } else {
                 *mod_p = mod;
+                break;
             }
-            return 0;
         }
     }
 
-    return 1;
+    return LY_SUCCESS;
 }
 
 /**
@@ -1494,8 +1488,12 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 
     LY_ARRAY_FOR(when, u) {
         /* first check whether all the referenced modules are implemented */
-        if (!lys_compile_expr_target_is_implemented(ctx->ctx, when[u]->cond, LY_PREF_SCHEMA_RESOLVED,
-                when[u]->prefixes, &mod)) {
+        mod = NULL;
+        ret = lys_compile_expr_implement(ctx->ctx, when[u]->cond, LY_PREF_SCHEMA_RESOLVED, when[u]->prefixes,
+                ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, &mod);
+        if (ret) {
+            goto cleanup;
+        } else if (mod) {
             LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
                     when[u]->cond->expr, mod->name);
             continue;
@@ -1504,7 +1502,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         /* check "when" */
         ret = lyxp_atomize(when[u]->cond, node->module, LY_PREF_SCHEMA_RESOLVED, when[u]->prefixes, when[u]->context,
                 &tmp_set, opts);
-        if (ret != LY_SUCCESS) {
+        if (ret) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[u]->cond->expr);
             goto cleanup;
         }
@@ -1540,8 +1538,12 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 check_musts:
     LY_ARRAY_FOR(musts, u) {
         /* first check whether all the referenced modules are implemented */
-        if (!lys_compile_expr_target_is_implemented(ctx->ctx, musts[u].cond, LY_PREF_SCHEMA_RESOLVED,
-                musts[u].prefixes, &mod)) {
+        mod = NULL;
+        ret = lys_compile_expr_implement(ctx->ctx, musts[u].cond, LY_PREF_SCHEMA_RESOLVED, musts[u].prefixes,
+                ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, &mod);
+        if (ret) {
+            goto cleanup;
+        } else if (mod) {
             LOGWRN(ctx->ctx, "Must condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
                     musts[u].cond->expr, mod->name);
             continue;
@@ -1549,7 +1551,7 @@ check_musts:
 
         /* check "must" */
         ret = lyxp_atomize(musts[u].cond, node->module, LY_PREF_SCHEMA_RESOLVED, musts[u].prefixes, node, &tmp_set, opts);
-        if (ret != LY_SUCCESS) {
+        if (ret) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
             goto cleanup;
         }
@@ -1711,9 +1713,11 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
         const struct lysp_module *dflt_pmod, struct lyd_value *storage)
 {
     LY_ERR ret;
+    uint32_t options;
     struct ly_err_item *err = NULL;
 
-    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), 0, LY_PREF_SCHEMA, (void *)dflt_pmod,
+    options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LY_TYPE_STORE_IMPLEMENT : 0;
+    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_PREF_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, storage, &err);
     if (ret == LY_EINCOMPLETE) {
         /* we have no data so we will not be resolving it */
@@ -1728,8 +1732,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
                     "Invalid default - value does not fit the type (%s).", err->msg);
             ly_err_free(err);
         } else {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                    "Invalid default - value does not fit the type.");
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid default - value does not fit the type.");
         }
         return ret;
     }

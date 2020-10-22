@@ -27,6 +27,7 @@
 #include "compat.h"
 #include "dict.h"
 #include "path.h"
+#include "schema_compile.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -750,7 +751,7 @@ ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const 
     storage->int64 = num;
     storage->realtype = type;
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return LY_SUCCESS;
@@ -804,7 +805,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const
     storage->int64 = num;
     storage->realtype = type;
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return LY_SUCCESS;
@@ -869,7 +870,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     storage->dec64 = d;
     storage->realtype = type;
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return LY_SUCCESS;
@@ -961,7 +962,7 @@ finish:
     storage->ptr = NULL;
     storage->realtype = type;
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return LY_SUCCESS;
@@ -1005,7 +1006,7 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
     /* pattern restrictions */
     LY_CHECK_RET(ly_type_validate_patterns(type_str->patterns, value, value_len, err));
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
         LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
@@ -1103,11 +1104,11 @@ next:
         items_ordered = items;
         items = NULL;
 
-        if (!ws_count && !lws_count && (options & LY_TYPE_OPTS_DYNAMIC)) {
+        if (!ws_count && !lws_count && (options & LY_TYPE_STORE_DYNAMIC)) {
             ret = lydict_insert_zc(ctx, (char *)value, &can);
             LY_CHECK_GOTO(ret, cleanup);
             value = NULL;
-            options &= ~LY_TYPE_OPTS_DYNAMIC;
+            options &= ~LY_TYPE_STORE_DYNAMIC;
         } else {
             ret = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count, &can);
             LY_CHECK_GOTO(ret, cleanup);
@@ -1150,7 +1151,7 @@ next:
     }
     storage->realtype = type;
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -1245,7 +1246,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
 match:
     /* validation done */
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
         LY_CHECK_RET(lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical));
@@ -1295,7 +1296,7 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
         }
     }
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
         LY_CHECK_RET(lydict_insert(ctx, value, value_len, &storage->canonical));
@@ -1446,9 +1447,13 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
         goto error;
     } else if (!mod->implemented) {
         /* non-implemented module */
-        rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                (int)value_len, value, mod->name);
-        goto error;
+        if (options & LY_TYPE_STORE_IMPLEMENT) {
+            LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod));
+        } else {
+            rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
+                    (int)value_len, value, mod->name);
+            goto error;
+        }
     }
 
     /* check that the identity matches some of the type's base identities */
@@ -1473,7 +1478,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     LY_CHECK_RET(lydict_insert_zc(ctx, str, &storage->canonical));
     storage->realtype = type;
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return LY_SUCCESS;
@@ -1567,6 +1572,11 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
         goto error;
     }
 
+    if (options & LY_TYPE_STORE_IMPLEMENT) {
+        /* implement all prefixes */
+        LY_CHECK_GOTO(ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, NULL), error);
+    }
+
     /* resolve it on schema tree */
     ret = ly_path_compile(ctx, NULL, ctx_node, exp, LY_PATH_LREF_FALSE, lysc_is_output(ctx_node) ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, &path);
@@ -1590,7 +1600,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     lyxp_expr_free(ctx, exp);
     ly_path_free(ctx, path);
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -2319,11 +2329,11 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     }
 
     /* remember the original value */
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
+    if (options & LY_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &subvalue->original);
         LY_CHECK_GOTO(ret, cleanup);
 
-        options &= ~LY_TYPE_OPTS_DYNAMIC;
+        options &= ~LY_TYPE_STORE_DYNAMIC;
     } else {
         ret = lydict_insert(ctx, value_len ? value : "", value_len, &subvalue->original);
         LY_CHECK_GOTO(ret, cleanup);

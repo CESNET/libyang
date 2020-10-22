@@ -250,7 +250,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     LY_CHECK_GOTO(rc, error);
 
     /* load internal modules */
-    for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
+    for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
         LY_CHECK_GOTO(rc = lys_create_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
                 NULL, NULL, &module), error);
@@ -277,7 +277,7 @@ API LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
-    LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+    LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     /* set the option(s) */
     ctx->flags |= option;
@@ -289,7 +289,7 @@ API LY_ERR
 ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
-    LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+    LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     /* unset the option(s) */
     ctx->flags &= ~option;
@@ -604,7 +604,7 @@ ly_ctx_internal_module_count(const struct ly_ctx *ctx)
         return 0;
     }
 
-    if (ctx->flags & LY_CTX_NOYANGLIBRARY) {
+    if (ctx->flags & LY_CTX_NO_YANGLIBRARY) {
         return LY_INTERNAL_MODS_COUNT - 2;
     } else {
         return LY_INTERNAL_MODS_COUNT;
