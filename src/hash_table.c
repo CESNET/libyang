@@ -326,7 +326,7 @@ lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_d
 
     ht->used = 0;
     ht->size = size;
-    ht->deleted = 0;
+    ht->invalid = 0;
     ht->val_equal = val_equal;
     ht->cb_data = cb_data;
     ht->resize = (uint16_t)resize;
@@ -411,7 +411,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
 
     /* reset used, it will increase again */
     ht->used = 0;
-    ht->deleted = 0;
+    ht->invalid = 0;
 
     /* add all the old records into the new records array */
     for (i = 0; i < old_size; ++i) {
@@ -765,7 +765,7 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
     /* insert it into the returned record */
     assert(rec->hits < 1);
     if (rec->hits < 0) {
-        --ht->deleted;
+        --ht->invalid;
     }
     rec->hash = hash;
     rec->hits = 1;
@@ -877,7 +877,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
     /* check size & shrink if needed */
     ret = 0;
     --ht->used;
-    ++ht->deleted;
+    ++ht->invalid;
     if (ht->resize == 2) {
         r = (ht->used * 100) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
@@ -891,22 +891,22 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
             if (resize_val_equal) {
                 lyht_set_cb(ht, old_val_equal);
             }
-        } else {
-            if ((ht->size > LYHT_MIN_SIZE) && (ht->size - ht->used - ht->deleted) < (ht->size / 50)) {
-                if (resize_val_equal) {
-                    old_val_equal = lyht_set_cb(ht, resize_val_equal);
-                }
-
-                /* rehash */
-                ret = lyht_resize(ht, 0);
-
-                if (resize_val_equal) {
-                    lyht_set_cb(ht, old_val_equal);
-                }
-            }
         }
     }
+    
+    r = ((ht->size - ht->used - ht->invalid) * 100) / ht->size;
+    if ((r < LYHT_REHASH_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
+        if (resize_val_equal) {
+            old_val_equal = lyht_set_cb(ht, resize_val_equal);
+        }
 
+        /* rehash */
+        ret = lyht_resize(ht, 0);
+
+        if (resize_val_equal) {
+            lyht_set_cb(ht, old_val_equal);
+        }
+    }
     lyht_dbgprint_ht(ht, "after");
     return ret;
 }
