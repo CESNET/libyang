@@ -52,7 +52,7 @@ typedef int (*values_equal_cb)(void *val1_p, void *val2_p, int mod, void *cb_dat
 /** when the table is less than this much percent full, it is shrunk (half the size) */
 #define LYHT_SHRINK_PERCENTAGE 25
 
-/** when the table is less than this much percent full, it is rehash */
+/** when the table has less than this much percent empty records, it is rehashed to get rid of all the invalid records */
 #define LYHT_REHASH_PERCENTAGE 2
 
 /** never shrink beyond this size */
