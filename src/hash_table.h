@@ -75,7 +75,7 @@ struct ht_rec {
 struct hash_table {
     uint32_t used;        /* number of values stored in the hash table (filled records) */
     uint32_t size;        /* always holds 2^x == size (is power of 2), actually number of records allocated */
-    uint32_t deleted;     /* number of delete records in the hash table */
+    uint32_t invalid;     /* number of delete records in the hash table, which are invalid */
     values_equal_cb val_equal; /* callback for testing value equivalence */
     void *cb_data;        /* user data callback arbitrary value */
     uint16_t resize;      /* 0 - resizing is disabled, *
