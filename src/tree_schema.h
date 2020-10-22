@@ -1882,6 +1882,48 @@ const struct lysc_node *lysc_node_children_full(const struct lysc_node *node, ui
 const struct lysc_node *lysc_node_parent_full(const struct lysc_node *node);
 
 /**
+ * @brief Callback to be called for every schema node in a DFS traversal.
+ *
+ * @param[in] node Current node.
+ * @param[in] data Arbitrary user data.
+ * @param[out] dfs_continue Set to true if the current subtree should be skipped and continue with siblings instead.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value to terminate DFS and return this value.
+ */
+typedef LY_ERR (*lysc_dfs_clb)(struct lysc_node *node, void *data, ly_bool *dfs_continue);
+
+/**
+ * @brief DFS traversal of all the schema nodes in a (sub)tree including any actions and nested notifications.
+ *
+ * Node with children, actions, and notifications is traversed in this order:
+ * 1) each child subtree;
+ * 2) each action subtree;
+ * 3) each notification subtree.
+ *
+ * For algorithm illustration or traversal with actions and notifications skipped, see ::LYSC_TREE_DFS_BEGIN.
+ *
+ * @param[in] root Schema root to fully traverse.
+ * @param[in] dfs_clb Callback to call for each node.
+ * @param[in] data Arbitrary user data passed to @p dfs_clb.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value returned by @p dfs_clb.
+ */
+LY_ERR lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data);
+
+/**
+ * @brief DFS traversal of all the schema nodes in a module including RPCs and notifications.
+ *
+ * For more details, see ::lysc_tree_dfs_full().
+ *
+ * @param[in] mod Module to fully traverse.
+ * @param[in] dfs_clb Callback to call for each node.
+ * @param[in] data Arbitrary user data passed to @p dfs_clb.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value returned by @p dfs_clb.
+ */
+LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data);
+
+/**
  * @brief Examine whether a node is user-ordered list or leaf-list.
  *
  * @param[in] schema Schema node to examine.
