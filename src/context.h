@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal context structures and functions
  *
- * Copyright (c) 2015 - 2017 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -61,9 +61,10 @@ struct lysc_node;
  * handled as implemented - libyang is able to instantiate data representing such a module. The modules loaded implicitly, are
  * not implemented and serve only as a source of grouping or typedef definitions. Context can hold multiple revisions of the same
  * YANG module, but only one of them can be implemented. Details about the difference between implemented and imported modules
- * can be found on @ref howtoSchema page. This behavior can be changed with the context's ::LY_CTX_ALLIMPLEMENTED option, which
- * causes that all the parsed modules, despite they were loaded explicitly or implicitly, are set to be implemented. Note, that as
- * a consequence of this option, only a single revision of any module can be present in the context in this case.
+ * can be found on @ref howtoSchema page. This behavior can be changed with the context's ::LY_CTX_ALL_IMPLEMENTED option, which
+ * causes that all the parsed modules, whether loaded explicitly or implicitly, are set to be implemented. Note, that as
+ * a consequence of this option, only a single revision of any module can be present in the context in this case. Also, a less
+ * crude option ::LY_CTX_REF_IMPLEMENTED can be used to implement only referenced modules that should also be implemented.
  *
  * When loading/importing a module without revision, the latest revision of the required module is supposed to load.
  * For a context, the first time the latest revision of a module is requested, it is properly searched for and loaded.
@@ -162,11 +163,14 @@ struct ly_ctx;
  * @{
  */
 
-#define LY_CTX_ALLIMPLEMENTED 0x01 /**< All the imports of the schema being parsed are treated implemented. */
-#define LY_CTX_TRUSTED        0x02 /**< Handle the schema being parsed as trusted and skip its validation
-                                        tests. Note that while this option improves performance, it can
-                                        lead to an undefined behavior if the schema is not correct. */
-#define LY_CTX_NOYANGLIBRARY  0x04 /**< Do not internally implement ietf-yang-library module. The option
+#define LY_CTX_ALL_IMPLEMENTED 0x01 /**< All the imported modules of the schema being parsed are implemented. */
+#define LY_CTX_REF_IMPLEMENTED 0x02 /**< Implement all imported modules "referenced" from an implemented module.
+                                        Normally, leafrefs, augment and deviation targets are implemented as
+                                        specified by YANG 1.1. In addition to this, implement any modules of
+                                        nodes referenced by when and must conditions and by any default values.
+                                        Generally, only if all these modules are implemented, the explicitly
+                                        implemented modules can be properly used and instantiated in data. */
+#define LY_CTX_NO_YANGLIBRARY  0x04 /**< Do not internally implement ietf-yang-library module. The option
                                         causes that function ::ly_ctx_get_yanglib_data() does not work (returns ::LY_EINVAL) until
                                         the ietf-yang-library module is loaded manually. While any revision
                                         of this schema can be loaded with this option, note that the only

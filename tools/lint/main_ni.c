@@ -317,7 +317,7 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist, *dir;
     struct stat st;
     uint32_t u;
-    int options_ctx = LY_CTX_NOYANGLIBRARY, list = 0, outoptions_s = 0, outline_length_s = 0;
+    int options_ctx = LY_CTX_NO_YANGLIBRARY, list = 0, outoptions_s = 0, outline_length_s = 0;
     int autodetection = 0, options_parser = 0, merge = 0;
     const char *oper_file = NULL;
     int options_dflt = 0;
@@ -450,7 +450,7 @@ main_ni(int argc, char* argv[])
             goto cleanup;
 #endif
         case 'i':
-            options_ctx |= LY_CTX_ALLIMPLEMENTED;
+            options_ctx |= LY_CTX_ALL_IMPLEMENTED;
             break;
         case 'D':
             if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
