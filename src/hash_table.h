@@ -52,6 +52,9 @@ typedef int (*values_equal_cb)(void *val1_p, void *val2_p, int mod, void *cb_dat
 /** when the table is less than this much percent full, it is shrunk (half the size) */
 #define LYHT_SHRINK_PERCENTAGE 25
 
+/** when the table has less than this much percent empty records, it is rehashed to get rid of all the invalid records */
+#define LYHT_REHASH_PERCENTAGE 2
+
 /** never shrink beyond this size */
 #define LYHT_MIN_SIZE 8
 
@@ -75,6 +78,7 @@ struct ht_rec {
 struct hash_table {
     uint32_t used;        /* number of values stored in the hash table (filled records) */
     uint32_t size;        /* always holds 2^x == size (is power of 2), actually number of records allocated */
+    uint32_t invalid;     /* number of invalid records in the hash table (deleted records) */
     values_equal_cb val_equal; /* callback for testing value equivalence */
     void *cb_data;        /* user data callback arbitrary value */
     uint16_t resize;      /* 0 - resizing is disabled, *
