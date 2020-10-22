@@ -896,7 +896,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
     }
     
     r = ((ht->size - ht->used - ht->invalid) * 100) / ht->size;
-    if ((r < LYHT_REHASH_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
+    if (r < LYHT_REHASH_PERCENTAGE) {
         if (resize_val_equal) {
             old_val_equal = lyht_set_cb(ht, resize_val_equal);
         }
