@@ -1209,9 +1209,8 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
 
                     r = lysp_stmt_parse(ctx, stmt, stmt->kw, &parsed, NULL);
                     LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
-                    r = lys_compile_type(ctx, ext->parent_type == LYEXT_PAR_NODE ? ((struct lysc_node *)ext->parent)->sp : NULL,
-                            flags ? *flags : 0, ctx->pmod, ext->name, parsed, (struct lysc_type **)compiled,
-                            units && !*units ? units : NULL, NULL);
+                    r = lys_compile_type(ctx, NULL, flags ? *flags : 0, ctx->pmod, ext->name, parsed,
+                            (struct lysc_type **)compiled, units && !*units ? units : NULL, NULL);
                     lysp_type_free(ctx->ctx, parsed);
                     free(parsed);
                     LY_CHECK_ERR_GOTO(r, ret = r, cleanup);

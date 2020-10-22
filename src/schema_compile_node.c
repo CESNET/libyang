@@ -2035,7 +2035,6 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p, *dev_pnode = NULL, *dev_input_p = NULL, *dev_output_p = NULL;
-    struct lysp_action *orig_action_p = action_p;
     struct lysp_action_inout *inout_p;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported;
@@ -2066,7 +2065,6 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
         return LY_EVALID;
     }
 
-    action->sp = orig_action_p;
     action->flags = action_p->flags & LYS_FLAGS_COMPILED_MASK;
 
     /* status - it is not inherited by specification, but it does not make sense to have
@@ -2168,7 +2166,6 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p, *dev_pnode = NULL;
-    struct lysp_notif *orig_notif_p = notif_p;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported;
     uint32_t opt_prev = ctx->options;
@@ -2197,7 +2194,6 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
         return LY_EVALID;
     }
 
-    notif->sp = orig_notif_p;
     notif->flags = notif_p->flags & LYS_FLAGS_COMPILED_MASK;
 
     /* status - it is not inherited by specification, but it does not make sense to have
@@ -3512,7 +3508,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
         .nodetype = LYS_CONTAINER,
         .flags = pnode ? (pnode->flags & LYS_FLAGS_COMPILED_MASK) : 0,
         .module = ctx->cur_mod,
-        .sp = NULL, .parent = NULL, .next = NULL,
+        .parent = NULL, .next = NULL,
         .prev = (struct lysc_node *)&fake_container,
         .name = "fake",
         .dsc = NULL, .ref = NULL, .exts = NULL, .iffeatures = NULL, .when = NULL,
@@ -3606,7 +3602,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node = NULL;
-    struct lysp_node *dev_pnode = NULL, *orig_pnode = pnode;
+    struct lysp_node *dev_pnode = NULL;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported;
 
@@ -3698,7 +3694,6 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     LY_CHECK_GOTO(ret = lys_compile_status(ctx, &node->flags, uses_status ? uses_status : (parent ? parent->flags : 0)), error);
 
-    node->sp = orig_pnode;
     DUP_STRING_GOTO(ctx->ctx, pnode->name, node->name, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->dsc, node->dsc, ret, error);
     DUP_STRING_GOTO(ctx->ctx, pnode->ref, node->ref, ret, error);

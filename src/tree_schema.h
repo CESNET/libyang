@@ -1527,7 +1527,6 @@ struct lysc_action {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_action *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node - RPC) */
 
     struct lysc_ext_instance *input_exts;  /**< list of the extension instances of input ([sized array](@ref sizedarrays)) */
@@ -1551,7 +1550,6 @@ struct lysc_notif {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_notif *sp;           /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
 
     struct lysc_node *data;          /**< first child node (linked list) */
@@ -1574,8 +1572,6 @@ struct lysc_node {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or
-                                          in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1596,7 +1592,6 @@ struct lysc_node_container {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1622,7 +1617,6 @@ struct lysc_node_case {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1646,7 +1640,6 @@ struct lysc_node_choice {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1672,7 +1665,6 @@ struct lysc_node_leaf {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1699,7 +1691,6 @@ struct lysc_node_leaflist {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1730,7 +1721,6 @@ struct lysc_node_list {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
@@ -1760,7 +1750,6 @@ struct lysc_node_anydata {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
