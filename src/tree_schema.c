@@ -42,6 +42,67 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
+API LY_ERR
+lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data)
+{
+    struct lysc_node *elem, *ops, *elem2;
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_CHECK_ARG_RET(NULL, root, dfs_clb, LY_EINVAL);
+
+    LYSC_TREE_DFS_BEGIN(root, elem) {
+        /* schema node */
+        LY_CHECK_RET(dfs_clb(elem, data, &LYSC_TREE_DFS_continue));
+
+        ops = (struct lysc_node *)lysc_node_actions(elem);
+        LY_ARRAY_FOR(ops, u) {
+            LYSC_TREE_DFS_BEGIN(&ops[u], elem2) {
+                /* action subtree */
+                LY_CHECK_RET(dfs_clb(elem2, data, &LYSC_TREE_DFS_continue));
+
+                LYSC_TREE_DFS_END(&ops[u], elem2);
+            }
+        }
+
+        ops = (struct lysc_node *)lysc_node_notifs(elem);
+        LY_ARRAY_FOR(ops, u) {
+            LYSC_TREE_DFS_BEGIN(&ops[u], elem2) {
+                /* notification subtree */
+                LY_CHECK_RET(dfs_clb(elem2, data, &LYSC_TREE_DFS_continue));
+
+                LYSC_TREE_DFS_END(&ops[u], elem2);
+            }
+        }
+
+        LYSC_TREE_DFS_END(root, elem);
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_CHECK_ARG_RET(NULL, mod, mod->compiled, dfs_clb, LY_EINVAL);
+
+    /* schema nodes */
+    LY_CHECK_RET(lysc_tree_dfs_full(mod->compiled->data, dfs_clb, data));
+
+    /* RPCs */
+    LY_ARRAY_FOR(mod->compiled->rpcs, u) {
+        LY_CHECK_RET(lysc_tree_dfs_full((struct lysc_node *)&mod->compiled->rpcs[u], dfs_clb, data));
+    }
+
+    /* notifications */
+    LY_ARRAY_FOR(mod->compiled->notifs, u) {
+        LY_CHECK_RET(lysc_tree_dfs_full((struct lysc_node *)&mod->compiled->notifs[u], dfs_clb, data));
+    }
+
+    return LY_SUCCESS;
+}
+
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
