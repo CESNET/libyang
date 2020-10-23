@@ -375,6 +375,7 @@ lyht_dup(const struct hash_table *orig)
 
     memcpy(ht->recs, orig->recs, (size_t)orig->used * (size_t)orig->rec_size);
     ht->used = orig->used;
+    ht->invalid = orig->invalid;
     return ht;
 }
 
@@ -411,7 +412,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
 
     /* reset used, it will increase again */
     ht->used = 0;
-    /* reset invalid, it will increase agein */
+    /* reset invalid, it will increase again */
     ht->invalid = 0;
 
     /* add all the old records into the new records array */
