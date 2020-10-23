@@ -375,6 +375,7 @@ lyht_dup(const struct hash_table *orig)
 
     memcpy(ht->recs, orig->recs, (size_t)orig->used * (size_t)orig->rec_size);
     ht->used = orig->used;
+    ht->invalid = orig->invalid;
     return ht;
 }
 
@@ -894,7 +895,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
             }
         }
     }
-    
+
     r = ((ht->size - ht->used - ht->invalid) * 100) / ht->size;
     if (r < LYHT_REHASH_PERCENTAGE) {
         if (resize_val_equal) {
@@ -908,7 +909,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
             lyht_set_cb(ht, old_val_equal);
         }
     }
-    
+
     lyht_dbgprint_ht(ht, "after");
     return ret;
 }
