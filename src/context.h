@@ -125,7 +125,7 @@ struct lysc_node;
  *
  * - ::ly_ctx_get_node()
  * - ::ly_ctx_get_module_set_id()
- * - ::ly_ctx_internal_module_count()
+ * - ::ly_ctx_internal_modules_count()
  *
  * - ::lys_search_localfile()
  * - ::lys_set_implemented()
@@ -454,7 +454,7 @@ void ly_ctx_reset_latests(struct ly_ctx *ctx);
  * @param[in] ctx libyang context to examine.
  * @return Number of internal modules.
  */
-uint32_t ly_ctx_internal_module_count(const struct ly_ctx *ctx);
+uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
 
 /**
  * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
