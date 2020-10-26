@@ -197,6 +197,8 @@ struct ly_in;
  *
  * The operation cannot be determined automatically since RPC/action and a reply to it share the common top level node
  * referencing the RPC/action schema node and may not have any input/output children to use for distinction.
+ *
+ * @{
  */
 typedef enum {
     LYD_VALIDATE_OP_RPC = 1,   /**< Validate RPC/action request (input parameters). */
