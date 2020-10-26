@@ -598,7 +598,7 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
 }
 
 API uint32_t
-ly_ctx_internal_module_count(const struct ly_ctx *ctx)
+ly_ctx_internal_modules_count(const struct ly_ctx *ctx)
 {
     if (!ctx) {
         return 0;
