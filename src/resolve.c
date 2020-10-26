@@ -1112,7 +1112,17 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
             ++parsed;
             ++id;
 
-            if ((ptr = strchr(id, quote)) == NULL) {
+            ptr = id;
+            while (ptr) {
+                if (ptr[0] == quote) {
+                    break;
+                } else if (ptr[0] == '\\') {
+                    ptr += 2;
+                } else {
+                    ++ptr;
+                }
+            }
+            if (!ptr) {
                 return -parsed;
             }
             ret = ptr - id;
