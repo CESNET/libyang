@@ -609,7 +609,7 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
  *
  * If the feature is already set to the desired value, LY_SUCCESS is returned.
  * By changing the feature, also all the feature which depends on it via their
- * if-feature statements are again evaluated (disabled if a if-feature statemen
+ * if-feature statements are again evaluated (disabled if a if-feature statement
  * evaluates to false).
  *
  * @param[in] mod Module where to set (search for) the feature.

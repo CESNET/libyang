@@ -116,7 +116,7 @@ struct ly_set;
 /**
  * @page howtoSchemaFeatures YANG Features
  *
- * YANG feature statement is an iportant part of the language which can significantly affect the meaning of the schemas. Despite
+ * YANG feature statement is an important part of the language which can significantly affect the meaning of the schemas. Despite
  * the features have similar effect as loading/removing schema from the context, manipulating with the feature value is not
  * limited to the context preparation period before working with data. YANG features, respectively their use in if-feature
  * statements, are evaluated as part of the [data validation process](@ref howtoDataValidation).
