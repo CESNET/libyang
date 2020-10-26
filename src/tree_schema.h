@@ -1925,9 +1925,7 @@ struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const st
  */
 #define LYS_FIND_XP_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
 #define LYS_FIND_XP_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
-/*
- * }@
- */
+/** @} findxpathoptions */
 
 /**
  * @brief Get all the schema nodes that are required for @p xpath to be evaluated (atoms).
