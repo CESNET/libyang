@@ -175,11 +175,12 @@ endif()
 if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
     option(ENABLE_BUILD_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
-    set(INTERNAL_DOCS NO) # TODO enable when the internal docs ready
+    # TODO enable when the internal docs ready
+    set(INTERNAL_DOCS "Include developers notes and internal API description into generated Documentation" OFF) 
 else()
     option(ENABLE_BUILD_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
-    set(INTERNAL_DOCS NO)
+    set(INTERNAL_DOCS "Include developers notes and internal API description into generated Documentation" OFF)
 endif()
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
@@ -308,7 +309,9 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
 endif()
 
 # source code format
-source_format(src/* compat/*)
+if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+	source_format(src/* compat/*)
+endif()
 
 # clean cmake cache
 add_custom_target(cclean

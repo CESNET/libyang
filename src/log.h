@@ -56,7 +56,7 @@ typedef uint8_t ly_bool;
  *
  * As a separate group, there are @ref dbggroup to select group of debugging messages to print. The options can be set via
  * ::ly_log_dbg_groups() function, but note that the options take effect only in case the libyang is compiled in
- * [Debug build mode](@ref building).
+ * [Debug build mode](@ref build).
  *
  * \note API for this group of functions is described in the [logger module](@ref log).
  *
