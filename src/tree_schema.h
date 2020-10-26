@@ -55,9 +55,11 @@ struct ly_set;
  * difference between the imported and implemented modules in the libyang context. The implemented modules are compiled while the
  * imported modules are only parsed.
  *
- * In case the context's ::LY_CTX_ALLIMPLEMENTED option is not set, the module is not implemented in case it is implicitly
- * loaded as import for another module and it is not referenced in such a module (and no other) as target of leafref, augment
- * or deviation.
+ * By default, the module is implemented (and compiled) in case it is explicitly loaded or referenced in another module as
+ * target of leafref, augment or deviation. This behavior can be changed via context options ::LY_CTX_ALL_IMPLEMENTED, when
+ * all the modules in the context are marked as implemented (note the problem with multiple revisions of a single module),
+ * or by ::LY_CTX_REF_IMPLEMENTED option, extending the set of references making the module implemented by when, must and
+ * default statements.
  *
  * All modules with deviation definition are always marked as implemented. The imported (not implemented) module can be set implemented by ::lys_set_implemented(). But
  * the implemented module cannot be changed back to just imported module. Note also that only one revision of a specific module
