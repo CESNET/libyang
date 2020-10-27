@@ -1940,16 +1940,6 @@ struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const st
 LY_ERR lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
 
 /**
- * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
- *
- * @param[in] path Compiled path to use.
- * @param[out] set Set of found atoms (schema nodes).
- * @return LY_SUCCESS on success, @p set is returned.
- * @return LY_ERR value on error.
- */
-LY_ERR lys_find_path_atoms(const struct ly_path *path, struct ly_set **set);
-
-/**
  * @brief Get all the schema nodes that are required for @p expr to be evaluated (atoms).
  *
  * @param[in] ctx_node XPath schema context node.
@@ -1975,6 +1965,41 @@ LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_mo
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
+
+/**
+ * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
+ *
+ * @param[in] path Compiled path to use.
+ * @param[out] set Set of found atoms (schema nodes).
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value on error.
+ */
+LY_ERR lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set);
+
+/**
+ * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
+ *
+ * @param[in] ctx libyang context, set for absolute paths.
+ * @param[in] ctx_node Starting context node for a relative data path, set for relative paths.
+ * @param[in] path JSON path to examine.
+ * @param[in] output Search operation output instead of input.
+ * @param[out] set Set of found atoms (schema nodes).
+ * @return LY_ERR value on error.
+ */
+LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
+        struct ly_set **set);
+
+/**
+ * @brief Get a schema node based on the given data path (JSON format, see @ref howtoXPath).
+ *
+ * @param[in] ctx libyang context, set for absolute paths.
+ * @param[in] ctx_node Starting context node for a relative data path, set for relative paths.
+ * @param[in] path JSON path of the node to get.
+ * @param[in] output Search operation output instead of input.
+ * @return Found schema node or NULL.
+ */
+const struct lysc_node *lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path,
+        ly_bool output);
 
 /**
  * @brief Types of the different schema paths.
