@@ -886,7 +886,12 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
             ++parsed;
             ++id;
 
-            if ((ptr = strchr(id, quote)) == NULL) {
+            for (ptr = id; ptr && ptr[0] != quote; ++ptr) {
+                if (ptr[0] == '\\') {
+                    ++ptr;
+                }
+            }
+            if (!ptr) {
                 return -parsed;
             }
             ret = ptr - id;
@@ -1112,13 +1117,8 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
             ++parsed;
             ++id;
 
-            ptr = id;
-            while (ptr) {
-                if (ptr[0] == quote) {
-                    break;
-                } else if (ptr[0] == '\\') {
-                    ptr += 2;
-                } else {
+            for (ptr = id; ptr && ptr[0] != quote; ++ptr) {
+                if (ptr[0] == '\\') {
                     ++ptr;
                 }
             }
