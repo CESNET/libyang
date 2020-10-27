@@ -788,7 +788,7 @@ main_ni(int argc, char* argv[])
     /* convert (print) to FORMAT */
     if (outformat_s) {
         if (outtarget_s) {
-            const struct lysc_node *node = ly_ctx_get_node(ctx, NULL, outtarget_s, 0);
+            const struct lysc_node *node = lys_find_path(ctx, NULL, outtarget_s, 0);
             if (node) {
                 lys_print_node(out, node, outformat_s, outline_length_s, outoptions_s);
             } else {

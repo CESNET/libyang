@@ -503,7 +503,7 @@ cmd_print(const char *arg)
     }
 
     if (target_path) {
-        const struct lysc_node *node = ly_ctx_get_node(ctx, NULL, target_path, 0);
+        const struct lysc_node *node = lys_find_path(ctx, NULL, target_path, 0);
         if (node) {
             ret = lys_print_node(out, node, format, tree_ll, output_opts);
         } else {

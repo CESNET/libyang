@@ -352,36 +352,6 @@ cleanup:
 }
 
 API LY_ERR
-lys_find_path_atoms(const struct ly_path *path, struct ly_set **set)
-{
-    LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
-
-    LY_CHECK_ARG_RET(NULL, path, set, LY_EINVAL);
-
-    /* allocate return set */
-    LY_CHECK_RET(ly_set_new(set));
-
-    LY_ARRAY_FOR(path, u) {
-        /* add nodes from the path */
-        LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].node, 0, NULL), cleanup);
-        if (path[u].pred_type == LY_PATH_PREDTYPE_LIST) {
-            LY_ARRAY_FOR(path[u].predicates, v) {
-                /* add all the keys in a predicate */
-                LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].predicates[v].key, 0, NULL), cleanup);
-            }
-        }
-    }
-
-cleanup:
-    if (ret) {
-        ly_set_free(*set, NULL);
-        *set = NULL;
-    }
-    return ret;
-}
-
-API LY_ERR
 lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod, const struct lyxp_expr *expr,
         const struct lysc_prefix *prefixes, uint32_t options, struct ly_set **set)
 {
@@ -468,6 +438,104 @@ cleanup:
         *set = NULL;
     }
     return ret;
+}
+
+API LY_ERR
+lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    LY_CHECK_ARG_RET(NULL, path, set, LY_EINVAL);
+
+    /* allocate return set */
+    LY_CHECK_RET(ly_set_new(set));
+
+    LY_ARRAY_FOR(path, u) {
+        /* add nodes from the path */
+        LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].node, 0, NULL), cleanup);
+        if (path[u].pred_type == LY_PATH_PREDTYPE_LIST) {
+            LY_ARRAY_FOR(path[u].predicates, v) {
+                /* add all the keys in a predicate */
+                LY_CHECK_GOTO(ret = ly_set_add(*set, (void *)path[u].predicates[v].key, 0, NULL), cleanup);
+            }
+        }
+    }
+
+cleanup:
+    if (ret) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
+    return ret;
+}
+
+API LY_ERR
+lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
+        struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    uint8_t oper;
+    struct lyxp_expr *expr = NULL;
+    struct ly_path *p = NULL;
+
+    LY_CHECK_ARG_RET(ctx, ctx || ctx_node, path, set, LY_EINVAL);
+
+    if (!ctx) {
+        ctx = ctx_node->module->ctx;
+    }
+
+    /* parse */
+    ret = lyxp_expr_parse(ctx, path, strlen(path), 0, &expr);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* compile */
+    oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
+    ret = ly_path_compile(ctx, NULL, ctx_node, expr, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
+            LY_PREF_JSON, NULL, &p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* resolve */
+    ret = lys_find_lypath_atoms(p, set);
+
+cleanup:
+    ly_path_free(ctx, p);
+    lyxp_expr_free(ctx, expr);
+    return ret;
+}
+
+API const struct lysc_node *
+lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output)
+{
+    const struct lysc_node *snode = NULL;
+    struct lyxp_expr *exp = NULL;
+    struct ly_path *p = NULL;
+    LY_ERR ret;
+    uint8_t oper;
+
+    LY_CHECK_ARG_RET(ctx, ctx || ctx_node, NULL);
+
+    if (!ctx) {
+        ctx = ctx_node->module->ctx;
+    }
+
+    /* parse */
+    ret = lyxp_expr_parse(ctx, path, strlen(path), 0, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* compile */
+    oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
+    ret = ly_path_compile(ctx, NULL, ctx_node, exp, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
+            LY_PREF_JSON, NULL, &p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* get last node */
+    snode = p[LY_ARRAY_COUNT(p) - 1].node;
+
+cleanup:
+    ly_path_free(ctx, p);
+    lyxp_expr_free(ctx, exp);
+    return snode;
 }
 
 char *
