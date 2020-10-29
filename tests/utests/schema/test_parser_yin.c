@@ -630,7 +630,7 @@ test_yin_parse_content(void **state)
     struct lysp_when *when_p = NULL;
     struct lysp_type_enum pos_enum = {}, val_enum = {};
     struct lysp_type req_type = {}, range_type = {}, len_type = {}, patter_type = {}, enum_type = {};
-    uint8_t config = 0;
+    uint16_t config = 0;
 
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
