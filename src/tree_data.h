@@ -1541,7 +1541,7 @@ LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_dif
 LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
- * @brief Find the target in data of a compiled ly_path structure (instance-identifier).
+ * @brief Find the target in data of a compiled instance-identifier path (the target member in ::lyd_value).
  *
  * @param[in] path Compiled path structure.
  * @param[in] tree Data tree to be searched.

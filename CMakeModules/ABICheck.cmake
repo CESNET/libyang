@@ -29,7 +29,7 @@ macro(LIBYANG_ABICHECK)
         else()
             string(SUBSTRING ${ABIBASE_HASH} 0 8 ABIBASE_HASH_SHORT)
             set(ABIBASE_VERSION "git-${ABIBASE_HASH_SHORT}")
-    endif()
+        endif()
         if(ABIBASE_HASH)
             # we have the ABI base version, so generate script for abi-check target
             string(REPLACE "\n" "" ABIBASE_HASH ${ABIBASE_HASH})
