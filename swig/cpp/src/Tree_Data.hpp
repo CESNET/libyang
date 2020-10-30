@@ -58,7 +58,7 @@ public:
     /** get bit variable from [lyd_val](@ref lyd_val)*/
     std::vector<S_Type_Bit> bit();
     /** get bln variable from [lyd_val](@ref lyd_val)*/
-    int8_t bln() {return LY_TYPE_BOOL == value_type ? value.bln : throw "wrong type";};
+    bool bln() {return LY_TYPE_BOOL == value_type ? value.bln : throw "wrong type";};
     /** get dec64 variable from [lyd_val](@ref lyd_val)*/
     Decimal64 dec64() {return LY_TYPE_DEC64 == value_type ? Decimal64{ value.dec64, type->info.dec64.dig } : throw "wrong type";};
     /** get enm variable from [lyd_val](@ref lyd_val)*/
