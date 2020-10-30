@@ -77,7 +77,6 @@ struct lysc_node;
  * variants). If you need to do something with all the modules in the context, it is advised to iterate over them using
  * ::ly_ctx_get_module_iter(). Alternatively, the ::ly_ctx_get_yanglib_data() function can be used to get complex information about the schemas in the context
  * in the form of data tree defined by <a href="https://tools.ietf.org/html/rfc7895">ietf-yang-library</a> module.
- * To get a specific node defined in a module in the context, use ::ly_ctx_get_node().
  *
  * YANG data can be parsed by \b lyd_parse_*() functions. Note, that functions for schema have \b lys_
  * prefix (or \b lysp_ for the parsed and \b lysc_ for the compiled schema - for details see @ref howtoSchema page) while
@@ -123,7 +122,6 @@ struct lysc_node;
  * - ::ly_ctx_get_yanglib_data()
  * - ::ly_ctx_get_yanglib_id()
  *
- * - ::ly_ctx_get_node()
  * - ::ly_ctx_get_module_set_id()
  * - ::ly_ctx_internal_modules_count()
  *

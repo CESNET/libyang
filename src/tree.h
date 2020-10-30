@@ -85,7 +85,7 @@ extern "C" {
  * - ::lyd_new_path()
  * - ::lyd_new_path2()
  * - ::lyd_path()
- * - ::ly_ctx_get_node()
+ * - ::lys_find_path()
  *
  */
 
