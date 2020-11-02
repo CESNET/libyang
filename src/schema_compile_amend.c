@@ -2324,40 +2324,8 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
         return LY_SUCCESS;
     }
 
-    /* free all the modules in descending order */
-    idx = ctx->ctx->list.count;
-    do {
-        --idx;
-        mod = ctx->ctx->list.objs[idx];
-        /* skip this module */
-        if (mod == mod_p->mod) {
-            continue;
-        }
-
-        if (mod->implemented && mod->compiled) {
-            /* keep information about features state in the module */
-            lys_feature_precompile_revert(ctx, mod);
-
-            /* free the module */
-            lysc_module_free(mod->compiled, NULL);
-            mod->compiled = NULL;
-        }
-    } while (idx);
-
-    /* recompile all the modules in ascending order */
-    for (idx = 0; idx < ctx->ctx->list.count; ++idx) {
-        mod = ctx->ctx->list.objs[idx];
-
-        /* skip this module */
-        if (mod == mod_p->mod) {
-            continue;
-        }
-
-        if (mod->implemented) {
-            /* compile */
-            LY_CHECK_GOTO(ret = lys_compile(mod, 0), cleanup);
-        }
-    }
+    /* recompile all modules except this one */
+    LY_CHECK_GOTO(ret = lys_recompile(ctx->ctx, mod_p->mod), cleanup);
 
 cleanup:
     return ret;

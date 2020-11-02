@@ -227,6 +227,17 @@ LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_ex
         void *prefix_data, ly_bool implement, const struct lys_module **mod_p);
 
 /**
+ * @brief Recompile the whole context based on the current flags.
+ *
+ * @param[in] ctx Context to recompile.
+ * @param[in] skip Module to skip. If set, recompilation logs normally and stops on error.
+ * If not set, recompilation hides any errors and prints just generic messages even though it should always succeed.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_recompile(struct ly_ctx *ctx, const struct lys_module *skip);
+
+/**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
