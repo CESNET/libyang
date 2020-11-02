@@ -3256,7 +3256,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
     const char *id, *name, *prefix, *local_pref;
     size_t prefix_len, name_len;
     struct lysp_module *pmod, *found = NULL;
-    struct lys_module *mod;
+    const struct lys_module *mod;
 
     *grp_p = NULL;
     *grp_pmod = NULL;
@@ -3280,7 +3280,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
         }
     } else {
         /* foreign module, find it first */
-        mod = lysp_module_find_prefix(ctx->pmod, prefix, prefix_len);
+        mod = ly_resolve_prefix(ctx->ctx, prefix, prefix_len, LY_PREF_SCHEMA, ctx->pmod);
         if (!mod) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                     "Invalid prefix used for grouping reference.", uses_p->name);

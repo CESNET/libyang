@@ -426,16 +426,6 @@ LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARR
 struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod);
 
 /**
- * @brief Find the module referenced by prefix in the provided mod.
- *
- * @param[in] prefix_mod Schema module where the prefix was used.
- * @param[in] prefix Prefix used to reference a module.
- * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
- * @return Pointer to the module or NULL if the module is not found.
- */
-struct lys_module *lysp_module_find_prefix(const struct lysp_module *prefix_mod, const char *prefix, size_t len);
-
-/**
  * @brief Stringify YANG built-in type.
  * @param[in] basetype Built-in type ID to stringify.
  * @return Constant string with the name of the built-in type.

@@ -41,7 +41,28 @@
 static const struct lys_module *
 ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *data)
 {
-    return lysp_module_find_prefix((const struct lysp_module *)data, prefix, prefix_len);
+    const struct lysp_module *prefix_mod = data;
+    struct lys_module *m = NULL;
+    LY_ARRAY_COUNT_TYPE u;
+    const char *local_prefix;
+
+    local_prefix = prefix_mod->is_submod ? ((struct lysp_submodule *)prefix_mod)->prefix : prefix_mod->mod->prefix;
+    if (!prefix_len || !ly_strncmp(local_prefix, prefix, prefix_len)) {
+        /* it is the prefix of the module itself */
+        m = prefix_mod->mod;
+    }
+
+    /* search in imports */
+    if (!m) {
+        LY_ARRAY_FOR(prefix_mod->imports, u) {
+            if (!ly_strncmp(prefix_mod->imports[u].prefix, prefix, prefix_len)) {
+                m = prefix_mod->imports[u].module;
+                break;
+            }
+        }
+    }
+
+    return m;
 }
 
 /**
