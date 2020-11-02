@@ -1076,7 +1076,7 @@ test_defaults(void **state)
     lyd_free_siblings(diff);
 
     /* create another explicit case and validate */
-    assert_int_equal(lyd_new_term(NULL, mod, "l", "value", &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "l", "value", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(tree, node, &tree), LY_SUCCESS);
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
@@ -1108,9 +1108,9 @@ test_defaults(void **state)
     lyd_free_siblings(diff);
 
     /* create explicit leaf-list and leaf and validate */
-    assert_int_equal(lyd_new_term(NULL, mod, "d", "15", &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "d", "15", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(tree, node, &tree), LY_SUCCESS);
-    assert_int_equal(lyd_new_term(NULL, mod, "ll2", "dflt2", &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(NULL, mod, "ll2", "dflt2", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(tree, node, &tree), LY_SUCCESS);
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
@@ -1141,7 +1141,7 @@ test_defaults(void **state)
     lyd_free_siblings(diff);
 
     /* create first explicit container, which should become implicit */
-    assert_int_equal(lyd_new_inner(NULL, mod, "cont", &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_inner(NULL, mod, "cont", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(tree, node, &tree), LY_SUCCESS);
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
@@ -1165,7 +1165,7 @@ test_defaults(void **state)
     assert_null(diff);
 
     /* create second explicit container, which should become implicit, so the first tree node should be removed */
-    assert_int_equal(lyd_new_inner(NULL, mod, "cont", &node), LY_SUCCESS);
+    assert_int_equal(lyd_new_inner(NULL, mod, "cont", 0, &node), LY_SUCCESS);
     assert_int_equal(lyd_insert_sibling(tree, node, &tree), LY_SUCCESS);
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
@@ -1189,9 +1189,9 @@ test_defaults(void **state)
     assert_null(diff);
 
     /* similar changes for nested defaults */
-    assert_int_equal(lyd_new_term(tree->prev, NULL, "ll1", "def3", NULL), LY_SUCCESS);
-    assert_int_equal(lyd_new_term(tree->prev, NULL, "d", "5", NULL), LY_SUCCESS);
-    assert_int_equal(lyd_new_term(tree->prev, NULL, "ll2", "non-dflt", NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(tree->prev, NULL, "ll1", "def3", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(tree->prev, NULL, "d", "5", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_term(tree->prev, NULL, "ll2", "non-dflt", 0, NULL), LY_SUCCESS);
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
