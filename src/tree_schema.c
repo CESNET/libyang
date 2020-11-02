@@ -594,7 +594,7 @@ lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 API LY_ERR
 lys_set_implemented(struct lys_module *mod, const char **features)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
     struct lys_module *m;
     uint32_t i, idx;
 
@@ -642,22 +642,10 @@ lys_set_implemented(struct lys_module *mod, const char **features)
                     ly_set_rm_index(&mod->ctx->implementing, idx, NULL);
                     lys_precompile_augments_deviations_revert(mod->ctx, m);
                 }
-
-                /* free the compiled version of the module, if any */
-                lysc_module_free(m->compiled, NULL);
-                m->compiled = NULL;
-
-                if (m->implemented) {
-                    /* recompile, must succeed because it was already compiled; hide messages because any
-                     * warnings were already printed, are not really relevant, and would hide the real error */
-                    uint32_t prev_lo = ly_log_options(0);
-                    r = lys_compile(m, 0);
-                    ly_log_options(prev_lo);
-                    if (r) {
-                        LOGERR(mod->ctx, r, "Recompilation of module \"%s\" failed.", m->name);
-                    }
-                }
             }
+
+            /* recompile, do not overwrite return value */
+            lys_recompile(mod->ctx, NULL);
         }
 
         ly_set_erase(&mod->ctx->implementing, NULL);
