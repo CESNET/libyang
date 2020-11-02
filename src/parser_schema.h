@@ -98,10 +98,12 @@ typedef enum {
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in The input handle to provide the dumped data model in the specified format.
  * @param[in] format Format of the schema to parse.
+ * @param[in] features Array of features to enable ended with NULL. If NULL, no features are enabled.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features,
+        const struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context.

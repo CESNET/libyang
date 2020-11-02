@@ -17,6 +17,7 @@
 #include "tree_schema.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdint.h>
@@ -37,6 +38,7 @@
 #include "path.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
+#include "schema_features.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema_internal.h"
@@ -264,13 +266,6 @@ check:
         return NULL;
     }
 
-    if (!(options & LYS_GETNEXT_NOSTATECHECK)) {
-        /* check if the node is disabled by if-feature */
-        if (lysc_node_is_disabled(next, 0)) {
-            next = next->next;
-            goto repeat;
-        }
-    }
     return next;
 }
 
@@ -553,338 +548,6 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
 }
 
 API LY_ERR
-lysc_feature_value(const struct lysc_feature *feature)
-{
-    LY_CHECK_ARG_RET(NULL, feature, LY_EINVAL);
-    return feature->flags & LYS_FENABLED ? LY_SUCCESS : LY_ENOT;
-}
-
-uint8_t
-lysc_iff_getop(uint8_t *list, size_t pos)
-{
-    uint8_t *item;
-    uint8_t mask = 3, result;
-
-    item = &list[pos / 4];
-    result = (*item) & (mask << 2 * (pos % 4));
-    return result >> 2 * (pos % 4);
-}
-
-static LY_ERR
-lysc_iffeature_value_(const struct lysc_iffeature *iff, size_t *index_e, size_t *index_f)
-{
-    uint8_t op;
-    LY_ERR a, b;
-
-    op = lysc_iff_getop(iff->expr, *index_e);
-    (*index_e)++;
-
-    switch (op) {
-    case LYS_IFF_F:
-        /* resolve feature */
-        return lysc_feature_value(iff->features[(*index_f)++]);
-    case LYS_IFF_NOT:
-        /* invert result */
-        return lysc_iffeature_value_(iff, index_e, index_f) == LY_SUCCESS ? LY_ENOT : LY_SUCCESS;
-    case LYS_IFF_AND:
-    case LYS_IFF_OR:
-        a = lysc_iffeature_value_(iff, index_e, index_f);
-        b = lysc_iffeature_value_(iff, index_e, index_f);
-        if (op == LYS_IFF_AND) {
-            if ((a == LY_SUCCESS) && (b == LY_SUCCESS)) {
-                return LY_SUCCESS;
-            } else {
-                return LY_ENOT;
-            }
-        } else { /* LYS_IFF_OR */
-            if ((a == LY_SUCCESS) || (b == LY_SUCCESS)) {
-                return LY_SUCCESS;
-            } else {
-                return LY_ENOT;
-            }
-        }
-    }
-
-    return 0;
-}
-
-API LY_ERR
-lysc_iffeature_value(const struct lysc_iffeature *iff)
-{
-    size_t index_e = 0, index_f = 0;
-
-    LY_CHECK_ARG_RET(NULL, iff, -1);
-
-    if (iff->expr) {
-        return lysc_iffeature_value_(iff, &index_e, &index_f);
-    }
-    return 0;
-}
-
-/**
- * @brief Enable/Disable the specified feature in the module.
- *
- * If the feature is already set to the desired value, LY_SUCCESS is returned.
- * By changing the feature, also all the feature which depends on it via their
- * if-feature statements are again evaluated (disabled if a if-feature statement
- * evaluates to false).
- *
- * @param[in] mod Module where to set (search for) the feature.
- * @param[in] name Name of the feature to set. Asterisk ('*') can be used to
- * set all the features in the module.
- * @param[in] value Desired value of the feature: 1 (enable) or 0 (disable).
- * @param[in] skip_checks Flag to skip checking of if-features and just set @p value of the feature.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_feature_change(const struct lys_module *mod, const char *name, ly_bool value, ly_bool skip_checks)
-{
-    LY_ERR ret = LY_SUCCESS;
-    ly_bool all = 0;
-    LY_ARRAY_COUNT_TYPE u, disabled_count;
-    uint32_t changed_count;
-    struct lysc_feature *f, **df;
-    struct lysc_iffeature *iff;
-    struct ly_set *changed;
-    struct ly_ctx *ctx = mod->ctx; /* shortcut */
-
-    if (!strcmp(name, "*")) {
-        /* enable all */
-        all = 1;
-    }
-
-    if (!mod->implemented) {
-        LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled.", mod->name);
-        return LY_EINVAL;
-    }
-    if (!mod->features) {
-        if (all) {
-            /* no feature to enable */
-            return LY_SUCCESS;
-        }
-        LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->name);
-        return LY_ENOTFOUND;
-    }
-
-    LY_CHECK_RET(ly_set_new(&changed));
-    changed_count = 0;
-
-run:
-    for (disabled_count = u = 0; u < LY_ARRAY_COUNT(mod->features); ++u) {
-        f = &mod->features[u];
-        if (all || !strcmp(f->name, name)) {
-            if ((value && (f->flags & LYS_FENABLED)) || (!value && !(f->flags & LYS_FENABLED))) {
-                if (all) {
-                    /* skip already set features */
-                    continue;
-                } else {
-                    /* feature already set correctly */
-                    goto cleanup;
-                }
-            }
-
-            if (value) { /* enable */
-                if (!skip_checks) {
-                    /* check referenced features if they are enabled */
-                    LY_ARRAY_FOR(f->iffeatures, struct lysc_iffeature, iff) {
-                        if (lysc_iffeature_value(iff) == LY_ENOT) {
-                            if (all) {
-                                ++disabled_count;
-                                goto next;
-                            } else {
-                                LOGERR(ctx, LY_EDENIED, "Feature \"%s\" cannot be enabled since it is disabled by "
-                                        "its if-feature condition(s).", f->name);
-                                ret = LY_EDENIED;
-                                goto cleanup;
-                            }
-                        }
-                    }
-                }
-                /* enable the feature */
-                f->flags |= LYS_FENABLED;
-            } else { /* disable */
-                /* disable the feature */
-                f->flags &= ~LYS_FENABLED;
-            }
-
-            /* remember the changed feature */
-            ret = ly_set_add(changed, f, 1, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-
-            if (!all) {
-                /* stop in case changing a single feature */
-                break;
-            }
-        }
-next:
-        ;
-    }
-
-    if (!all && !changed->count) {
-        LOGERR(ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->name);
-        ret = LY_ENOTFOUND;
-        goto cleanup;
-    }
-
-    if (value && all && disabled_count) {
-        if (changed_count == changed->count) {
-            /* no change in last run -> not able to enable all ... */
-            /* ... print errors */
-            for (u = 0; disabled_count && u < LY_ARRAY_COUNT(mod->features); ++u) {
-                if (!(mod->features[u].flags & LYS_FENABLED)) {
-                    LOGERR(ctx, LY_EDENIED, "Feature \"%s\" cannot be enabled since it is disabled by its if-feature "
-                            "condition(s).", mod->features[u].name);
-                    --disabled_count;
-                }
-            }
-            /* ... restore the original state */
-            for (u = 0; u < changed->count; ++u) {
-                f = changed->objs[u];
-                /* re-disable the feature */
-                f->flags &= ~LYS_FENABLED;
-            }
-
-            ret = LY_EDENIED;
-            goto cleanup;
-        } else {
-            /* we did some change in last run, try it again */
-            changed_count = changed->count;
-            goto run;
-        }
-    }
-
-    /* reflect change(s) in the dependent features */
-    for (u = 0; !skip_checks && (u < changed->count); ++u) {
-        /* If a dependent feature is enabled, it can be now changed by the change (to false) of the value of
-         * its if-feature statements. The reverse logic, automatically enable feature when its feature is enabled
-         * is not done - by default, features are disabled and must be explicitely enabled. */
-        f = changed->objs[u];
-        LY_ARRAY_FOR(f->depfeatures, struct lysc_feature *, df) {
-            if (!((*df)->flags & LYS_FENABLED)) {
-                /* not enabled, nothing to do */
-                continue;
-            }
-            /* check the feature's if-features which could change by the previous change of our feature */
-            LY_ARRAY_FOR((*df)->iffeatures, struct lysc_iffeature, iff) {
-                if (lysc_iffeature_value(iff) == LY_ENOT) {
-                    /* the feature must be disabled now */
-                    (*df)->flags &= ~LYS_FENABLED;
-                    /* add the feature into the list of changed features */
-                    ret = ly_set_add(changed, *df, 1, NULL);
-                    LY_CHECK_GOTO(ret, cleanup);
-                    break;
-                }
-            }
-        }
-    }
-
-    /* success */
-    ++mod->ctx->module_set_id;
-
-cleanup:
-    ly_set_free(changed, NULL);
-    return ret;
-}
-
-API LY_ERR
-lys_feature_enable(const struct lys_module *module, const char *feature)
-{
-    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
-
-    return lys_feature_change((struct lys_module *)module, feature, 1, 0);
-}
-
-API LY_ERR
-lys_feature_disable(const struct lys_module *module, const char *feature)
-{
-    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
-
-    return lys_feature_change((struct lys_module *)module, feature, 0, 0);
-}
-
-API LY_ERR
-lys_feature_enable_force(const struct lys_module *module, const char *feature)
-{
-    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
-
-    return lys_feature_change((struct lys_module *)module, feature, 1, 1);
-}
-
-API LY_ERR
-lys_feature_disable_force(const struct lys_module *module, const char *feature)
-{
-    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
-
-    return lys_feature_change((struct lys_module *)module, feature, 0, 1);
-}
-
-API LY_ERR
-lys_feature_value(const struct lys_module *module, const char *feature)
-{
-    struct lysc_feature *f = NULL;
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_CHECK_ARG_RET(NULL, module, module->compiled, feature, -1);
-
-    /* search for the specified feature */
-    LY_ARRAY_FOR(module->features, u) {
-        f = &module->features[u];
-        if (!strcmp(f->name, feature)) {
-            break;
-        }
-    }
-
-    /* feature definition not found */
-    if (!f) {
-        return LY_ENOTFOUND;
-    }
-
-    /* feature disabled */
-    if (!(f->flags & LYS_FENABLED)) {
-        return LY_ENOT;
-    }
-
-    /* check referenced features if they are enabled */
-    LY_ARRAY_FOR(f->iffeatures, u) {
-        if (lysc_iffeature_value(&f->iffeatures[u]) == LY_ENOT) {
-            /* if-feature disabled */
-            return LY_ENOT;
-        }
-    }
-
-    /* feature enabled */
-    return LY_SUCCESS;
-}
-
-API const struct lysc_node *
-lysc_node_is_disabled(const struct lysc_node *node, ly_bool recursive)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_CHECK_ARG_RET(NULL, node, NULL);
-
-    do {
-        if (node->iffeatures) {
-            /* check local if-features */
-            LY_ARRAY_FOR(node->iffeatures, u) {
-                if (lysc_iffeature_value(&node->iffeatures[u]) == LY_ENOT) {
-                    return node;
-                }
-            }
-        }
-
-        if (!recursive) {
-            return NULL;
-        }
-
-        /* go through schema-only parents */
-        node = node->parent;
-    } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
-
-    return NULL;
-}
-
-API LY_ERR
 lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 {
     struct lysc_action *act;
@@ -929,7 +592,7 @@ lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 }
 
 API LY_ERR
-lys_set_implemented(struct lys_module *mod)
+lys_set_implemented(struct lys_module *mod, const char **features)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *m;
@@ -952,6 +615,9 @@ lys_set_implemented(struct lys_module *mod)
                 mod->name, mod->revision ? "@" : "", mod->revision ? mod->revision : "", m->revision ? m->revision : "none");
         return LY_EDENIED;
     }
+
+    /* enable features */
+    LY_CHECK_RET(lys_enable_features(mod->parsed, features));
 
     /* add the module into newly implemented module set */
     LY_CHECK_RET(ly_set_add(&mod->ctx->implementing, mod, 1, NULL));
@@ -1000,32 +666,32 @@ lys_set_implemented(struct lys_module *mod)
 }
 
 static LY_ERR
-lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *modp)
+lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
 {
     struct lysp_import *imp;
     struct lysp_include *inc;
     LY_ARRAY_COUNT_TYPE u, v;
 
-    modp->parsing = 1;
-    LY_ARRAY_FOR(modp->imports, u) {
-        imp = &modp->imports[u];
+    pmod->parsing = 1;
+    LY_ARRAY_FOR(pmod->imports, u) {
+        imp = &pmod->imports[u];
         if (!imp->module) {
-            LY_CHECK_RET(lysp_load_module(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module));
+            LY_CHECK_RET(lysp_load_module(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, NULL, &imp->module));
         }
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
-            if (imp->module == modp->imports[v].module) {
+            if (imp->module == pmod->imports[v].module) {
                 LOGWRN(PARSER_CTX(pctx), "Single revision of the module \"%s\" imported twice.", imp->name);
             }
         }
     }
-    LY_ARRAY_FOR(modp->includes, u) {
-        inc = &modp->includes[u];
+    LY_ARRAY_FOR(pmod->includes, u) {
+        inc = &pmod->includes[u];
         if (!inc->submodule) {
             LY_CHECK_RET(lysp_load_submodule(pctx, inc));
         }
     }
-    modp->parsing = 0;
+    pmod->parsing = 0;
 
     return LY_SUCCESS;
 }
@@ -1122,7 +788,7 @@ error:
 LY_ERR
 lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-        void *check_data, struct lys_module **module)
+        void *check_data, const char **features, struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
     struct lysp_submodule *submod;
@@ -1134,7 +800,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     char *filename, *rev, *dot;
     size_t len;
 
-    LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, in, !features || implement, LY_EINVAL);
     if (module) {
         *module = NULL;
     }
@@ -1190,38 +856,23 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         LY_CHECK_GOTO(ret = custom_check(ctx, mod->parsed, NULL, check_data), error);
     }
 
-    if (implement) {
-        /* mark the loaded module implemented */
-        if (ly_ctx_get_module_implemented(ctx, mod->name)) {
-            LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->name);
-            ret = LY_EDENIED;
-            goto error;
-        }
-    }
-
     /* check for duplicity in the context */
+    if (implement && ly_ctx_get_module_implemented(ctx, mod->name)) {
+        LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->name);
+        ret = LY_EDENIED;
+        goto error;
+    }
     mod_dup = (struct lys_module *)ly_ctx_get_module(ctx, mod->name, mod->revision);
     if (mod_dup) {
-        if (mod_dup->parsed) {
-            /* error */
-            if (mod->parsed->revs) {
-                LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
-                        mod->name, mod->parsed->revs[0].date);
-            } else {
-                LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
-                        mod->name);
-            }
-            ret = LY_EEXIST;
-            goto error;
+        if (mod->parsed->revs) {
+            LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
+                    mod->name, mod->parsed->revs[0].date);
         } else {
-            /* add the parsed data to the currently compiled-only module in the context */
-            mod_dup->parsed = mod->parsed;
-            mod_dup->parsed->mod = mod_dup;
-            mod->parsed = NULL;
-            lys_module_free(mod, NULL);
-            mod = mod_dup;
-            goto finish_parsing;
+            LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
+                    mod->name);
         }
+        ret = LY_EEXIST;
+        goto error;
     }
 
     switch (in->type) {
@@ -1261,14 +912,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         ret = LY_EINT;
         goto error;
     }
-
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
-
-    if (!implement) {
-        /* pre-compile features and identities of the module */
-        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod->parsed, mod->parsed->features, &mod->features), error);
-        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), error);
-    }
 
     if (latest) {
         latest->latest_revision = 0;
@@ -1279,27 +923,31 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     LY_CHECK_GOTO(ret, error);
     ctx->module_set_id++;
 
-finish_parsing:
-    /* resolve imports and includes */
+    /* resolve includes and all imports */
     LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), error_ctx);
 
+    /* check name collisions */
+    LY_CHECK_GOTO(ret = lysp_check_dup_typedefs(pctx, mod->parsed), error_ctx);
+    /* TODO groupings */
+    LY_CHECK_GOTO(ret = lysp_check_dup_features(pctx, mod->parsed), error_ctx);
+    LY_CHECK_GOTO(ret = lysp_check_dup_identities(pctx, mod->parsed), error_ctx);
+
+    /* compile features */
+    LY_CHECK_GOTO(ret = lys_compile_feature_iffeatures(mod->parsed), error_ctx);
+
     if (!implement) {
-        /* pre-compile features and identities of any submodules */
+        /* pre-compile identities of the module */
+        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), error);
+
+        /* pre-compile identities of any submodules */
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             submod = mod->parsed->includes[u].submodule;
-            ret = lys_feature_precompile(NULL, ctx, (struct lysp_module *)submod, submod->features, &mod->features);
-            LY_CHECK_GOTO(ret, error);
             ret = lys_identity_precompile(NULL, ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
             LY_CHECK_GOTO(ret, error);
         }
-    }
-
-    /* check name collisions - typedefs and TODO groupings */
-    LY_CHECK_GOTO(ret = lysp_check_typedefs(pctx, mod->parsed), error_ctx);
-
-    if (implement) {
+    } else {
         /* implement (compile) */
-        LY_CHECK_GOTO(ret = lys_set_implemented(mod), error_ctx);
+        LY_CHECK_GOTO(ret = lys_set_implemented(mod, features), error_ctx);
     }
 
     if (format == LYS_IN_YANG) {
@@ -1329,7 +977,7 @@ error:
 }
 
 API LY_ERR
-lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struct lys_module **module)
+lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, const struct lys_module **module)
 {
     if (module) {
         *module = NULL;
@@ -1339,7 +987,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struc
     /* remember input position */
     in->func_start = in->current;
 
-    return lys_create_module(ctx, in, format, 1, NULL, NULL, (struct lys_module **)module);
+    return lys_create_module(ctx, in, format, 1, NULL, NULL, features, (struct lys_module **)module);
 }
 
 API LY_ERR
@@ -1352,7 +1000,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const s
 
     LY_CHECK_ERR_RET(ret = ly_in_new_memory(data, &in), LOGERR(ctx, ret, "Unable to create input handler."), ret);
 
-    ret = lys_parse(ctx, in, format, module);
+    ret = lys_parse(ctx, in, format, NULL, module);
     ly_in_free(in, 0);
 
     return ret;
@@ -1368,7 +1016,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_m
 
     LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, &in), LOGERR(ctx, ret, "Unable to create input handler."), ret);
 
-    ret = lys_parse(ctx, in, format, module);
+    ret = lys_parse(ctx, in, format, NULL, module);
     ly_in_free(in, 0);
 
     return ret;
@@ -1385,7 +1033,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const 
     LY_CHECK_ERR_RET(ret = ly_in_new_filepath(path, 0, &in),
             LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), ret);
 
-    ret = lys_parse(ctx, in, format, module);
+    ret = lys_parse(ctx, in, format, NULL, module);
     ly_in_free(in, 0);
 
     return ret;

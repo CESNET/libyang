@@ -178,13 +178,13 @@ ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
 }
 
 API const struct lys_module *
-ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
 {
     struct lys_module *result = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
 
-    LY_CHECK_RET(lysp_load_module(ctx, name, revision, 1, 0, &result), NULL);
+    LY_CHECK_RET(lysp_load_module(ctx, name, revision, 1, 0, features, &result), NULL);
     return result;
 }
 
@@ -253,7 +253,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
         LY_CHECK_GOTO(rc = lys_create_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
-                NULL, NULL, &module), error);
+                NULL, NULL, NULL, &module), error);
     }
 
     ly_in_free(in, 0);
@@ -612,21 +612,32 @@ ly_ctx_internal_module_count(const struct ly_ctx *ctx)
 }
 
 static LY_ERR
-ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
+ylib_feature(struct lyd_node *parent, const struct lysp_module *pmod)
 {
-    LY_ARRAY_COUNT_TYPE i;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysp_feature *f;
 
-    if (!cur_mod->implemented) {
+    if (!pmod->mod->implemented) {
         /* no features can be enabled */
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_FOR(cur_mod->features, i) {
-        if (!(cur_mod->features[i].flags & LYS_FENABLED)) {
+    LY_ARRAY_FOR(pmod->features, struct lysp_feature, f) {
+        if (!(f->flags & LYS_FENABLED)) {
             continue;
         }
 
-        LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", cur_mod->features[i].name, NULL));
+        LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", f->name, NULL));
+    }
+
+    LY_ARRAY_FOR(pmod->includes, u) {
+        LY_ARRAY_FOR(pmod->includes[u].submodule->features, struct lysp_feature, f) {
+            if (!(f->flags & LYS_FENABLED)) {
+                continue;
+            }
+
+            LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", f->name, NULL));
+        }
     }
 
     return LY_SUCCESS;
@@ -658,7 +669,7 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_boo
 }
 
 static LY_ERR
-ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bool bis)
+ylib_submodules(struct lyd_node *parent, const struct lysp_module *pmod, ly_bool bis)
 {
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE i;
@@ -667,8 +678,8 @@ ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bo
     int r;
     char *str;
 
-    LY_ARRAY_FOR(cur_mod->parsed->includes, i) {
-        submod = cur_mod->parsed->includes[i].submodule;
+    LY_ARRAY_FOR(pmod->includes, i) {
+        submod = pmod->includes[i].submodule;
 
         if (bis) {
             LY_CHECK_RET(lyd_new_list(parent, NULL, "submodule", &cont, submod->name));
@@ -683,7 +694,7 @@ ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bo
 
         if (submod->filepath) {
             r = asprintf(&str, "file://%s", submod->filepath);
-            LY_CHECK_ERR_RET(r == -1, LOGMEM(cur_mod->ctx), LY_EMEM);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(pmod->mod->ctx), LY_EMEM);
 
             ret = lyd_new_term(cont, NULL, bis ? "location" : "schema", str, NULL);
             free(str);
@@ -734,6 +745,10 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
 
     for (i = 0; i < ctx->list.count; ++i) {
         mod = ctx->list.objs[i];
+        if (!mod->parsed) {
+            LOGERR(ctx, LY_ENOTFOUND, "Parsed module \"%s\" missing in the context.", mod->name);
+            goto error;
+        }
 
         /*
          * deprecated legacy
@@ -755,7 +770,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
         LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "namespace", mod->ns, NULL), error);
 
         /* feature leaf-list */
-        LY_CHECK_GOTO(ret = ylib_feature(cont, mod), error);
+        LY_CHECK_GOTO(ret = ylib_feature(cont, mod->parsed), error);
 
         /* deviation list */
         LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 0), error);
@@ -765,7 +780,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
                 NULL), error);
 
         /* submodule list */
-        LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 0), error);
+        LY_CHECK_GOTO(ret = ylib_submodules(cont, mod->parsed, 0), error);
 
         /*
          * current revision
@@ -797,10 +812,10 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
             }
 
             /* submodule list */
-            LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 1), error);
+            LY_CHECK_GOTO(ret = ylib_submodules(cont, mod->parsed, 1), error);
 
             /* feature list */
-            LY_CHECK_GOTO(ret = ylib_feature(cont, mod), error);
+            LY_CHECK_GOTO(ret = ylib_feature(cont, mod->parsed), error);
 
             /* deviation */
             LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 1), error);

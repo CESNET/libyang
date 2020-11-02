@@ -304,7 +304,7 @@ cmd_load(const char *arg)
     name = strndup(arg_ptr, name_len);
 
     while (name) {
-        model = ly_ctx_load_module(ctx, name, NULL);
+        model = ly_ctx_load_module(ctx, name, NULL, NULL);
         free(name);
         if (!model) {
             /* libyang printed the error messages */
@@ -1254,35 +1254,35 @@ cmd_feature(const char *arg)
 
     if (!task) {
         size_t len, max_len = 0;
-        LY_ARRAY_COUNT_TYPE u;
-        struct lysc_feature *features;
+        uint32_t idx = 0;
+        const struct lysp_feature *f = NULL;
 
         printf("%s features:\n", module->name);
 
-        features = module->features;
-
         /* get the max len */
-        LY_ARRAY_FOR(features, u) {
-            len = strlen(features[u].name);
+        while ((f = lysp_feature_next(f, module->parsed, &idx))) {
+            len = strlen(f->name);
             if (len > max_len) {
                 max_len = len;
             }
         }
 
-        LY_ARRAY_FOR(features, u) {
-            printf("\t%-*s (%s)\n", (int)max_len, features[u].name, (features[u].flags & LYS_FENABLED) ? "on" : "off");
+        idx = 0;
+        f = NULL;
+        while ((f = lysp_feature_next(f, module->parsed, &idx))) {
+            printf("\t%-*s (%s)\n", (int)max_len, f->name, (f->flags & LYS_FENABLED) ? "on" : "off");
         }
-        if (!u) {
+        if (!max_len) {
             printf("\t(none)\n");
         }
     } else {
         feat_names = strtok(feat_names, ",");
         while (feat_names) {
-            if (((task == 1) && lys_feature_enable(module, feat_names))
+            /*if (((task == 1) && lys_feature_enable(module, feat_names))
                     || ((task == 2) && lys_feature_disable(module, feat_names))) {
                 fprintf(stderr, "Feature \"%s\" not found.\n", feat_names);
                 ret = 1;
-            }
+            }*/
             feat_names = strtok(NULL, ",");
         }
     }

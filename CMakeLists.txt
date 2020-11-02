@@ -118,6 +118,7 @@ set(libsrc
     src/schema_compile.c
     src/schema_compile_node.c
     src/schema_compile_amend.c
+    src/schema_features.c
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_helpers.c

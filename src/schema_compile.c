@@ -37,6 +37,7 @@
 #include "plugins_types.h"
 #include "schema_compile_amend.h"
 #include "schema_compile_node.h"
+#include "schema_features.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -44,16 +45,6 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
-
-#define COMPILE_CHECK_UNIQUENESS_ARRAY(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
-    if (ARRAY) { \
-        for (LY_ARRAY_COUNT_TYPE u__ = 0; u__ < LY_ARRAY_COUNT(ARRAY); ++u__) { \
-            if (&(ARRAY)[u__] != EXCL && (void*)((ARRAY)[u__].MEMBER) == (void*)(IDENT)) { \
-                LOGVAL((CTX)->ctx, LY_VLOG_STR, (CTX)->path, LY_VCODE_DUPIDENT, IDENT, STMT); \
-                return LY_EVALID; \
-            } \
-        } \
-    }
 
 /**
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
@@ -317,319 +308,6 @@ remove_nodelevel:
 }
 
 /**
- * @brief Stack for processing if-feature expressions.
- */
-struct iff_stack {
-    size_t size;    /**< number of items in the stack */
-    size_t index;   /**< first empty item */
-    uint8_t *stack; /**< stack - array of @ref ifftokens to create the if-feature expression in prefix format */
-};
-
-/**
- * @brief Add @ref ifftokens into the stack.
- * @param[in] stack The if-feature stack to use.
- * @param[in] value One of the @ref ifftokens to store in the stack.
- * @return LY_EMEM in case of memory allocation error
- * @return LY_ESUCCESS if the value successfully stored.
- */
-static LY_ERR
-iff_stack_push(struct iff_stack *stack, uint8_t value)
-{
-    if (stack->index == stack->size) {
-        stack->size += 4;
-        stack->stack = ly_realloc(stack->stack, stack->size * sizeof *stack->stack);
-        LY_CHECK_ERR_RET(!stack->stack, LOGMEM(NULL); stack->size = 0, LY_EMEM);
-    }
-    stack->stack[stack->index++] = value;
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Get (and remove) the last item form the stack.
- * @param[in] stack The if-feature stack to use.
- * @return The value from the top of the stack.
- */
-static uint8_t
-iff_stack_pop(struct iff_stack *stack)
-{
-    assert(stack && stack->index);
-
-    stack->index--;
-    return stack->stack[stack->index];
-}
-
-/**
- * @brief Clean up the stack.
- * @param[in] stack The if-feature stack to use.
- */
-static void
-iff_stack_clean(struct iff_stack *stack)
-{
-    stack->size = 0;
-    free(stack->stack);
-}
-
-/**
- * @brief Store the @ref ifftokens (@p op) on the given position in the 2bits array
- * (libyang format of the if-feature expression).
- * @param[in,out] list The 2bits array to modify.
- * @param[in] op The operand (@ref ifftokens) to store.
- * @param[in] pos Position (0-based) where to store the given @p op.
- */
-static void
-iff_setop(uint8_t *list, uint8_t op, size_t pos)
-{
-    uint8_t *item;
-    uint8_t mask = 3;
-
-    assert(op <= 3); /* max 2 bits */
-
-    item = &list[pos / 4];
-    mask = mask << 2 * (pos % 4);
-    *item = (*item) & ~mask;
-    *item = (*item) | (op << 2 * (pos % 4));
-}
-
-#define LYS_IFF_LP 0x04 /**< Additional, temporary, value of @ref ifftokens: ( */
-#define LYS_IFF_RP 0x08 /**< Additional, temporary, value of @ref ifftokens: ) */
-
-/**
- * @brief Find a feature of the given name and referenced in the given module.
- *
- * If the compiled schema is available (the schema is implemented), the feature from the compiled schema is
- * returned. Otherwise, the special array of pre-compiled features is used to search for the feature. Such
- * features are always disabled (feature from not implemented schema cannot be enabled), but in case the schema
- * will be made implemented in future (no matter if implicitly via augmenting/deviating it or explicitly via
- * ly_ctx_module_implement()), the compilation of these feature structure is finished, but the pointers
- * assigned till that time will be still valid.
- *
- * @param[in] pmod Module where the feature was referenced (used to resolve prefix of the feature).
- * @param[in] name Name of the feature including possible prefix.
- * @param[in] len Length of the string representing the feature identifier in the name variable (mandatory!).
- * @return Pointer to the feature structure if found, NULL otherwise.
- */
-static struct lysc_feature *
-lys_feature_find(const struct lysp_module *pmod, const char *name, size_t len)
-{
-    LY_ARRAY_COUNT_TYPE u;
-    struct lysc_feature *f;
-    const struct lys_module *mod;
-    const char *ptr;
-
-    assert(pmod);
-
-    if ((ptr = ly_strnchr(name, ':', len))) {
-        /* we have a prefixed feature */
-        mod = lysp_module_find_prefix(pmod, name, ptr - name);
-        LY_CHECK_RET(!mod, NULL);
-
-        len = len - (ptr - name) - 1;
-        name = ptr + 1;
-    } else {
-        /* local feature */
-        mod = pmod->mod;
-    }
-
-    /* we have the correct module, get the feature */
-    LY_ARRAY_FOR(mod->features, u) {
-        f = &mod->features[u];
-        if (!ly_strncmp(f->name, name, len)) {
-            return f;
-        }
-    }
-
-    return NULL;
-}
-
-LY_ERR
-lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, struct lysc_iffeature *iff)
-{
-    LY_ERR rc = LY_SUCCESS;
-    const char *c = qname->str;
-    int64_t i, j;
-    int8_t op_len, last_not = 0, checkversion = 0;
-    LY_ARRAY_COUNT_TYPE f_size = 0, expr_size = 0, f_exp = 1;
-    uint8_t op;
-    struct iff_stack stack = {0, 0, NULL};
-    struct lysc_feature *f;
-
-    assert(c);
-
-    /* pre-parse the expression to get sizes for arrays, also do some syntax checks of the expression */
-    for (i = j = 0; c[i]; i++) {
-        if (c[i] == '(') {
-            j++;
-            checkversion = 1;
-            continue;
-        } else if (c[i] == ')') {
-            j--;
-            continue;
-        } else if (isspace(c[i])) {
-            checkversion = 1;
-            continue;
-        }
-
-        if (!strncmp(&c[i], "not", op_len = 3) || !strncmp(&c[i], "and", op_len = 3) || !strncmp(&c[i], "or", op_len = 2)) {
-            uint64_t spaces;
-            for (spaces = 0; c[i + op_len + spaces] && isspace(c[i + op_len + spaces]); spaces++) {}
-            if (c[i + op_len + spaces] == '\0') {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                        "Invalid value \"%s\" of if-feature - unexpected end of expression.", qname->str);
-                return LY_EVALID;
-            } else if (!isspace(c[i + op_len])) {
-                /* feature name starting with the not/and/or */
-                last_not = 0;
-                f_size++;
-            } else if (c[i] == 'n') { /* not operation */
-                if (last_not) {
-                    /* double not */
-                    expr_size = expr_size - 2;
-                    last_not = 0;
-                } else {
-                    last_not = 1;
-                }
-            } else { /* and, or */
-                if (f_exp != f_size) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                            "Invalid value \"%s\" of if-feature - missing feature/expression before \"%.*s\" operation.",
-                            qname->str, op_len, &c[i]);
-                    return LY_EVALID;
-                }
-                f_exp++;
-
-                /* not a not operation */
-                last_not = 0;
-            }
-            i += op_len;
-        } else {
-            f_size++;
-            last_not = 0;
-        }
-        expr_size++;
-
-        while (!isspace(c[i])) {
-            if (!c[i] || (c[i] == ')') || (c[i] == '(')) {
-                i--;
-                break;
-            }
-            i++;
-        }
-    }
-    if (j) {
-        /* not matching count of ( and ) */
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.", qname->str);
-        return LY_EVALID;
-    }
-    if (f_exp != f_size) {
-        /* features do not match the needed arguments for the logical operations */
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                "Invalid value \"%s\" of if-feature - number of features in expression does not match "
-                "the required number of operands for the operations.", qname->str);
-        return LY_EVALID;
-    }
-
-    if (checkversion || (expr_size > 1)) {
-        /* check that we have 1.1 module */
-        if (qname->mod->version != LYS_VERSION_1_1) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                    "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", qname->str);
-            return LY_EVALID;
-        }
-    }
-
-    /* allocate the memory */
-    LY_ARRAY_CREATE_RET(ctx->ctx, iff->features, f_size, LY_EMEM);
-    iff->expr = calloc((j = (expr_size / 4) + ((expr_size % 4) ? 1 : 0)), sizeof *iff->expr);
-    stack.stack = malloc(expr_size * sizeof *stack.stack);
-    LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr, LOGMEM(ctx->ctx); rc = LY_EMEM, error);
-
-    stack.size = expr_size;
-    f_size--; expr_size--; /* used as indexes from now */
-
-    for (i--; i >= 0; i--) {
-        if (c[i] == ')') {
-            /* push it on stack */
-            iff_stack_push(&stack, LYS_IFF_RP);
-            continue;
-        } else if (c[i] == '(') {
-            /* pop from the stack into result all operators until ) */
-            while ((op = iff_stack_pop(&stack)) != LYS_IFF_RP) {
-                iff_setop(iff->expr, op, expr_size--);
-            }
-            continue;
-        } else if (isspace(c[i])) {
-            continue;
-        }
-
-        /* end of operator or operand -> find beginning and get what is it */
-        j = i + 1;
-        while (i >= 0 && !isspace(c[i]) && c[i] != '(') {
-            i--;
-        }
-        i++; /* go back by one step */
-
-        if (!strncmp(&c[i], "not", 3) && isspace(c[i + 3])) {
-            if (stack.index && (stack.stack[stack.index - 1] == LYS_IFF_NOT)) {
-                /* double not */
-                iff_stack_pop(&stack);
-            } else {
-                /* not has the highest priority, so do not pop from the stack
-                 * as in case of AND and OR */
-                iff_stack_push(&stack, LYS_IFF_NOT);
-            }
-        } else if (!strncmp(&c[i], "and", 3) && isspace(c[i + 3])) {
-            /* as for OR - pop from the stack all operators with the same or higher
-             * priority and store them to the result, then push the AND to the stack */
-            while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_AND) {
-                op = iff_stack_pop(&stack);
-                iff_setop(iff->expr, op, expr_size--);
-            }
-            iff_stack_push(&stack, LYS_IFF_AND);
-        } else if (!strncmp(&c[i], "or", 2) && isspace(c[i + 2])) {
-            while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_OR) {
-                op = iff_stack_pop(&stack);
-                iff_setop(iff->expr, op, expr_size--);
-            }
-            iff_stack_push(&stack, LYS_IFF_OR);
-        } else {
-            /* feature name, length is j - i */
-
-            /* add it to the expression */
-            iff_setop(iff->expr, LYS_IFF_F, expr_size--);
-
-            /* now get the link to the feature definition */
-            f = lys_feature_find(qname->mod, &c[i], j - i);
-            LY_CHECK_ERR_GOTO(!f, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                    "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", qname->str, j - i, &c[i]);
-                    rc = LY_EVALID, error)
-            iff->features[f_size] = f;
-            LY_ARRAY_INCREMENT(iff->features);
-            f_size--;
-        }
-    }
-    while (stack.index) {
-        op = iff_stack_pop(&stack);
-        iff_setop(iff->expr, op, expr_size--);
-    }
-
-    if (++expr_size || ++f_size) {
-        /* not all expected operators and operands found */
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                "Invalid value \"%s\" of if-feature - processing error.", qname->str);
-        rc = LY_EINT;
-    } else {
-        rc = LY_SUCCESS;
-    }
-
-error:
-    /* cleanup */
-    iff_stack_clean(&stack);
-
-    return rc;
-}
-
-/**
  * @brief Compile information in the import statement - make sure there is the target module
  * @param[in] ctx Compile context.
  * @param[in] imp_p The parsed import statement structure to fill the module to.
@@ -652,7 +330,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p)
                 LOGINT(ctx->ctx);
             } else {
                 LY_CHECK_RET(lys_parse(ctx->ctx, in, !strcmp(&imp_p->module->filepath[strlen(imp_p->module->filepath - 4)],
-                        ".yin") ? LYS_IN_YIN : LYS_IN_YANG, &mod));
+                        ".yin") ? LYS_IN_YIN : LYS_IN_YANG, NULL, &mod));
                 if (mod != imp_p->module) {
                     LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
                             imp_p->module->filepath, imp_p->module->name);
@@ -662,7 +340,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p)
             ly_in_free(in, 1);
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, imp_p->module->name, imp_p->module->revision, 0, 1, (struct lys_module **)&mod)) {
+            if (lysp_load_module(ctx->ctx, imp_p->module->name, imp_p->module->revision, 0, 1, NULL, (struct lys_module **)&mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
                         imp_p->module->name, ctx->cur_mod->name);
                 return LY_ENOTFOUND;
@@ -677,9 +355,11 @@ LY_ERR
 lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
-    LY_ARRAY_COUNT_TYPE offset = 0, u, v;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysc_ctx context = {0};
+    struct lysc_ident *ident;
     LY_ERR ret = LY_SUCCESS;
+    ly_bool enabled;
 
     assert(ctx_sc || ctx);
 
@@ -695,27 +375,27 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
     if (!identities_p) {
         return LY_SUCCESS;
     }
-    if (*identities) {
-        offset = LY_ARRAY_COUNT(*identities);
-    }
 
     lysc_update_path(ctx_sc, NULL, "{identity}");
-    LY_ARRAY_CREATE_RET(ctx_sc->ctx, *identities, LY_ARRAY_COUNT(identities_p), LY_EMEM);
     LY_ARRAY_FOR(identities_p, u) {
+        /* evaluate if-features */
+        LY_CHECK_RET(lys_eval_iffeatures(ctx, identities_p[u].iffeatures, &enabled));
+        if (!enabled) {
+            continue;
+        }
+
         lysc_update_path(ctx_sc, NULL, identities_p[u].name);
 
-        LY_ARRAY_INCREMENT(*identities);
-        COMPILE_CHECK_UNIQUENESS_ARRAY(ctx_sc, *identities, name, &(*identities)[offset + u], "identity", identities_p[u].name);
-        DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].name, (*identities)[offset + u].name, ret, done);
-        DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].dsc, (*identities)[offset + u].dsc, ret, done);
-        DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].ref, (*identities)[offset + u].ref, ret, done);
-        (*identities)[offset + u].module = ctx_sc->cur_mod;
-        COMPILE_ARRAY_GOTO(ctx_sc, identities_p[u].iffeatures, (*identities)[offset + u].iffeatures, v,
-                lys_compile_iffeature, ret, done);
+        /* add new compiled identity */
+        LY_ARRAY_NEW_RET(ctx_sc->ctx, *identities, ident, LY_EMEM);
+
+        DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].name, ident->name, ret, done);
+        DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].dsc, ident->dsc, ret, done);
+        DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].ref, ident->ref, ret, done);
+        ident->module = ctx_sc->cur_mod;
         /* backlinks (derived) can be added no sooner than when all the identities in the current module are present */
-        COMPILE_EXTS_GOTO(ctx_sc, identities_p[u].exts, (*identities)[offset + u].exts, &(*identities)[offset + u],
-                LYEXT_PAR_IDENT, ret, done);
-        (*identities)[offset + u].flags = identities_p[u].flags;
+        COMPILE_EXTS_GOTO(ctx_sc, identities_p[u].exts, ident->exts, ident, LYEXT_PAR_IDENT, ret, done);
+        ident->flags = identities_p[u].flags;
 
         lysc_update_path(ctx_sc, NULL, NULL);
     }
@@ -782,14 +462,14 @@ cleanup:
 
 LY_ERR
 lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
-        struct lysc_ident *ident, struct lysc_ident ***bases)
+        struct lysc_ident *ident, struct lysc_ident ***bases, ly_bool *enabled)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     const char *s, *name;
     const struct lys_module *mod;
     struct lysc_ident **idref;
 
-    assert(ident || bases);
+    assert((ident && enabled) || bases);
 
     if ((LY_ARRAY_COUNT(bases_p) > 1) && (ctx->pmod->version < LYS_VERSION_1_1)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
@@ -841,6 +521,13 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
         }
         if (!idref || !(*idref)) {
             if (ident) {
+                /* look into the parsed module to check whether the identity is not merely disabled */
+                LY_ARRAY_FOR(mod->parsed->identities, v) {
+                    if (!strcmp(mod->parsed->identities[v].name, name)) {
+                        *enabled = 0;
+                        return LY_SUCCESS;
+                    }
+                }
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                         "Unable to find base (%s) of identity \"%s\".", bases_p[u], ident->name);
             } else {
@@ -850,6 +537,10 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
             return LY_EVALID;
         }
     }
+
+    if (ident) {
+        *enabled = 1;
+    }
     return LY_SUCCESS;
 }
 
@@ -857,261 +548,61 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
  * @brief For the given array of identities, set the backlinks from all their base identities.
  * @param[in] ctx Compile context, not only for logging but also to get the current module to resolve prefixes.
  * @param[in] idents_p Array of identities definitions from the parsed schema structure.
- * @param[in] idents Array of referencing identities to which the backlinks are supposed to be set.
+ * @param[in,out] idents Array of referencing identities to which the backlinks are supposed to be set. Any
+ * identities with disabled bases are removed.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident *idents)
+lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident **idents)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LY_ARRAY_COUNT_TYPE u, v;
+    ly_bool enabled;
 
     lysc_update_path(ctx, NULL, "{identity}");
-    for (u = 0; u < LY_ARRAY_COUNT(idents_p); ++u) {
-        if (!idents_p[u].bases) {
+
+restart:
+    for (u = 0, v = 0; *idents && (u < LY_ARRAY_COUNT(*idents)); ++u) {
+        /* find matching parsed identity, the disabled ones are missing in the compiled array */
+        while (v < LY_ARRAY_COUNT(idents_p)) {
+            if (idents_p[v].name == (*idents)[u].name) {
+                break;
+            }
+            ++v;
+        }
+        assert(v < LY_ARRAY_COUNT(idents_p));
+
+        if (!idents_p[v].bases) {
             continue;
         }
-        lysc_update_path(ctx, NULL, idents[u].name);
-        LY_CHECK_RET(lys_compile_identity_bases(ctx, idents[u].module->parsed, idents_p[u].bases, &idents[u], NULL));
+        lysc_update_path(ctx, NULL, (*idents)[u].name);
+        LY_CHECK_RET(lys_compile_identity_bases(ctx, (*idents)[u].module->parsed, idents_p[v].bases, &(*idents)[u], NULL,
+                &enabled));
         lysc_update_path(ctx, NULL, NULL);
+
+        if (!enabled) {
+            /* remove the identity */
+            lysc_ident_free(ctx->ctx, &(*idents)[u]);
+            LY_ARRAY_DECREMENT(*idents);
+            if (u < LY_ARRAY_COUNT(*idents)) {
+                memmove(&(*idents)[u], &(*idents)[u + 1], (LY_ARRAY_COUNT(*idents) - u) * sizeof **idents);
+            }
+            if (!LY_ARRAY_COUNT(*idents)) {
+                LY_ARRAY_FREE(*idents);
+                *idents = NULL;
+            }
+
+            /* revert compilation of all the previous identities */
+            for (v = 0; v < u; ++v) {
+                LY_ARRAY_FREE((*idents)[v].derived);
+            }
+
+            /* restart the whole process without this identity */
+            goto restart;
+        }
     }
+
     lysc_update_path(ctx, NULL, NULL);
     return LY_SUCCESS;
-}
-
-LY_ERR
-lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
-        struct lysp_feature *features_p, struct lysc_feature **features)
-{
-    LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE offset = 0, u;
-    struct lysc_ctx context = {0};
-
-    assert(ctx_sc || ctx);
-
-    if (!ctx_sc) {
-        context.ctx = ctx;
-        context.cur_mod = parsed_mod->mod;
-        context.pmod = parsed_mod;
-        context.path_len = 1;
-        context.path[0] = '/';
-        ctx_sc = &context;
-    }
-
-    if (!features_p) {
-        return LY_SUCCESS;
-    }
-    if (*features) {
-        offset = LY_ARRAY_COUNT(*features);
-    }
-
-    lysc_update_path(ctx_sc, NULL, "{feature}");
-    LY_ARRAY_CREATE_RET(ctx_sc->ctx, *features, LY_ARRAY_COUNT(features_p), LY_EMEM);
-    LY_ARRAY_FOR(features_p, u) {
-        lysc_update_path(ctx_sc, NULL, features_p[u].name);
-
-        LY_ARRAY_INCREMENT(*features);
-        COMPILE_CHECK_UNIQUENESS_ARRAY(ctx_sc, *features, name, &(*features)[offset + u], "feature", features_p[u].name);
-        DUP_STRING_GOTO(ctx_sc->ctx, features_p[u].name, (*features)[offset + u].name, ret, done);
-        DUP_STRING_GOTO(ctx_sc->ctx, features_p[u].dsc, (*features)[offset + u].dsc, ret, done);
-        DUP_STRING_GOTO(ctx_sc->ctx, features_p[u].ref, (*features)[offset + u].ref, ret, done);
-        (*features)[offset + u].flags = features_p[u].flags;
-        (*features)[offset + u].module = ctx_sc->cur_mod;
-
-        lysc_update_path(ctx_sc, NULL, NULL);
-    }
-    lysc_update_path(ctx_sc, NULL, NULL);
-
-done:
-    return ret;
-}
-
-/**
- * @brief Check circular dependency of features - feature MUST NOT reference itself (via their if-feature statement).
- *
- * The function works in the same way as lys_compile_identity_circular_check() with different structures and error messages.
- *
- * @param[in] ctx Compile context for logging.
- * @param[in] feature The feature referenced in if-feature statement (its depfeatures list is being extended by the feature
- *            being currently processed).
- * @param[in] depfeatures The list of depending features of the feature being currently processed (not the one provided as @p feature)
- * @return LY_SUCCESS if everything is ok.
- * @return LY_EVALID if the feature references indirectly itself.
- */
-static LY_ERR
-lys_compile_feature_circular_check(struct lysc_ctx *ctx, struct lysc_feature *feature, struct lysc_feature **depfeatures)
-{
-    LY_ERR ret = LY_SUCCESS;
-    LY_ARRAY_COUNT_TYPE u, v;
-    struct ly_set recursion = {0};
-    struct lysc_feature *drv;
-
-    if (!depfeatures) {
-        return LY_SUCCESS;
-    }
-
-    for (u = 0; u < LY_ARRAY_COUNT(depfeatures); ++u) {
-        if (feature == depfeatures[u]) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                    "Feature \"%s\" is indirectly referenced from itself.", feature->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-        ret = ly_set_add(&recursion, depfeatures[u], 0, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    for (v = 0; v < recursion.count; ++v) {
-        drv = recursion.objs[v];
-        if (!drv->depfeatures) {
-            continue;
-        }
-        for (u = 0; u < LY_ARRAY_COUNT(drv->depfeatures); ++u) {
-            if (feature == drv->depfeatures[u]) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                        "Feature \"%s\" is indirectly referenced from itself.", feature->name);
-                ret = LY_EVALID;
-                goto cleanup;
-            }
-            ly_set_add(&recursion, drv->depfeatures[u], 0, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    }
-
-cleanup:
-    ly_set_erase(&recursion, NULL);
-    return ret;
-}
-
-/**
- * @brief Create pre-compiled features array.
- *
- * See lys_feature_precompile() for more details.
- *
- * @param[in] ctx Compile context.
- * @param[in] feature_p Parsed feature definition to compile.
- * @param[in,out] features List of already (pre)compiled features to find the corresponding precompiled feature structure.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature_p, struct lysc_feature *features)
-{
-    LY_ARRAY_COUNT_TYPE u, v, x;
-    struct lysc_feature *feature, **df;
-    LY_ERR ret = LY_SUCCESS;
-
-    /* find the preprecompiled feature */
-    LY_ARRAY_FOR(features, x) {
-        if (strcmp(features[x].name, feature_p->name)) {
-            continue;
-        }
-        feature = &features[x];
-        lysc_update_path(ctx, NULL, "{feature}");
-        lysc_update_path(ctx, NULL, feature_p->name);
-
-        /* finish compilation started in lys_feature_precompile() */
-        COMPILE_EXTS_GOTO(ctx, feature_p->exts, feature->exts, feature, LYEXT_PAR_FEATURE, ret, done);
-        COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, u, lys_compile_iffeature, ret, done);
-        if (feature->iffeatures) {
-            for (u = 0; u < LY_ARRAY_COUNT(feature->iffeatures); ++u) {
-                if (feature->iffeatures[u].features) {
-                    for (v = 0; v < LY_ARRAY_COUNT(feature->iffeatures[u].features); ++v) {
-                        /* check for circular dependency - direct reference first,... */
-                        if (feature == feature->iffeatures[u].features[v]) {
-                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                    "Feature \"%s\" is referenced from itself.", feature->name);
-                            return LY_EVALID;
-                        }
-                        /* ... and indirect circular reference */
-                        LY_CHECK_RET(lys_compile_feature_circular_check(ctx, feature->iffeatures[u].features[v], feature->depfeatures));
-
-                        /* add itself into the dependants list */
-                        LY_ARRAY_NEW_RET(ctx->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
-                        *df = feature;
-                    }
-                }
-            }
-        }
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
-done:
-        return ret;
-    }
-
-    LOGINT(ctx->ctx);
-    return LY_EINT;
-}
-
-void
-lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod)
-{
-    LY_ARRAY_COUNT_TYPE u, v;
-
-    /* in the dis_features list, remove all the parts (from finished compiling process)
-     * which may points into the data being freed here */
-    LY_ARRAY_FOR(mod->features, u) {
-        LY_ARRAY_FOR(mod->features[u].iffeatures, v) {
-            lysc_iffeature_free(ctx->ctx, &mod->features[u].iffeatures[v]);
-        }
-        LY_ARRAY_FREE(mod->features[u].iffeatures);
-        mod->features[u].iffeatures = NULL;
-
-        LY_ARRAY_FOR(mod->features[u].exts, v) {
-            lysc_ext_instance_free(ctx->ctx, &(mod->features[u].exts)[v]);
-        }
-        LY_ARRAY_FREE(mod->features[u].exts);
-        mod->features[u].exts = NULL;
-    }
-}
-
-/**
- * @brief Check the features used in if-feature statements applicable to the leafref and its target.
- *
- * The set of features used for target must be a subset of features used for the leafref.
- * This is not a perfect, we should compare the truth tables but it could require too much resources
- * and RFC 7950 does not require it explicitely, so we simplify that.
- *
- * @param[in] refnode The leafref node.
- * @param[in] target Tha target node of the leafref.
- * @return LY_SUCCESS or LY_EVALID;
- */
-static LY_ERR
-lys_compile_leafref_features_validate(const struct lysc_node *refnode, const struct lysc_node *target)
-{
-    LY_ERR ret = LY_EVALID;
-    const struct lysc_node *iter;
-    LY_ARRAY_COUNT_TYPE u, v;
-    struct ly_set features = {0};
-
-    for (iter = refnode; iter; iter = iter->parent) {
-        if (iter->iffeatures) {
-            LY_ARRAY_FOR(iter->iffeatures, u) {
-                LY_ARRAY_FOR(iter->iffeatures[u].features, v) {
-                    LY_CHECK_GOTO(ly_set_add(&features, iter->iffeatures[u].features[v], 0, NULL), cleanup);
-                }
-            }
-        }
-    }
-
-    /* we should have, in features set, a superset of features applicable to the target node.
-     * If the feature is not present, we don;t have a subset of features applicable
-     * to the leafref itself. */
-    for (iter = target; iter; iter = iter->parent) {
-        if (iter->iffeatures) {
-            LY_ARRAY_FOR(iter->iffeatures, u) {
-                LY_ARRAY_FOR(iter->iffeatures[u].features, v) {
-                    if (!ly_set_contains(&features, iter->iffeatures[u].features[v], NULL)) {
-                        /* feature not present */
-                        goto cleanup;
-                    }
-                }
-            }
-        }
-    }
-    ret = LY_SUCCESS;
-
-cleanup:
-    ly_set_erase(&features, NULL);
-    return ret;
 }
 
 static void *
@@ -1131,8 +622,9 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
     LY_ERR ret = LY_EVALID, r;
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
-    struct lysp_qname qname;
+    struct lysp_qname *iffeatures, *iffeat;
     void *parsed = NULL, **compiled = NULL;
+    ly_bool enabled;
 
     /* check for invalid substatements */
     for (stmt = ext->child; stmt; stmt = stmt->next) {
@@ -1216,26 +708,19 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                     LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
                     break;
                 }
-                case LY_STMT_IF_FEATURE: {
-                    struct lysc_iffeature *iff = NULL;
-
-                    if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                        /* single item */
-                        if (((struct lysc_iffeature *)substmts[u].storage)->features) {
-                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPSTMT, stmt->stmt);
-                            goto cleanup;
-                        }
-                        iff = (struct lysc_iffeature *)substmts[u].storage;
-                    } else {
-                        /* sized array */
-                        struct lysc_iffeature **iffs = (struct lysc_iffeature **)substmts[u].storage;
-                        LY_ARRAY_NEW_GOTO(ctx->ctx, *iffs, iff, ret, cleanup);
+                case LY_STMT_IF_FEATURE:
+                    iffeatures = NULL;
+                    LY_ARRAY_NEW_GOTO(ctx->ctx, iffeatures, iffeat, ret, cleanup);
+                    iffeat->str = stmt->arg;
+                    iffeat->mod = ctx->pmod;
+                    r = lys_eval_iffeatures(ctx->ctx, iffeatures, &enabled);
+                    LY_ARRAY_FREE(iffeatures);
+                    LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
+                    if (!enabled) {
+                        /* it is disabled, remove the whole extension instance */
+                        return LY_ENOT;
                     }
-                    qname.str = stmt->arg;
-                    qname.mod = ctx->pmod;
-                    LY_CHECK_ERR_GOTO(r = lys_compile_iffeature(ctx, &qname, iff), ret = r, cleanup);
                     break;
-                }
                 /* TODO support other substatements (parse stmt to lysp and then compile lysp to lysc),
                  * also note that in many statements their extensions are not taken into account  */
                 default:
@@ -1401,7 +886,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
         if (!mod->implemented) {
             /* unimplemented module found */
             if (implement) {
-                LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod));
+                LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod, NULL));
             } else {
                 *mod_p = mod;
                 break;
@@ -1647,13 +1132,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
         }
     }
 
-    /* check if leafref and its target are under common if-features */
-    if (lys_compile_leafref_features_validate(node, target)) {
-        LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_REFERENCE,
-                "Invalid leafref path \"%s\" - set of features applicable to the leafref target is not a subset of"
-                " features applicable to the leafref itself.", lref->path->expr);
-        return LY_EVALID;
-    }
+    /* TODO check if leafref and its target are under common if-features */
 
     return LY_SUCCESS;
 }
@@ -1688,7 +1167,17 @@ lys_compile_ietf_netconf_wd_annotation(struct lysc_ctx *ctx, struct lys_module *
     ext_mod = ly_ctx_get_module_latest(ctx->ctx, "ietf-yang-metadata");
 
     /* compile the extension instance */
-    LY_CHECK_GOTO(ret = lys_compile_ext(ctx, ext_p, ext, mod->compiled, LYEXT_PAR_MODULE, ext_mod), cleanup);
+    ret = lys_compile_ext(ctx, ext_p, ext, mod->compiled, LYEXT_PAR_MODULE, ext_mod);
+    if (ret == LY_ENOT) {
+        /* free the extension */
+        lysc_ext_instance_free(ctx->ctx, ext);
+        LY_ARRAY_DECREMENT_FREE(mod->compiled->exts);
+
+        ret = LY_SUCCESS;
+        goto cleanup;
+    } else if (ret) {
+        goto cleanup;
+    }
 
 cleanup:
     lysp_ext_instance_free(ctx->ctx, ext_p);
@@ -1858,8 +1347,66 @@ lys_compile_unres(struct lysc_ctx *ctx)
     struct lysc_type_leafref *lref;
     struct lysc_augment *aug;
     struct lysc_deviation *dev;
+    struct ly_set disabled_op = {0};
     LY_ARRAY_COUNT_TYPE v;
     uint32_t i;
+
+#define ARRAY_DEL_ITEM(array, item) \
+    { \
+        LY_ARRAY_COUNT_TYPE u__; \
+        LY_ARRAY_FOR(array, u__) { \
+            if ((array) + u__ == item) { \
+                LY_ARRAY_DECREMENT(array); \
+                if (u__ < LY_ARRAY_COUNT(array)) { \
+                    memmove((array) + u__, (array) + u__ + 1, (LY_ARRAY_COUNT(array) - u__) * sizeof *(array)); \
+                } \
+                if (!LY_ARRAY_COUNT(array)) { \
+                    LY_ARRAY_FREE(array); \
+                    (array) = NULL; \
+                } \
+                break; \
+            } \
+        } \
+    }
+
+    /* remove all disabled nodes */
+    for (i = 0; i < ctx->disabled.count; ++i) {
+        node = ctx->disabled.snodes[i];
+        if (node->flags & LYS_KEY) {
+            LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_REFERENCE, "Key \"%s\" is disabled by its if-features.",
+                    node->name);
+            return LY_EVALID;
+        }
+
+        if (node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+            if (node->nodetype & (LYS_RPC | LYS_ACTION)) {
+                lysc_action_free(ctx->ctx, (struct lysc_action *)node);
+            } else {
+                lysc_notif_free(ctx->ctx, (struct lysc_notif *)node);
+            }
+            /* remember all freed RPCs/actions/notifs */
+            ly_set_add(&disabled_op, node, 1, NULL);
+        } else {
+            lysc_node_free(ctx->ctx, node, 1);
+        }
+    }
+
+    /* remove ops also from their arrays, from end so as not to move other items and change these pointer targets */
+    i = disabled_op.count;
+    while (i) {
+        --i;
+        node = disabled_op.snodes[i];
+        if (node->nodetype == LYS_RPC) {
+            ARRAY_DEL_ITEM(node->module->compiled->rpcs, (struct lysc_action *)node);
+        } else if (node->nodetype == LYS_ACTION) {
+            ARRAY_DEL_ITEM(*lysc_node_actions_p(node->parent), (struct lysc_action *)node);
+        } else if (node->parent) {
+            ARRAY_DEL_ITEM(*lysc_node_notifs_p(node->parent), (struct lysc_notif *)node);
+        } else {
+            ARRAY_DEL_ITEM(node->module->compiled->notifs, (struct lysc_notif *)node);
+        }
+    }
+    ly_set_erase(&disabled_op, NULL);
 
     /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
      * can be also leafref, in case it is already resolved, go through the chain and check that it does not
@@ -1937,50 +1484,7 @@ lys_compile_unres(struct lysc_ctx *ctx)
     }
 
     return LY_SUCCESS;
-}
-
-/**
- * @brief Compile features in the current module and all its submodules.
- *
- * @param[in] ctx Compile context.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_features(struct lysc_ctx *ctx)
-{
-    struct lysp_submodule *submod;
-    LY_ARRAY_COUNT_TYPE u, v;
-
-    if (!ctx->cur_mod->features) {
-        /* features are compiled directly into the module structure,
-         * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
-        LY_CHECK_RET(lys_feature_precompile(ctx, NULL, NULL, ctx->cur_mod->parsed->features, &ctx->cur_mod->features));
-        LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, v) {
-            submod = ctx->cur_mod->parsed->includes[v].submodule;
-            LY_CHECK_RET(lys_feature_precompile(ctx, NULL, NULL, submod->features, &ctx->cur_mod->features));
-        }
-    }
-
-    /* finish feature compilation, not only for the main module, but also for the submodules.
-     * Due to possible forward references, it must be done when all the features (including submodules)
-     * are present. */
-    LY_ARRAY_FOR(ctx->cur_mod->parsed->features, u) {
-        LY_CHECK_RET(lys_feature_precompile_finish(ctx, &ctx->cur_mod->parsed->features[u], ctx->cur_mod->features));
-    }
-
-    lysc_update_path(ctx, NULL, "{submodule}");
-    LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, v) {
-        submod = ctx->cur_mod->parsed->includes[v].submodule;
-
-        lysc_update_path(ctx, NULL, submod->name);
-        LY_ARRAY_FOR(submod->features, u) {
-            LY_CHECK_RET(lys_feature_precompile_finish(ctx, &submod->features[u], ctx->cur_mod->features));
-        }
-        lysc_update_path(ctx, NULL, NULL);
-    }
-    lysc_update_path(ctx, NULL, NULL);
-
-    return LY_SUCCESS;
+#undef ARRAY_DEL_ITEM
 }
 
 /**
@@ -2004,7 +1508,7 @@ lys_compile_identities(struct lysc_ctx *ctx)
     }
 
     if (ctx->cur_mod->parsed->identities) {
-        LY_CHECK_RET(lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities, ctx->cur_mod->identities));
+        LY_CHECK_RET(lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities, &ctx->cur_mod->identities));
     }
     lysc_update_path(ctx, NULL, "{submodule}");
     LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, u) {
@@ -2012,13 +1516,93 @@ lys_compile_identities(struct lysc_ctx *ctx)
         submod = ctx->cur_mod->parsed->includes[u].submodule;
         if (submod->identities) {
             lysc_update_path(ctx, NULL, submod->name);
-            LY_CHECK_RET(lys_compile_identities_derived(ctx, submod->identities, ctx->cur_mod->identities));
+            LY_CHECK_RET(lys_compile_identities_derived(ctx, submod->identities, &ctx->cur_mod->identities));
             lysc_update_path(ctx, NULL, NULL);
         }
     }
     lysc_update_path(ctx, NULL, NULL);
 
     return LY_SUCCESS;
+}
+
+static LY_ERR
+lys_recompile_mod(struct lys_module *mod, ly_bool log)
+{
+    LY_ERR ret;
+    uint32_t prev_lo;
+    struct lysp_import *imp;
+
+    if (!mod->implemented || mod->compiled) {
+        /* nothing to do */
+        return LY_SUCCESS;
+    }
+
+    /* we need all implemented imports to be recompiled */
+    LY_ARRAY_FOR(mod->parsed->imports, struct lysp_import, imp) {
+        LY_CHECK_RET(lys_recompile_mod(imp->module, log));
+    }
+
+    if (!log) {
+        /* recompile, must succeed because it was already compiled; hide messages because any
+         * warnings were already printed, are not really relevant, and would hide the real error */
+        prev_lo = ly_log_options(0);
+    }
+    ret = lys_compile(mod, 0);
+    if (!log) {
+        ly_log_options(prev_lo);
+    }
+
+    if (ret && !log) {
+        LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
+    }
+    return ret;
+}
+
+LY_ERR
+lys_recompile(struct ly_ctx *ctx, const struct lys_module *skip)
+{
+    uint32_t idx;
+    struct lys_module *mod;
+    LY_ERR ret = LY_SUCCESS, r;
+
+    /* free all the modules */
+    for (idx = 0; idx < ctx->list.count; ++idx) {
+        mod = ctx->list.objs[idx];
+        /* skip this module */
+        if (skip && (mod == skip)) {
+            continue;
+        }
+
+        if (mod->compiled) {
+            /* free the module */
+            lysc_module_free(mod->compiled, NULL);
+            mod->compiled = NULL;
+        }
+
+        /* free precompiled iffeatures */
+        lys_free_feature_iffeatures(mod->parsed);
+    }
+
+    /* recompile all the modules */
+    for (idx = 0; idx < ctx->list.count; ++idx) {
+        mod = ctx->list.objs[idx];
+
+        /* skip this module */
+        if (skip && (mod == skip)) {
+            continue;
+        }
+
+        /* compile again */
+        r = lys_recompile_mod(mod, skip ? 1 : 0);
+        if (r) {
+            if (skip) {
+                return r;
+            }
+            ret = r;
+        }
+    }
+
+    return ret;
 }
 
 LY_ERR
@@ -2062,10 +1646,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
         LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), error);
     }
 
-    /* features */
-    LY_CHECK_GOTO(ret = lys_compile_features(&ctx), error);
-
-    /* identities, work similarly to features with the precompilation */
+    /* identities */
     LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), error);
 
     /* augments and deviations */
@@ -2161,7 +1742,8 @@ lys_compile(struct lys_module *mod, uint32_t options)
         LY_CHECK_GOTO(ret = lys_compile_ietf_netconf_wd_annotation(&ctx, mod), error);
     }
 
-    /* there can be no leftover deviations */
+    /* there can be no leftover deviations or augments */
+    LY_CHECK_ERR_GOTO(ctx.augs.count, LOGINT(ctx.ctx); ret = LY_EINT, error);
     LY_CHECK_ERR_GOTO(ctx.devs.count, LOGINT(ctx.ctx); ret = LY_EINT, error);
 
     for (i = 0; i < ctx.dflts.count; ++i) {
@@ -2172,6 +1754,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
     ly_set_erase(&ctx.leafrefs, NULL);
     ly_set_erase(&ctx.groupings, NULL);
     ly_set_erase(&ctx.tpdf_chain, NULL);
+    ly_set_erase(&ctx.disabled, NULL);
     ly_set_erase(&ctx.augs, NULL);
     ly_set_erase(&ctx.devs, NULL);
     ly_set_erase(&ctx.uses_augs, NULL);
@@ -2181,7 +1764,6 @@ lys_compile(struct lys_module *mod, uint32_t options)
 
 error:
     lys_precompile_augments_deviations_revert(ctx.ctx, mod);
-    lys_feature_precompile_revert(&ctx, mod);
     for (i = 0; i < ctx.dflts.count; ++i) {
         lysc_unres_dflt_free(ctx.ctx, ctx.dflts.objs[i]);
     }
@@ -2190,6 +1772,7 @@ error:
     ly_set_erase(&ctx.leafrefs, NULL);
     ly_set_erase(&ctx.groupings, NULL);
     ly_set_erase(&ctx.tpdf_chain, NULL);
+    ly_set_erase(&ctx.disabled, NULL);
     for (i = 0; i < ctx.augs.count; ++i) {
         lysc_augment_free(ctx.ctx, ctx.augs.objs[i]);
     }

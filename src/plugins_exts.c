@@ -67,8 +67,6 @@ lyext_parent2str(LYEXT_PARENT type)
         return "bit";
     case LYEXT_PAR_TYPE_ENUM:
         return "enum";
-    case LYEXT_PAR_FEATURE:
-        return "feature";
     case LYEXT_PAR_MUST:
         return "must";
     case LYEXT_PAR_PATTERN:

@@ -1034,7 +1034,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     size_t buf_size = 0;
     char *buf = NULL;
     size_t index;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u;
     char *errmsg = NULL;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
     ly_bool iscanonical = 1;
@@ -1067,15 +1067,6 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
             if (!ly_strncmp(type_bits->bits[u].name, item, item_len)) {
                 /* we have the match */
                 uint32_t inserted;
-
-                /* check that the bit is not disabled */
-                LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
-                    if (lysc_iffeature_value(&type_bits->bits[u].iffeatures[v]) == LY_ENOT) {
-                        rc = asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
-                                type_bits->bits[u].name, v + 1);
-                        goto cleanup;
-                    }
-                }
 
                 if (iscanonical && items->count && (type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position)) {
                     iscanonical = 0;
@@ -1215,7 +1206,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u;
     char *errmsg = NULL;
     struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
     int rc = 0;
@@ -1226,16 +1217,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
     /* find the matching enumeration value item */
     LY_ARRAY_FOR(type_enum->enums, u) {
         if (!ly_strncmp(type_enum->enums[u].name, value, value_len)) {
-            /* we have the match */
-
-            /* check that the enumeration value is not disabled */
-            LY_ARRAY_FOR(type_enum->enums[u].iffeatures, v) {
-                if (lysc_iffeature_value(&type_enum->enums[u].iffeatures[v]) == LY_ENOT) {
-                    rc = asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
-                            type_enum->enums[u].name, v + 1);
-                    goto error;
-                }
-            }
+            /* we have a match */
             goto match;
         }
     }
@@ -1448,7 +1430,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     } else if (!mod->implemented) {
         /* non-implemented module */
         if (options & LY_TYPE_STORE_IMPLEMENT) {
-            LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod));
+            LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod, NULL));
         } else {
             rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
                     (int)value_len, value, mod->name);

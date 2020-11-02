@@ -320,7 +320,7 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
  * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
+lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
         struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
     struct lysp_node *parent;
@@ -485,7 +485,7 @@ lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *gro
 }
 
 LY_ERR
-lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
@@ -498,13 +498,13 @@ lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     ids_global = lyht_new(8, sizeof(char *), lysp_id_cmp, NULL, 1);
     ids_scoped = lyht_new(8, sizeof(char *), lysp_id_cmp, NULL, 1);
     LY_ARRAY_FOR(mod->typedefs, v) {
-        if (lysp_check_typedef(ctx, NULL, &mod->typedefs[v], ids_global, ids_scoped)) {
+        if (lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global, ids_scoped)) {
             goto cleanup;
         }
     }
     LY_ARRAY_FOR(mod->includes, v) {
         LY_ARRAY_FOR(mod->includes[v].submodule->typedefs, u) {
-            if (lysp_check_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global, ids_scoped)) {
+            if (lysp_check_dup_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global, ids_scoped)) {
                 goto cleanup;
             }
         }
@@ -512,7 +512,7 @@ lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     for (i = 0; i < ctx->tpdfs_nodes.count; ++i) {
         typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[i]);
         LY_ARRAY_FOR(typedefs, u) {
-            if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global, ids_scoped)) {
+            if (lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global, ids_scoped)) {
                 goto cleanup;
             }
         }
@@ -523,6 +523,108 @@ cleanup:
     lyht_free(ids_scoped);
     ly_set_erase(&ctx->tpdfs_nodes, NULL);
 
+    return ret;
+}
+
+static ly_bool
+ly_ptrequal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    void *ptr1 = *((void **)val1_p), *ptr2 = *((void **)val2_p);
+
+    return ptr1 == ptr2 ? 1 : 0;
+}
+
+LY_ERR
+lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct hash_table *ht;
+    struct lysp_feature *f;
+    uint32_t hash;
+    LY_ERR ret = LY_SUCCESS, r;
+
+    ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
+    LY_CHECK_RET(!ht, LY_EMEM);
+
+    /* add all module features into a hash table */
+    LY_ARRAY_FOR(mod->features, struct lysp_feature, f) {
+        hash = dict_hash(f->name, strlen(f->name));
+        r = lyht_insert(ht, &f->name, hash, NULL);
+        if (r == LY_EEXIST) {
+            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, f->name, "feature");
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (r) {
+            ret = r;
+            goto cleanup;
+        }
+    }
+
+    /* add all submodule features into a hash table */
+    LY_ARRAY_FOR(mod->includes, u) {
+        LY_ARRAY_FOR(mod->includes[u].submodule->features, struct lysp_feature, f) {
+            hash = dict_hash(f->name, strlen(f->name));
+            r = lyht_insert(ht, &f->name, hash, NULL);
+            if (r == LY_EEXIST) {
+                LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, f->name, "feature");
+                ret = LY_EVALID;
+                goto cleanup;
+            } else if (r) {
+                ret = r;
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+    lyht_free(ht);
+    return ret;
+}
+
+LY_ERR
+lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct hash_table *ht;
+    struct lysp_ident *i;
+    uint32_t hash;
+    LY_ERR ret = LY_SUCCESS, r;
+
+    ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
+    LY_CHECK_RET(!ht, LY_EMEM);
+
+    /* add all module identities into a hash table */
+    LY_ARRAY_FOR(mod->identities, struct lysp_ident, i) {
+        hash = dict_hash(i->name, strlen(i->name));
+        r = lyht_insert(ht, &i->name, hash, NULL);
+        if (r == LY_EEXIST) {
+            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, i->name, "identity");
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (r) {
+            ret = r;
+            goto cleanup;
+        }
+    }
+
+    /* add all submodule identities into a hash table */
+    LY_ARRAY_FOR(mod->includes, u) {
+        LY_ARRAY_FOR(mod->includes[u].submodule->identities, struct lysp_ident, i) {
+            hash = dict_hash(i->name, strlen(i->name));
+            r = lyht_insert(ht, &i->name, hash, NULL);
+            if (r == LY_EEXIST) {
+                LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, i->name, "identity");
+                ret = LY_EVALID;
+                goto cleanup;
+            } else if (r) {
+                ret = r;
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+    lyht_free(ht);
     return ret;
 }
 
@@ -608,7 +710,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features, ly_bool implement,
         struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result)
 {
     struct ly_in *in;
@@ -641,7 +743,7 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
         ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
                 (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data,
+        ret = lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data, features,
                 (struct lys_module **)&mod);
 
     }
@@ -659,7 +761,7 @@ cleanup:
 
 LY_ERR
 lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, ly_bool require_parsed,
-        struct lys_module **mod)
+        const char **features, struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -718,7 +820,7 @@ search_clb:
                     LY_CHECK_RET(ly_in_new_memory(module_data, &in));
                     check_data.name = name;
                     check_data.revision = revision;
-                    lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data, mod);
+                    lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data, features, mod);
                     ly_in_free(in, 0);
                     if (module_data_free) {
                         module_data_free((void *)module_data, ctx->imp_clb_data);
@@ -732,7 +834,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, implement, NULL, NULL, m ? 0 : 1, (void **)mod);
+                lys_module_localfile(ctx, name, revision, features, implement, NULL, NULL, m ? 0 : 1, (void **)mod);
             }
             if (!(*mod) && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
@@ -852,8 +954,8 @@ search_clb:
 search_file:
         if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, pctx->parsed_mod->mod->name, 1,
-                    (void **)&submod);
+            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, NULL, 0, pctx,
+                    pctx->parsed_mod->mod->name, 1, (void **)&submod);
         }
         if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;

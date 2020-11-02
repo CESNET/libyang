@@ -211,7 +211,25 @@ LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t dat
  * @param[in] mod Module where the type is being defined.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+
+/**
+ * @brief Check names of features in the parsed module and submodules to detect collisions.
+ *
+ * @param[in] ctx Parser context.
+ * @param[in] mod Module where the type is being defined.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+
+/**
+ * @brief Check names of identities in the parsed module and submodules to detect collisions.
+ *
+ * @param[in] ctx Parser context.
+ * @param[in] mod Module where the type is being defined.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Finalize some of the structures in case they are stored in sized array,
@@ -267,10 +285,12 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * of the latest revision can not be made implemented.
  * @param[in] require_parsed Flag to require parsed module structure in case the module is already in the context,
  * but only the compiled structure is available.
+ * @param[in] features All the features to enable if implementing the module.
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, ly_bool require_parsed, struct lys_module **mod);
+LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
+        ly_bool require_parsed, const char **features, struct lys_module **mod);
 
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
@@ -436,11 +456,12 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[in] implement Flag if the schema is supposed to be marked as implemented and compiled.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
+ * @param[in] features Array of features to enable ended with NULL. NULL for all features disabled and '*' for all enabled.
  * @param[out] module Created module.
  * @return LY_ERR value.
  */
 LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
-        lys_custom_check custom_check, void *check_data, struct lys_module **module);
+        lys_custom_check custom_check, void *check_data, const char **features, struct lys_module **module);
 
 /**
  * @brief Parse submodule.
@@ -479,6 +500,7 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * @param[in] ctx libyang context where to work.
  * @param[in] name Name of the (sub)module to load.
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
+ * @param[in] features Array of enabled features ended with NULL.
  * @param[in] implement Flag if the (sub)module is supposed to be marked as implemented.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
@@ -488,8 +510,8 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
-        struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result);
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
+        ly_bool implement, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
@@ -559,6 +581,14 @@ void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 void lysc_iffeature_free(struct ly_ctx *ctx, struct lysc_iffeature *iff);
 
 /**
+ * @brief Free the compiled identity structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] ident Compiled identity structure to be cleaned.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
+void lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident);
+
+/**
  * @brief Free the compiled must structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] must Compiled must structure to be cleaned.
@@ -601,9 +631,10 @@ void lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 /**
  * @brief Free the compiled node structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] node Compiled node structure to be freed.
+ * @param[in] node Compiled node structure to be freed.
+ * @param[in] unlink Whether to first unlink the node before freeing.
  */
-void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node);
+void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink);
 
 /**
  * @brief Free the compiled container node structure.

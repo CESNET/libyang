@@ -588,8 +588,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     uint32_t getnext_opts;
 
     *snode = NULL;
-    /* leave if-feature check for validation */
-    getnext_opts = LYS_GETNEXT_NOSTATECHECK | (lybctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0);
+    getnext_opts = lybctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
     /* read the first hash */
     lyb_read(&hash[0], sizeof *hash, lybctx->lybctx);

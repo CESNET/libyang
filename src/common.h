@@ -206,7 +206,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
 #define LY_VCODE_DUP            LYVE_DATA, "Duplicate instance of \"%s\"."
 #define LY_VCODE_DUPCASE        LYVE_DATA, "Data for both cases \"%s\" and \"%s\" exist."
-#define LY_VCODE_NOIFF          LYVE_DATA, "Data are disabled by \"%s\" schema node if-feature."
 #define LY_VCODE_INNODE         LYVE_DATA, "Invalid %s data node \"%s\" found."
 #define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
 
@@ -612,6 +611,19 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_DECREMENT(ARRAY) \
         --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1))
+
+/**
+ * @brief Decrement the items counter in a ([sized array](@ref sizedarrays)) and free the whole array
+ * in case it was decremented to 0.
+ *
+ * @param[in] ARRAY Pointer to the array to affect.
+ */
+#define LY_ARRAY_DECREMENT_FREE(ARRAY) \
+        --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+        if (!LY_ARRAY_COUNT(ARRAY)) { \
+            LY_ARRAY_FREE(ARRAY); \
+            (ARRAY) = NULL; \
+        }
 
 /**
  * @brief Free the space allocated for the ([sized array](@ref sizedarrays)).

@@ -5663,7 +5663,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     }
 
     /* getnext opts */
-    getnext_opts = LYS_GETNEXT_NOSTATECHECK;
+    getnext_opts = 0;
     if (options & LYXP_SCNODE_OUTPUT) {
         getnext_opts |= LYS_GETNEXT_OUTPUT;
     }
@@ -6250,7 +6250,7 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
     }
 
     /* getnext opts */
-    getnext_opts = LYS_GETNEXT_NOSTATECHECK;
+    getnext_opts = 0;
     if (options & LYXP_SCNODE_OUTPUT) {
         getnext_opts |= LYS_GETNEXT_OUTPUT;
     }

@@ -77,15 +77,15 @@ setup(void **state)
             "leaf foo3 { type uint32; }"
             "notification n2;}";
     const struct lys_module *mod;
+    const char *feats[] = {"writable-running", NULL};
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
-    assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01"));
-    assert_non_null((mod = ly_ctx_load_module(ctx, "ietf-netconf", "2011-06-01")));
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "writable-running"));
+    assert_non_null((mod = ly_ctx_load_module(ctx, "ietf-netconf", "2011-06-01", feats)));
+    assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01", NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL));
 
     return 0;

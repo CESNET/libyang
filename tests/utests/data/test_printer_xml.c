@@ -131,7 +131,7 @@ setup(void **state)
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &s->ctx));
-    assert_non_null(ly_ctx_load_module(s->ctx, "ietf-netconf-with-defaults", "2011-06-01"));
+    assert_non_null(ly_ctx_load_module(s->ctx, "ietf-netconf-with-defaults", "2011-06-01", NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, schema_a, LYS_IN_YANG, NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, schema_b, LYS_IN_YANG, NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, schema_c, LYS_IN_YANG, NULL));

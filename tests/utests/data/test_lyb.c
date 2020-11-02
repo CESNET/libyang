@@ -280,8 +280,8 @@ test_ietf_interfaces(void **state)
     "</interfaces>";
 
 
-    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL));
-    assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL));
+    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL, NULL));
+    assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
     assert_ptr_not_equal(st->dt1, NULL);
@@ -328,7 +328,7 @@ test_origin(void **state)
     "</cont>";
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, origin_yang, LYS_IN_YANG, NULL));
-    lys_set_implemented(ly_ctx_get_module_latest(st->ctx, "ietf-origin"));
+    lys_set_implemented(ly_ctx_get_module_latest(st->ctx, "ietf-origin"), NULL);
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
     assert_ptr_not_equal(st->dt1, NULL);
