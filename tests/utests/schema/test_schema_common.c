@@ -46,7 +46,7 @@ test_getnext(void **state)
                                         "  anyxml seven; action eight {input {leaf eight-input {type string;}} output {leaf eight-output {type string;}}}"
                                         "  notification nine {leaf nine-data {type string;}}}"
                                         "leaf b {type string;} leaf-list c {type string;} list d {config false;}"
-                                        "choice x { leaf e {type string;} case y {leaf f {type string;}}} anyxml g;"
+                                        "choice x { case empty-x; leaf e {type string;} case y {leaf f {type string;}}} anyxml g;"
                                         "rpc h {input {leaf h-input {type string;}} output {leaf h-output {type string;}}}"
                                         "rpc i;"
                                         "notification j {leaf i-data {type string;}}"

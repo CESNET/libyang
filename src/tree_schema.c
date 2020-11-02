@@ -237,7 +237,18 @@ check:
             if (options & LYS_GETNEXT_WITHCASE) {
                 next = (struct lysc_node *)((struct lysc_node_choice *)next)->cases;
             } else {
-                next = ((struct lysc_node_choice *)next)->cases->child;
+                const struct lysc_node_case *cs = NULL;
+                for (cs = ((struct lysc_node_choice *)next)->cases; cs; cs = (const struct lysc_node_case*)cs->next) {
+                    if (cs->child) {
+                        /* there is something to return */
+                        next = cs->child;
+                        break;
+                    }
+                }
+                if (!cs) {
+                    /* no children in choice's cases, so go to the choice's sibling instead of into it */
+                    next = next->next;
+                }
             }
         }
         goto repeat;
