@@ -123,6 +123,17 @@ LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *m
         const struct lysp_submodule *submodp, uint32_t options);
 
 /**
+ * @brief YANG Tree Diagram printer of the parsed submodule and compiled. Full YANG Tree printer.
+ *
+ * @param[in] out Output specification.
+ * @param[in] module Main module.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
+ */
+LY_ERR tree_print_parsed_and_compiled_module(struct ly_out *out, const struct lys_module *module, uint32_t options,
+        size_t line_length);
+
+/**
  * @brief XML printer of YANG data.
  *
  * @param[in] out Output specification.

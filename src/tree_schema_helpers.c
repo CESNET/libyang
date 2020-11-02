@@ -1661,8 +1661,8 @@ lysc_data_node(const struct lysc_node *schema)
     const struct lysc_node *parent;
 
     parent = schema;
-    while (parent && !(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC
-            | LYS_ACTION | LYS_NOTIF))) {
+    while (parent && !(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC |
+            LYS_ACTION | LYS_NOTIF))) {
         parent = lysc_node_parent_full(parent);
     }
 

@@ -7,6 +7,10 @@ endif()
 
 project(libyang C)
 
+# This command will be deleted before merging into the master branch
+# Its purpose is for a vim editor
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # include custom Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
@@ -132,6 +136,7 @@ set(libsrc
     src/printer_schema.c
     src/printer_yang.c
     src/printer_yin.c
+    src/printer_tree.c
     src/plugins_types.c
     src/plugins_exts.c
     src/xml.c
