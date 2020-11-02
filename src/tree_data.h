@@ -801,10 +801,12 @@ LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, struct lyd_node **node);
+LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -812,13 +814,15 @@ LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, c
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
  * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for
  * key-less lists.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, struct lyd_node **node, ...);
+LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -829,11 +833,13 @@ LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, co
  * @param[in] keys All key values predicate in the form of "[key1='val1'][key2='val2']...", they do not have to be ordered.
  * In case of an instance-identifier or identityref value, the JSON format is expected (module names instead of prefixes).
  * Use NULL or string of length 0 in case of key-less list.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
-        struct lyd_node **node);
+        ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -843,11 +849,13 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] val_str String form of the value of the node being created. In case of an instance-identifier or identityref
  * value, the JSON format is expected (module names instead of prefixes).
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-        struct lyd_node **node);
+        ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
@@ -857,11 +865,13 @@ LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, co
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value to be directly assigned to the node. Expected type is determined by @p value_type.
  * @param[in] value_type Type of the provided value in @p value.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
+        LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create new metadata for a data node.
