@@ -216,7 +216,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
-    struct lys_module *mod;
+    const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u, v;
 
     assert(id);
@@ -228,7 +228,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     *node = NULL;
     str = strchr(id, ':');
     if (str) {
-        mod = lysp_module_find_prefix(start_module, id, str - id);
+        mod = ly_resolve_prefix(start_module->mod->ctx, id, str - id, LY_PREF_SCHEMA, (void *)start_module);
         *module = mod ? mod->parsed : NULL;
         name = str + 1;
         *type = LY_TYPE_UNKNOWN;
@@ -977,32 +977,6 @@ search_file:
     }
 
     return LY_SUCCESS;
-}
-
-struct lys_module *
-lysp_module_find_prefix(const struct lysp_module *prefix_mod, const char *prefix, size_t len)
-{
-    struct lys_module *m = NULL;
-    LY_ARRAY_COUNT_TYPE u;
-    const char *local_prefix;
-
-    local_prefix = prefix_mod->is_submod ? ((struct lysp_submodule *)prefix_mod)->prefix : prefix_mod->mod->prefix;
-    if (!len || !ly_strncmp(local_prefix, prefix, len)) {
-        /* it is the prefix of the module itself */
-        m = prefix_mod->mod;
-    }
-
-    /* search in imports */
-    if (!m) {
-        LY_ARRAY_FOR(prefix_mod->imports, u) {
-            if (!ly_strncmp(prefix_mod->imports[u].prefix, prefix, len)) {
-                m = prefix_mod->imports[u].module;
-                break;
-            }
-        }
-    }
-
-    return m;
 }
 
 API const char *

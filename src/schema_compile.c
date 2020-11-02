@@ -133,7 +133,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     lysc_update_path(ctx, NULL, prefixed_name);
 
     if (!ext_mod) {
-        ext_mod = u ? lysp_module_find_prefix(ctx->pmod, prefixed_name, u - 1) : ctx->pmod->mod;
+        ext_mod = u ? ly_resolve_prefix(ctx->ctx, prefixed_name, u - 1, LY_PREF_SCHEMA, ctx->pmod) : ctx->pmod->mod;
         if (!ext_mod) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                     "Invalid prefix \"%.*s\" used for extension instance identifier.", u, prefixed_name);
@@ -482,7 +482,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
         if (s) {
             /* prefixed identity */
             name = &s[1];
-            mod = lysp_module_find_prefix(base_pmod, bases_p[u], s - bases_p[u]);
+            mod = ly_resolve_prefix(ctx->ctx, bases_p[u], s - bases_p[u], LY_PREF_SCHEMA, (void *)base_pmod);
         } else {
             name = bases_p[u];
             mod = base_pmod->mod;
