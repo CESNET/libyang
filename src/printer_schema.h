@@ -95,7 +95,7 @@ struct lysp_submodule;
 #define LYS_PRINT_SHRINK             LY_PRINT_SHRINK /**< Flag for output without indentation and formatting new lines. */
 #define LYS_PRINT_NO_SUBSTMT         0x10            /**< Print only top-level/referede node information,
                                                           do not print information from the substatements */
-// #define LYS_PRINT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output (only for tree format) */
+// #define LYS_PRINT_TREE_RFC        0x01 /**< Conform to the RFC8340 tree output (only for tree format) */
 // #define LYS_PRINT_TREE_GROUPING   0x02 /**< Print groupings separately (only for tree format) */
 // #define LYS_PRINT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes (only for tree format) */
 // #define LYS_PRINT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs (only for tree format) */

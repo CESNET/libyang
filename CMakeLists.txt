@@ -132,6 +132,7 @@ set(libsrc
     src/printer_schema.c
     src/printer_yang.c
     src/printer_yin.c
+    src/printer_tree.c
     src/plugins_types.c
     src/plugins_exts.c
     src/xml.c
