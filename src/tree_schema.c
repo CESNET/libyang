@@ -103,6 +103,22 @@ lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *d
     return LY_SUCCESS;
 }
 
+static void
+lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc_node **last, const struct lysc_node **next)
+{
+    for (; first_case; first_case = (const struct lysc_node_case*)first_case->next) {
+        if (first_case->child) {
+            /* there is something to return */
+            (*next) = first_case->child;
+            return;
+        }
+    }
+
+    /* no children in choice's cases, so go to the choice's sibling instead of into it */
+    (*last) = (*next);
+    (*next) = (*next)->next;
+}
+
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
@@ -124,7 +140,7 @@ next:
             /* schema subtree */
             if ((parent->nodetype == LYS_CHOICE) && (options & LYS_GETNEXT_WITHCASE)) {
                 if (((struct lysc_node_choice *)parent)->cases) {
-                    next = last = (const struct lysc_node *)&((struct lysc_node_choice *)parent)->cases[0];
+                    next = last = (const struct lysc_node *)((struct lysc_node_choice *)parent)->cases;
                 }
             } else {
                 snode = lysc_node_children_p(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_CONFIG_R : LYS_CONFIG_W);
@@ -213,7 +229,7 @@ check:
             break;
         } else {
             /* go into */
-            next = ((struct lysc_node_case *)next)->child;
+            lys_getnext_into_case((const struct lysc_node_case *)next, &last, &next);
         }
         goto repeat;
     case LYS_CONTAINER:
@@ -222,6 +238,7 @@ check:
                 /* go into */
                 next = ((struct lysc_node_container *)next)->child;
             } else {
+                last = next;
                 next = next->next;
             }
             goto repeat;
@@ -233,22 +250,11 @@ check:
         } else if ((options & LYS_GETNEXT_NOCHOICE) || !((struct lysc_node_choice *)next)->cases) {
             next = next->next;
         } else {
-            /* go into */
             if (options & LYS_GETNEXT_WITHCASE) {
                 next = (struct lysc_node *)((struct lysc_node_choice *)next)->cases;
             } else {
-                const struct lysc_node_case *cs = NULL;
-                for (cs = ((struct lysc_node_choice *)next)->cases; cs; cs = (const struct lysc_node_case*)cs->next) {
-                    if (cs->child) {
-                        /* there is something to return */
-                        next = cs->child;
-                        break;
-                    }
-                }
-                if (!cs) {
-                    /* no children in choice's cases, so go to the choice's sibling instead of into it */
-                    next = next->next;
-                }
+                /* go into */
+                lys_getnext_into_case(((struct lysc_node_choice *)next)->cases, &last, &next);
             }
         }
         goto repeat;
