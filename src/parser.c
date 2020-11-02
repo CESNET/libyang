@@ -2523,6 +2523,7 @@ lyp_check_date(struct ly_ctx *ctx, const char *date)
     }
 
     memcpy(&tm_, &tm, sizeof tm);
+    tm_.tm_isdst = -1; /* mktime corrects DST mismatches, this stops it from doing that */
     mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
     if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
         /* checking days is enough, since other errors
