@@ -412,13 +412,15 @@ setup(void **state)
                 "type string;"
             "}"
         "}";
+    struct ly_in *in;
+    const char *feats[] = {"feat1", NULL};
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
-    assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01"));
+    assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01", NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_c, LYS_IN_YANG, NULL));
@@ -428,7 +430,9 @@ setup(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_g, LYS_IN_YANG, NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_h, LYS_IN_YANG, NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_i, LYS_IN_YANG, NULL));
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_j, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(schema_j, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats, NULL));
+    ly_in_free(in, 0);
 
     return 0;
 }
@@ -1225,112 +1229,6 @@ test_defaults(void **state)
 }
 
 static void
-test_iffeature(void **state)
-{
-    *state = test_iffeature;
-
-    const char *data;
-    struct lyd_node *tree;
-    const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "g");
-
-    /* get empty data */
-    tree = NULL;
-    assert_int_equal(lyd_validate_module(&tree, mod, 0, NULL), LY_SUCCESS);
-    assert_null(tree);
-
-    /* disabled by f1 */
-    data =
-    "<cont xmlns=\"urn:tests:g\">"
-        "<d>51</d>"
-    "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_null(tree);
-    logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
-
-    /* enable f1 */
-    assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
-
-    /* get data with default container */
-    assert_int_equal(lyd_validate_module(&tree, mod, 0, NULL), LY_SUCCESS);
-    assert_non_null(tree);
-    lyd_free_siblings(tree);
-
-    /* disabled by f2 */
-    data =
-    "<cont xmlns=\"urn:tests:g\">"
-        "<cont2>"
-            "<e>val</e>"
-        "</cont2>"
-    "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_null(tree);
-    logbuf_assert("Data are disabled by \"cont2\" schema node if-feature. /g:cont/cont2");
-
-    data =
-    "<cont xmlns=\"urn:tests:g\">"
-        "<a>val</a>"
-    "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_null(tree);
-    logbuf_assert("Data are disabled by \"choic\" schema node if-feature. /g:cont/a");
-
-    /* enable f3 */
-    assert_int_equal(lys_feature_enable(mod, "f3"), LY_SUCCESS);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_non_null(tree);
-    lyd_free_siblings(tree);
-
-    /* disabled by f2 */
-    data =
-    "<cont xmlns=\"urn:tests:g\">"
-        "<l>val</l>"
-    "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_null(tree);
-    logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
-
-    /* enable f2 */
-    assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_non_null(tree);
-    lyd_free_siblings(tree);
-
-    /* try separate validation */
-    assert_int_equal(lys_feature_disable(mod, "f1"), LY_SUCCESS);
-    assert_int_equal(lys_feature_disable(mod, "f2"), LY_SUCCESS);
-    assert_int_equal(lys_feature_disable(mod, "f3"), LY_SUCCESS);
-
-    data =
-    "<cont xmlns=\"urn:tests:g\">"
-        "<l>val</l>"
-        "<d>51</d>"
-        "<cont2>"
-            "<e>val</e>"
-        "</cont2>"
-    "</cont>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
-    assert_non_null(tree);
-
-    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
-    logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
-
-    assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
-
-    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
-    logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
-
-    assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
-
-    assert_int_equal(LY_SUCCESS, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
-
-    lyd_free_siblings(tree);
-
-    *state = NULL;
-}
-
-static void
 test_state(void **state)
 {
     *state = test_state;
@@ -1400,7 +1298,6 @@ test_action(void **state)
     const char *data;
     struct ly_in *in;
     struct lyd_node *tree, *op_tree;
-    const struct lys_module *mod;
 
     data =
     "<cont xmlns=\"urn:tests:j\">"
@@ -1429,14 +1326,6 @@ test_action(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
     assert_non_null(tree);
 
-    /* disabled if-feature */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC, NULL));
-    logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
-
-    mod = ly_ctx_get_module_latest(ctx, "j");
-    assert_non_null(mod);
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
-
     /* input must false */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC, NULL));
     logbuf_assert("Must condition \"../../lf1 = 'true'\" not satisfied. /j:cont/l1[k='val1']/act");
@@ -1453,7 +1342,6 @@ test_action(void **state)
     /* success */
     assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC, NULL));
 
-    lys_feature_disable(mod, "feat1");
     lyd_free_tree(op_tree);
     lyd_free_siblings(tree);
 
@@ -1468,7 +1356,6 @@ test_reply(void **state)
     const char *data;
     struct ly_in *in;
     struct lyd_node *tree, *op_tree, *request;
-    const struct lys_module *mod;
 
     data =
     "<cont xmlns=\"urn:tests:j\">"
@@ -1504,14 +1391,6 @@ test_reply(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
     assert_non_null(tree);
 
-    /* disabled if-feature */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY, NULL));
-    logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
-
-    mod = ly_ctx_get_module_latest(ctx, "j");
-    assert_non_null(mod);
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
-
     /* input must false */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY, NULL));
     logbuf_assert("Must condition \"../../lf1 = 'true2'\" not satisfied. /j:cont/l1[k='val1']/act");
@@ -1528,7 +1407,6 @@ test_reply(void **state)
     /* success */
     assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY, NULL));
 
-    lys_feature_disable(mod, "feat1");
     lyd_free_tree(op_tree);
     lyd_free_siblings(tree);
 
@@ -1545,7 +1423,6 @@ int main(void)
         cmocka_unit_test_teardown(test_unique_nested, teardown_s),
         cmocka_unit_test_teardown(test_dup, teardown_s),
         cmocka_unit_test_teardown(test_defaults, teardown_s),
-        cmocka_unit_test_teardown(test_iffeature, teardown_s),
         cmocka_unit_test_teardown(test_state, teardown_s),
         cmocka_unit_test_teardown(test_must, teardown_s),
         cmocka_unit_test_teardown(test_action, teardown_s),

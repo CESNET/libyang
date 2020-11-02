@@ -109,6 +109,7 @@ test_yang(void **state)
     const struct lys_module *mod;
     struct lysc_ext_instance *e;
     struct lyext_metadata *ant;
+    struct ly_in *in;
 
     const char *data = "module a {yang-version 1.1; namespace urn:tests:extensions:metadata:a; prefix a;"
             "import ietf-yang-metadata {prefix md;}"
@@ -121,7 +122,10 @@ test_yang(void **state)
             "  type uint8;"
             "  units meters;"
             "}}";
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YANG, &mod));
+    const char *feats[] = {"f", NULL};
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(s->ctx, in, LYS_IN_YANG, feats, &mod));
+    ly_in_free(in, 0);
     assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(ant = (struct lyext_metadata*)e->data);

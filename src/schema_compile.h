@@ -29,14 +29,18 @@
  *
  * @{
  */
-#define LYS_COMPILE_RPC_INPUT  LYS_CONFIG_W       /**< Internal option when compiling schema tree of RPC/action input */
-#define LYS_COMPILE_RPC_OUTPUT LYS_CONFIG_R       /**< Internal option when compiling schema tree of RPC/action output */
-#define LYS_COMPILE_RPC_MASK   LYS_CONFIG_MASK    /**< mask for the internal RPC options */
-#define LYS_COMPILE_NOTIFICATION 0x08             /**< Internal option when compiling schema tree of Notification */
+#define LYS_COMPILE_RPC_INPUT       LYS_CONFIG_W    /**< Internal option when compiling schema tree of RPC/action input */
+#define LYS_COMPILE_RPC_OUTPUT      LYS_CONFIG_R    /**< Internal option when compiling schema tree of RPC/action output */
+#define LYS_COMPILE_RPC_MASK        LYS_CONFIG_MASK /**< mask for the internal RPC options */
+#define LYS_COMPILE_NOTIFICATION    0x04            /**< Internal option when compiling schema tree of Notification */
 
-#define LYS_COMPILE_GROUPING   0x10               /** Compiling (validation) of a non-instantiated grouping.
-                                                      In this case not all the restrictions are checked since they can be valid only
-                                                      in the real placement of the grouping. TODO - what specifically is not done */
+#define LYS_COMPILE_GROUPING        0x08            /**< Compiling (validation) of a non-instantiated grouping.
+                                                      In this case not all the restrictions are checked since they can
+                                                      be valid only in the real placement of the grouping.
+                                                      TODO - what specifically is not done */
+#define LYS_COMPILE_DISABLED        0x10            /**< Compiling a disabled subtree (by its if-features). Meaning
+                                                      it will be removed at the end of compilation and should not be
+                                                      added to any unres sets. */
 /** @} scflags */
 
 /**
@@ -51,6 +55,7 @@ struct lysc_ctx {
     struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
+    struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisifed */
     struct ly_set augs;         /**< set of compiled non-applied top-level augments */
     struct ly_set devs;         /**< set of compiled non-applied deviations */
     struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
@@ -126,7 +131,12 @@ struct lysc_unres_dflt {
         for (LY_ARRAY_COUNT_TYPE __exts_iter = 0, __array_offset = LY_ARRAY_COUNT(EXT_C); __exts_iter < LY_ARRAY_COUNT(EXTS_P); ++__exts_iter) { \
             LY_ARRAY_INCREMENT(EXT_C); \
             RET = lys_compile_ext(CTX, &(EXTS_P)[__exts_iter], &(EXT_C)[__exts_iter + __array_offset], PARENT, PARENT_TYPE, NULL); \
-            LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+            if (RET == LY_ENOT) { \
+                LY_ARRAY_DECREMENT_FREE(EXT_C); \
+                --__array_offset; \
+                RET = LY_SUCCESS; \
+            } \
+            LY_CHECK_GOTO(RET, GOTO); \
         } \
     }
 
@@ -139,19 +149,12 @@ struct lysc_unres_dflt {
  * @param[in] parent Extension instance parent.
  * @param[in] parent_type Extension instance parent type.
  * @param[in] ext_mod Optional module with the extension instance extension definition, set only for internal annotations.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT if the extension is disabled and should be ignored.
+ * @return LY_ERR on error.
  */
 LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
         LYEXT_PARENT parent_type, const struct lys_module *ext_mod);
-
-/**
- * @brief Compile information from the if-feature statement
- * @param[in] ctx Compile context.
- * @param[in] qname The if-feature argument to process. It is pointer-to-qname just to unify the compile functions.
- * @param[in,out] iff Prepared (empty) compiled if-feature structure to fill.
- * @return LY_ERR value.
- */
-LY_ERR lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, struct lysc_iffeature *iff);
 
 /**
  * @brief Compile information from the identity statement
@@ -182,44 +185,11 @@ LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, stru
  * @param[in] bases_p Array of names (including prefix if necessary) of base identities.
  * @param[in] ident Referencing identity to work with, NULL for identityref.
  * @param[in] bases Array of bases of identityref to fill in.
+ * @param[in] enabled Whether the base is disabled, must be set if @p ident is set.
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
-        struct lysc_ident *ident, struct lysc_ident ***bases);
-
-/**
- * @brief Create pre-compiled features array.
- *
- * Features are compiled in two steps to allow forward references between them via their if-feature statements.
- * In case of not implemented schemas, the precompiled list of features is stored in lys_module structure and
- * the compilation is not finished (if-feature and extensions are missing) and all the features are permanently
- * disabled without a chance to change it. The list is used as target for any if-feature statement in any
- * implemented module to get valid data to evaluate its result. The compilation is finished via
- * ::lys_feature_precompile_finish() in implemented modules. In case a not implemented module becomes implemented,
- * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
- * if-feature structures.
- *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
- * @param[in] ctx libyang context.
- * @param[in] parsed_mod Module with the features.
- * @param[in] features_p Array of the parsed features definitions to precompile.
- * @param[in,out] features Pointer to the storage of the (pre)compiled features array where the new features are
- * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed features are going
- * to be processed.
- * @return LY_ERR value.
- */
-LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
-        struct lysp_feature *features_p, struct lysc_feature **features);
-
-/**
- * @brief Revert compiled list of features back to the precompiled state.
- *
- * Function is needed in case the compilation failed and the schema is expected to revert back to the non-compiled status.
- *
- * @param[in] ctx Compilation context.
- * @param[in] mod The module structure with the features to decompile.
- */
-void lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod);
+        struct lysc_ident *ident, struct lysc_ident ***bases, ly_bool *enabled);
 
 /**
  * @brief Check statement's status for invalid combination.

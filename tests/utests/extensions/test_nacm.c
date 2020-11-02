@@ -66,7 +66,7 @@ setup(void **state)
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &s->ctx));
-    assert_non_null(ly_ctx_load_module(s->ctx, "ietf-netconf-acm", "2018-02-14"));
+    assert_non_null(ly_ctx_load_module(s->ctx, "ietf-netconf-acm", "2018-02-14", NULL));
 
     *state = s;
 

@@ -767,9 +767,9 @@ main_ni(int argc, char* argv[])
                     if (verbose >= 2) {
                         fprintf(stdout, "Enabling feature %s in module %s.\n", ptr, mod->name);
                     }
-                    if (lys_feature_enable(mod, ptr)) {
+                    /*if (lys_feature_enable(mod, ptr)) {
                         fprintf(stderr, "Feature %s not defined in module %s.\n", ptr, mod->name);
-                    }
+                    }*/
                 }
                 free(featlist);
                 break;
@@ -779,7 +779,7 @@ main_ni(int argc, char* argv[])
             if (verbose >= 2) {
                 fprintf(stdout, "Enabling all features in module %s.\n", mod->name);
             }
-            lys_feature_enable(mod, "*");
+            //lys_feature_enable(mod, "*");
         }
     }
     if (!out && (outformat_s || data)) {

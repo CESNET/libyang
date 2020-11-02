@@ -952,7 +952,6 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
         LYD_VALIDATE_OP op)
 {
     struct lyd_node *next = NULL, *node;
-    const struct lysc_node *snode;
 
     /* validate all restrictions of nodes themselves */
     LY_LIST_FOR_SAFE(first, next, node) {
@@ -982,12 +981,6 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
 
         /* obsolete data */
         lyd_validate_obsolete(node);
-
-        /* node's schema if-features */
-        if ((snode = lysc_node_is_disabled(node->schema, 1))) {
-            LOGVAL(LYD_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOIFF, snode->name);
-            return LY_EVALID;
-        }
 
         /* node's musts */
         LY_CHECK_RET(lyd_validate_must(node, op));
@@ -1265,11 +1258,6 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);
-    if (lysc_node_is_disabled(op_node->schema, 1)) {
-        LOGVAL(LYD_CTX(op_tree), LY_VLOG_LYD, op_node, LY_VCODE_NOIFF, op_node->schema->name);
-        ret = LY_EVALID;
-        goto cleanup;
-    }
     LY_CHECK_GOTO(ret = lyd_validate_must(op_node, op), cleanup);
 
     /* final validation of all the descendants */

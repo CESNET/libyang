@@ -215,7 +215,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
 
     /* get all keys into a set (keys do not have if-features or anything) */
     snode = NULL;
-    while ((snode = lys_getnext(snode, list, NULL, LYS_GETNEXT_NOSTATECHECK)) && (snode->flags & LYS_KEY)) {
+    while ((snode = lys_getnext(snode, list, NULL, 0)) && (snode->flags & LYS_KEY)) {
         ret = ly_set_add(&key_set, (void *)snode, 1, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
@@ -387,8 +387,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
 
     xmlctx = lydctx->xmlctx;
     ctx = xmlctx->ctx;
-    /* leave if-feature check for validation */
-    getnext_opts = LYS_GETNEXT_NOSTATECHECK | (lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0);
+    getnext_opts = lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
     assert(xmlctx->status == LYXML_ELEMENT);
 

@@ -461,78 +461,6 @@ yprp_iffeatures(struct ypr_ctx *ctx, struct lysp_qname *iffs, struct lysp_ext_in
 }
 
 static void
-yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, size_t *index_e, size_t *index_f)
-{
-    ly_bool brackets_flag = *index_e ? 1 : 0;
-    uint8_t op;
-
-    op = lysc_iff_getop(feat->expr, *index_e);
-    (*index_e)++;
-
-    switch (op) {
-    case LYS_IFF_F:
-        if (ctx->module == feat->features[*index_f]->module) {
-            ly_print_(ctx->out, "%s", feat->features[*index_f]->name);
-        } else {
-            ly_print_(ctx->out, "%s:%s", feat->features[*index_f]->module->prefix, feat->features[*index_f]->name);
-        }
-        (*index_f)++;
-        break;
-    case LYS_IFF_NOT:
-        ly_print_(ctx->out, "not ");
-        yprc_iffeature(ctx, feat, index_e, index_f);
-        break;
-    case LYS_IFF_AND:
-        if (brackets_flag) {
-            /* AND need brackets only if previous op was not */
-            if ((*index_e < 2) || (lysc_iff_getop(feat->expr, *index_e - 2) != LYS_IFF_NOT)) {
-                brackets_flag = 0;
-            }
-        }
-    /* falls through */
-    case LYS_IFF_OR:
-        if (brackets_flag) {
-            ly_print_(ctx->out, "(");
-        }
-        yprc_iffeature(ctx, feat, index_e, index_f);
-        ly_print_(ctx->out, " %s ", op == LYS_IFF_OR ? "or" : "and");
-        yprc_iffeature(ctx, feat, index_e, index_f);
-        if (brackets_flag) {
-            ly_print_(ctx->out, ")");
-        }
-    }
-}
-
-static void
-yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext_instance *exts, ly_bool *flag)
-{
-    LY_ARRAY_COUNT_TYPE u, v;
-    ly_bool extflag;
-
-    LY_ARRAY_FOR(iff, u) {
-        size_t index_e = 0, index_f = 0;
-
-        ypr_open(ctx->out, flag);
-        extflag = 0;
-
-        ly_print_(ctx->out, "%*sif-feature \"", INDENT);
-        yprc_iffeature(ctx, iff, &index_e, &index_f);
-        ly_print_(ctx->out, "\"");
-
-        /* extensions */
-        LEVEL++;
-        LY_ARRAY_FOR(exts, v) {
-            if ((exts[v].insubstmt != LYEXT_SUBSTMT_IFFEATURE) || (exts[v].insubstmt_index != u)) {
-                continue;
-            }
-            yprc_extension_instances(ctx, LYEXT_SUBSTMT_IFFEATURE, u, &exts[v], &extflag, 1);
-        }
-        LEVEL--;
-        ypr_close(ctx, extflag);
-    }
-}
-
-static void
 yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
 {
     ly_bool flag = 0, flag2 = 0;
@@ -589,22 +517,6 @@ yprp_feature(struct ypr_ctx *ctx, const struct lysp_feature *feat)
 }
 
 static void
-yprc_feature(struct ypr_ctx *ctx, const struct lysc_feature *feat)
-{
-    ly_bool flag = 0;
-
-    ly_print_(ctx->out, "\n%*sfeature %s", INDENT, feat->name);
-    LEVEL++;
-    yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, feat->exts, &flag, 0);
-    yprc_iffeatures(ctx, feat->iffeatures, feat->exts, &flag);
-    ypr_status(ctx, feat->flags, feat->exts, &flag);
-    ypr_description(ctx, feat->dsc, feat->exts, &flag);
-    ypr_reference(ctx, feat->ref, feat->exts, &flag);
-    LEVEL--;
-    ypr_close(ctx, flag);
-}
-
-static void
 yprp_identity(struct ypr_ctx *ctx, const struct lysp_ident *ident)
 {
     ly_bool flag = 0;
@@ -639,7 +551,6 @@ yprc_identity(struct ypr_ctx *ctx, const struct lysc_ident *ident)
     LEVEL++;
 
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, ident->exts, &flag, 0);
-    yprc_iffeatures(ctx, ident->iffeatures, ident->exts, &flag);
 
     LY_ARRAY_FOR(ident->derived, u) {
         ypr_open(ctx->out, &flag);
@@ -987,7 +898,6 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
             ly_print_(ctx->out, "\"");
             LEVEL++;
             yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, item->exts, &inner_flag, 0);
-            yprc_iffeatures(ctx, item->iffeatures, item->exts, &inner_flag);
             if (type->basetype == LY_TYPE_BITS) {
                 ypr_unsigned(ctx, LYEXT_SUBSTMT_POSITION, 0, item->exts, item->position, &inner_flag);
             } else { /* LY_TYPE_ENUM */
@@ -1231,7 +1141,6 @@ yprc_notification(struct ypr_ctx *ctx, const struct lysc_notif *notif)
 
     LEVEL++;
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, notif->exts, &flag, 0);
-    yprc_iffeatures(ctx, notif->iffeatures, notif->exts, &flag);
 
     LY_ARRAY_FOR(notif->musts, u) {
         yprc_must(ctx, &notif->musts[u], &flag);
@@ -1292,7 +1201,6 @@ yprc_action(struct ypr_ctx *ctx, const struct lysc_action *action)
 
     LEVEL++;
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, action->exts, &flag, 0);
-    yprc_iffeatures(ctx, action->iffeatures, action->exts, &flag);
     ypr_status(ctx, action->flags, action->exts, &flag);
     ypr_description(ctx, action->dsc, action->exts, &flag);
     ypr_reference(ctx, action->ref, action->exts, &flag);
@@ -1327,7 +1235,6 @@ yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, ly_bool *fl
     LY_ARRAY_FOR(node->when, u) {
         yprc_when(ctx, node->when[u], flag);
     }
-    yprc_iffeatures(ctx, node->iffeatures, node->exts, flag);
 }
 
 /* macr oto unify the code */
@@ -2339,10 +2246,6 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
     if (modc->exts) {
         ly_print_(out, "\n");
         yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, module->compiled->exts, NULL, 0);
-    }
-
-    LY_ARRAY_FOR(module->features, u) {
-        yprc_feature(ctx, &module->features[u]);
     }
 
     LY_ARRAY_FOR(module->identities, u) {

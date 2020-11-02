@@ -130,8 +130,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
     mod = sibling->module;
 
     sibling = NULL;
-    /* ignore features so that their state does not affect hashes */
-    while ((sibling = (struct lysc_node *)lys_getnext(sibling, parent, mod->compiled, LYS_GETNEXT_NOSTATECHECK))) {
+    while ((sibling = (struct lysc_node *)lys_getnext(sibling, parent, mod->compiled, 0))) {
         /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */

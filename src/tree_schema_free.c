@@ -27,6 +27,7 @@
 
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
+static void lysc_node_free_(struct ly_ctx *ctx, struct lysc_node *node);
 
 static void
 lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
@@ -105,6 +106,8 @@ lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
 {
     FREE_STRING(ctx, feat->name);
     FREE_ARRAY(ctx, feat->iffeatures, lysp_qname_free);
+    FREE_ARRAY(ctx, feat->iffeatures_c, lysc_iffeature_free);
+    LY_ARRAY_FREE(feat->depfeatures);
     FREE_STRING(ctx, feat->dsc);
     FREE_STRING(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
@@ -509,26 +512,14 @@ lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
     FREE_ARRAY(ctx, must->exts, lysc_ext_instance_free);
 }
 
-static void
+void
 lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
     FREE_STRING(ctx, ident->name);
     FREE_STRING(ctx, ident->dsc);
     FREE_STRING(ctx, ident->ref);
-    FREE_ARRAY(ctx, ident->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(ident->derived);
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
-}
-
-void
-lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat)
-{
-    FREE_STRING(ctx, feat->name);
-    FREE_STRING(ctx, feat->dsc);
-    FREE_STRING(ctx, feat->ref);
-    FREE_ARRAY(ctx, feat->iffeatures, lysc_iffeature_free);
-    LY_ARRAY_FREE(feat->depfeatures);
-    FREE_ARRAY(ctx, feat->exts, lysc_ext_instance_free);
 }
 
 static void
@@ -564,7 +555,6 @@ lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_bitenum_item *item)
     FREE_STRING(ctx, item->name);
     FREE_STRING(ctx, item->dsc);
     FREE_STRING(ctx, item->ref);
-    FREE_ARRAY(ctx, item->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
 }
 
@@ -637,7 +627,7 @@ lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout)
 
     FREE_ARRAY(ctx, inout->musts, lysc_must_free);
     LY_LIST_FOR_SAFE(inout->data, child_next, child) {
-        lysc_node_free(ctx, child);
+        lysc_node_free_(ctx, child);
     }
 }
 
@@ -647,7 +637,6 @@ lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action)
     FREE_STRING(ctx, action->name);
     FREE_STRING(ctx, action->dsc);
     FREE_STRING(ctx, action->ref);
-    FREE_ARRAY(ctx, action->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, action->exts, lysc_ext_instance_free);
     FREE_ARRAY(ctx, action->when, lysc_when_free);
     FREE_ARRAY(ctx, action->input_exts, lysc_ext_instance_free);
@@ -664,12 +653,11 @@ lysc_notif_free(struct ly_ctx *ctx, struct lysc_notif *notif)
     FREE_STRING(ctx, notif->name);
     FREE_STRING(ctx, notif->dsc);
     FREE_STRING(ctx, notif->ref);
-    FREE_ARRAY(ctx, notif->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, notif->exts, lysc_ext_instance_free);
     FREE_ARRAY(ctx, notif->when, lysc_when_free);
     FREE_ARRAY(ctx, notif->musts, lysc_must_free);
     LY_LIST_FOR_SAFE(notif->data, child_next, child) {
-        lysc_node_free(ctx, child);
+        lysc_node_free_(ctx, child);
     }
 }
 
@@ -679,7 +667,7 @@ lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
-        lysc_node_free(ctx, child);
+        lysc_node_free_(ctx, child);
     }
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     FREE_ARRAY(ctx, node->actions, lysc_action_free);
@@ -726,7 +714,7 @@ lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
-        lysc_node_free(ctx, child);
+        lysc_node_free_(ctx, child);
     }
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
 
@@ -745,7 +733,7 @@ lysc_node_choice_free(struct ly_ctx *ctx, struct lysc_node_choice *node)
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE((struct lysc_node *)node->cases, child_next, child) {
-        lysc_node_free(ctx, child);
+        lysc_node_free_(ctx, child);
     }
 }
 
@@ -755,7 +743,7 @@ lysc_node_case_free(struct ly_ctx *ctx, struct lysc_node_case *node)
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
-        lysc_node_free(ctx, child);
+        lysc_node_free_(ctx, child);
     }
 }
 
@@ -765,8 +753,8 @@ lysc_node_anydata_free(struct ly_ctx *ctx, struct lysc_node_anydata *node)
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
 }
 
-void
-lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
+static void
+lysc_node_free_(struct ly_ctx *ctx, struct lysc_node *node)
 {
     /* common part */
     FREE_STRING(ctx, node->name);
@@ -802,9 +790,46 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
     }
 
     FREE_ARRAY(ctx, node->when, lysc_when_free);
-    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, node->exts, lysc_ext_instance_free);
     free(node);
+}
+
+void
+lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
+{
+    struct lysc_node *iter, **child_p;
+
+    if (unlink) {
+        /* unlink from siblings */
+        if (node->prev->next) {
+            node->prev->next = node->next;
+        }
+        if (node->next) {
+            node->next->prev = node->prev;
+        } else {
+            /* unlinking the last node */
+            if (node->parent) {
+                iter = (struct lysc_node *)lysc_node_children(node->parent, node->flags & LYS_CONFIG_MASK);
+            } else {
+                iter = node->module->compiled->data;
+            }
+            /* update the "last" pointer from the first node */
+            iter->prev = node->prev;
+        }
+
+        /* unlink from parent */
+        if (node->parent) {
+            child_p = lysc_node_children_p(node->parent, node->flags & LYS_CONFIG_MASK);
+        } else {
+            child_p = &node->module->compiled->data;
+        }
+        if (child_p && (*child_p == node)) {
+            /* the node is the first child */
+            *child_p = node->next;
+        }
+    }
+
+    lysc_node_free_(ctx, node);
 }
 
 static void
@@ -817,7 +842,7 @@ lysc_module_free_(struct lysc_module *module)
     ctx = module->mod->ctx;
 
     LY_LIST_FOR_SAFE(module->data, node_next, node) {
-        lysc_node_free(ctx, node);
+        lysc_node_free_(ctx, node);
     }
     FREE_ARRAY(ctx, module->rpcs, lysc_action_free);
     FREE_ARRAY(ctx, module->notifs, lysc_notif_free);
@@ -845,7 +870,6 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     }
 
     lysc_module_free(module->compiled, private_destructor);
-    FREE_ARRAY(module->ctx, module->features, lysc_feature_free);
     FREE_ARRAY(module->ctx, module->identities, lysc_ident_free);
     lysp_module_free(module->parsed);
 

@@ -84,6 +84,7 @@ struct lysc_ext_substmt {
 /**
  * @brief Compile substatements of an extension instance.
  * TODO
+ * @return LY_ENOT if the extension is disabled and should be ignored.
  */
 LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts);
 
@@ -125,6 +126,7 @@ void lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char
  * for later use (data validation or use of external tool).
  * @return LY_SUCCESS in case of success.
  * @return LY_EVALID in case of non-conforming parsed data.
+ * @return LY_ENOT in case the extension instance is not supported and should be removed.
  */
 typedef LY_ERR (*lyext_clb_compile)(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext);
 

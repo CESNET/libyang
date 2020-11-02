@@ -227,7 +227,7 @@ setup_f(void **state)
     (*state) = st = calloc(1, sizeof *st);
     assert_non_null(st);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &st->ctx));
-    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-netconf-acm", "2018-02-14"));
+    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-netconf-acm", "2018-02-14", NULL));
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, schema, LYS_IN_YANG, NULL));
 
     return 0;

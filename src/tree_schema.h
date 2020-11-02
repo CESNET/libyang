@@ -118,40 +118,25 @@ struct ly_set;
 /**
  * @page howtoSchemaFeatures YANG Features
  *
- * YANG feature statement is an important part of the language which can significantly affect the meaning of the schemas. Despite
- * the features have similar effect as loading/removing schema from the context, manipulating with the feature value is not
- * limited to the context preparation period before working with data. YANG features, respectively their use in if-feature
- * statements, are evaluated as part of the [data validation process](@ref howtoDataValidation).
+ * YANG feature statement is an important part of the language which can significantly affect the meaning of the schemas.
+ * Modifying features may have similar effects as loading/removing schema from the context so it is limited to context
+ * preparation period before working with data. YANG features, respectively their use in if-feature
+ * statements, are evaluated as part of schema compilation so a feature-specific compiled schema tree is generated
+ * as a result.
  *
- * The main functions with *lys_feature_* prefix are used to change the value (true/false) of the feature and to get its current
- * value. Enabling/disabling all the features in a particular module can be done using '`*`' value instead of the feature name.
+ * To enable any features, they must currently be specified when implementing a new schema with ::lys_parse() or
+ * ::ly_ctx_load_module(). To later examine what the status of a feature is, check its ::LYS_FENABLED flag or
+ * search for it first with ::lys_feature_value(). Lastly, to evaluate compiled if-features, use ::lysc_iffeature_value().
  *
- * There are two options to reflect feature's if-feature statements when enabling/disabling the feature. The ::lys_feature_enable()
- * and ::lys_feature_disable() functions check their if-feature expressions (it is not possible to enable feature if it is not
- * allowed by its if-feature expressions) and also checks for and update other features those if-feature expressions use the
- * changed feature. On the contrary, ::lys_feature_enable_force() and ::lys_feature_disable_force() ignore all the if-feature
- * limitations.
- *
- * The ::lysc_feature_value() and ::lys_feature_value() functions differ only by their parameters. The ::lysc_iffeature_value()
- * is used to evaluate (possibly complex in YANG 1.1) logical expression from if-feature statement.
- *
- * The list of features of a particular YANG module is available in ::lys_module.features.
- *
- * To get know, if a specific schema node is currently disabled or enable, the ::lysc_node_is_disabled() function can be used.
+ * To iterate over all features of a particular YANG module, use ::lysp_feature_next().
  *
  * Note, that the feature's state can affect some of the output formats (e.g. Tree format).
  *
  * Functions List
  * --------------
- * - ::lys_feature_enable()
- * - ::lys_feature_enable_force()
- * - ::lys_feature_disable()
- * - ::lys_feature_disable_force()
  * - ::lys_feature_value()
- * - ::lysc_feature_value()
  * - ::lysc_iffeature_value()
- *
- * - ::lysc_node_is_disabled()
+ * - ::lysp_feature_next()
  */
 
 /**
@@ -368,7 +353,6 @@ typedef enum {
     LYEXT_PAR_TYPE,      /**< ::lysc_type */
     LYEXT_PAR_TYPE_BIT,  /**< ::lysc_type_bitenum_item */
     LYEXT_PAR_TYPE_ENUM, /**< ::lysc_type_bitenum_item */
-    LYEXT_PAR_FEATURE,   /**< ::lysc_feature */
     LYEXT_PAR_MUST,      /**< ::lysc_must */
     LYEXT_PAR_PATTERN,   /**< ::lysc_pattern */
     LYEXT_PAR_LENGTH,    /**< ::lysc_range */
@@ -521,11 +505,23 @@ struct lysp_ext_instance {
  */
 struct lysp_feature {
     const char *name;                /**< feature name (mandatory) */
-    struct lysp_qname *iffeatures;  /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysp_qname *iffeatures;   /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures_c;    /**< compiled if-features */
+    struct lysp_feature **depfeatures;  /**< list of pointers to other features depending on this one
+                                          ([sized array](@ref sizedarrays)) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement  */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values allowed */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
+                                          LYS_FENABLED are allowed */
+};
+
+/**
+ * @brief Compiled YANG if-feature-stmt
+ */
+struct lysc_iffeature {
+    uint8_t *expr;                   /**< 2bits array describing the if-feature expression in prefix format, see @ref ifftokens */
+    struct lysp_feature **features;  /**< array of pointers to the features used in expression ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -788,6 +784,7 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
  *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_FENABLED     | | | | | | | | | | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
  *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | | |
@@ -850,7 +847,6 @@ struct lysp_deviation {
  *         LYS_UNIQUE       | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
- *         LYS_FENABLED     | | | | | | | | | |x| | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | |
  *         LYS_ISENUM       | | | | | | | | | | | | |x| |
@@ -892,10 +888,7 @@ struct lysp_deviation {
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_KEYLESS      0x200       /**< flag for list without any key, applicable only to ::lysc_node_list */
-#define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature.
-                                          Do not interpret presence of this flag as enabled feature! Also if-feature statements
-                                          are supposed to be taken into account, so use ::lys_feature_value() or
-                                          ::lysc_feature_value() to get know if a specific feature is really enabled. */
+#define LYS_FENABLED     0x20        /**< feature enabled flag, applicable only to ::lysp_feature. */
 #define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
 #define LYS_ORDBY_USER   0x40        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
@@ -1295,14 +1288,6 @@ struct lysc_ext_instance {
 };
 
 /**
- * @brief Compiled YANG if-feature-stmt
- */
-struct lysc_iffeature {
-    uint8_t *expr;                   /**< 2bits array describing the if-feature expression in prefix format, see @ref ifftokens */
-    struct lysc_feature **features;  /**< array of pointers to the features used in expression ([sized array](@ref sizedarrays)) */
-};
-
-/**
  * @brief YANG when-stmt
  */
 struct lysc_when {
@@ -1326,23 +1311,7 @@ struct lysc_ident {
     struct lys_module *module;       /**< module structure */
     struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
-};
-
-/**
- * @brief YANG feature-stmt
- */
-struct lysc_feature {
-    const char *name;                /**< feature name (mandatory) */
-    const char *dsc;                 /**< description */
-    const char *ref;                 /**< reference */
-    struct lys_module *module;       /**< module structure */
-    struct lysc_feature **depfeatures;/**< list of pointers to other features depending on this one ([sized array](@ref sizedarrays)) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and
-                                          #LYS_FENABLED values allowed */
 };
 
 /**
@@ -1443,7 +1412,6 @@ struct lysc_type_bitenum_item {
     const char *dsc;             /**< description */
     const char *ref;             /**< reference */
     struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     union {
         int32_t value;           /**< integer value associated with the enumeration */
         uint32_t position;       /**< non-negative integer value associated with the bit */
@@ -1538,7 +1506,6 @@ struct lysc_action {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_action_inout input;  /**< RPC's/action's input */
     struct lysc_action_inout output; /**< RPC's/action's output */
@@ -1561,7 +1528,6 @@ struct lysc_notif {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /** private arbitrary user data, not used by libyang */
 };
@@ -1584,7 +1550,6 @@ struct lysc_node {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 };
@@ -1604,7 +1569,6 @@ struct lysc_node_container {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1629,7 +1593,6 @@ struct lysc_node_case {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1652,7 +1615,6 @@ struct lysc_node_choice {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1677,7 +1639,6 @@ struct lysc_node_leaf {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1703,7 +1664,6 @@ struct lysc_node_leaflist {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1733,7 +1693,6 @@ struct lysc_node_list {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1762,7 +1721,6 @@ struct lysc_node_anydata {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 
@@ -1945,14 +1903,14 @@ LY_ERR lysc_set_private(const struct lysc_node *node, void *priv, void **prev_pr
 LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
 
 /**
- * @brief Get the current status of the provided feature.
+ * @brief Get the next feature in the module or submodules.
  *
- * @param[in] feature Compiled feature statement to examine.
- * @return LY_SUCCESS if feature is enabled,
- * @return LY_ENOT if feature is disabled,
- * @return LY_ERR in case of error (invalid argument)
+ * @param[in] last Last returned feature.
+ * @param[in] pmod Parsed module and submodoules whose features to iterate over.
+ * @param[in,out] idx Submodule index, set to 0 on first call.
+ * @return Next found feature, NULL if the last has already been returned.
  */
-LY_ERR lysc_feature_value(const struct lysc_feature *feature);
+struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx);
 
 /**
  * @defgroup findxpathoptions Atomize XPath options
@@ -2054,13 +2012,6 @@ struct lys_module {
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing.
                                           Available only for implemented modules. */
 
-    struct lysc_feature *features;   /**< List of compiled features of the module ([sized array](@ref sizedarrays)).
-                                          Features are outside the compiled tree since they are needed even the module is not
-                                          compiled. In such a case, the features are always disabled and cannot be enabled until
-                                          the module is implemented. The features are present in this form to allow their linkage
-                                          from if-feature statements of the compiled schemas and their proper use in case
-                                          the module became implemented in future (no matter if implicitly via augment/deviate
-                                          or explicitly via ::lys_set_implemented()). */
     struct lysc_ident *identities;   /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
                                           Identities are outside the compiled tree to allow their linkage to the identities from
                                           the implemented modules. This avoids problems when the module became implemented in
@@ -2077,67 +2028,6 @@ struct lys_module {
                                           latest revision in the current context
                                           2 - searchdirs were searched and this is the latest available revision */
 };
-
-/**
- * @brief Enable specified feature in the module
- *
- * By default, when the module is loaded by libyang parser, all features are disabled.
- *
- * If all features are being enabled, it must be possible respecting their if-feature conditions. For example,
- * enabling all features on the following feature set will fail since it is not possible to enable both features
- * (and it is unclear which of them should be enabled then). In this case the LY_EDENIED is returned and the feature
- * is untouched.
- *
- *     feature f1;
- *     feature f2 { if-feature 'not f1';}
- *
- * @param[in] module Module where the feature will be enabled.
- * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk (`*`) character.
- * @return LY_SUCCESS on success,
- * @return LY_EINVAL if @p module is not implemented,
- * @return LY_ENOTFOUND if @p feature was not found,
- * @return LY_EDENIED if @p feature could not be enabled because it has some false if-feature statements.
- */
-LY_ERR lys_feature_enable(const struct lys_module *module, const char *feature);
-
-/**
- * @brief Disable specified feature in the module
- *
- * By default, when the module is loaded by libyang parser, all features are disabled.
- *
- * If disabling a feature causes some other features that depend on this feature to become disabled.
- *
- * @param[in] module Module where the feature will be disabled.
- * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk (`*`) character.
- * @return LY_SUCCESS on success,
- * @return LY_EINVAL if @p module is not implemented,
- * @return LY_ENOTFOUND if @p feature was not found.
- */
-LY_ERR lys_feature_disable(const struct lys_module *module, const char *feature);
-
-/**
- * @brief Enable specified feature in the module disregarding its if-features.
- *
- * @param[in] module Module where the feature will be enabled.
- * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk character.
- * @return LY_SUCCESS on success,
- * @return LY_EINVAL if @p module is not implemented,
- * @return LY_ENOTFOUND if @p feature was not found.
- */
-LY_ERR lys_feature_enable_force(const struct lys_module *module, const char *feature);
-
-/**
- * @brief Disable specified feature in the module disregarding dependant features.
- *
- * By default, when the module is loaded by libyang parser, all features are disabled.
- *
- * @param[in] module Module where the feature will be disabled.
- * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk character.
- * @return LY_SUCCESS on success,
- * @return LY_EINVAL if @p module is not implemented,
- * @return LY_ENOTFOUND if @p feature was not found.
- */
-LY_ERR lys_feature_disable_force(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Get the current real status of the specified feature in the module.
@@ -2186,10 +2076,8 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
 #define LYS_GETNEXT_WITHCHOICE   0x01 /**< ::lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
 #define LYS_GETNEXT_NOCHOICE     0x02 /**< ::lys_getnext() option to ignore (kind of conditional) nodes within choice node */
 #define LYS_GETNEXT_WITHCASE     0x04 /**< ::lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
-#define LYS_GETNEXT_INTONPCONT   0x40 /**< ::lys_getnext() option to look into non-presence container, instead of returning container itself */
-#define LYS_GETNEXT_NOSTATECHECK 0x100 /**< ::lys_getnext() option to skip checking module validity (import-only, disabled) and
-                                            relevant if-feature conditions state */
-#define LYS_GETNEXT_OUTPUT       0x200 /**< ::lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
+#define LYS_GETNEXT_INTONPCONT   0x08 /**< ::lys_getnext() option to look into non-presence container, instead of returning container itself */
+#define LYS_GETNEXT_OUTPUT       0x10 /**< ::lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
                                             provided by default */
 /** @} sgetnextflags */
 
@@ -2213,22 +2101,13 @@ const struct lysc_node *lys_find_child(const struct lysc_node *parent, const str
  *
  * @param[in] mod Module to make implemented. It is not an error
  * to provide already implemented module, it just does nothing.
+ * @param[in] features Optional array of features ended with NULL to be enabled if the module is being implemented.
+ * NULL for all features disabled and '*' for all enabled.
  * @return LY_SUCCESS on success.
  * @return LY_EDENIED in case the context contains some other revision of the same module which is already implemented.
+ * @return LY_ERR on other errors during module compilation.
  */
-LY_ERR lys_set_implemented(struct lys_module *mod);
-
-/**
- * @brief Check if the schema node is disabled in the schema tree, i.e. there is any disabled if-feature statement
- * affecting the node.
- *
- * @param[in] node Schema node to check.
- * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
- * - 1 to check if-feature in all ascendant schema nodes until there is a node possibly having an instance in a data tree
- * @return NULL if enabled,
- * @return pointer to the node with the unsatisfied (disabled) if-feature expression.
- */
-const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, ly_bool recursive);
+LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

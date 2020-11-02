@@ -28,7 +28,6 @@
 #include "schema_compile.h"
 #include "xpath.h"
 
-void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);
 void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
 
 #define BUFSIZE 1024
@@ -104,7 +103,7 @@ test_module(void **state)
     struct ly_in *in;
     struct ly_ctx *ctx = NULL;
     struct lys_module *mod = NULL;
-    struct lysc_feature *f;
+    struct lysp_feature *f;
     struct lysc_iffeature *iff;
 
     str = "module test {namespace urn:test; prefix t;"
@@ -114,7 +113,7 @@ test_module(void **state)
     assert_int_equal(LY_EINVAL, lys_compile(NULL, 0));
     logbuf_assert("Invalid argument mod (lys_compile()).");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, &mod));
+    assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, NULL, &mod));
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -126,28 +125,28 @@ test_module(void **state)
     assert_string_equal("urn:test", mod->ns);
     assert_string_equal("t", mod->prefix);
     /* features */
-    assert_non_null(mod->features);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->features));
-    f = &mod->features[1];
+    assert_non_null(mod->parsed->features);
+    assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->features));
+    f = &mod->parsed->features[1];
     assert_non_null(f->iffeatures);
     assert_int_equal(1, LY_ARRAY_COUNT(f->iffeatures));
-    iff = &f->iffeatures[0];
+    iff = &f->iffeatures_c[0];
     assert_non_null(iff->expr);
     assert_non_null(iff->features);
     assert_int_equal(1, LY_ARRAY_COUNT(iff->features));
-    assert_ptr_equal(&mod->features[0], iff->features[0]);
+    assert_ptr_equal(&mod->parsed->features[0], iff->features[0]);
 
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EINVAL, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL));
+    assert_int_equal(LY_EINVAL, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL, NULL));
     ly_in_free(in, 0);
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
 
     /* data definition name collision in top level */
     str = "module aa {namespace urn:aa;prefix aa; leaf a {type string;} container a{presence x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EEXIST, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, &mod));
+    assert_int_equal(LY_EEXIST, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL, &mod));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /aa:a");
     ly_in_free(in, 0);
 
@@ -399,12 +398,18 @@ test_node_list(void **state)
     const struct lys_module *mod;
     struct lysc_node_list *list;
     struct lysc_node *child;
+    struct ly_in *in;
+    const char *data =
+        "module a {namespace urn:a;prefix a;feature f;"
+            "list l1 {key \"x y\"; ordered-by user; leaf y{type string;if-feature f;} leaf x {type string; when 1;}}"
+            "list l2 {config false;leaf value {type string;}}}";
+    const char *feats[] = {"f", NULL};
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
-                                        "list l1 {key \"x y\"; ordered-by user; leaf y{type string;if-feature f;} leaf x {type string; when 1;}}"
-                                        "list l2 {config false;leaf value {type string;}}}", LYS_IN_YANG, &mod));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats, &mod));
+    ly_in_free(in, 0);
     list = (struct lysc_node_list*)mod->compiled->data;
     assert_non_null(list);
     assert_non_null(list->child);
@@ -484,7 +489,7 @@ test_node_list(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;feature f;"
                               "list l {key x; leaf x {type string; if-feature f;}}}", LYS_IN_YANG, NULL));
-    logbuf_assert("List's key must not have any \"if-feature\" statement. /cc:l/x");
+    logbuf_assert("Key \"x\" is disabled by its if-features. /cc:l/x");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;"
                               "list l {key x; leaf x {type string; config false;}}}", LYS_IN_YANG, NULL));
@@ -1203,20 +1208,17 @@ test_type_enum(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_ENUM, type->basetype);
     assert_non_null(((struct lysc_type_enum*)type)->enums);
-    assert_int_equal(6, LY_ARRAY_COUNT(((struct lysc_type_enum*)type)->enums));
-    assert_non_null(((struct lysc_type_enum*)type)->enums[2].iffeatures);
+    assert_int_equal(5, LY_ARRAY_COUNT(((struct lysc_type_enum*)type)->enums));
     assert_string_equal("automin", ((struct lysc_type_enum*)type)->enums[0].name);
     assert_int_equal(0, ((struct lysc_type_enum*)type)->enums[0].value);
     assert_string_equal("min", ((struct lysc_type_enum*)type)->enums[1].name);
     assert_int_equal(-2147483648, ((struct lysc_type_enum*)type)->enums[1].value);
-    assert_string_equal("one", ((struct lysc_type_enum*)type)->enums[2].name);
-    assert_int_equal(1, ((struct lysc_type_enum*)type)->enums[2].value);
-    assert_string_equal("two", ((struct lysc_type_enum*)type)->enums[3].name);
-    assert_int_equal(2, ((struct lysc_type_enum*)type)->enums[3].value);
-    assert_string_equal("seven", ((struct lysc_type_enum*)type)->enums[4].name);
-    assert_int_equal(7, ((struct lysc_type_enum*)type)->enums[4].value);
-    assert_string_equal("eight", ((struct lysc_type_enum*)type)->enums[5].name);
-    assert_int_equal(8, ((struct lysc_type_enum*)type)->enums[5].value);
+    assert_string_equal("two", ((struct lysc_type_enum*)type)->enums[2].name);
+    assert_int_equal(2, ((struct lysc_type_enum*)type)->enums[2].value);
+    assert_string_equal("seven", ((struct lysc_type_enum*)type)->enums[3].name);
+    assert_int_equal(7, ((struct lysc_type_enum*)type)->enums[3].value);
+    assert_string_equal("eight", ((struct lysc_type_enum*)type)->enums[4].name);
+    assert_int_equal(8, ((struct lysc_type_enum*)type)->enums[4].value);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b;feature f; typedef mytype {type enumeration {"
                                         "enum 11; enum min {value -2147483648;}enum x$&;"
@@ -1307,18 +1309,15 @@ test_type_bits(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_BITS, type->basetype);
     assert_non_null(((struct lysc_type_bits*)type)->bits);
-    assert_int_equal(5, LY_ARRAY_COUNT(((struct lysc_type_bits*)type)->bits));
-    assert_non_null(((struct lysc_type_bits*)type)->bits[1].iffeatures);
+    assert_int_equal(4, LY_ARRAY_COUNT(((struct lysc_type_bits*)type)->bits));
     assert_string_equal("automin", ((struct lysc_type_bits*)type)->bits[0].name);
     assert_int_equal(0, ((struct lysc_type_bits*)type)->bits[0].position);
-    assert_string_equal("one", ((struct lysc_type_bits*)type)->bits[1].name);
-    assert_int_equal(1, ((struct lysc_type_bits*)type)->bits[1].position);
-    assert_string_equal("two", ((struct lysc_type_bits*)type)->bits[2].name);
-    assert_int_equal(2, ((struct lysc_type_bits*)type)->bits[2].position);
-    assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[3].name);
-    assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[3].position);
-    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[4].name);
-    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[4].position);
+    assert_string_equal("two", ((struct lysc_type_bits*)type)->bits[1].name);
+    assert_int_equal(2, ((struct lysc_type_bits*)type)->bits[1].position);
+    assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[2].name);
+    assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[2].position);
+    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[3].name);
+    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[3].position);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
                                         "bit automin; bit one;bit two; bit seven {position 7;}bit eight;}} leaf l { type mytype {bit eight;bit seven;bit automin;}}}",
@@ -1698,7 +1697,7 @@ test_type_leafref(void **state)
     assert_int_equal(1, ((struct lysc_type_leafref* )type)->require_instance);
 
     /* conditional leafrefs */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module e {yang-version 1.1;namespace urn:e;prefix e;feature f1; feature f2;"
+    /*assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module e {yang-version 1.1;namespace urn:e;prefix e;feature f1; feature f2;"
                                         "leaf ref1 {if-feature 'f1 and f2';type leafref {path /target;}}"
                                         "leaf target {if-feature f1; type boolean;}}", LYS_IN_YANG, &mod));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
@@ -1708,7 +1707,7 @@ test_type_leafref(void **state)
     assert_string_equal("/target", ((struct lysc_type_leafref* )type)->path->expr);
     assert_int_equal(0, LY_ARRAY_COUNT(((struct lysc_type_leafref*)type)->prefixes));
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
-    assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);
+    assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);*/
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;"
                                         "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
@@ -1812,8 +1811,7 @@ test_type_leafref(void **state)
     logbuf_assert("Missing path substatement for leafref type mytype. /ii:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj {namespace urn:jj;prefix jj;feature f;"
                                         "leaf ref {type leafref {path /target;}}leaf target {if-feature f;type string;}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid leafref path \"/target\" - set of features applicable to the leafref target is not a subset of features "
-                  "applicable to the leafref itself. /jj:ref");
+    logbuf_assert("Not found node \"target\" in path. /jj:ref");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module kk {namespace urn:kk;prefix kk;"
                                         "leaf ref {type leafref {path /target;}}leaf target {type string;config false;}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not. /kk:ref");
@@ -2242,22 +2240,7 @@ test_uses(void **state)
     assert_non_null((child = child->next));
     assert_string_equal("x", child->name);
     assert_ptr_equal(mod, child->module);
-    assert_non_null((child = child->next));
-    assert_string_equal("y", child->name);
-    assert_non_null(child->iffeatures);
-    assert_int_equal(1, LY_ARRAY_COUNT(child->iffeatures));
-    assert_int_equal(1, LY_ARRAY_COUNT(child->iffeatures[0].features));
-    assert_string_equal("f", child->iffeatures[0].features[0]->name);
-    assert_int_equal(LY_EINVAL, lys_feature_enable(mod->parsed->imports[0].module, "f"));
-    logbuf_assert("Module \"grp\" is not implemented so all its features are permanently disabled.");
-    assert_int_equal(LY_ENOT, lysc_iffeature_value(&child->iffeatures[0]));
-
-    /* make the imported module implemented and enable the feature */
-    assert_non_null(mod = ly_ctx_get_module(ctx, "grp", NULL));
-    assert_int_equal(LY_SUCCESS, lys_set_implemented((struct lys_module *)mod));
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f"));
-    assert_string_equal("f", child->iffeatures[0].features[0]->name);
-    assert_int_equal(LY_SUCCESS, lysc_iffeature_value(&child->iffeatures[0]));
+    assert_null((child = child->next));
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;} leaf c {type string;}}}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp {when 2;}}", LYS_IN_YANG, &mod));
@@ -2415,25 +2398,33 @@ test_refine(void **state)
     struct lysc_node_leaf *leaf;
     struct lysc_node_leaflist *llist;
     uint8_t dynamic;
+    struct ly_in *in;
+    const char *data, *feats1[] = {"f", NULL}, *feats2[] = {"fa", NULL};
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module grp {yang-version 1.1;namespace urn:grp;prefix g; feature f;typedef mytype {type string; default cheers!;}"
+    data = "module grp {yang-version 1.1;namespace urn:grp;prefix g; feature f;typedef mytype {type string; default cheers!;}"
                                        "grouping grp {container c {leaf l {type mytype; default goodbye;}"
                                        "leaf-list ll {type mytype; default goodbye; max-elements 6;}"
                                        "choice ch {default ca; leaf ca {type int8;}leaf cb{type uint8;}}"
                                        "leaf x {type mytype; mandatory true; must 1;}"
                                        "anydata a {mandatory false; if-feature f; description original; reference original;}"
-                                       "container c {config false; leaf l {type string;}}}}}", LYS_IN_YANG, NULL));
+                                       "container c {config false; leaf l {type string;}}}}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats1, NULL));
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}feature fa;"
+    data = "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}feature fa;"
                                         "uses g:grp {refine c/l {default hello; config false;}"
                                         "refine c/ll {default hello;default world;}"
                                         "refine c/ch {default cb;config true; if-feature fa;}"
                                         "refine c/x {mandatory false; must ../ll;description refined; reference refined;}"
-                                        "refine c/a {mandatory true; must 1; if-feature fa;description refined; reference refined;}"
+                                        "refine c/a {mandatory true; must 1; description refined; reference refined;}"
                                         "refine c/ll {max-elements 5;}"
-                                        "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG, &mod));
+                                        "refine c/c {config true;presence indispensable;}}}";
+    ly_in_memory(in, data);
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats2, &mod));
+    ly_in_free(in, 0);
+
     assert_non_null((parent = mod->compiled->data));
     assert_int_equal(LYS_CONTAINER, parent->nodetype);
     assert_string_equal("c", parent->name);
@@ -2458,8 +2449,6 @@ test_refine(void **state)
     assert_string_equal("cb", ((struct lysc_node_choice*)child)->dflt->name);
     assert_true(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->dflt->flags);
     assert_false(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->cases[0].flags);
-    assert_non_null(child->iffeatures);
-    assert_int_equal(1, LY_ARRAY_COUNT(child->iffeatures));
     assert_non_null(leaf = (struct lysc_node_leaf*)child->next);
     assert_int_equal(LYS_LEAF, leaf->nodetype);
     assert_string_equal("x", leaf->name);
@@ -2476,8 +2465,6 @@ test_refine(void **state)
     assert_true(LYS_MAND_TRUE & child->flags);
     assert_non_null(((struct lysc_node_anydata*)child)->musts);
     assert_int_equal(1, LY_ARRAY_COUNT(((struct lysc_node_anydata*)child)->musts));
-    assert_non_null(child->iffeatures);
-    assert_int_equal(2, LY_ARRAY_COUNT(child->iffeatures));
     assert_string_equal("refined", child->dsc);
     assert_string_equal("refined", child->ref);
     assert_non_null(child = child->next);
@@ -3201,7 +3188,7 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}"
                               "deviation /top {deviate add {config false;}}}", LYS_IN_YANG, &mod));
     /*logbuf_assert("Invalid deviation of config - configuration node cannot be child of any state data node. /jj5:{deviation='/top'}");*/
-    logbuf_assert("Compilation of a deviated and/or refined node failed. /jj5:top/x");
+    logbuf_assert("Compilation of a deviated and/or refined node failed. /jj5:top");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module jj6 {namespace urn:jj6;prefix jj6; leaf x {config false; type string;}"
                               "deviation /x {deviate add {config true;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation adding \"config\" property which already exists (with value \"config false\"). /jj6:{deviation='/x'}");

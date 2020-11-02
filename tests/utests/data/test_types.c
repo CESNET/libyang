@@ -184,8 +184,7 @@ test_int(void **state)
     assert_string_equal("15", leaf->value.canonical);
     assert_int_equal(15, leaf->value.int8);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical, value.canonical);
     assert_int_equal(15, value.int8);
     value.realtype->plugin->free(s->ctx, &value);
@@ -225,8 +224,7 @@ test_uint(void **state)
     assert_string_equal("150", leaf->value.canonical);
     assert_int_equal(150, leaf->value.uint8);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical, value.canonical);
     assert_int_equal(150, value.uint8);
     value.realtype->plugin->free(s->ctx, &value);
@@ -266,8 +264,7 @@ test_dec64(void **state)
     assert_string_equal("8.0", leaf->value.canonical);
     assert_int_equal(80, leaf->value.dec64);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical, value.canonical);
     assert_int_equal(80, value.dec64);
     value.realtype->plugin->free(s->ctx, &value);
@@ -374,8 +371,7 @@ test_bits(void **state)
     assert_string_equal("zero", leaf->value.bits_items[0]->name);
     assert_string_equal("two", leaf->value.bits_items[1]->name);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical, value.canonical);
     assert_int_equal(2, LY_ARRAY_COUNT(value.bits_items));
     assert_string_equal("zero", value.bits_items[0]->name);
@@ -389,28 +385,16 @@ test_bits(void **state)
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("zero two", leaf->value.canonical);
+
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonical, value.canonical);
+    assert_int_equal(2, LY_ARRAY_COUNT(value.bits_items));
+    assert_string_equal("zero", value.bits_items[0]->name);
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     /* disabled feature */
     TEST_DATA("<bits xmlns=\"urn:tests:types\"> \t one \n\t </bits>", LY_EVALID, "Bit \"one\" is disabled by its 1. if-feature condition. /types:bits");
-
-    /* enable that feature */
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(ly_ctx_get_module(s->ctx, "types", NULL), "f"));
-    TEST_DATA("<bits xmlns=\"urn:tests:types\"> \t one \n\t </bits>", LY_SUCCESS, "");
-    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
-    assert_string_equal("bits", tree->schema->name);
-    leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("one", leaf->value.canonical);
-    assert_int_equal(1, LY_ARRAY_COUNT(leaf->value.bits_items));
-    assert_string_equal("one", leaf->value.bits_items[0]->name);
-
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
-    assert_string_equal(leaf->value.canonical, value.canonical);
-    assert_int_equal(1, LY_ARRAY_COUNT(value.bits_items));
-    assert_string_equal("one", value.bits_items[0]->name);
-    value.realtype->plugin->free(s->ctx, &value);
-    lyd_free_all(tree);
 
     /* multiple instances of the bit */
     TEST_DATA("<bits xmlns=\"urn:tests:types\">one zero one</bits>", LY_EVALID, "Bit \"one\" used multiple times. /types:bits");
@@ -441,8 +425,7 @@ test_enums(void **state)
     assert_string_equal("white", leaf->value.canonical);
     assert_string_equal("white", leaf->value.enum_item->name);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical, value.canonical);
     assert_string_equal("white", value.enum_item->name);
     value.realtype->plugin->free(s->ctx, &value);
@@ -451,15 +434,6 @@ test_enums(void **state)
     /* disabled feature */
     TEST_DATA("<enums xmlns=\"urn:tests:types\">yellow</enums>", LY_EVALID,
               "Enumeration \"yellow\" is disabled by its 1. if-feature condition. /types:enums");
-
-    /* enable that feature */
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(ly_ctx_get_module(s->ctx, "types", NULL), "f"));
-    TEST_DATA("<enums xmlns=\"urn:tests:types\">yellow</enums>", LY_SUCCESS, "");
-    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
-    assert_string_equal("enums", tree->schema->name);
-    leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("yellow", leaf->value.canonical);
-    lyd_free_all(tree);
 
     /* leading/trailing whitespaces are not valid */
     TEST_DATA("<enums xmlns=\"urn:tests:types\"> white</enums>", LY_EVALID, "Invalid enumeration value \" white\". /types:enums");
@@ -495,8 +469,7 @@ test_binary(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("TQ==", leaf->value.canonical);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical, value.canonical);
     value.realtype->plugin->free(s->ctx, &value);
     memset(&value, 0, sizeof value);
@@ -663,8 +636,7 @@ test_identityref(void **state)
     assert_string_equal("gigabit-ethernet", leaf->value.ident->name);
     test_printed_value(&leaf->value, "t:gigabit-ethernet", LY_PREF_SCHEMA, s->mod_types->parsed);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("types:gigabit-ethernet", value.canonical);
     assert_string_equal("gigabit-ethernet", value.ident->name);
     value.realtype->plugin->free(s->ctx, &value);
@@ -729,8 +701,7 @@ test_instanceid(void **state)
     assert_string_equal("leaftarget", leaf->value.target[1].node->name);
     assert_null(leaf->value.target[1].predicates);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("/types:cont/leaftarget", value.canonical);
     assert_true(LY_ARRAY_COUNT(leaf->value.target) == LY_ARRAY_COUNT(value.target));
     assert_true(leaf->value.target[0].node == value.target[0].node);
@@ -776,8 +747,7 @@ test_instanceid(void **state)
     test_printed_value(&leaf->value, "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LY_PREF_SCHEMA, s->mod_types->parsed);
     test_printed_value(&leaf->value, "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LY_PREF_JSON, NULL);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", value.canonical);
     assert_true(LY_ARRAY_COUNT(leaf->value.target) == LY_ARRAY_COUNT(value.target));
     assert_true(leaf->value.target[0].node == value.target[0].node);
@@ -1115,8 +1085,7 @@ test_union(void **state)
 
     test_printed_value(&leaf->value, "12", LY_PREF_SCHEMA, NULL);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("12", value.canonical);
     assert_non_null(value.subvalue->prefix_data);
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 0);
@@ -1153,8 +1122,7 @@ test_union(void **state)
     test_printed_value(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs->parsed);
     test_printed_value(&leaf->value.subvalue->value, "d:fast-ethernet", LY_PREF_SCHEMA, s->mod_defs->parsed);
 
-    value.realtype = leaf->value.realtype;
-    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_int_equal(LY_SUCCESS, leaf->value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal("defs:fast-ethernet", value.canonical);
     assert_string_equal("defs:fast-ethernet", value.subvalue->value.canonical);
     assert_non_null(value.subvalue->prefix_data);

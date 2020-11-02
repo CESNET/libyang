@@ -407,7 +407,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
                 LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
                 return LY_EVALID;
             }
-            LY_CHECK_RET(lys_set_implemented((struct lys_module *)*mod));
+            LY_CHECK_RET(lys_set_implemented((struct lys_module *)*mod, NULL));
         }
     } else {
         switch (format) {
@@ -479,7 +479,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             /* NameTest, find the key */
             LY_CHECK_RET(ly_path_compile_prefix(ctx, cur_node, cur_mod, ctx_node, expr, *tok_idx, LY_PATH_LREF_FALSE,
                     format, prefix_data, &mod, &name, &name_len));
-            key = lys_find_child(ctx_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
+            key = lys_find_child(ctx_node, mod, name, name_len, 0, 0);
             if (!key) {
                 LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
                 return LY_ENOTFOUND;
@@ -629,7 +629,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         /* NameTest, find the key */
         LY_CHECK_RET(ly_path_compile_prefix(cur_node->module->ctx, cur_node, cur_node->module, ctx_node, expr, *tok_idx,
                 LY_PATH_LREF_TRUE, format, prefix_data, &mod, &name, &name_len));
-        key = lys_find_child(ctx_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
+        key = lys_find_child(ctx_node, mod, name, name_len, 0, 0);
         if (!key) {
             LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
             return LY_EVALID;
@@ -688,7 +688,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_NAMETEST);
             LY_CHECK_RET(ly_path_compile_prefix(cur_node->module->ctx, cur_node, cur_node->module, node, expr, *tok_idx,
                     LY_PATH_LREF_TRUE, format, prefix_data, &mod, &name, &name_len));
-            node2 = lys_find_child(node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
+            node2 = lys_find_child(node, mod, name, name_len, 0, 0);
             if (!node2) {
                 LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
                 return LY_EVALID;
@@ -747,9 +747,9 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     *path = NULL;
 
     if (oper == LY_PATH_OPER_OUTPUT) {
-        getnext_opts = LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_OUTPUT;
+        getnext_opts = LYS_GETNEXT_OUTPUT;
     } else {
-        getnext_opts = LYS_GETNEXT_NOSTATECHECK;
+        getnext_opts = 0;
     }
 
     if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {

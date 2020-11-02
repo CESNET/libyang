@@ -171,17 +171,7 @@ test_module(void **state)
     compiled = "module b {\n"
             "  namespace \"urn:test:b\";\n"
             "  prefix b;\n\n"
-            "  revision 2019-04-16;\n\n"
-            "  feature f1 {\n"
-            "    status current;\n"
-            "    description\n"
-            "      \"text\";\n"
-            "    reference\n"
-            "      \"text\";\n"
-            "  }\n\n"
-            "  feature f2 {\n"
-            "    if-feature \"not f1\";\n"
-            "  }\n"
+            "  revision 2019-04-16;\n"
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
     assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
@@ -193,7 +183,7 @@ test_module(void **state)
     assert_string_equal(printed, compiled);
     ly_out_reset(out);
 
-    orig = compiled = "module c {\n"
+    orig = "module c {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:c\";\n"
             "  prefix c;\n\n"
@@ -210,12 +200,16 @@ test_module(void **state)
             "    status obsolete;\n"
             "  }\n"
             "}\n";
+    compiled = "module c {\n"
+            "  namespace \"urn:test:c\";\n"
+            "  prefix c;\n"
+            "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
     assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
     assert_int_equal(strlen(orig), ly_out_printed(out));
     assert_string_equal(printed, orig);
     ly_out_reset(out);
-    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG_COMPILED, 0, 0));
     assert_int_equal(strlen(compiled), ly_out_printed(out));
     assert_string_equal(printed, compiled);
 

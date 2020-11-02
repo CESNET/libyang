@@ -21,6 +21,7 @@
 #include <cmocka.h>
 
 #include "context.h"
+#include "in.h"
 #include "log.h"
 #include "set.h"
 #include "tests/config.h"
@@ -137,6 +138,8 @@ setup(void **state)
         "}"
     "}";
     const struct lys_module *mod;
+    const char *feats[] = {"feat1", NULL};
+    struct ly_in *in;
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -145,8 +148,9 @@ setup(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, NULL);
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_a, LYS_IN_YANG, &mod));
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(schema_a, &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, feats, &mod));
+    ly_in_free(in, 0);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL));
 
     return 0;
