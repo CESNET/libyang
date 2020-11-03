@@ -47,7 +47,9 @@
 API LY_ERR
 lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data)
 {
-    struct lysc_node *elem, *ops, *elem2;
+    struct lysc_node *elem, *elem2;
+    const struct lysc_action *acts;
+    const struct lysc_notif *notifs;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, root, dfs_clb, LY_EINVAL);
@@ -56,23 +58,23 @@ lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *dat
         /* schema node */
         LY_CHECK_RET(dfs_clb(elem, data, &LYSC_TREE_DFS_continue));
 
-        ops = (struct lysc_node *)lysc_node_actions(elem);
-        LY_ARRAY_FOR(ops, u) {
-            LYSC_TREE_DFS_BEGIN(&ops[u], elem2) {
+        acts = lysc_node_actions(elem);
+        LY_ARRAY_FOR(acts, u) {
+            LYSC_TREE_DFS_BEGIN(&acts[u], elem2) {
                 /* action subtree */
                 LY_CHECK_RET(dfs_clb(elem2, data, &LYSC_TREE_DFS_continue));
 
-                LYSC_TREE_DFS_END(&ops[u], elem2);
+                LYSC_TREE_DFS_END(&acts[u], elem2);
             }
         }
 
-        ops = (struct lysc_node *)lysc_node_notifs(elem);
-        LY_ARRAY_FOR(ops, u) {
-            LYSC_TREE_DFS_BEGIN(&ops[u], elem2) {
+        notifs = lysc_node_notifs(elem);
+        LY_ARRAY_FOR(notifs, u) {
+            LYSC_TREE_DFS_BEGIN(&notifs[u], elem2) {
                 /* notification subtree */
                 LY_CHECK_RET(dfs_clb(elem2, data, &LYSC_TREE_DFS_continue));
 
-                LYSC_TREE_DFS_END(&ops[u], elem2);
+                LYSC_TREE_DFS_END(&notifs[u], elem2);
             }
         }
 
