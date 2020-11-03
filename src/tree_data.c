@@ -576,6 +576,9 @@ lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node)
     in->schema = schema;
     in->prev = (struct lyd_node *)in;
     in->flags = LYD_NEW;
+    if ((schema->nodetype == LYS_CONTAINER) && !(schema->flags & LYS_PRESENCE)) {
+        in->flags |= LYD_DEFAULT;
+    }
 
     /* do not hash list with keys, we need them for the hash */
     if ((schema->nodetype != LYS_LIST) || (schema->flags & LYS_KEYLESS)) {
