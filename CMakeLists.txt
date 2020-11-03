@@ -154,7 +154,6 @@ set(headers
     src/in.h
     src/parser_data.h
     src/parser_schema.h
-    src/plugins_exts.h
     src/plugins_types.h
     src/out.h
     src/printer_data.h
