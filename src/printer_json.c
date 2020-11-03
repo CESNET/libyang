@@ -351,6 +351,7 @@ json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
     case LY_TYPE_UINT64:
     case LY_TYPE_DEC64:
     case LY_TYPE_IDENT:
+    case LY_TYPE_UNION:
         json_print_string(ctx->out, value);
         break;
 
