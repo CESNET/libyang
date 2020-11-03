@@ -810,6 +810,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
             /* unlinking the last node */
             if (node->parent) {
                 iter = (struct lysc_node *)lysc_node_children(node->parent, node->flags & LYS_CONFIG_MASK);
+                LY_CHECK_ERR_RET(!iter, LOGINT(ctx), );
             } else {
                 iter = node->module->compiled->data;
             }
