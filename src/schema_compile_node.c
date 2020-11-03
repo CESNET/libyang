@@ -2061,7 +2061,6 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p, *dev_pnode = NULL, *dev_input_p = NULL, *dev_output_p = NULL;
     struct lysp_action_inout *inout_p;
-    LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported, enabled;
     uint32_t opt_prev = ctx->options;
 
@@ -2129,7 +2128,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
 
     if (inout_p) {
         action->input.nodetype = LYS_INPUT;
-        COMPILE_ARRAY_GOTO(ctx, inout_p->musts, action->input.musts, u, lys_compile_must, ret, cleanup);
+        COMPILE_ARRAY_GOTO(ctx, inout_p->musts, action->input.musts, lys_compile_must, ret, cleanup);
         COMPILE_EXTS_GOTO(ctx, inout_p->exts, action->input_exts, &action->input, LYEXT_PAR_INPUT, ret, cleanup);
         ctx->options |= LYS_COMPILE_RPC_INPUT;
 
@@ -2160,7 +2159,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
 
     if (inout_p) {
         action->output.nodetype = LYS_OUTPUT;
-        COMPILE_ARRAY_GOTO(ctx, inout_p->musts, action->output.musts, u, lys_compile_must, ret, cleanup);
+        COMPILE_ARRAY_GOTO(ctx, inout_p->musts, action->output.musts, lys_compile_must, ret, cleanup);
         COMPILE_EXTS_GOTO(ctx, inout_p->exts, action->output_exts, &action->output, LYEXT_PAR_OUTPUT, ret, cleanup);
         ctx->options |= LYS_COMPILE_RPC_OUTPUT;
 
@@ -2200,7 +2199,6 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p, *dev_pnode = NULL;
-    LY_ARRAY_COUNT_TYPE u;
     ly_bool not_supported, enabled;
     uint32_t opt_prev = ctx->options;
 
@@ -2247,7 +2245,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
     DUP_STRING_GOTO(ctx->ctx, notif_p->name, notif->name, ret, cleanup);
     DUP_STRING_GOTO(ctx->ctx, notif_p->dsc, notif->dsc, ret, cleanup);
     DUP_STRING_GOTO(ctx->ctx, notif_p->ref, notif->ref, ret, cleanup);
-    COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, u, lys_compile_must, ret, cleanup);
+    COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, lys_compile_must, ret, cleanup);
     if (notif_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, notif, 0, NULL);
@@ -2289,7 +2287,6 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
     struct lysp_node_container *cont_p = (struct lysp_node_container *)pnode;
     struct lysc_node_container *cont = (struct lysc_node_container *)node;
     struct lysp_node *child_p;
-    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
     if (cont_p->presence) {
@@ -2328,14 +2325,14 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
         LY_CHECK_GOTO(ret, done);
     }
 
-    COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, lys_compile_must, ret, done);
     if (cont_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, cont, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
-    COMPILE_OP_ARRAY_GOTO(ctx, cont_p->actions, cont->actions, node, u, lys_compile_action, 0, ret, done);
-    COMPILE_OP_ARRAY_GOTO(ctx, cont_p->notifs, cont->notifs, node, u, lys_compile_notif, 0, ret, done);
+    COMPILE_OP_ARRAY_GOTO(ctx, cont_p->actions, cont->actions, node, lys_compile_action, 0, ret, done);
+    COMPILE_OP_ARRAY_GOTO(ctx, cont_p->notifs, cont->notifs, node, lys_compile_notif, 0, ret, done);
 
 done:
     return ret;
@@ -2398,10 +2395,9 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 {
     struct lysp_node_leaf *leaf_p = (struct lysp_node_leaf *)pnode;
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)node;
-    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, lys_compile_must, ret, done);
     if (leaf_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, leaf, 0, NULL);
@@ -2446,10 +2442,9 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
 {
     struct lysp_node_leaflist *llist_p = (struct lysp_node_leaflist *)pnode;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)node;
-    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, lys_compile_must, ret, done);
     if (llist_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, llist, 0, NULL);
@@ -2741,7 +2736,6 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     struct lysp_node *child_p;
     struct lysc_node_leaf *key, *prev_key = NULL;
     size_t len;
-    LY_ARRAY_COUNT_TYPE u;
     const char *keystr, *delim;
     LY_ERR ret = LY_SUCCESS;
 
@@ -2755,7 +2749,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0, NULL));
     }
 
-    COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, lys_compile_must, ret, done);
     if (list_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
         LY_CHECK_RET(ly_set_add(&ctx->xpath, list, 0, NULL));
@@ -2882,8 +2876,8 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         LY_CHECK_RET(lys_compile_node_list_unique(ctx, list_p->uniques, list));
     }
 
-    COMPILE_OP_ARRAY_GOTO(ctx, list_p->actions, list->actions, node, u, lys_compile_action, 0, ret, done);
-    COMPILE_OP_ARRAY_GOTO(ctx, list_p->notifs, list->notifs, node, u, lys_compile_notif, 0, ret, done);
+    COMPILE_OP_ARRAY_GOTO(ctx, list_p->actions, list->actions, node, lys_compile_action, 0, ret, done);
+    COMPILE_OP_ARRAY_GOTO(ctx, list_p->notifs, list->notifs, node, lys_compile_notif, 0, ret, done);
 
     /* checks */
     if (list->min > list->max) {
@@ -3040,10 +3034,9 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
 {
     struct lysp_node_anydata *any_p = (struct lysp_node_anydata *)pnode;
     struct lysc_node_anydata *any = (struct lysc_node_anydata *)node;
-    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, lys_compile_must, ret, done);
     if (any_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->xpath, any, 0, NULL);
@@ -3414,7 +3407,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             ret = LY_EVALID;
             goto cleanup;
         }
-        COMPILE_OP_ARRAY_GOTO(ctx, grp->actions, *actions, parent, u, lys_compile_action, 0, ret, cleanup);
+        COMPILE_OP_ARRAY_GOTO(ctx, grp->actions, *actions, parent, lys_compile_action, 0, ret, cleanup);
 
         if (uses_p->when) {
             /* inherit when */
@@ -3436,7 +3429,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             ret = LY_EVALID;
             goto cleanup;
         }
-        COMPILE_OP_ARRAY_GOTO(ctx, grp->notifs, *notifs, parent, u, lys_compile_notif, 0, ret, cleanup);
+        COMPILE_OP_ARRAY_GOTO(ctx, grp->notifs, *notifs, parent, lys_compile_notif, 0, ret, cleanup);
 
         if (uses_p->when) {
             /* inherit when */

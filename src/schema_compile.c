@@ -1614,7 +1614,7 @@ lys_compile(struct lys_module *mod, uint32_t options)
     struct lysp_submodule *submod;
     struct lysp_node *pnode;
     struct lysp_grp *grps;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u;
     uint32_t i;
     LY_ERR ret = LY_SUCCESS;
 
@@ -1662,8 +1662,8 @@ lys_compile(struct lys_module *mod, uint32_t options)
     }
 
     /* top-level RPCs and notifications */
-    COMPILE_OP_ARRAY_GOTO(&ctx, sp->rpcs, mod_c->rpcs, NULL, u, lys_compile_action, 0, ret, error);
-    COMPILE_OP_ARRAY_GOTO(&ctx, sp->notifs, mod_c->notifs, NULL, u, lys_compile_notif, 0, ret, error);
+    COMPILE_OP_ARRAY_GOTO(&ctx, sp->rpcs, mod_c->rpcs, NULL, lys_compile_action, 0, ret, error);
+    COMPILE_OP_ARRAY_GOTO(&ctx, sp->notifs, mod_c->notifs, NULL, lys_compile_notif, 0, ret, error);
 
     /* extension instances */
     COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
@@ -1678,8 +1678,8 @@ lys_compile(struct lys_module *mod, uint32_t options)
             LY_CHECK_GOTO(ret, error);
         }
 
-        COMPILE_OP_ARRAY_GOTO(&ctx, submod->rpcs, mod_c->rpcs, NULL, v, lys_compile_action, 0, ret, error);
-        COMPILE_OP_ARRAY_GOTO(&ctx, submod->notifs, mod_c->notifs, NULL, v, lys_compile_notif, 0, ret, error);
+        COMPILE_OP_ARRAY_GOTO(&ctx, submod->rpcs, mod_c->rpcs, NULL, lys_compile_action, 0, ret, error);
+        COMPILE_OP_ARRAY_GOTO(&ctx, submod->notifs, mod_c->notifs, NULL, lys_compile_notif, 0, ret, error);
 
         COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
     }
