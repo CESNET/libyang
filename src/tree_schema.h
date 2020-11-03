@@ -1248,13 +1248,6 @@ struct lysp_submodule {
 #define LYSP_MODULE_NAME(PMOD) (PMOD->is_submod ? ((struct lysp_submodule *)PMOD)->name : ((struct lysp_module *)PMOD)->mod->name)
 
 /**
- * @brief Free the printable YANG schema tree structure. Works for both modules and submodules.
- *
- * @param[in] module Printable YANG schema tree structure to free.
- */
-void lysp_module_free(struct lysp_module *module);
-
-/**
  * @brief Compiled prefix data pair mapping of prefixes to modules. In case the format is ::LY_PREF_SCHEMA_RESOLVED,
  * the expected prefix data is a sized array of these structures.
  */

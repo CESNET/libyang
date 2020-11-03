@@ -529,6 +529,13 @@ uint8_t lysc_iff_getop(uint8_t *list, size_t pos);
 #define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_COUNT_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 /**
+ * @brief Free the printable YANG schema tree structure. Works for both modules and submodules.
+ *
+ * @param[in] module Printable YANG schema tree structure to free.
+ */
+void lysp_module_free(struct lysp_module *module);
+
+/**
  * @brief Free the parsed type structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in] type Parsed schema type structure to free. Note that the type itself is not freed.

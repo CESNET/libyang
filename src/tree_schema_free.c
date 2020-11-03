@@ -410,7 +410,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
     free(node);
 }
 
-API void
+void
 lysp_module_free(struct lysp_module *module)
 {
     struct ly_ctx *ctx;
