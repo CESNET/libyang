@@ -88,11 +88,14 @@ API LY_ERR
 lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data)
 {
     LY_ARRAY_COUNT_TYPE u;
+    const struct lysc_node *root;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->compiled, dfs_clb, LY_EINVAL);
 
     /* schema nodes */
-    LY_CHECK_RET(lysc_tree_dfs_full(mod->compiled->data, dfs_clb, data));
+    LY_LIST_FOR(mod->compiled->data, root) {
+        LY_CHECK_RET(lysc_tree_dfs_full(root, dfs_clb, data));
+    }
 
     /* RPCs */
     LY_ARRAY_FOR(mod->compiled->rpcs, u) {
