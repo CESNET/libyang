@@ -1893,7 +1893,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         }
 
         /* compile actions into the target */
-        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, *actions, target, u, lys_compile_action, 0, ret, cleanup);
+        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->actions, *actions, target, lys_compile_action, 0, ret, cleanup);
 
         if (aug_p->when) {
             /* inherit when */
@@ -1914,7 +1914,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         }
 
         /* compile notifications into the target */
-        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, *notifs, target, u, lys_compile_notif, 0, ret, cleanup);
+        COMPILE_OP_ARRAY_GOTO(ctx, aug_p->notifs, *notifs, target, lys_compile_notif, 0, ret, cleanup);
 
         if (aug_p->when) {
             /* inherit when */

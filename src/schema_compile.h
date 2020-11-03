@@ -91,52 +91,54 @@ struct lysc_unres_dflt {
 
 #define DUP_ARRAY(CTX, ORIG_ARRAY, NEW_ARRAY, DUP_FUNC) \
     if (ORIG_ARRAY) { \
-        LY_ARRAY_COUNT_TYPE u; \
+        LY_ARRAY_COUNT_TYPE __u; \
         LY_ARRAY_CREATE_RET(CTX, NEW_ARRAY, LY_ARRAY_COUNT(ORIG_ARRAY), LY_EMEM); \
-        LY_ARRAY_FOR(ORIG_ARRAY, u) { \
+        LY_ARRAY_FOR(ORIG_ARRAY, __u) { \
             LY_ARRAY_INCREMENT(NEW_ARRAY); \
-            LY_CHECK_RET(DUP_FUNC(CTX, &(NEW_ARRAY)[u], &(ORIG_ARRAY)[u])); \
+            LY_CHECK_RET(DUP_FUNC(CTX, &(NEW_ARRAY)[__u], &(ORIG_ARRAY)[__u])); \
         } \
     }
 
-#define COMPILE_OP_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, PARENT, ITER, FUNC, USES_STATUS, RET, GOTO) \
+#define COMPILE_OP_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, PARENT, FUNC, USES_STATUS, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
-        LY_ARRAY_COUNT_TYPE __array_offset = LY_ARRAY_COUNT(ARRAY_C); \
-        for (ITER = 0; ITER < LY_ARRAY_COUNT(ARRAY_P); ++ITER) { \
+        LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, __u + LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
+        LY_ARRAY_FOR(ARRAY_P, __u) { \
             LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[ITER], PARENT, &(ARRAY_C)[ITER + __array_offset], USES_STATUS); \
+            RET = FUNC(CTX, &(ARRAY_P)[__u], PARENT, &(ARRAY_C)[LY_ARRAY_COUNT(ARRAY_C) - 1], USES_STATUS); \
             if (RET == LY_EDENIED) { \
                 LY_ARRAY_DECREMENT(ARRAY_C); \
-            } else if (RET != LY_SUCCESS) { \
+                RET = LY_SUCCESS; \
+            } else if (RET) { \
                 goto GOTO; \
             } \
         } \
     }
 
-#define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, ITER, FUNC, RET, GOTO) \
+#define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
-        LY_ARRAY_COUNT_TYPE __array_offset = LY_ARRAY_COUNT(ARRAY_C); \
-        for (ITER = 0; ITER < LY_ARRAY_COUNT(ARRAY_P); ++ITER) { \
+        LY_ARRAY_COUNT_TYPE __u = (ARRAY_C) ? LY_ARRAY_COUNT(ARRAY_C) : 0; \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, __u + LY_ARRAY_COUNT(ARRAY_P), RET, GOTO); \
+        LY_ARRAY_FOR(ARRAY_P, __u) { \
             LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[ITER], &(ARRAY_C)[ITER + __array_offset]); \
-            LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+            RET = FUNC(CTX, &(ARRAY_P)[__u], &(ARRAY_C)[LY_ARRAY_COUNT(ARRAY_C) - 1]); \
+            LY_CHECK_GOTO(RET, GOTO); \
         } \
     }
 
 #define COMPILE_EXTS_GOTO(CTX, EXTS_P, EXT_C, PARENT, PARENT_TYPE, RET, GOTO) \
     if (EXTS_P) { \
-        LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
-        for (LY_ARRAY_COUNT_TYPE __exts_iter = 0, __array_offset = LY_ARRAY_COUNT(EXT_C); __exts_iter < LY_ARRAY_COUNT(EXTS_P); ++__exts_iter) { \
+        LY_ARRAY_COUNT_TYPE __u = (EXT_C) ? LY_ARRAY_COUNT(EXT_C) : 0; \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, __u + LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
+        LY_ARRAY_FOR(EXTS_P, __u) { \
             LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__exts_iter], &(EXT_C)[__exts_iter + __array_offset], PARENT, PARENT_TYPE, NULL); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT, PARENT_TYPE, NULL); \
             if (RET == LY_ENOT) { \
-                LY_ARRAY_DECREMENT_FREE(EXT_C); \
-                --__array_offset; \
+                LY_ARRAY_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
+            } else if (RET) { \
+                goto GOTO; \
             } \
-            LY_CHECK_GOTO(RET, GOTO); \
         } \
     }
 
