@@ -586,14 +586,16 @@ restart:
             if (u < LY_ARRAY_COUNT(*idents)) {
                 memmove(&(*idents)[u], &(*idents)[u + 1], (LY_ARRAY_COUNT(*idents) - u) * sizeof **idents);
             }
-            if (!LY_ARRAY_COUNT(*idents)) {
-                LY_ARRAY_FREE(*idents);
-                *idents = NULL;
-            }
 
             /* revert compilation of all the previous identities */
             for (v = 0; v < u; ++v) {
                 LY_ARRAY_FREE((*idents)[v].derived);
+            }
+
+            /* free the whole array if there are no identites left */
+            if (!LY_ARRAY_COUNT(*idents)) {
+                LY_ARRAY_FREE(*idents);
+                *idents = NULL;
             }
 
             /* restart the whole process without this identity */
