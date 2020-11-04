@@ -89,6 +89,20 @@ jobs:
       after_success:
         - bash <(curl -s https://codecov.io/bash)
     - stage: Test
+      name: Linux with CLang ASAN and UBSAN
+      os: linux
+      compiler: clang
+      before_install:
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind
+        - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
+        - tar -xf cmocka-1.1.2.tar.xz
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
+      script:
+        - mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fsanitize=address,undefined" -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
+    - stage: Test
       name: ABI check
       os: linux
       compiled: gcc
