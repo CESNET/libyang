@@ -778,6 +778,187 @@ error:
     return ret;
 }
 
+/**
+ * @brief Add ietf-netconf metadata to the parsed module. Operation, filter, and select are added.
+ *
+ * @param[in] mod Parsed module to add to.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
+{
+    struct lysp_ext_instance *ext_p;
+    struct lysp_stmt *stmt;
+    struct lysp_import *imp;
+
+    /*
+     * 1) edit-config's operation
+     */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
+    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation", 0, &ext_p->argument));
+    ext_p->flags = LYS_INTERNAL;
+    ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
+    ext_p->insubstmt_index = 0;
+
+    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
+    stmt->kw = LY_STMT_TYPE;
+
+    stmt->child = calloc(1, sizeof *stmt->child);
+    stmt = stmt->child;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "merge", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    stmt->next = calloc(1, sizeof *stmt->child);
+    stmt = stmt->next;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "replace", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    stmt->next = calloc(1, sizeof *stmt->child);
+    stmt = stmt->next;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "create", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    stmt->next = calloc(1, sizeof *stmt->child);
+    stmt = stmt->next;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "delete", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    stmt->next = calloc(1, sizeof *stmt->child);
+    stmt = stmt->next;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "remove", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    /*
+     * 2) filter's type
+     */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
+    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &ext_p->argument));
+    ext_p->flags = LYS_INTERNAL;
+    ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
+    ext_p->insubstmt_index = 0;
+
+    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
+    stmt->kw = LY_STMT_TYPE;
+
+    stmt->child = calloc(1, sizeof *stmt->child);
+    stmt = stmt->child;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "subtree", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    stmt->next = calloc(1, sizeof *stmt->child);
+    stmt = stmt->next;
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "xpath", 0, &stmt->arg));
+    stmt->kw = LY_STMT_ENUM;
+
+    /* if-feature for enum allowed only for YANG 1.1 modules */
+    if (mod->version >= LYS_VERSION_1_1) {
+        stmt->child = calloc(1, sizeof *stmt->child);
+        stmt = stmt->child;
+        LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+        LY_CHECK_RET(lydict_insert(mod->mod->ctx, "if-feature", 0, &stmt->stmt));
+        LY_CHECK_RET(lydict_insert(mod->mod->ctx, "xpath", 0, &stmt->arg));
+        stmt->kw = LY_STMT_IF_FEATURE;
+    }
+
+    /*
+     * 3) filter's select
+     */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
+    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "select", 0, &ext_p->argument));
+    ext_p->flags = LYS_INTERNAL;
+    ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
+    ext_p->insubstmt_index = 0;
+
+    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_:xpath1.0", 0, &stmt->arg));
+    stmt->kw = LY_STMT_TYPE;
+
+    /* create new imports for the used prefixes */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
+    imp->flags = LYS_INTERNAL;
+
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-types", 0, &imp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_", 0, &imp->prefix));
+    imp->flags = LYS_INTERNAL;
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Add ietf-netconf-with-defaults "default" metadata to the parsed module.
+ *
+ * @param[in] mod Parsed module to add to.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
+{
+    struct lysp_ext_instance *ext_p;
+    struct lysp_stmt *stmt;
+    struct lysp_import *imp;
+
+    /* add new extension instance */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->exts, ext_p, LY_EMEM);
+
+    /* fill in the extension instance fields */
+    LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "default", 0, &ext_p->argument));
+    ext_p->flags = LYS_INTERNAL;
+    ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
+    ext_p->insubstmt_index = 0;
+
+    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
+    LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "boolean", 0, &stmt->arg));
+    stmt->kw = LY_STMT_TYPE;
+
+    /* create new import for the used prefix */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "ietf-yang-metadata", 0, &imp->name));
+    LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_", 0, &imp->prefix));
+    imp->flags = LYS_INTERNAL;
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
@@ -909,6 +1090,13 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     if (latest) {
         latest->latest_revision = 0;
+    }
+
+    /* add internal data in case specific modules were parsed */
+    if (!strcmp(mod->name, "ietf-netconf")) {
+        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), error);
+    } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
+        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), error);
     }
 
     /* add into context */

@@ -1139,54 +1139,6 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     return LY_SUCCESS;
 }
 
-static LY_ERR
-lys_compile_ietf_netconf_wd_annotation(struct lysc_ctx *ctx, struct lys_module *mod)
-{
-    struct lysc_ext_instance *ext;
-    struct lysp_ext_instance *ext_p = NULL;
-    struct lysp_stmt *stmt;
-    const struct lys_module *ext_mod;
-    LY_ERR ret = LY_SUCCESS;
-
-    /* create the parsed extension instance manually */
-    ext_p = calloc(1, sizeof *ext_p);
-    LY_CHECK_ERR_GOTO(!ext_p, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-    LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, "md:annotation", 0, &ext_p->name), cleanup);
-    LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, "default", 0, &ext_p->argument), cleanup);
-    ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
-    ext_p->insubstmt_index = 0;
-
-    ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
-    LY_CHECK_ERR_GOTO(!stmt, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-    LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, "type", 0, &stmt->stmt), cleanup);
-    LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, "boolean", 0, &stmt->arg), cleanup);
-    stmt->kw = LY_STMT_TYPE;
-
-    /* allocate new extension instance */
-    LY_ARRAY_NEW_GOTO(mod->ctx, mod->compiled->exts, ext, ret, cleanup);
-
-    /* manually get extension definition module */
-    ext_mod = ly_ctx_get_module_latest(ctx->ctx, "ietf-yang-metadata");
-
-    /* compile the extension instance */
-    ret = lys_compile_ext(ctx, ext_p, ext, mod->compiled, LYEXT_PAR_MODULE, ext_mod);
-    if (ret == LY_ENOT) {
-        /* free the extension */
-        lysc_ext_instance_free(ctx->ctx, ext);
-        LY_ARRAY_DECREMENT_FREE(mod->compiled->exts);
-
-        ret = LY_SUCCESS;
-        goto cleanup;
-    } else if (ret) {
-        goto cleanup;
-    }
-
-cleanup:
-    lysp_ext_instance_free(ctx->ctx, ext_p);
-    free(ext_p);
-    return ret;
-}
-
 /**
  * @brief Compile default value(s) for leaf or leaf-list expecting a complete compiled schema tree.
  *
@@ -1725,24 +1677,6 @@ lys_compile(struct lys_module *mod, uint32_t options)
         }
     }
     ctx.pmod = sp;
-
-#if 0
-    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
-     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
-     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
-     * the anotation definitions available in the internal schema structure. */
-    if (ly_strequal(mod->name, "ietf-netconf", 0)) {
-        if (lyp_add_ietf_netconf_annotations(mod)) {
-            lys_free(mod, NULL, 1, 1);
-            return NULL;
-        }
-    }
-#endif
-
-    /* add ietf-netconf-with-defaults "default" metadata to the compiled module */
-    if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lys_compile_ietf_netconf_wd_annotation(&ctx, mod), error);
-    }
 
     /* there can be no leftover deviations or augments */
     LY_CHECK_ERR_GOTO(ctx.augs.count, LOGINT(ctx.ctx); ret = LY_EINT, error);
