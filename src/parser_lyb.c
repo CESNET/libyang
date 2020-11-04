@@ -685,7 +685,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
     ly_bool dynamic = 0;
     LYD_FORMAT format = 0;
-    uint32_t prev_lo;
+    uint32_t prev_lo, flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
     /* register a new subtree */
@@ -719,6 +719,9 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         ret = lyb_parse_attributes(lybctx->lybctx, &attr);
         LY_CHECK_GOTO(ret, cleanup);
     }
+
+    /* read flags */
+    lyb_read_number(&flags, sizeof flags, sizeof flags, lybctx->lybctx);
 
     if (!snode) {
         /* parse prefix */
@@ -836,10 +839,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
     }
     assert(node);
 
-    /* add/correct flags */
-    if (snode) {
-        lyd_parse_set_data_flags(node, &lybctx->when_check, &meta, lybctx->parse_options);
-    }
+    /* set flags */
+    node->flags = flags;
 
     /* add metadata/attributes */
     if (snode) {
