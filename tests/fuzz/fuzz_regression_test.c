@@ -64,5 +64,7 @@ int main(int argc, char **argv)
 		printf("test %s - %s successful\n", argv[1], dir->d_name);
 	}
 
+	closedir(d);
+
 	return EXIT_SUCCESS;
 }
