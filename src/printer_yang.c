@@ -235,7 +235,7 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
         }
 
         count--;
-        if ((ext->insubstmt != substmt) || (ext->insubstmt_index != substmt_index)) {
+        if ((ext->flags & LYS_INTERNAL) || (ext->insubstmt != substmt) || (ext->insubstmt_index != substmt_index)) {
             continue;
         }
 
@@ -2016,6 +2016,10 @@ yang_print_parsed_linkage(struct ypr_ctx *ctx, const struct lysp_module *modp)
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(modp->imports, u) {
+        if (modp->imports[u].flags & LYS_INTERNAL) {
+            continue;
+        }
+
         ly_print_(ctx->out, "%s%*simport %s {\n", u ? "" : "\n", INDENT, modp->imports[u].name);
         LEVEL++;
         yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->imports[u].exts, NULL, 0);
