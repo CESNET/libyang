@@ -4483,6 +4483,38 @@ checks:
     return ret;
 }
 
+/**
+ * @brief Skip any redundant characters, namely whitespaces and comments.
+ *
+ * @param[in] ctx Yang parser context.
+ * @param[in] in Input structure.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on invalid comment.
+ */
+static LY_ERR
+skip_redundant_chars(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
+{
+    /* read some trailing spaces, new lines, or comments */
+    while (in->current[0]) {
+        if (!strncmp(in->current, "//", 2)) {
+            /* one-line comment */
+            ly_in_skip(in, 2);
+            LY_CHECK_RET(skip_comment(ctx, in, 1));
+        } else if (!strncmp(in->current, "/*", 2)) {
+            /* block comment */
+            ly_in_skip(in, 2);
+            LY_CHECK_RET(skip_comment(ctx, in, 2));
+        } else if (isspace(in->current[0])) {
+            /* whitespace */
+            ly_in_skip(in, 1);
+        } else {
+            break;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod)
@@ -4510,6 +4542,10 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     memcpy(&(*context)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
     memcpy(&(*context)->grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
+    /* skip redundant but valid characters at the beginning */
+    ret = skip_redundant_chars(*context, in);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* "module"/"submodule" */
     ret = get_keyword(*context, in, &kw, &word, &word_len);
     LY_CHECK_GOTO(ret, cleanup);
@@ -4528,10 +4564,9 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     ret = parse_submodule(*context, in, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* read some trailing spaces or new lines */
-    while (isspace(in->current[0])) {
-        ++in->current;
-    }
+    /* skip redundant but valid characters at the end */
+    ret = skip_redundant_chars(*context, in);
+    LY_CHECK_GOTO(ret, cleanup);
     if (in->current[0]) {
         LOGVAL_PARSER(*context, LY_VCODE_TRAILING_SUBMOD, 15, in->current, strlen(in->current) > 15 ? "..." : "");
         ret = LY_EVALID;
@@ -4573,6 +4608,10 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     mod_p->parsing = 1;
     (*context)->parsed_mod = mod_p;
 
+    /* skip redundant but valid characters at the beginning */
+    ret = skip_redundant_chars(*context, in);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* "module"/"submodule" */
     ret = get_keyword(*context, in, &kw, &word, &word_len);
     LY_CHECK_GOTO(ret, cleanup);
@@ -4591,10 +4630,9 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     ret = parse_module(*context, in, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* read some trailing spaces or new lines */
-    while (isspace(in->current[0])) {
-        ++in->current;
-    }
+    /* skip redundant but valid characters at the end */
+    ret = skip_redundant_chars(*context, in);
+    LY_CHECK_GOTO(ret, cleanup);
     if (in->current[0]) {
         LOGVAL_PARSER(*context, LY_VCODE_TRAILING_MOD, 15, in->current, strlen(in->current) > 15 ? "..." : "");
         ret = LY_EVALID;
