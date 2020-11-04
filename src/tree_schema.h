@@ -438,6 +438,7 @@ struct lysp_import {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    uint16_t flags;                  /**< LYS_INTERNAL value (@ref snodeflags) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module */
 };
 
@@ -496,7 +497,8 @@ struct lysp_ext_instance {
     LYEXT_SUBSTMT insubstmt;                /**< value identifying placement of the extension instance */
     LY_ARRAY_COUNT_TYPE insubstmt_index;    /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement */
-    uint8_t yin;                            /** flag for YIN source format, can be set to LYS_YIN */
+    uint16_t flags;                         /**< LYS_INTERNAL value (@ref snodeflags) */
+    uint8_t yin;                            /**< flag for YIN source format, can be set to LYS_YIN */
     LYEXT_PARENT parent_type;               /**< type of the parent structure */
 };
 
@@ -808,6 +810,8 @@ struct lysp_deviation {
  *         LYS_YIN_ATTR     | | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      12 LYS_YIN_ARGUMENT | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      13 LYS_INTERNAL     |x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -926,6 +930,8 @@ struct lysp_deviation {
 
 #define LYS_YIN_ATTR     0x400       /**< flag to identify YIN attribute parsed as extension's substatement, only when the source is YIN */
 #define LYS_YIN_ARGUMENT 0x800       /**< flag to identify statement representing extension's argument, only when the source is YIN */
+
+#define LYS_INTERNAL     0x1000      /**< flag to identify internal parsed statements that should not be printed */
 
 #define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 
