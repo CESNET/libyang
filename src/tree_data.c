@@ -1405,7 +1405,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
             if (!(iter->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create default NP container */
                 LY_CHECK_RET(lyd_create_inner(iter, &node));
-                node->flags = LYD_DEFAULT;
+                node->flags = LYD_DEFAULT | (node->schema->when ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node);
 
                 /* cannot be a NP container with when */
@@ -1429,7 +1429,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 } else if (ret) {
                     return ret;
                 }
-                node->flags = LYD_DEFAULT;
+                node->flags = LYD_DEFAULT | (node->schema->when ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node);
 
                 if (iter->when && node_when) {
@@ -1457,7 +1457,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                     } else if (ret) {
                         return ret;
                     }
-                    node->flags = LYD_DEFAULT;
+                    node->flags = LYD_DEFAULT  | (node->schema->when ? LYD_WHEN_TRUE : 0);
                     lyd_insert_node(parent, first, node);
 
                     if (iter->when && node_when) {
