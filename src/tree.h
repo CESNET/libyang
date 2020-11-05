@@ -133,10 +133,10 @@ extern "C" {
  *
  * Use with opening curly bracket (`{`).
  *
- * To access an item with the INDEX value, use always LY_ARRAY_INDEX macro!
+ * The item on the current INDEX in the ARRAY can be accessed in a standard C way as ARRAY[INDEX].
  *
  * @param[in] ARRAY Array to go through
- * @param[out] INDEX Iterating index of the item being processed in each loop
+ * @param[out] INDEX Variable for the iterating index of the item being processed in each loop
  */
 #define LY_ARRAY_FOR_INDEX(ARRAY, INDEX) \
     for (INDEX = 0; \
