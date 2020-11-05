@@ -3389,3 +3389,22 @@ lyd_list_pos(const struct lyd_node *instance)
 
     return pos;
 }
+
+API struct lyd_node *
+lyd_first_sibling(const struct lyd_node *node)
+{
+    struct lyd_node *start;
+
+    if (!node) {
+        return NULL;
+    }
+
+    /* get the first sibling */
+    if (node->parent) {
+        start = node->parent->child;
+    } else {
+        for (start = (struct lyd_node *)node; start->prev->next; start = start->prev);
+    }
+
+    return start;
+}
