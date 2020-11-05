@@ -786,6 +786,15 @@ ly_bool lyd_is_default(const struct lyd_node *node);
 uint32_t lyd_list_pos(const struct lyd_node *instance);
 
 /**
+ * @brief Get the first sibling of the given node.
+ *
+ * @param[in] node Node which first sibling is going to be the result.
+ * @return The first sibling of the given node or the node itself if it is the first child of the parent.
+ */
+struct lyd_node *
+lyd_first_sibling(const struct lyd_node *node);
+
+/**
  * @brief Learn the length of LYB data.
  *
  * @param[in] data LYB data to examine.

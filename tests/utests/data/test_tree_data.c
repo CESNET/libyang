@@ -358,6 +358,32 @@ test_list_pos(void **state)
     *state = NULL;
 }
 
+static void
+test_first_sibling(void **state)
+{
+    *state = test_first_sibling;
+
+    const char *data;
+    struct lyd_node *tree;
+    struct lyd_node_inner *parent;
+
+    data = "<bar xmlns=\"urn:tests:a\">test</bar>"
+        "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b><c>one</c></l1>"
+        "<foo xmlns=\"urn:tests:a\">test</foo>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_ptr_equal(tree, lyd_first_sibling(tree->next));
+    assert_ptr_equal(tree, lyd_first_sibling(tree));
+    assert_ptr_equal(tree, lyd_first_sibling(tree->prev));
+    parent = (struct lyd_node_inner*)tree->next;
+    assert_int_equal(LYS_LIST, parent->schema->nodetype);
+    assert_ptr_equal(parent->child, lyd_first_sibling(parent->child->next));
+    assert_ptr_equal(parent->child, lyd_first_sibling(parent->child));
+    assert_ptr_equal(parent->child, lyd_first_sibling(parent->child->prev));
+    lyd_free_all(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -365,6 +391,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_dup, setup, teardown),
         cmocka_unit_test_setup_teardown(test_target, setup, teardown),
         cmocka_unit_test_setup_teardown(test_list_pos, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_first_sibling, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
