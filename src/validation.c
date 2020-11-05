@@ -1030,32 +1030,28 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
     struct lyd_node *node;
 
     LYD_TREE_DFS_BEGIN(root, node) {
-        /* skip added default nodes */
-        if ((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) {
-            LY_LIST_FOR(node->meta, meta) {
-                if (((struct lyext_metadata *)meta->annotation->data)->type->plugin->validate) {
-                    /* metadata type resolution */
-                    LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, 1, NULL));
-                }
+        LY_LIST_FOR(node->meta, meta) {
+            if (((struct lyext_metadata *)meta->annotation->data)->type->plugin->validate) {
+                /* metadata type resolution */
+                LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, 1, NULL));
             }
+        }
 
-            if ((node->schema->nodetype & LYD_NODE_TERM) && ((struct lysc_node_leaf *)node->schema)->type->plugin->validate) {
-                /* node type resolution */
-                LY_CHECK_RET(ly_set_add(type_check, (void *)node, 1, NULL));
-            } else if (node->schema->nodetype & LYD_NODE_INNER) {
-                /* new node validation, autodelete */
-                LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
+        if ((node->schema->nodetype & LYD_NODE_TERM) && ((struct lysc_node_leaf *)node->schema)->type->plugin->validate) {
+            /* node type resolution */
+            LY_CHECK_RET(ly_set_add(type_check, (void *)node, 1, NULL));
+        } else if (node->schema->nodetype & LYD_NODE_INNER) {
+            /* new node validation, autodelete */
+            LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
 
-                /* add nested defaults */
-                LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, type_check,
-                        when_check, val_opts & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0,
-                        diff));
-            }
+            /* add nested defaults */
+            LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, type_check,
+                    when_check, val_opts & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0, diff));
+        }
 
-            if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
-                /* when evaluation */
-                LY_CHECK_RET(ly_set_add(when_check, (void *)node, 1, NULL));
-            }
+        if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
+            /* when evaluation */
+            LY_CHECK_RET(ly_set_add(when_check, (void *)node, 1, NULL));
         }
 
         LYD_TREE_DFS_END(root, node);
@@ -1111,8 +1107,8 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         ret = lyd_validate_new(first2, NULL, mod, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* add all top-level defaults for this module */
-        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, &type_check, &when_check, val_opts & LYD_VALIDATE_NO_STATE ?
+        /* add all top-level defaults for this module, do not add into unres sets, will occur in the next step */
+        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, NULL, NULL, val_opts & LYD_VALIDATE_NO_STATE ?
                 LYD_IMPLICIT_NO_STATE : 0, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
