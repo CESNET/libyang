@@ -1411,6 +1411,11 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 /* cannot be a NP container with when */
                 assert(!iter->when);
 
+                if (diff) {
+                    /* add into diff */
+                    LY_CHECK_RET(lyd_val_diff_add(node, LYD_DIFF_OP_CREATE, diff));
+                }
+
                 /* create any default children */
                 LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, node_types, node_when,
                         impl_opts, diff));
