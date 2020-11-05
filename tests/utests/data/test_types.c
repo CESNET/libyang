@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "libyang.h"
+#include "plugins_types.h"
 #include "path.h"
 
 #define BUFSIZE 1024

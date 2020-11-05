@@ -25,6 +25,7 @@
 
 #include "common.h"
 #include "compat.h"
+#include "context.h"
 #include "dict.h"
 #include "path.h"
 #include "schema_compile.h"

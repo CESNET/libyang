@@ -15,7 +15,6 @@
 #include "printer_data.h"
 
 #include <stdio.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "log.h"

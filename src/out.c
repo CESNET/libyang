@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,10 +29,9 @@
 #include "common.h"
 #include "compat.h"
 #include "log.h"
-#include "plugins_types.h"
 #include "printer_data.h"
 #include "printer_internal.h"
-#include "tree.h"
+#include "tree_data.h"
 #include "tree_schema.h"
 
 /**

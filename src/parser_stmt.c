@@ -21,8 +21,8 @@
 
 #include "common.h"
 #include "dict.h"
-#include "log.h"
 #include "in.h"
+#include "log.h"
 #include "parser_schema.h"
 #include "path.h"
 #include "schema_compile.h"

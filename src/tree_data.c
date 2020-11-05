@@ -18,14 +18,12 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "compat.h"
@@ -33,6 +31,7 @@
 #include "dict.h"
 #include "diff.h"
 #include "hash_table.h"
+#include "in.h"
 #include "in_internal.h"
 #include "log.h"
 #include "parser_data.h"

@@ -21,7 +21,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
-#include <limits.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -33,10 +32,10 @@
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"
+#include "out.h"
 #include "parser_data.h"
 #include "path.h"
 #include "plugins_types.h"
-#include "out.h"
 #include "printer_data.h"
 #include "schema_compile_node.h"
 #include "tree.h"

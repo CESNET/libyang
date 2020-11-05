@@ -17,10 +17,8 @@
 
 #include "log.h"
 
+struct ly_ctx;
 struct lysp_qname;
-struct lysc_augment;
-struct lysc_deviation;
-struct lysc_refine;
 struct lysp_node;
 struct lysc_node;
 struct lysc_ctx;

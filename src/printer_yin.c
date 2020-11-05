@@ -21,6 +21,7 @@
 #include "common.h"
 #include "compat.h"
 #include "log.h"
+#include "out.h"
 #include "out_internal.h"
 #include "printer_internal.h"
 #include "tree.h"

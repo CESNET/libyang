@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,10 @@
 #include "log.h"
 #include "parser_data.h"
 #include "parser_internal.h"
+#include "set.h"
+#include "tree_data.h"
 #include "tree_data_internal.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
 
 API LY_IN_TYPE

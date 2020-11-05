@@ -22,8 +22,7 @@
 #include "set.h"
 
 struct ly_ctx;
-struct ly_out;
-struct ly_prefix;
+struct ly_in;
 
 /* Macro to test if character is whitespace */
 #define is_jsonws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)

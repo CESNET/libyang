@@ -15,18 +15,24 @@
 #define _GNU_SOURCE
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
-#include "compat.h"
 #include "context.h"
+#include "dict.h"
 #include "in_internal.h"
 #include "json.h"
+#include "log.h"
+#include "parser_data.h"
 #include "parser_internal.h"
+#include "set.h"
+#include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
+#include "tree_schema_internal.h"
 #include "validation.h"
 
 /**

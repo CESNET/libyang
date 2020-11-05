@@ -17,7 +17,6 @@
 #include "tree_schema.h"
 
 #include <assert.h>
-#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdint.h>
@@ -31,8 +30,9 @@
 #include "compat.h"
 #include "context.h"
 #include "dict.h"
-#include "log.h"
+#include "in.h"
 #include "in_internal.h"
+#include "log.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"
@@ -41,6 +41,7 @@
 #include "schema_features.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 

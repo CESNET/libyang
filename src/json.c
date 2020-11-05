@@ -15,13 +15,13 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
 #include "common.h"
-#include "json.h"
 #include "in_internal.h"
+#include "json.h"
 
 #define JSON_PUSH_STATUS_RET(CTX, STATUS) \
     LY_CHECK_RET(ly_set_add(&CTX->status, (void*)STATUS, 1, NULL))

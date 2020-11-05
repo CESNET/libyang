@@ -24,14 +24,17 @@
 
 #include "log.h"
 #include "tree.h"
-#include "tree_data.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct ly_ctx;
+struct ly_path;
 struct ly_set;
+struct lys_module;
+struct lysc_node;
+struct lyxp_expr;
 
 /**
  * @page howtoSchema YANG Modules

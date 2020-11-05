@@ -19,12 +19,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "common.h"
 #include "compat.h"
 #include "log.h"
-#include "plugins_types.h"
+#include "out.h"
 #include "out_internal.h"
+#include "plugins_types.h"
 #include "printer_internal.h"
 #include "printer_schema.h"
 #include "tree.h"

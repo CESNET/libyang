@@ -16,11 +16,13 @@
 #define LY_SCHEMA_COMPILE_NODE_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "log.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 
+struct ly_ctx;
 struct ly_set;
 struct lysc_ctx;
 

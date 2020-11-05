@@ -15,10 +15,18 @@
 #ifndef LY_SCHEMA_COMPILE_H_
 #define LY_SCHEMA_COMPILE_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "common.h"
+#include "dict.h"
 #include "log.h"
-#include "schema_compile_node.h"
 #include "set.h"
+#include "tree.h"
+#include "tree_data.h"
 #include "tree_schema.h"
+
+struct lyxp_expr;
 
 /**
  * @defgroup scflags Schema compile flags

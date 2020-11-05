@@ -22,6 +22,7 @@
 #include "set.h"
 
 struct ly_ctx;
+struct ly_in;
 struct ly_out;
 struct ly_prefix;
 

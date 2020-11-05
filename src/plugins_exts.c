@@ -14,6 +14,7 @@
 
 #include "plugins_exts.h"
 
+#include <stdint.h>
 #include <string.h>
 
 #include "common.h"
