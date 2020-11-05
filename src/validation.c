@@ -985,7 +985,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
         /* node's musts */
         LY_CHECK_RET(lyd_validate_must(node, op));
 
-        /* node value including if-feature was checked by plugins */
+        /* node value was checked by plugins */
     }
 
     /* validate schema-based restrictions */
