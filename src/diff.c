@@ -1123,15 +1123,17 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
                 LOGINT_RET(LYD_CTX(src_diff));
             }
 
-            /* compare values whether there is any change at all */
-            meta = lyd_find_meta(diff_match->meta, mod, "orig-value");
-            LY_CHECK_ERR_RET(!meta, LOGINT(LYD_CTX(diff_match)), LY_EINT);
-            str_val = meta->value.canonical;
-            ret = lyd_value_compare((struct lyd_node_term *)diff_match, str_val, strlen(str_val));
-            if (!ret) {
-                /* values are the same, remove orig-value meta and set oper to NONE */
-                lyd_free_meta_single(meta);
-                LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
+            if (cur_op == LYD_DIFF_OP_REPLACE) {
+                /* compare values whether there is any change at all */
+                meta = lyd_find_meta(diff_match->meta, mod, "orig-value");
+                LY_CHECK_ERR_RET(!meta, LOGINT(LYD_CTX(diff_match)), LY_EINT);
+                str_val = meta->value.canonical;
+                ret = lyd_value_compare((struct lyd_node_term *)diff_match, str_val, strlen(str_val));
+                if (!ret) {
+                    /* values are the same, remove orig-value meta and set oper to NONE */
+                    lyd_free_meta_single(meta);
+                    LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
+                }
             }
 
             /* modify the default flag */
