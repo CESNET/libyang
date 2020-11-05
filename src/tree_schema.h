@@ -1742,6 +1742,24 @@ struct lysc_module {
 };
 
 /**
+ * @brief Examine whether a node is user-ordered list or leaf-list.
+ *
+ * @param[in] lysc_node Schema node to examine.
+ * @return Boolean value whether the @p node is user-ordered or not.
+ */
+#define lysc_is_userordered(lysc_node) \
+    ((!lysc_node || !(lysc_node->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(lysc_node->flags & LYS_ORDBY_USER)) ? 0 : 1)
+
+/**
+ * @brief Examine whether a node is a list's key.
+ *
+ * @param[in] lysc_node Schema node to examine.
+ * @return Boolean value whether the @p node is a key or not.
+ */
+#define lysc_is_key(lysc_node) \
+    ((!lysc_node || !(lysc_node->nodetype & (LYS_LEAF)) || !(lysc_node->flags & LYS_KEY)) ? 0 : 1)
+
+/**
  * @brief Get the groupings sized array of the given (parsed) schema node.
  * Decides the node's type and in case it has a groupings array, returns it.
  * @param[in] node Node to examine.
@@ -1870,15 +1888,6 @@ LY_ERR lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, vo
  * @return LY_ERR value returned by @p dfs_clb.
  */
 LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data);
-
-/**
- * @brief Examine whether a node is user-ordered list or leaf-list.
- *
- * @param[in] schema Schema node to examine.
- * @return non-zero if it is,
- * @return Boolean value whether the @p node is user-ordered or not.
- */
-ly_bool lysc_is_userordered(const struct lysc_node *schema);
 
 /**
  * @brief Set a schema private pointer to a user pointer.
