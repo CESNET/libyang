@@ -176,11 +176,11 @@ if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "
     option(ENABLE_BUILD_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
     # TODO enable when the internal docs ready
-    set(INTERNAL_DOCS "Include developers notes and internal API description into generated Documentation" OFF) 
+    set(INTERNAL_DOCS NO)
 else()
     option(ENABLE_BUILD_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
-    set(INTERNAL_DOCS "Include developers notes and internal API description into generated Documentation" OFF)
+    set(INTERNAL_DOCS NO)
 endif()
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
