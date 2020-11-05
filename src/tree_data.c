@@ -1457,7 +1457,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                     } else if (ret) {
                         return ret;
                     }
-                    node->flags = LYD_DEFAULT  | (node->schema->when ? LYD_WHEN_TRUE : 0);
+                    node->flags = LYD_DEFAULT | (node->schema->when ? LYD_WHEN_TRUE : 0);
                     lyd_insert_node(parent, first, node);
 
                     if (iter->when && node_when) {
