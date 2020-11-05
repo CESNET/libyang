@@ -113,7 +113,7 @@ lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *d
 static void
 lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc_node **last, const struct lysc_node **next)
 {
-    for (; first_case; first_case = (const struct lysc_node_case*)first_case->next) {
+    for ( ; first_case; first_case = (const struct lysc_node_case *)first_case->next) {
         if (first_case->child) {
             /* there is something to return */
             (*next) = first_case->child;
