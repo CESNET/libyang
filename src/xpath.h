@@ -20,7 +20,7 @@
 
 #include "compat.h"
 #include "log.h"
-#include "plugins_types.h"
+#include "tree_data.h"
 #include "tree_schema.h"
 
 struct ly_ctx;

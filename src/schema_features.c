@@ -18,30 +18,18 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "common.h"
-#include "compat.h"
-#include "context.h"
-#include "dict.h"
 #include "log.h"
-#include "in_internal.h"
-#include "parser_internal.h"
-#include "parser_schema.h"
-#include "path.h"
-#include "schema_compile.h"
-#include "schema_compile_amend.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "xpath.h"
 
 uint8_t
 lysc_iff_getop(uint8_t *list, size_t pos)

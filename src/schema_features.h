@@ -17,8 +17,8 @@
 
 #include "log.h"
 
+struct ly_ctx;
 struct lysp_module;
-struct lys_parser_ctx;
 struct lysp_qname;
 
 /**

@@ -14,16 +14,15 @@
 
 #define _GNU_SOURCE
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
-#include <sys/times.h>
-#include <sys/types.h>
 #include <string.h>
-#include <unistd.h>
+#include <strings.h>
 
 #include "libyang.h"
 

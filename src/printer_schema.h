@@ -15,8 +15,8 @@
 #ifndef LY_PRINTER_SCHEMA_H_
 #define LY_PRINTER_SCHEMA_H_
 
+#include <stdint.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #include "log.h"
 #include "out.h"

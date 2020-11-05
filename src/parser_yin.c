@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +24,9 @@
 #include "common.h"
 #include "context.h"
 #include "dict.h"
+#include "in.h"
 #include "in_internal.h"
+#include "log.h"
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"

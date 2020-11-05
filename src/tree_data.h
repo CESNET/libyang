@@ -29,8 +29,10 @@ struct ly_path;
 struct ly_set;
 struct lyd_node;
 struct lyd_node_opaq;
+struct lyd_node_term;
 struct lys_module;
 struct lysc_node;
+struct lysc_type;
 
 /**
  * @page howtoData Data Instances

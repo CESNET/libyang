@@ -19,6 +19,7 @@
 
 #include "common.h"
 #include "context.h"
+#include "dict.h"
 #include "hash_table.h"
 #include "log.h"
 #include "lyb.h"

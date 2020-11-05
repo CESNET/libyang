@@ -17,8 +17,10 @@
 
 #include "common.h"
 #include "hash_table.h"
+#include "log.h"
 #include "plugins_types.h"
 #include "tree.h"
+#include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 

@@ -18,10 +18,16 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
+#include "context.h"
 #include "log.h"
+#include "plugins_types.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"

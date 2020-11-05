@@ -23,18 +23,23 @@ extern "C" {
 
 #include "context.h"
 #include "dict.h"
-#include "log.h"
 #include "in.h"
+#include "log.h"
+#include "out.h"
 #include "parser_data.h"
 #include "parser_schema.h"
-#include "plugins_types.h"
-#include "out.h"
 #include "printer_data.h"
 #include "printer_schema.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+
+/*
+ * The following headers are supposed to be included explicitly:
+ * - plugins_types.h
+ * - plugins_exts.h
+ */
 
 /**
  * @mainpage About

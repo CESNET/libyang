@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,12 +26,13 @@
 #include "compat.h"
 #include "context.h"
 #include "hash_table.h"
-#include "log.h"
+#include "in.h"
 #include "in_internal.h"
-#include "parser_internal.h"
+#include "log.h"
 #include "parser_schema.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 

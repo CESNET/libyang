@@ -27,7 +27,9 @@ extern "C" {
 #endif
 
 struct ly_ctx;
+struct lys_module;
 struct lysc_ident;
+struct lysc_node;
 struct lysc_pattern;
 struct lysc_prefix;
 struct lysc_range;
@@ -92,7 +94,8 @@ struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode
  *
  * Compatible with the free(), so usable as a generic callback.
  *
- * @param[in] ptr Error record to free. With the record, also all the records connected after this one are freed.
+ * @param[in] ptr Error record (::ly_err_item, the void pointer is here only for compatibility with a generic free()
+ * function) to free. With the record, also all the records (if any) connected after this one are freed.
  */
 void ly_err_free(void *ptr);
 

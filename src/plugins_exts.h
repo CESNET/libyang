@@ -17,10 +17,10 @@
 
 #include "log.h"
 #include "tree_schema.h"
-#include "tree_schema_internal.h"
 
 struct ly_ctx;
 struct lyd_node;
+struct lysc_ctx;
 
 #ifdef __cplusplus
 extern "C" {

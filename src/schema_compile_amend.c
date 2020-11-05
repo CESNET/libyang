@@ -17,30 +17,19 @@
 #include "schema_compile_amend.h"
 
 #include <assert.h>
-#include <ctype.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
-#include "compat.h"
-#include "context.h"
-#include "dict.h"
 #include "log.h"
-#include "in.h"
-#include "parser_schema.h"
-#include "path.h"
 #include "plugins_exts.h"
-#include "plugins_exts_internal.h"
-#include "plugins_types.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
-#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"

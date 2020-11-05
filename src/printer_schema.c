@@ -15,7 +15,6 @@
 #include "printer_schema.h"
 
 #include <stdio.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "compat.h"

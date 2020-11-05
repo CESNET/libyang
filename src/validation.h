@@ -15,10 +15,15 @@
 #ifndef LY_VALIDATION_H_
 #define LY_VALIDATION_H_
 
+#include <stdint.h>
+
 #include "log.h"
 #include "parser_data.h"
-#include "plugins_types.h"
-#include "tree_data.h"
+
+struct ly_set;
+struct lyd_node;
+struct lys_module;
+struct lysc_node;
 
 enum lyd_diff_op;
 

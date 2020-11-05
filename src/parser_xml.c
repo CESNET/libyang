@@ -24,7 +24,7 @@
 #include "parser_data.h"
 #include "parser_internal.h"
 #include "set.h"
-#include "tree.h"
+#include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "validation.h"

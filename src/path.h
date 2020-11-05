@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include "log.h"
-#include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
 
