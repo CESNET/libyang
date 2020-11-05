@@ -3367,3 +3367,25 @@ cleanup:
     lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
     return ret;
 }
+
+API uint32_t
+lyd_list_pos(const struct lyd_node *instance)
+{
+    const struct lyd_node *iter = NULL;
+    uint32_t pos = 0;
+
+    if (!instance || !(instance->schema->nodetype & (LYS_LIST | LYS_LEAFLIST))) {
+        return 0;
+    }
+
+    /* data instances are ordered, so we can stop when we found instance of other schema node */
+    for (iter = instance; iter->schema == instance->schema; iter = iter->prev) {
+        if (pos && iter->next == NULL) {
+            /* overrun to the end of the siblings list */
+            break;
+        }
+        ++pos;
+    }
+
+    return pos;
+}

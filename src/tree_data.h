@@ -777,6 +777,15 @@ const struct lys_module *lyd_owner_module(const struct lyd_node *node);
 ly_bool lyd_is_default(const struct lyd_node *node);
 
 /**
+ * @brief Learn the relative position of a list or leaf-list instance within other instances of the same schema node.
+ *
+ * @param[in] instance List or leaf-list instance to get the position of.
+ * return 0 on error.
+ * return Positive integer of the @p instance position.
+ */
+uint32_t lyd_list_pos(const struct lyd_node *instance);
+
+/**
  * @brief Learn the length of LYB data.
  *
  * @param[in] data LYB data to examine.

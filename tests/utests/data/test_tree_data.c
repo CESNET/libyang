@@ -56,6 +56,7 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
+            "leaf bar {type string;}"
             "list l1 { key \"a b\"; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
             "leaf foo { type string;}"
             "leaf-list ll { type string;}"
@@ -309,12 +310,61 @@ test_target(void **state)
     *state = NULL;
 }
 
+static void
+test_list_pos(void **state)
+{
+    *state = test_list_pos;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data = "<bar xmlns=\"urn:tests:a\">test</bar>"
+        "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b></l1>"
+        "<l1 xmlns=\"urn:tests:a\"><a>two</a><b>two</b></l1>"
+        "<foo xmlns=\"urn:tests:a\">test</foo>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(0, lyd_list_pos(tree));
+    assert_int_equal(1, lyd_list_pos(tree->next));
+    assert_int_equal(2, lyd_list_pos(tree->next->next));
+    assert_int_equal(0, lyd_list_pos(tree->next->next->next));
+    lyd_free_all(tree);
+
+    data = "<ll xmlns=\"urn:tests:a\">one</ll>"
+        "<ll xmlns=\"urn:tests:a\">two</ll>"
+        "<ll xmlns=\"urn:tests:a\">three</ll>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(1, lyd_list_pos(tree));
+    assert_int_equal(2, lyd_list_pos(tree->next));
+    assert_int_equal(3, lyd_list_pos(tree->next->next));
+    lyd_free_all(tree);
+
+    data = "<ll xmlns=\"urn:tests:a\">one</ll>"
+        "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b></l1>"
+        "<ll xmlns=\"urn:tests:a\">two</ll>"
+        "<l1 xmlns=\"urn:tests:a\"><a>two</a><b>two</b></l1>"
+        "<ll xmlns=\"urn:tests:a\">three</ll>"
+        "<l1 xmlns=\"urn:tests:a\"><a>three</a><b>three</b></l1>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_string_equal("l1", tree->schema->name);
+    assert_int_equal(1, lyd_list_pos(tree));
+    assert_int_equal(2, lyd_list_pos(tree->next));
+    assert_int_equal(3, lyd_list_pos(tree->next->next));
+    assert_string_equal("ll", tree->next->next->next->schema->name);
+    assert_int_equal(1, lyd_list_pos(tree->next->next->next));
+    assert_int_equal(2, lyd_list_pos(tree->next->next->next->next));
+    assert_int_equal(3, lyd_list_pos(tree->next->next->next->next->next));
+    lyd_free_all(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_compare, setup, teardown),
         cmocka_unit_test_setup_teardown(test_dup, setup, teardown),
         cmocka_unit_test_setup_teardown(test_target, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_list_pos, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
