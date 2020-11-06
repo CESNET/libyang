@@ -2449,7 +2449,7 @@ lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
         }
     }
 
-    if ((LYD_CTX(meta1->parent) != LYD_CTX(meta2->parent)) || (meta1->annotation != meta2->annotation)) {
+    if ((meta1->annotation->module->ctx != meta2->annotation->module->ctx) || (meta1->annotation != meta2->annotation)) {
         return LY_ENOT;
     }
 
