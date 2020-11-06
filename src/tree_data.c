@@ -3051,7 +3051,7 @@ iter_print:
                     iter->schema ? iter->schema->name : ((struct lyd_node_opaq *)iter)->name);
 
             /* do not always print the last (first) predicate */
-            if (iter->schema && (bufused || (pathtype == LYD_PATH_LOG))) {
+            if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_LOG))) {
                 switch (iter->schema->nodetype) {
                 case LYS_LIST:
                     if (iter->schema->flags & LYS_KEYLESS) {
