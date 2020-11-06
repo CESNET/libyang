@@ -1819,6 +1819,8 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
 
     /* inserting list without its keys is not supported */
     assert((parent || first_sibling_p) && node && (node->hash || !node->schema));
+    assert(!parent || !parent->schema ||
+            (parent->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)));
 
     if (!parent && first_sibling_p && (*first_sibling_p) && (*first_sibling_p)->parent) {
         parent = (struct lyd_node *)(*first_sibling_p)->parent;
