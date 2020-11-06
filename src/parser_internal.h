@@ -287,7 +287,18 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @brief Wrapper around ::lyd_create_meta() for data parsers.
  *
  * @param[in] lydctx Data parser context.
+ * @param[in] parent Parent of the created meta. Must be set if @p meta is NULL.
+ * @param[in,out] meta First existing meta to connect to or empty pointer to set. Must be set if @p parent is NULL.
+ * @param[in] mod Module of the created metadata.
+ * @param[in] name Metadata name.
+ * @param[in] name_len Length of @p name.
+ * @param[in] value Metadata value.
+ * @param[in] value_len Length of @p value.
+ * @param[in,out] dynamic Whether the @p value is dynamically allocated, is adjusted once the value is assigned.
+ * @param[in] format Prefix format.
+ * @param[in] prefix_data Prefix format data (see ::ly_resolve_prefix()).
  * @param[in] hints [Value hint](@ref lydvalhints) from the parser regarding the value type.
+ * @return LY_ERR value.
  */
 LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
         const struct lys_module *mod, const char *name, size_t name_len, const char *value,
