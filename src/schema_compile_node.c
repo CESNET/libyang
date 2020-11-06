@@ -451,7 +451,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
 {
     LY_ERR ret = LY_SUCCESS;
     char *valcopy = NULL;
-    size_t len;
+    size_t len = 0;
 
     if (value) {
         ret = range_part_check_value_syntax(ctx, basetype, frdigits, *value, &len, &valcopy);
@@ -1157,8 +1157,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v, match = 0;
-    int32_t value = 0, cur_val;
-    uint32_t position = 0, cur_pos;
+    int32_t value = 0, cur_val = 0;
+    uint32_t position = 0, cur_pos = 0;
     struct lysc_type_bitenum_item *e, storage;
     ly_bool enabled;
 
@@ -2496,7 +2496,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
     size_t name_len, prefix_len;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     const char *nodeid_type;
     uint32_t getnext_extra_flag = 0;
     uint16_t current_nodetype = 0;

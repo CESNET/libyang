@@ -451,7 +451,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 {
     struct ly_path_predicate *p;
     const struct lysc_node *key;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     const char *name;
     size_t name_len, key_count;
 
@@ -725,7 +725,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t tok_idx = 0;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     const struct lysc_node *node2, *cur_node, *op;
     struct ly_path *p = NULL;
     uint32_t getnext_opts;

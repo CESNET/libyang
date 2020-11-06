@@ -135,8 +135,8 @@ lys_abs_schema_nodeid_match(const struct ly_ctx *ctx, const struct lyxp_expr *ex
 {
     uint32_t i;
     const struct lys_module *mod1, *mod2;
-    const char *name1, *name2;
-    size_t name1_len, name2_len;
+    const char *name1 = NULL, *name2 = NULL;
+    size_t name1_len = 0, name2_len = 0;
 
     if (exp1->used != exp2->used) {
         return 0;
@@ -1510,8 +1510,8 @@ lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *
 {
     uint32_t i;
     const struct lys_module *mod;
-    const char *name;
-    size_t name_len;
+    const char *name = NULL;
+    size_t name_len = 0;
 
     /* compare last node in the node ID */
     i = exp->used - 1;

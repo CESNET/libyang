@@ -1145,7 +1145,7 @@ API LY_ERR
 lyd_change_meta(struct lyd_meta *meta, const char *val_str)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_meta *m2;
+    struct lyd_meta *m2 = NULL;
     struct lyd_value val;
     ly_bool val_change;
 
@@ -1374,7 +1374,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 {
     LY_ERR ret;
     const struct lysc_node *iter = NULL;
-    struct lyd_node *node;
+    struct lyd_node *node = NULL;
     struct lyd_value **dflts;
     LY_ARRAY_COUNT_TYPE u;
 
