@@ -967,9 +967,11 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
- * @param[in] parent Data parent to add to/modify, can be NULL.
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
- * @param[in] path Path to create (TODO ref path).
+ * @param[in] path [Path](@ref howtoXPath) to create.
  * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
@@ -985,9 +987,11 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
- * @param[in] parent Data parent to add to/modify, can be NULL.
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
- * @param[in] path Path to create (TODO ref path).
+ * @param[in] path [Path](@ref howtoXPath) to create.
  * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
@@ -1004,9 +1008,11 @@ LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
- * @param[in] parent Data parent to add to/modify, can be NULL.
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
- * @param[in] path Path to create (TODO ref path).
+ * @param[in] path [Path](@ref howtoXPath) to create.
  * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
