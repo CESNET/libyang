@@ -137,7 +137,6 @@ _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, cons
     } else if (rc && err) {
         if (ctx) {
             /* log only in case the ctx was provided as input parameter */
-            ly_err_print(err);
             LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
         }
         ly_err_free(err);
