@@ -431,6 +431,12 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         void *prefix_data, uint32_t hints)
 {
     ly_bool incomplete;
+    struct lyd_meta *first = NULL;
+
+    if (meta && *meta) {
+        /* remember the first metadata */
+        first = *meta;
+    }
 
     LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
             hints, &incomplete));
@@ -438,5 +444,11 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     if (incomplete && !(lydctx->parse_options & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->unres_meta_type, *meta, 1, NULL));
     }
+
+    if (first) {
+        /* always return the first metadata */
+        *meta = first;
+    }
+
     return LY_SUCCESS;
 }
