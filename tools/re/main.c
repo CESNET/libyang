@@ -72,7 +72,7 @@ pattern_error(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) path; /* unused */
 
-    if (level == LY_LLERR && strcmp(msg, "Module \"yangre\" parsing failed.")) {
+    if (level == LY_LLERR) {
         fprintf(stderr, "yangre error: %s\n", msg);
     }
 }
@@ -131,9 +131,6 @@ main(int argc, char* argv[])
     FILE *infile = NULL;
     size_t len = 0;
     ssize_t l;
-    struct lysc_type *type;
-    struct ly_err_item *err = NULL;
-    struct lyd_value storage;
 
     opterr = 0;
     while ((i = getopt_long(argc, argv, "hf:ivVp:", options, &opt_index)) != -1) {
@@ -273,12 +270,9 @@ main(int argc, char* argv[])
         goto cleanup;
     }
 
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    match = type->plugin->store(ctx, type, str, strlen(str), 0, LY_PREF_JSON, NULL, LYD_HINT_SCHEMA,
-            mod->compiled->data, &storage, &err);
-    if ((match == LY_SUCCESS) || (match == LY_EINCOMPLETE)) {
-        storage.realtype->plugin->free(ctx, &storage);
-    }
+    /* check the value */
+    match = lys_value_validate(ctx, mod->compiled->data, str, strlen(str));
+
     if (verbose) {
         for (i = 0; i < patterns_count; i++) {
             fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);
@@ -290,7 +284,7 @@ main(int argc, char* argv[])
         } else if (match == LY_EVALID) {
             fprintf(stdout, "result    : not matching\n");
         } else {
-            fprintf(stdout, "result    : error (%s)\n", err->msg);
+            fprintf(stdout, "result    : error (%s)\n", ly_errmsg(ctx));
         }
     }
     if (match == LY_SUCCESS) {
@@ -313,7 +307,6 @@ cleanup:
         fclose(infile);
         free(str);
     }
-    ly_err_free(err);
 
     return ret;
 }
