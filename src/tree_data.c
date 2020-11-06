@@ -1261,7 +1261,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             ++path_idx;
         } else if (ret == LY_ENOTFOUND) {
             /* we will create the nodes from top-level, default behavior (absolute path), or from the parent (relative path) */
-            if (lysc_data_parent(p[LY_ARRAY_COUNT(p) - 1].node)) {
+            if (lysc_data_parent(p[0].node)) {
                 node = parent;
             }
         } else {
