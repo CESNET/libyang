@@ -1625,55 +1625,55 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
 
     LY_LIST_FOR(*diff, root) {
         LYD_TREE_DFS_BEGIN(root, elem) {
-            /* find operation attribute, if any */
-            LY_CHECK_GOTO(ret = lyd_diff_get_op(elem, &op), cleanup);
+            /* skip all keys */
+            if (!lysc_is_key(elem->schema)) {
+                /* find operation attribute, if any */
+                LY_CHECK_GOTO(ret = lyd_diff_get_op(elem, &op), cleanup);
 
-            switch (op) {
-            case LYD_DIFF_OP_CREATE:
-                /* reverse create to delete */
-                LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_DELETE), cleanup);
-                break;
-            case LYD_DIFF_OP_DELETE:
-                /* reverse delete to create */
-                LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_CREATE), cleanup);
-                break;
-            case LYD_DIFF_OP_REPLACE:
-                switch (elem->schema->nodetype) {
-                case LYS_LEAF:
-                    /* leaf value change */
-                    LY_CHECK_GOTO(ret = lyd_diff_reverse_value(elem, mod), cleanup);
-                    LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                switch (op) {
+                case LYD_DIFF_OP_CREATE:
+                    /* reverse create to delete */
+                    LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_DELETE), cleanup);
                     break;
-                case LYS_LEAFLIST:
-                    /* leaf-list move */
-                    LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
-                    LY_CHECK_GOTO(ret = lyd_diff_reverse_meta(elem, mod, "orig-value", "value"), cleanup);
+                case LYD_DIFF_OP_DELETE:
+                    /* reverse delete to create */
+                    LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_CREATE), cleanup);
                     break;
-                case LYS_LIST:
-                    /* list move */
-                    LY_CHECK_GOTO(ret = lyd_diff_reverse_meta(elem, mod, "orig-key", "key"), cleanup);
+                case LYD_DIFF_OP_REPLACE:
+                    switch (elem->schema->nodetype) {
+                    case LYS_LEAF:
+                        /* leaf value change */
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_value(elem, mod), cleanup);
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                        break;
+                    case LYS_LEAFLIST:
+                        /* leaf-list move */
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_meta(elem, mod, "orig-value", "value"), cleanup);
+                        break;
+                    case LYS_LIST:
+                        /* list move */
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_meta(elem, mod, "orig-key", "key"), cleanup);
+                        break;
+                    default:
+                        LOGINT(LYD_CTX(src_diff));
+                        ret = LY_EINT;
+                        goto cleanup;
+                    }
                     break;
-                default:
-                    LOGINT(LYD_CTX(src_diff));
-                    ret = LY_EINT;
-                    goto cleanup;
+                case LYD_DIFF_OP_NONE:
+                    switch (elem->schema->nodetype) {
+                    case LYS_LEAF:
+                    case LYS_LEAFLIST:
+                        /* default flag change */
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                        break;
+                    default:
+                        /* nothing to do */
+                        break;
+                    }
+                    break;
                 }
-                break;
-            case LYD_DIFF_OP_NONE:
-                switch (elem->schema->nodetype) {
-                case LYS_LEAF:
-                case LYS_LEAFLIST:
-                    /* default flag change */
-                    LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
-                    break;
-                default:
-                    /* nothing to do */
-                    break;
-                }
-                break;
-            default:
-                /* nothing to do */
-                break;
             }
 
             LYD_TREE_DFS_END(root, elem);
