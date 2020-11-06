@@ -1521,7 +1521,6 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     struct lyd_value val;
     struct ly_err_item *err = NULL;
     char *str, *ptr;
-    ly_bool dynamic;
     LY_ERR rc;
 
     /* is there anything to canonize even? */
@@ -1549,8 +1548,8 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     }
 
     /* ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_STORE_DYNAMIC, LY_PREF_JSON, NULL, LYD_HINT_DATA,
-            xp_node->node->schema, &val, &err);
+    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
+            LYD_HINT_DATA, xp_node->node->schema, &val, &err);
     ly_err_free(err);
     if (rc) {
         /* invalid value */
@@ -1558,20 +1557,14 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
         goto fill;
     }
 
-    /* storing successful, now print the canonical value */
-    str = (char *)type->plugin->print(&val, LY_PREF_JSON, NULL, &dynamic);
-
     /* use the canonized value */
     set_init(trg, src);
     trg->type = src->type;
     if (src->type == LYXP_SET_NUMBER) {
-        trg->val.num = strtold(str, &ptr);
-        if (dynamic) {
-            free(str);
-        }
+        trg->val.num = strtold(val.canonical, &ptr);
         LY_CHECK_ERR_RET(ptr[0], LOGINT(src->ctx), LY_EINT);
     } else {
-        trg->val.str = (dynamic ? str : strdup(str));
+        trg->val.str = strdup(val.canonical);
     }
     type->plugin->free(src->ctx, &val);
     return LY_SUCCESS;
