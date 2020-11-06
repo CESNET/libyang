@@ -41,9 +41,9 @@ struct lyd_xml_ctx {
     uint32_t int_opts;             /**< internal data parser options */
     uint32_t path_len;             /**< used bytes in the path buffer */
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
-    struct ly_set unres_node_type; /**< set of nodes validated with LY_EINCOMPLETE result */
-    struct ly_set unres_meta_type; /**< set of metadata validated with LY_EINCOMPLETE result */
-    struct ly_set when_check;      /**< set of nodes with "when" conditions */
+    struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
+    struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
+    struct ly_set node_when;       /**< set of nodes with "when" conditions */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
 
     /* callbacks */
@@ -547,7 +547,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
             LY_CHECK_GOTO(ret, error);
 
             /* add any missing default children */
-            ret = lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, &lydctx->unres_node_type, &lydctx->when_check,
+            ret = lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, &lydctx->node_types, &lydctx->node_when,
                     (lydctx->validate_options & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, error);
         }
@@ -587,7 +587,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
 
     /* add/correct flags */
     if (snode) {
-        lyd_parse_set_data_flags(node, &lydctx->when_check, &meta, lydctx->parse_options);
+        lyd_parse_set_data_flags(node, &lydctx->node_when, &meta, lydctx->parse_options);
     }
 
     /* parser next */
@@ -640,9 +640,9 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_op
     }
 
 cleanup:
-    /* there should be no unresolved types stored */
-    assert(!(parse_options & LYD_PARSE_ONLY) || (!lydctx->unres_node_type.count && !lydctx->unres_meta_type.count &&
-            !lydctx->when_check.count));
+    /* there should be no unres stored if validation should be skipped */
+    assert(!(parse_options & LYD_PARSE_ONLY) || (!lydctx->node_types.count && !lydctx->meta_types.count &&
+            !lydctx->node_when.count));
 
     if (ret) {
         lyd_xml_ctx_free((struct lyd_ctx *)lydctx);
@@ -802,7 +802,7 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **
 
 cleanup:
     /* we have used parse_only flag */
-    assert(!lydctx.unres_node_type.count && !lydctx.unres_meta_type.count && !lydctx.when_check.count);
+    assert(!lydctx.node_types.count && !lydctx.meta_types.count && !lydctx.node_when.count);
     lyxml_ctx_free(lydctx.xmlctx);
     if (ret) {
         lyd_free_all(tree);
@@ -960,7 +960,7 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
 
 cleanup:
     /* we have used parse_only flag */
-    assert(!lydctx.unres_node_type.count && !lydctx.unres_meta_type.count && !lydctx.when_check.count);
+    assert(!lydctx.node_types.count && !lydctx.meta_types.count && !lydctx.node_when.count);
     lyxml_ctx_free(lydctx.xmlctx);
     if (ret) {
         lyd_free_all(tree);
@@ -1034,7 +1034,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
 
 cleanup:
     /* we have used parse_only flag */
-    assert(!lydctx.unres_node_type.count && !lydctx.unres_meta_type.count && !lydctx.when_check.count);
+    assert(!lydctx.node_types.count && !lydctx.meta_types.count && !lydctx.node_when.count);
     lyxml_ctx_free(lydctx.xmlctx);
     if (ret) {
         lyd_free_all(rep_op);
