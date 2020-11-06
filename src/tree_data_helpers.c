@@ -243,7 +243,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
         if (options & LYD_PARSE_TRUSTED) {
             /* just set it to true */
             node->flags |= LYD_WHEN_TRUE;
-        } else {
+        } else if (!(options & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
             LY_CHECK_RET(ly_set_add(when_check, node, 1, NULL), );
         }
