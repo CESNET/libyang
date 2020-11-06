@@ -6609,7 +6609,7 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, uin
             result = (set1->val.num != set2->val.num);
         } else {
             assert(set1->type == LYXP_SET_STRING);
-            result = !strcmp(set1->val.str, set2->val.str);
+            result = strcmp(set1->val.str, set2->val.str);
         }
     } else {
         assert(set1->type == LYXP_SET_NUMBER);
