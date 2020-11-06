@@ -583,6 +583,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
                 if (op == LYD_DIFF_OP_DELETE) {
                     ret = lyd_diff_add(iter_first, op, orig_default, orig_value, NULL, NULL, NULL, diff);
                 } else {
+                    assert(match_second);
                     ret = lyd_diff_add(match_second, op, orig_default, orig_value, NULL, NULL, NULL, diff);
                 }
 
