@@ -1096,7 +1096,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
         enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR ret;
-    uint32_t type_hints;
+    uint32_t type_hints = 0;
     uint32_t prev_opts;
     struct lyd_node *tree = NULL;
 
@@ -1693,7 +1693,6 @@ lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node *
     struct lyd_json_ctx *lydctx = NULL;
     struct lyd_node *rpc_e = NULL, *act_e = NULL;
     struct lyd_node *tree = NULL;
-    enum LYJSON_PARSER_STATUS status;
 
     /* init */
     ret = lyd_parse_json_init(ctx, in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &lydctx);
@@ -1720,9 +1719,7 @@ lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node *
     }
 
 parse_content:
-
-    status = lyjson_ctx_status(lydctx->jsonctx, 0);
-    assert(status == LYJSON_OBJECT);
+    assert(lyjson_ctx_status(lydctx->jsonctx, 0) == LYJSON_OBJECT);
 
     /* read subtree(s) */
     ret = lydjson_subtree_r(lydctx, act_e ? (struct lyd_node_inner *)act_e : (struct lyd_node_inner *)rpc_e, &tree);

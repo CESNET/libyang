@@ -791,7 +791,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const
 {
     LY_ERR ret;
     uint64_t num;
-    int base;
+    int base = 0;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
     char *str;
 
@@ -1387,7 +1387,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     const char *id_name, *prefix = value;
     size_t id_len, prefix_len;
     char *errmsg = NULL, *str;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ident *ident = NULL, *identities;
     int rc = 0;
