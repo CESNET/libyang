@@ -772,7 +772,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
                 r = asprintf(&str, "file://%s", mod->filepath);
                 LY_CHECK_ERR_GOTO(r == -1, LOGMEM(ctx); ret = LY_EMEM, error);
 
-                ret = lyd_new_term(cont, NULL, "schema", str, 0, NULL);
+                ret = lyd_new_term(cont, NULL, "location", str, 0, NULL);
                 free(str);
                 LY_CHECK_GOTO(ret, error);
             }
