@@ -93,6 +93,9 @@ typedef enum
 
 /**
  * @brief Set logger verbosity level.
+ *
+ * To get the current value, the function must be called twice resetting the level by the reived value.
+ *
  * @param[in] level Verbosity level.
  * @return Previous verbosity level.
  */
@@ -122,6 +125,8 @@ LY_LOG_LEVEL ly_log_level(LY_LOG_LEVEL level);
 /**
  * @brief Set logger options. Default is #LY_LOLOG | #LY_LOSTORE_LAST.
  *
+ * To get the current value, the function must be called twice resetting the level by the reived value.
+ *
  * @param[in] opts Bitfield of @ref logopts.
  * @return Previous logger options.
  */
@@ -141,10 +146,7 @@ uint32_t ly_log_options(uint32_t opts);
  */
 
 #define LY_LDGDICT  0x01 /**< Dictionary additions and deletions. */
-#define LY_LDGYANG  0x02 /**< YANG parser messages. */
-#define LY_LDGYIN   0x04 /**< YIN parser messages. */
-#define LY_LDGXPATH 0x08 /**< XPath parsing end evaluation. */
-#define LY_LDGDIFF  0x10 /**< Diff processing and creation. */
+#define LY_LDGXPATH 0x02 /**< XPath parsing end evaluation. */
 
 /**
  * @}
@@ -152,9 +154,13 @@ uint32_t ly_log_options(uint32_t opts);
 
 /**
  * @brief Enable specific debugging messages (independent of log level).
+ *
+ * To get the current value, the function must be called twice resetting the level by the reived value.
+ *
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
+ * @return Previous options bitfield.
  */
-void ly_log_dbg_groups(uint32_t dbg_groups);
+uint32_t ly_log_dbg_groups(uint32_t dbg_groups);
 
 #endif
 

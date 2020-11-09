@@ -1414,7 +1414,7 @@ cmd_verb(const char *arg)
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_log_level(LY_LLDBG);
 #ifndef NDEBUG
-        ly_log_dbg_groups(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
+        ly_log_dbg_groups(LY_LDGDICT | LY_LDGXPATH);
 #endif
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
@@ -1447,14 +1447,8 @@ cmd_debug(const char *arg)
 
         if (!strncmp(beg, "dict", end - beg)) {
             grps |= LY_LDGDICT;
-        } else if (!strncmp(beg, "yang", end - beg)) {
-            grps |= LY_LDGYANG;
-        } else if (!strncmp(beg, "yin", end - beg)) {
-            grps |= LY_LDGYIN;
         } else if (!strncmp(beg, "xpath", end - beg)) {
             grps |= LY_LDGXPATH;
-        } else if (!strncmp(beg, "diff", end - beg)) {
-            grps |= LY_LDGDIFF;
         } else {
             fprintf(stderr, "Unknown debug group \"%.*s\"\n", (int)(end - beg), beg);
             return 1;
