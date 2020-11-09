@@ -1,0 +1,383 @@
+/**
+ * @file cmd_data.c
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @brief 'data' command of the libyang's yanglint tool.
+ *
+ * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
+#define _GNU_SOURCE
+
+#include "cmd.h"
+
+#include <errno.h>
+#include <getopt.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <strings.h>
+
+#include "libyang.h"
+
+#include "common.h"
+
+void
+cmd_data_help(void)
+{
+    printf("Usage: data [-ems] [-t TYPE]\n"
+            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
+            "       data [-s] -t (rpc | notif) [-O FILE]\n"
+            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
+            "       data [-s] -t reply -r <request-file> [-O FILE]\n"
+            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
+            "       data [-s] -t reply [-O FILE]\n"
+            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> <request1> ...\n"
+            "       data [-es] [-t TYPE] -x XPATH [-o OUTFILE] <data1> ...\n"
+            "                  Parse, validate and optionaly print data instances\n\n"
+
+            "  -t TYPE, --type=TYPE\n"
+            "                Specify data tree type in the input data file(s):\n"
+            "        data          - Complete datastore with status data (default type).\n"
+            "        config        - Configuration datastore (without status data).\n"
+            "        get           - Result of the NETCONF <get> operation.\n"
+            "        getconfig     - Result of the NETCONF <get-config> operation.\n"
+            "        edit          - Content of the NETCONF <edit-config> operation.\n"
+            "        rpc           - Content of the NETCONF <rpc> message, defined as YANG's\n"
+            "                        RPC/Action input statement.\n"
+            "        reply         - Reply to the RPC/Action. Besides the reply itself,\n"
+            "                        yanglint(1) requires information about the request for\n"
+            "                        the reply. The request (RPC/Action) can be provide as\n"
+            "                        the --request option or as another input data <file>\n"
+            "                        provided right after the reply data <file> and\n"
+            "                        containing complete RPC/Action for the reply.\n"
+            "        notif         - Notification instance (content of the <notification>\n"
+            "                        element without <eventTime>).\n\n"
+
+            "  -e, --present Validate only with the schema modules whose data actually\n"
+            "                exist in the provided input data files. Takes effect only\n"
+            "                with the 'data' or 'config' TYPEs. Used to avoid requiring\n"
+            "                mandatory nodes from modules which data are not present in the\n"
+            "                provided input data files.\n"
+            "  -m, --merge   Merge input data files into a single tree and validate at\n"
+            "                once.The option has effect only for 'data' and 'config' TYPEs.\n"
+            "                In case of using -x option, the data are always merged.\n"
+            "  -s, --strict  Strict data parsing (do not skip unknown data), has no effect\n"
+            "                for schemas.\n"
+            "  -r PATH, --request=PATH\n"
+            "                The alternative way of providing request information for the\n"
+            "                '--type=reply'. The PATH is the XPath subset described in\n"
+            "                documentation as Path format. It is required to point to the\n"
+            "                RPC or Action in the schema which is supposed to be a request\n"
+            "                for the reply(ies) being parsed from the input data files.\n"
+            "                In case of multiple input data files, the 'request' option can\n"
+            "                be set once for all the replies or multiple times each for the\n"
+            "                respective input data file.\n"
+            "  -O FILE, --operational=FILE\n"
+            "                Provide optional data to extend validation of the 'rpc',\n"
+            "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
+            "                the :running configuration datastore and state data\n"
+            "                (operational datastore) referenced from the RPC/Notification.\n\n"
+
+            "  -f FORMAT, --format=FORMAT\n"
+            "                Print the data in one of the following formats:\n"
+            "                xml, json, lyb\n"
+            "                Note that the LYB format requires the -o option specified.\n"
+            "  -d MODE, --default=MODE\n"
+            "                Print data with default values, according to the MODE\n"
+            "                (to print attributes, ietf-netconf-with-defaults model\n"
+            "                must be loaded):\n"
+            "      all             - Add missing default nodes.\n"
+            "      all-tagged      - Add missing default nodes and mark all the default\n"
+            "                        nodes with the attribute.\n"
+            "      trim            - Remove all nodes with a default value.\n"
+            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n"
+            "  -o OUTFILE, --output=OUTFILE\n"
+            "                Write the output to OUTFILE instead of stdout.\n\n"
+
+            "  -x XPATH, --xpath=XPATH\n"
+            "                Evaluate XPATH expression and print the nodes satysfying the.\n"
+            "                expression. The output format is specific and the option cannot\n"
+            "                be combined with the -f and -d options. Also all the data\n"
+            "                inputs are merged into a single data tree where the expression\n"
+            "                is evaluated, so the -m option is always set implicitly.\n\n");
+
+}
+
+static int
+prepare_inputs(int argc, char *argv[], struct ly_set *requests, struct ly_set *inputs)
+{
+    struct ly_in *in;
+    uint8_t request_expected = 0;
+
+    for (int i = 0; i < argc - optind; i++) {
+        LYD_FORMAT format = LYD_UNKNOWN;
+        struct cmdline_file *rec;
+
+        if (get_input(argv[optind + i], NULL, &format, &in)) {
+            return -1;
+        }
+
+        if (request_expected) {
+            if (fill_cmdline_file(requests, in, argv[optind + i], format)) {
+                ly_in_free(in, 1);
+                return -1;
+            }
+
+            request_expected = 0;
+        } else {
+            rec = fill_cmdline_file(inputs, in, argv[optind + i], format);
+            if (!rec) {
+                ly_in_free(in, 1);
+                return -1;
+            }
+
+            if (requests) {
+                /* requests for the replies are expected in another input file */
+                if (++i == argc - optind) {
+                    /* there is no such file */
+                    YLMSG_E("Missing request input file for the reply input file %s.\n", rec->path);
+                    return -1;
+                }
+
+                request_expected = 1;
+            }
+        }
+    }
+
+    if (request_expected) {
+        YLMSG_E("Missing request input file for the reply input file %s.\n", argv[argc - optind - 1]);
+        return -1;
+    }
+
+    return 0;
+}
+
+void
+cmd_data(struct ly_ctx **ctx, const char *cmdline)
+{
+    int argc = 0;
+    char **argv = NULL;
+    int opt, opt_index;
+    struct option options[] = {
+        {"defaults", required_argument, NULL, 'd'},
+        {"present", no_argument, NULL, 'e'},
+        {"format", required_argument, NULL, 'f'},
+        {"help", no_argument, NULL, 'h'},
+        {"merge", no_argument, NULL, 'm'},
+        {"output", required_argument, NULL, 'o'},
+        {"operational", required_argument, NULL, 'O'},
+        {"request", required_argument, NULL, 'r'},
+        {"strict", no_argument, NULL, 's'},
+        {"type", required_argument, NULL, 't'},
+        {"xpath", required_argument, NULL, 'x'},
+        {NULL, 0, NULL, 0}
+    };
+
+    uint8_t data_merge = 0;
+    uint32_t options_print = 0;
+    uint32_t options_parse = 0;
+    uint32_t options_validate = 0;
+    uint8_t data_type = 0;
+    uint8_t data_type_set = 0;
+    LYD_FORMAT format = LYD_UNKNOWN;
+    struct ly_out *out = NULL;
+    struct cmdline_file *operational = NULL;
+    struct ly_set inputs = {0};
+    struct ly_set requests = {0};
+    struct ly_set request_paths = {0};
+    struct ly_set xpaths = {0};
+
+    if (parse_cmdline(cmdline, &argc, &argv)) {
+        goto cleanup;
+    }
+
+    while ((opt = getopt_long(argc, argv, "d:ef:hmo:O:r:st:x:", options, &opt_index)) != -1) {
+        switch (opt) {
+        case 'd': /* --default */
+            if (!strcasecmp(optarg, "all")) {
+                options_print = (options_print & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
+            } else if (!strcasecmp(optarg, "all-tagged")) {
+                options_print = (options_print & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
+            } else if (!strcasecmp(optarg, "trim")) {
+                options_print = (options_print & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
+            } else if (!strcasecmp(optarg, "implicit-tagged")) {
+                options_print = (options_print & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
+            } else {
+                YLMSG_E("Unknown default mode %s\n", optarg);
+                cmd_data_help();
+                goto cleanup;
+            }
+            break;
+        case 'f': /* --format */
+            if (!strcasecmp(optarg, "xml")) {
+                format = LYD_XML;
+            } else if (!strcasecmp(optarg, "json")) {
+                format = LYD_JSON;
+            } else if (!strcasecmp(optarg, "lyb")) {
+                format = LYD_LYB;
+            } else {
+                YLMSG_E("Unknown output format %s\n", optarg);
+                cmd_data_help();
+                goto cleanup;
+            }
+            break;
+        case 'o': /* --output */
+            if (out) {
+                YLMSG_E("Only a single output can be specified.\n");
+                goto cleanup;
+            } else {
+                if (ly_out_new_filepath(optarg, &out)) {
+                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    goto cleanup;
+                }
+            }
+            break;
+        case 'O': { /* --operational */
+            struct ly_in *in;
+            LYD_FORMAT f;
+
+            if (operational) {
+                YLMSG_E("The operational datastore (-O) cannot be set multiple times.\n");
+                goto cleanup;
+            }
+            if (get_input(optarg, NULL, &f, &in)) {
+                goto cleanup;
+            }
+            operational = fill_cmdline_file(NULL, in, optarg, f);
+            break;
+        } /* case 'O' */
+        case 'r': /* --request */
+            if (ly_set_add(&request_paths, optarg, 0, NULL)) {
+                YLMSG_E("Storing request path \"%s\" failed.\n", optarg);
+                goto cleanup;
+            }
+            break;
+
+        case 'e': /* --present */
+            options_validate |= LYD_VALIDATE_PRESENT;
+            break;
+        case 'm': /* --merge */
+            data_merge = 1;
+            break;
+        case 's': /* --strict */
+            options_parse |= LYD_PARSE_STRICT;
+            break;
+        case 't': /* --type */
+            if (data_type_set) {
+                YLMSG_E("The data type (-t) cannot be set multiple times.\n");
+                goto cleanup;
+            }
+
+            if (!strcasecmp(optarg, "config")) {
+                options_parse |= LYD_PARSE_NO_STATE;
+            } else if (!strcasecmp(optarg, "get")) {
+                options_parse |= LYD_PARSE_ONLY;
+            } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config")) {
+                options_parse |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
+            } else if (!strcasecmp(optarg, "edit")) {
+                options_parse |= LYD_PARSE_ONLY;
+            } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
+                data_type = LYD_VALIDATE_OP_RPC;
+            } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
+                data_type = LYD_VALIDATE_OP_REPLY;
+            } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
+                data_type = LYD_VALIDATE_OP_NOTIF;
+            } else if (!strcasecmp(optarg, "data")) {
+                /* default option */
+            } else {
+                YLMSG_E("Unknown data tree type %s.\n", optarg);
+                cmd_data_help();
+                goto cleanup;
+            }
+
+            data_type_set = 1;
+            break;
+
+        case 'x': /* --xpath */
+            if (ly_set_add(&xpaths, optarg, 0, NULL)) {
+                YLMSG_E("Storing XPath \"%s\" failed.\n", optarg);
+                goto cleanup;
+            }
+            break;
+
+        case 'h': /* --help */
+            cmd_data_help();
+            goto cleanup;
+        default:
+            YLMSG_E("Unknown option.\n");
+            goto cleanup;
+        }
+    }
+
+    if (optind == argc) {
+        YLMSG_E("Missing the data file to process.\n");
+        goto cleanup;
+    }
+
+    if (data_merge) {
+        if (data_type || (options_parse & LYD_PARSE_ONLY)) {
+            /* switch off the option, incompatible input data type */
+            data_merge = 0;
+        } else {
+            /* postpone validation after the merge of all the input data */
+            options_parse |= LYD_PARSE_ONLY;
+        }
+    } else if (xpaths.count) {
+        data_merge = 1;
+    }
+
+    if (xpaths.count && format) {
+        YLMSG_E("The --format option cannot be combined with --xpath option.\n");
+        cmd_data_help();
+        goto cleanup;
+    }
+
+    if (operational && !data_type) {
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notifications input data types.\n");
+        free_cmdline_file(operational);
+        operational = NULL;
+    }
+
+    /* process input data files provided as standalone command line arguments */
+    if (prepare_inputs(argc, argv, ((data_type == LYD_VALIDATE_OP_REPLY) && !request_paths.count) ? &requests : NULL,
+            &inputs)) {
+        goto cleanup;
+    }
+
+    if (data_type == LYD_VALIDATE_OP_REPLY) {
+        if (check_request_paths(*ctx, &request_paths, &inputs)) {
+            goto cleanup;
+        }
+    }
+
+    /* default output stream */
+    if (!out) {
+        if (ly_out_new_file(stdout, &out)) {
+            YLMSG_E("Unable to set stdout as output.\n");
+            goto cleanup;
+        }
+    }
+
+    /* parse, validate and print data */
+    if (process_data(*ctx, data_type, data_merge, format, out,
+            options_parse, options_validate, options_print,
+            operational, &inputs, &request_paths, &requests, &xpaths)) {
+        goto cleanup;
+    }
+
+cleanup:
+    ly_out_free(out, NULL, 0);
+    ly_set_erase(&inputs, free_cmdline_file);
+    ly_set_erase(&requests, free_cmdline_file);
+    ly_set_erase(&request_paths, NULL);
+    ly_set_erase(&xpaths, NULL);
+    free_cmdline_file(operational);
+    free_cmdline(argv);
+}

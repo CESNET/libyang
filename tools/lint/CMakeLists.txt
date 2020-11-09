@@ -3,7 +3,15 @@
 set(lintsrc
     main.c
     main_ni.c
-    commands.c
+    cmd.c
+    cmd_add.c
+    cmd_clear.c
+    cmd_data.c
+    cmd_list.c
+    cmd_load.c
+    cmd_print.c
+    cmd_searchpath.c
+    common.c
     completion.c
     configuration.c
     linenoise/linenoise.c)
