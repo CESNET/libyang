@@ -210,13 +210,17 @@ ly_log_options(uint32_t opts)
     return prev;
 }
 
-API void
+API uint32_t
 ly_log_dbg_groups(uint32_t dbg_groups)
 {
 #ifndef NDEBUG
+    uint32_t prev = ly_ldbg_groups;
+
     ly_ldbg_groups = dbg_groups;
+    return prev;
 #else
     (void)dbg_groups;
+    return 0;
 #endif
 }
 
@@ -373,17 +377,8 @@ ly_log_dbg(uint32_t group, const char *format, ...)
     case LY_LDGDICT:
         str_group = "DICT";
         break;
-    case LY_LDGYANG:
-        str_group = "YANG";
-        break;
-    case LY_LDGYIN:
-        str_group = "YIN";
-        break;
     case LY_LDGXPATH:
         str_group = "XPATH";
-        break;
-    case LY_LDGDIFF:
-        str_group = "DIFF";
         break;
     default:
         LOGINT(NULL);

@@ -555,18 +555,9 @@ main_ni(int argc, char* argv[])
                 if (!strncmp(ptr, "dict", 4)) {
                     u |= LY_LDGDICT;
                     ptr += 4;
-                } else if (!strncmp(ptr, "yang", 4)) {
-                    u |= LY_LDGYANG;
-                    ptr += 4;
-                } else if (!strncmp(ptr, "yin", 3)) {
-                    u |= LY_LDGYIN;
-                    ptr += 3;
                 } else if (!strncmp(ptr, "xpath", 5)) {
                     u |= LY_LDGXPATH;
                     ptr += 5;
-                } else if (!strncmp(ptr, "diff", 4)) {
-                    u |= LY_LDGDIFF;
-                    ptr += 4;
                 }
 
                 if (ptr[0]) {
