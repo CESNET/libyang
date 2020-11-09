@@ -58,7 +58,7 @@
  * the data were printed by default without additional indentation. It is clearly visible in the YIN format of the schema,
  * which is XML, and the XML encoding of the data. While there was a possibility to format data output with the LYP_FORMAT
  * flag, it wasn't possible to change schema output formatting.
- * 
+ *
  * libyang 2.0 unifies the behavior of all printers. By default, all the output formats are formatted now. Both, the data as
  * well as the schema printers, accept the option to remove additional formatting (different for the specific format, usually
  * indentations and blank lines): ::LYD_PRINT_SHRINK for the data printer and ::LYS_PRINT_SHRINK for the schema printer.
@@ -279,6 +279,17 @@
  * result of data manipulation with the values of the terminal nodes or with the structure of the data tree. In contrast to
  * libyang 1.x, adding the default nodes was made available as a standalone function to simplify the data manipulation
  * process before the final validation.
+ *
+ * Many validation flags were removed because they became obsolete (LYD_OPT_DESTRUCT, LYD_OPT_WHENAUTODEL,
+ * LYD_OPT_NOEXTDEPS, LYD_OPT_DATA_NO_YANGLIB, LYD_OPT_VAL_DIFF) or we consider them redundant (LYD_OPT_OBSOLETE,
+ * LYD_OPT_NOSIBLINGS, LYD_OPT_DATA_ADD_YANGLIB). As for LYD_OPT_TRUSTED, this option was mostly replaced with
+ * ::LYD_PARSE_ONLY because both skip validation but with the significant difference that LYD_OPT_TRUSTED also sets
+ * the data node flags to be considered validated. The current option ::LYD_PARSE_ONLY does not do this because
+ * there is now much better support for working with non-validated data trees. Also, in case an invalid tree was marked
+ * as validated, it could lead to some undesired behavior, which is now avoided.
+ *
+ * Worth mentioning is a difference in the LYB format, which now also stores its validation flags. So, in case
+ * a validated data tree is stored, it is also loaded as validated.
  *
  * libyang 1.x                  | libyang 2.0                     | Notes
  * :----------------------------|:--------------------------------|:---------------------------------------------------------
