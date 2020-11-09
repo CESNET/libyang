@@ -146,6 +146,7 @@ test_leaf(void **state)
     data = "<foo2 xmlns=\"urn:tests:a\">default-val</foo2>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -158,6 +159,7 @@ test_leaf(void **state)
     data = "<foo2 xmlns=\"urn:tests:a\" xmlns:wd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" wd:default=\"true\" xmlns:x=\"urn:x\" x:xxx=\"false\">default-val</foo2>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -190,6 +192,7 @@ test_anydata(void **state)
     "</any>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
 
@@ -309,6 +312,7 @@ test_container(void **state)
     data = "<cp xmlns=\"urn:tests:a\"/>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);
     cont = (struct lyd_node_inner*)tree;

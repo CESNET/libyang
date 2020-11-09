@@ -1833,6 +1833,10 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     anchor = lyd_insert_get_next_anchor(first_sibling, node);
     if (anchor) {
         lyd_insert_before_node(anchor, node);
+        if (!parent && (*first_sibling_p == anchor)) {
+            /* move first sibling */
+            *first_sibling_p = node;
+        }
     } else if (first_sibling) {
         lyd_insert_after_node(first_sibling->prev, node);
     } else if (parent) {

@@ -155,6 +155,7 @@ test_leaf(void **state)
     data = "{\"a:foo2\":\"default-val\"}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -170,6 +171,7 @@ test_leaf(void **state)
     data = "{\"a:foo2\":\"default-val\",\"@a:foo2\":{\"ietf-netconf-with-defaults:default\":true}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -239,6 +241,7 @@ test_leaflist(void **state)
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
     ll = (struct lyd_node_term*)tree;
@@ -259,6 +262,7 @@ test_leaflist(void **state)
     data = "{\"a:ll1\":[10,11],\"@a:ll1\":[null,{\"a:hint\":2}]}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
     ll = (struct lyd_node_term*)tree;
@@ -283,6 +287,7 @@ test_leaflist(void **state)
     data = "{\"@a:ll1\" : [{\"a:hint\" : 1, \"x:xxx\" :  { \"value\" : \"/x:no/x:yes\" }, \"a:hint\" : 10},null,{\"a:hint\" : 3}], \"a:ll1\" : [1,2,3]}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
     ll = (struct lyd_node_term*)tree;
@@ -357,6 +362,7 @@ test_anydata(void **state)
     data = "{\"a:any\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
 
@@ -463,6 +469,7 @@ test_list(void **state)
     data = "{\"a:cp\":{\"@\":{\"a:hint\":1}}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);
     assert_non_null(tree->meta);
@@ -507,6 +514,7 @@ test_container(void **state)
     data = "{\"a:cp\":{}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    tree = tree->next;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);
     cont = (struct lyd_node_inner*)tree;

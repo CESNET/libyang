@@ -179,6 +179,7 @@ test_int(void **state)
 
     /* valid data */
     TEST_DATA("<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("int8", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -219,6 +220,7 @@ test_uint(void **state)
 
     /* valid data */
     TEST_DATA("<uint8 xmlns=\"urn:tests:types\">\n 150 \t\n  </uint8>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("uint8", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -259,6 +261,7 @@ test_dec64(void **state)
 
     /* valid data */
     TEST_DATA("<dec64 xmlns=\"urn:tests:types\">\n +8 \t\n  </dec64>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -273,6 +276,7 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<dec64 xmlns=\"urn:tests:types\">8.00</dec64>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -281,6 +285,7 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<dec64-norestr xmlns=\"urn:tests:types\">-9.223372036854775808</dec64-norestr>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -289,6 +294,7 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<dec64-norestr xmlns=\"urn:tests:types\">9.223372036854775807</dec64-norestr>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -323,6 +329,7 @@ test_string(void **state)
 
     /* valid data */
     TEST_DATA("<str xmlns=\"urn:tests:types\">teststring</str>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("str", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -331,6 +338,7 @@ test_string(void **state)
 
     /* multibyte characters (€ encodes as 3-byte UTF8 character, length restriction is 2-5) */
     TEST_DATA("<str-utf8 xmlns=\"urn:tests:types\">€€</str-utf8>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("str-utf8", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -364,6 +372,7 @@ test_bits(void **state)
 
     /* valid data */
     TEST_DATA("<bits xmlns=\"urn:tests:types\">\n two    \t\nzero\n  </bits>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -382,6 +391,7 @@ test_bits(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<bits xmlns=\"urn:tests:types\">zero  two</bits>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -420,6 +430,7 @@ test_enums(void **state)
 
     /* valid data */
     TEST_DATA("<enums xmlns=\"urn:tests:types\">white</enums>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("enums", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -460,6 +471,7 @@ test_binary(void **state)
 
     /* valid data (hello) */
     TEST_DATA("<binary xmlns=\"urn:tests:types\">\n   aGVs\nbG8=  \t\n  </binary><binary-norestr xmlns=\"urn:tests:types\">TQ==</binary-norestr>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -478,18 +490,21 @@ test_binary(void **state)
 
     /* no data */
     TEST_DATA("<binary-norestr xmlns=\"urn:tests:types\">\n    \t\n  </binary-norestr>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("</binary-norestr>", leaf->value.canonical);
     lyd_free_all(tree);
     TEST_DATA("<binary-norestr xmlns=\"urn:tests:types\"></binary-norestr>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("", leaf->value.canonical);
     lyd_free_all(tree);
     TEST_DATA("<binary-norestr xmlns=\"urn:tests:types\"/>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -530,6 +545,7 @@ test_boolean(void **state)
 
     /* valid data */
     TEST_DATA("<bool xmlns=\"urn:tests:types\">true</bool>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bool", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -538,6 +554,7 @@ test_boolean(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<bool xmlns=\"urn:tests:types\">false</bool>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bool", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -546,6 +563,7 @@ test_boolean(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<tbool xmlns=\"urn:tests:types\">false</tbool>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("tbool", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -574,6 +592,7 @@ test_empty(void **state)
     /* valid data */
 
     TEST_DATA("<empty xmlns=\"urn:tests:types\"></empty>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("empty", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -581,6 +600,7 @@ test_empty(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<empty xmlns=\"urn:tests:types\"/>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("empty", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -588,6 +608,7 @@ test_empty(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<tempty xmlns=\"urn:tests:types\"/>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("tempty", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -629,6 +650,7 @@ test_identityref(void **state)
 
     /* valid data */
     TEST_DATA("<ident xmlns=\"urn:tests:types\">gigabit-ethernet</ident>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -644,6 +666,7 @@ test_identityref(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</ident>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -714,7 +737,7 @@ test_instanceid(void **state)
 
     TEST_DATA("<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id></list>"
               "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[xdf:id='b']/xdf:id</xdf:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -723,7 +746,7 @@ test_instanceid(void **state)
 
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">1</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">2</leaflisttarget>"
               "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:leaflisttarget[.='1']</xdf:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -734,7 +757,7 @@ test_instanceid(void **state)
            "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='b']</id><value>y</value></list_inst>"
            "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list_inst[a:id=\"/a:leaflisttarget[.='b']\"]/a:value</a:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -760,7 +783,7 @@ test_instanceid(void **state)
 
     TEST_DATA("<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
               "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[xdf:id='b']/xdf:value</xdf:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -771,7 +794,7 @@ test_instanceid(void **state)
               "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='b']</id><value>y</value></list_inst>"
               "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
               "<a:inst xmlns:a=\"urn:tests:types\">/a:list_inst[a:id=\"/a:leaflisttarget[.='a']\"]/a:value</a:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -781,7 +804,7 @@ test_instanceid(void **state)
     TEST_DATA("<list_ident xmlns=\"urn:tests:types\"><id xmlns:dfs=\"urn:tests:defs\">dfs:ethernet</id><value>x</value></list_ident>"
               "<list_ident xmlns=\"urn:tests:types\"><id xmlns:dfs=\"urn:tests:defs\">dfs:fast-ethernet</id><value>y</value></list_ident>"
               "<a:inst xmlns:a=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">/a:list_ident[a:id='d:fast-ethernet']/a:value</a:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -792,7 +815,7 @@ test_instanceid(void **state)
     TEST_DATA("<list2 xmlns=\"urn:tests:types\"><id>types:xxx</id><value>x</value></list2>"
               "<list2 xmlns=\"urn:tests:types\"><id>a:xxx</id><value>y</value></list2>"
               "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a:xxx'][a:value='y']/a:value</a:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -803,7 +826,7 @@ test_instanceid(void **state)
     TEST_DATA("<list xmlns=\"urn:tests:types\"><id>types:xxx</id><value>x</value></list>"
               "<list xmlns=\"urn:tests:types\"><id>a:xxx</id><value>y</value></list>"
               "<a:inst xmlns:a=\"urn:tests:types\">/a:list[a:id='a:xxx']/a:value</a:inst>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
@@ -815,7 +838,7 @@ test_instanceid(void **state)
               "<list2 xmlns=\"urn:tests:types\"><id>c</id><value>b</value></list2>"
               "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>b</value></list2>"
               "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='b']/a:id</a:inst>", LY_SUCCESS, "");
-    leaf = (const struct lyd_node_term*)tree->prev->prev;
+    leaf = (const struct lyd_node_term*)tree->prev;
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("inst", leaf->schema->name);
     assert_non_null(leaf->value.canonical);
@@ -918,17 +941,17 @@ test_instanceid(void **state)
 
     /* key-predicate */
     data = "/types:list2[id='a'][value='b']/id";
-    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev, data, strlen(data),
                                                    tree, NULL));
     logbuf_assert("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - required instance not found. /types:inst");
     /* leaf-list-predicate */
     data = "/types:leaflisttarget[.='c']";
-    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev, data, strlen(data),
                                                    tree, NULL));
     logbuf_assert("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - required instance not found. /types:inst");
     /* position predicate */
     data = "/types:list_keyless[4]";
-    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev, data, strlen(data),
                                                    tree, NULL));
     logbuf_assert("Invalid instance-identifier \"/types:list_keyless[4]\" value - required instance not found. /types:inst");
 
@@ -968,7 +991,7 @@ test_leafref(void **state)
 
     /* valid data */
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget><lref xmlns=\"urn:tests:types\">y</lref>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("lref", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -979,7 +1002,7 @@ test_leafref(void **state)
     TEST_DATA("<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
               "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
               "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">y</lref2>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("lref2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1072,7 +1095,7 @@ test_union(void **state)
 
     /* valid data */
     TEST_DATA("<int8 xmlns=\"urn:tests:types\">12</int8><un1 xmlns=\"urn:tests:types\">12</un1>", LY_SUCCESS, "");
-    tree = tree->next;
+    tree = tree->next->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1097,7 +1120,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<int8 xmlns=\"urn:tests:types\">12</int8><un1 xmlns=\"urn:tests:types\">2</un1>", LY_SUCCESS, "");
-    tree = tree->next;
+    tree = tree->next->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1110,6 +1133,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<un1 xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</un1>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1134,6 +1158,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     TEST_DATA("<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:superfast-ethernet</un1>", LY_SUCCESS, "");
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1147,7 +1172,7 @@ test_union(void **state)
 
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
             "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[.='y']</un1>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1161,7 +1186,7 @@ test_union(void **state)
 
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
               "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[3]</un1>", LY_SUCCESS, "");
-    tree = tree->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
