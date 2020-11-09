@@ -341,7 +341,8 @@ void lyxp_set_free_content(struct lyxp_set *set);
  * @return LY_SUCCESS on success.
  * @return LY_EMEM on memory allocation failure.
  */
-LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, uint32_t *index_p);
+LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+        uint32_t *index_p);
 
 /**
  * @brief Check for duplicates in a schema node set.
@@ -380,7 +381,8 @@ void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
  * @return LY_EMEM in case of memory allocation failure.
  * @return LY_EVALID in case of invalid XPath expression in @p expr_str.
  */
-LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len, ly_bool reparse, struct lyxp_expr **expr_p);
+LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len, ly_bool reparse,
+        struct lyxp_expr **expr_p);
 
 /**
  * @brief Duplicate parsed XPath expression.
