@@ -3344,7 +3344,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(exp, NULL, LY_PREF_JSON, NULL, ctx_node, ctx_node, &xp_set, 0);
+    ret = lyxp_eval(exp, NULL, LY_PREF_JSON, NULL, ctx_node, ctx_node, &xp_set, LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */

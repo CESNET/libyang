@@ -308,11 +308,12 @@ LY_ERR lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mo
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
 
 /* used only internally, maps with @ref findxpathoptions */
-#define LYXP_SCHEMA 0x01                      /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE 0x02                      /**< No special tree access modifiers. */
-#define LYXP_SCNODE_SCHEMA LYS_FIND_XP_SCHEMA /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE_OUTPUT LYS_FIND_XP_OUTPUT /**< Search RPC/action output nodes instead of input ones. */
-#define LYXP_SCNODE_ALL 0x0E                  /**< mask for all the LYXP_* values */
+#define LYXP_IGNORE_WHEN    0x01    /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */
+#define LYXP_SCHEMA         0x02    /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE         0x04    /**< No special tree access modifiers. */
+#define LYXP_SCNODE_SCHEMA  LYS_FIND_XP_SCHEMA  /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE_OUTPUT  LYS_FIND_XP_OUTPUT  /**< Search RPC/action output nodes instead of input ones. */
+#define LYXP_SCNODE_ALL     0x1C    /**< mask for all the LYXP_* values */
 
 /**
  * @brief Cast XPath set to another type.
