@@ -1323,7 +1323,7 @@ test_action(void **state)
         "<lf1>not true</lf1>"
     "</cont>"
     "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
     /* input must false */
@@ -1336,7 +1336,7 @@ test_action(void **state)
         "<lf1>true</lf1>"
     "</cont>"
     "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
     /* success */
@@ -1388,7 +1388,7 @@ test_reply(void **state)
         "<lf1>not true</lf1>"
     "</cont>"
     "<lf4 xmlns=\"urn:tests:j\">target</lf4>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
     /* input must false */
@@ -1401,7 +1401,7 @@ test_reply(void **state)
         "<lf1>true2</lf1>"
     "</cont>"
     "<lf4 xmlns=\"urn:tests:j\">target</lf4>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
     /* success */

@@ -240,18 +240,10 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
     struct lyd_meta *meta2, *prev_meta = NULL;
 
     if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
-        if (options & LYD_PARSE_TRUSTED) {
-            /* just set it to true */
-            node->flags |= LYD_WHEN_TRUE;
-        } else if (!(options & LYD_PARSE_ONLY)) {
+        if (!(options & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
             LY_CHECK_RET(ly_set_add(when_check, node, 1, NULL), );
         }
-    }
-
-    if (options & LYD_PARSE_TRUSTED) {
-        /* node is valid */
-        node->flags &= ~LYD_NEW;
     }
 
     LY_LIST_FOR(*meta, meta2) {
