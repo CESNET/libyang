@@ -1550,10 +1550,7 @@ lyd_diff_reverse_default(struct lyd_node *node, const struct lys_module *mod)
     uint32_t flag1, flag2;
 
     meta = lyd_find_meta(node->meta, mod, "orig-default");
-    if (!meta) {
-        /* default flag did not change */
-        return LY_SUCCESS;
-    }
+    LY_CHECK_ERR_RET(!meta, LOGINT(mod->ctx), LY_EINT);
 
     /* orig-default */
     if (meta->value.boolean) {
@@ -1564,6 +1561,11 @@ lyd_diff_reverse_default(struct lyd_node *node, const struct lys_module *mod)
 
     /* current default */
     flag2 = node->flags & LYD_DEFAULT;
+
+    if (flag1 == flag2) {
+        /* no default state change so nothing to reverse */
+        return LY_SUCCESS;
+    }
 
     /* switch defaults */
     node->flags &= ~LYD_DEFAULT;
