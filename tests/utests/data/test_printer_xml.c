@@ -186,7 +186,7 @@ test_leaf(void **state)
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     result = "<int8 xmlns=\"urn:tests:types\">15</int8>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree->next, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, result);
     lyd_free_all(tree);
@@ -209,7 +209,7 @@ test_anydata(void **state)
 
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns:x=\"url:x\" xmlns=\"example.com\"><x:x/></somexml></any>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree->next, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     /* canonized */
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns=\"example.com\"><x xmlns=\"url:x\"/></somexml></any>";
@@ -219,7 +219,7 @@ test_anydata(void **state)
 
     data = "<any xmlns=\"urn:tests:types\"/>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree->next, LYD_XML, LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     assert_string_equal(printed, data);
     ly_out_reset(out);
@@ -236,6 +236,7 @@ test_anydata(void **state)
         "</any>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     /* cont should be normally parsed */
+    tree = tree->next;
     assert_string_equal(tree->schema->name, "any");
     assert_int_equal(((struct lyd_node_any *)tree)->value_type, LYD_ANYDATA_DATATREE);
     assert_string_equal(((struct lyd_node_any *)tree)->value.tree->schema->name, "cont");
