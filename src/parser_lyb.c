@@ -971,9 +971,10 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
     return LY_SUCCESS;
 }
 
-/*
+/**
  * @param[in] ctx libyang context for logging
- * @param[in] parent Parent node where to connect the parsed data, required for reply where the reply data are connected with the request operation
+ * @param[in] parent Parent node where to connect the parsed data, required for reply where the reply data are connected
+ * with the request operation
  * @param[in] in Input structure.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
@@ -983,8 +984,9 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
  * @param[out] lydctx_p Data parser context to finish validation.
  */
 static LY_ERR
-lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
-        uint32_t data_type, struct lyd_node **tree_p, struct lyd_node **op_p, struct lyd_ctx **lydctx_p)
+lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct ly_in *in, uint32_t parse_options,
+        uint32_t validate_options, uint32_t data_type, struct lyd_node **tree_p, struct lyd_node **op_p,
+        struct lyd_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx *lybctx;
@@ -1120,7 +1122,8 @@ lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     /* duplicate request OP with parents */
     LY_CHECK_RET(lyd_dup_single(req_op, NULL, LYD_DUP_WITH_PARENTS, &rep_op));
 
-    ret = lyd_parse_lyb_(ctx, (struct lyd_node_inner **)&rep_op, in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LYD_INTOPT_REPLY, tree_p, op_p, NULL);
+    ret = lyd_parse_lyb_(ctx, (struct lyd_node_inner **)&rep_op, in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0,
+            LYD_INTOPT_REPLY, tree_p, op_p, NULL);
 
     lyd_free_all(rep_op);
 
