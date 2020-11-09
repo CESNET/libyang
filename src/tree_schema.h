@@ -1928,8 +1928,8 @@ struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const st
  * Options to modify behavior of ::lys_find_xpath() and ::lys_find_xpath_atoms() searching for schema nodes in schema tree.
  * @{
  */
-#define LYS_FIND_XP_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYS_FIND_XP_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
+#define LYS_FIND_XP_SCHEMA 0x08 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYS_FIND_XP_OUTPUT 0x10 /**< Search RPC/action output nodes instead of input ones. */
 /** @} findxpathoptions */
 
 /**
