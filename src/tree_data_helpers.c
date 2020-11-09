@@ -154,6 +154,26 @@ lyd_owner_module(const struct lyd_node *node)
     return schema->module;
 }
 
+API const struct lysc_when *
+lyd_has_when(const struct lyd_node *node)
+{
+    const struct lysc_node *schema;
+
+    if (!node || !node->schema) {
+        return NULL;
+    }
+
+    schema = node->schema;
+    do {
+        if (schema->when) {
+            return *schema->when;
+        }
+        schema = schema->parent;
+    } while (schema && (schema->nodetype & (LYS_CASE | LYS_CHOICE)));
+
+    return NULL;
+}
+
 const struct lys_module *
 lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t *i,
         struct lyd_node **first)
