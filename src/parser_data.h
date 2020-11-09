@@ -142,16 +142,13 @@ struct ly_in;
                                                  are kept unevaluated, union types may not be fully resolved, if-feature
                                                  statements are not checked, and default values are not added (only the ones
                                                  parsed are present). */
-#define LYD_PARSE_TRUSTED   0x020000        /**< Data are considered trusted so they will be parsed as validated. If the parsed
-                                                 data are not valid, using this flag may lead to some unexpected behavior!
-                                                 This flag can be used only with #LYD_PARSE_ONLY. */
-#define LYD_PARSE_STRICT    0x040000        /**< Instead of silently ignoring data without schema definition raise an error.
+#define LYD_PARSE_STRICT    0x020000        /**< Instead of silently ignoring data without schema definition raise an error.
                                                  Do not combine with #LYD_PARSE_OPAQ (except for ::LYD_LYB). */
-#define LYD_PARSE_OPAQ      0x080000        /**< Instead of silently ignoring data without definition, parse them into
+#define LYD_PARSE_OPAQ      0x040000        /**< Instead of silently ignoring data without definition, parse them into
                                                  an opaq node. Do not combine with #LYD_PARSE_STRICT (except for ::LYD_LYB). */
-#define LYD_PARSE_NO_STATE  0x100000        /**< Forbid state data in the parsed data. */
+#define LYD_PARSE_NO_STATE  0x080000        /**< Forbid state data in the parsed data. */
 
-#define LYD_PARSE_LYB_MOD_UPDATE  0x200000  /**< Only for LYB format, allow parsing data printed using a specific module
+#define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Only for LYB format, allow parsing data printed using a specific module
                                                  revision to be loaded even with a module with the same name but newer
                                                  revision. */
 
