@@ -569,7 +569,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     rc = asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
                 }
                 goto error;
-            } else if (value < range->parts[u].max_64) {
+            } else if (value <= range->parts[u].max_64) {
                 /* inside the range */
                 return LY_SUCCESS;
             } else if (u == LY_ARRAY_COUNT(range->parts) - 1) {
