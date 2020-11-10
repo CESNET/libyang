@@ -794,7 +794,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
 
         /* find the next node */
         node2 = lys_find_child(ctx_node, mod, name, name_len, 0, getnext_opts);
-        if (!node2 || ((node2->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node2 != op))) {
+        if (!node2 || (op && (node2->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node2 != op))) {
             LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
             ret = LY_EVALID;
             goto cleanup;
