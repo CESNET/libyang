@@ -1426,7 +1426,7 @@ lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     LY_CHECK_GOTO(ret, cleanup);
 
     status = lyjson_ctx_status(lydctx->jsonctx, 0);
-    LY_CHECK_GOTO(status == LYJSON_END || status == LYJSON_OBJECT_EMPTY, cleanup);
+    LY_CHECK_GOTO(status == LYJSON_END || status == LYJSON_OBJECT_EMPTY || status == LYJSON_ARRAY || status == LYJSON_ARRAY_EMPTY, cleanup);
     assert((status == LYJSON_OBJECT));
 
     /* read subtree(s) */
