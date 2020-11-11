@@ -42,9 +42,14 @@ std::vector<S_Type_Bit> Value::bit() {
     if ((LY_TYPE_BITS != value_type) || (LY_TYPE_BITS != type->base)) {
         throw "wrong type";
     }
-    std::vector<S_Type_Bit> vec(type->info.bits.count);
 
-    for (unsigned int i = 0; i < type->info.bits.count; ++i) {
+    auto bitDefinitions = type;
+    while (bitDefinitions->info.bits.count == 0) {
+        bitDefinitions = &type->der->type;
+    }
+    std::vector<S_Type_Bit> vec(bitDefinitions->info.bits.count);
+
+    for (unsigned int i = 0; i < bitDefinitions->info.bits.count; ++i) {
         if (value.bit[i]) {
             vec[i] = std::make_shared<Type_Bit>(value.bit[i], deleter);
         }
