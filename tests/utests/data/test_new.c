@@ -204,15 +204,15 @@ test_opaq(void **state)
     assert_null(root->schema);
     opq = (struct lyd_node_opaq *)root;
     assert_string_equal(opq->name, "node1");
-    assert_string_equal(opq->value, "");
     assert_string_equal(opq->prefix.module_name, "my-module");
+    assert_string_equal(opq->value, "");
 
     assert_int_equal(lyd_new_opaq(root, NULL, "node2", "value", "my-module2", &node), LY_SUCCESS);
     assert_null(node->schema);
     opq = (struct lyd_node_opaq *)node;
     assert_string_equal(opq->name, "node2");
-    assert_string_equal(opq->value, "value");
     assert_string_equal(opq->prefix.module_name, "my-module2");
+    assert_string_equal(opq->value, "value");
     assert_ptr_equal(opq->parent, root);
 
     lyd_free_tree(root);

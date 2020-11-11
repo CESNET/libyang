@@ -493,13 +493,12 @@ struct ly_prefix {
 struct lyd_attr {
     struct lyd_node_opaq *parent;   /**< data node where the attribute is placed */
     struct lyd_attr *next;          /**< pointer to the next attribute */
-    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
     const char *name;               /**< attribute name */
-    const char *value;              /**< attribute value */
-
-    LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
-    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
+    const char *value;              /**< attribute value */
+    LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
+    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
+    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 
 };
 
@@ -719,13 +718,15 @@ struct lyd_node_opaq {
     void *priv;                     /**< private user data, not used by libyang */
 #endif
 
-    struct lyd_node *child;         /**< pointer to the child node (NULL if there are none) */
+    struct lyd_node *child;         /**< pointer to the child node (compatible with ::lyd_node_inner) */
+
     const char *name;               /**< node name */
-    LY_PREFIX_FORMAT format;        /**< format of the node and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
     struct ly_prefix prefix;        /**< name prefix */
-    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
     const char *value;              /**< original value */
+    LY_PREFIX_FORMAT format;        /**< format of the node and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
+    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
+
     const struct ly_ctx *ctx;       /**< libyang context */
 };
 

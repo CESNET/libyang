@@ -183,8 +183,8 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
                 &xmlctx->ns, &format, &val_prefix_data), cleanup);
 
         /* attr2 is always changed to the created attribute */
-        ret = lyd_create_attr(NULL, &attr2, xmlctx->ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic,
-                format, 0, val_prefix_data, prefix, prefix_len, ns ? ns->uri : NULL, ns ? strlen(ns->uri) : 0);
+        ret = lyd_create_attr(NULL, &attr2, xmlctx->ctx, name, name_len, prefix, prefix_len, ns ? ns->uri : NULL,
+                ns ? strlen(ns->uri) : 0, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (!*attr) {
@@ -476,8 +476,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         }
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format,
-                LYD_HINT_DATA, val_prefix_data, prefix, prefix_len, ns->uri, strlen(ns->uri), &node);
+        ret = lyd_create_opaq(ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
+                xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, LYD_HINT_DATA, &node);
         LY_CHECK_GOTO(ret, error);
 
         /* parser next */
@@ -705,8 +705,8 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, str
     LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, name, strlen(name), "", 0, NULL, LY_PREF_XML, LYD_NODEHINT_ENVELOPE, NULL, prefix,
-            prefix_len, uri, strlen(uri), envp);
+    ret = lyd_create_opaq(xmlctx->ctx, name, strlen(name), prefix, prefix_len, uri, strlen(uri), "", 0, NULL,
+            LY_PREF_XML, NULL, LYD_NODEHINT_ENVELOPE, envp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* assign atributes */
@@ -876,8 +876,8 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
     }*/
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, xmlctx->value, xmlctx->value_len, NULL, LY_PREF_XML,
-            LYD_NODEHINT_ENVELOPE, NULL, prefix, prefix_len, ns->uri, strlen(ns->uri), &et);
+    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
+            xmlctx->value_len, NULL, LY_PREF_XML, NULL, LYD_NODEHINT_ENVELOPE, &et);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* assign atributes */
