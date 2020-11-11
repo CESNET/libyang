@@ -996,7 +996,40 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
             NULL, LYD_HINT_DATA, clear_dflt, NULL);
 }
 
+API LY_ERR
+lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt, const struct lyd_attr *attr,
+        struct lyd_meta **meta)
+{
+    const struct lys_module *mod;
+
+    LY_CHECK_ARG_RET(NULL, ctx, attr, parent || meta, LY_EINVAL);
+
+    if (parent && !parent->schema) {
+        LOGERR(ctx, LY_EINVAL, "Cannot add metadata to an opaque node \"%s\".", ((struct lyd_node_opaq *)parent)->name);
+        return LY_EINVAL;
     }
+
+    switch (attr->format) {
+    case LY_PREF_XML:
+        mod = ly_ctx_get_module_implemented_ns(ctx, attr->prefix.module_ns);
+        if (!mod) {
+            LOGERR(ctx, LY_EINVAL, "Module with namespace \"%s\" not found.", attr->prefix.module_ns);
+            return LY_ENOTFOUND;
+        }
+        break;
+    case LY_PREF_JSON:
+        mod = ly_ctx_get_module_implemented(ctx, attr->prefix.module_name);
+        if (!mod) {
+            LOGERR(ctx, LY_EINVAL, "Module \"%s\" not found.", attr->prefix.module_name);
+            return LY_ENOTFOUND;
+        }
+        break;
+    default:
+        LOGINT_RET(ctx);
+    }
+
+    return lyd_create_meta(parent, meta, mod, attr->name, strlen(attr->name), attr->value, strlen(attr->value),
+            NULL, attr->format, attr->val_prefix_data, attr->hints, clear_dflt, NULL);
 }
 
 API LY_ERR
