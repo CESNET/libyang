@@ -499,7 +499,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         ret = lyb_read_start_subtree(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* prefix, may be emtpy */
+        /* prefix, may be empty */
         ret = lyb_read_string(&prefix, 1, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         if (!prefix[0]) {
