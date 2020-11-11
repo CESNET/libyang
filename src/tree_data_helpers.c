@@ -11,6 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _XOPEN_SOURCE 500 /* strdup */
+#define _POSIX_C_SOURCE 200809L /*strndup */
 
 #include <assert.h>
 #include <stdint.h>
@@ -18,6 +20,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"
@@ -399,4 +402,194 @@ lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **
     }
 
     return 0;
+}
+
+void
+ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
+{
+    struct ly_set *ns_list;
+    struct lysc_prefix *prefixes;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (!prefix_data) {
+        return;
+    }
+
+    switch (format) {
+    case LY_PREF_XML:
+        ns_list = prefix_data;
+        for (i = 0; i < ns_list->count; ++i) {
+            free(((struct lyxml_ns *)ns_list->objs[i])->prefix);
+            free(((struct lyxml_ns *)ns_list->objs[i])->uri);
+        }
+        ly_set_free(ns_list, free);
+        break;
+    case LY_PREF_SCHEMA_RESOLVED:
+        prefixes = prefix_data;
+        LY_ARRAY_FOR(prefixes, u) {
+            free(prefixes[u].prefix);
+        }
+        LY_ARRAY_FREE(prefixes);
+        break;
+    case LY_PREF_SCHEMA:
+    case LY_PREF_JSON:
+        break;
+    }
+}
+
+LY_ERR
+ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *prefix_data,
+        void **prefix_data_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxml_ns *ns;
+    struct lysc_prefix *prefixes = NULL, *orig_pref;
+    struct ly_set *ns_list, *orig_ns;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE u;
+
+    assert(!*prefix_data_p);
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+        *prefix_data_p = (void *)prefix_data;
+        break;
+    case LY_PREF_SCHEMA_RESOLVED:
+        /* copy all the value prefixes */
+        orig_pref = (struct lysc_prefix *)prefix_data;
+        LY_ARRAY_CREATE_GOTO(ctx, prefixes, LY_ARRAY_COUNT(orig_pref), ret, cleanup);
+        *prefix_data_p = prefixes;
+
+        LY_ARRAY_FOR(orig_pref, u) {
+            if (orig_pref[u].prefix) {
+                prefixes[u].prefix = strdup(orig_pref[u].prefix);
+                LY_CHECK_ERR_GOTO(!prefixes[u].prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+            }
+            prefixes[u].mod = orig_pref[u].mod;
+            LY_ARRAY_INCREMENT(prefixes);
+        }
+        break;
+    case LY_PREF_XML:
+        /* copy all the namespaces */
+        LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
+        *prefix_data_p = ns_list;
+
+        orig_ns = (struct ly_set *)prefix_data;
+        for (i = 0; i < orig_ns->count; ++i) {
+            ns = calloc(1, sizeof *ns);
+            LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+            LY_CHECK_GOTO(ret = ly_set_add(ns_list, ns, 1, NULL), cleanup);
+
+            if (((struct lyxml_ns *)orig_ns->objs[i])->prefix) {
+                ns->prefix = strdup(((struct lyxml_ns *)orig_ns->objs[i])->prefix);
+                LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+            }
+            ns->uri = strdup(((struct lyxml_ns *)orig_ns->objs[i])->uri);
+            LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        }
+        break;
+    case LY_PREF_JSON:
+        assert(!prefix_data);
+        *prefix_data_p = NULL;
+        break;
+    }
+
+cleanup:
+    if (ret) {
+        ly_free_prefix_data(format, *prefix_data_p);
+        *prefix_data_p = NULL;
+    }
+    return ret;
+}
+
+LY_ERR
+ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+        void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *start, *stop;
+    const struct lys_module *mod;
+    struct lyxml_ns *ns;
+    struct ly_set *ns_list;
+    struct lysc_prefix *prefixes = NULL, *val_pref;
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+    case LY_PREF_XML:
+        /* copy all referenced modules... */
+        if (format == LY_PREF_XML) {
+            /* ...as prefix - namespace pairs */
+            LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
+            *format_p = LY_PREF_XML;
+            *prefix_data_p = ns_list;
+        } else {
+            /* ...as prefix - module pairs */
+            assert(format == LY_PREF_SCHEMA);
+            LY_ARRAY_CREATE_GOTO(ctx, prefixes, 0, ret, cleanup);
+            *format_p = LY_PREF_SCHEMA_RESOLVED;
+            *prefix_data_p = prefixes;
+        }
+
+        /* add all used prefixes */
+        for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
+            size_t bytes;
+            uint32_t c;
+
+            ly_getutf8(&stop, &c, &bytes);
+            if (is_xmlqnamestartchar(c)) {
+                for (ly_getutf8(&stop, &c, &bytes);
+                        is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
+                        ly_getutf8(&stop, &c, &bytes)) {}
+                stop = stop - bytes;
+                if (*stop == ':') {
+                    /* we have a possible prefix */
+                    size_t len = stop - start;
+
+                    /* do we already have the prefix? */
+                    mod = ly_type_store_resolve_prefix(ctx, start, len, *format_p, *prefix_data_p);
+                    if (!mod) {
+                        mod = ly_type_store_resolve_prefix(ctx, start, len, format, prefix_data);
+                        if (mod) {
+                            if (*format_p == LY_PREF_XML) {
+                                /* store a new prefix - namespace pair */
+                                ns = calloc(1, sizeof *ns);
+                                LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                                LY_CHECK_GOTO(ret = ly_set_add(ns_list, ns, 1, NULL), cleanup);
+
+                                ns->prefix = strndup(start, len);
+                                LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                                ns->uri = strdup(mod->ns);
+                                LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                            } else {
+                                assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
+                                /* store a new prefix - module pair */
+                                LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
+                                *prefix_data_p = prefixes;
+
+                                val_pref->prefix = strndup(start, len);
+                                LY_CHECK_ERR_GOTO(!val_pref->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                                val_pref->mod = mod;
+                            }
+                        } /* else it is not even defined */
+                    } /* else the prefix is already present */
+                }
+                stop = stop + bytes;
+            }
+        }
+        break;
+    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_PREF_JSON:
+        /* simply copy all the prefix data */
+        *format_p = format;
+        LY_CHECK_GOTO(ret = ly_dup_prefix_data(ctx, format, prefix_data, prefix_data_p), cleanup);
+        break;
+    }
+
+cleanup:
+    if (ret) {
+        ly_free_prefix_data(*format_p, *prefix_data_p);
+        *prefix_data_p = NULL;
+    }
+    return ret;
 }

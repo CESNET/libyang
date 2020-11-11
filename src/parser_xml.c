@@ -142,7 +142,8 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lyxml_ns *ns;
-    struct ly_prefix *val_prefs;
+    void *val_prefix_data;
+    LY_PREFIX_FORMAT format;
     struct lyd_attr *attr2;
     const char *name, *prefix;
     size_t name_len, prefix_len;
@@ -178,12 +179,12 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
         assert(xmlctx->status == LYXML_ATTR_CONTENT);
 
         /* get value prefixes */
-        LY_CHECK_GOTO(ret = lyxml_get_prefixes(xmlctx, xmlctx->value, xmlctx->value_len, &val_prefs), cleanup);
+        LY_CHECK_GOTO(ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_PREF_XML,
+                &xmlctx->ns, &format, &val_prefix_data), cleanup);
 
         /* attr2 is always changed to the created attribute */
-        ret = lyd_create_attr(NULL, &attr2, xmlctx->ctx, name, name_len, xmlctx->value, xmlctx->value_len,
-                &xmlctx->dynamic, LYD_XML, 0, val_prefs, prefix, prefix_len,
-                ns ? ns->uri : NULL, ns ? strlen(ns->uri) : 0);
+        ret = lyd_create_attr(NULL, &attr2, xmlctx->ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic,
+                format, 0, val_prefix_data, prefix, prefix_len, ns ? ns->uri : NULL, ns ? strlen(ns->uri) : 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (!*attr) {
@@ -382,7 +383,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     struct lys_module *mod;
     uint32_t prev_opts;
     struct lyd_node *node = NULL, *anchor;
-    struct ly_prefix *val_prefs;
+    void *val_prefix_data;
+    LY_PREFIX_FORMAT format;
     uint32_t getnext_opts;
 
     xmlctx = lydctx->xmlctx;
@@ -464,16 +466,18 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         if (xmlctx->ws_only) {
             /* ignore WS-only value */
             xmlctx->value_len = 0;
-            val_prefs = NULL;
+            val_prefix_data = NULL;
+            format = LY_PREF_XML;
         } else {
             /* get value prefixes */
-            ret = lyxml_get_prefixes(xmlctx, xmlctx->value, xmlctx->value_len, &val_prefs);
+            ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_PREF_XML,
+                    &xmlctx->ns, &format, &val_prefix_data);
             LY_CHECK_GOTO(ret, error);
         }
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, LYD_XML,
-                LYD_HINT_DATA, val_prefs, prefix, prefix_len, ns->uri, strlen(ns->uri), &node);
+        ret = lyd_create_opaq(ctx, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format,
+                LYD_HINT_DATA, val_prefix_data, prefix, prefix_len, ns->uri, strlen(ns->uri), &node);
         LY_CHECK_GOTO(ret, error);
 
         /* parser next */
@@ -701,7 +705,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, str
     LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, name, strlen(name), "", 0, NULL, LYD_XML, LYD_NODEHINT_ENVELOPE, NULL, prefix,
+    ret = lyd_create_opaq(xmlctx->ctx, name, strlen(name), "", 0, NULL, LY_PREF_XML, LYD_NODEHINT_ENVELOPE, NULL, prefix,
             prefix_len, uri, strlen(uri), envp);
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -872,7 +876,7 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
     }*/
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, xmlctx->value, xmlctx->value_len, NULL, LYD_XML,
+    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, xmlctx->value, xmlctx->value_len, NULL, LY_PREF_XML,
             LYD_NODEHINT_ENVELOPE, NULL, prefix, prefix_len, ns->uri, strlen(ns->uri), &et);
     LY_CHECK_GOTO(ret, cleanup);
 

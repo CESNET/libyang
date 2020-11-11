@@ -35,6 +35,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "validation.h"
+#include "xml.h"
 
 void
 lylyb_ctx_free(struct lylyb_ctx *ctx)
@@ -410,42 +411,64 @@ cleanup:
 }
 
 /**
- * @brief Parse opaque prefixes structure.
+ * @brief Parse format-specific prefix data.
  *
  * @param[in] lybctx LYB context.
- * @param[out] prefs Parsed prefixes.
+ * @param[in] format Prefix data format.
+ * @param[out] prefix_data Parsed prefix data.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_opaq_prefixes(struct lylyb_ctx *lybctx, struct ly_prefix **prefs)
+lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_PREFIX_FORMAT format, void **prefix_data)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t count, i;
-    char *str;
+    struct ly_set *set = NULL;
+    struct lyxml_ns *ns = NULL;
 
-    /* read count */
-    lyb_read(&count, 1, lybctx);
-    if (!count) {
-        return LY_SUCCESS;
-    }
+    switch (format) {
+    case LY_PREF_XML:
+        /* read count */
+        lyb_read(&count, 1, lybctx);
+        if (!count) {
+            return LY_SUCCESS;
+        }
 
-    LY_ARRAY_CREATE_RET(lybctx->ctx, *prefs, count, LY_EMEM);
-    for (i = 0; i < count; ++i) {
-        LY_ARRAY_INCREMENT(*prefs);
+        /* read all NS elements */
+        LY_CHECK_GOTO(ret = ly_set_new(&set), cleanup);
 
-        /* prefix */
-        LY_CHECK_GOTO(ret = lyb_read_string(&str, 1, lybctx), cleanup);
-        LY_CHECK_GOTO(ret = lydict_insert_zc(lybctx->ctx, str, &(*prefs)[i].id), cleanup);
+        for (i = 0; i < count; ++i) {
+            ns = calloc(1, sizeof *ns);
 
-        /* module reference is the same as JSON name */
-        LY_CHECK_GOTO(ret = lyb_read_string(&str, 1, lybctx), cleanup);
-        LY_CHECK_GOTO(ret = lydict_insert_zc(lybctx->ctx, str, &(*prefs)[i].module_name), cleanup);
+            /* prefix */
+            LY_CHECK_GOTO(ret = lyb_read_string(&ns->prefix, 1, lybctx), cleanup);
+
+            /* namespace */
+            LY_CHECK_GOTO(ret = lyb_read_string(&ns->uri, 1, lybctx), cleanup);
+
+            LY_CHECK_GOTO(ret = ly_set_add(set, ns, 1, NULL), cleanup);
+            ns = NULL;
+        }
+
+        *prefix_data = set;
+        break;
+    case LY_PREF_JSON:
+        /* nothing stored */
+        break;
+    default:
+        LOGINT(lybctx->ctx);
+        ret = LY_EINT;
+        break;
     }
 
 cleanup:
     if (ret) {
-        ly_free_val_prefs(lybctx->ctx, *prefs);
-        *prefs = NULL;
+        ly_free_prefix_data(format, set);
+        if (ns) {
+            free(ns->prefix);
+            free(ns->uri);
+            free(ns);
+        }
     }
     return ret;
 }
@@ -465,8 +488,8 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
     struct lyd_attr *attr2;
     char *prefix = NULL, *module_name = NULL, *name = NULL, *value = NULL;
     ly_bool dynamic = 0;
-    LYD_FORMAT format = 0;
-    struct ly_prefix *val_prefs = NULL;
+    LY_PREFIX_FORMAT format = 0;
+    void *val_prefix_data = NULL;
 
     /* read count */
     lyb_read(&count, 1, lybctx);
@@ -496,21 +519,21 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         ret = lyb_read_string(&name, 1, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* value prefixes */
-        ret = lyb_parse_opaq_prefixes(lybctx, &val_prefs);
-        LY_CHECK_GOTO(ret, cleanup);
-
         /* format */
         lyb_read((uint8_t *)&format, 1, lybctx);
 
+        /* value prefixes */
+        ret = lyb_parse_prefix_data(lybctx, format, &val_prefix_data);
+        LY_CHECK_GOTO(ret, cleanup);
+
         /* value */
         ret = lyb_read_string(&value, 0, lybctx);
-        LY_CHECK_ERR_GOTO(ret, ly_free_val_prefs(lybctx->ctx, val_prefs), cleanup);
+        LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
         dynamic = 1;
 
         /* attr2 is always changed to the created attribute */
         ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), value, ly_strlen(value), &dynamic, format,
-                0, val_prefs, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
+                0, val_prefix_data, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
         LY_CHECK_GOTO(ret, cleanup);
 
         free(prefix);
@@ -682,11 +705,11 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
     const struct lysc_node *snode = NULL;
     struct lyd_meta *meta = NULL, *m;
     struct lyd_attr *attr = NULL, *a;
-    struct ly_prefix *val_prefs = NULL;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
     ly_bool dynamic = 0;
-    LYD_FORMAT format = 0;
+    LY_PREFIX_FORMAT format = 0;
+    void *val_prefix_data = NULL;
     uint32_t prev_lo, flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
@@ -738,21 +761,21 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         ret = lyb_read_string(&name, 1, lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* parse value prefixes */
-        ret = lyb_parse_opaq_prefixes(lybctx->lybctx, &val_prefs);
-        LY_CHECK_GOTO(ret, cleanup);
-
         /* parse format */
         lyb_read((uint8_t *)&format, 1, lybctx->lybctx);
 
+        /* parse value prefixes */
+        ret = lyb_parse_prefix_data(lybctx->lybctx, format, &val_prefix_data);
+        LY_CHECK_GOTO(ret, cleanup);
+
         /* parse value */
         ret = lyb_read_string(&value, 0, lybctx->lybctx);
-        LY_CHECK_ERR_GOTO(ret, ly_free_val_prefs(ctx, val_prefs), cleanup);
+        LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
         dynamic = 1;
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), &dynamic, format, 0, val_prefs, prefix,
-                ly_strlen(prefix), module_key, ly_strlen(module_key), &node);
+        ret = lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), &dynamic, format, 0, val_prefix_data,
+                prefix, ly_strlen(prefix), module_key, ly_strlen(module_key), &node);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process children */

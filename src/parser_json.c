@@ -280,69 +280,6 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
 }
 
 /**
- * @brief Go through the @p value and find all possible prefixes and store them in @p val_prefs_p [sized array](@ref sizedarrays).
- *
- * @param[in] ctx libyang context
- * @param[in] value Pointer to the beginning of the value to check.
- * @param[in] value_len Length of the string to examine in @p value.
- * @param[out] val_prefs_p Pointer to the resulting [sized array](@ref sizedarrays) of found prefixes. NULL in case there are no prefixes.
- * @return LY_EMEM on memory allocation failure.
- * @return LY_SUCCESS on success, empty @p val_prefs_p (NULL) is valid result if there are no possible prefixes
- */
-static LY_ERR
-lydjson_get_value_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_len, struct ly_prefix **val_prefs_p)
-{
-    LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
-    uint32_t c;
-    const char *start, *stop;
-    struct ly_prefix *prefixes = NULL;
-    size_t len;
-
-    for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
-        size_t bytes;
-        ly_getutf8(&stop, &c, &bytes);
-        if (is_yangidentstartchar(c)) {
-            for (ly_getutf8(&stop, &c, &bytes);
-                    is_yangidentchar(c) && (size_t)(stop - value) < value_len;
-                    ly_getutf8(&stop, &c, &bytes)) {}
-            stop = stop - bytes;
-            if (*stop == ':') {
-                /* we have a possible prefix */
-                struct ly_prefix *p = NULL;
-
-                len = stop - start;
-
-                /* check whether we do not already have this prefix stored */
-                LY_ARRAY_FOR(prefixes, u) {
-                    if (!ly_strncmp(prefixes[u].id, start, len)) {
-                        p = &prefixes[u];
-                        break;
-                    }
-                }
-                if (!p) {
-                    LY_ARRAY_NEW_GOTO(ctx, prefixes, p, ret, error);
-                    LY_CHECK_GOTO(ret = lydict_insert(ctx, start, len, &p->id), error);
-                    LY_CHECK_GOTO(ret = lydict_insert(ctx, start, len, &p->module_name), error);
-                } /* else the prefix already present */
-            }
-            stop = stop + bytes;
-        }
-    }
-
-    *val_prefs_p = prefixes;
-    return LY_SUCCESS;
-
-error:
-    LY_ARRAY_FOR(prefixes, u) {
-        lydict_remove(ctx, prefixes[u].id);
-        lydict_remove(ctx, prefixes[u].module_name);
-    }
-    LY_ARRAY_FREE(prefixes);
-    return ret;
-}
-
-/**
  * @brief Check that the input data are parseable as the @p list.
  *
  * Checks for all the list's keys. Function does not revert the context state.
@@ -604,15 +541,8 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 LY_LIST_FOR(meta_container->child, meta_iter) {
                     /* convert opaq node to a attribute of the opaq node */
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
-                    struct ly_prefix *val_prefs = NULL;
-                    ly_bool dynamic = 0;
-
-                    /* get value prefixes */
-                    LY_CHECK_GOTO(ret = lydjson_get_value_prefixes(lydctx->jsonctx->ctx, lydctx->jsonctx->value,
-                            lydctx->jsonctx->value_len, &val_prefs), cleanup);
-
                     ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, meta->name, strlen(meta->name), meta->value,
-                            ly_strlen(meta->value), &dynamic, LYD_JSON, meta->hints, val_prefs, meta->prefix.id,
+                            ly_strlen(meta->value), NULL, LY_PREF_JSON, meta->hints, NULL, meta->prefix.id,
                             ly_strlen(meta->prefix.id), meta->prefix.module_name, ly_strlen(meta->prefix.module_name));
                     LY_CHECK_GOTO(ret, cleanup);
                 }
@@ -838,18 +768,15 @@ next_entry:
             lyd_parse_set_data_flags(node, &lydctx->node_when, &meta, lydctx->parse_options);
         } else {
             /* create attribute */
-            struct ly_prefix *val_prefs = NULL;
             const char *module_name;
             size_t module_name_len;
 
             lydjson_get_node_prefix(node, prefix, prefix_len, &module_name, &module_name_len);
 
-            /* get value prefixes */
-            LY_CHECK_GOTO(ret = lydjson_get_value_prefixes(lydctx->jsonctx->ctx, lydctx->jsonctx->value, lydctx->jsonctx->value_len, &val_prefs), cleanup);
-
             /* attr2 is always changed to the created attribute */
-            ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, name, name_len, lydctx->jsonctx->value, lydctx->jsonctx->value_len,
-                    &lydctx->jsonctx->dynamic, LYD_JSON, 0, val_prefs, prefix, prefix_len, module_name, module_name_len);
+            ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, name, name_len, lydctx->jsonctx->value,
+                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, 0, NULL, prefix, prefix_len,
+                    module_name, module_name_len);
             LY_CHECK_GOTO(ret, cleanup);
         }
         /* next member */
@@ -937,7 +864,6 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     LY_ERR ret = LY_SUCCESS;
     const char *value = NULL, *module_name;
     size_t value_len = 0, module_name_len = 0;
-    struct ly_prefix *val_prefs = NULL;
     ly_bool dynamic = 0;
     uint32_t type_hint = 0;
 
@@ -949,17 +875,12 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
         lydctx->jsonctx->dynamic = 0;
 
         LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
-
-        if (value) {
-            /* get value prefixes */
-            LY_CHECK_RET(lydjson_get_value_prefixes(lydctx->jsonctx->ctx, value, value_len, &val_prefs));
-        }
     }
 
     /* create node */
     lydjson_get_node_prefix((struct lyd_node *)parent, prefix, prefix_len, &module_name, &module_name_len);
-    ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, value, value_len, &dynamic, LYD_JSON, type_hint,
-            val_prefs, prefix, prefix_len, module_name, module_name_len, node_p);
+    ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, value, value_len, &dynamic, LY_PREF_JSON, type_hint,
+            NULL, prefix, prefix_len, module_name, module_name_len, node_p);
     if (dynamic) {
         free((char *)value);
     }
@@ -1512,11 +1433,11 @@ lydjson_notif_envelope(struct lyjson_ctx *jsonctx, struct lyd_node **envp_p)
     /* now the notificationContent is expected, which will be parsed by the caller */
 
     /* create notification envelope */
-    ret = lyd_create_opaq(jsonctx->ctx, "notification", 12, "", 0, NULL, LYD_JSON, LYD_NODEHINT_ENVELOPE, NULL, NULL,
+    ret = lyd_create_opaq(jsonctx->ctx, "notification", 12, "", 0, NULL, LY_PREF_JSON, LYD_NODEHINT_ENVELOPE, NULL, NULL,
             0, "ietf-restconf", 13, envp_p);
     LY_CHECK_GOTO(ret, cleanup);
     /* create notification envelope */
-    ret = lyd_create_opaq(jsonctx->ctx, "eventTime", 9, value, value_len, &dynamic, LYD_JSON, LYD_VALHINT_STRING, NULL,
+    ret = lyd_create_opaq(jsonctx->ctx, "eventTime", 9, value, value_len, &dynamic, LY_PREF_JSON, LYD_VALHINT_STRING, NULL,
             NULL, 0, "ietf-restconf", 13, &et);
     LY_CHECK_GOTO(ret, cleanup);
     /* insert eventTime into notification */
@@ -1656,7 +1577,7 @@ lydjson_object_envelope(struct lyjson_ctx *jsonctx, struct lyd_node *parent, con
     LY_CHECK_GOTO(status != LYJSON_OBJECT, cleanup);
 
     /* create the object envelope */
-    ret = lyd_create_opaq(jsonctx->ctx, object_id, strlen(object_id), "", 0, NULL, LYD_JSON, LYD_NODEHINT_ENVELOPE,
+    ret = lyd_create_opaq(jsonctx->ctx, object_id, strlen(object_id), "", 0, NULL, LY_PREF_JSON, LYD_NODEHINT_ENVELOPE,
             NULL, NULL, 0, module_key, ly_strlen(module_key), envp_p);
     LY_CHECK_GOTO(ret, cleanup);
 

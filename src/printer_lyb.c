@@ -35,6 +35,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "xml.h"
 
 /**
  * @brief Hash table equal callback for checking hash equality only.
@@ -545,36 +546,54 @@ lyb_print_header(struct ly_out *out)
 }
 
 /**
- * @brief Print opaque prefixes.
+ * @brief Print prefix data.
  *
  * @param[in] out Out structure.
- * @param[in] prefs Prefixes to print.
+ * @param[in] format Value prefix format.
+ * @param[in] prefix_data Prefix data to print.
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_opaq_prefixes(struct ly_out *out, const struct ly_prefix *prefs, struct lylyb_ctx *lybctx)
+lyb_print_prefix_data(struct ly_out *out, LY_PREFIX_FORMAT format, const void *prefix_data, struct lylyb_ctx *lybctx)
 {
-    uint8_t count;
-    LY_ARRAY_COUNT_TYPE u;
+    const struct ly_set *set;
+    const struct lyxml_ns *ns;
+    uint32_t i;
 
-    if (prefs && (LY_ARRAY_COUNT(prefs) > UINT8_MAX)) {
-        LOGERR(lybctx->ctx, LY_EINT, "Maximum supported number of prefixes is %u.", UINT8_MAX);
-        return LY_EINT;
-    }
+    switch (format) {
+    case LY_PREF_XML:
+        set = prefix_data;
+        if (!set) {
+            /* no prefix data */
+            i = 0;
+            LY_CHECK_RET(lyb_write(out, (uint8_t *)&i, 1, lybctx));
+            break;
+        }
+        if (set->count > UINT8_MAX) {
+            LOGERR(lybctx->ctx, LY_EINT, "Maximum supported number of prefixes is %u.", UINT8_MAX);
+            return LY_EINT;
+        }
 
-    count = prefs ? LY_ARRAY_COUNT(prefs) : 0;
+        /* write number of prefixes on 1 byte */
+        LY_CHECK_RET(lyb_write(out, (uint8_t *)&set->count, 1, lybctx));
 
-    /* write number of prefixes on 1 byte */
-    LY_CHECK_RET(lyb_write(out, &count, 1, lybctx));
+        /* write all the prefixes */
+        for (i = 0; i < set->count; ++i) {
+            ns = set->objs[i];
 
-    /* write all the prefixes */
-    LY_ARRAY_FOR(prefs, u) {
-        /* prefix */
-        LY_CHECK_RET(lyb_write_string(prefs[u].id, 0, 1, out, lybctx));
+            /* prefix */
+            LY_CHECK_RET(lyb_write_string(ns->prefix, 0, 1, out, lybctx));
 
-        /* namespace */
-        LY_CHECK_RET(lyb_write_string(prefs[u].module_name, 0, 1, out, lybctx));
+            /* namespace */
+            LY_CHECK_RET(lyb_write_string(ns->uri, 0, 1, out, lybctx));
+        }
+        break;
+    case LY_PREF_JSON:
+        /* nothing to print */
+        break;
+    default:
+        LOGINT_RET(lybctx->ctx);
     }
 
     return LY_SUCCESS;
@@ -600,11 +619,11 @@ lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx 
     /* name */
     LY_CHECK_RET(lyb_write_string(opaq->name, 0, 1, out, lybctx));
 
-    /* value prefixes */
-    LY_CHECK_RET(lyb_print_opaq_prefixes(out, opaq->val_prefs, lybctx));
-
     /* format */
     LY_CHECK_RET(lyb_write_number(opaq->format, 1, out, lybctx));
+
+    /* value prefixes */
+    LY_CHECK_RET(lyb_print_prefix_data(out, opaq->format, opaq->val_prefix_data, lybctx));
 
     /* value */
     LY_CHECK_RET(lyb_write_string(opaq->value, 0, 0, out, lybctx));
@@ -788,11 +807,11 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
         /* name */
         LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx));
 
-        /* value prefixes */
-        LY_CHECK_RET(lyb_print_opaq_prefixes(out, iter->val_prefs, lybctx));
-
         /* format */
         LY_CHECK_RET(lyb_write_number(iter->format, 1, out, lybctx));
+
+        /* value prefixes */
+        LY_CHECK_RET(lyb_print_prefix_data(out, iter->format, iter->val_prefix_data, lybctx));
 
         /* value */
         LY_CHECK_RET(lyb_write_string(iter->value, 0, 0, out, lybctx));

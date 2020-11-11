@@ -492,12 +492,12 @@ struct ly_prefix {
  */
 struct lyd_attr {
     struct lyd_node_opaq *parent;   /**< data node where the attribute is placed */
-    struct lyd_attr *next;
-    struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
-    const char *name;
-    const char *value;
+    struct lyd_attr *next;          /**< pointer to the next attribute */
+    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
+    const char *name;               /**< attribute name */
+    const char *value;              /**< attribute value */
 
-    LYD_FORMAT format;              /**< format of the prefixes, only LYD_XML and LYD_JSON values can appear at this place */
+    LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
 
@@ -720,10 +720,10 @@ struct lyd_node_opaq {
 #endif
 
     struct lyd_node *child;         /**< pointer to the child node (NULL if there are none) */
-    const char *name;
-    LYD_FORMAT format;
+    const char *name;               /**< node name */
+    LY_PREFIX_FORMAT format;        /**< format of the node and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
     struct ly_prefix prefix;        /**< name prefix */
-    struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
+    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
     const char *value;              /**< original value */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     const struct ly_ctx *ctx;       /**< libyang context */

@@ -164,28 +164,18 @@ LY_ERR lyxml_dump_text(struct ly_out *out, const char *text, ly_bool attribute);
 void lyxml_ctx_free(struct lyxml_ctx *xmlctx);
 
 /**
- * @brief Find all possible prefixes in a value.
- *
- * @param[in] xmlctx XML context to use.
- * @param[in] value Value to check.
- * @param[in] value_len Value length.
- * @param[out] val_prefs Array of found prefixes.
- * @return LY_ERR value.
- */
-LY_ERR lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len, struct ly_prefix **val_prefs);
-
-/**
  * @brief Compare values and their prefix mappings.
  *
+ * @param[in] ctx libyang context.
  * @param[in] value1 First value.
- * @param[in] prefs1 First value prefixes.
+ * @param[in] val_prefix_data1 First value prefix data.
  * @param[in] value2 Second value.
- * @param[in] prefs2 Second value prefixes.
+ * @param[in] val_prefix_data2 Second value prefix data.
  * @return LY_SUCCESS if values are equal.
  * @return LY_ENOT if values are not equal.
  * @return LY_ERR on error.
  */
-LY_ERR lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2,
-        const struct ly_prefix *prefs2);
+LY_ERR lyxml_value_compare(const struct ly_ctx *ctx,  const char *value1, void *val_prefix_data1, const char *value2,
+        void *val_prefix_data2);
 
 #endif /* LY_XML_H_ */
