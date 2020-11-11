@@ -227,8 +227,9 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  *
  * @param[in] parent Parent of the metadata.
  * @param[in] meta Metadata (list) to be added into the @p parent.
+ * @param[in] clear_dflt Whether to clear dflt flag starting from @p parent, recursively all NP containers.
  */
-void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
+void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool clear_dflt);
 
 /**
  * @brief Create and insert a metadata (last) into a parent.
@@ -244,6 +245,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
+ * @param[in] clear_dflt Whether to clear dflt flag starting from @p parent, recursively all NP containers.
  * @param[out] incomplete Whether the value needs to be resolved.
  * @return LY_SUCCESS on success.
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
@@ -251,7 +253,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format,
-        void *prefix_data, uint32_t hints, ly_bool *incomplete);
+        void *prefix_data, uint32_t hints, ly_bool clear_dlft, ly_bool *incomplete);
 
 /**
  * @brief Insert an attribute (last) into a parent

@@ -961,23 +961,24 @@ lyd_new_path_update(struct lyd_node *node, const void *value, LYD_ANYDATA_VALUET
 }
 
 API LY_ERR
-lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-        struct lyd_meta **meta)
+lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta)
 {
-    struct lyd_meta *ret = NULL;
-    const struct ly_ctx *ctx;
     const char *prefix, *tmp;
     size_t pref_len, name_len;
 
-    LY_CHECK_ARG_RET(NULL, parent, name, module || strchr(name, ':'), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, name, module || strchr(name, ':'), parent || meta, LY_EINVAL);
 
-    ctx = LYD_CTX(parent);
+    if (parent && !parent->schema) {
+        LOGERR(ctx, LY_EINVAL, "Cannot add metadata to an opaque node \"%s\".", ((struct lyd_node_opaq *)parent)->name);
+        return LY_EINVAL;
+    }
 
     /* parse the name */
     tmp = name;
     if (ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len) || tmp[0]) {
         LOGERR(ctx, LY_EINVAL, "Metadata name \"%s\" is not valid.", name);
-        return LY_EVALID;
+        return LY_EINVAL;
     }
 
     /* find the module */
@@ -991,13 +992,11 @@ lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const cha
         val_str = "";
     }
 
-    LY_CHECK_RET(lyd_create_meta(parent, &ret, module, name, name_len, val_str, strlen(val_str), NULL, LY_PREF_JSON,
-            NULL, LYD_HINT_DATA, NULL));
+    return lyd_create_meta(parent, meta, module, name, name_len, val_str, strlen(val_str), NULL, LY_PREF_JSON,
+            NULL, LYD_HINT_DATA, clear_dflt, NULL);
+}
 
-    if (meta) {
-        *meta = ret;
     }
-    return LY_SUCCESS;
 }
 
 API LY_ERR
@@ -1157,7 +1156,7 @@ lyd_change_meta(struct lyd_meta *meta, const char *val_str)
 
     /* parse the new value into a new meta structure */
     LY_CHECK_GOTO(ret = lyd_create_meta(NULL, &m2, meta->annotation->module, meta->name, strlen(meta->name), val_str,
-            strlen(val_str), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, NULL), cleanup);
+            strlen(val_str), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, 0, NULL), cleanup);
 
     /* compare original and new value */
     if (lyd_compare_meta(meta, m2)) {
@@ -2086,7 +2085,7 @@ lyd_unlink_tree(struct lyd_node *node)
 }
 
 void
-lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
+lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool clear_dflt)
 {
     struct lyd_meta *last, *iter;
 
@@ -2109,7 +2108,7 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
     }
 
     /* remove default flags from NP containers */
-    while (parent && (parent->schema->nodetype == LYS_CONTAINER) && (parent->flags & LYD_DEFAULT)) {
+    while (clear_dflt && parent && (parent->schema->nodetype == LYS_CONTAINER) && (parent->flags & LYD_DEFAULT)) {
         parent->flags &= ~LYD_DEFAULT;
         parent = (struct lyd_node *)parent->parent;
     }
@@ -2118,7 +2117,7 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
 LY_ERR
 lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format,
-        void *prefix_data, uint32_t hints, ly_bool *incomplete)
+        void *prefix_data, uint32_t hints, ly_bool clear_dflt, ly_bool *incomplete)
 {
     LY_ERR rc;
     struct lysc_ext_instance *ant = NULL;
@@ -2154,7 +2153,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
 
     /* insert as the last attribute */
     if (parent) {
-        lyd_insert_meta(parent, mt);
+        lyd_insert_meta(parent, mt, clear_dflt);
     } else if (*meta) {
         for (last = *meta; last->next; last = last->next) {}
         last->next = mt;

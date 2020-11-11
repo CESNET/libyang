@@ -906,19 +906,21 @@ LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, con
         LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
 
 /**
- * @brief Create new metadata for a data node.
+ * @brief Create new metadata.
  *
- * @param[in] parent Parent node for the metadata being created.
+ * @param[in] ctx libyang context,
+ * @param[in] parent Optional parent node for the metadata being created. Must be set if @p meta is NULL.
  * @param[in] module Module of the metadata being created. If NULL, @p name must include module name as the prefix.
  * @param[in] name Annotation name of the new metadata. It can include the annotation module as the prefix.
  *            If the prefix is specified it is always used but if not specified, @p module must be set.
  * @param[in] val_str String form of the value of the metadata. In case of an instance-identifier or identityref
  * value, the JSON format is expected (module names instead of prefixes).
- * @param[out] meta Optional created metadata.
+ * @param[in] clear_dflt Whether to clear the default flag starting from @p parent, recursively all NP containers.
+ * @param[out] meta Optional created metadata. Must be set if @p parent is NULL.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-        struct lyd_meta **meta);
+LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta);
 
 /**
  * @brief Create a new opaque node in the data tree.
