@@ -596,7 +596,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
 
     /* add metadata/attributes */
     if (snode) {
-        lyd_insert_meta(node, meta);
+        lyd_insert_meta(node, meta, 0);
     } else {
         lyd_insert_attr(node, attr);
     }

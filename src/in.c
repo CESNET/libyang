@@ -439,7 +439,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
     LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
-            hints, &incomplete));
+            hints, 0, &incomplete));
 
     if (incomplete && !(lydctx->parse_options & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->unres_meta_type, *meta, 1, NULL));
