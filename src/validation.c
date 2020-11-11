@@ -47,7 +47,7 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
     LY_CHECK_RET(lyd_diff_add(node, op, NULL, NULL, NULL, NULL, NULL, &new_diff));
 
     /* merge into existing diff */
-    ret = lyd_diff_merge_all(diff, new_diff);
+    ret = lyd_diff_merge_all(diff, new_diff, 0);
 
     lyd_free_tree(new_diff);
     return ret;

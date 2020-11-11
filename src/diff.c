@@ -1189,21 +1189,21 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
  * @param[in] diff_match Node from the diff.
  * @param[in] cur_op Current operation of the diff node.
  * @param[in] src_diff Current source diff node.
+ * @param[in] options Diff merge options.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, const struct lyd_node *src_diff)
+lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, const struct lyd_node *src_diff, uint16_t options)
 {
     struct lyd_node *child;
-    const struct lysc_node_leaf *sleaf;
+    const struct lysc_node_leaf *sleaf = NULL;
     uint32_t trg_flags;
 
     switch (cur_op) {
     case LYD_DIFF_OP_DELETE:
-        if (diff_match->schema->nodetype == LYS_LEAF) {
+        if ((options & LYD_DIFF_MERGE_DEFAULTS) && (diff_match->schema->nodetype == LYS_LEAF)) {
+            /* we are dealing with a leaf and are handling default values specially (as explicit nodes) */
             sleaf = (struct lysc_node_leaf *)diff_match->schema;
-        } else {
-            sleaf = NULL;
         }
 
         /* remember current flags */
@@ -1382,12 +1382,13 @@ lyd_diff_is_redundant(struct lyd_node *diff)
  * @param[in] diff_parent Current sysrepo diff parent.
  * @param[in] diff_cb Optional diff callback.
  * @param[in] cb_data User data for @p diff_cb.
+ * @param[in] options Diff merge options.
  * @param[in,out] diff Diff root node.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, lyd_diff_cb diff_cb, void *cb_data,
-        struct lyd_node **diff)
+        uint16_t options, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *child, *diff_node = NULL;
@@ -1409,7 +1410,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
             ret = lyd_diff_merge_replace(diff_node, cur_op, src_diff);
             break;
         case LYD_DIFF_OP_CREATE:
-            ret = lyd_diff_merge_create(diff_node, cur_op, src_diff);
+            ret = lyd_diff_merge_create(diff_node, cur_op, src_diff, options);
             break;
         case LYD_DIFF_OP_DELETE:
             ret = lyd_diff_merge_delete(diff_node, cur_op, src_diff);
@@ -1435,7 +1436,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
 
         /* merge src_diff recursively */
         LY_LIST_FOR(lyd_child_no_keys(src_diff), child) {
-            LY_CHECK_RET(lyd_diff_merge_r(child, diff_parent, diff_cb, cb_data, diff));
+            LY_CHECK_RET(lyd_diff_merge_r(child, diff_parent, diff_cb, cb_data, options, diff));
         }
     } else {
         /* add new diff node with all descendants */
@@ -1472,7 +1473,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
 
 API LY_ERR
 lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
-        lyd_diff_cb diff_cb, void *cb_data)
+        lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
     const struct lyd_node *src_root;
 
@@ -1483,7 +1484,7 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
         }
 
         /* apply relevant nodes from the diff datatree */
-        LY_CHECK_RET(lyd_diff_merge_r(src_root, NULL, diff_cb, cb_data, diff));
+        LY_CHECK_RET(lyd_diff_merge_r(src_root, NULL, diff_cb, cb_data, options, diff));
     }
 
     return LY_SUCCESS;
@@ -1491,19 +1492,19 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
 
 API LY_ERR
 lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
-        lyd_diff_cb diff_cb, void *cb_data)
+        lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
     if (!src_sibling) {
         return LY_SUCCESS;
     }
 
-    return lyd_diff_merge_r(src_sibling, diff_parent, diff_cb, cb_data, diff_first);
+    return lyd_diff_merge_r(src_sibling, diff_parent, diff_cb, cb_data, options, diff_first);
 }
 
 API LY_ERR
-lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff)
+lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint16_t options)
 {
-    return lyd_diff_merge_module(diff, src_diff, NULL, NULL, NULL);
+    return lyd_diff_merge_module(diff, src_diff, NULL, NULL, NULL, options);
 }
 
 static LY_ERR

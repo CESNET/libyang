@@ -1504,6 +1504,21 @@ LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff
 LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
 
 /**
+ * @ingroup datatree
+ * @defgroup diffmergeoptions Data diff merge options.
+ *
+ * Various options to change ::lyd_diff_merge_module(), ::lyd_diff_merge_tree(), and ::lyd_diff_merge_all() behavior.
+ *
+ * Default behavior:
+ * - any default nodes are expected to be a result of validation corrections and not explicitly modified.
+ * @{
+ */
+
+#define LYD_DIFF_MERGE_DEFAULTS   0x01 /**< Default nodes in the diffs are treated as possibly explicitly modified. */
+
+/** @} diffoptions */
+
+/**
  * @brief Merge 2 diffs into each other but restrict the operation to one module.
  *
  * The diffs must be possible to be merged, which is guaranteed only if the source diff was
@@ -1521,11 +1536,12 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
  * @param[in] mod Module, whose diff only to consider, NULL for all modules.
  * @param[in] diff_cb Optional diff callback that will be called for every changed node.
  * @param[in] cb_data Arbitrary callback data.
+ * @param[in] options Bitmask of options flags, see @ref diffmergeoptions.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
 LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
-        lyd_diff_cb diff_cb, void *cb_data);
+        lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
 
 /**
  * @brief Merge 2 diff trees into each other.
@@ -1535,21 +1551,23 @@ LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_
  * @param[in] src_sibling Source diff sibling to merge.
  * @param[in] diff_cb Optional diff callback that will be called for every changed node.
  * @param[in] cb_data Arbitrary callback data.
+ * @param[in] options Bitmask of options flags, see @ref diffmergeoptions.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
 LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
-        lyd_diff_cb diff_cb, void *cb_data);
+        lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
 
 /**
  * @brief Merge 2 diffs into each other.
  *
  * @param[in,out] diff Target diff to merge into.
  * @param[in] src_diff Source diff.
+ * @param[in] options Bitmask of options flags, see @ref diffmergeoptions.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff);
+LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint16_t options);
 
 /**
  * @brief Reverse a diff and make the opposite changes. Meaning change create to delete, delete to create,
