@@ -24,18 +24,6 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 
-void
-ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(val_prefs, u) {
-        FREE_STRING(ctx, val_prefs[u].id);
-        FREE_STRING(ctx, val_prefs[u].module_ns);
-    }
-    LY_ARRAY_FREE(val_prefs);
-}
-
 static void
 lyd_free_meta(struct lyd_meta *meta, ly_bool siblings)
 {
@@ -127,7 +115,7 @@ lyd_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
         attr = iter;
         iter = iter->next;
 
-        ly_free_val_prefs(ctx, attr->val_prefs);
+        ly_free_prefix_data(attr->format, attr->val_prefix_data);
         FREE_STRING(ctx, attr->name);
         FREE_STRING(ctx, attr->value);
         FREE_STRING(ctx, attr->prefix.id);
@@ -174,7 +162,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         FREE_STRING(LYD_CTX(opaq), opaq->name);
         FREE_STRING(LYD_CTX(opaq), opaq->prefix.id);
         FREE_STRING(LYD_CTX(opaq), opaq->prefix.module_ns);
-        ly_free_val_prefs(LYD_CTX(opaq), opaq->val_prefs);
+        ly_free_prefix_data(opaq->format, opaq->val_prefix_data);
         FREE_STRING(LYD_CTX(opaq), opaq->value);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */

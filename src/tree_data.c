@@ -668,7 +668,7 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
 
 LY_ERR
 lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
-        ly_bool *dynamic, LYD_FORMAT format, uint32_t hints, struct ly_prefix *val_prefs, const char *prefix, size_t pref_len,
+        ly_bool *dynamic, LY_PREFIX_FORMAT format, uint32_t hints, void *val_prefix_data, const char *prefix, size_t pref_len,
         const char *module_key, size_t module_key_len, struct lyd_node **node)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -681,10 +681,10 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
     }
 
     opaq = calloc(1, sizeof *opaq);
-    LY_CHECK_ERR_RET(!opaq, LOGMEM(ctx); ly_free_val_prefs(ctx, val_prefs), LY_EMEM);
+    LY_CHECK_ERR_RET(!opaq, LOGMEM(ctx); ly_free_prefix_data(format, val_prefix_data), LY_EMEM);
 
     opaq->prev = (struct lyd_node *)opaq;
-    opaq->val_prefs = val_prefs;
+    opaq->val_prefix_data = val_prefix_data;
     opaq->format = format;
     LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &opaq->name), finish);
 
@@ -1014,7 +1014,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
         value = "";
     }
 
-    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), NULL, LYD_JSON, 0, NULL, NULL, 0,
+    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), NULL, LY_PREF_JSON, 0, NULL, NULL, 0,
             module_name, strlen(module_name), &ret));
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
@@ -1051,7 +1051,7 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
         val_str = "";
     }
 
-    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, val_str, strlen(val_str), NULL, LYD_JSON, 0, NULL,
+    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, val_str, strlen(val_str), NULL, LY_PREF_JSON, 0, NULL,
             prefix, pref_len, module_name, module_name ? strlen(module_name) : 0));
 
     if (attr) {
@@ -1279,7 +1279,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             if (!(schema->flags & LYS_KEYLESS)) {
                 if ((options & LYD_NEW_PATH_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
                     /* creating opaque list without keys */
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LYD_JSON,
+                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LY_PREF_JSON,
                             LYD_NODEHINT_LIST, NULL, NULL, 0, schema->module->name, strlen(schema->module->name), &node),
                             cleanup);
                 } else {
@@ -1298,7 +1298,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         case LYS_LEAFLIST:
             if ((options & LYD_NEW_PATH_OPAQ) && (p[path_idx].pred_type == LY_PATH_PREDTYPE_NONE)) {
                 /* creating opaque leaf-list without value */
-                LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LYD_JSON,
+                LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LY_PREF_JSON,
                         LYD_NODEHINT_LEAFLIST, NULL, NULL, 0, schema->module->name, strlen(schema->module->name), &node),
                         cleanup);
             } else {
@@ -1321,9 +1321,8 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
                 LY_CHECK_GOTO(ret, cleanup);
             } else {
                 /* creating opaque leaf without value */
-                LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LYD_JSON,
-                        0, NULL, NULL, 0, schema->module->name,
-                        strlen(schema->module->name), &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), NULL, 0, NULL, LY_PREF_JSON,
+                        0, NULL, NULL, 0, schema->module->name, strlen(schema->module->name), &node), cleanup);
             }
             break;
         case LYS_ANYDATA:
@@ -2193,8 +2192,8 @@ lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr)
 
 LY_ERR
 lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name, size_t name_len,
-        const char *value, size_t value_len, ly_bool *dynamic, LYD_FORMAT format, uint32_t hints,
-        struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len)
+        const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, uint32_t hints,
+        void *val_prefix_data, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_attr *at, *last;
@@ -2207,10 +2206,10 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
     }
 
     at = calloc(1, sizeof *at);
-    LY_CHECK_ERR_RET(!at, LOGMEM(ctx); ly_free_val_prefs(ctx, val_prefs), LY_EMEM);
+    LY_CHECK_ERR_RET(!at, LOGMEM(ctx); ly_free_prefix_data(format, val_prefix_data), LY_EMEM);
     at->hints = hints;
     at->format = format;
-    at->val_prefs = val_prefs;
+    at->val_prefix_data = val_prefix_data;
 
     LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &at->name), finish);
     if (dynamic && *dynamic) {
@@ -2290,19 +2289,18 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, u
             return LY_ENOT;
         }
         switch (opaq1->format) {
-        case LYD_XML:
-            if (lyxml_value_compare(opaq1->value, opaq1->val_prefs, opaq2->value, opaq2->val_prefs)) {
+        case LY_PREF_XML:
+            if (lyxml_value_compare(LYD_CTX(node1), opaq1->value, opaq1->val_prefix_data, opaq2->value, opaq2->val_prefix_data)) {
                 return LY_ENOT;
             }
             break;
-        case LYD_JSON:
+        case LY_PREF_JSON:
             /* prefixes in JSON are unique, so it is not necessary to canonize the values */
             if (strcmp(opaq1->value, opaq2->value)) {
                 return LY_ENOT;
             }
             break;
-        case LYD_LYB:
-        case LYD_UNKNOWN:
+        default:
             /* not allowed */
             LOGINT(LYD_CTX(node1));
             return LY_EINT;
@@ -2483,7 +2481,6 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
     struct lyd_node *dup = NULL;
     struct lyd_meta *meta;
     struct lyd_node_any *any;
-    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
@@ -2547,13 +2544,9 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
             LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->prefix.id, 0, &opaq->prefix.id), error);
         }
         LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->prefix.module_ns, 0, &opaq->prefix.module_ns), error);
-        if (orig->val_prefs) {
-            LY_ARRAY_CREATE_GOTO(LYD_CTX(node), opaq->val_prefs, LY_ARRAY_COUNT(orig->val_prefs), ret, error);
-            LY_ARRAY_FOR(orig->val_prefs, u) {
-                LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->val_prefs[u].id, 0, &opaq->val_prefs[u].id), error);
-                LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->val_prefs[u].module_ns, 0, &opaq->val_prefs[u].module_ns), error);
-                LY_ARRAY_INCREMENT(opaq->val_prefs);
-            }
+        if (orig->val_prefix_data) {
+            ret = ly_dup_prefix_data(LYD_CTX(node), opaq->format, orig->val_prefix_data, &opaq->val_prefix_data);
+            LY_CHECK_GOTO(ret, error);
         }
         LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->value, 0, &opaq->value), error);
         opaq->ctx = orig->ctx;

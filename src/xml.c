@@ -1076,66 +1076,11 @@ lyxml_dump_text(struct ly_out *out, const char *text, ly_bool attribute)
 }
 
 LY_ERR
-lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len, struct ly_prefix **val_prefs)
+lyxml_value_compare(const struct ly_ctx *ctx, const char *value1, void *val_prefix_data1, const char *value2,
+        void *val_prefix_data2)
 {
-    LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
-    uint32_t c;
-    const struct lyxml_ns *ns;
-    const char *start, *stop;
-    struct ly_prefix *prefixes = NULL;
-    size_t len;
-
-    for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
-        size_t bytes;
-        ly_getutf8(&stop, &c, &bytes);
-        if (is_xmlqnamestartchar(c)) {
-            for (ly_getutf8(&stop, &c, &bytes);
-                    is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
-                    ly_getutf8(&stop, &c, &bytes)) {}
-            stop = stop - bytes;
-            if (*stop == ':') {
-                /* we have a possible prefix */
-                len = stop - start;
-                ns = lyxml_ns_get(&xmlctx->ns, start, len);
-                if (ns) {
-                    struct ly_prefix *p = NULL;
-
-                    /* check whether we do not already have this prefix stored */
-                    LY_ARRAY_FOR(prefixes, u) {
-                        if (!ly_strncmp(prefixes[u].id, start, len)) {
-                            p = &prefixes[u];
-                            break;
-                        }
-                    }
-                    if (!p) {
-                        LY_ARRAY_NEW_GOTO(xmlctx->ctx, prefixes, p, ret, error);
-                        LY_CHECK_GOTO(ret = lydict_insert(xmlctx->ctx, start, len, &p->id), error);
-                        LY_CHECK_GOTO(ret = lydict_insert(xmlctx->ctx, ns->uri, 0, &p->module_ns), error);
-                    } /* else the prefix already present */
-                }
-            }
-            stop = stop + bytes;
-        }
-    }
-
-    *val_prefs = prefixes;
-    return LY_SUCCESS;
-
-error:
-    LY_ARRAY_FOR(prefixes, u) {
-        lydict_remove(xmlctx->ctx, prefixes[u].id);
-        lydict_remove(xmlctx->ctx, prefixes[u].module_ns);
-    }
-    LY_ARRAY_FREE(prefixes);
-    return ret;
-}
-
-LY_ERR
-lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2, const struct ly_prefix *prefs2)
-{
-    const char *ptr1, *ptr2, *ns1, *ns2;
-    LY_ARRAY_COUNT_TYPE u1, u2;
+    const char *ptr1, *ptr2, *end1, *end2;
+    const struct lys_module *mod1, *mod2;
 
     if (!value1 && !value2) {
         return LY_SUCCESS;
@@ -1149,38 +1094,24 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
     while (ptr1[0] && ptr2[0]) {
         if (ptr1[0] != ptr2[0]) {
             /* it can be a start of prefix that maps to the same module */
-            size_t len;
-            ns1 = ns2 = NULL;
-            u1 = u2 = 0;
-            if (prefs1) {
+            mod1 = mod2 = NULL;
+            if (val_prefix_data1 && (end1 = strchr(ptr1, ':'))) {
                 /* find module of the first prefix, if any */
-                LY_ARRAY_FOR(prefs1, u1) {
-                    len = strlen(prefs1[u1].id);
-                    if (!strncmp(ptr1, prefs1[u1].id, len) && (ptr1[len] == ':')) {
-                        ns1 = prefs1[u1].module_ns;
-                        break;
-                    }
-                }
+                mod1 = ly_resolve_prefix(ctx, ptr1, end1 - ptr1, LY_PREF_XML, val_prefix_data1);
             }
-            if (prefs2) {
+            if (val_prefix_data2 && (end2 = strchr(ptr2, ':'))) {
                 /* find module of the second prefix, if any */
-                LY_ARRAY_FOR(prefs2, u2) {
-                    len = strlen(prefs2[u2].id);
-                    if (!strncmp(ptr2, prefs2[u2].id, len) && (ptr2[len] == ':')) {
-                        ns2 = prefs2[u2].module_ns;
-                        break;
-                    }
-                }
+                mod2 = ly_resolve_prefix(ctx, ptr2, end2 - ptr2, LY_PREF_XML, val_prefix_data2);
             }
 
-            if (!ns1 || !ns2 || (ns1 != ns2)) {
+            if (!mod1 || !mod2 || (mod1 != mod2)) {
                 /* not a prefix or maps to different namespaces */
                 break;
             }
 
             /* skip prefixes in both values (':' is skipped as iter) */
-            ptr1 += strlen(prefs1[u1].id);
-            ptr2 += strlen(prefs2[u2].id);
+            ptr1 = end1;
+            ptr2 = end2;
         }
 
         ++ptr1;

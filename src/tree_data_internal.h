@@ -173,7 +173,7 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value and @p ns.
  * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
- * @param[in] val_prefs Possible value prefixes, array is spent (even in case the function fails).
+ * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
  * @param[in] prefix Element prefix.
  * @param[in] pref_len Length of @p prefix, must be set correctly.
  * @param[in] module_key Mandatory key to reference module, can be namespace or name.
@@ -183,7 +183,7 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
-        ly_bool *dynamic, LYD_FORMAT format, uint32_t hints, struct ly_prefix *val_prefs, const char *prefix,
+        ly_bool *dynamic, LY_PREFIX_FORMAT format, uint32_t hints, void *val_prefix_data, const char *prefix,
         size_t pref_len, const char *module_key, size_t module_key_len, struct lyd_node **node);
 
 /**
@@ -276,7 +276,7 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value and @p ns.
  * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
- * @param[in] val_prefs Possible value prefixes, array is spent (even in case the function fails).
+ * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
  * @param[in] prefix Attribute prefix.
  * @param[in] prefix_len Attribute prefix length.
  * @param[in] module_key Mandatory key to reference module, can be namespace or name.
@@ -285,8 +285,8 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
-        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LYD_FORMAT format, uint32_t hints,
-        struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len);
+        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, uint32_t hints,
+        void *val_prefix_data, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len);
 
 /**
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.
@@ -407,14 +407,6 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
 void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, uint32_t options);
 
 /**
- * @brief Free value prefixes.
- *
- * @param[in] ctx libyang context.
- * @param[in] val_prefis Value prefixes to free, sized array (@ref sizedarrays).
- */
-void ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs);
-
-/**
  * @brief Append all list key predicates to path.
  *
  * @param[in] node Node with keys to print.
@@ -425,5 +417,39 @@ void ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs);
  * @return LY_ERR
  */
 LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static);
+
+/**
+ * @brief Free stored prefix data.
+ *
+ * @param[in] format Format of the prefixes.
+ * @param[in] prefix_data Prefix data to free.
+ */
+void ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data);
+
+/**
+ * @brief Duplicate prefix data.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Prefix data to duplicate.
+ * @param[out] prefix_data_p Duplicated prefix data.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *prefix_data, void **prefix_data_p);
+
+/**
+ * @brief Store used prefixes in a value.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] value Value string to be parsed.
+ * @param[in] value_len Length of the @p value string.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[out] format_p Resulting format of the prefixes.
+ * @param[out] prefix_data_p Resulting prefix data for the value in format @p format_p.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+        void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

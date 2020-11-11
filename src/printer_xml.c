@@ -67,7 +67,7 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
         if (!new_prefix) {
             /* find default namespace */
             if (!ctx->prefix.objs[i - 1]) {
-                if (ctx->ns.objs[i - 1] == ns) {
+                if (!strcmp(ctx->ns.objs[i - 1], ns)) {
                     /* matching default namespace */
                     return ctx->prefix.objs[i - 1];
                 }
@@ -76,7 +76,7 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
             }
         } else {
             /* find prefixed namespace */
-            if (ctx->ns.objs[i - 1] == ns) {
+            if (!strcmp(ctx->ns.objs[i - 1], ns)) {
                 if (!ctx->prefix.objs[i - 1]) {
                     /* default namespace is not interesting */
                     continue;
@@ -105,13 +105,13 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
 }
 
 static const char *
-xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_prefix *prefix, uint32_t prefix_opts)
+xml_print_ns_opaq(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, const struct ly_prefix *prefix, uint32_t prefix_opts)
 {
     switch (format) {
-    case LYD_XML:
+    case LY_PREF_XML:
         return xml_print_ns(ctx, prefix->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : prefix->id, prefix_opts);
         break;
-    case LYD_JSON:
+    case LY_PREF_JSON:
         if (prefix->module_name) {
             const struct lys_module *mod = ly_ctx_get_module_latest(ctx->ctx, prefix->module_name);
             if (mod) {
@@ -119,13 +119,33 @@ xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_pref
             }
         }
         break;
-    case LYD_LYB:
-    case LYD_UNKNOWN:
+    default:
         /* cannot be created */
         LOGINT(ctx->ctx);
     }
 
     return NULL;
+}
+
+static void
+xml_print_ns_prefix_data(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t prefix_opts)
+{
+    const struct ly_set *set;
+    const struct lyxml_ns *ns;
+    uint32_t i;
+
+    switch (format) {
+    case LY_PREF_XML:
+        set = prefix_data;
+        for (i = 0; i < set->count; ++i) {
+            ns = set->objs[i];
+            xml_print_ns(ctx, ns->uri, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : ns->prefix, prefix_opts);
+        }
+        break;
+    default:
+        /* cannot be created */
+        LOGINT(ctx->ctx);
+    }
 }
 
 /**
@@ -240,7 +260,6 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
     const struct lyd_attr *attr;
     const char *pref;
-    LY_ARRAY_COUNT_TYPE u;
 
     LY_LIST_FOR(node->attr, attr) {
         pref = NULL;
@@ -250,10 +269,8 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
         }
 
         /* print namespaces connected with the value's prefixes */
-        if (attr->val_prefs) {
-            LY_ARRAY_FOR(attr->val_prefs, u) {
-                xml_print_ns_opaq(ctx, attr->format, &attr->val_prefs[u], LYXML_PREFIX_REQUIRED);
-            }
+        if (attr->val_prefix_data) {
+            xml_print_ns_prefix_data(ctx, attr->format, attr->val_prefix_data, LYXML_PREFIX_REQUIRED);
         }
 
         /* print the attribute with its prefix and value */
@@ -437,16 +454,13 @@ xml_print_opaq(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
     LY_ERR ret;
     struct lyd_node *child;
-    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_RET(xml_print_opaq_open(ctx, node));
 
     if (node->value[0]) {
         /* print namespaces connected with the value's prefixes */
-        if (node->val_prefs) {
-            LY_ARRAY_FOR(node->val_prefs, u) {
-                xml_print_ns_opaq(ctx, node->format, &node->val_prefs[u], LYXML_PREFIX_REQUIRED);
-            }
+        if (node->val_prefix_data) {
+            xml_print_ns_prefix_data(ctx, node->format, node->val_prefix_data, LYXML_PREFIX_REQUIRED);
         }
 
         ly_print_(ctx->out, ">%s", node->value);
