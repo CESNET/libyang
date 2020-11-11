@@ -923,6 +923,21 @@ LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const str
         const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta);
 
 /**
+ * @brief Create new metadata from an opaque node attribute if possible.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] parent Optional parent node for the metadata being created. Must be set if @p meta is NULL.
+ * @param[in] clear_dflt Whether to clear the default flag starting from @p parent, recursively all NP containers.
+ * @param[in] attr Opaque node attribute to parse into metadata.
+ * @param[out] meta Optional created metadata. Must be set if @p parent is NULL.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT if the attribute could not be parsed into any metadata.
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt, const struct lyd_attr *attr,
+        struct lyd_meta **meta);
+
+/**
  * @brief Create a new opaque node in the data tree.
  *
  * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
