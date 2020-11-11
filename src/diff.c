@@ -299,9 +299,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
 
     /* orig-default */
-    if ((options & LYD_DIFF_DEFAULTS) && (schema->nodetype == LYS_LEAFLIST) &&
-            ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE)) &&
-            ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
+    if ((schema->nodetype == LYS_LEAFLIST) && ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE))) {
         if (first->flags & LYD_DEFAULT) {
             *orig_default = "true";
         } else {
@@ -460,9 +458,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
      */
 
     /* orig-default */
-    if ((options & LYD_DIFF_DEFAULTS) && (schema->nodetype & LYD_NODE_TERM) &&
-            ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE)) &&
-            ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
+    if ((schema->nodetype & LYD_NODE_TERM) && ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_NONE))) {
         if (first->flags & LYD_DEFAULT) {
             *orig_default = "true";
         } else {
@@ -1233,6 +1229,10 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         }
 
         if (diff_match->schema->nodetype & LYD_NODE_TERM) {
+            /* add orig-dflt metadata */
+            LY_CHECK_RET(lyd_new_meta(LYD_CTX(src_diff), diff_match, NULL, "yang:orig-default",
+                    trg_flags & LYD_DEFAULT ? "true" : "false", 0, NULL));
+
             /* update dflt flag itself */
             diff_match->flags &= ~LYD_DEFAULT;
             diff_match->flags |= src_diff->flags & LYD_DEFAULT;

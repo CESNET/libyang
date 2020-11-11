@@ -434,7 +434,7 @@ test_leaf(void **state)
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<foo yang:operation=\"replace\" yang:orig-value=\"42\">41</foo>"
+            "<foo yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"42\">41</foo>"
             "<b1_1 yang:operation=\"create\">42</b1_1>"
         "</df>"
         "<hidden xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">"
@@ -456,7 +456,7 @@ test_leaf(void **state)
     lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<foo yang:operation=\"replace\" yang:orig-value=\"41\">40</foo>"
+            "<foo yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"41\">40</foo>"
             "<b1_1 yang:operation=\"delete\">42</b1_1>"
         "</df>"
         "<hidden xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">"
@@ -478,10 +478,10 @@ test_leaf(void **state)
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<foo yang:operation=\"replace\" yang:orig-value=\"42\">40</foo>"
+            "<foo yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"42\">40</foo>"
         "</df>"
         "<hidden xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<foo yang:operation=\"replace\" yang:orig-value=\"42\">40</foo>"
+            "<foo yang:operation=\"replace\" yang:orig-value=\"42\" yang:orig-default=\"false\">40</foo>"
             "<baz yang:operation=\"delete\">42</baz>"
         "</hidden>"
     );
@@ -524,7 +524,7 @@ test_list(void **state)
             "</list>"
             "<list yang:operation=\"none\">"
                 "<name>b</name>"
-                "<value yang:operation=\"replace\" yang:orig-value=\"2\">-2</value>"
+                "<value yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\">-2</value>"
             "</list>"
             "<list yang:operation=\"create\">"
                 "<name>c</name>"
@@ -573,11 +573,11 @@ test_list(void **state)
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<list yang:operation=\"none\">"
                 "<name>a</name>"
-                "<value yang:operation=\"replace\" yang:orig-value=\"1\">2</value>"
+                "<value yang:operation=\"replace\" yang:orig-value=\"1\" yang:orig-default=\"false\">2</value>"
             "</list>"
             "<list yang:operation=\"none\">"
                 "<name>b</name>"
-                "<value yang:operation=\"replace\" yang:orig-value=\"2\">-2</value>"
+                "<value yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\">-2</value>"
             "</list>"
         "</df>"
     );
@@ -622,8 +622,8 @@ test_userord_llist(void **state)
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"2\" yang:value=\"4\">3</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\" yang:value=\"4\">3</llist>"
         "</df>"
     );
 
@@ -641,7 +641,7 @@ test_userord_llist(void **state)
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"\">1</llist>"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"2\" yang:value=\"\">5</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\" yang:value=\"\">5</llist>"
         "</df>"
     );
 
@@ -659,10 +659,10 @@ test_userord_llist(void **state)
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"2\" yang:value=\"4\">3</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\" yang:value=\"4\">3</llist>"
             "<llist yang:orig-value=\"\" yang:operation=\"delete\">1</llist>"
-            "<llist yang:orig-value=\"2\" yang:value=\"\" yang:operation=\"replace\">5</llist>"
+            "<llist yang:orig-default=\"false\" yang:orig-value=\"2\" yang:value=\"\" yang:operation=\"replace\">5</llist>"
         "</df>"
     );
 }
@@ -706,7 +706,7 @@ test_userord_llist2(void **state)
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"2\">4</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"2\">4</llist>"
         "</df>"
     );
 
@@ -724,7 +724,7 @@ test_userord_llist2(void **state)
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"1\">2</llist>"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"1\" yang:value=\"\">4</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"1\" yang:value=\"\">4</llist>"
         "</df>"
     );
 
@@ -742,7 +742,7 @@ test_userord_llist2(void **state)
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"\">4</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"\">4</llist>"
             "<llist yang:orig-value=\"1\" yang:operation=\"delete\">2</llist>"
         "</df>"
     );
@@ -782,7 +782,7 @@ test_userord_mix(void **state)
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"1\">2</llist>"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"1\" yang:value=\"\">3</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"1\" yang:value=\"\">3</llist>"
         "</df>"
     );
 
@@ -799,7 +799,7 @@ test_userord_mix(void **state)
     lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"3\" yang:value=\"\">1</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"\">1</llist>"
             "<llist yang:operation=\"create\" yang:value=\"1\">4</llist>"
         "</df>"
     );
@@ -819,8 +819,8 @@ test_userord_mix(void **state)
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
             "<llist yang:operation=\"delete\" yang:orig-value=\"1\">2</llist>"
-            "<llist yang:operation=\"replace\" yang:orig-value=\"1\" yang:value=\"\">3</llist>"
-            "<llist yang:orig-value=\"3\" yang:value=\"\" yang:operation=\"replace\">1</llist>"
+            "<llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"1\" yang:value=\"\">3</llist>"
+            "<llist yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"\" yang:operation=\"replace\">1</llist>"
             "<llist yang:value=\"1\" yang:operation=\"create\">4</llist>"
         "</df>"
     );
@@ -877,7 +877,7 @@ test_wd(void **state)
     lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
     assert_string_equal(st->xml,
         "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<foo yang:operation=\"replace\" yang:orig-value=\"41\">42</foo>"
+            "<foo yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"41\">42</foo>"
             "<dllist yang:operation=\"create\">1</dllist>"
         "</df>"
     );
