@@ -168,23 +168,23 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @param[in] ctx libyang context.
  * @param[in] name Element name.
  * @param[in] name_len Length of @p name, must be set correctly.
- * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value, must be set correctly.
- * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
- * @param[in] format Input format of @p value and @p ns.
- * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
- * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
  * @param[in] prefix Element prefix.
  * @param[in] pref_len Length of @p prefix, must be set correctly.
  * @param[in] module_key Mandatory key to reference module, can be namespace or name.
  * @param[in] module_key_len Length of @p module_key, must be set correctly.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] format Input format of @p value and @p ns.
+ * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
+ * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
-        ly_bool *dynamic, LY_PREFIX_FORMAT format, uint32_t hints, void *val_prefix_data, const char *prefix,
-        size_t pref_len, const char *module_key, size_t module_key_len, struct lyd_node **node);
+LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t pref_len,
+        const char *module_key, size_t module_key_len, const char *value, size_t value_len, ly_bool *dynamic,
+        LY_PREFIX_FORMAT format, void *val_prefix_data, uint32_t hints, struct lyd_node **node);
 
 /**
  * @brief Check the existence and create any non-existing implicit siblings, recursively for the created nodes.
@@ -271,22 +271,22 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @param[in] ctx libyang context.
  * @param[in] name Attribute name.
  * @param[in] name_len Length of @p name, must be set correctly.
- * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value, must be set correctly.
- * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
- * @param[in] format Input format of @p value and @p ns.
- * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
- * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
  * @param[in] prefix Attribute prefix.
  * @param[in] prefix_len Attribute prefix length.
  * @param[in] module_key Mandatory key to reference module, can be namespace or name.
  * @param[in] module_key_len Length of @p module_key, must be set correctly.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] format Input format of @p value and @p ns.
+ * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
+ * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
-        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, uint32_t hints,
-        void *val_prefix_data, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len);
+        size_t name_len, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len,
+        const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, void *val_prefix_data, uint32_t hints);
 
 /**
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.

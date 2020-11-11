@@ -532,8 +532,8 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         dynamic = 1;
 
         /* attr2 is always changed to the created attribute */
-        ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), value, ly_strlen(value), &dynamic, format,
-                0, val_prefix_data, prefix, ly_strlen(prefix), module_name, ly_strlen(module_name));
+        ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), prefix, ly_strlen(prefix), module_name,
+                ly_strlen(module_name), value, ly_strlen(value), &dynamic, format, val_prefix_data, 0);
         LY_CHECK_GOTO(ret, cleanup);
 
         free(prefix);
@@ -774,8 +774,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         dynamic = 1;
 
         /* create node */
-        ret = lyd_create_opaq(ctx, name, strlen(name), value, strlen(value), &dynamic, format, 0, val_prefix_data,
-                prefix, ly_strlen(prefix), module_key, ly_strlen(module_key), &node);
+        ret = lyd_create_opaq(ctx, name, strlen(name), prefix, ly_strlen(prefix), module_key, ly_strlen(module_key),
+                value, strlen(value), &dynamic, format, val_prefix_data, 0, &node);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process children */

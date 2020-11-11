@@ -145,7 +145,6 @@ static void
 lyd_free_subtree(struct lyd_node *node, ly_bool top)
 {
     struct lyd_node *iter, *next;
-    struct lyd_node *children;
     struct lyd_node_opaq *opaq = NULL;
 
     assert(node);
@@ -154,24 +153,22 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         opaq = (struct lyd_node_opaq *)node;
 
         /* free the children */
-        children = lyd_child(node);
-        LY_LIST_FOR_SAFE(children, next, iter) {
+        LY_LIST_FOR_SAFE(lyd_child(node), next, iter) {
             lyd_free_subtree(iter, 0);
         }
 
         FREE_STRING(LYD_CTX(opaq), opaq->name);
         FREE_STRING(LYD_CTX(opaq), opaq->prefix.id);
         FREE_STRING(LYD_CTX(opaq), opaq->prefix.module_ns);
-        ly_free_prefix_data(opaq->format, opaq->val_prefix_data);
         FREE_STRING(LYD_CTX(opaq), opaq->value);
+        ly_free_prefix_data(opaq->format, opaq->val_prefix_data);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */
         lyht_free(((struct lyd_node_inner *)node)->children_ht);
         ((struct lyd_node_inner *)node)->children_ht = NULL;
 
         /* free the children */
-        children = lyd_child(node);
-        LY_LIST_FOR_SAFE(children, next, iter) {
+        LY_LIST_FOR_SAFE(lyd_child(node), next, iter) {
             lyd_free_subtree(iter, 0);
         }
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
