@@ -68,6 +68,22 @@ const char *lys_module_a = \
     <anydata name=\"any-data\"/>                              \
   </container>                                        \
   <leaf name=\"y\"><type name=\"string\"/></leaf>     \
+  <leaf name=\"flags\"> \
+    <type name=\"bits\"> \
+      <bit name=\"carry\"/> \
+      <bit name=\"sign\"/> \
+    </type> \
+  </leaf>   \
+  <typedef name=\"myBits\"> \
+    <type name=\"bits\"> \
+      <bit name=\"A\"/> \
+      <bit name=\"B\"/> \
+      <bit name=\"C\"/> \
+    </type> \
+  </typedef> \
+  <leaf name=\"leafBitTypedef\"> \
+    <type name=\"myBits\"/> \
+  </leaf>   \
   <anyxml name=\"any\"/>                              \
   <augment target-node=\"/x\">                        \
     <container name=\"bar-y\"/>                       \
@@ -758,6 +774,32 @@ TEST(test_ly_data_node_validate_value)
         ASSERT_EQ(new_node->validate_value("1"), 0);
         ASSERT_EQ(new_node->validate_value("100"), 0);
         ASSERT_EQ(new_node->validate_value("110000000"), 0);
+    } catch (const std::exception &e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_bits_value)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        auto module = ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+
+        auto flagsNode = std::make_shared<libyang::Data_Node>(nullptr, module, "flags", "carry");
+        ASSERT_NOTNULL(flagsNode);
+        auto flagsLeaf = std::make_shared<libyang::Data_Node_Leaf_List>(flagsNode);
+        auto flagsBits = flagsLeaf->value()->bit();
+        ASSERT_EQ(std::count_if(flagsBits.begin(), flagsBits.end(), [] (libyang::S_Type_Bit bit) { return bit; }), 1);
+
+        auto typedefBitsNode = std::make_shared<libyang::Data_Node>(nullptr, module, "leafBitTypedef", "A B");
+        ASSERT_NOTNULL(typedefBitsNode);
+        auto typedefBitsLeaf  = std::make_shared<libyang::Data_Node_Leaf_List>(typedefBitsNode);
+        auto typedefBits = typedefBitsLeaf->value()->bit();
+        ASSERT_EQ(std::count_if(typedefBits.begin(), typedefBits.end(), [] (libyang::S_Type_Bit bit) { return bit; }), 2);
     } catch (const std::exception &e) {
         mt::printFailed(e.what(), stdout);
         throw;
