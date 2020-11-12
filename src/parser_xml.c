@@ -241,7 +241,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = _lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, xmlctx);
+            r = _lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
