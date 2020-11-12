@@ -159,11 +159,11 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
             break;
         }
         onode = (struct lyd_node_opaq *)node;
-        if (onode->prefix.module_name) {
-            *prefix_p = onode->prefix.module_name;
+        if (onode->name.module_name) {
+            *prefix_p = onode->name.module_name;
             break;
-        } else if (onode->prefix.id) {
-            *prefix_p = onode->prefix.id;
+        } else if (onode->name.prefix) {
+            *prefix_p = onode->name.prefix;
             break;
         }
         node = (struct lyd_node *)node->parent;
@@ -503,15 +503,15 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         size_t name_len, prefix_len;
         const struct lysc_node *snode;
 
-        if (attr->schema || (meta_container->name[0] != '@')) {
+        if (attr->schema || (meta_container->name.name[0] != '@')) {
             /* not an opaq metadata node */
             continue;
         }
 
-        if (prev != meta_container->name) {
+        if (prev != meta_container->name.name) {
             /* metas' names are stored in dictionary, so checking pointers must works */
             lydict_remove(lydctx->jsonctx->ctx, prev);
-            LY_CHECK_GOTO(ret = lydict_insert(lydctx->jsonctx->ctx, meta_container->name, 0, &prev), cleanup);
+            LY_CHECK_GOTO(ret = lydict_insert(lydctx->jsonctx->ctx, meta_container->name.name, 0, &prev), cleanup);
             instance = 1;
         } else {
             instance++;
@@ -521,13 +521,13 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         LY_LIST_FOR(start, node) {
             if (!node->schema) {
                 /* opaq node - we are going to put into it just a generic attribute. */
-                if (strcmp(&meta_container->name[1], ((struct lyd_node_opaq *)node)->name)) {
+                if (strcmp(&meta_container->name.name[1], ((struct lyd_node_opaq *)node)->name.name)) {
                     continue;
                 }
 
                 if (((struct lyd_node_opaq *)node)->hints & LYD_NODEHINT_LIST) {
                     LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, node, LYVE_SYNTAX,
-                            "Metadata container references a sibling list node %s.", ((struct lyd_node_opaq *)node)->name);
+                            "Metadata container references a sibling list node %s.", ((struct lyd_node_opaq *)node)->name.name);
                     ret = LY_EVALID;
                     goto cleanup;
                 }
@@ -541,9 +541,10 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 LY_LIST_FOR(meta_container->child, meta_iter) {
                     /* convert opaq node to a attribute of the opaq node */
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
-                    ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, meta->name, strlen(meta->name), meta->prefix.id,
-                            ly_strlen(meta->prefix.id), meta->prefix.module_name, ly_strlen(meta->prefix.module_name),
-                            meta->value, ly_strlen(meta->value), NULL, LY_PREF_JSON, NULL, meta->hints);
+                    ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, meta->name.name, strlen(meta->name.name),
+                            meta->name.prefix, ly_strlen(meta->name.prefix), meta->name.module_name,
+                            ly_strlen(meta->name.module_name), meta->value, ly_strlen(meta->value), NULL, LY_PREF_JSON,
+                            NULL, meta->hints);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
 
@@ -552,7 +553,8 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             } else {
                 /* this is the second time we are resolving the schema node, so it must succeed,
                  * but remember that snode can be still NULL */
-                lydjson_parse_name(meta_container->name, strlen(meta_container->name), &name, &name_len, &prefix, &prefix_len, &is_attr);
+                lydjson_parse_name(meta_container->name.name, strlen(meta_container->name.name), &name, &name_len,
+                        &prefix, &prefix_len, &is_attr);
                 assert(is_attr);
                 ret = lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, (*first_p)->parent, &snode);
                 assert(ret == LY_SUCCESS);
@@ -573,16 +575,16 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     struct lys_module *mod = NULL;
                     ly_bool dynamic = 0;
 
-                    mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->prefix.id);
+                    mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->name.prefix);
                     if (mod) {
                         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod,
-                                meta->name, strlen(meta->name), meta->value, ly_strlen(meta->value),
+                                meta->name.name, strlen(meta->name.name), meta->value, ly_strlen(meta->value),
                                 &dynamic, LY_PREF_JSON, NULL, meta->hints);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_options & LYD_PARSE_STRICT) {
                         LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, node, LYVE_REFERENCE,
                                 "Unknown (or not implemented) YANG module \"%s\" for metadata \"%s%s%s\".",
-                                meta->prefix.id, meta->prefix.id, ly_strlen(meta->prefix.id) ? ":" : "", meta->name);
+                                meta->name.prefix, meta->name.prefix, ly_strlen(meta->name.prefix) ? ":" : "", meta->name.name);
                         ret = LY_EVALID;
                         goto cleanup;
                     }
@@ -600,10 +602,10 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             if (instance > 1) {
                 LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, *first_p ? (*first_p)->parent : NULL, LYVE_REFERENCE,
                         "Missing %d%s JSON data instance to be coupled with %s metadata.", instance,
-                        instance == 2 ? "nd" : (instance == 3 ? "rd" : "th"), meta_container->name);
+                        instance == 2 ? "nd" : (instance == 3 ? "rd" : "th"), meta_container->name.name);
             } else {
                 LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, *first_p ? (*first_p)->parent : NULL, LYVE_REFERENCE,
-                        "Missing JSON data instance to be coupled with %s metadata.", meta_container->name);
+                        "Missing JSON data instance to be coupled with %s metadata.", meta_container->name.name);
             }
             ret = LY_EVALID;
         } else {
@@ -802,7 +804,7 @@ cleanup:
 representation_error:
     LOGVAL(ctx, LY_VLOG_LYD, (void *)node, LYVE_SYNTAX_JSON,
             "The attribute(s) of %s \"%s\" is expected to be represented as JSON %s, but input data contains @%s/%s.",
-            lys_nodetype2str(nodetype), node->schema ? node->schema->name : ((struct lyd_node_opaq *)node)->name,
+            lys_nodetype2str(nodetype), node->schema ? node->schema->name : ((struct lyd_node_opaq *)node)->name.name,
             expected, lyjson_token2str(status), in_parent ? "" : "name");
 
     return LY_EVALID;

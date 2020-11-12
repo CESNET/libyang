@@ -477,13 +477,14 @@ struct lyd_meta {
  *
  * The union is used as a reference to the data's module and according to the format, it can be used as a key for
  * ::ly_ctx_get_module_implemented_ns() or ::ly_ctx_get_module_implemented(). While the module reference is always present,
- * the id member can be omitted in case it is not present in the source data as a reference to the default namespace.
+ * the prefix member can be omitted in case it is not present in the source data as a reference to the default module/namespace.
  */
-struct ly_prefix {
-    const char *id;               /**< identifier used in the qualified name of the item to reference data node namespace */
+struct ly_opaq_name {
+    const char *name;             /**< node name, without prefix if any was defined */
+    const char *prefix;           /**< identifier used in the qualified name as the prefix, can be NULL */
     union {
-        const char *module_ns;    /**< namespace of the module where the data are supposed to belongs to, used for LYD_XML format. */
-        const char *module_name;  /**< name of the module where the data are supposed to belongs to, used for LYD_JSON format. */
+        const char *module_ns;    /**< format ::LY_PREF_XML - XML namespace of the node element */
+        const char *module_name;  /**< format ::LY_PREF_JSON - (inherited) name of the module of the element */
     };
 };
 
@@ -493,8 +494,7 @@ struct ly_prefix {
 struct lyd_attr {
     struct lyd_node_opaq *parent;   /**< data node where the attribute is placed */
     struct lyd_attr *next;          /**< pointer to the next attribute */
-    const char *name;               /**< attribute name */
-    struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
+    struct ly_opaq_name name;       /**< attribute name with module information */
     const char *value;              /**< attribute value */
     LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
     void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
@@ -720,8 +720,7 @@ struct lyd_node_opaq {
 
     struct lyd_node *child;         /**< pointer to the child node (compatible with ::lyd_node_inner) */
 
-    const char *name;               /**< node name */
-    struct ly_prefix prefix;        /**< name prefix */
+    struct ly_opaq_name name;       /**< node name with module information */
     const char *value;              /**< original value */
     LY_PREFIX_FORMAT format;        /**< format of the node and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
     void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */

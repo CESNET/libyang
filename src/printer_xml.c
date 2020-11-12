@@ -105,17 +105,17 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
 }
 
 static const char *
-xml_print_ns_opaq(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, const struct ly_prefix *prefix, uint32_t prefix_opts)
+xml_print_ns_opaq(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, const struct ly_opaq_name *name, uint32_t prefix_opts)
 {
     switch (format) {
     case LY_PREF_XML:
-        return xml_print_ns(ctx, prefix->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : prefix->id, prefix_opts);
+        return xml_print_ns(ctx, name->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
         break;
     case LY_PREF_JSON:
-        if (prefix->module_name) {
-            const struct lys_module *mod = ly_ctx_get_module_latest(ctx->ctx, prefix->module_name);
+        if (name->module_name) {
+            const struct lys_module *mod = ly_ctx_get_module_latest(ctx->ctx, name->module_name);
             if (mod) {
-                return xml_print_ns(ctx, mod->ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : prefix->id, prefix_opts);
+                return xml_print_ns(ctx, mod->ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
             }
         }
         break;
@@ -263,9 +263,9 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 
     LY_LIST_FOR(node->attr, attr) {
         pref = NULL;
-        if (attr->prefix.id) {
+        if (attr->name.prefix) {
             /* print attribute namespace */
-            pref = xml_print_ns_opaq(ctx, attr->format, &attr->prefix, 0);
+            pref = xml_print_ns_opaq(ctx, attr->format, &attr->name, 0);
         }
 
         /* print namespaces connected with the value's prefixes */
@@ -274,7 +274,7 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
         }
 
         /* print the attribute with its prefix and value */
-        ly_print_(ctx->out, " %s%s%s=\"%s\"", pref ? pref : "", pref ? ":" : "", attr->name, attr->value);
+        ly_print_(ctx->out, " %s%s%s=\"%s\"", pref ? pref : "", pref ? ":" : "", attr->name.name, attr->value);
     }
 
     return LY_SUCCESS;
@@ -284,10 +284,10 @@ static LY_ERR
 xml_print_opaq_open(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
     /* print node name */
-    ly_print_(ctx->out, "%*s<%s", INDENT, node->name);
+    ly_print_(ctx->out, "%*s<%s", INDENT, node->name.name);
 
     /* print default namespace */
-    xml_print_ns_opaq(ctx, node->format, &node->prefix, LYXML_PREFIX_DEFAULT);
+    xml_print_ns_opaq(ctx, node->format, &node->name, LYXML_PREFIX_DEFAULT);
 
     /* print attributes */
     LY_CHECK_RET(xml_print_attr(ctx, node));
@@ -479,9 +479,9 @@ xml_print_opaq(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
         }
         LEVEL_DEC;
 
-        ly_print_(ctx->out, "%*s</%s>%s", INDENT, node->name, DO_FORMAT ? "\n" : "");
+        ly_print_(ctx->out, "%*s</%s>%s", INDENT, node->name.name, DO_FORMAT ? "\n" : "");
     } else if (node->value[0]) {
-        ly_print_(ctx->out, "</%s>%s", node->name, DO_FORMAT ? "\n" : "");
+        ly_print_(ctx->out, "</%s>%s", node->name.name, DO_FORMAT ? "\n" : "");
     } else {
         /* no value or children */
         ly_print_(ctx->out, "/>%s", DO_FORMAT ? "\n" : "");
