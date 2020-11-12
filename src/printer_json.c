@@ -79,7 +79,7 @@ matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
         /* compare node names */
         struct lyd_node_opaq *onode1 = (struct lyd_node_opaq *)node1;
         struct lyd_node_opaq *onode2 = (struct lyd_node_opaq *)node2;
-        if ((onode1->name != onode2->name) || (onode1->prefix.id != onode2->prefix.id)) {
+        if ((onode1->name.name != onode2->name.name) || (onode1->name.prefix != onode2->name.prefix)) {
             return 0;
         }
     }
@@ -160,9 +160,9 @@ node_prefix(const struct lyd_node *node)
 
         switch (onode->format) {
         case LY_PREF_JSON:
-            return onode->prefix.module_name;
+            return onode->name.module_name;
         case LY_PREF_XML:
-            mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->prefix.module_ns);
+            mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->name.module_ns);
             if (!mod) {
                 return NULL;
             }
@@ -283,29 +283,28 @@ json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bool i
  * @param[in] ctx JSON printer context.
  * @param[in] parent Parent node to compare modules deciding if the prefix is printed.
  * @param[in] format Format to decide how to process the @p prefix.
- * @param[in] prefix Prefix structure to provide prefix string if prefix to print.
- * @param[in] name Name of the memeber to print.
+ * @param[in] name Name structure to provide name and prefix to print. If NULL, only "" name is printed.
  * @param[in] is_attr Flag if the metadata sign (@) is supposed to be added before the identifier.
  * @return LY_ERR value.
  */
 static LY_ERR
 json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_PREFIX_FORMAT format,
-        const struct ly_prefix *prefix, const char *name, ly_bool is_attr)
+        const struct ly_opaq_name *name, ly_bool is_attr)
 {
-    const char *module_name = NULL;
+    const char *module_name = NULL, *name_str;
 
     PRINT_COMMA;
 
     /* determine prefix string */
-    if (prefix) {
+    if (name) {
         const struct lys_module *mod;
 
         switch (format) {
         case LY_PREF_JSON:
-            module_name = prefix->module_name;
+            module_name = name->module_name;
             break;
         case LY_PREF_XML:
-            mod = ly_ctx_get_module_implemented_ns(ctx->ctx, prefix->module_ns);
+            mod = ly_ctx_get_module_implemented_ns(ctx->ctx, name->module_ns);
             if (mod) {
                 module_name = mod->name;
             }
@@ -314,13 +313,17 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_PRE
             /* cannot be created */
             LOGINT_RET(ctx->ctx);
         }
+
+        name_str = name->name;
+    } else {
+        name_str = "";
     }
 
     /* print the member */
     if (module_name && (!parent || (node_prefix(parent) != module_name))) {
-        ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name, DO_FORMAT ? " " : "");
+        ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name_str, DO_FORMAT ? " " : "");
     } else {
-        ly_print_(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name, DO_FORMAT ? " " : "");
+        ly_print_(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name_str, DO_FORMAT ? " " : "");
     }
 
     return LY_SUCCESS;
@@ -400,7 +403,7 @@ json_print_attribute(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node, c
 
     for (attr = node->attr; attr; attr = attr->next) {
         PRINT_COMMA;
-        json_print_member2(ctx, (struct lyd_node *)node, attr->format, &attr->prefix, attr->name, 0);
+        json_print_member2(ctx, (struct lyd_node *)node, attr->format, &attr->name, 0);
 
         if (attr->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
             ly_print_(ctx->out, "%s", attr->value[0] ? attr->value : "null");
@@ -464,7 +467,7 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bo
 
     if (node->schema && node->meta) {
         if (inner) {
-            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_PREF_JSON, NULL, "", 1));
+            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_PREF_JSON, NULL, 1));
         } else {
             LY_CHECK_RET(json_print_member(ctx, node, 1));
         }
@@ -476,10 +479,10 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bo
         LEVEL_PRINTED;
     } else if (!node->schema && ((struct lyd_node_opaq *)node)->attr) {
         if (inner) {
-            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_PREF_JSON, NULL, "", 1));
+            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_PREF_JSON, NULL, 1));
         } else {
             LY_CHECK_RET(json_print_member2(ctx, node, ((struct lyd_node_opaq *)node)->format,
-                    &((struct lyd_node_opaq *)node)->prefix, ((struct lyd_node_opaq *)node)->name, 1));
+                    &((struct lyd_node_opaq *)node)->name, 1));
         }
         ly_print_(ctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
@@ -767,7 +770,7 @@ json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
     }
 
     if (first) {
-        LY_CHECK_RET(json_print_member2(ctx, node->parent, node->format, &node->prefix, node->name, 0));
+        LY_CHECK_RET(json_print_member2(ctx, node->parent, node->format, &node->name, 0));
 
         if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
             LY_CHECK_RET(json_print_array_open(ctx, (struct lyd_node *)node));

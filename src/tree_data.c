@@ -684,13 +684,13 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
     LY_CHECK_ERR_GOTO(!opaq, LOGMEM(ctx); ret = LY_EMEM, finish);
 
     opaq->prev = (struct lyd_node *)opaq;
-    LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &opaq->name), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &opaq->name.name), finish);
 
     if (pref_len) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, pref_len, &opaq->prefix.id), finish);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, pref_len, &opaq->name.prefix), finish);
     }
     if (module_key_len) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &opaq->prefix.module_ns), finish);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &opaq->name.module_ns), finish);
     }
     if (dynamic && *dynamic) {
         LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, (char *)value, &opaq->value), finish);
@@ -1012,16 +1012,16 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_d
 
     switch (attr->format) {
     case LY_PREF_XML:
-        mod = ly_ctx_get_module_implemented_ns(ctx, attr->prefix.module_ns);
+        mod = ly_ctx_get_module_implemented_ns(ctx, attr->name.module_ns);
         if (!mod) {
-            LOGERR(ctx, LY_EINVAL, "Module with namespace \"%s\" not found.", attr->prefix.module_ns);
+            LOGERR(ctx, LY_EINVAL, "Module with namespace \"%s\" not found.", attr->name.module_ns);
             return LY_ENOTFOUND;
         }
         break;
     case LY_PREF_JSON:
-        mod = ly_ctx_get_module_implemented(ctx, attr->prefix.module_name);
+        mod = ly_ctx_get_module_implemented(ctx, attr->name.module_name);
         if (!mod) {
-            LOGERR(ctx, LY_EINVAL, "Module \"%s\" not found.", attr->prefix.module_name);
+            LOGERR(ctx, LY_EINVAL, "Module \"%s\" not found.", attr->name.module_name);
             return LY_ENOTFOUND;
         }
         break;
@@ -1029,7 +1029,7 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_d
         LOGINT_RET(ctx);
     }
 
-    return lyd_create_meta(parent, meta, mod, attr->name, strlen(attr->name), attr->value, strlen(attr->value),
+    return lyd_create_meta(parent, meta, mod, attr->name.name, strlen(attr->name.name), attr->value, strlen(attr->value),
             NULL, attr->format, attr->val_prefix_data, attr->hints, clear_dflt, NULL);
 }
 
@@ -2242,12 +2242,12 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
     at = calloc(1, sizeof *at);
     LY_CHECK_ERR_RET(!at, LOGMEM(ctx); ly_free_prefix_data(format, val_prefix_data), LY_EMEM);
 
-    LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &at->name), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, name, name_len, &at->name.name), finish);
     if (prefix_len) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, prefix_len, &at->prefix.id), finish);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, prefix, prefix_len, &at->name.prefix), finish);
     }
     if (module_key_len) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &at->prefix.module_ns), finish);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, module_key, module_key_len, &at->name.module_ns), finish);
     }
 
     if (dynamic && *dynamic) {
@@ -2319,7 +2319,8 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, u
     if (!node1->schema) {
         opaq1 = (struct lyd_node_opaq *)node1;
         opaq2 = (struct lyd_node_opaq *)node2;
-        if ((opaq1->name != opaq2->name) || (opaq1->format != opaq2->format) || (opaq1->prefix.module_ns != opaq2->prefix.module_ns)) {
+        if ((opaq1->name.name != opaq2->name.name) || (opaq1->format != opaq2->format) ||
+                (opaq1->name.module_ns != opaq2->name.module_ns)) {
             return LY_ENOT;
         }
         switch (opaq1->format) {
@@ -2572,12 +2573,12 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
                 LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, NULL, options, NULL), error);
             }
         }
-        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name, 0, &opaq->name), error);
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.name, 0, &opaq->name.name), error);
         opaq->format = orig->format;
-        if (orig->prefix.id) {
-            LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->prefix.id, 0, &opaq->prefix.id), error);
+        if (orig->name.prefix) {
+            LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.prefix, 0, &opaq->name.prefix), error);
         }
-        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->prefix.module_ns, 0, &opaq->prefix.module_ns), error);
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.module_ns, 0, &opaq->name.module_ns), error);
         if (orig->val_prefix_data) {
             ret = ly_dup_prefix_data(LYD_CTX(node), opaq->format, orig->val_prefix_data, &opaq->val_prefix_data);
             LY_CHECK_GOTO(ret, error);
@@ -3070,7 +3071,8 @@ iter_print:
             }
 
             /* realloc string */
-            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) : strlen(((struct lyd_node_opaq *)iter)->name));
+            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) :
+                    strlen(((struct lyd_node_opaq *)iter)->name.name));
             rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, is_static);
             if (rc != LY_SUCCESS) {
                 break;
@@ -3078,7 +3080,7 @@ iter_print:
 
             /* print next node */
             bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "",
-                    iter->schema ? iter->schema->name : ((struct lyd_node_opaq *)iter)->name);
+                    iter->schema ? iter->schema->name : ((struct lyd_node_opaq *)iter)->name.name);
 
             /* do not always print the last (first) predicate */
             if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_LOG))) {

@@ -611,13 +611,13 @@ static LY_ERR
 lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     /* prefix */
-    LY_CHECK_RET(lyb_write_string(opaq->prefix.id, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->name.prefix, 0, 1, out, lybctx));
 
     /* module reference */
-    LY_CHECK_RET(lyb_write_string(opaq->prefix.module_name, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->name.module_name, 0, 1, out, lybctx));
 
     /* name */
-    LY_CHECK_RET(lyb_write_string(opaq->name, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->name.name, 0, 1, out, lybctx));
 
     /* format */
     LY_CHECK_RET(lyb_write_number(opaq->format, 1, out, lybctx));
@@ -799,13 +799,13 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
         LY_CHECK_RET(lyb_write_start_subtree(out, lybctx));
 
         /* prefix */
-        LY_CHECK_RET(lyb_write_string(iter->prefix.id, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name.prefix, 0, 1, out, lybctx));
 
         /* namespace */
-        LY_CHECK_RET(lyb_write_string(iter->prefix.module_name, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name.module_name, 0, 1, out, lybctx));
 
         /* name */
-        LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name.name, 0, 1, out, lybctx));
 
         /* format */
         LY_CHECK_RET(lyb_write_number(iter->format, 1, out, lybctx));

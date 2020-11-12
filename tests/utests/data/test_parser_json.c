@@ -550,7 +550,7 @@ test_opaq(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "foo3");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "foo3");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -568,7 +568,7 @@ test_opaq(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -586,7 +586,7 @@ test_opaq(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -598,7 +598,7 @@ test_opaq(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -610,7 +610,7 @@ test_opaq(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -651,7 +651,7 @@ test_rpc(void **state)
 
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "rpc");
     /* TODO support generic attributes in JSON ?
     assert_non_null(((struct lyd_node_opaq *)tree)->attr);
     */
@@ -666,11 +666,11 @@ test_rpc(void **state)
     node = lyd_child(node);
     /* z has no value */
     assert_null(node->schema);
-    assert_string_equal(((struct lyd_node_opaq *)node)->name, "z");
+    assert_string_equal(((struct lyd_node_opaq *)node)->name.name, "z");
     node = node->parent->next;
     /* l1 key c has invalid value so it is at the end */
     assert_null(node->schema);
-    assert_string_equal(((struct lyd_node_opaq *)node)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)node)->name.name, "l1");
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
     assert_string_equal(str, data);
@@ -709,11 +709,11 @@ test_action(void **state)
 
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "rpc");
     assert_null(((struct lyd_node_opaq *)tree)->attr);
     node = lyd_child(tree);
     assert_null(node->schema);
-    assert_string_equal(((struct lyd_node_opaq *)node)->name, "action");
+    assert_string_equal(((struct lyd_node_opaq *)node)->name.name, "action");
     assert_null(((struct lyd_node_opaq *)node)->attr);
 
     lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -753,11 +753,11 @@ test_notification(void **state)
 
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "notification");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "notification");
     assert_null(((struct lyd_node_opaq *)tree)->attr);
     node = lyd_child(tree);
     assert_null(node->schema);
-    assert_string_equal(((struct lyd_node_opaq *)node)->name, "eventTime");
+    assert_string_equal(((struct lyd_node_opaq *)node)->name.name, "eventTime");
     assert_string_equal(((struct lyd_node_opaq *)node)->value, "2037-07-08T00:01:00Z");
     assert_null(((struct lyd_node_opaq *)node)->attr);
     node = node->next;
@@ -828,7 +828,7 @@ test_reply(void **state)
 
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc-reply");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "rpc-reply");
     node = lyd_child(tree);
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "c");

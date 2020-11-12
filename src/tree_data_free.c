@@ -116,10 +116,10 @@ lyd_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
         iter = iter->next;
 
         ly_free_prefix_data(attr->format, attr->val_prefix_data);
-        FREE_STRING(ctx, attr->name);
+        FREE_STRING(ctx, attr->name.name);
+        FREE_STRING(ctx, attr->name.prefix);
+        FREE_STRING(ctx, attr->name.module_ns);
         FREE_STRING(ctx, attr->value);
-        FREE_STRING(ctx, attr->prefix.id);
-        FREE_STRING(ctx, attr->prefix.module_ns);
         free(attr);
     }
 }
@@ -157,9 +157,9 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
             lyd_free_subtree(iter, 0);
         }
 
-        FREE_STRING(LYD_CTX(opaq), opaq->name);
-        FREE_STRING(LYD_CTX(opaq), opaq->prefix.id);
-        FREE_STRING(LYD_CTX(opaq), opaq->prefix.module_ns);
+        FREE_STRING(LYD_CTX(opaq), opaq->name.name);
+        FREE_STRING(LYD_CTX(opaq), opaq->name.prefix);
+        FREE_STRING(LYD_CTX(opaq), opaq->name.module_ns);
         FREE_STRING(LYD_CTX(opaq), opaq->value);
         ly_free_prefix_data(opaq->format, opaq->val_prefix_data);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
