@@ -1407,6 +1407,16 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  * @brief Merge the source data subtree into the target data tree. Merge may not be complete until validation
  * is called on the resulting data tree (data from more cases may be present, default and non-default values).
  *
+ * Example input:
+ *
+ * source   (A1) - A2 - A3    target   (B1) - B2 - B3
+ *           /\    /\   /\              /\    /\   /\
+ *          ....  .... ....            ....  .... ....
+ *
+ * result target  (A1) - B1 - B2 - B3
+ *                 /\    /\   /\   /\
+ *                ....  .... .... ....
+ *
  * @param[in,out] target Target data tree to merge into, must be a top-level tree.
  * @param[in] source Source data tree to merge, must be a top-level tree.
  * @param[in] options Bitmask of option flags, see @ref mergeoptions.
@@ -1419,6 +1429,16 @@ LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, u
  * @brief Merge the source data tree with any following siblings into the target data tree. Merge may not be
  * complete until validation called on the resulting data tree (data from more cases may be present, default
  * and non-default values).
+ *
+ * Example input:
+ *
+ * source   (A1) - A2 - A3    target   (B1) - B2 - B3
+ *           /\    /\   /\              /\    /\   /\
+ *          ....  .... ....            ....  .... ....
+ *
+ * result target  (A1) - A2 - A3 - B1 - B2 - B3
+ *                 /\    /\   /\   /\   /\   /\
+ *                ....  .... .... .... .... ....
  *
  * @param[in,out] target Target data tree to merge into, must be a top-level tree.
  * @param[in] source Source data tree to merge, must be a top-level tree.
