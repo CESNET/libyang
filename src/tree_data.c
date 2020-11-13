@@ -3412,7 +3412,7 @@ lyd_list_pos(const struct lyd_node *instance)
 
     /* data instances are ordered, so we can stop when we found instance of other schema node */
     for (iter = instance; iter->schema == instance->schema; iter = iter->prev) {
-        if (pos && iter->next == NULL) {
+        if (pos && (iter->next == NULL)) {
             /* overrun to the end of the siblings list */
             break;
         }
@@ -3435,7 +3435,7 @@ lyd_first_sibling(const struct lyd_node *node)
     if (node->parent) {
         start = node->parent->child;
     } else {
-        for (start = (struct lyd_node *)node; start->prev->next; start = start->prev);
+        for (start = (struct lyd_node *)node; start->prev->next; start = start->prev) {}
     }
 
     return start;

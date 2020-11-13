@@ -1628,4 +1628,3 @@ lysc_is_output(const struct lysc_node *schema)
     }
     return 0;
 }
-

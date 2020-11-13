@@ -541,6 +541,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 LY_LIST_FOR(meta_container->child, meta_iter) {
                     /* convert opaq node to a attribute of the opaq node */
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
+
                     ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, meta->name.name, strlen(meta->name.name),
                             meta->name.prefix, ly_strlen(meta->name.prefix), meta->name.module_name,
                             ly_strlen(meta->name.module_name), meta->value, ly_strlen(meta->value), NULL, LY_PREF_JSON,
@@ -1330,7 +1331,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
 
     LY_CHECK_ERR_RET(ret = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), free(lydctx), ret);
     *status = lyjson_ctx_status(lydctx->jsonctx, 0);
-    if (*status == LYJSON_END || *status == LYJSON_OBJECT_EMPTY || *status == LYJSON_OBJECT) {
+    if ((*status == LYJSON_END) || (*status == LYJSON_OBJECT_EMPTY) || (*status == LYJSON_OBJECT)) {
         *lydctx_p = lydctx;
         return LY_SUCCESS;
     } else {
