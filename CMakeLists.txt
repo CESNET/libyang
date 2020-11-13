@@ -53,6 +53,9 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # Correct RPATH usage on OS X
 set(CMAKE_MACOSX_RPATH TRUE)
 
+# keep all binaries in the build directory
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 # set version of the project
 set(LIBYANG_MAJOR_VERSION 2)
 set(LIBYANG_MINOR_VERSION 0)
@@ -135,17 +138,6 @@ set(libsrc
     src/xpath.c
     src/validation.c)
 
-set(lintsrc
-    tools/lint/main.c
-    tools/lint/main_ni.c
-    tools/lint/commands.c
-    tools/lint/completion.c
-    tools/lint/configuration.c
-    tools/lint/linenoise/linenoise.c)
-
-set(resrc
-    tools/re/main.c)
-
 set(headers
     src/libyang.h
     src/context.h
@@ -163,6 +155,10 @@ set(headers
     src/tree_data.h
     src/tree_schema.h)
 
+# source files to be covered by the 'format' target
+set(format_sources
+    compat/*
+    src/*)
 #
 # options
 #
@@ -300,6 +296,9 @@ if(PKG_CONFIG_FOUND)
     endif()
 endif()
 
+# tools - yanglint, yangre
+add_subdirectory(tools)
+
 # generate doxygen documentation for libyang API
 libyang_doc()
 
@@ -310,7 +309,7 @@ endif()
 
 # source code format
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
-	source_format(src/* compat/*)
+	source_format(${format_sources})
 endif()
 
 # clean cmake cache
@@ -366,22 +365,7 @@ endif(ENABLE_BUILD_TESTS)
 #
 #configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
-# config file for tools
-configure_file(${PROJECT_SOURCE_DIR}/tools/config.h.in ${PROJECT_BINARY_DIR}/tools/config.h @ONLY)
-
-# yanglint
-add_executable(yanglint ${lintsrc} $<TARGET_OBJECTS:compat>)
-target_link_libraries(yanglint yang)
-install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
-target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR})
-
-# yangre
-add_executable(yangre ${resrc} $<TARGET_OBJECTS:compat>)
-target_link_libraries(yangre yang)
-install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
-target_include_directories(yangre BEFORE PRIVATE ${PROJECT_BINARY_DIR})
-
+# tests
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)
 endif()
@@ -405,8 +389,3 @@ if(ENABLE_FUZZ_TARGETS)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
     endif()
 endif()
-
-#if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
-#    add_subdirectory(swig)
-#endif()
-
