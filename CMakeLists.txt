@@ -296,29 +296,6 @@ if(PKG_CONFIG_FOUND)
     endif()
 endif()
 
-# tools - yanglint, yangre
-add_subdirectory(tools)
-
-# generate doxygen documentation for libyang API
-libyang_doc()
-
-# generate API/ABI report
-if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-    libyang_abicheck()
-endif()
-
-# source code format
-if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
-	source_format(${format_sources})
-endif()
-
-# clean cmake cache
-add_custom_target(cclean
-        COMMAND make clean
-        COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
-        COMMAND rm -rf Makefile Doxyfile
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
 # YANG extensions plugins
 #set(EXTENSIONS_LIST "nacm" "metadata" "yangdata")
 # if the tests are enabled, build libyang_ext_test
@@ -389,3 +366,27 @@ if(ENABLE_FUZZ_TARGETS)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
     endif()
 endif()
+
+# tools - yanglint, yangre
+add_subdirectory(tools)
+
+# generate doxygen documentation for libyang API
+libyang_doc()
+
+# generate API/ABI report
+if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
+    libyang_abicheck()
+endif()
+
+# source code format
+if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+	source_format(${format_sources})
+endif()
+
+# clean cmake cache
+add_custom_target(cclean
+        COMMAND make clean
+        COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
+        COMMAND rm -rf Makefile Doxyfile
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+

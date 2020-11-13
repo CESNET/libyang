@@ -62,7 +62,7 @@ jobs:
       os: linux
       compiler: clang
       before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind shunit2 expect
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
@@ -76,7 +76,7 @@ jobs:
       os: linux
       compiled: gcc
       before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind shunit2 expect
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
@@ -93,7 +93,7 @@ jobs:
       os: linux
       compiler: clang
       before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind shunit2 expect
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
