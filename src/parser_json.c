@@ -1338,6 +1338,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
         LOGVAL(ctx, LY_VLOG_LINE, &line, LYVE_SYNTAX_JSON, "Expected top-level JSON object, but %s found.",
                 lyjson_token2str(*status));
         *lydctx_p = NULL;
+        lyd_json_ctx_free((struct lyd_ctx *)lydctx);
         return LY_EVALID;
     }
 }
