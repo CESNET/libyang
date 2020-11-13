@@ -561,7 +561,7 @@ xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options
     }
 
     ctx.out = out;
-    ctx.level = (options & LYD_PRINT_SHRINK ? 0 : 1);
+    ctx.level = 0;
     ctx.options = options;
     ctx.ctx = LYD_CTX(root);
 
