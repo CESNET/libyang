@@ -190,7 +190,11 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
     }
 
     if (realtype) {
-        *realtype = val.realtype;
+        if (val.realtype->basetype == LY_TYPE_UNION) {
+            *realtype = val.subvalue->value.realtype;
+        } else {
+            *realtype = val.realtype;
+        }
     }
 
     type->plugin->free(ctx ? ctx : LYD_CTX(node), &val);
