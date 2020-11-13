@@ -11,6 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _XOPEN_SOURCE 500 /* strdup */
+
 #include "validation.h"
 
 #include <assert.h>
@@ -40,16 +42,50 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *new_diff = NULL;
+    const struct lyd_node *prev_inst;
+    char *key = NULL, *value = NULL;
+    size_t buflen = 0, bufused = 0;
 
     assert((op == LYD_DIFF_OP_DELETE) || (op == LYD_DIFF_OP_CREATE));
 
+    if ((op == LYD_DIFF_OP_CREATE) && lysc_is_userordered(node->schema)) {
+        if (node->prev->next && (node->prev->schema == node->schema)) {
+            prev_inst = node->prev;
+        } else {
+            /* first instance */
+            prev_inst = NULL;
+        }
+
+        if (node->schema->nodetype == LYS_LIST) {
+            /* generate key meta */
+            if (prev_inst) {
+                LY_CHECK_GOTO(ret = lyd_path_list_predicate(prev_inst, &key, &buflen, &bufused, 0), cleanup);
+            } else {
+                key = strdup("");
+                LY_CHECK_ERR_GOTO(!key, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+            }
+        } else {
+            /* generate value meta */
+            if (prev_inst) {
+                value = strdup(LYD_CANON_VALUE(prev_inst));
+                LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+            } else {
+                value = strdup("");
+                LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+            }
+        }
+    }
+
     /* create new diff tree */
-    LY_CHECK_RET(lyd_diff_add(node, op, NULL, NULL, NULL, NULL, NULL, &new_diff));
+    LY_CHECK_GOTO(ret = lyd_diff_add(node, op, NULL, NULL, key, value, NULL, &new_diff), cleanup);
 
     /* merge into existing diff */
     ret = lyd_diff_merge_all(diff, new_diff, 0);
 
+cleanup:
     lyd_free_tree(new_diff);
+    free(key);
+    free(value);
     return ret;
 }
 
