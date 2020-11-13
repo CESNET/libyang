@@ -82,6 +82,21 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     assert(diff);
 
+    /* replace leaf always needs orig-default and orig-value */
+    assert((node->schema->nodetype != LYS_LEAF) || (op != LYD_DIFF_OP_REPLACE) || (orig_default && orig_value));
+
+    /* create on userord needs key/value */
+    assert((node->schema->nodetype != LYS_LIST) || !(node->schema->flags & LYS_ORDBY_USER) || (op != LYD_DIFF_OP_CREATE) ||
+            key);
+    assert((node->schema->nodetype != LYS_LEAFLIST) || !(node->schema->flags & LYS_ORDBY_USER) ||
+            (op != LYD_DIFF_OP_CREATE) || value);
+
+    /* move on userord needs both key and orig-key/value and orig-value */
+    assert((node->schema->nodetype != LYS_LIST) || !(node->schema->flags & LYS_ORDBY_USER) || (op != LYD_DIFF_OP_REPLACE) ||
+            (key && orig_key));
+    assert((node->schema->nodetype != LYS_LEAFLIST) || !(node->schema->flags & LYS_ORDBY_USER) ||
+            (op != LYD_DIFF_OP_REPLACE) || (value && orig_value));
+
     /* find the first existing parent */
     siblings = *diff;
     while (1) {
