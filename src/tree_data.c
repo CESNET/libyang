@@ -1071,7 +1071,7 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
     struct lyd_attr *ret = NULL;
     const struct ly_ctx *ctx;
     const char *prefix, *tmp;
-    size_t pref_len, name_len;
+    size_t pref_len, name_len, mod_len;
 
     LY_CHECK_ARG_RET(NULL, parent, !parent->schema, name, LY_EINVAL);
 
@@ -1084,13 +1084,21 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
         return LY_EVALID;
     }
 
+    /* get the module */
+    if (module_name) {
+        mod_len = strlen(module_name);
+    } else {
+        module_name = prefix;
+        mod_len = pref_len;
+    }
+
     /* set value if none */
     if (!val_str) {
         val_str = "";
     }
 
-    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, prefix, pref_len, module_name,
-            module_name ? strlen(module_name) : 0, val_str, strlen(val_str), NULL, LY_PREF_JSON, NULL, 0));
+    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, prefix, pref_len, module_name, mod_len, val_str,
+            strlen(val_str), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA));
 
     if (attr) {
         *attr = ret;
