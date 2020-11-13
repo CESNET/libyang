@@ -15,16 +15,16 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <string.h>
-#include <getopt.h>
+#include <sys/types.h>
 
 #include "libyang.h"
 
-#include "tools/config.h"
 #include "compat.h"
+#include "tools/config.h"
 
 void
 help(void)
@@ -36,26 +36,26 @@ help(void)
     fprintf(stdout, "    yangre [-V] -f <file>\n");
     fprintf(stdout, "Returns 0 if string matches the pattern(s), 1 if not and -1 on error.\n\n");
     fprintf(stdout, "Options:\n"
-        "  -h, --help              Show this help message and exit.\n"
-        "  -v, --version           Show version number and exit.\n"
-        "  -V, --verbose           Print the processing information.\n"
-        "  -i, --invert-match      Invert-match modifier for the closest preceding\n"
-        "                          pattern.\n"
-        "  -p, --pattern=\"REGEXP\"  Regular expression including the quoting,\n"
-        "                          which is applied the same way as in a YANG module.\n"
-        "  -f, --file=\"FILE\"     List of patterns and the <string> (separated by an\n"
-        "                          empty line) are taken from <file>. Invert-match is\n"
-        "                          indicated by the single space character at the \n"
-        "                          beginning of the pattern line. YANG quotation around\n"
-        "                          patterns is still expected, but that avoids issues with\n"
-        "                          reading quotation by shell. Avoid newline at the end\n"
-        "                          of the string line to represent empty <string>.");
+            "  -h, --help              Show this help message and exit.\n"
+            "  -v, --version           Show version number and exit.\n"
+            "  -V, --verbose           Print the processing information.\n"
+            "  -i, --invert-match      Invert-match modifier for the closest preceding\n"
+            "                          pattern.\n"
+            "  -p, --pattern=\"REGEXP\"  Regular expression including the quoting,\n"
+            "                          which is applied the same way as in a YANG module.\n"
+            "  -f, --file=\"FILE\"     List of patterns and the <string> (separated by an\n"
+            "                          empty line) are taken from <file>. Invert-match is\n"
+            "                          indicated by the single space character at the \n"
+            "                          beginning of the pattern line. YANG quotation around\n"
+            "                          patterns is still expected, but that avoids issues with\n"
+            "                          reading quotation by shell. Avoid newline at the end\n"
+            "                          of the string line to represent empty <string>.");
     fprintf(stdout, "Examples:\n"
-        "  pattern \"[0-9a-fA-F]*\";      -> yangre -p '\"[0-9a-fA-F]*\"' '1F'\n"
-        "  pattern '[a-zA-Z0-9\\-_.]*';  -> yangre -p \"'[a-zA-Z0-9\\-_.]*'\" 'a-b'\n"
-        "  pattern [xX][mM][lL].*;      -> yangre -p '[xX][mM][lL].*' 'xml-encoding'\n\n");
+            "  pattern \"[0-9a-fA-F]*\";      -> yangre -p '\"[0-9a-fA-F]*\"' '1F'\n"
+            "  pattern '[a-zA-Z0-9\\-_.]*';  -> yangre -p \"'[a-zA-Z0-9\\-_.]*'\" 'a-b'\n"
+            "  pattern [xX][mM][lL].*;      -> yangre -p '[xX][mM][lL].*' 'xml-encoding'\n\n");
     fprintf(stdout, "Note that to pass YANG quoting through your shell, you are supposed to use\n"
-                    "the other quotation around. For not-quoted patterns, use single quotes.\n\n");
+            "the other quotation around. For not-quoted patterns, use single quotes.\n\n");
 }
 
 void
@@ -75,11 +75,11 @@ pattern_error(LY_LOG_LEVEL level, const char *msg, const char *path)
 }
 
 static const char *module_start = "module yangre {"
-    "yang-version 1.1;"
-    "namespace urn:cesnet:libyang:yangre;"
-    "prefix re;"
-    "leaf pattern {"
-    "  type string {";
+        "yang-version 1.1;"
+        "namespace urn:cesnet:libyang:yangre;"
+        "prefix re;"
+        "leaf pattern {"
+        "  type string {";
 static const char *module_invertmatch = " { modifier invert-match; }";
 static const char *module_match = ";";
 static const char *module_end = "}}}";
@@ -107,7 +107,7 @@ add_pattern(char ***patterns, int **inverts, int *counter, char *pattern)
 }
 
 int
-main(int argc, char* argv[])
+main(int argc, char *argv[])
 {
     LY_ERR match;
     int i, opt_index = 0, ret = -1, verbose = 0, blankline = 0;
@@ -152,13 +152,13 @@ main(int argc, char* argv[])
                 goto cleanup;
             }
 
-            while((l = getline(&str, &len, infile)) != -1) {
-                if (!blankline && str[0] == '\n') {
+            while ((l = getline(&str, &len, infile)) != -1) {
+                if (!blankline && (str[0] == '\n')) {
                     /* blank line */
                     blankline = 1;
                     continue;
                 }
-                if (str[0] != '\n' && str[l - 1] == '\n') {
+                if ((str[0] != '\n') && (str[l - 1] == '\n')) {
                     /* remove ending newline */
                     str[l - 1] = '\0';
                 }
@@ -168,7 +168,7 @@ main(int argc, char* argv[])
                     break;
                     /* else read the patterns */
                 } else if (add_pattern(&patterns, &invert_match, &patterns_count,
-                                       str[0] == ' ' ? &str[1] : str)) {
+                        (str[0] == ' ') ? &str[1] : str)) {
                     goto cleanup;
                 }
                 if (str[0] == ' ') {
@@ -239,7 +239,7 @@ main(int argc, char* argv[])
         str = argv[optind];
     }
 
-    for (modstr = (char*)module_start, i = 0; i < patterns_count; i++) {
+    for (modstr = (char *)module_start, i = 0; i < patterns_count; i++) {
         if (asprintf(&s, "%s pattern %s%s", modstr, patterns[i], invert_match[i] ? module_invertmatch : module_match) == -1) {
             fprintf(stderr, "yangre error: memory allocation failed.\n");
             goto cleanup;
