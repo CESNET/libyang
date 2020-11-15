@@ -17,6 +17,7 @@
 #include "tree_schema.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdint.h>
@@ -1226,13 +1227,37 @@ error:
     return ret;
 }
 
+static LYS_INFORMAT
+lys_parse_get_format(const struct ly_in *in, LYS_INFORMAT format)
+{
+    if (!format && (in->type == LY_IN_FILEPATH)) {
+        /* unknown format - try to detect it from filename's suffix */
+        const char *path = in->method.fpath.filepath;
+        size_t len = strlen(path);
+
+        /* ignore trailing whitespaces */
+        for ( ; len > 0 && isspace(path[len - 1]); len--) {}
+
+        if ((len >= 5) && !strncmp(&path[len - 5], ".yang", 5)) {
+            format = LYS_IN_YANG;
+        } else if ((len >= 6) && !strncmp(&path[len - 4], ".yin", 4)) {
+            format = LYS_IN_YIN;
+        } /* else still unknown */
+    }
+
+    return format;
+}
+
 API LY_ERR
 lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, const struct lys_module **module)
 {
     if (module) {
         *module = NULL;
     }
-    LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx, in, LY_EINVAL);
+
+    format = lys_parse_get_format(in, format);
+    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
 
     /* remember input position */
     in->func_start = in->current;
