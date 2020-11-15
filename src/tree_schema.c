@@ -1401,10 +1401,8 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 flen = strlen(file->d_name);
                 if (!strcmp(&file->d_name[flen - 5], ".yang")) {
                     format_aux = LYS_IN_YANG;
-                    /* TODO YIN parser
-                    } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-                        format_aux = LYS_IN_YIN;
-                    */
+                } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                    format_aux = LYS_IN_YIN;
                 } else {
                     /* not supportde suffix/file format */
                     continue;
