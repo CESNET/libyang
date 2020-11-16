@@ -791,7 +791,9 @@ jsons_print_data_(struct lyout *out, const struct lys_module *mod, struct lys_no
             }
             ly_print(out, "}");
         } else {
-            ly_print(out, "\"%s:%s\":{\"nodetype\":\"%s\"}", lys_main_module(node->module)->name, node->name,
+            ly_print(out, "%s\"%s:%s\":{\"nodetype\":\"%s\"}",
+                     (first && (*first)) ? "" : ",",
+                     lys_main_module(node->module)->name, node->name,
                      jsons_nodetype_str(node->nodetype));
             (*first) = 0;
         }
