@@ -218,6 +218,12 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
             case 'u':
                 /* Basic Multilingual Plane character \uXXXX */
                 offset++;
+                if (strlen(in + offset) < 4) {
+                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+                        "Invalid basic multilingual plane character.");
+                    goto error;
+                }
+
                 for (value = i = 0; i < 4; i++) {
                     if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
