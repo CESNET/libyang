@@ -1287,6 +1287,7 @@ get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const s
 {
     const struct lyd_node *elem = NULL, *top_sibling;
     uint32_t pos = 1;
+    ly_bool found = 0;
 
     assert(prev && prev_pos && !root->prev->next);
 
@@ -1297,11 +1298,11 @@ get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const s
     if (*prev) {
         /* start from the previous element instead from the root */
         pos = *prev_pos;
-        for (top_sibling = *prev; top_sibling->parent; top_sibling = (struct lyd_node *)top_sibling->parent) {}
+        for (top_sibling = *prev; top_sibling->parent; top_sibling = lyd_parent(top_sibling)) {}
         goto dfs_search;
     }
 
-    for (top_sibling = root; top_sibling; top_sibling = top_sibling->next) {
+    LY_LIST_FOR(root, top_sibling) {
         LYD_TREE_DFS_BEGIN(top_sibling, elem) {
 dfs_search:
             if (*prev && !elem) {
@@ -1315,6 +1316,7 @@ dfs_search:
                 LYD_TREE_DFS_continue = 1;
             } else {
                 if (elem == node) {
+                    found = 1;
                     break;
                 }
                 ++pos;
@@ -1324,12 +1326,12 @@ dfs_search:
         }
 
         /* node found */
-        if (elem) {
+        if (found) {
             break;
         }
     }
 
-    if (!elem) {
+    if (!found) {
         if (!(*prev)) {
             /* we went from root and failed to find it, cannot be */
             LOGINT(LYD_CTX(node));
