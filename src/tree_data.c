@@ -1275,9 +1275,6 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         goto cleanup;
     } else if ((schema->nodetype == LYS_LEAFLIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE)) {
         /* parse leafref value into a predicate, if not defined in the path */
-        p[LY_ARRAY_COUNT(p) - 1].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
-        LY_ARRAY_NEW_GOTO(ctx, p[LY_ARRAY_COUNT(p) - 1].predicates, pred, ret, cleanup);
-
         if (!value) {
             value = "";
         }
@@ -1287,6 +1284,10 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             r = lys_value_validate(NULL, schema, value, strlen(value));
         }
         if (!r) {
+            /* store the new predicate */
+            p[LY_ARRAY_COUNT(p) - 1].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
+            LY_ARRAY_NEW_GOTO(ctx, p[LY_ARRAY_COUNT(p) - 1].predicates, pred, ret, cleanup);
+
             ret = lyd_value_store(ctx, &pred->value, ((struct lysc_node_leaflist *)schema)->type, value, strlen(value),
                     NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, schema, NULL, LY_VLOG_LYSC, schema);
             LY_CHECK_GOTO(ret, cleanup);
