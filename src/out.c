@@ -433,6 +433,8 @@ ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), ly_bool d
     case LY_OUT_ERROR:
         LOGINT(NULL);
     }
+
+    free(out->buffered);
     free(out);
 }
 
