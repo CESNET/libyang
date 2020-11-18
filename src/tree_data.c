@@ -3298,7 +3298,7 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     assert(siblings && schema);
 
     parent = (struct lyd_node_inner *)siblings->parent;
-    if (parent && parent->children_ht) {
+    if (parent && parent->schema && parent->children_ht) {
         /* calculate our hash */
         hash = dict_hash_multi(0, schema->module->name, strlen(schema->module->name));
         hash = dict_hash_multi(hash, schema->name, strlen(schema->name));
@@ -3358,7 +3358,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
 
     LY_CHECK_ARG_RET(NULL, schema, !(schema->nodetype & (LYS_CHOICE | LYS_CASE)), LY_EINVAL);
 
-    if (!siblings || (lysc_data_parent(siblings->schema) != lysc_data_parent(schema))) {
+    if (!siblings || (siblings->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(schema)))) {
         /* no data or schema mismatch */
         if (match) {
             *match = NULL;
