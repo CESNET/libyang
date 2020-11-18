@@ -1445,10 +1445,16 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 
         switch (iter->nodetype) {
         case LYS_CHOICE:
-            if (((struct lysc_node_choice *)iter)->dflt && !lys_getnext_data(NULL, *first, NULL, iter, NULL)) {
+            node = lys_getnext_data(NULL, *first, NULL, iter, NULL);
+            if (!node && ((struct lysc_node_choice *)iter)->dflt) {
                 /* create default case data */
                 LY_CHECK_RET(lyd_new_implicit_r(parent, first, (struct lysc_node *)((struct lysc_node_choice *)iter)->dflt,
                         NULL, node_types, node_when, impl_opts, diff));
+            } else if (node) {
+                /* create any default data in the existing case */
+                assert(node->schema->parent->nodetype == LYS_CASE);
+                LY_CHECK_RET(lyd_new_implicit_r(parent, first, node->schema->parent, NULL, node_types, node_when,
+                        impl_opts, diff));
             }
             break;
         case LYS_CONTAINER:
