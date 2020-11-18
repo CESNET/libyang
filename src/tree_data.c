@@ -3276,6 +3276,17 @@ lyd_hash_table_schema_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod),
     }
 }
 
+/**
+ * @brief Search in the given siblings (NOT recursively) for the first schema node data instance.
+ * Uses hashes - should be used whenever possible for best performance.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] schema Target data node schema to find.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_ERR value if another error occurred.
+ */
 static LY_ERR
 lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node *schema, struct lyd_node **match)
 {
