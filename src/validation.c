@@ -255,6 +255,8 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
     struct lyd_node **match_p;
     ly_bool fail = 0;
 
+    assert(node->flags & LYD_NEW);
+
     if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (node->schema->flags & LYS_CONFIG_R)) {
         /* duplicate instances allowed */
         return LY_SUCCESS;
@@ -404,41 +406,60 @@ lyd_val_has_default(const struct lysc_node *schema)
 }
 
 /**
+ * @brief Properly delete a node as part of autodelete validation tasks.
+ *
+ * @param[in,out] first First sibling, is updated if needed.
+ * @param[in] node Node instance to delete.
+ * @param[in,out] next_p Temporary LY_LIST_FOR_SAFE next pointer, is updated if needed.
+ * @param[in,out] diff Validation diff.
+ */
+static void
+lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *node, struct lyd_node **next_p,
+        struct lyd_node **diff)
+{
+    struct lyd_node *iter;
+
+    if (LYD_DEL_IS_ROOT(*first, node)) {
+        *first = (*first)->next;
+    }
+    if (node == *next_p) {
+        *next_p = (*next_p)->next;
+    }
+    if (diff) {
+        /* add into diff */
+        if ((node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
+            /* we do not want to track NP container changes, but remember any removed children */
+            LY_LIST_FOR(lyd_child(node), iter) {
+                lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
+            }
+        } else {
+            lyd_val_diff_add(node, LYD_DIFF_OP_DELETE, diff);
+        }
+    }
+    lyd_free_tree(node);
+}
+
+/**
  * @brief Autodelete old instances to prevent validation errors.
  *
  * @param[in,out] first First sibling to search in, is updated if needed.
- * @param[in] node Data node instance to check.
+ * @param[in] node New data node instance to check.
  * @param[in,out] next_p Temporary LY_LIST_FOR_SAFE next pointer, is updated if needed.
  * @param[in,out] diff Validation diff.
  */
 static void
 lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct lyd_node **next_p, struct lyd_node **diff)
 {
-    struct lyd_node *match, *next, *iter;
+    struct lyd_node *match, *next;
+
+    assert(node->flags & LYD_NEW);
 
     if (lyd_val_has_default(node->schema)) {
         assert(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_CONTAINER));
         LYD_LIST_FOR_INST_SAFE(*first, node->schema, next, match) {
             if ((match->flags & LYD_DEFAULT) && !(match->flags & LYD_NEW)) {
                 /* default instance found, remove it */
-                if (LYD_DEL_IS_ROOT(*first, match)) {
-                    *first = (*first)->next;
-                }
-                if (match == *next_p) {
-                    *next_p = (*next_p)->next;
-                }
-                if (diff) {
-                    /* add into diff */
-                    if ((match->schema->nodetype == LYS_CONTAINER) && !(match->schema->flags & LYS_PRESENCE)) {
-                        /* we do not want to track NP container changes, but remember any removed children */
-                        LY_LIST_FOR(lyd_child(match), iter) {
-                            lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
-                        }
-                    } else {
-                        lyd_val_diff_add(match, LYD_DIFF_OP_DELETE, diff);
-                    }
-                }
-                lyd_free_tree(match);
+                lyd_validate_autodel_node_del(first, match, next_p, diff);
 
                 /* remove only a single container/leaf default instance, if there are more, it is an error */
                 if (node->schema->nodetype & (LYS_LEAF | LYS_CONTAINER)) {
@@ -446,6 +467,51 @@ lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct 
                 }
             }
         }
+    }
+}
+
+/**
+ * @brief Autodelete leftover default nodes of deleted cases (that have no existing explicit data).
+ *
+ * @param[in,out] first First sibling to search in, is updated if needed.
+ * @param[in] node Default data node instance to check.
+ * @param[in,out] next_p Temporary LY_LIST_FOR_SAFE next pointer, is updated if needed.
+ * @param[in,out] diff Validation diff.
+ */
+static void
+lyd_validate_autodel_case_dflt(struct lyd_node **first, struct lyd_node *node, struct lyd_node **next_p,
+        struct lyd_node **diff)
+{
+    struct lysc_node_choice *choic;
+    struct lyd_node *iter = NULL;
+    const struct lysc_node *slast = NULL;
+
+    assert(node->flags & LYD_DEFAULT);
+
+    if (!node->schema->parent || (node->schema->parent->nodetype != LYS_CASE)) {
+        /* the default node is not a descendant of a case */
+        return;
+    }
+
+    choic = (struct lysc_node_choice *)node->schema->parent->parent;
+    assert(choic->nodetype == LYS_CHOICE);
+
+    if (choic->dflt && (choic->dflt == (struct lysc_node_case *)node->schema->parent)) {
+        /* data of a default case, keep them */
+        return;
+    }
+
+    /* try to find an explicit node of the case */
+    while ((iter = lys_getnext_data(iter, *first, &slast, node->schema->parent, NULL))) {
+        if (!(iter->flags & LYD_DEFAULT)) {
+            break;
+        }
+    }
+
+    if (!iter) {
+        /* there are only default nodes of the case meaning it does not exist and neither should any default nodes
+         * of the case, remove this one default node */
+        lyd_validate_autodel_node_del(first, node, next_p, diff);
     }
 }
 
@@ -471,19 +537,26 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
             break;
         }
 
-        if (!(node->flags & LYD_NEW)) {
-            /* check only new nodes */
+        if (!(node->flags & (LYD_NEW | LYD_DEFAULT))) {
+            /* check only new and default nodes */
             continue;
         }
 
-        /* remove old default(s) if it exists */
-        lyd_validate_autodel_dup(first, node, &next, diff);
+        if (node->flags & LYD_NEW) {
+            /* remove old default(s) of the new node if it exists */
+            lyd_validate_autodel_dup(first, node, &next, diff);
 
-        /* then check new node instance duplicities */
-        LY_CHECK_RET(lyd_validate_duplicates(*first, node));
+            /* then check new node instance duplicities */
+            LY_CHECK_RET(lyd_validate_duplicates(*first, node));
 
-        /* this node is valid */
-        node->flags &= ~LYD_NEW;
+            /* this node is valid */
+            node->flags &= ~LYD_NEW;
+        }
+
+        if (node->flags & LYD_DEFAULT) {
+            /* remove leftover default nodes from a no-longer existing case */
+            lyd_validate_autodel_case_dflt(first, node, &next, diff);
+        }
     }
 
     return LY_SUCCESS;
