@@ -1228,6 +1228,7 @@ lyd_change_meta(struct lyd_meta *meta, const char *val_str)
     } /* else value changed, LY_SUCCESS */
 
 cleanup:
+    lyd_free_meta_single(m2);
     return ret;
 }
 
