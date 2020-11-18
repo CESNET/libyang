@@ -240,7 +240,7 @@ lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_
                 }
             }
         }
-        if (iter->content[0] && copy_ns) {
+        if (iter->content && iter->content[0] && copy_ns) {
             lyxml_correct_content_ns(ctx, iter, orig);
         }
         if (correct_attrs) {
