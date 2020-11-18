@@ -1311,7 +1311,7 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
  */
 static LY_ERR
 ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t UNUSED(options), LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
+        uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
 {
     /* check hints */
@@ -1328,7 +1328,11 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
         }
     }
 
-    LY_CHECK_RET(lydict_insert(ctx, "", 0, &storage->canonical));
+    if (options & LY_TYPE_STORE_DYNAMIC) {
+        LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
+    } else {
+        LY_CHECK_RET(lydict_insert(ctx, value, value_len, &storage->canonical));
+    }
     storage->ptr = NULL;
     storage->realtype = type;
 
