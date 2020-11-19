@@ -272,7 +272,7 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
         } else if (current == status + 1) {
             sublevels--;
         }
-    } while (current != status + 1 && sublevels);
+    } while (current != status + 1 || sublevels);
     /* open the next sibling */
     LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
 
