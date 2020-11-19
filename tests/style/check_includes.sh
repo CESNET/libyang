@@ -2,8 +2,8 @@
 
 RETVAL=0
 
-# param SRCDIR - path to the source files to search
-SRC=$1
+# params - paths to the source files to search
+SRC="$*"
 
 # param FUNC - name of the function in compat to check
 function check_compat_func {
