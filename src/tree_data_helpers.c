@@ -148,33 +148,26 @@ API const struct lys_module *
 lyd_owner_module(const struct lyd_node *node)
 {
     const struct lysc_node *schema;
+    const struct lyd_node_opaq *opaq;
 
-    if (!node || !node->schema) {
+    if (!node) {
         return NULL;
+    }
+
+    if (!node->schema) {
+        opaq = (struct lyd_node_opaq *)node;
+        switch (opaq->format) {
+        case LY_PREF_XML:
+            return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
+        case LY_PREF_JSON:
+            return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
+        default:
+            return NULL;
+        }
     }
 
     for (schema = node->schema; schema->parent; schema = schema->parent) {}
     return schema->module;
-}
-
-API const struct lysc_when *
-lyd_has_when(const struct lyd_node *node)
-{
-    const struct lysc_node *schema;
-
-    if (!node || !node->schema) {
-        return NULL;
-    }
-
-    schema = node->schema;
-    do {
-        if (schema->when) {
-            return *schema->when;
-        }
-        schema = schema->parent;
-    } while (schema && (schema->nodetype & (LYS_CASE | LYS_CHOICE)));
-
-    return NULL;
 }
 
 const struct lys_module *

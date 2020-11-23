@@ -88,7 +88,6 @@ struct lysc_type;
  * - ::lyd_child_no_keys()
  * - ::lyd_parent()
  * - ::lyd_owner_module()
- * - ::lyd_has_when()
  * - ::lyd_find_xpath()
  * - ::lyd_find_sibling_val()
  * - ::lyd_find_sibling_first()
@@ -770,18 +769,6 @@ struct lyd_node *lyd_child_no_keys(const struct lyd_node *node);
  * @return Module owner of the node.
  */
 const struct lys_module *lyd_owner_module(const struct lyd_node *node);
-
-/**
- * @brief Check whether this data node existence depends on any when conditions. This node's schema node and
- * any direct parent choice and case schema nodes are also examined for when conditions.
- *
- * Be careful, this function is not recursive and checks only conditions that apply to this node directly.
- * Meaning if there are any conditions associated with any parent of @p node, they are not returned.
- *
- * @param[in] node Data node to examine.
- * @return When condition associated with the node, NULL if there is none.
- */
-const struct lysc_when *lyd_has_when(const struct lyd_node *node);
 
 /**
  * @brief Check whether a node value equals to its default one.

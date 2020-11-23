@@ -981,6 +981,23 @@ search_file:
     return LY_SUCCESS;
 }
 
+API const struct lysc_when *
+lysc_has_when(const struct lysc_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    do {
+        if (node->when) {
+            return *node->when;
+        }
+        node = node->parent;
+    } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
+
+    return NULL;
+}
+
 API const char *
 lys_nodetype2str(uint16_t nodetype)
 {
