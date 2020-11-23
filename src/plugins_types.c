@@ -1395,7 +1395,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
     /* locate prefix if any */
-    for (prefix_len = 0; prefix_len < value_len && value[prefix_len] != ':'; ++prefix_len) {}
+    for (prefix_len = 0; (prefix_len < value_len) && (value[prefix_len] != ':'); ++prefix_len) {}
     if (prefix_len < value_len) {
         id_name = &value[prefix_len + 1];
         id_len = value_len - (prefix_len + 1);
