@@ -547,7 +547,7 @@ test_opaq(void **state)
     assert_null(tree);
 
     /* opaq flag */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "foo3");
@@ -565,7 +565,7 @@ test_opaq(void **state)
     assert_null(tree);
 
     /* opaq flag */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
@@ -583,7 +583,7 @@ test_opaq(void **state)
     assert_null(tree);
 
     /* opaq flag */
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
@@ -595,7 +595,7 @@ test_opaq(void **state)
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":{\"val\":\"val_c\"}}]}";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
@@ -607,7 +607,7 @@ test_opaq(void **state)
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\"}]}";
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
     assert_null(tree->schema);
     assert_string_equal(((struct lyd_node_opaq *)tree)->name.name, "l1");
