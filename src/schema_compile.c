@@ -1295,6 +1295,8 @@ static LY_ERR
 lys_compile_unres(struct lysc_ctx *ctx)
 {
     struct lysc_node *node;
+    struct lysc_action **actions;
+    struct lysc_notif **notifs;
     struct lysc_type *type, *typeiter;
     struct lysc_type_leafref *lref;
     struct lysc_augment *aug;
@@ -1331,12 +1333,7 @@ lys_compile_unres(struct lysc_ctx *ctx)
         }
 
         if (node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
-            if (node->nodetype & (LYS_RPC | LYS_ACTION)) {
-                lysc_action_free(ctx->ctx, (struct lysc_action *)node);
-            } else {
-                lysc_notif_free(ctx->ctx, (struct lysc_notif *)node);
-            }
-            /* remember all freed RPCs/actions/notifs */
+            /* just remember all RPCs/actions/notifs for now */
             ly_set_add(&disabled_op, node, 1, NULL);
         } else {
             lysc_node_free(ctx->ctx, node, 1);
@@ -1349,13 +1346,29 @@ lys_compile_unres(struct lysc_ctx *ctx)
         --i;
         node = disabled_op.snodes[i];
         if (node->nodetype == LYS_RPC) {
-            ARRAY_DEL_ITEM(node->module->compiled->rpcs, (struct lysc_action *)node);
+            actions = &node->module->compiled->rpcs;
+            assert(actions);
+            notifs = NULL;
         } else if (node->nodetype == LYS_ACTION) {
-            ARRAY_DEL_ITEM(*lysc_node_actions_p(node->parent), (struct lysc_action *)node);
+            actions = lysc_node_actions_p(node->parent);
+            assert(actions);
+            notifs = NULL;
         } else if (node->parent) {
-            ARRAY_DEL_ITEM(*lysc_node_notifs_p(node->parent), (struct lysc_notif *)node);
+            actions = NULL;
+            notifs = lysc_node_notifs_p(node->parent);
+            assert(notifs);
         } else {
-            ARRAY_DEL_ITEM(node->module->compiled->notifs, (struct lysc_notif *)node);
+            actions = NULL;
+            notifs = &node->module->compiled->notifs;
+            assert(notifs);
+        }
+
+        if (actions) {
+            lysc_action_free(ctx->ctx, (struct lysc_action *)node);
+            ARRAY_DEL_ITEM(*actions, (struct lysc_action *)node);
+        } else {
+            lysc_notif_free(ctx->ctx, (struct lysc_notif *)node);
+            ARRAY_DEL_ITEM(*notifs, (struct lysc_notif *)node);
         }
     }
     ly_set_erase(&disabled_op, NULL);
