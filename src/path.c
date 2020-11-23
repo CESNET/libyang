@@ -781,7 +781,8 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
 
     do {
         /* check last compiled inner node, whether it is uniquely identified (even key-less list) */
-        if (p && (lref == LY_PATH_LREF_FALSE) && (p->node->nodetype == LYS_LIST) && !p->predicates) {
+        if (p && (lref == LY_PATH_LREF_FALSE) && (target == LY_PATH_TARGET_SINGLE) &&
+                (p->node->nodetype == LYS_LIST) && !p->predicates) {
             LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                     lys_nodetype2str(p->node->nodetype), p->node->name);
             return LY_EVALID;
