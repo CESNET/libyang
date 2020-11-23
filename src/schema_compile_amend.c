@@ -27,6 +27,7 @@
 #include "plugins_exts.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
+#include "schema_features.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -1795,10 +1796,10 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
     struct lysc_when *when_shared = NULL;
     struct lysc_action **actions;
     struct lysc_notif **notifs;
-    ly_bool allow_mandatory = 0;
+    ly_bool allow_mandatory = 0, enabled;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_set child_set = {0};
-    uint32_t i;
+    uint32_t i, opt_prev = ctx->options;
 
     if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -1835,6 +1836,12 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
             LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
         }
 
+        /* eval if-features again for the rest of this node processing */
+        LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
+        if (!enabled) {
+            ctx->options |= LYS_COMPILE_DISABLED;
+        }
+
         /* since the augment node is not present in the compiled tree, we need to pass some of its
          * statements to all its children */
         for (i = 0; i < child_set.count; ++i) {
@@ -1862,6 +1869,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
             }
         }
         ly_set_erase(&child_set, NULL);
+
+        /* restore options */
+        ctx->options = opt_prev;
     }
 
     switch (target->nodetype) {
@@ -1924,6 +1934,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
 
 cleanup:
     ly_set_erase(&child_set, NULL);
+    ctx->options = opt_prev;
     return ret;
 }
 
