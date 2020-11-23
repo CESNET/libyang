@@ -1443,7 +1443,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
             break;
         }
     }
-    if (u == LY_ARRAY_COUNT(identities)) {
+    if (!identities || (u == LY_ARRAY_COUNT(identities))) {
         /* no match */
         rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not found.", (int)value_len, value);
         goto error;
