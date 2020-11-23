@@ -1187,7 +1187,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         /* opaque data */
         if (!node->schema) {
             LOGVAL(LYD_CTX(node), LY_VLOG_LYD, node, LYVE_DATA, "Opaque node \"%s\" found.",
-                    ((struct lyd_node_opaq *)node)->name);
+                    ((struct lyd_node_opaq *)node)->name.name);
             return LY_EVALID;
         }
 
