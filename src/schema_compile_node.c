@@ -278,11 +278,6 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
         /* compile when */
         LY_CHECK_RET(lys_compile_when_(ctx, when_p, flags, ctx_node, new_when));
 
-        if (!(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
-            /* do not check "when" semantics in a grouping */
-            LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
-        }
-
         /* remember the compiled when for sharing */
         if (when_c) {
             *when_c = *new_when;
@@ -291,11 +286,12 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
         /* use the previously compiled when */
         ++(*when_c)->refcount;
         *new_when = *when_c;
+    }
 
-        if (!(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
-            /* in this case check "when" again for all children because of dummy node check */
-            LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
-        }
+    if (!(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+        /* do not check "when" semantics in a grouping, but repeat the check for different node because
+         * of dummy node check */
+        LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
     }
 
     return LY_SUCCESS;
