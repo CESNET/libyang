@@ -12,20 +12,13 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <string.h>
-#include <stdio.h>
-
 #include "common.h"
 #include "context.h"
 #include "in.h"
+#include "schema_compile.h"
 #include "tests/config.h"
 #include "tree_schema_internal.h"
-#include "schema_compile.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -97,11 +90,11 @@ test_searchdirs(void **state)
     logbuf_assert("Invalid argument ctx (ly_ctx_unset_searchdir()).");
 
     /* readable and executable, but not a directory */
-    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utest_context"));
-    logbuf_assert("Given search directory \""TESTS_BIN"/utest_context\" is not a directory.");
+    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN "/utest_context"));
+    logbuf_assert("Given search directory \""TESTS_BIN "/utest_context\" is not a directory.");
     /* not executable */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, __FILE__));
-    logbuf_assert("Unable to fully access search directory \""__FILE__"\" (Permission denied).");
+    logbuf_assert("Unable to fully access search directory \""__FILE__ "\" (Permission denied).");
     /* not existing */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, "/nonexistingfile"));
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
@@ -111,20 +104,20 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, NULL));
 
     /* correct path */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utests"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN "/utests"));
     assert_int_equal(1, ctx->search_paths.count);
-    assert_string_equal(TESTS_BIN"/utests", ctx->search_paths.objs[0]);
+    assert_string_equal(TESTS_BIN "/utests", ctx->search_paths.objs[0]);
 
     /* duplicated paths */
-    assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utests"));
+    assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(ctx, TESTS_BIN "/utests"));
     assert_int_equal(1, ctx->search_paths.count);
-    assert_string_equal(TESTS_BIN"/utests", ctx->search_paths.objs[0]);
+    assert_string_equal(TESTS_BIN "/utests", ctx->search_paths.objs[0]);
 
     /* another paths - add 8 to fill the initial buffer of the searchpaths list */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/CMakeFiles"));
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC"/../src"));
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC"/../CMakeModules"));
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC"/../doc"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN "/CMakeFiles"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC "/../src"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC "/../CMakeModules"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC "/../doc"));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN));
     assert_int_equal(7, ctx->search_paths.count);
@@ -132,8 +125,8 @@ test_searchdirs(void **state)
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(ctx);
     assert_non_null(list);
-    assert_string_equal(TESTS_BIN"/utests", list[0]);
-    assert_string_equal(TESTS_BIN"/CMakeFiles", list[1]);
+    assert_string_equal(TESTS_BIN "/utests", list[0]);
+    assert_string_equal(TESTS_BIN "/CMakeFiles", list[1]);
     assert_string_equal(TESTS_SRC, list[5]);
     assert_string_equal(TESTS_BIN, list[6]);
     assert_null(list[7]);
@@ -199,7 +192,6 @@ test_options(void **state)
     assert_int_equal(LY_EINVAL, ly_ctx_set_options(ctx, LY_CTX_NO_YANGLIBRARY));
     logbuf_assert("Invalid argument option (ly_ctx_set_options()).");
 
-
     /* unset */
     /* LY_CTX_ALL_IMPLEMENTED */
     assert_int_not_equal(0, ctx->flags & LY_CTX_ALL_IMPLEMENTED);
@@ -256,9 +248,10 @@ test_options(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
-static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+static LY_ERR
+test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
     *module_data = user_data;
     *format = LYS_IN_YANG;
@@ -291,10 +284,10 @@ test_models(void **state)
     logbuf_assert("Invalid schema input format.");
 
     /* import callback */
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, (void*)(str = "test"));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, (void *)(str = "test"));
     assert_ptr_equal(test_imp_clb, ctx->imp_clb);
     assert_ptr_equal(str, ctx->imp_clb_data);
-    assert_ptr_equal(test_imp_clb, ly_ctx_get_module_imp_clb(ctx, (void**)&str));
+    assert_ptr_equal(test_imp_clb, ly_ctx_get_module_imp_clb(ctx, (void **)&str));
     assert_string_equal("test", str);
 
     ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
@@ -391,11 +384,11 @@ test_imports(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;revision 2019-09-16;}",
-                                               LYS_IN_YANG, &mod1));
+            LYS_IN_YANG, &mod1));
     assert_int_equal(1, mod1->latest_revision);
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
-                                               LYS_IN_YANG, &mod2));
+            LYS_IN_YANG, &mod2));
     import = mod2->parsed->imports[0].module;
     assert_int_equal(2, import->latest_revision);
     assert_int_equal(0, mod1->latest_revision);
@@ -410,11 +403,11 @@ test_imports(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;revision 2019-09-18;}",
-                                               LYS_IN_YANG, &mod1));
+            LYS_IN_YANG, &mod1));
     assert_int_equal(1, mod1->latest_revision);
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
-                                               LYS_IN_YANG, &mod2));
+            LYS_IN_YANG, &mod2));
     import = mod2->parsed->imports[0].module;
     assert_ptr_equal(mod1, import);
     assert_int_equal(2, import->latest_revision);
@@ -520,7 +513,8 @@ test_get_models(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_searchdirs, logger_setup, logger_teardown),

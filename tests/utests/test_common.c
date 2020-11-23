@@ -12,16 +12,10 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "common.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -46,6 +40,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -123,7 +118,8 @@ test_utf8(void **state)
 
 #ifndef __APPLE__
 void *__real_realloc(void *ptr, size_t size);
-void *__wrap_realloc(void *ptr, size_t size)
+void *
+__wrap_realloc(void *ptr, size_t size)
 {
     int wrap = mock_type(int);
 
@@ -158,6 +154,7 @@ test_lyrealloc(void **state)
 
     /* ptr should be freed by ly_realloc() */
 }
+
 #endif /* not __APPLE__ */
 
 static void
@@ -378,7 +375,8 @@ test_parse_instance_predicate(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_utf8, logger_setup, logger_teardown),

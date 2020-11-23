@@ -12,11 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
 #include <stdio.h>
 #include <string.h>
 
@@ -26,6 +21,7 @@
 #include "schema_compile.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utests.h"
 
 /* originally static functions from tree_schema_free.c and parser_yang.c */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
@@ -40,10 +36,10 @@ void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 LY_ERR buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
 LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p,
-                      size_t *word_len, char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix);
+        size_t *word_len, char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix);
 LY_ERR get_keyword(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt *kw, char **word_p, size_t *word_len);
 LY_ERR get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg,
-                    uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
+        uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
 LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t comment);
 
 LY_ERR parse_action(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_action **actions);
@@ -90,6 +86,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static void
@@ -324,7 +321,6 @@ test_arg(void **state)
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, len));
-
 
     in.current = "\"hello\\n\\t\\\"\\\\\";";
     assert_int_equal(LY_SUCCESS, get_argument(ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
@@ -862,9 +858,10 @@ submod_renew(struct lys_yang_parser_ctx *ctx)
     return (struct lysp_submodule *)ctx->parsed_mod;
 }
 
-static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+static LY_ERR
+test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
     *module_data = user_data;
     *format = LYS_IN_YANG;
@@ -941,36 +938,36 @@ test_module(void **state)
     TEST_NODE(LYS_ANYXML, "anyxml test;}", "test");
     /* augment */
     TEST_GENERIC("augment /somepath;}", mod->augments,
-                 assert_string_equal("/somepath", mod->augments[0].nodeid));
+            assert_string_equal("/somepath", mod->augments[0].nodeid));
     /* choice */
     TEST_NODE(LYS_CHOICE, "choice test;}", "test");
     /* contact 0..1 */
     TEST_GENERIC("contact \"firstname\" + \n\t\" surname\";}", mod->mod->contact,
-                 assert_string_equal("firstname surname", mod->mod->contact));
+            assert_string_equal("firstname surname", mod->mod->contact));
     /* container */
     TEST_NODE(LYS_CONTAINER, "container test;}", "test");
     /* description 0..1 */
     TEST_GENERIC("description \'some description\';}", mod->mod->dsc,
-                 assert_string_equal("some description", mod->mod->dsc));
+            assert_string_equal("some description", mod->mod->dsc));
     /* deviation */
     TEST_GENERIC("deviation /somepath {deviate not-supported;}}", mod->deviations,
-                 assert_string_equal("/somepath", mod->deviations[0].nodeid));
+            assert_string_equal("/somepath", mod->deviations[0].nodeid));
     /* extension */
     TEST_GENERIC("extension test;}", mod->extensions,
-                 assert_string_equal("test", mod->extensions[0].name));
+            assert_string_equal("test", mod->extensions[0].name));
     /* feature */
     TEST_GENERIC("feature test;}", mod->features,
-                 assert_string_equal("test", mod->features[0].name));
+            assert_string_equal("test", mod->features[0].name));
     /* grouping */
     TEST_GENERIC("grouping grp;}", mod->groupings,
-                 assert_string_equal("grp", mod->groupings[0].name));
+            assert_string_equal("grp", mod->groupings[0].name));
     /* identity */
     TEST_GENERIC("identity test;}", mod->identities,
-                 assert_string_equal("test", mod->identities[0].name));
+            assert_string_equal("test", mod->identities[0].name));
     /* import */
     ly_ctx_set_module_imp_clb(ctx->parsed_mod->mod->ctx, test_imp_clb, "module zzz { namespace urn:zzz; prefix z;}");
     TEST_GENERIC("import zzz {prefix z;}}", mod->imports,
-                 assert_string_equal("zzz", mod->imports[0].name));
+            assert_string_equal("zzz", mod->imports[0].name));
 
     /* import - prefix collision */
     in.current = SCHEMA_BEGINNING "import zzz {prefix x;}}";
@@ -1002,7 +999,7 @@ test_module(void **state)
 
     ly_ctx_set_module_imp_clb(ctx->parsed_mod->mod->ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
     TEST_GENERIC("include xxx;}", mod->includes,
-                 assert_string_equal("xxx", mod->includes[0].name));
+            assert_string_equal("xxx", mod->includes[0].name));
 
     /* leaf */
     TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");
@@ -1012,22 +1009,22 @@ test_module(void **state)
     TEST_NODE(LYS_LIST, "list test {key a;leaf a {type string;}}}", "test");
     /* notification */
     TEST_GENERIC("notification test;}", mod->notifs,
-                 assert_string_equal("test", mod->notifs[0].name));
+            assert_string_equal("test", mod->notifs[0].name));
     /* organization 0..1 */
     TEST_GENERIC("organization \"CESNET a.l.e.\";}", mod->mod->org,
-                 assert_string_equal("CESNET a.l.e.", mod->mod->org));
+            assert_string_equal("CESNET a.l.e.", mod->mod->org));
     /* reference 0..1 */
     TEST_GENERIC("reference RFC7950;}", mod->mod->ref,
-                 assert_string_equal("RFC7950", mod->mod->ref));
+            assert_string_equal("RFC7950", mod->mod->ref));
     /* revision */
     TEST_GENERIC("revision 2018-10-12;}", mod->revs,
-                 assert_string_equal("2018-10-12", mod->revs[0].date));
+            assert_string_equal("2018-10-12", mod->revs[0].date));
     /* rpc */
     TEST_GENERIC("rpc test;}", mod->rpcs,
-                 assert_string_equal("test", mod->rpcs[0].name));
+            assert_string_equal("test", mod->rpcs[0].name));
     /* typedef */
     TEST_GENERIC("typedef test{type string;}}", mod->typedefs,
-                 assert_string_equal("test", mod->typedefs[0].name));
+            assert_string_equal("test", mod->typedefs[0].name));
     /* uses */
     TEST_NODE(LYS_USES, "uses test;}", "test");
     /* yang-version */
@@ -1075,8 +1072,8 @@ test_module(void **state)
 
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,
-                 assert_string_equal("prefix:test", mod->exts[0].name);
-                 assert_int_equal(LYEXT_SUBSTMT_SELF, mod->exts[0].insubstmt));
+            assert_string_equal("prefix:test", mod->exts[0].name);
+            assert_int_equal(LYEXT_SUBSTMT_SELF, mod->exts[0].insubstmt));
     mod = mod_renew(ctx);
 
     /* invalid substatement */
@@ -1277,8 +1274,8 @@ test_container(void **state)
 
     /* full content */
     in.current = "cont {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; leaf l {type string;}"
-          "leaf-list ll {type string;} list li;must 'expr';notification not; presence true; reference test;status current;typedef t {type int8;}uses g;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_container(ctx, &in, NULL, (struct lysp_node**)&c));
+            "leaf-list ll {type string;} list li;must 'expr';notification not; presence true; reference test;status current;typedef t {type int8;}uses g;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_container(ctx, &in, NULL, (struct lysp_node **)&c));
     assert_non_null(c);
     assert_int_equal(LYS_CONTAINER, c->nodetype);
     assert_string_equal("cont", c->name);
@@ -1298,23 +1295,23 @@ test_container(void **state)
     assert_null(c->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR, c->flags);
     ly_set_erase(&ctx->tpdfs_nodes, NULL);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)c); c = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)c); c = NULL;
 
     /* invalid */
     in.current = " cont {augment /root;} ...";
-    assert_int_equal(LY_EVALID, parse_container(ctx, &in, NULL, (struct lysp_node**)&c));
+    assert_int_equal(LY_EVALID, parse_container(ctx, &in, NULL, (struct lysp_node **)&c));
     logbuf_assert("Invalid keyword \"augment\" as a child of \"container\". Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)c); c = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)c); c = NULL;
     in.current = " cont {nonsence true;} ...";
-    assert_int_equal(LY_EVALID, parse_container(ctx, &in, NULL, (struct lysp_node**)&c));
+    assert_int_equal(LY_EVALID, parse_container(ctx, &in, NULL, (struct lysp_node **)&c));
     logbuf_assert("Invalid character sequence \"nonsence\", expected a keyword. Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)c); c = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)c); c = NULL;
 
     ctx->parsed_mod->version = 1; /* simulate YANG 1.0 */
     in.current = " cont {action x;} ...";
-    assert_int_equal(LY_EVALID, parse_container(ctx, &in, NULL, (struct lysp_node**)&c));
+    assert_int_equal(LY_EVALID, parse_container(ctx, &in, NULL, (struct lysp_node **)&c));
     logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)c); c = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)c); c = NULL;
 }
 
 static void
@@ -1344,8 +1341,8 @@ test_leaf(void **state)
 
     /* full content - without mandatory which is mutual exclusive with default */
     in.current = "l {config false;default \"xxx\";description test;if-feature f;"
-          "must 'expr';reference test;status current;type string; units yyy;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaf(ctx, &in, NULL, (struct lysp_node**)&l));
+            "must 'expr';reference test;status current;type string; units yyy;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaf(ctx, &in, NULL, (struct lysp_node **)&l));
     assert_non_null(l);
     assert_int_equal(LYS_LEAF, l->nodetype);
     assert_string_equal("l", l->name);
@@ -1361,23 +1358,23 @@ test_leaf(void **state)
     assert_null(l->parent);
     assert_null(l->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR, l->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 
     /* full content - now with mandatory */
     in.current = "l {mandatory true; type string;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaf(ctx, &in, NULL, (struct lysp_node**)&l));
+    assert_int_equal(LY_SUCCESS, parse_leaf(ctx, &in, NULL, (struct lysp_node **)&l));
     assert_non_null(l);
     assert_int_equal(LYS_LEAF, l->nodetype);
     assert_string_equal("l", l->name);
     assert_string_equal("string", l->type.name);
     assert_int_equal(LYS_MAND_TRUE, l->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 
     /* invalid */
     in.current = " l {description \"missing type\";} ...";
-    assert_int_equal(LY_EVALID, parse_leaf(ctx, &in, NULL, (struct lysp_node**)&l));
+    assert_int_equal(LY_EVALID, parse_leaf(ctx, &in, NULL, (struct lysp_node **)&l));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf\". Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 }
 
 static void
@@ -1410,9 +1407,9 @@ test_leaflist(void **state)
 
     /* full content - without min-elements which is mutual exclusive with default */
     in.current = "ll {config false;default \"xxx\"; default \"yyy\";description test;if-feature f;"
-          "max-elements 10;must 'expr';ordered-by user;reference test;"
-          "status current;type string; units zzz;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaflist(ctx, &in, NULL, (struct lysp_node**)&ll));
+            "max-elements 10;must 'expr';ordered-by user;reference test;"
+            "status current;type string; units zzz;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaflist(ctx, &in, NULL, (struct lysp_node **)&ll));
     assert_non_null(ll);
     assert_int_equal(LYS_LEAFLIST, ll->nodetype);
     assert_string_equal("ll", ll->name);
@@ -1433,11 +1430,11 @@ test_leaflist(void **state)
     assert_null(ll->parent);
     assert_null(ll->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_MAX, ll->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)ll); ll = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)ll); ll = NULL;
 
     /* full content - now with min-elements */
     in.current = "ll {min-elements 10; type string;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaflist(ctx, &in, NULL, (struct lysp_node**)&ll));
+    assert_int_equal(LY_SUCCESS, parse_leaflist(ctx, &in, NULL, (struct lysp_node **)&ll));
     assert_non_null(ll);
     assert_int_equal(LYS_LEAFLIST, ll->nodetype);
     assert_string_equal("ll", ll->name);
@@ -1445,19 +1442,19 @@ test_leaflist(void **state)
     assert_int_equal(0, ll->max);
     assert_int_equal(10, ll->min);
     assert_int_equal(LYS_SET_MIN, ll->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)ll); ll = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)ll); ll = NULL;
 
     /* invalid */
     in.current = " ll {description \"missing type\";} ...";
-    assert_int_equal(LY_EVALID, parse_leaflist(ctx, &in, NULL, (struct lysp_node**)&ll));
+    assert_int_equal(LY_EVALID, parse_leaflist(ctx, &in, NULL, (struct lysp_node **)&ll));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf-list\". Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)ll); ll = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)ll); ll = NULL;
 
     ctx->parsed_mod->version = 1; /* simulate YANG 1.0 - default statement is not allowed */
     in.current = " ll {default xx; type string;} ...";
-    assert_int_equal(LY_EVALID, parse_leaflist(ctx, &in, NULL, (struct lysp_node**)&ll));
+    assert_int_equal(LY_EVALID, parse_leaflist(ctx, &in, NULL, (struct lysp_node **)&ll));
     logbuf_assert("Invalid keyword \"default\" as a child of \"leaf-list\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)ll); ll = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)ll); ll = NULL;
 }
 
 static void
@@ -1489,9 +1486,9 @@ test_list(void **state)
 
     /* full content */
     in.current = "l {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; key l; leaf l {type string;}"
-          "leaf-list ll {type string;} list li;max-elements 10; min-elements 1;must 'expr';notification not; ordered-by system; reference test;"
-          "status current;typedef t {type int8;}unique xxx;unique yyy;uses g;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_list(ctx, &in, NULL, (struct lysp_node**)&l));
+            "leaf-list ll {type string;} list li;max-elements 10; min-elements 1;must 'expr';notification not; ordered-by system; reference test;"
+            "status current;typedef t {type int8;}unique xxx;unique yyy;uses g;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_list(ctx, &in, NULL, (struct lysp_node **)&l));
     assert_non_null(l);
     assert_int_equal(LYS_LIST, l->nodetype);
     assert_string_equal("l", l->name);
@@ -1512,14 +1509,14 @@ test_list(void **state)
     assert_null(l->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_MAX | LYS_SET_MIN, l->flags);
     ly_set_erase(&ctx->tpdfs_nodes, NULL);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 
     /* invalid content */
     ctx->parsed_mod->version = 1; /* simulate YANG 1.0 */
     in.current = "l {action x;} ...";
-    assert_int_equal(LY_EVALID, parse_list(ctx, &in, NULL, (struct lysp_node**)&l));
+    assert_int_equal(LY_EVALID, parse_list(ctx, &in, NULL, (struct lysp_node **)&l));
     logbuf_assert("Invalid keyword \"action\" as a child of \"list\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)l); l = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 }
 
 static void
@@ -1549,8 +1546,8 @@ test_choice(void **state)
 
     /* full content - without default due to a collision with mandatory */
     in.current = "ch {anydata any;anyxml anyxml; case c;choice ch;config false;container c;description test;if-feature f;leaf l {type string;}"
-          "leaf-list ll {type string;} list li;mandatory true;reference test;status current;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_choice(ctx, &in, NULL, (struct lysp_node**)&ch));
+            "leaf-list ll {type string;} list li;mandatory true;reference test;status current;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_choice(ctx, &in, NULL, (struct lysp_node **)&ch));
     assert_non_null(ch);
     assert_int_equal(LYS_CHOICE, ch->nodetype);
     assert_string_equal("ch", ch->name);
@@ -1562,17 +1559,17 @@ test_choice(void **state)
     assert_null(ch->parent);
     assert_null(ch->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE, ch->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)ch); ch = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)ch); ch = NULL;
 
     /* full content - the default missing from the previous node */
     in.current = "ch {default c;case c;} ...";
-    assert_int_equal(LY_SUCCESS, parse_choice(ctx, &in, NULL, (struct lysp_node**)&ch));
+    assert_int_equal(LY_SUCCESS, parse_choice(ctx, &in, NULL, (struct lysp_node **)&ch));
     assert_non_null(ch);
     assert_int_equal(LYS_CHOICE, ch->nodetype);
     assert_string_equal("ch", ch->name);
     assert_string_equal("c", ch->dflt.str);
     assert_int_equal(0, ch->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)ch); ch = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)ch); ch = NULL;
 }
 
 static void
@@ -1599,8 +1596,8 @@ test_case(void **state)
 
     /* full content */
     in.current = "cs {anydata any;anyxml anyxml; choice ch;container c;description test;if-feature f;leaf l {type string;}"
-          "leaf-list ll {type string;} list li;reference test;status current;uses grp;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_case(ctx, &in, NULL, (struct lysp_node**)&cs));
+            "leaf-list ll {type string;} list li;reference test;status current;uses grp;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_case(ctx, &in, NULL, (struct lysp_node **)&cs));
     assert_non_null(cs);
     assert_int_equal(LYS_CASE, cs->nodetype);
     assert_string_equal("cs", cs->name);
@@ -1612,13 +1609,13 @@ test_case(void **state)
     assert_null(cs->parent);
     assert_null(cs->next);
     assert_int_equal(LYS_STATUS_CURR, cs->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)cs); cs = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)cs); cs = NULL;
 
     /* invalid content */
     in.current = "cs {config true} ...";
-    assert_int_equal(LY_EVALID, parse_case(ctx, &in, NULL, (struct lysp_node**)&cs));
+    assert_int_equal(LY_EVALID, parse_case(ctx, &in, NULL, (struct lysp_node **)&cs));
     logbuf_assert("Invalid keyword \"config\" as a child of \"case\". Line number 1.");
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)cs); cs = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)cs); cs = NULL;
 }
 
 static void
@@ -1651,7 +1648,7 @@ test_any(void **state, enum ly_stmt kw)
 
     /* full content */
     in.current = "any {config true;description test;if-feature f;mandatory true;must 'expr';reference test;status current;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_any(ctx, &in, kw, NULL, (struct lysp_node**)&any));
+    assert_int_equal(LY_SUCCESS, parse_any(ctx, &in, kw, NULL, (struct lysp_node **)&any));
     assert_non_null(any);
     assert_int_equal(kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML, any->nodetype);
     assert_string_equal("any", any->name);
@@ -1664,7 +1661,7 @@ test_any(void **state, enum ly_stmt kw)
     assert_null(any->parent);
     assert_null(any->next);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, any->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)any); any = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)any); any = NULL;
 }
 
 static void
@@ -1702,7 +1699,7 @@ test_grouping(void **state)
 
     /* full content */
     in.current = "grp {action x;anydata any;anyxml anyxml; choice ch;container c;description test;grouping g;leaf l {type string;}"
-          "leaf-list ll {type string;} list li;notification not;reference test;status current;typedef t {type int8;}uses g;m:ext;} ...";
+            "leaf-list ll {type string;} list li;notification not;reference test;status current;typedef t {type int8;}uses g;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_grouping(ctx, &in, NULL, &grp));
     assert_non_null(grp);
     assert_int_equal(LYS_GROUPING, grp->nodetype);
@@ -1711,7 +1708,7 @@ test_grouping(void **state)
     assert_non_null(grp->exts);
     assert_string_equal("test", grp->ref);
     assert_null(grp->parent);
-    assert_int_equal( LYS_STATUS_CURR, grp->flags);
+    assert_int_equal(LYS_STATUS_CURR, grp->flags);
     ly_set_erase(&ctx->tpdfs_nodes, NULL);
     FREE_ARRAY(ctx->parsed_mod->mod->ctx, grp, lysp_grp_free); grp = NULL;
 
@@ -1753,13 +1750,13 @@ test_action(void **state)
 
     /* full content */
     in.current = "top;";
-    assert_int_equal(LY_SUCCESS, parse_container(ctx, &in, NULL, (struct lysp_node**)&c));
+    assert_int_equal(LY_SUCCESS, parse_container(ctx, &in, NULL, (struct lysp_node **)&c));
     in.current = "func {description test;grouping grp;if-feature f;reference test;status current;typedef mytype {type int8;} m:ext;"
-          "input {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
-          " list li; must 1; typedef mytypei {type int8;} uses grp; m:ext;}"
-          "output {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
-          " list li; must 1; typedef mytypeo {type int8;} uses grp; m:ext;}} ...";
-    assert_int_equal(LY_SUCCESS, parse_action(ctx, &in, (struct lysp_node*)c, &rpcs));
+            "input {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
+            " list li; must 1; typedef mytypei {type int8;} uses grp; m:ext;}"
+            "output {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
+            " list li; must 1; typedef mytypeo {type int8;} uses grp; m:ext;}} ...";
+    assert_int_equal(LY_SUCCESS, parse_action(ctx, &in, (struct lysp_node *)c, &rpcs));
     assert_non_null(rpcs);
     assert_int_equal(LYS_ACTION, rpcs->nodetype);
     assert_string_equal("func", rpcs->name);
@@ -1794,7 +1791,7 @@ test_action(void **state)
     logbuf_assert("Invalid keyword \"config\" as a child of \"rpc\". Line number 1.");
     FREE_ARRAY(ctx->parsed_mod->mod->ctx, rpcs, lysp_action_free); rpcs = NULL;
 
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)c);
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)c);
 }
 
 static void
@@ -1821,10 +1818,10 @@ test_notification(void **state)
 
     /* full content */
     in.current = "top;";
-    assert_int_equal(LY_SUCCESS, parse_container(ctx, &in, NULL, (struct lysp_node**)&c));
+    assert_int_equal(LY_SUCCESS, parse_container(ctx, &in, NULL, (struct lysp_node **)&c));
     in.current = "ntf {anydata a1; anyxml a2; choice ch; container c; description test; grouping grp; if-feature f; leaf l {type int8;}"
-          "leaf-list ll {type int8;} list li; must 1; reference test; status current; typedef mytype {type int8;} uses grp; m:ext;}";
-    assert_int_equal(LY_SUCCESS, parse_notif(ctx, &in, (struct lysp_node*)c, &notifs));
+            "leaf-list ll {type int8;} list li; must 1; reference test; status current; typedef mytype {type int8;} uses grp; m:ext;}";
+    assert_int_equal(LY_SUCCESS, parse_notif(ctx, &in, (struct lysp_node *)c, &notifs));
     assert_non_null(notifs);
     assert_int_equal(LYS_NOTIF, notifs->nodetype);
     assert_string_equal("ntf", notifs->name);
@@ -1847,7 +1844,7 @@ test_notification(void **state)
     logbuf_assert("Invalid keyword \"config\" as a child of \"notification\". Line number 1.");
     FREE_ARRAY(ctx->parsed_mod->mod->ctx, notifs, lysp_notif_free); notifs = NULL;
 
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)c);
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)c);
 }
 
 static void
@@ -1874,7 +1871,7 @@ test_uses(void **state)
 
     /* full content */
     in.current = "grpref {augment some/node;description test;if-feature f;reference test;refine some/other/node;status current;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_uses(ctx, &in, NULL, (struct lysp_node**)&u));
+    assert_int_equal(LY_SUCCESS, parse_uses(ctx, &in, NULL, (struct lysp_node **)&u));
     assert_non_null(u);
     assert_int_equal(LYS_USES, u->nodetype);
     assert_string_equal("grpref", u->name);
@@ -1888,7 +1885,7 @@ test_uses(void **state)
     assert_null(u->parent);
     assert_null(u->next);
     assert_int_equal(LYS_STATUS_CURR, u->flags);
-    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node*)u); u = NULL;
+    lysp_node_free(ctx->parsed_mod->mod->ctx, (struct lysp_node *)u); u = NULL;
 }
 
 static void
@@ -1915,7 +1912,7 @@ test_augment(void **state)
 
     /* full content */
     in.current = "/target/nodeid {action x; anydata any;anyxml anyxml; case cs; choice ch;container c;description test;if-feature f;leaf l {type string;}"
-          "leaf-list ll {type string;} list li;notification not;reference test;status current;uses g;when true;m:ext;} ...";
+            "leaf-list ll {type string;} list li;notification not;reference test;status current;uses g;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_augment(ctx, &in, NULL, &a));
     assert_non_null(a);
     assert_int_equal(LYS_AUGMENT, a->nodetype);
@@ -1987,7 +1984,8 @@ test_value(void **state)
     logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_helpers, setup_f, teardown_f),

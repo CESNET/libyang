@@ -16,14 +16,9 @@
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L /* strdup */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
+
+#include "utests.h"
 
 #include "context.h"
 #include "in_internal.h"
@@ -112,7 +107,7 @@ test_element(void **state)
     ly_in_free(in, 0);
 
     /* no element */
-    //logbuf_clean();
+    // logbuf_clean();
     str = "no data present";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
@@ -699,7 +694,8 @@ test_simple_xml(void **state)
     ly_in_free(in, 0);
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_element, logger_setup),

@@ -14,18 +14,13 @@
 
 #include "test_schema.h"
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
 #include <string.h>
 
 #include "log.h"
 #include "parser_schema.h"
 #include "tests/config.h"
 #include "tree_schema.h"
+#include "utests.h"
 
 #if ENABLE_LOGGER_CHECKING
 
@@ -48,6 +43,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -85,8 +81,8 @@ logbuf_clean(void)
 
 LY_ERR
 test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-             const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-             const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
     *module_data = user_data;
     *format = LYS_IN_YANG;
@@ -108,7 +104,8 @@ void test_accessible_tree(void **state);
 void test_identity(void **state);
 void test_feature(void **state);
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         /** test_schema_common.c */

@@ -12,13 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
 #include "libyang.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -45,6 +40,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -301,7 +297,8 @@ test_path(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_top_level, setup, teardown),

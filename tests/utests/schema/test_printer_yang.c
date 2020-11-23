@@ -12,19 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
-#include <string.h>
-
 #include "common.h"
 #include "context.h"
 #include "out.h"
 #include "printer_schema.h"
 #include "tree_schema.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -49,6 +42,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -218,9 +212,10 @@ test_module(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
-static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+static LY_ERR
+test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
     *module_data = user_data;
     *format = LYS_IN_YANG;
@@ -277,7 +272,8 @@ test_submodule(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),

@@ -14,23 +14,18 @@
 
 #define _POSIX_C_SOURCE 200112L
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "common.h"
+#include "in.h"
 #include "log.h"
 #include "out.h"
-#include "in.h"
-
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -55,6 +50,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -400,15 +396,15 @@ test_output_clb(void **state)
     assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
 
     /* manipulate with the handler */
-    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void*)(intptr_t)fd1, &out));
+    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void *)(intptr_t)fd1, &out));
     assert_int_equal(LY_OUT_CALLBACK, ly_out_type(out));
-    assert_ptr_equal(fd1, ly_out_clb_arg(out, (void*)(intptr_t)fd2));
+    assert_ptr_equal(fd1, ly_out_clb_arg(out, (void *)(intptr_t)fd2));
     assert_ptr_equal(fd2, ly_out_clb_arg(out, NULL));
-    assert_ptr_equal(fd2, ly_out_clb_arg(out, (void*)(intptr_t)fd1));
+    assert_ptr_equal(fd2, ly_out_clb_arg(out, (void *)(intptr_t)fd1));
     assert_ptr_equal(write, ly_out_clb(out, (void *)write));
     ly_out_free(out, NULL, 0);
     assert_int_equal(0, close(fd2));
-    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void*)(intptr_t)fd1, &out));
+    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void *)(intptr_t)fd1, &out));
     ly_out_free(out, (void *)close, 0);
 
     /* writing data */
@@ -417,7 +413,7 @@ test_output_clb(void **state)
     /* truncate file to start with no data */
     assert_int_equal(0, ftruncate(fd1, 0));
 
-    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void*)(intptr_t)fd1, &out));
+    assert_int_equal(LY_SUCCESS, ly_out_new_clb((void *)write, (void *)(intptr_t)fd1, &out));
     assert_int_equal(LY_SUCCESS, ly_print(out, "test %s", "print"));
     assert_int_equal(10, ly_out_printed(out));
     assert_int_equal(10, read(fd2, buf, 30));
@@ -430,7 +426,8 @@ test_output_clb(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_input_mem, logger_setup, logger_teardown),

@@ -12,12 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
 #include <string.h>
 
 #include "context.h"
@@ -26,6 +20,7 @@
 #include "tests/config.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -52,6 +47,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -60,69 +56,69 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a =
-    "module a {"
-        "namespace urn:tests:a;"
-        "prefix a;"
-        "yang-version 1.1;"
-
-        "list l1 {"
-            "key \"a b\";"
-            "leaf a {"
-                "type string;"
-            "}"
-            "leaf b {"
-                "type string;"
-            "}"
-            "leaf c {"
-                "type string;"
-            "}"
-        "}"
-        "leaf foo {"
-            "type string;"
-        "}"
-        "leaf foo2 {"
-            "type uint8;"
-        "}"
-        "container c {"
-            "leaf x {"
-                "type string;"
-            "}"
-            "list ll {"
-                "key \"a\";"
-                "leaf a {"
-                    "type string;"
-                "}"
-                "list ll {"
-                    "key \"a\";"
-                    "leaf a {"
-                        "type string;"
-                    "}"
-                    "leaf b {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-            "leaf-list ll2 {"
-                "type string;"
-            "}"
-        "}"
-    "}";
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    list l1 {\n"
+            "        key \"a b\";\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf c {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf foo {\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf foo2 {\n"
+            "        type uint8;\n"
+            "    }\n"
+            "    container c {\n"
+            "        leaf x {\n"
+            "            type string;\n"
+            "        }\n"
+            "        list ll {\n"
+            "            key \"a\";\n"
+            "            leaf a {\n"
+            "                type string;\n"
+            "            }\n"
+            "            list ll {\n"
+            "                key \"a\";\n"
+            "                leaf a {\n"
+            "                    type string;\n"
+            "                }\n"
+            "                leaf b {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "        leaf-list ll2 {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_b =
-    "module b {"
-        "namespace urn:tests:b;"
-        "prefix b;"
-        "yang-version 1.1;"
-
-        "list l2 {"
-            "key \"a\";"
-            "leaf a {"
-                "type uint16;"
-            "}"
-            "leaf b {"
-                "type uint16;"
-            "}"
-        "}"
-    "}";
+            "module b {\n"
+            "    namespace urn:tests:b;\n"
+            "    prefix b;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    list l2 {\n"
+            "        key \"a\";\n"
+            "        leaf a {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "    }\n"
+            "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -170,57 +166,57 @@ test_hash(void **state)
     *state = test_hash;
 
     const char *data =
-    "<l1 xmlns=\"urn:tests:a\">"
-        "<a>a1</a>"
-        "<b>b1</b>"
-        "<c>c1</c>"
-    "</l1>"
-    "<l1 xmlns=\"urn:tests:a\">"
-        "<a>a2</a>"
-        "<b>b2</b>"
-    "</l1>"
-    "<l1 xmlns=\"urn:tests:a\">"
-        "<a>a3</a>"
-        "<b>b3</b>"
-        "<c>c3</c>"
-    "</l1>"
-    "<foo xmlns=\"urn:tests:a\">foo value</foo>"
-    "<c xmlns=\"urn:tests:a\">"
-        "<x>val</x>"
-        "<ll>"
-            "<a>val_a</a>"
-            "<ll>"
-                "<a>val_a</a>"
-                "<b>val</b>"
-            "</ll>"
-            "<ll>"
-                "<a>val_b</a>"
-            "</ll>"
-        "</ll>"
-        "<ll>"
-            "<a>val_b</a>"
-            "<ll>"
-                "<a>val_a</a>"
-            "</ll>"
-            "<ll>"
-                "<a>val_b</a>"
-                "<b>val</b>"
-            "</ll>"
-        "</ll>"
-        "<ll>"
-            "<a>val_c</a>"
-            "<ll>"
-                "<a>val_a</a>"
-            "</ll>"
-            "<ll>"
-                "<a>val_b</a>"
-            "</ll>"
-        "</ll>"
-        "<ll2>one</ll2>"
-        "<ll2>two</ll2>"
-        "<ll2>three</ll2>"
-        "<ll2>four</ll2>"
-    "</c>";
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>\n"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "</l1>\n"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a3</a>\n"
+            "    <b>b3</b>\n"
+            "    <c>c3</c>\n"
+            "</l1>\n"
+            "<foo xmlns=\"urn:tests:a\">foo value</foo>\n"
+            "<c xmlns=\"urn:tests:a\">\n"
+            "    <x>val</x>\n"
+            "    <ll>\n"
+            "        <a>val_a</a>\n"
+            "        <ll>\n"
+            "            <a>val_a</a>\n"
+            "            <b>val</b>\n"
+            "        </ll>\n"
+            "        <ll>\n"
+            "            <a>val_b</a>\n"
+            "        </ll>\n"
+            "    </ll>\n"
+            "    <ll>\n"
+            "        <a>val_b</a>\n"
+            "        <ll>\n"
+            "            <a>val_a</a>\n"
+            "        </ll>\n"
+            "        <ll>\n"
+            "            <a>val_b</a>\n"
+            "            <b>val</b>\n"
+            "        </ll>\n"
+            "    </ll>\n"
+            "    <ll>\n"
+            "        <a>val_c</a>\n"
+            "        <ll>\n"
+            "            <a>val_a</a>\n"
+            "        </ll>\n"
+            "        <ll>\n"
+            "            <a>val_b</a>\n"
+            "        </ll>\n"
+            "    </ll>\n"
+            "    <ll2>one</ll2>\n"
+            "    <ll2>two</ll2>\n"
+            "    <ll2>three</ll2>\n"
+            "    <ll2>four</ll2>\n"
+            "</c>";
     struct lyd_node *tree, *node;
     struct ly_set *set;
 
@@ -292,37 +288,37 @@ test_toplevel(void **state)
     *state = test_toplevel;
 
     const char *data =
-    "<l1 xmlns=\"urn:tests:a\">"
-        "<a>a1</a>"
-        "<b>b1</b>"
-        "<c>c1</c>"
-    "</l1>"
-    "<l1 xmlns=\"urn:tests:a\">"
-        "<a>a2</a>"
-        "<b>b2</b>"
-    "</l1>"
-    "<l1 xmlns=\"urn:tests:a\">"
-        "<a>a3</a>"
-        "<b>b3</b>"
-        "<c>c3</c>"
-    "</l1>"
-    "<foo xmlns=\"urn:tests:a\">foo value</foo>"
-    "<l2 xmlns=\"urn:tests:b\">"
-        "<a>1</a>"
-        "<b>1</b>"
-    "</l2>"
-    "<l2 xmlns=\"urn:tests:b\">"
-        "<a>2</a>"
-        "<b>1</b>"
-    "</l2>"
-    "<l2 xmlns=\"urn:tests:b\">"
-        "<a>3</a>"
-        "<b>1</b>"
-    "</l2>";
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>\n"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "</l1>\n"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a3</a>\n"
+            "    <b>b3</b>\n"
+            "    <c>c3</c>\n"
+            "</l1>\n"
+            "<foo xmlns=\"urn:tests:a\">foo value</foo>\n"
+            "<l2 xmlns=\"urn:tests:b\">\n"
+            "    <a>1</a>\n"
+            "    <b>1</b>\n"
+            "</l2>\n"
+            "<l2 xmlns=\"urn:tests:b\">\n"
+            "    <a>2</a>\n"
+            "    <b>1</b>\n"
+            "</l2>\n"
+            "<l2 xmlns=\"urn:tests:b\">\n"
+            "    <a>3</a>\n"
+            "    <b>1</b>\n"
+            "</l2>";
     struct lyd_node *tree;
     struct ly_set *set;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT , LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
     /* all top-level nodes from one module (default container as well) */
@@ -382,7 +378,7 @@ test_atomize(void **state)
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(mod->compiled->data->next->next, "/a:c/ll[a='val1']/ll[a='val2']/b",
-                                                   0, &set));
+            0, &set));
     assert_int_equal(7, set->count);
 
     ly_set_free(set, NULL);
@@ -394,7 +390,7 @@ test_canonize(void **state)
     *state = test_canonize;
 
     const char *data =
-    "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
+            "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
     struct lyd_node *tree;
     struct ly_set *set;
 
@@ -411,7 +407,8 @@ test_canonize(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_hash, setup, teardown),

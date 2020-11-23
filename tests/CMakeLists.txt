@@ -96,3 +96,5 @@ endif()
 add_subdirectory(style)
 add_subdirectory(utests)
 add_subdirectory(fuzz)
+
+set(format_sources ${format_sources} PARENT_SCOPE)

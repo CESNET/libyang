@@ -15,18 +15,10 @@
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#include "json.h"
 #include "context.h"
 #include "in_internal.h"
+#include "json.h"
+#include "utests.h"
 
 void *testfunc = NULL;
 
@@ -98,8 +90,6 @@ logbuf_clean(void)
 #else
 #   define logbuf_assert(str)
 #endif
-
-
 
 static void
 test_general(void **state)
@@ -565,7 +555,8 @@ test_array(void **state)
     testfunc = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_general, logger_setup, logger_teardown),
