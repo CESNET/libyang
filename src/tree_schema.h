@@ -105,6 +105,8 @@ struct lyxp_expr;
  *
  * - ::lysc_set_private()
  *
+ * - ::lysc_has_when()
+ *
  * - ::lysc_node_children()
  * - ::lysc_node_children_full()
  * - ::lysc_node_parent_full()
@@ -1761,6 +1763,18 @@ struct lysc_module {
  */
 #define lysc_is_key(lysc_node) \
     ((!lysc_node || !(lysc_node->nodetype & (LYS_LEAF)) || !(lysc_node->flags & LYS_KEY)) ? 0 : 1)
+
+/**
+ * @brief Check whether the schema node data instance existence depends on any when conditions.
+ * This node and any direct parent choice and case schema nodes are also examined for when conditions.
+ *
+ * Be careful, this function is not recursive and checks only conditions that apply to this node directly.
+ * Meaning if there are any conditions associated with any data parent instance of @p node, they are not returned.
+ *
+ * @param[in] node Schema node to examine.
+ * @return When condition associated with the node data instance, NULL if there is none.
+ */
+const struct lysc_when *lysc_has_when(const struct lysc_node *node);
 
 /**
  * @brief Get the groupings sized array of the given (parsed) schema node.

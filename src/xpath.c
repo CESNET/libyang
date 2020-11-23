@@ -5390,7 +5390,7 @@ moveto_node_check(const struct lyd_node *node, const struct lyd_node *ctx_node, 
     }
 
     /* when check */
-    if (!(options & LYXP_IGNORE_WHEN) && lyd_has_when(node) && !(node->flags & LYD_WHEN_TRUE)) {
+    if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(node->schema) && !(node->flags & LYD_WHEN_TRUE)) {
         return LY_EINCOMPLETE;
     }
 
@@ -5586,7 +5586,7 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
         }
 
         /* when check */
-        if (!(options & LYXP_IGNORE_WHEN) && sub && lyd_has_when(sub) && !(sub->flags & LYD_WHEN_TRUE)) {
+        if (!(options & LYXP_IGNORE_WHEN) && sub && lysc_has_when(sub->schema) && !(sub->flags & LYD_WHEN_TRUE)) {
             ret = LY_EINCOMPLETE;
             goto cleanup;
         }
@@ -6118,7 +6118,7 @@ moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, e
         }
 
         /* when check */
-        if (!(options & LYXP_IGNORE_WHEN) && lyd_has_when(iter) && !(iter->flags & LYD_WHEN_TRUE)) {
+        if (!(options & LYXP_IGNORE_WHEN) && lysc_has_when(iter->schema) && !(iter->flags & LYD_WHEN_TRUE)) {
             return LY_EINCOMPLETE;
         }
 
@@ -6327,7 +6327,7 @@ moveto_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
         }
 
         /* when check */
-        if (!(options & LYXP_IGNORE_WHEN) && lyd_has_when(new_node) && !(new_node->flags & LYD_WHEN_TRUE)) {
+        if (!(options & LYXP_IGNORE_WHEN) && new_node && lysc_has_when(new_node->schema) && !(new_node->flags & LYD_WHEN_TRUE)) {
             return LY_EINCOMPLETE;
         }
 
