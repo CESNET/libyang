@@ -491,17 +491,35 @@ lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no
     free(plugin_msg);
 }
 
-API void
-ly_err_print(struct ly_err_item *eitem)
+/**
+ * @brief Exact same functionality as ::ly_err_print() but has variable arguments so va_start() can
+ * be used and an empty va_list created.
+ */
+static void
+_ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem, ...)
 {
-    if (ly_log_opts & LY_LOLOG) {
-        if (log_clb) {
-            log_clb(eitem->level, eitem->msg, eitem->path);
-        } else {
-            fprintf(stderr, "libyang[%d]: %s%s", eitem->level, eitem->msg, eitem->path ? " " : "\n");
-            if (eitem->path) {
-                fprintf(stderr, "(path: %s)\n", eitem->path);
-            }
-        }
+    va_list ap;
+    char *path_dup = NULL;
+
+    LY_CHECK_ARG_RET(ctx, eitem, );
+
+    if (eitem->path) {
+        /* duplicate path because it will be freed */
+        path_dup = strdup(eitem->path);
+        LY_CHECK_ERR_RET(!path_dup, LOGMEM(ctx), );
     }
+
+    va_start(ap, eitem);
+    log_vprintf(ctx, eitem->level, eitem->no, eitem->vecode, eitem->path, eitem->msg, ap);
+    va_end(ap);
+
+    if (path_dup) {
+        eitem->path = path_dup;
+    }
+}
+
+API void
+ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem)
+{
+    _ly_err_print(ctx, eitem);
 }

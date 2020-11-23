@@ -3821,7 +3821,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
         }
 
         if (err) {
-            ly_err_print(err);
+            ly_err_print(set->ctx, err);
             ly_err_free(err);
         }
         LY_CHECK_RET(rc);
@@ -4600,7 +4600,7 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
     free(*pattern);
     LY_ARRAY_FREE(patterns);
     if (rc && (rc != LY_EVALID)) {
-        ly_err_print(err);
+        ly_err_print(set->ctx, err);
         ly_err_free(err);
         return rc;
     }
