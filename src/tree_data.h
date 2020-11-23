@@ -765,6 +765,8 @@ struct lyd_node *lyd_child_no_keys(const struct lyd_node *node);
  * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,
  * in case of augments it is the target module, recursively, otherwise it is the module where the data node is defined.
  *
+ * Also works for opaque nodes, if it is possible to resolve the module.
+ *
  * @param[in] node Data node to examine.
  * @return Module owner of the node.
  */
