@@ -41,9 +41,9 @@
  * @brief Find import prefix in imports.
  */
 static const struct lys_module *
-ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *data)
+ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *prefix_data)
 {
-    const struct lysp_module *prefix_mod = data;
+    const struct lysp_module *prefix_mod = prefix_data;
     struct lys_module *m = NULL;
     LY_ARRAY_COUNT_TYPE u;
     const char *local_prefix;
@@ -71,9 +71,10 @@ ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, s
  * @brief Find resolved module for a prefix in prefix - module pairs.
  */
 static const struct lys_module *
-ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *data)
+ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len,
+        void *prefix_data)
 {
-    struct lysc_prefix *prefixes = data;
+    struct lysc_prefix *prefixes = prefix_data;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(prefixes, u) {
@@ -89,10 +90,10 @@ ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *
  * @brief Find XML namespace prefix in XML namespaces, which are then mapped to modules.
  */
 static const struct lys_module *
-ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *data)
+ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *prefix_data)
 {
     const struct lyxml_ns *ns;
-    const struct ly_set *ns_set = data;
+    const struct ly_set *ns_set = prefix_data;
 
     ns = lyxml_ns_get(ns_set, prefix, prefix_len);
     if (!ns) {
@@ -106,7 +107,7 @@ ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefi
  * @brief Find module name.
  */
 static const struct lys_module *
-ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(parser))
+ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(prefix_data))
 {
     return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
 }
@@ -147,9 +148,9 @@ ly_type_store_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_
  * @brief Find module in import prefixes.
  */
 static const char *
-ly_schema_get_prefix(const struct lys_module *mod, void *data)
+ly_schema_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
-    const struct lysp_module *pmod = data;
+    const struct lysp_module *pmod = prefix_data;
     LY_ARRAY_COUNT_TYPE u;
 
     if (pmod->mod == mod) {
@@ -174,9 +175,9 @@ ly_schema_get_prefix(const struct lys_module *mod, void *data)
  * @brief Find prefix in prefix - module pairs.
  */
 static const char *
-ly_schema_resolved_get_prefix(const struct lys_module *mod, void *data)
+ly_schema_resolved_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
-    struct lysc_prefix *prefixes = data;
+    struct lysc_prefix *prefixes = prefix_data;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(prefixes, u) {
@@ -192,9 +193,9 @@ ly_schema_resolved_get_prefix(const struct lys_module *mod, void *data)
  * @brief Simply return module local prefix. Also, store the module in a set.
  */
 static const char *
-ly_xml_get_prefix(const struct lys_module *mod, void *data)
+ly_xml_get_prefix(const struct lys_module *mod, void *prefix_data)
 {
-    struct ly_set *ns_list = data;
+    struct ly_set *ns_list = prefix_data;
 
     LY_CHECK_RET(ly_set_add(ns_list, (void *)mod, 0, NULL), NULL);
     return mod->prefix;
@@ -204,7 +205,7 @@ ly_xml_get_prefix(const struct lys_module *mod, void *data)
  * @brief Simply return module name.
  */
 static const char *
-ly_json_get_prefix(const struct lys_module *mod, void *UNUSED(data))
+ly_json_get_prefix(const struct lys_module *mod, void *UNUSED(prefix_data))
 {
     return mod->name;
 }
