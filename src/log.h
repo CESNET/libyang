@@ -369,9 +369,10 @@ struct ly_err_item *ly_err_last(const struct ly_ctx *ctx);
 /**
  * @brief Print the error structure as if just generated.
  *
+ * @param[in] ctx Optional context to store the message in.
  * @param[in] eitem Error item structure to print.
  */
-void ly_err_print(struct ly_err_item *eitem);
+void ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem);
 
 /**
  * @brief Free error structures from a context.
