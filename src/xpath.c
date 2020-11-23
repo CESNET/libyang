@@ -3333,6 +3333,9 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint16_t 
         if (type->basetype != LY_TYPE_IDENT) {
             rc = type->plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, &err);
+            if (rc == LY_EINCOMPLETE) {
+                rc = LY_SUCCESS;
+            }
 
             if (err) {
                 LOGWRN(set->ctx, "Invalid value \"%s\" which does not fit the type (%s).", value, err->msg);
