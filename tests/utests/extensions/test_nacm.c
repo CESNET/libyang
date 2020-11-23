@@ -12,13 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
-#include <string.h>
+#include "utests.h"
 
 #include "libyang.h"
 #include "tests/config.h"
@@ -51,6 +45,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -76,7 +71,7 @@ setup(void **state)
 static int
 teardown(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
 
 #if ENABLE_LOGGER_CHECKING
     if (s->func) {
@@ -105,7 +100,8 @@ logbuf_clean(void)
 static void
 test_deny_all(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
+
     s->func = test_deny_all;
 
     const struct lys_module *mod;
@@ -120,13 +116,13 @@ test_deny_all(void **state)
 
     /* valid data */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YANG, &mod));
-    assert_non_null(cont = (struct lysc_node_container*)mod->compiled->data);
-    assert_non_null(leaf = (struct lysc_node_leaf*)cont->child);
+    assert_non_null(cont = (struct lysc_node_container *)mod->compiled->data);
+    assert_non_null(leaf = (struct lysc_node_leaf *)cont->child);
     assert_non_null(e = &cont->exts[0]);
     assert_int_equal(LY_ARRAY_COUNT(cont->exts), 1);
     assert_int_equal(LY_ARRAY_COUNT(leaf->exts), 1); /* NACM extensions inherit */
     assert_ptr_equal(e->def, leaf->exts[0].def);
-    assert_int_equal(1, *((uint8_t*)e->data)); /* plugin's value for default-deny-all */
+    assert_int_equal(1, *((uint8_t *)e->data)); /* plugin's value for default-deny-all */
     assert_null(cont->next->exts);
 
     /* invalid */
@@ -150,7 +146,8 @@ test_deny_all(void **state)
 static void
 test_deny_write(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
+
     s->func = test_deny_write;
 
     const struct lys_module *mod;
@@ -165,13 +162,13 @@ test_deny_write(void **state)
 
     /* valid data */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YANG, &mod));
-    assert_non_null(cont = (struct lysc_node_container*)mod->compiled->data);
-    assert_non_null(leaf = (struct lysc_node_leaf*)cont->child);
+    assert_non_null(cont = (struct lysc_node_container *)mod->compiled->data);
+    assert_non_null(leaf = (struct lysc_node_leaf *)cont->child);
     assert_non_null(e = &cont->exts[0]);
     assert_int_equal(LY_ARRAY_COUNT(cont->exts), 1);
     assert_int_equal(LY_ARRAY_COUNT(leaf->exts), 1); /* NACM extensions inherit */
     assert_ptr_equal(e->def, leaf->exts[0].def);
-    assert_int_equal(2, *((uint8_t*)e->data)); /* plugin's value for default-deny-write */
+    assert_int_equal(2, *((uint8_t *)e->data)); /* plugin's value for default-deny-write */
     assert_null(cont->next->exts);
 
     /* invalid */
@@ -192,7 +189,8 @@ test_deny_write(void **state)
     s->func = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_deny_all, setup, teardown),

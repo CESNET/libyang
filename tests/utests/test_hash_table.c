@@ -15,17 +15,11 @@
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L /* strdup */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "common.h"
 #include "hash_table.h"
+#include "utests.h"
 
 struct ht_rec *lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx);
 
@@ -117,7 +111,7 @@ test_dict_hit(void **state)
 
 #ifndef NDEBUG
     /* cleanup */
-    free((char*)str1);
+    free((char *)str1);
 #endif
 }
 
@@ -125,6 +119,7 @@ static uint8_t
 ht_equal_clb(void *val1, void *val2, uint8_t mod, void *cb_data)
 {
     int *v1, *v2;
+
     (void)mod;
     (void)cb_data;
 
@@ -177,7 +172,7 @@ test_ht_resize(void **state)
 
     /* check expected content of the table */
     for (i = 0; i < 16; ++i) {
-        if (i >=2 && i < 8) {
+        if ((i >= 2) && (i < 8)) {
             /* inserted data on indexes 2-7 */
             rec = lyht_get_rec(ht->recs, ht->rec_size, i);
             assert_int_equal(1, rec->hits);
@@ -197,13 +192,13 @@ test_ht_resize(void **state)
     }
     /* removing present data, resize should happened
      * when we are below 25% of the table filled, so with 3 records left */
-    for (; i < 5; ++i) {
+    for ( ; i < 5; ++i) {
         assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     }
     assert_int_equal(8, ht->size);
 
     /* remove the rest */
-    for (; i < 8; ++i) {
+    for ( ; i < 8; ++i) {
         assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     }
 
@@ -214,7 +209,6 @@ test_ht_resize(void **state)
     /* cleanup */
     lyht_free(ht);
 }
-
 
 static void
 test_ht_collisions(void **state)
@@ -241,12 +235,12 @@ test_ht_collisions(void **state)
     assert_int_equal(rec->hits, 4);
     assert_int_equal(GET_REC_INT(rec), i);
     ++i;
-    for (; i < 6; ++i) {
+    for ( ; i < 6; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 1);
         assert_int_equal(GET_REC_INT(rec), i);
     }
-    for (; i < 8; ++i) {
+    for ( ; i < 8; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 0);
     }
@@ -273,11 +267,11 @@ test_ht_collisions(void **state)
     assert_int_equal(rec->hits, 1);
     assert_int_equal(GET_REC_INT(rec), 3);
     ++i;
-    for (; i < 6; ++i) {
+    for ( ; i < 6; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, -1);
     }
-    for (; i < 8; ++i) {
+    for ( ; i < 8; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 0);
     }
@@ -291,7 +285,7 @@ test_ht_collisions(void **state)
     ++i;
     assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_SUCCESS);
     ++i;
-    for (; i < 8; ++i) {
+    for ( ; i < 8; ++i) {
         assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_ENOTFOUND);
     }
 
@@ -305,11 +299,11 @@ test_ht_collisions(void **state)
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 0);
     }
-    for (; i < 6; ++i) {
+    for ( ; i < 6; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, -1);
     }
-    for (; i < 8; ++i) {
+    for ( ; i < 8; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 0);
     }
@@ -317,7 +311,8 @@ test_ht_collisions(void **state)
     lyht_free(ht);
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_invalid_arguments, logger_setup),

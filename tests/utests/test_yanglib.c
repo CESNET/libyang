@@ -12,13 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <setjmp.h>
 #include <string.h>
 
-#include <cmocka.h>
+#include "utests.h"
 
 #include "context.h"
 #include "in.h"
@@ -53,31 +49,32 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static LY_ERR
 test_imp_clb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev, void *user_data,
-             LYS_INFORMAT *format, const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+        LYS_INFORMAT *format, const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
     const char *schema_a_sub =
-    "submodule a_sub {"
-        "belongs-to a {"
-            "prefix a;"
-        "}"
-        "yang-version 1.1;"
-
-        "feature feat1;"
-
-        "list l3 {"
-            "key \"a\";"
-            "leaf a {"
-                "type uint16;"
-            "}"
-            "leaf b {"
-                "type uint16;"
-            "}"
-        "}"
-    "}";
+            "submodule a_sub {\n"
+            "    belongs-to a {\n"
+            "        prefix a;\n"
+            "    }\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    feature feat1;\n"
+            "\n"
+            "    list l3 {\n"
+            "        key \"a\";\n"
+            "        leaf a {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     assert_string_equal(mod_name, "a");
     assert_null(mod_rev);
@@ -100,43 +97,44 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a =
-    "module a {"
-        "namespace urn:tests:a;"
-        "prefix a;"
-        "yang-version 1.1;"
-
-        "include a_sub;"
-
-        "list l2 {"
-            "key \"a\";"
-            "leaf a {"
-                "type uint16;"
-            "}"
-            "leaf b {"
-                "type uint16;"
-            "}"
-        "}"
-    "}";
+            "module a {\n"
+            "  namespace urn:tests:a;\n"
+            "  prefix a;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  include a_sub;\n"
+            "\n"
+            "  list l2 {\n"
+            "    key \"a\";\n"
+            "    leaf a {\n"
+            "      type uint16;\n"
+            "    }\n"
+            "    leaf b {\n"
+            "      type uint16;\n"
+            "    }\n"
+            "  }\n"
+            "}";
     const char *schema_b =
-    "module b {"
-        "namespace urn:tests:b;"
-        "prefix b;"
-        "yang-version 1.1;"
+            "module b {\n"
+            "  namespace urn:tests:b;\n"
+            "  prefix b;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  import a {\n"
+            "    prefix a;\n"
+            "  }\n"
+            "\n"
+            "  deviation /a:l2 {\n"
+            "    deviate add {\n"
+            "      max-elements 40;\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  leaf foo {\n"
+            "    type string;\n"
+            "  }\n"
+            "}";
 
-        "import a {"
-            "prefix a;"
-        "}"
-
-        "deviation /a:l2 {"
-            "deviate add {"
-                "max-elements 40;"
-            "}"
-        "}"
-
-        "leaf foo {"
-            "type string;"
-        "}"
-    "}";
     const struct lys_module *mod;
     const char *feats[] = {"feat1", NULL};
     struct ly_in *in;
@@ -198,7 +196,7 @@ test_yanglib(void **state)
 
     /* make sure there is "a" with a submodule and deviation */
     ret = lyd_find_xpath(tree, "/ietf-yang-library:yang-library/module-set/module[name='a'][submodule/name='a_sub']"
-                         "[feature='feat1'][deviation='b']", &set);
+            "[feature='feat1'][deviation='b']", &set);
     assert_int_equal(ret, LY_SUCCESS);
 
     assert_int_equal(set->count, 1);
@@ -208,7 +206,8 @@ test_yanglib(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_yanglib, setup, teardown),

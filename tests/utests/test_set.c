@@ -15,13 +15,10 @@
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L /* strdup */
 
-#include <stdarg.h>
-#include <stddef.h>
 #include <stdlib.h>
-#include <setjmp.h>
 #include <string.h>
 
-#include <cmocka.h>
+#include "utests.h"
 
 #include "set.h"
 
@@ -102,6 +99,7 @@ static void
 test_inval(void **state)
 {
     struct ly_set set;
+
     memset(&set, 0, sizeof set);
 
     ly_set_clean(NULL, NULL);
@@ -164,7 +162,7 @@ test_duplication(void **state)
     ly_set_free(new, NULL);
 
     /* duplicate the set - with duplicator, so the new set will point to a different buffer with the same content */
-    assert_int_equal(LY_SUCCESS, ly_set_dup(orig, (void*(*)(void*))strdup, &new));
+    assert_int_equal(LY_SUCCESS, ly_set_dup(orig, (void *(*)(void *))strdup, &new));
     assert_non_null(new);
     assert_ptr_not_equal(orig, new);
     assert_int_equal(orig->count, new->count);
@@ -184,6 +182,7 @@ test_add(void **state)
     uint32_t u, index;
     char *str = "test string";
     struct ly_set set;
+
     memset(&set, 0, sizeof set);
 
     /* add a testing object */
@@ -217,6 +216,7 @@ test_merge(void **state)
 
     char *str1, *str2;
     struct ly_set one, two;
+
     memset(&one, 0, sizeof one);
     memset(&two, 0, sizeof two);
 
@@ -243,7 +243,7 @@ test_merge(void **state)
 
     /* merge without checking duplicities - two items are added into one;
      * here also with duplicator */
-    assert_int_equal(LY_SUCCESS, ly_set_merge(&one, &two, 1, (void*(*)(void*))strdup));
+    assert_int_equal(LY_SUCCESS, ly_set_merge(&one, &two, 1, (void *(*)(void *))strdup));
     assert_int_equal(3, one.count);
     assert_ptr_not_equal(one.objs[1], two.objs[0]);
     assert_string_equal(one.objs[1], two.objs[0]);
@@ -260,6 +260,7 @@ test_rm(void **state)
 
     char *str1, *str2, *str3;
     struct ly_set set;
+
     memset(&set, 0, sizeof set);
 
     /* fill the set */
@@ -304,7 +305,8 @@ test_rm(void **state)
     ly_set_erase(&set, NULL);
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_basics),

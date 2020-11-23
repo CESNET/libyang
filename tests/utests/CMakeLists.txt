@@ -1,3 +1,16 @@
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+set(format_sources
+    ${format_sources}
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/extensions/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/schema/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/schema/*.h
+    PARENT_SCOPE)
+
 ly_add_utest(NAME common WRAP "-Wl,--wrap=realloc" SOURCES test_common.c)
 ly_add_utest(NAME set SOURCES test_set.c)
 ly_add_utest(NAME hash_table SOURCES test_hash_table.c)

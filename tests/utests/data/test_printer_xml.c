@@ -12,21 +12,15 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "context.h"
-#include "parser_data.h"
 #include "out.h"
+#include "parser_data.h"
 #include "printer_data.h"
 #include "tests/config.h"
 #include "tree_schema.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -56,6 +50,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -67,9 +62,9 @@ setup(void **state)
     const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
             "feature f; identity gigabit-ethernet { base defs:ethernet;}"
             "container cont {leaf leaftarget {type empty;}"
-                            "list listtarget {key id; max-elements 5;leaf id {type uint8;} leaf value {type string;}"
-                                             "action test {input {leaf a {type string;}} output {leaf b {type string;}}}}"
-                            "leaf-list leaflisttarget {type uint8; max-elements 5;}}"
+            "    list listtarget {key id; max-elements 5;leaf id {type uint8;} leaf value {type string;}"
+            "        action test {input {leaf a {type string;}} output {leaf b {type string;}}}}"
+            "    leaf-list leaflisttarget {type uint8; max-elements 5;}}"
             "list list {key id; leaf id {type string;} leaf value {type string;} leaf-list targets {type string;}}"
             "list list2 {key \"id value\"; leaf id {type string;} leaf value {type string;}}"
             "list list_inst {key id; leaf id {type instance-identifier {require-instance true;}} leaf value {type string;}}"
@@ -99,29 +94,29 @@ setup(void **state)
             "leaf lref {type leafref {path /leaflisttarget; require-instance true;}}"
             "leaf lref2 {type leafref {path \"../list[id = current()/../str-norestr]/targets\"; require-instance true;}}"
             "leaf un1 {type union {"
-              "type leafref {path /int8; require-instance true;}"
-              "type union { type identityref {base defs:interface-type;} type instance-identifier {require-instance true;} }"
-              "type string {length 1..20;}}}"
+            "    type leafref {path /int8; require-instance true;}"
+            "    type union { type identityref {base defs:interface-type;} type instance-identifier {require-instance true;} }"
+            "    type string {length 1..20;}}}"
             "anydata any;"
             "rpc sum {input {leaf x {type uint8;} leaf y {type uint8;}} output {leaf result {type uint16;}}}}";
     const char *schema_c =
-    "module defaults {"
-        "namespace \"urn:defaults\";"
-        "prefix d;"
-        "leaf a {"
-            "type union {"
-                "type instance-identifier;"
-                "type string;"
-            "}"
-            "default \"/d:b\";"
-        "}"
-        "leaf b {"
-            "type string;"
-        "}"
-        "leaf c {"
-            "type string;"
-        "}"
-    "}";
+            "module defaults {\n"
+            "    namespace \"urn:defaults\";\n"
+            "    prefix d;\n"
+            "    leaf a {\n"
+            "        type union {\n"
+            "            type instance-identifier;\n"
+            "            type string;\n"
+            "        }\n"
+            "        default \"/d:b\";\n"
+            "    }\n"
+            "    leaf b {\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf c {\n"
+            "        type string;\n"
+            "    }\n"
+            "}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -144,7 +139,7 @@ setup(void **state)
 static int
 teardown(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
 
 #if ENABLE_LOGGER_CHECKING
     if (s->func) {
@@ -173,7 +168,7 @@ logbuf_clean(void)
 static void
 test_leaf(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
     struct lyd_node *tree;
     const char *data;
     const char *result;
@@ -198,7 +193,7 @@ test_leaf(void **state)
 static void
 test_anydata(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
     struct lyd_node *tree;
     const char *data;
     char *printed;
@@ -226,14 +221,14 @@ test_anydata(void **state)
     lyd_free_all(tree);
 
     data =
-        "<any xmlns=\"urn:tests:types\">"
-            "<cont>"
-                "<defs:elem1 xmlns:defs=\"urn:tests:defs\">"
-                    "<elem2 xmlns:defaults=\"urn:defaults\" defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\">"
-                    "</elem2>"
-                "</defs:elem1>"
-            "</cont>"
-        "</any>";
+            "<any xmlns=\"urn:tests:types\">\n"
+            "  <cont>\n"
+            "    <defs:elem1 xmlns:defs=\"urn:tests:defs\">\n"
+            "      <elem2 xmlns:defaults=\"urn:defaults\" defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\">\n"
+            "      </elem2>\n"
+            "    </defs:elem1>\n"
+            "  </cont>\n"
+            "</any>\n";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     /* cont should be normally parsed */
     tree = tree->next;
@@ -242,18 +237,18 @@ test_anydata(void **state)
     assert_string_equal(((struct lyd_node_any *)tree)->value.tree->schema->name, "cont");
     /* but its children not */
     assert_null(((struct lyd_node_inner *)(((struct lyd_node_any *)tree)->value.tree))->child->schema);
-    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, LYD_PRINT_SHRINK));
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(out, tree, LYD_XML, 0));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     /* canonized */
     data =
-        "<any xmlns=\"urn:tests:types\">"
-            "<cont>"
-                "<elem1 xmlns=\"urn:tests:defs\">"
-                    "<elem2 xmlns=\"urn:tests:types\" xmlns:defs=\"urn:tests:defs\" xmlns:defaults=\"urn:defaults\""
-                    " defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\"/>"
-                "</elem1>"
-            "</cont>"
-        "</any>";
+            "<any xmlns=\"urn:tests:types\">\n"
+            "  <cont>\n"
+            "    <elem1 xmlns=\"urn:tests:defs\">\n"
+            "      <elem2 xmlns=\"urn:tests:types\" xmlns:defs=\"urn:tests:defs\" xmlns:defaults=\"urn:defaults\" "
+            "defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\"/>\n"
+            "    </elem1>\n"
+            "  </cont>\n"
+            "</any>\n";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
@@ -266,7 +261,7 @@ test_anydata(void **state)
 static void
 test_defaults(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
     struct lyd_node *tree;
     const char *data;
     char *printed;
@@ -294,16 +289,16 @@ test_defaults(void **state)
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
-        "<c xmlns=\"urn:defaults\">aa</c>";
+            " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+            "<c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
-        "<c xmlns=\"urn:defaults\">aa</c>";
+            " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+            "<c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
@@ -354,9 +349,9 @@ test_defaults(void **state)
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG | LYD_PRINT_SHRINK));
     assert_int_equal(strlen(printed), ly_out_printed(out));
     data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
-        "<b xmlns=\"urn:defaults\">val</b>"
-        "<c xmlns=\"urn:defaults\">aa</c>";
+            " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+            "<b xmlns=\"urn:defaults\">val</b>"
+            "<c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
@@ -377,7 +372,7 @@ test_defaults(void **state)
 static void
 test_rpc(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
     struct lyd_node *tree1;
     struct lyd_node *tree2;
     const struct lyd_node **trees;
@@ -435,7 +430,7 @@ test_rpc(void **state)
                             */
     request = "<cont xmlns=\"urn:tests:types\"><listtarget><id>10</id><test><a>test</a></test></listtarget></cont>";
     reply = "<b xmlns=\"urn:tests:types\">test-reply</b>";
-    result = "<cont xmlns=\"urn:tests:types\"><listtarget><id>10</id><test><b>test-reply</b></test></listtarget></cont>";;
+    result = "<cont xmlns=\"urn:tests:types\"><listtarget><id>10</id><test><b>test-reply</b></test></listtarget></cont>";
     assert_non_null(tree1 = lyd_parse_mem(s->ctx, request, LYD_XML, LYD_OPT_RPC, NULL));
     assert_true((len = lyd_print_tree(out, tree1, LYD_XML, LYD_PRINT_SHRINK)) >= 0);
     assert_int_equal(len, strlen(printed));
@@ -457,7 +452,8 @@ test_rpc(void **state)
 
 #endif
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_leaf, setup, teardown),

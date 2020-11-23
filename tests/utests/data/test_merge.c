@@ -12,14 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
 #include "libyang.h"
+#include "utests.h"
 
 struct state {
     struct ly_ctx *ctx;
@@ -78,159 +72,149 @@ test_batch(void **state)
     char *str;
 
     const char *start =
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>yang</name>"
-            "<revision>2016-02-11</revision>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>";
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+            "  <module>\n"
+            "    <name>yang</name>\n"
+            "    <revision>2016-02-11</revision>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "</modules-state>\n";
     const char *data[] = {
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-yang-library</name>"
-            "<revision>2016-02-01</revision>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf-acm</name>"
-            "<revision>2012-02-22</revision>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf</name>"
-            "<revision>2011-06-01</revision>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf-monitoring</name>"
-            "<revision>2010-10-04</revision>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf-with-defaults</name>"
-            "<revision>2011-06-01</revision>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>yang</name>"
-            "<revision>2016-02-11</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:1</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-yang-library</name>"
-            "<revision>2016-02-01</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf-acm</name>"
-            "<revision>2012-02-22</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf</name>"
-            "<revision>2011-06-01</revision>"
-            "<namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>"
-            "<feature>writable-running</feature>"
-            "<feature>candidate</feature>"
-            "<feature>rollback-on-error</feature>"
-            "<feature>validate</feature>"
-            "<feature>startup</feature>"
-            "<feature>xpath</feature>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf-monitoring</name>"
-            "<revision>2010-10-04</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
-    ,
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>ietf-netconf-with-defaults</name>"
-            "<revision>2011-06-01</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>"
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-yang-library</name>\n"
+        "    <revision>2016-02-01</revision>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf-acm</name>\n"
+        "    <revision>2012-02-22</revision>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf</name>\n"
+        "    <revision>2011-06-01</revision>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf-monitoring</name>\n"
+        "    <revision>2010-10-04</revision>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf-with-defaults</name>\n"
+        "    <revision>2011-06-01</revision>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>yang</name>\n"
+        "    <revision>2016-02-11</revision>\n"
+        "    <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-yang-library</name>\n"
+        "    <revision>2016-02-01</revision>\n"
+        "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf-acm</name>\n"
+        "    <revision>2012-02-22</revision>\n"
+        "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf</name>\n"
+        "    <revision>2011-06-01</revision>\n"
+        "    <namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>\n"
+        "    <feature>writable-running</feature>\n"
+        "    <feature>candidate</feature>\n"
+        "    <feature>rollback-on-error</feature>\n"
+        "    <feature>validate</feature>\n"
+        "    <feature>startup</feature>\n"
+        "    <feature>xpath</feature>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf-monitoring</name>\n"
+        "    <revision>2010-10-04</revision>\n"
+        "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</namespace>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n",
+        "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+        "  <module>\n"
+        "    <name>ietf-netconf-with-defaults</name>\n"
+        "    <revision>2011-06-01</revision>\n"
+        "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults</namespace>\n"
+        "    <conformance-type>implement</conformance-type>\n"
+        "  </module>\n"
+        "</modules-state>\n"
     };
     const char *output_template =
-    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-        "<module>"
-            "<name>yang</name>"
-            "<revision>2016-02-11</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:1</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-        "<module>"
-            "<name>ietf-yang-library</name>"
-            "<revision>2016-02-01</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-        "<module>"
-            "<name>ietf-netconf-acm</name>"
-            "<revision>2012-02-22</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-        "<module>"
-            "<name>ietf-netconf</name>"
-            "<revision>2011-06-01</revision>"
-            "<namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>"
-            "<feature>writable-running</feature>"
-            "<feature>candidate</feature>"
-            "<feature>rollback-on-error</feature>"
-            "<feature>validate</feature>"
-            "<feature>startup</feature>"
-            "<feature>xpath</feature>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-        "<module>"
-            "<name>ietf-netconf-monitoring</name>"
-            "<revision>2010-10-04</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-        "<module>"
-            "<name>ietf-netconf-with-defaults</name>"
-            "<revision>2011-06-01</revision>"
-            "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults</namespace>"
-            "<conformance-type>implement</conformance-type>"
-        "</module>"
-    "</modules-state>";
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+            "  <module>\n"
+            "    <name>yang</name>\n"
+            "    <revision>2016-02-11</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-yang-library</name>\n"
+            "    <revision>2016-02-01</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-netconf-acm</name>\n"
+            "    <revision>2012-02-22</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-netconf</name>\n"
+            "    <revision>2011-06-01</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>\n"
+            "    <feature>writable-running</feature>\n"
+            "    <feature>candidate</feature>\n"
+            "    <feature>rollback-on-error</feature>\n"
+            "    <feature>validate</feature>\n"
+            "    <feature>startup</feature>\n"
+            "    <feature>xpath</feature>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-netconf-monitoring</name>\n"
+            "    <revision>2010-10-04</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</namespace>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-netconf-with-defaults</name>\n"
+            "    <revision>2011-06-01</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults</namespace>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "</modules-state>\n";
     struct ly_in *in = NULL;
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(start, &in));
@@ -246,7 +230,7 @@ test_batch(void **state)
         st->source = NULL;
     }
 
-    lyd_print_mem(&str, st->target, LYD_XML, LYD_PRINT_SHRINK);
+    lyd_print_mem(&str, st->target, LYD_XML, 0);
     assert_string_equal(str, output_template);
 
     ly_in_free(in, 0);
@@ -258,15 +242,15 @@ test_leaf(void **state)
 {
     struct state *st = (*state);
     const char *sch = "module x {"
-                    "  namespace urn:x;"
-                    "  prefix x;"
-                    "    container A {"
-                    "      leaf f1 {type string;}"
-                    "      container B {"
-                    "        leaf f2 {type string;}"
-                    "      }"
-                    "    }"
-                    "  }";
+            "  namespace urn:x;"
+            "  prefix x;"
+            "    container A {"
+            "      leaf f1 {type string;}"
+            "      container B {"
+            "        leaf f2 {type string;}"
+            "      }"
+            "    }"
+            "  }";
     const char *trg = "<A xmlns=\"urn:x\"> <f1>block</f1> </A>";
     const char *src = "<A xmlns=\"urn:x\"> <f1>aa</f1> <B> <f2>bb</f2> </B> </A>";
     const char *result = "<A xmlns=\"urn:x\"><f1>aa</f1><B><f2>bb</f2></B></A>";
@@ -295,19 +279,19 @@ test_container(void **state)
 {
     struct state *st = (*state);
     const char *sch =
-        "module A {"
-            "namespace \"aa:A\";"
-            "prefix A;"
-            "container A {"
-                "leaf f1 {type string;}"
-                "container B {"
-                    "leaf f2 {type string;}"
-                "}"
-                "container C {"
-                    "leaf f3 {type string;}"
-                "}"
-            "}"
-        "}";
+            "module A {\n"
+            "    namespace \"aa:A\";\n"
+            "    prefix A;\n"
+            "    container A {\n"
+            "        leaf f1 {type string;}\n"
+            "        container B {\n"
+            "            leaf f2 {type string;}\n"
+            "        }\n"
+            "        container C {\n"
+            "            leaf f3 {type string;}\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     const char *trg = "<A xmlns=\"aa:A\"> <B> <f2>aaa</f2> </B> </A>";
     const char *src = "<A xmlns=\"aa:A\"> <C> <f3>bbb</f3> </C> </A>";
@@ -337,51 +321,50 @@ test_list(void **state)
 {
     struct state *st = (*state);
     const char *sch =
-    "module merge {"
-        "namespace \"http://test/merge\";"
-        "prefix merge;"
-
-        "container inner1 {"
-            "list b-list1 {"
-                "key p1;"
-                "leaf p1 {"
-                    "type uint8;"
-                "}"
-                "leaf p2 {"
-                    "type string;"
-                "}"
-                "leaf p3 {"
-                    "type boolean;"
-                    "default false;"
-                "}"
-            "}"
-        "}"
-    "}";
-
+            "module merge {\n"
+            "    namespace \"http://test/merge\";\n"
+            "    prefix merge;\n"
+            "\n"
+            "    container inner1 {\n"
+            "        list b-list1 {\n"
+            "            key p1;\n"
+            "            leaf p1 {\n"
+            "                type uint8;\n"
+            "            }\n"
+            "            leaf p2 {\n"
+            "                type string;\n"
+            "            }\n"
+            "            leaf p3 {\n"
+            "                type boolean;\n"
+            "                default false;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     const char *trg =
-    "<inner1 xmlns=\"http://test/merge\">"
-        "<b-list1>"
-            "<p1>1</p1>"
-            "<p2>a</p2>"
-            "<p3>true</p3>"
-        "</b-list1>"
-    "</inner1>";
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>a</p2>\n"
+            "    <p3>true</p3>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
     const char *src =
-    "<inner1 xmlns=\"http://test/merge\">"
-        "<b-list1>"
-            "<p1>1</p1>"
-            "<p2>b</p2>"
-        "</b-list1>"
-    "</inner1>";
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
     const char *result =
-    "<inner1 xmlns=\"http://test/merge\">"
-        "<b-list1>"
-            "<p1>1</p1>"
-            "<p2>b</p2>"
-            "<p3>true</p3>"
-        "</b-list1>"
-    "</inner1>";
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "    <p3>true</p3>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
     char *printed = NULL;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
@@ -397,7 +380,7 @@ test_list(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -407,60 +390,59 @@ test_list2(void **state)
 {
     struct state *st = (*state);
     const char *sch =
-    "module merge {"
-        "namespace \"http://test/merge\";"
-        "prefix merge;"
-
-        "container inner1 {"
-            "list b-list1 {"
-                "key p1;"
-                "leaf p1 {"
-                    "type uint8;"
-                "}"
-                "leaf p2 {"
-                    "type string;"
-                "}"
-                "container inner2 {"
-                    "leaf p3 {"
-                        "type boolean;"
-                        "default false;"
-                    "}"
-                    "leaf p4 {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-        "}"
-    "}";
-
+            "module merge {\n"
+            "    namespace \"http://test/merge\";\n"
+            "    prefix merge;\n"
+            "\n"
+            "    container inner1 {\n"
+            "        list b-list1 {\n"
+            "            key p1;\n"
+            "            leaf p1 {\n"
+            "                type uint8;\n"
+            "            }\n"
+            "            leaf p2 {\n"
+            "                type string;\n"
+            "            }\n"
+            "            container inner2 {\n"
+            "                leaf p3 {\n"
+            "                    type boolean;\n"
+            "                    default false;\n"
+            "                }\n"
+            "                leaf p4 {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     const char *trg =
-    "<inner1 xmlns=\"http://test/merge\">"
-        "<b-list1>"
-            "<p1>1</p1>"
-            "<p2>a</p2>"
-            "<inner2>"
-                "<p4>val</p4>"
-            "</inner2>"
-        "</b-list1>"
-    "</inner1>";
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>a</p2>\n"
+            "    <inner2>\n"
+            "      <p4>val</p4>\n"
+            "    </inner2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
     const char *src =
-    "<inner1 xmlns=\"http://test/merge\">"
-        "<b-list1>"
-            "<p1>1</p1>"
-            "<p2>b</p2>"
-        "</b-list1>"
-    "</inner1>";
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
     const char *result =
-    "<inner1 xmlns=\"http://test/merge\">"
-        "<b-list1>"
-            "<p1>1</p1>"
-            "<p2>b</p2>"
-            "<inner2>"
-                "<p4>val</p4>"
-            "</inner2>"
-        "</b-list1>"
-    "</inner1>";
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "    <inner2>\n"
+            "      <p4>val</p4>\n"
+            "    </inner2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
     char *printed = NULL;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
@@ -476,7 +458,7 @@ test_list2(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -486,39 +468,39 @@ test_case(void **state)
 {
     struct state *st = (*state);
     const char *sch =
-    "module merge {"
-        "namespace \"http://test/merge\";"
-        "prefix merge;"
-        "container cont {"
-            "choice ch {"
-                "container inner {"
-                    "leaf p1 {"
-                        "type string;"
-                    "}"
-                "}"
-                "case c2 {"
-                    "leaf p1 {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-        "}"
-    "}";
+            "module merge {\n"
+            "    namespace \"http://test/merge\";\n"
+            "    prefix merge;\n"
+            "    container cont {\n"
+            "        choice ch {\n"
+            "            container inner {\n"
+            "                leaf p1 {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "            case c2 {\n"
+            "                leaf p1 {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     const char *trg =
-    "<cont xmlns=\"http://test/merge\">"
-        "<inner>"
-            "<p1>1</p1>"
-        "</inner>"
-    "</cont>";
+            "<cont xmlns=\"http://test/merge\">\n"
+            "  <inner>\n"
+            "    <p1>1</p1>\n"
+            "  </inner>\n"
+            "</cont>\n";
     const char *src =
-    "<cont xmlns=\"http://test/merge\">"
-        "<p1>1</p1>"
-    "</cont>";
+            "<cont xmlns=\"http://test/merge\">\n"
+            "  <p1>1</p1>\n"
+            "</cont>\n";
     const char *result =
-    "<cont xmlns=\"http://test/merge\">"
-        "<p1>1</p1>"
-    "</cont>";
+            "<cont xmlns=\"http://test/merge\">\n"
+            "  <p1>1</p1>\n"
+            "</cont>\n";
     char *printed = NULL;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
@@ -534,7 +516,7 @@ test_case(void **state)
     assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
-    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK);
+    lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(printed, result);
     free(printed);
 }
@@ -544,22 +526,22 @@ test_dflt(void **state)
 {
     struct state *st = (*state);
     const char *sch =
-    "module merge-dflt {"
-        "namespace \"urn:merge-dflt\";"
-        "prefix md;"
-        "container top {"
-            "leaf a {"
-                "type string;"
-            "}"
-            "leaf b {"
-                "type string;"
-            "}"
-            "leaf c {"
-                "type string;"
-                "default \"c_dflt\";"
-            "}"
-        "}"
-    "}";
+            "module merge-dflt {\n"
+            "    namespace \"urn:merge-dflt\";\n"
+            "    prefix md;\n"
+            "    container top {\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf c {\n"
+            "            type string;\n"
+            "            default \"c_dflt\";\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
@@ -583,22 +565,22 @@ test_dflt2(void **state)
 {
     struct state *st = (*state);
     const char *sch =
-    "module merge-dflt {"
-        "namespace \"urn:merge-dflt\";"
-        "prefix md;"
-        "container top {"
-            "leaf a {"
-                "type string;"
-            "}"
-            "leaf b {"
-                "type string;"
-            "}"
-            "leaf c {"
-                "type string;"
-                "default \"c_dflt\";"
-            "}"
-        "}"
-    "}";
+            "module merge-dflt {\n"
+            "    namespace \"urn:merge-dflt\";\n"
+            "    prefix md;\n"
+            "    container top {\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf c {\n"
+            "            type string;\n"
+            "            default \"c_dflt\";\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
@@ -620,20 +602,20 @@ test_leafrefs(void **state)
 {
     struct state *st = (*state);
     const char *sch = "module x {"
-                      "  namespace urn:x;"
-                      "  prefix x;"
-                      "  list l {"
-                      "    key n;"
-                      "    leaf n { type string; }"
-                      "    leaf t { type string; }"
-                      "    leaf r { type leafref { path '/l/n'; } }}}";
+            "  namespace urn:x;"
+            "  prefix x;"
+            "  list l {"
+            "    key n;"
+            "    leaf n { type string; }"
+            "    leaf t { type string; }"
+            "    leaf r { type leafref { path '/l/n'; } }}}";
     const char *trg = "<l xmlns=\"urn:x\"><n>a</n></l>"
-                      "<l xmlns=\"urn:x\"><n>b</n><r>a</r></l>";
+            "<l xmlns=\"urn:x\"><n>b</n><r>a</r></l>";
     const char *src = "<l xmlns=\"urn:x\"><n>c</n><r>a</r></l>"
-                      "<l xmlns=\"urn:x\"><n>a</n><t>*</t></l>";
+            "<l xmlns=\"urn:x\"><n>a</n><t>*</t></l>";
     const char *res = "<l xmlns=\"urn:x\"><n>a</n><t>*</t></l>"
-                      "<l xmlns=\"urn:x\"><n>b</n><r>a</r></l>"
-                      "<l xmlns=\"urn:x\"><n>c</n><r>a</r></l>";
+            "<l xmlns=\"urn:x\"><n>b</n><r>a</r></l>"
+            "<l xmlns=\"urn:x\"><n>c</n><r>a</r></l>";
     char *prt = NULL;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));

@@ -12,13 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
-#include <string.h>
+#include "utests.h"
 
 #include "libyang.h"
 #include "plugins_exts_metadata.h"
@@ -51,6 +45,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -74,7 +69,7 @@ setup(void **state)
 static int
 teardown(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
 
 #if ENABLE_LOGGER_CHECKING
     if (s->func) {
@@ -103,7 +98,8 @@ logbuf_clean(void)
 static void
 test_yang(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
+
     s->func = test_yang;
 
     const struct lys_module *mod;
@@ -123,12 +119,13 @@ test_yang(void **state)
             "  units meters;"
             "}}";
     const char *feats[] = {"f", NULL};
+
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lys_parse(s->ctx, in, LYS_IN_YANG, feats, &mod));
     ly_in_free(in, 0);
     assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
-    assert_non_null(ant = (struct lyext_metadata*)e->data);
+    assert_non_null(ant = (struct lyext_metadata *)e->data);
     assert_string_equal("meters", ant->units);
 
     /* invalid */
@@ -181,7 +178,8 @@ test_yang(void **state)
 static void
 test_yin(void **state)
 {
-    struct state_s *s = (struct state_s*)(*state);
+    struct state_s *s = (struct state_s *)(*state);
+
     s->func = test_yin;
 
     const struct lys_module *mod;
@@ -278,7 +276,8 @@ test_yin(void **state)
     s->func = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_yang, setup, teardown),

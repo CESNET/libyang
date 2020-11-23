@@ -12,14 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
 
 #include "common.h"
 #include "in.h"
@@ -27,6 +22,7 @@
 #include "schema_compile.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "utests.h"
 #include "xml.h"
 #include "xpath.h"
 
@@ -156,6 +152,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 #if ENABLE_LOGGER_CHECKING
@@ -192,6 +189,7 @@ int
 destroy_ly_ctx(void **state)
 {
     struct test_parser_yin_state *st = *state;
+
     ly_ctx_destroy(st->ctx, NULL);
     free(st);
 
@@ -232,7 +230,7 @@ teardown_f(void **state)
 
 #if ENABLE_LOGGER_CHECKING
     /* teardown logger */
-    if (!st->finished_correctly && logbuf[0] != '\0') {
+    if (!st->finished_correctly && (logbuf[0] != '\0')) {
         fprintf(stderr, "%s\n", logbuf);
     }
 #endif
@@ -245,7 +243,7 @@ teardown_f(void **state)
     return EXIT_SUCCESS;
 }
 
-static struct test_parser_yin_state*
+static struct test_parser_yin_state *
 reset_state(void **state)
 {
     ((struct test_parser_yin_state *)*state)->finished_correctly = true;
@@ -284,6 +282,7 @@ test_yin_match_keyword(void **state)
     size_t prefix_len;
     /* create mock yin namespace in xml context */
     const char *data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" />";
+
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
     prefix = st->yin_ctx->xmlctx->prefix;
@@ -392,6 +391,7 @@ test_yin_parse_element_generic(void **state)
     memset(&exts, 0, sizeof(exts));
 
     const char *data = "<myext:elem attr=\"value\" xmlns:myext=\"urn:example:extensions\">text_value</myext:elem>";
+
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
 
@@ -428,6 +428,7 @@ test_yin_parse_extension_instance(void **state)
     struct test_parser_yin_state *st = *state;
     struct lysp_ext_instance *exts = NULL;
     const char *data = "<myext:ext value1=\"test\" value=\"test2\" xmlns:myext=\"urn:example:extensions\"><myext:subelem>text</myext:subelem></myext:ext>";
+
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
 
@@ -473,15 +474,16 @@ test_yin_parse_extension_instance(void **state)
     exts = NULL;
     st = reset_state(state);
 
-    data = "<myext:ext attr1=\"text1\" attr2=\"text2\" xmlns:myext=\"urn:example:extensions\">"
-                "<myext:ext-sub1/>"
-                "<myext:ext-sub2 sattr1=\"stext2\">"
-                    "<myext:ext-sub21>"
-                        "<myext:ext-sub211 sattr21=\"text21\"/>"
-                    "</myext:ext-sub21>"
-                "</myext:ext-sub2>"
-                "<myext:ext-sub3 attr3=\"text3\"></myext:ext-sub3>"
-           "</myext:ext>";
+    data =
+            "<myext:ext attr1=\"text1\" attr2=\"text2\" xmlns:myext=\"urn:example:extensions\">\n"
+            "     <myext:ext-sub1/>\n"
+            "     <myext:ext-sub2 sattr1=\"stext2\">\n"
+            "         <myext:ext-sub21>\n"
+            "             <myext:ext-sub211 sattr21=\"text21\"/>\n"
+            "         </myext:ext-sub21>\n"
+            "     </myext:ext-sub2>\n"
+            "     <myext:ext-sub3 attr3=\"text3\"></myext:ext-sub3>\n"
+            "</myext:ext>";
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
 
@@ -548,19 +550,20 @@ test_yin_parse_extension_instance(void **state)
     exts = NULL;
     st = reset_state(state);
 
-    data = "<myext:extension-elem xmlns:myext=\"urn:example:extensions\" xmlns:yin=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yin:action name=\"act-name\" pre:prefixed=\"ignored\"/>"
-                "<yin:augment target-node=\"target\"/>"
-                "<yin:status value=\"value\"/>"
-                "<yin:include module=\"mod\"/>"
-                "<yin:input />"
-                "<yin:must condition=\"cond\"/>"
-                "<yin:namespace uri=\"uri\"/>"
-                "<yin:revision date=\"data\"/>"
-                "<yin:unique tag=\"tag\"/>"
-                "<yin:description><yin:text>contact-val</yin:text></yin:description>"
-                "<yin:error-message><yin:value>err-msg</yin:value></yin:error-message>"
-           "</myext:extension-elem>";
+    data =
+            "<myext:extension-elem xmlns:myext=\"urn:example:extensions\" xmlns:yin=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "     <yin:action name=\"act-name\" pre:prefixed=\"ignored\"/>\n"
+            "     <yin:augment target-node=\"target\"/>\n"
+            "     <yin:status value=\"value\"/>\n"
+            "     <yin:include module=\"mod\"/>\n"
+            "     <yin:input />\n"
+            "     <yin:must condition=\"cond\"/>\n"
+            "     <yin:namespace uri=\"uri\"/>\n"
+            "     <yin:revision date=\"data\"/>\n"
+            "     <yin:unique tag=\"tag\"/>\n"
+            "     <yin:description><yin:text>contact-val</yin:text></yin:description>\n"
+            "     <yin:error-message><yin:value>err-msg</yin:value></yin:error-message>\n"
+            "</myext:extension-elem>";
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
 
@@ -589,40 +592,39 @@ test_yin_parse_content(void **state)
 {
     struct test_parser_yin_state *st = *state;
     LY_ERR ret = LY_SUCCESS;
-    const char *data = "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                            "<myext:custom xmlns:myext=\"urn:example:extensions\">"
-                                "totally amazing extension"
-                            "</myext:custom>"
-                            "<extension name=\"ext\">"
-                                "<argument name=\"argname\"></argument>"
-                                "<description><text>desc</text></description>"
-                                "<reference><text>ref</text></reference>"
-                                "<status value=\"deprecated\"></status>"
-                            "</extension>"
-                            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-                            "<if-feature name=\"foo\"></if-feature>"
-                            "<when condition=\"condition...\">"
-                                "<reference><text>when_ref</text></reference>"
-                                "<description><text>when_desc</text></description>"
-                            "</when>"
-                            "<config value=\"true\"/>"
-                            "<error-message>"
-                                "<value>error-msg</value>"
-                            "</error-message>"
-                            "<error-app-tag value=\"err-app-tag\"/>"
-                            "<units name=\"radians\"></units>"
-                            "<default value=\"default-value\"/>"
-                            "<position value=\"25\"></position>"
-                            "<value value=\"-5\"/>"
-                            "<require-instance value=\"true\"></require-instance>"
-                            "<range value=\"5..10\" />"
-                            "<length value=\"baf\"/>"
-                            "<pattern value='pattern'>"
-                                "<modifier value='invert-match'/>"
-                            "</pattern>"
-                            "<enum name=\"yay\">"
-                            "</enum>"
-                        "</prefix>";
+    const char *data =
+            "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "    <myext:custom xmlns:myext=\"urn:example:extensions\">totally amazing extension</myext:custom>\n"
+            "    <extension name=\"ext\">\n"
+            "        <argument name=\"argname\"></argument>\n"
+            "        <description><text>desc</text></description>\n"
+            "        <reference><text>ref</text></reference>\n"
+            "        <status value=\"deprecated\"></status>\n"
+            "    </extension>\n"
+            "    <text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>\n"
+            "    <if-feature name=\"foo\"></if-feature>\n"
+            "    <when condition=\"condition...\">\n"
+            "        <reference><text>when_ref</text></reference>\n"
+            "        <description><text>when_desc</text></description>\n"
+            "    </when>\n"
+            "    <config value=\"true\"/>\n"
+            "    <error-message>\n"
+            "        <value>error-msg</value>\n"
+            "    </error-message>\n"
+            "    <error-app-tag value=\"err-app-tag\"/>\n"
+            "    <units name=\"radians\"></units>\n"
+            "    <default value=\"default-value\"/>\n"
+            "    <position value=\"25\"></position>\n"
+            "    <value value=\"-5\"/>\n"
+            "    <require-instance value=\"true\"></require-instance>\n"
+            "    <range value=\"5..10\" />\n"
+            "    <length value=\"baf\"/>\n"
+            "    <pattern value='pattern'>\n"
+            "        <modifier value='invert-match'/>\n"
+            "    </pattern>\n"
+            "    <enum name=\"yay\">\n"
+            "    </enum>\n"
+            "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
     const char *value, *err_msg, *app_tag, *units;
@@ -640,24 +642,25 @@ test_yin_parse_content(void **state)
     lyxml_ctx_next(st->yin_ctx->xmlctx);
 
     struct yin_subelement subelems[17] = {
-                                            {LY_STMT_CONFIG, &config, 0},
-                                            {LY_STMT_DEFAULT, &def, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ENUM, &enum_type, 0},
-                                            {LY_STMT_ERROR_APP_TAG, &app_tag, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ERROR_MESSAGE, &err_msg, 0},
-                                            {LY_STMT_EXTENSION, &ext_def, 0},
-                                            {LY_STMT_IF_FEATURE, &if_features, 0},
-                                            {LY_STMT_LENGTH, &len_type, 0},
-                                            {LY_STMT_PATTERN, &patter_type, 0},
-                                            {LY_STMT_POSITION, &pos_enum, 0},
-                                            {LY_STMT_RANGE, &range_type, 0},
-                                            {LY_STMT_REQUIRE_INSTANCE, &req_type, 0},
-                                            {LY_STMT_UNITS, &units, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_VALUE, &val_enum, 0},
-                                            {LY_STMT_WHEN, &when_p, 0},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                            {LY_STMT_ARG_TEXT, &value, 0}
-                                         };
+        {LY_STMT_CONFIG, &config, 0},
+        {LY_STMT_DEFAULT, &def, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ENUM, &enum_type, 0},
+        {LY_STMT_ERROR_APP_TAG, &app_tag, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ERROR_MESSAGE, &err_msg, 0},
+        {LY_STMT_EXTENSION, &ext_def, 0},
+        {LY_STMT_IF_FEATURE, &if_features, 0},
+        {LY_STMT_LENGTH, &len_type, 0},
+        {LY_STMT_PATTERN, &patter_type, 0},
+        {LY_STMT_POSITION, &pos_enum, 0},
+        {LY_STMT_RANGE, &range_type, 0},
+        {LY_STMT_REQUIRE_INSTANCE, &req_type, 0},
+        {LY_STMT_UNITS, &units, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_VALUE, &val_enum, 0},
+        {LY_STMT_WHEN, &when_p, 0},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+        {LY_STMT_ARG_TEXT, &value, 0}
+    };
+
     ret = yin_parse_content(st->yin_ctx, subelems, 17, LY_STMT_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     /* check parsed values */
@@ -712,12 +715,13 @@ test_yin_parse_content(void **state)
     /* test unique subelem */
     const char *prefix_value;
     struct yin_subelement subelems2[2] = {{LY_STMT_PREFIX, &prefix_value, YIN_SUBELEM_UNIQUE},
-                                         {LY_STMT_ARG_TEXT, &value, YIN_SUBELEM_UNIQUE}};
+        {LY_STMT_ARG_TEXT, &value, YIN_SUBELEM_UNIQUE}};
+
     data = ELEMENT_WRAPPER_START
-                "<prefix value=\"inv_mod\" />"
-                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-           ELEMENT_WRAPPER_END;
+            "<prefix value=\"inv_mod\" />"
+            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+            ELEMENT_WRAPPER_END;
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
     lyxml_ctx_next(st->yin_ctx->xmlctx);
@@ -731,12 +735,13 @@ test_yin_parse_content(void **state)
 
     /* test first subelem */
     data = ELEMENT_WRAPPER_START
-                "<prefix value=\"inv_mod\" />"
-                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-           ELEMENT_WRAPPER_END;
+            "<prefix value=\"inv_mod\" />"
+            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+            ELEMENT_WRAPPER_END;
     struct yin_subelement subelems3[2] = {{LY_STMT_PREFIX, &prefix_value, YIN_SUBELEM_UNIQUE},
-                                         {LY_STMT_ARG_TEXT, &value, YIN_SUBELEM_FIRST}};
+        {LY_STMT_ARG_TEXT, &value, YIN_SUBELEM_FIRST}};
+
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
     lyxml_ctx_next(st->yin_ctx->xmlctx);
@@ -750,6 +755,7 @@ test_yin_parse_content(void **state)
     /* test mandatory subelem */
     data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
     struct yin_subelement subelems4[1] = {{LY_STMT_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE}};
+
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
     lyxml_ctx_next(st->yin_ctx->xmlctx);
@@ -802,78 +808,79 @@ test_element_helper(struct test_parser_yin_state *st, const char *data, void *de
     size_t name_len, prefix_len;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement subelems[71] = {
-                                            {LY_STMT_ACTION, dest, 0},
-                                            {LY_STMT_ANYDATA, dest, 0},
-                                            {LY_STMT_ANYXML, dest, 0},
-                                            {LY_STMT_ARGUMENT,dest, 0},
-                                            {LY_STMT_AUGMENT, dest, 0},
-                                            {LY_STMT_BASE, dest, 0},
-                                            {LY_STMT_BELONGS_TO, dest, 0},
-                                            {LY_STMT_BIT, dest, 0},
-                                            {LY_STMT_CASE, dest, 0},
-                                            {LY_STMT_CHOICE, dest, 0},
-                                            {LY_STMT_CONFIG, dest, 0},
-                                            {LY_STMT_CONTACT, dest, 0},
-                                            {LY_STMT_CONTAINER, dest, 0},
-                                            {LY_STMT_DEFAULT, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DESCRIPTION, dest, 0},
-                                            {LY_STMT_DEVIATE, dest, 0},
-                                            {LY_STMT_DEVIATION, dest, 0},
-                                            {LY_STMT_ENUM, dest, 0},
-                                            {LY_STMT_ERROR_APP_TAG, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ERROR_MESSAGE, dest, 0},
-                                            {LY_STMT_EXTENSION, dest, 0},
-                                            {LY_STMT_FEATURE, dest, 0},
-                                            {LY_STMT_FRACTION_DIGITS, dest, 0},
-                                            {LY_STMT_GROUPING, dest, 0},
-                                            {LY_STMT_IDENTITY, dest, 0},
-                                            {LY_STMT_IF_FEATURE, dest, 0},
-                                            {LY_STMT_IMPORT, dest, 0},
-                                            {LY_STMT_INCLUDE, dest, 0},
-                                            {LY_STMT_INPUT, dest, 0},
-                                            {LY_STMT_KEY, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_LEAF, dest, 0},
-                                            {LY_STMT_LEAF_LIST, dest, 0},
-                                            {LY_STMT_LENGTH, dest, 0},
-                                            {LY_STMT_LIST, dest, 0},
-                                            {LY_STMT_MANDATORY, dest, 0},
-                                            {LY_STMT_MAX_ELEMENTS, dest, 0},
-                                            {LY_STMT_MIN_ELEMENTS, dest, 0},
-                                            {LY_STMT_MODIFIER, dest, 0},
-                                            {LY_STMT_MODULE, dest, 0},
-                                            {LY_STMT_MUST, dest, 0},
-                                            {LY_STMT_NAMESPACE, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_NOTIFICATION, dest, 0},
-                                            {LY_STMT_ORDERED_BY, dest, 0},
-                                            {LY_STMT_ORGANIZATION, dest, 0},
-                                            {LY_STMT_OUTPUT, dest, 0},
-                                            {LY_STMT_PATH, dest, 0},
-                                            {LY_STMT_PATTERN, dest, 0},
-                                            {LY_STMT_POSITION, dest, 0},
-                                            {LY_STMT_PREFIX, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_PRESENCE, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_RANGE, dest, 0},
-                                            {LY_STMT_REFERENCE, dest, 0},
-                                            {LY_STMT_REFINE, dest, 0},
-                                            {LY_STMT_REQUIRE_INSTANCE, dest, 0},
-                                            {LY_STMT_REVISION, dest, 0},
-                                            {LY_STMT_REVISION_DATE, dest, 0},
-                                            {LY_STMT_RPC, dest, 0},
-                                            {LY_STMT_STATUS, dest, 0},
-                                            {LY_STMT_SUBMODULE, dest, 0},
-                                            {LY_STMT_TYPE, dest, 0},
-                                            {LY_STMT_TYPEDEF, dest, 0},
-                                            {LY_STMT_UNIQUE, dest, 0},
-                                            {LY_STMT_UNITS, dest, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_USES, dest, 0},
-                                            {LY_STMT_VALUE, dest, 0},
-                                            {LY_STMT_WHEN, dest, 0},
-                                            {LY_STMT_YANG_VERSION, dest, 0},
-                                            {LY_STMT_YIN_ELEMENT, dest, 0},
-                                            {LY_STMT_EXTENSION_INSTANCE, dest, 0},
-                                            {LY_STMT_ARG_TEXT, dest, 0},
-                                            {LY_STMT_ARG_VALUE, dest, 0}
-                                        };
+        {LY_STMT_ACTION, dest, 0},
+        {LY_STMT_ANYDATA, dest, 0},
+        {LY_STMT_ANYXML, dest, 0},
+        {LY_STMT_ARGUMENT, dest, 0},
+        {LY_STMT_AUGMENT, dest, 0},
+        {LY_STMT_BASE, dest, 0},
+        {LY_STMT_BELONGS_TO, dest, 0},
+        {LY_STMT_BIT, dest, 0},
+        {LY_STMT_CASE, dest, 0},
+        {LY_STMT_CHOICE, dest, 0},
+        {LY_STMT_CONFIG, dest, 0},
+        {LY_STMT_CONTACT, dest, 0},
+        {LY_STMT_CONTAINER, dest, 0},
+        {LY_STMT_DEFAULT, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DESCRIPTION, dest, 0},
+        {LY_STMT_DEVIATE, dest, 0},
+        {LY_STMT_DEVIATION, dest, 0},
+        {LY_STMT_ENUM, dest, 0},
+        {LY_STMT_ERROR_APP_TAG, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ERROR_MESSAGE, dest, 0},
+        {LY_STMT_EXTENSION, dest, 0},
+        {LY_STMT_FEATURE, dest, 0},
+        {LY_STMT_FRACTION_DIGITS, dest, 0},
+        {LY_STMT_GROUPING, dest, 0},
+        {LY_STMT_IDENTITY, dest, 0},
+        {LY_STMT_IF_FEATURE, dest, 0},
+        {LY_STMT_IMPORT, dest, 0},
+        {LY_STMT_INCLUDE, dest, 0},
+        {LY_STMT_INPUT, dest, 0},
+        {LY_STMT_KEY, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_LEAF, dest, 0},
+        {LY_STMT_LEAF_LIST, dest, 0},
+        {LY_STMT_LENGTH, dest, 0},
+        {LY_STMT_LIST, dest, 0},
+        {LY_STMT_MANDATORY, dest, 0},
+        {LY_STMT_MAX_ELEMENTS, dest, 0},
+        {LY_STMT_MIN_ELEMENTS, dest, 0},
+        {LY_STMT_MODIFIER, dest, 0},
+        {LY_STMT_MODULE, dest, 0},
+        {LY_STMT_MUST, dest, 0},
+        {LY_STMT_NAMESPACE, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_NOTIFICATION, dest, 0},
+        {LY_STMT_ORDERED_BY, dest, 0},
+        {LY_STMT_ORGANIZATION, dest, 0},
+        {LY_STMT_OUTPUT, dest, 0},
+        {LY_STMT_PATH, dest, 0},
+        {LY_STMT_PATTERN, dest, 0},
+        {LY_STMT_POSITION, dest, 0},
+        {LY_STMT_PREFIX, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_PRESENCE, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_RANGE, dest, 0},
+        {LY_STMT_REFERENCE, dest, 0},
+        {LY_STMT_REFINE, dest, 0},
+        {LY_STMT_REQUIRE_INSTANCE, dest, 0},
+        {LY_STMT_REVISION, dest, 0},
+        {LY_STMT_REVISION_DATE, dest, 0},
+        {LY_STMT_RPC, dest, 0},
+        {LY_STMT_STATUS, dest, 0},
+        {LY_STMT_SUBMODULE, dest, 0},
+        {LY_STMT_TYPE, dest, 0},
+        {LY_STMT_TYPEDEF, dest, 0},
+        {LY_STMT_UNIQUE, dest, 0},
+        {LY_STMT_UNITS, dest, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_USES, dest, 0},
+        {LY_STMT_VALUE, dest, 0},
+        {LY_STMT_WHEN, dest, 0},
+        {LY_STMT_YANG_VERSION, dest, 0},
+        {LY_STMT_YIN_ELEMENT, dest, 0},
+        {LY_STMT_EXTENSION_INSTANCE, dest, 0},
+        {LY_STMT_ARG_TEXT, dest, 0},
+        {LY_STMT_ARG_VALUE, dest, 0}
+    };
+
     ly_in_new_memory(data, &st->in);
     lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx);
     prefix = st->yin_ctx->xmlctx->prefix;
@@ -900,16 +907,17 @@ test_enum_elem(void **state)
     struct test_parser_yin_state *st = *state;
     struct lysp_type type = {};
     const char *data;
+
     data = ELEMENT_WRAPPER_START
-           "<enum name=\"enum-name\">"
-                "<if-feature name=\"feature\" />"
-                "<value value=\"55\" />"
-                "<status value=\"deprecated\" />"
-                "<description><text>desc...</text></description>"
-                "<reference><text>ref...</text></reference>"
-                EXT_SUBELEM
-           "</enum>"
-           ELEMENT_WRAPPER_END;
+            "<enum name=\"enum-name\">\n"
+            "     <if-feature name=\"feature\" />\n"
+            "     <value value=\"55\" />\n"
+            "     <status value=\"deprecated\" />\n"
+            "     <description><text>desc...</text></description>\n"
+            "     <reference><text>ref...</text></reference>\n"
+            "     " EXT_SUBELEM "\n"
+            "</enum>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.enums->name, "enum-name");
     assert_string_equal(type.enums->iffeatures[0].str, "feature");
@@ -924,8 +932,8 @@ test_enum_elem(void **state)
     memset(&type, 0, sizeof type);
 
     data = ELEMENT_WRAPPER_START
-           "<enum name=\"enum-name\"></enum>"
-           ELEMENT_WRAPPER_END;
+            "<enum name=\"enum-name\"></enum>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.enums->name, "enum-name");
     lysp_type_free(st->ctx, &type);
@@ -940,16 +948,17 @@ test_bit_elem(void **state)
     struct test_parser_yin_state *st = *state;
     struct lysp_type type = {};
     const char *data;
+
     data = ELEMENT_WRAPPER_START
-           "<bit name=\"bit-name\">"
-                "<if-feature name=\"feature\" />"
-                "<position value=\"55\" />"
-                "<status value=\"deprecated\" />"
-                "<description><text>desc...</text></description>"
-                "<reference><text>ref...</text></reference>"
-                EXT_SUBELEM
-           "</bit>"
-           ELEMENT_WRAPPER_END;
+            "<bit name=\"bit-name\">\n"
+            "    <if-feature name=\"feature\" />\n"
+            "    <position value=\"55\" />\n"
+            "    <status value=\"deprecated\" />\n"
+            "    <description><text>desc...</text></description>\n"
+            "    <reference><text>ref...</text></reference>\n"
+            EXT_SUBELEM
+            "</bit>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.bits->name, "bit-name");
     assert_string_equal(type.bits->iffeatures[0].str, "feature");
@@ -964,8 +973,8 @@ test_bit_elem(void **state)
     memset(&type, 0, sizeof type);
 
     data = ELEMENT_WRAPPER_START
-           "<bit name=\"bit-name\"> </bit>"
-           ELEMENT_WRAPPER_END;
+            "<bit name=\"bit-name\"> </bit>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.bits->name, "bit-name");
     lysp_type_free(st->ctx, &type);
@@ -984,8 +993,8 @@ test_meta_elem(void **state)
 
     /* organization element */
     data = ELEMENT_WRAPPER_START
-                "<organization><text>organization...</text>" EXT_SUBELEM EXT_SUBELEM "</organization>"
-           ELEMENT_WRAPPER_END;
+            "<organization><text>organization...</text>" EXT_SUBELEM EXT_SUBELEM "</organization>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_SUCCESS);
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
@@ -1001,8 +1010,8 @@ test_meta_elem(void **state)
 
     /* contact element */
     data = ELEMENT_WRAPPER_START
-                "<contact><text>contact...</text>" EXT_SUBELEM "</contact>"
-           ELEMENT_WRAPPER_END;
+            "<contact><text>contact...</text>" EXT_SUBELEM "</contact>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_SUCCESS);
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
@@ -1015,8 +1024,8 @@ test_meta_elem(void **state)
 
     /* description element */
     data = ELEMENT_WRAPPER_START
-                "<description><text>description...</text>" EXT_SUBELEM "</description>"
-           ELEMENT_WRAPPER_END;
+            "<description><text>description...</text>" EXT_SUBELEM "</description>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_SUCCESS);
     assert_string_equal(value, "description...");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1029,8 +1038,8 @@ test_meta_elem(void **state)
 
     /* reference element */
     data = ELEMENT_WRAPPER_START
-                "<reference><text>reference...</text>" EXT_SUBELEM "</reference>"
-           ELEMENT_WRAPPER_END;
+            "<reference><text>reference...</text>" EXT_SUBELEM "</reference>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_SUCCESS);
     assert_string_equal(value, "reference...");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1043,8 +1052,8 @@ test_meta_elem(void **state)
 
     /* reference element */
     data = ELEMENT_WRAPPER_START
-                "<reference invalid=\"text\"><text>reference...</text>""</reference>"
-           ELEMENT_WRAPPER_END;
+            "<reference invalid=\"text\"><text>reference...</text>" "</reference>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_EVALID);
     logbuf_assert("Unexpected attribute \"invalid\" of \"reference\" element. Line number 1.");
     FREE_STRING(st->ctx, value);
@@ -1054,15 +1063,15 @@ test_meta_elem(void **state)
 
     /* missing text subelement */
     data = ELEMENT_WRAPPER_START
-                "<reference>reference...</reference>"
-           ELEMENT_WRAPPER_END;
+            "<reference>reference...</reference>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_EVALID);
     logbuf_assert("Missing mandatory sub-element \"text\" of \"reference\" element. Line number 1.");
 
     /* reference element */
     data = ELEMENT_WRAPPER_START
-                "<reference>" EXT_SUBELEM "<text>reference...</text></reference>"
-           ELEMENT_WRAPPER_END;
+            "<reference>" EXT_SUBELEM "<text>reference...</text></reference>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &value, NULL, &exts), LY_EVALID);
     logbuf_assert("Sub-element \"text\" of \"reference\" element must be defined as it's first sub-element. Line number 1.");
     FREE_STRING(st->ctx, value);
@@ -1083,14 +1092,14 @@ test_import_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<import module=\"a\">"
-                    EXT_SUBELEM
-                    "<prefix value=\"a_mod\"/>"
-                    "<revision-date date=\"2015-01-01\"></revision-date>"
-                    "<description><text>import description</text></description>"
-                    "<reference><text>import reference</text></reference>"
-                "</import>"
-           ELEMENT_WRAPPER_END;
+            "<import module=\"a\">\n"
+            EXT_SUBELEM
+            "    <prefix value=\"a_mod\"/>\n"
+            "    <revision-date date=\"2015-01-01\"></revision-date>\n"
+            "    <description><text>import description</text></description>\n"
+            "    <reference><text>import reference</text></reference>\n"
+            "</import>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &imp_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(imports->name, "a");
     assert_string_equal(imports->prefix, "a_mod");
@@ -1105,10 +1114,10 @@ test_import_elem(void **state)
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START
-                "<import module=\"a\">"
-                    "<prefix value=\"a_mod\"/>"
-                "</import>"
-           ELEMENT_WRAPPER_END;
+            "<import module=\"a\">\n"
+            "    <prefix value=\"a_mod\"/>\n"
+            "</import>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &imp_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(imports->prefix, "a_mod");
     FREE_ARRAY(st->ctx, imports, lysp_import_free);
@@ -1123,18 +1132,27 @@ test_import_elem(void **state)
 
     /* invalid reused prefix */
     data = ELEMENT_WRAPPER_START
-                "<import module=\"a\">"
-                    "<prefix value=\"prefix\"/>"
-                "</import>"
-                "<import module=\"a\">"
-                    "<prefix value=\"prefix\"/>"
-                "</import>"
-           ELEMENT_WRAPPER_END;
+            "<import module=\"a\">\n"
+            "    <prefix value=\"prefix\"/>\n"
+            "</import>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &imp_meta, NULL, NULL), LY_EVALID);
-    logbuf_assert("Prefix \"prefix\" already used as module prefix. Line number 1.");
+    logbuf_assert("Prefix \"prefix\" already used as module prefix. Line number 3.");
     FREE_ARRAY(st->ctx, imports, lysp_import_free);
     imports = NULL;
 
+    data = ELEMENT_WRAPPER_START
+            "<import module=\"a\">\n"
+            "    <prefix value=\"a\"/>\n"
+            "</import>\n"
+            "<import module=\"a\">\n"
+            "    <prefix value=\"a\"/>\n"
+            "</import>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, data, &imp_meta, NULL, NULL), LY_EVALID);
+    logbuf_assert("Prefix \"a\" already used to import \"a\" module. Line number 6.");
+    FREE_ARRAY(st->ctx, imports, lysp_import_free);
+    imports = NULL;
     st->finished_correctly = true;
 }
 
@@ -1155,7 +1173,7 @@ test_status_elem(void **state)
     assert_int_equal(test_element_helper(st, data, &flags, NULL, NULL), LY_SUCCESS);
     assert_true(flags & LYS_STATUS_DEPRC);
 
-    data = ELEMENT_WRAPPER_START "<status value=\"obsolete\">"EXT_SUBELEM"</status>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<status value=\"obsolete\">"EXT_SUBELEM "</status>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &flags, NULL, &exts), LY_SUCCESS);
     assert_true(flags & LYS_STATUS_OBSLT);
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1180,14 +1198,14 @@ test_ext_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-           "<extension name=\"ext_name\">"
-                "<argument name=\"arg\"></argument>"
-                "<status value=\"current\"/>"
-                "<description><text>ext_desc</text></description>"
-                "<reference><text>ext_ref</text></reference>"
-                EXT_SUBELEM
-           "</extension>"
-           ELEMENT_WRAPPER_END;
+            "<extension name=\"ext_name\">\n"
+            "     <argument name=\"arg\"></argument>\n"
+            "     <status value=\"current\"/>\n"
+            "     <description><text>ext_desc</text></description>\n"
+            "     <reference><text>ext_ref</text></reference>\n"
+            EXT_SUBELEM
+            "</extension>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &ext, NULL, NULL), LY_SUCCESS);
     assert_string_equal(ext->name, "ext_name");
     assert_string_equal(ext->argument, "arg");
@@ -1309,11 +1327,11 @@ test_argument_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-           "<argument name=\"arg-name\">"
-                "<yin-element value=\"true\" />"
-                EXT_SUBELEM
-           "</argument>"
-           ELEMENT_WRAPPER_END;
+            "<argument name=\"arg-name\">\n"
+            "     <yin-element value=\"true\" />\n"
+            EXT_SUBELEM
+            "</argument>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &arg_meta, NULL, &exts), LY_SUCCESS);
     assert_string_equal(arg, "arg-name");
     assert_true(flags & LYS_YINELEM_TRUE);
@@ -1328,9 +1346,9 @@ test_argument_elem(void **state)
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START
-           "<argument name=\"arg\">"
-           "</argument>"
-           ELEMENT_WRAPPER_END;
+            "<argument name=\"arg\">"
+            "</argument>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &arg_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(arg, "arg");
     assert_true(flags == 0);
@@ -1349,11 +1367,11 @@ test_base_elem(void **state)
     struct lysp_type type = {};
 
     /* as identity subelement */
-    data = "<identity xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<base name=\"base-name\">"
-                    EXT_SUBELEM
-                "</base>"
-           "</identity>";
+    data = "<identity xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "     <base name=\"base-name\">\n"
+            EXT_SUBELEM
+            "     </base>\n"
+            "</identity>";
     assert_int_equal(test_element_helper(st, data, &bases, NULL, &exts), LY_SUCCESS);
     assert_string_equal(*bases, "base-name");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1365,11 +1383,11 @@ test_base_elem(void **state)
     LY_ARRAY_FREE(bases);
 
     /* as type subelement */
-    data = "<type xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<base name=\"base-name\">"
-                    EXT_SUBELEM
-                "</base>"
-           "</type>";
+    data = "<type xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "     <base name=\"base-name\">\n"
+            EXT_SUBELEM
+            "     </base>\n"
+            "</type>";
     assert_int_equal(test_element_helper(st, data, &type, NULL, &exts), LY_SUCCESS);
     assert_string_equal(*type.bases, "base-name");
     assert_true(type.flags & LYS_SET_BASE);
@@ -1393,8 +1411,8 @@ test_belongsto_elem(void **state)
     struct lysp_ext_instance *exts = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/>"EXT_SUBELEM"</belongs-to>"
-           ELEMENT_WRAPPER_END;
+            "<belongs-to module=\"module-name\"><prefix value=\"pref\"/>"EXT_SUBELEM "</belongs-to>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &submod, NULL, &exts), LY_SUCCESS);
     assert_string_equal(submod.prefix, "pref");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1449,7 +1467,7 @@ test_default_elem(void **state)
     struct lysp_qname val = {0};
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<default value=\"defaul-value\">"EXT_SUBELEM"</default>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<default value=\"defaul-value\">"EXT_SUBELEM "</default>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val.str, "defaul-value");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1475,7 +1493,7 @@ test_err_app_tag_elem(void **state)
     const char *val = NULL;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<error-app-tag value=\"val\">"EXT_SUBELEM"</error-app-tag>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<error-app-tag value=\"val\">"EXT_SUBELEM "</error-app-tag>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val, "val");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1501,7 +1519,7 @@ test_err_msg_elem(void **state)
     const char *val = NULL;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<error-message><value>val</value>"EXT_SUBELEM"</error-message>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<error-message><value>val</value>"EXT_SUBELEM "</error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val, "val");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1530,7 +1548,7 @@ test_fracdigits_elem(void **state)
     struct lysp_type type = {};
 
     /* valid value */
-    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\">"EXT_SUBELEM"</fraction-digits>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\">"EXT_SUBELEM "</fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
@@ -1571,7 +1589,7 @@ test_iffeature_elem(void **state)
     const char **iffeatures = NULL;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<if-feature name=\"local-storage\">"EXT_SUBELEM"</if-feature>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<if-feature name=\"local-storage\">"EXT_SUBELEM "</if-feature>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &iffeatures, NULL, &exts), LY_SUCCESS);
     assert_string_equal(*iffeatures, "local-storage");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1601,13 +1619,13 @@ test_length_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<length value=\"length-str\">"
-                    "<error-message><value>err-msg</value></error-message>"
-                    "<error-app-tag value=\"err-app-tag\"/>"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</length>"
+            "<length value=\"length-str\">\n"
+            "    <error-message><value>err-msg</value></error-message>\n"
+            "    <error-app-tag value=\"err-app-tag\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            EXT_SUBELEM
+            "</length>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.length->arg.str, "length-str");
@@ -1624,8 +1642,8 @@ test_length_elem(void **state)
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START
-                "<length value=\"length-str\">"
-                "</length>"
+            "<length value=\"length-str\">"
+            "</length>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.length->arg.str, "length-str");
@@ -1704,15 +1722,15 @@ test_pattern_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<pattern value=\"super_pattern\">"
-                    "<modifier value=\"invert-match\"/>"
-                    "<error-message><value>err-msg-value</value></error-message>"
-                    "<error-app-tag value=\"err-app-tag-value\"/>"
-                    "<description><text>&quot;pattern-desc&quot;</text></description>"
-                    "<reference><text>pattern-ref</text></reference>"
-                    EXT_SUBELEM
-                "</pattern>"
-           ELEMENT_WRAPPER_END;
+            "<pattern value=\"super_pattern\">\n"
+            "    <modifier value=\"invert-match\"/>\n"
+            "    <error-message><value>err-msg-value</value></error-message>\n"
+            "    <error-app-tag value=\"err-app-tag-value\"/>\n"
+            "    <description><text>&quot;pattern-desc&quot;</text></description>\n"
+            "    <reference><text>pattern-ref</text></reference>\n"
+            EXT_SUBELEM
+            "</pattern>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_true(type.flags & LYS_SET_PATTERN);
     assert_string_equal(type.patterns->arg.str, "\x015super_pattern");
@@ -1857,14 +1875,14 @@ test_range_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<range value=\"range-str\">"
-                    "<error-message><value>err-msg</value></error-message>"
-                    "<error-app-tag value=\"err-app-tag\" />"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</range>"
-           ELEMENT_WRAPPER_END;
+            "<range value=\"range-str\">\n"
+            "    <error-message><value>err-msg</value></error-message>\n"
+            "    <error-app-tag value=\"err-app-tag\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            EXT_SUBELEM
+            "</range>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.range->arg.str, "range-str");
     assert_string_equal(type.range->dsc, "desc");
@@ -1927,7 +1945,7 @@ test_revision_date_elem(void **state)
     char rev[LY_REV_SIZE];
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\">"EXT_SUBELEM"</revision-date>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\">"EXT_SUBELEM "</revision-date>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, rev, NULL, &exts), LY_SUCCESS);
     assert_string_equal(rev, "2000-01-01");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1954,7 +1972,7 @@ test_unique_elem(void **state)
     const char **values = NULL;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<unique tag=\"tag\">"EXT_SUBELEM"</unique>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<unique tag=\"tag\">"EXT_SUBELEM "</unique>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &values, NULL, &exts), LY_SUCCESS);
     assert_string_equal(*values, "tag");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -1983,7 +2001,7 @@ test_units_elem(void **state)
     const char *values = NULL;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<units name=\"name\">"EXT_SUBELEM"</units>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<units name=\"name\">"EXT_SUBELEM "</units>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &values, NULL, &exts), LY_SUCCESS);
     assert_string_equal(values, "name");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -2010,12 +2028,12 @@ test_when_elem(void **state)
     struct lysp_when *when = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<when condition=\"cond\">"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</when>"
-           ELEMENT_WRAPPER_END;
+            "<when condition=\"cond\">\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            EXT_SUBELEM
+            "</when>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &when, NULL, NULL), LY_SUCCESS);
     assert_string_equal(when->cond, "cond");
     assert_string_equal(when->dsc, "desc");
@@ -2071,20 +2089,20 @@ test_type_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<type name=\"type-name\">"
-                    "<base name=\"base-name\"/>"
-                    "<bit name=\"bit\"/>"
-                    "<enum name=\"enum\"/>"
-                    "<fraction-digits value=\"2\"/>"
-                    "<length value=\"length\"/>"
-                    "<path value=\"/path\"/>"
-                    "<pattern value=\"pattern\"/>"
-                    "<range value=\"range\" />"
-                    "<require-instance value=\"true\"/>"
-                    "<type name=\"sub-type-name\"/>"
-                    EXT_SUBELEM
-                "</type>"
-           ELEMENT_WRAPPER_END;
+            "<type name=\"type-name\">\n"
+            "    <base name=\"base-name\"/>\n"
+            "    <bit name=\"bit\"/>\n"
+            "    <enum name=\"enum\"/>\n"
+            "    <fraction-digits value=\"2\"/>\n"
+            "    <length value=\"length\"/>\n"
+            "    <path value=\"/path\"/>\n"
+            "    <pattern value=\"pattern\"/>\n"
+            "    <range value=\"range\" />\n"
+            "    <require-instance value=\"true\"/>\n"
+            "    <type name=\"sub-type-name\"/>\n"
+            EXT_SUBELEM
+            "</type>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
     assert_string_equal(type.name, "type-name");
     assert_string_equal(*type.bases, "base-name");
@@ -2131,7 +2149,7 @@ test_max_elems_elem(void **state)
     struct lysp_node_leaflist llist = {};
     struct lysp_refine refine = {};
 
-    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"unbounded\">"EXT_SUBELEM"</max-elements> </refine>";
+    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"unbounded\">"EXT_SUBELEM "</max-elements> </refine>";
     assert_int_equal(test_element_helper(st, data, &refine, NULL, NULL), LY_SUCCESS);
     assert_int_equal(refine.max, 0);
     assert_true(refine.flags & LYS_SET_MAX);
@@ -2140,7 +2158,7 @@ test_max_elems_elem(void **state)
     assert_int_equal(refine.exts[0].insubstmt, LYEXT_SUBSTMT_MAX);
     FREE_ARRAY(st->ctx, refine.exts, lysp_ext_instance_free);
 
-    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"5\">"EXT_SUBELEM"</max-elements> </list>";
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"5\">"EXT_SUBELEM "</max-elements> </list>";
     assert_int_equal(test_element_helper(st, data, &list, NULL, NULL), LY_SUCCESS);
     assert_int_equal(list.max, 5);
     assert_true(list.flags & LYS_SET_MAX);
@@ -2149,7 +2167,7 @@ test_max_elems_elem(void **state)
     assert_int_equal(list.exts[0].insubstmt, LYEXT_SUBSTMT_MAX);
     FREE_ARRAY(st->ctx, list.exts, lysp_ext_instance_free);
 
-    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"85\">"EXT_SUBELEM"</max-elements> </leaf-list>";
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"85\">"EXT_SUBELEM "</max-elements> </leaf-list>";
     assert_int_equal(test_element_helper(st, data, &llist, NULL, NULL), LY_SUCCESS);
     assert_int_equal(llist.max, 85);
     assert_true(llist.flags & LYS_SET_MAX);
@@ -2191,7 +2209,7 @@ test_min_elems_elem(void **state)
     struct lysp_node_leaflist llist = {};
     struct lysp_refine refine = {};
 
-    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"0\">"EXT_SUBELEM"</min-elements> </refine>";
+    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"0\">"EXT_SUBELEM "</min-elements> </refine>";
     assert_int_equal(test_element_helper(st, data, &refine, NULL, NULL), LY_SUCCESS);
     assert_int_equal(refine.min, 0);
     assert_true(refine.flags & LYS_SET_MIN);
@@ -2200,7 +2218,7 @@ test_min_elems_elem(void **state)
     assert_int_equal(refine.exts[0].insubstmt, LYEXT_SUBSTMT_MIN);
     FREE_ARRAY(st->ctx, refine.exts, lysp_ext_instance_free);
 
-    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"41\">"EXT_SUBELEM"</min-elements> </list>";
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"41\">"EXT_SUBELEM "</min-elements> </list>";
     assert_int_equal(test_element_helper(st, data, &list, NULL, NULL), LY_SUCCESS);
     assert_int_equal(list.min, 41);
     assert_true(list.flags & LYS_SET_MIN);
@@ -2209,7 +2227,7 @@ test_min_elems_elem(void **state)
     assert_int_equal(list.exts[0].insubstmt, LYEXT_SUBSTMT_MIN);
     FREE_ARRAY(st->ctx, list.exts, lysp_ext_instance_free);
 
-    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"50\">"EXT_SUBELEM"</min-elements> </leaf-list>";
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"50\">"EXT_SUBELEM "</min-elements> </leaf-list>";
     assert_int_equal(test_element_helper(st, data, &llist, NULL, NULL), LY_SUCCESS);
     assert_int_equal(llist.min, 50);
     assert_true(llist.flags & LYS_SET_MIN);
@@ -2245,7 +2263,7 @@ test_ordby_elem(void **state)
     uint16_t flags = 0;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<ordered-by value=\"system\">"EXT_SUBELEM"</ordered-by>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<ordered-by value=\"system\">"EXT_SUBELEM "</ordered-by>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &flags, NULL, &exts), LY_SUCCESS);
     assert_true(flags & LYS_ORDBY_SYSTEM);
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -2275,18 +2293,18 @@ test_any_elem(void **state)
 
     /* anyxml max subelems */
     data = ELEMENT_WRAPPER_START
-                "<anyxml name=\"any-name\">"
-                    "<config value=\"true\" />"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"feature\" />"
-                    "<mandatory value=\"true\" />"
-                    "<must condition=\"must-cond\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"deprecated\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</anyxml>"
-           ELEMENT_WRAPPER_END;
+            "<anyxml name=\"any-name\">\n"
+            "    <config value=\"true\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"feature\" />\n"
+            "    <mandatory value=\"true\" />\n"
+            "    <must condition=\"must-cond\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</anyxml>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_anydata *)siblings;
     assert_null(parsed->parent);
@@ -2308,18 +2326,18 @@ test_any_elem(void **state)
 
     /* anydata max subelems */
     data = ELEMENT_WRAPPER_START
-                "<anydata name=\"any-name\">"
-                    "<config value=\"true\" />"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"feature\" />"
-                    "<mandatory value=\"true\" />"
-                    "<must condition=\"must-cond\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"deprecated\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</anydata>"
-           ELEMENT_WRAPPER_END;
+            "<anydata name=\"any-name\">\n"
+            "    <config value=\"true\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"feature\" />\n"
+            "    <mandatory value=\"true\" />\n"
+            "    <must condition=\"must-cond\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</anydata>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_anydata *)siblings;
     assert_null(parsed->parent);
@@ -2364,20 +2382,20 @@ test_leaf_elem(void **state)
 
     /* max elements */
     data = ELEMENT_WRAPPER_START
-                "<leaf name=\"leaf\">"
-                    "<config value=\"true\" />"
-                    "<default value=\"def-val\"/>"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"feature\" />"
-                    "<mandatory value=\"true\" />"
-                    "<must condition=\"must-cond\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"deprecated\"/>"
-                    "<type name=\"type\"/>"
-                    "<units name=\"uni\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</leaf>"
+            "<leaf name=\"leaf\">\n"
+            "    <config value=\"true\" />\n"
+            "    <default value=\"def-val\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"feature\" />\n"
+            "    <mandatory value=\"true\" />\n"
+            "    <must condition=\"must-cond\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <type name=\"type\"/>\n"
+            "    <units name=\"uni\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</leaf>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaf *)siblings;
@@ -2424,22 +2442,22 @@ test_leaf_list_elem(void **state)
     struct lysp_node_leaflist *parsed = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                    "<config value=\"true\" />"
-                    "<default value=\"def-val0\"/>"
-                    "<default value=\"def-val1\"/>"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"feature\"/>"
-                    "<max-elements value=\"5\"/>"
-                    "<must condition=\"must-cond\"/>"
-                    "<ordered-by value=\"user\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<type name=\"type\"/>"
-                    "<units name=\"uni\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">\n"
+            "    <config value=\"true\" />\n"
+            "    <default value=\"def-val0\"/>\n"
+            "    <default value=\"def-val1\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"feature\"/>\n"
+            "    <max-elements value=\"5\"/>\n"
+            "    <must condition=\"must-cond\"/>\n"
+            "    <ordered-by value=\"user\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <type name=\"type\"/>\n"
+            "    <units name=\"uni\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
@@ -2467,20 +2485,20 @@ test_leaf_list_elem(void **state)
     siblings = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                    "<config value=\"true\" />"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"feature\"/>"
-                    "<min-elements value=\"5\"/>"
-                    "<must condition=\"must-cond\"/>"
-                    "<ordered-by value=\"user\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<type name=\"type\"/>"
-                    "<units name=\"uni\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">\n"
+            "    <config value=\"true\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"feature\"/>\n"
+            "    <min-elements value=\"5\"/>\n"
+            "    <must condition=\"must-cond\"/>\n"
+            "    <ordered-by value=\"user\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <type name=\"type\"/>\n"
+            "    <units name=\"uni\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
@@ -2506,20 +2524,20 @@ test_leaf_list_elem(void **state)
     siblings = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                    "<config value=\"true\" />"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"feature\"/>"
-                    "<max-elements value=\"15\"/>"
-                    "<min-elements value=\"5\"/>"
-                    "<must condition=\"must-cond\"/>"
-                    "<ordered-by value=\"user\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<type name=\"type\"/>"
-                    "<units name=\"uni\"/>"
-                    "<when condition=\"when-cond\"/>"
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">\n"
+            "    <config value=\"true\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"feature\"/>\n"
+            "    <max-elements value=\"15\"/>\n"
+            "    <min-elements value=\"5\"/>\n"
+            "    <must condition=\"must-cond\"/>\n"
+            "    <ordered-by value=\"user\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <type name=\"type\"/>\n"
+            "    <units name=\"uni\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
@@ -2543,9 +2561,9 @@ test_leaf_list_elem(void **state)
     siblings = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                    "<type name=\"type\"/>"
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">\n"
+            "    <type name=\"type\"/>\n"
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_leaflist *)siblings;
@@ -2556,32 +2574,32 @@ test_leaf_list_elem(void **state)
 
     /* invalid combinations */
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                    "<max-elements value=\"5\"/>"
-                    "<min-elements value=\"15\"/>"
-                    "<type name=\"type\"/>"
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">\n"
+            "    <max-elements value=\"5\"/>\n"
+            "    <min-elements value=\"15\"/>\n"
+            "    <type name=\"type\"/>"
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_EVALID);
-    logbuf_assert("Invalid combination of min-elements and max-elements: min value 15 is bigger than the max value 5. Line number 1.");
+    logbuf_assert("Invalid combination of min-elements and max-elements: min value 15 is bigger than the max value 5. Line number 4.");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                    "<default value=\"def-val1\"/>"
-                    "<min-elements value=\"15\"/>"
-                    "<type name=\"type\"/>"
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">\n"
+            "    <default value=\"def-val1\"/>\n"
+            "    <min-elements value=\"15\"/>\n"
+            "    <type name=\"type\"/>\n"
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_EVALID);
-    logbuf_assert("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element. Line number 1.");
+    logbuf_assert("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element. Line number 5.");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<leaf-list name=\"llist\">"
-                "</leaf-list>"
+            "<leaf-list name=\"llist\">"
+            "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_EVALID);
     logbuf_assert("Missing mandatory sub-element \"type\" of \"leaf-list\" element. Line number 1.");
@@ -2599,7 +2617,7 @@ test_presence_elem(void **state)
     const char *val;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\">"EXT_SUBELEM"</presence>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\">"EXT_SUBELEM "</presence>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val, "presence-val");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -2628,7 +2646,7 @@ test_key_elem(void **state)
     const char *val;
     struct lysp_ext_instance *exts = NULL;
 
-    data = ELEMENT_WRAPPER_START "<key value=\"key-value\">"EXT_SUBELEM"</key>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<key value=\"key-value\">"EXT_SUBELEM "</key>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val, "key-value");
     assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
@@ -2658,16 +2676,16 @@ test_typedef_elem(void **state)
     struct tree_node_meta typdef_meta = {NULL, (struct lysp_node **)&tpdfs};
 
     data = ELEMENT_WRAPPER_START
-                "<typedef name=\"tpdf-name\">"
-                    "<default value=\"def-val\"/>"
-                    "<description><text>desc-text</text></description>"
-                    "<reference><text>ref-text</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<type name=\"type\"/>"
-                    "<units name=\"uni\"/>"
-                    EXT_SUBELEM
-                "</typedef>"
-           ELEMENT_WRAPPER_END;
+            "<typedef name=\"tpdf-name\">\n"
+            "    <default value=\"def-val\"/>\n"
+            "    <description><text>desc-text</text></description>\n"
+            "    <reference><text>ref-text</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <type name=\"type\"/>\n"
+            "    <units name=\"uni\"/>\n"
+            EXT_SUBELEM
+            "</typedef>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &typdef_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(tpdfs[0].dflt.str, "def-val");
     assert_string_equal(tpdfs[0].dsc, "desc-text");
@@ -2683,10 +2701,10 @@ test_typedef_elem(void **state)
     tpdfs = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<typedef name=\"tpdf-name\">"
-                    "<type name=\"type\"/>"
-                "</typedef>"
-           ELEMENT_WRAPPER_END;
+            "<typedef name=\"tpdf-name\">\n"
+            "    <type name=\"type\"/>\n"
+            "</typedef>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &typdef_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(tpdfs[0].name, "tpdf-name");
     assert_string_equal(tpdfs[0].type.name, "type");
@@ -2705,20 +2723,20 @@ test_refine_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<refine target-node=\"target\">"
-                    "<if-feature name=\"feature\" />"
-                    "<must condition=\"cond\" />"
-                    "<presence value=\"presence\" />"
-                    "<default value=\"def\" />"
-                    "<config value=\"true\" />"
-                    "<mandatory value=\"true\" />"
-                    "<min-elements value=\"10\" />"
-                    "<max-elements value=\"20\" />"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</refine>"
-           ELEMENT_WRAPPER_END;
+            "<refine target-node=\"target\">\n"
+            "    <if-feature name=\"feature\" />\n"
+            "    <must condition=\"cond\" />\n"
+            "    <presence value=\"presence\" />\n"
+            "    <default value=\"def\" />\n"
+            "    <config value=\"true\" />\n"
+            "    <mandatory value=\"true\" />\n"
+            "    <min-elements value=\"10\" />\n"
+            "    <max-elements value=\"20\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            EXT_SUBELEM
+            "</refine>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &refines, NULL, NULL), LY_SUCCESS);
     assert_string_equal(refines->nodeid, "target");
     assert_string_equal(refines->dflts[0].str, "def");
@@ -2758,17 +2776,17 @@ test_uses_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<uses name=\"uses-name\">"
-                    "<when condition=\"cond\" />"
-                    "<if-feature name=\"feature\" />"
-                    "<status value=\"obsolete\" />"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    "<refine target-node=\"target\"/>"
-                    "<augment target-node=\"target\" />"
-                    EXT_SUBELEM
-                "</uses>"
-           ELEMENT_WRAPPER_END;
+            "<uses name=\"uses-name\">\n"
+            "    <when condition=\"cond\" />\n"
+            "    <if-feature name=\"feature\" />\n"
+            "    <status value=\"obsolete\" />\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <refine target-node=\"target\"/>\n"
+            "    <augment target-node=\"target\" />\n"
+            EXT_SUBELEM
+            "</uses>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_uses *)&siblings[0];
     assert_string_equal(parsed->name, "uses-name");
@@ -2807,12 +2825,12 @@ test_revision_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<revision date=\"2018-12-25\">"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</revision>"
-           ELEMENT_WRAPPER_END;
+            "<revision date=\"2018-12-25\">\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            EXT_SUBELEM
+            "</revision>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &revs, NULL, NULL), LY_SUCCESS);
     assert_string_equal(revs->date, "2018-12-25");
     assert_string_equal(revs->dsc, "desc");
@@ -2851,13 +2869,13 @@ test_include_elem(void **state)
     /* max subelems */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<include module=\"mod\">"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    "<revision-date date=\"1999-09-09\"/>"
-                    EXT_SUBELEM
-                "</include>"
-           ELEMENT_WRAPPER_END;
+            "<include module=\"mod\">\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <revision-date date=\"1999-09-09\"/>\n"
+            EXT_SUBELEM
+            "</include>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &inc_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(includes->name, "mod");
     assert_string_equal(includes->dsc, "desc");
@@ -2879,25 +2897,25 @@ test_include_elem(void **state)
     /* invalid combinations */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_0;
     data = ELEMENT_WRAPPER_START
-                "<include module=\"mod\">"
-                    "<description><text>desc</text></description>"
-                    "<revision-date date=\"1999-09-09\"/>"
-                "</include>"
-           ELEMENT_WRAPPER_END;
+            "<include module=\"mod\">\n"
+            "    <description><text>desc</text></description>\n"
+            "    <revision-date date=\"1999-09-09\"/>\n"
+            "</include>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &inc_meta, NULL, NULL), LY_EVALID);
-    logbuf_assert("Invalid sub-elemnt \"description\" of \"include\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 1.");
+    logbuf_assert("Invalid sub-elemnt \"description\" of \"include\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 2.");
     FREE_ARRAY(st->ctx, includes, lysp_include_free);
     includes = NULL;
 
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_0;
     data = ELEMENT_WRAPPER_START
-                "<include module=\"mod\">"
-                    "<reference><text>ref</text></reference>"
-                    "<revision-date date=\"1999-09-09\"/>"
-                "</include>"
-           ELEMENT_WRAPPER_END;
+            "<include module=\"mod\">\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <revision-date date=\"1999-09-09\"/>\n"
+            "</include>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &inc_meta, NULL, NULL), LY_EVALID);
-    logbuf_assert("Invalid sub-elemnt \"reference\" of \"include\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 1.");
+    logbuf_assert("Invalid sub-elemnt \"reference\" of \"include\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 2.");
     FREE_ARRAY(st->ctx, includes, lysp_include_free);
     includes = NULL;
 
@@ -2915,33 +2933,33 @@ test_list_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<list name=\"list-name\">"
-                    "<when condition=\"when\"/>"
-                    "<if-feature name=\"iff\"/>"
-                    "<must condition=\"must-cond\"/>"
-                    "<key value=\"key\"/>"
-                    "<unique tag=\"utag\"/>"
-                    "<config value=\"true\"/>"
-                    "<min-elements value=\"10\"/>"
-                    "<ordered-by value=\"user\"/>"
-                    "<status value=\"deprecated\"/>"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<container name=\"cont\"/>"
-                    "<choice name=\"choice\"/>"
-                    "<action name=\"action\"/>"
-                    "<grouping name=\"grp\"/>"
-                    "<notification name=\"notf\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"sub-list\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    "<uses name=\"uses-name\"/>"
-                    EXT_SUBELEM
-                "</list>"
-           ELEMENT_WRAPPER_END;
+            "<list name=\"list-name\">\n"
+            "    <when condition=\"when\"/>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <must condition=\"must-cond\"/>\n"
+            "    <key value=\"key\"/>\n"
+            "    <unique tag=\"utag\"/>\n"
+            "    <config value=\"true\"/>\n"
+            "    <min-elements value=\"10\"/>\n"
+            "    <ordered-by value=\"user\"/>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <container name=\"cont\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <action name=\"action\"/>\n"
+            "    <grouping name=\"grp\"/>\n"
+            "    <notification name=\"notf\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"sub-list\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            EXT_SUBELEM
+            "</list>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_list *)&siblings[0];
     assert_string_equal(parsed->dsc, "desc");
@@ -3010,25 +3028,25 @@ test_notification_elem(void **state)
     /* max subelems */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<notification name=\"notif-name\">"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"sub-list\"/>"
-                    "<must condition=\"cond\"/>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"deprecated\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    "<uses name=\"uses-name\"/>"
-                    "<container name=\"cont\"/>"
-                    "<choice name=\"choice\"/>"
-                    "<grouping name=\"grp\"/>"
-                    EXT_SUBELEM
-                "</notification>"
-           ELEMENT_WRAPPER_END;
+            "<notification name=\"notif-name\">\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"sub-list\"/>\n"
+            "    <must condition=\"cond\"/>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            "    <container name=\"cont\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <grouping name=\"grp\"/>\n"
+            EXT_SUBELEM
+            "</notification>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &notif_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(notifs->name, "notif-name");
     assert_string_equal(notifs->data->name, "anyd");
@@ -3083,25 +3101,25 @@ test_grouping_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<grouping name=\"grp-name\">"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<description><text>desc</text></description>"
-                    "<grouping name=\"sub-grp\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<notification name=\"notf\"/>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    "<uses name=\"uses-name\"/>"
-                    "<action name=\"act\"/>"
-                    "<container name=\"cont\"/>"
-                    "<choice name=\"choice\"/>"
-                    EXT_SUBELEM
-                "</grouping>"
-           ELEMENT_WRAPPER_END;
+            "<grouping name=\"grp-name\">\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <grouping name=\"sub-grp\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <notification name=\"notf\"/>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            "    <action name=\"act\"/>\n"
+            "    <container name=\"cont\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            EXT_SUBELEM
+            "</grouping>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &grp_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(grps->name, "grp-name");
     assert_string_equal(grps->data->name, "anyd");
@@ -3152,30 +3170,30 @@ test_container_elem(void **state)
     /* max subelems */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<container name=\"cont-name\">"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<config value=\"true\"/>"
-                    "<container name=\"subcont\"/>"
-                    "<description><text>desc</text></description>"
-                    "<grouping name=\"sub-grp\"/>"
-                    "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<must condition=\"cond\"/>"
-                    "<notification name=\"notf\"/>"
-                    "<presence value=\"presence\"/>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    "<uses name=\"uses-name\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    "<action name=\"act\"/>"
-                    "<choice name=\"choice\"/>"
-                    EXT_SUBELEM
-                "</container>"
-           ELEMENT_WRAPPER_END;
+            "<container name=\"cont-name\">\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <config value=\"true\"/>\n"
+            "    <container name=\"subcont\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <grouping name=\"sub-grp\"/>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <must condition=\"cond\"/>\n"
+            "    <notification name=\"notf\"/>\n"
+            "    <presence value=\"presence\"/>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            "    <action name=\"act\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            EXT_SUBELEM
+            "</container>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_container *)siblings;
     assert_string_equal(parsed->name, "cont-name");
@@ -3241,23 +3259,23 @@ test_case_elem(void **state)
     /* max subelems */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<case name=\"case-name\">"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<container name=\"subcont\"/>"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<uses name=\"uses-name\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    "<choice name=\"choice\"/>"
-                    EXT_SUBELEM
-                "</case>"
-           ELEMENT_WRAPPER_END;
+            "<case name=\"case-name\">\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <container name=\"subcont\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            EXT_SUBELEM
+            "</case>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_case *)siblings;
     assert_string_equal(parsed->name, "case-name");
@@ -3315,32 +3333,32 @@ test_choice_elem(void **state)
     /* max subelems */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<choice name=\"choice-name\">"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<case name=\"sub-case\"/>"
-                    "<choice name=\"choice\"/>"
-                    "<config value=\"true\"/>"
-                    "<container name=\"subcont\"/>"
-                    "<default value=\"def\"/>"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<mandatory value=\"true\" />"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</choice>"
-           ELEMENT_WRAPPER_END;
+            "<choice name=\"choice-name\">\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <case name=\"sub-case\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <config value=\"true\"/>\n"
+            "    <container name=\"subcont\"/>\n"
+            "    <default value=\"def\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <mandatory value=\"true\" />\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</choice>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &node_meta, NULL, NULL), LY_SUCCESS);
     parsed = (struct lysp_node_choice *)siblings;
     assert_string_equal(parsed->name, "choice-name");
     assert_null(parsed->parent);
     assert_int_equal(parsed->nodetype, LYS_CHOICE);
-    assert_true(parsed->flags & LYS_CONFIG_W && parsed->flags & LYS_MAND_TRUE  && parsed->flags & LYS_STATUS_CURR);
+    assert_true(parsed->flags & LYS_CONFIG_W && parsed->flags & LYS_MAND_TRUE && parsed->flags & LYS_STATUS_CURR);
     assert_null(parsed->next);
     assert_string_equal(parsed->dsc, "desc");
     assert_string_equal(parsed->ref, "ref");
@@ -3391,21 +3409,21 @@ test_inout_elem(void **state)
     /* max subelements */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<input>"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<choice name=\"choice\"/>"
-                    "<container name=\"subcont\"/>"
-                    "<grouping name=\"sub-grp\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<must condition=\"cond\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    "<uses name=\"uses-name\"/>"
-                    EXT_SUBELEM
-                "</input>"
-           ELEMENT_WRAPPER_END;
+            "<input>\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <container name=\"subcont\"/>\n"
+            "    <grouping name=\"sub-grp\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <must condition=\"cond\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            EXT_SUBELEM
+            "</input>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &inout_meta, NULL, NULL), LY_SUCCESS);
     assert_null(inout.parent);
     assert_int_equal(inout.nodetype, LYS_INPUT);
@@ -3438,21 +3456,21 @@ test_inout_elem(void **state)
     /* max subelements */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<output>"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<choice name=\"choice\"/>"
-                    "<container name=\"subcont\"/>"
-                    "<grouping name=\"sub-grp\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<must condition=\"cond\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    "<uses name=\"uses-name\"/>"
-                    EXT_SUBELEM
-                "</output>"
-           ELEMENT_WRAPPER_END;
+            "<output>\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <container name=\"subcont\"/>\n"
+            "    <grouping name=\"sub-grp\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <must condition=\"cond\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            EXT_SUBELEM
+            "</output>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &inout_meta, NULL, NULL), LY_SUCCESS);
     assert_null(inout.parent);
     assert_int_equal(inout.nodetype, LYS_OUTPUT);
@@ -3513,20 +3531,20 @@ test_action_elem(void **state)
     /* max subelems */
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<action name=\"act\">"
-                    "<description><text>desc</text></description>"
-                    "<grouping name=\"grouping\"/>"
-                    "<if-feature name=\"iff\"/>"
-                    "<input><uses name=\"uses-name\"/></input>"
-                    "<output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"deprecated\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    EXT_SUBELEM
-                "</action>"
-           ELEMENT_WRAPPER_END;
+            "<action name=\"act\">\n"
+            "    <description><text>desc</text></description>\n"
+            "    <grouping name=\"grouping\"/>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <input><uses name=\"uses-name\"/></input>\n"
+            "    <output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            EXT_SUBELEM
+            "</action>"
+            ELEMENT_WRAPPER_END;
     /* there must be parent for action */
-    act_meta.parent = (void*)1;
+    act_meta.parent = (void *)1;
     assert_int_equal(test_element_helper(st, data, &act_meta, NULL, NULL), LY_SUCCESS);
     act_meta.parent = NULL;
     assert_non_null(actions->parent);
@@ -3548,18 +3566,18 @@ test_action_elem(void **state)
 
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<rpc name=\"act\">"
-                    "<description><text>desc</text></description>"
-                    "<grouping name=\"grouping\"/>"
-                    "<if-feature name=\"iff\"/>"
-                    "<input><uses name=\"uses-name\"/></input>"
-                    "<output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"deprecated\"/>"
-                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
-                    EXT_SUBELEM
-                "</rpc>"
-           ELEMENT_WRAPPER_END;
+            "<rpc name=\"act\">\n"
+            "    <description><text>desc</text></description>\n"
+            "    <grouping name=\"grouping\"/>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <input><uses name=\"uses-name\"/></input>\n"
+            "    <output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"deprecated\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            EXT_SUBELEM
+            "</rpc>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &act_meta, NULL, NULL), LY_SUCCESS);
     assert_null(actions->parent);
     assert_int_equal(actions->nodetype, LYS_RPC);
@@ -3598,26 +3616,26 @@ test_augment_elem(void **state)
 
     st->yin_ctx->parsed_mod->version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START
-                "<augment target-node=\"target\">"
-                    "<action name=\"action\"/>"
-                    "<anydata name=\"anyd\"/>"
-                    "<anyxml name=\"anyx\"/>"
-                    "<case name=\"case\"/>"
-                    "<choice name=\"choice\"/>"
-                    "<container name=\"subcont\"/>"
-                    "<description><text>desc</text></description>"
-                    "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
-                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
-                    "<list name=\"list\"/>"
-                    "<notification name=\"notif\"/>"
-                    "<reference><text>ref</text></reference>"
-                    "<status value=\"current\"/>"
-                    "<uses name=\"uses\"/>"
-                    "<when condition=\"when-cond\"/>"
-                    EXT_SUBELEM
-                "</augment>"
-           ELEMENT_WRAPPER_END;
+            "<augment target-node=\"target\">\n"
+            "    <action name=\"action\"/>\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <case name=\"case\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <container name=\"subcont\"/>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <if-feature name=\"iff\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"list\"/>\n"
+            "    <notification name=\"notif\"/>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <status value=\"current\"/>\n"
+            "    <uses name=\"uses\"/>\n"
+            "    <when condition=\"when-cond\"/>\n"
+            EXT_SUBELEM
+            "</augment>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &aug_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(augments->nodeid, "target");
     assert_null(augments->parent);
@@ -3704,10 +3722,10 @@ test_deviate_elem(void **state)
 
     /* max subelems and valid arguments */
     data = ELEMENT_WRAPPER_START
-                "<deviate value=\"not-supported\">"
-                    EXT_SUBELEM
-                "</deviate>"
-           ELEMENT_WRAPPER_END;
+            "<deviate value=\"not-supported\">"
+            EXT_SUBELEM
+            "</deviate>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviates, NULL, NULL), LY_SUCCESS);
     assert_int_equal(deviates->mod, LYS_DEV_NOT_SUPPORTED);
     assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");
@@ -3718,18 +3736,18 @@ test_deviate_elem(void **state)
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<deviate value=\"add\">"
-                    "<units name=\"units\"/>"
-                    "<must condition=\"cond\"/>"
-                    "<unique tag=\"utag\"/>"
-                    "<default value=\"def\"/>"
-                    "<config value=\"true\"/>"
-                    "<mandatory value=\"true\"/>"
-                    "<min-elements value=\"5\"/>"
-                    "<max-elements value=\"15\"/>"
-                    EXT_SUBELEM
-                "</deviate>"
-           ELEMENT_WRAPPER_END;
+            "<deviate value=\"add\">\n"
+            "    <units name=\"units\"/>\n"
+            "    <must condition=\"cond\"/>\n"
+            "    <unique tag=\"utag\"/>\n"
+            "    <default value=\"def\"/>\n"
+            "    <config value=\"true\"/>\n"
+            "    <mandatory value=\"true\"/>\n"
+            "    <min-elements value=\"5\"/>\n"
+            "    <max-elements value=\"15\"/>\n"
+            EXT_SUBELEM
+            "</deviate>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviates, NULL, NULL), LY_SUCCESS);
     d_add = (struct lysp_deviate_add *)deviates;
     assert_int_equal(d_add->mod, LYS_DEV_ADD);
@@ -3749,17 +3767,17 @@ test_deviate_elem(void **state)
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<deviate value=\"replace\">"
-                    "<type name=\"newtype\"/>"
-                    "<units name=\"uni\"/>"
-                    "<default value=\"def\"/>"
-                    "<config value=\"true\"/>"
-                    "<mandatory value=\"true\"/>"
-                    "<min-elements value=\"5\"/>"
-                    "<max-elements value=\"15\"/>"
-                    EXT_SUBELEM
-                "</deviate>"
-           ELEMENT_WRAPPER_END;
+            "<deviate value=\"replace\">\n"
+            "    <type name=\"newtype\"/>\n"
+            "    <units name=\"uni\"/>\n"
+            "    <default value=\"def\"/>\n"
+            "    <config value=\"true\"/>\n"
+            "    <mandatory value=\"true\"/>\n"
+            "    <min-elements value=\"5\"/>\n"
+            "    <max-elements value=\"15\"/>\n"
+            EXT_SUBELEM
+            "</deviate>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviates, NULL, NULL), LY_SUCCESS);
     d_rpl = (struct lysp_deviate_rpl *)deviates;
     assert_int_equal(d_rpl->mod, LYS_DEV_REPLACE);
@@ -3778,14 +3796,14 @@ test_deviate_elem(void **state)
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<deviate value=\"delete\">"
-                    "<units name=\"u\"/>"
-                    "<must condition=\"c\"/>"
-                    "<unique tag=\"tag\"/>"
-                    "<default value=\"default\"/>"
-                    EXT_SUBELEM
-                "</deviate>"
-           ELEMENT_WRAPPER_END;
+            "<deviate value=\"delete\">\n"
+            "    <units name=\"u\"/>\n"
+            "    <must condition=\"c\"/>\n"
+            "    <unique tag=\"tag\"/>\n"
+            "    <default value=\"default\"/>\n"
+            EXT_SUBELEM
+            "</deviate>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviates, NULL, NULL), LY_SUCCESS);
     d_del = (struct lysp_deviate_del *)deviates;
     assert_int_equal(d_del->mod, LYS_DEV_DELETE);
@@ -3823,12 +3841,12 @@ test_deviate_elem(void **state)
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START
-                "<deviate value=\"not-supported\">"
-                    "<must condition=\"c\"/>"
-                "</deviate>"
-           ELEMENT_WRAPPER_END;
+            "<deviate value=\"not-supported\">\n"
+            "    <must condition=\"c\"/>\n"
+            "</deviate>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviates, NULL, NULL), LY_EVALID);
-    logbuf_assert("Deviate of this type doesn't allow \"must\" as it's sub-element. Line number 1.");
+    logbuf_assert("Deviate of this type doesn't allow \"must\" as it's sub-element. Line number 2.");
 
     st->finished_correctly = true;
 }
@@ -3842,10 +3860,10 @@ test_deviation_elem(void **state)
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START
-                "<deviation target-node=\"target\">"
-                    "<deviate value=\"not-supported\"/>"
-                "</deviation>"
-           ELEMENT_WRAPPER_END;
+            "<deviation target-node=\"target\">\n"
+            "    <deviate value=\"not-supported\"/>\n"
+            "</deviation>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviations, NULL, NULL), LY_SUCCESS);
     assert_string_equal(deviations->nodeid, "target");
     assert_int_equal(deviations->deviates->mod, LYS_DEV_NOT_SUPPORTED);
@@ -3854,13 +3872,13 @@ test_deviation_elem(void **state)
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
-                "<deviation target-node=\"target\">"
-                    "<reference><text>ref</text></reference>"
-                    "<description><text>desc</text></description>"
-                    "<deviate value=\"add\"/>"
-                    EXT_SUBELEM
-                "</deviation>"
-           ELEMENT_WRAPPER_END;
+            "<deviation target-node=\"target\">\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <deviate value=\"add\"/>\n"
+            EXT_SUBELEM
+            "</deviation>"
+            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &deviations, NULL, NULL), LY_SUCCESS);
     assert_string_equal(deviations->nodeid, "target");
     assert_int_equal(deviations->deviates->mod, LYS_DEV_ADD);
@@ -3905,35 +3923,37 @@ test_module_elem(void **state)
 
     /* max subelems */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
-                "<yang-version value=\"1.1\"/>\n"
-                "<namespace uri=\"ns\"/>\n"
-                "<prefix value=\"pref\"/>\n"
-                "<include module=\"b-mod\"/>\n"
-                "<import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
-                "<organization><text>org</text></organization>\n"
-                "<contact><text>contact</text></contact>\n"
-                "<description><text>desc</text></description>"
-                "<reference><text>ref</text></reference>\n"
-                "<revision date=\"2019-02-02\"/>\n"
-                "<anydata name=\"anyd\"/>\n"
-                "<anyxml name=\"anyx\"/>\n"
-                "<choice name=\"choice\"/>\n"
-                "<container name=\"cont\"/>\n"
-                "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-                "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-                "<list name=\"sub-list\"/>\n"
-                "<uses name=\"uses-name\"/>\n"
-                "<augment target-node=\"target\"/>\n"
-                "<deviation target-node=\"target\">""<deviate value=\"not-supported\"/>""</deviation>\n"
-                "<extension name=\"ext\"/>\n"
-                "<feature name=\"feature\"/>\n"
-                "<grouping name=\"grp\"/>\n"
-                "<identity name=\"ident-name\"/>\n"
-                "<notification name=\"notf\"/>\n"
-                "<rpc name=\"rpc-name\"/>\n"
-                "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-                EXT_SUBELEM"\n"
-           "</module>\n";
+            "    <yang-version value=\"1.1\"/>\n"
+            "    <namespace uri=\"ns\"/>\n"
+            "    <prefix value=\"pref\"/>\n"
+            "    <include module=\"b-mod\"/>\n"
+            "    <import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
+            "    <organization><text>org</text></organization>\n"
+            "    <contact><text>contact</text></contact>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <revision date=\"2019-02-02\"/>\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <container name=\"cont\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"sub-list\"/>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            "    <augment target-node=\"target\"/>\n"
+            "    <deviation target-node=\"target\">\n"
+            "        <deviate value=\"not-supported\"/>\n"
+            "    </deviation>\n"
+            "    <extension name=\"ext\"/>\n"
+            "    <feature name=\"feature\"/>\n"
+            "    <grouping name=\"grp\"/>\n"
+            "    <identity name=\"ident-name\"/>\n"
+            "    <notification name=\"notf\"/>\n"
+            "    <rpc name=\"rpc-name\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            EXT_SUBELEM "\n"
+            "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
 
@@ -3984,11 +4004,11 @@ test_module_elem(void **state)
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     lysp_mod = mod_renew(st->yin_ctx);
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">"
-                "<namespace uri=\"ns\"/>"
-                "<prefix value=\"pref\"/>"
-                "<yang-version value=\"1.1\"/>"
-           "</module>";
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
+            "    <namespace uri=\"ns\"/>\n"
+            "    <prefix value=\"pref\"/>\n"
+            "    <yang-version value=\"1.1\"/>\n"
+            "</module>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, lysp_mod), LY_SUCCESS);
@@ -3998,16 +4018,16 @@ test_module_elem(void **state)
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     lysp_mod = mod_renew(st->yin_ctx);
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">"
-                "<feature name=\"feature\"/>\n"
-                "<namespace uri=\"ns\"/>"
-                "<prefix value=\"pref\"/>"
-                "<yang-version value=\"1.1\"/>"
-           "</module>";
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
+            "    <feature name=\"feature\"/>\n"
+            "    <namespace uri=\"ns\"/>\n"
+            "    <prefix value=\"pref\"/>\n"
+            "    <yang-version value=\"1.1\"/>\n"
+            "</module>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, lysp_mod), LY_EVALID);
-    logbuf_assert("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\". Line number 2.");
+    logbuf_assert("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\". Line number 3.");
 
     st->finished_correctly = true;
 }
@@ -4036,34 +4056,38 @@ test_submodule_elem(void **state)
 
     /* max subelements */
     data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
-                "<yang-version value=\"1.1\"/>\n"
-                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
-                "<include module=\"b-mod\"/>\n"
-                "<import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
-                "<organization><text>org</text></organization>\n"
-                "<contact><text>contact</text></contact>\n"
-                "<description><text>desc</text></description>"
-                "<reference><text>ref</text></reference>\n"
-                "<revision date=\"2019-02-02\"/>\n"
-                "<anydata name=\"anyd\"/>\n"
-                "<anyxml name=\"anyx\"/>\n"
-                "<choice name=\"choice\"/>\n"
-                "<container name=\"cont\"/>\n"
-                "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
-                "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
-                "<list name=\"sub-list\"/>\n"
-                "<uses name=\"uses-name\"/>\n"
-                "<augment target-node=\"target\"/>\n"
-                "<deviation target-node=\"target\">""<deviate value=\"not-supported\"/>""</deviation>\n"
-                "<extension name=\"ext\"/>\n"
-                "<feature name=\"feature\"/>\n"
-                "<grouping name=\"grp\"/>\n"
-                "<identity name=\"ident-name\"/>\n"
-                "<notification name=\"notf\"/>\n"
-                "<rpc name=\"rpc-name\"/>\n"
-                "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
-                EXT_SUBELEM"\n"
-           "</submodule>\n";
+            "    <yang-version value=\"1.1\"/>\n"
+            "    <belongs-to module=\"module-name\">\n"
+            "        <prefix value=\"pref\"/>\n"
+            "    </belongs-to>\n"
+            "    <include module=\"b-mod\"/>\n"
+            "    <import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
+            "    <organization><text>org</text></organization>\n"
+            "    <contact><text>contact</text></contact>\n"
+            "    <description><text>desc</text></description>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <revision date=\"2019-02-02\"/>\n"
+            "    <anydata name=\"anyd\"/>\n"
+            "    <anyxml name=\"anyx\"/>\n"
+            "    <choice name=\"choice\"/>\n"
+            "    <container name=\"cont\"/>\n"
+            "    <leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+            "    <leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+            "    <list name=\"sub-list\"/>\n"
+            "    <uses name=\"uses-name\"/>\n"
+            "    <augment target-node=\"target\"/>\n"
+            "    <deviation target-node=\"target\">\n"
+            "        <deviate value=\"not-supported\"/>\n"
+            "    </deviation>\n"
+            "    <extension name=\"ext\"/>\n"
+            "    <feature name=\"feature\"/>\n"
+            "    <grouping name=\"grp\"/>\n"
+            "    <identity name=\"ident-name\"/>\n"
+            "    <notification name=\"notf\"/>\n"
+            "    <rpc name=\"rpc-name\"/>\n"
+            "    <typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+            EXT_SUBELEM "\n"
+            "</submodule>\n";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
 
@@ -4113,10 +4137,10 @@ test_submodule_elem(void **state)
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     lysp_submod = submod_renew(st->yin_ctx, "module-name");
-    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
-                "<yang-version value=\"1\"/>"
-                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
-           "</submodule>";
+    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>\n"
+            "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_SUCCESS);
@@ -4127,15 +4151,15 @@ test_submodule_elem(void **state)
     ly_in_free(st->in, 0);
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     lysp_submod = submod_renew(st->yin_ctx, "module-name");
-    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
-                "<yang-version value=\"1\"/>"
-                "<reference><text>ref</text></reference>\n"
-                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
-           "</submodule>";
+    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <reference><text>ref</text></reference>\n"
+            "    <belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>\n"
+            "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &st->in), LY_SUCCESS);
     assert_int_equal(lyxml_ctx_new(st->ctx, st->in, &st->yin_ctx->xmlctx), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, lysp_submod), LY_EVALID);
-    logbuf_assert("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\". Line number 2.");
+    logbuf_assert("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\". Line number 4.");
 
     st->finished_correctly = true;
 }
@@ -4153,26 +4177,26 @@ test_yin_parse_module(void **state)
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\"> \n"
-           "<yang-version value=\"1.1\"/>\n"
-           "<namespace uri=\"urn:tests:extensions:metadata:a\"/>\n"
-           "<prefix value=\"a\"/>\n"
-           "<import module=\"ietf-yang-metadata\">\n"
-                "<prefix value=\"md\"/>\n"
-           "</import>\n"
-           "<feature name=\"f\"/>\n"
-           "<md:annotation name=\"x\">\n"
-                "<description>\n"
-                "<text>test</text>\n"
-                "</description>\n"
-                "<reference>\n"
-                "<text>test</text>\n"
-                "</reference>\n"
-                "<if-feature name=\"f\"/>\n"
-                "<status value=\"current\"/>\n"
-                "<type name=\"uint8\"/>\n"
-                "<units name=\"meters\"/>\n"
-           "</md:annotation>\n"
-           "</module>\n";
+            "    <yang-version value=\"1.1\"/>\n"
+            "    <namespace uri=\"urn:tests:extensions:metadata:a\"/>\n"
+            "    <prefix value=\"a\"/>\n"
+            "    <import module=\"ietf-yang-metadata\">\n"
+            "        <prefix value=\"md\"/>\n"
+            "    </import>\n"
+            "    <feature name=\"f\"/>\n"
+            "    <md:annotation name=\"x\">\n"
+            "        <description>\n"
+            "            <text>test</text>\n"
+            "        </description>\n"
+            "        <reference>\n"
+            "            <text>test</text>\n"
+            "        </reference>\n"
+            "        <if-feature name=\"f\"/>\n"
+            "        <status value=\"current\"/>\n"
+            "        <type name=\"uint8\"/>\n"
+            "        <units name=\"meters\"/>\n"
+            "    </md:annotation>\n"
+            "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_SUCCESS);
     assert_null(mod->parsed->exts->child->next->child);
@@ -4186,33 +4210,33 @@ test_yin_parse_module(void **state)
 
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
-    data =  "<module name=\"example-foo\""
-             "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
-             "xmlns:foo=\"urn:example:foo\""
-             "xmlns:myext=\"urn:example:extensions\">\n"
+    data = "<module name=\"example-foo\""
+            "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+            "    xmlns:foo=\"urn:example:foo\""
+            "    xmlns:myext=\"urn:example:extensions\">\n"
 
-                "<yang-version value=\"1\"/>\n"
+            "    <yang-version value=\"1\"/>\n"
 
-                "<namespace uri=\"urn:example:foo\"/>\n"
-                "<prefix value=\"foo\"/>\n"
+            "    <namespace uri=\"urn:example:foo\"/>\n"
+            "    <prefix value=\"foo\"/>\n"
 
-                "<import module=\"example-extensions\">\n"
-                    "<prefix value=\"myext\"/>\n"
-                "</import>\n"
+            "    <import module=\"example-extensions\">\n"
+            "        <prefix value=\"myext\"/>\n"
+            "    </import>\n"
 
-                "<list name=\"interface\">\n"
-                    "<key value=\"name\"/>\n"
-                    "<leaf name=\"name\">\n"
-                        "<type name=\"string\"/>\n"
-                    "</leaf>\n"
-                    "<leaf name=\"mtu\">\n"
-                        "<type name=\"uint32\"/>\n"
-                        "<description>\n"
-                            "<text>The MTU of the interface.</text>\n"
-                        "</description>\n"
-                        "<myext:c-define name=\"MY_MTU\"/>\n"
-                    "</leaf>\n"
-                "</list>\n"
+            "    <list name=\"interface\">\n"
+            "        <key value=\"name\"/>\n"
+            "        <leaf name=\"name\">\n"
+            "            <type name=\"string\"/>\n"
+            "        </leaf>\n"
+            "        <leaf name=\"mtu\">\n"
+            "            <type name=\"uint32\"/>\n"
+            "            <description>\n"
+            "                <text>The MTU of the interface.</text>\n"
+            "            </description>\n"
+            "            <myext:c-define name=\"MY_MTU\"/>\n"
+            "        </leaf>\n"
+            "    </list>\n"
             "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_SUCCESS);
@@ -4225,10 +4249,10 @@ test_yin_parse_module(void **state)
 
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
-    data =  "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-                "<yang-version value=\"1\"/>\n"
-                "<namespace uri=\"urn:example:foo\"/>\n"
-                "<prefix value=\"foo\"/>\n"
+    data = "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <namespace uri=\"urn:example:foo\"/>\n"
+            "    <prefix value=\"foo\"/>\n"
             "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_SUCCESS);
@@ -4239,10 +4263,9 @@ test_yin_parse_module(void **state)
     mod = NULL;
     yin_ctx = NULL;
 
-
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
-    data =  "<submodule name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+    data = "<submodule name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</submodule>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_EINVAL);
@@ -4253,15 +4276,15 @@ test_yin_parse_module(void **state)
 
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
-    data =  "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-                "<yang-version value=\"1\"/>\n"
-                "<namespace uri=\"urn:example:foo\"/>\n"
-                "<prefix value=\"foo\"/>\n"
-            "</module>"
+    data = "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <namespace uri=\"urn:example:foo\"/>\n"
+            "    <prefix value=\"foo\"/>\n"
+            "</module>\n"
             "<module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_EVALID);
-    logbuf_assert("Trailing garbage \"<module>\" after module, expected end-of-input. Line number 5.");
+    logbuf_assert("Trailing garbage \"<module>\" after module, expected end-of-input. Line number 6.");
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -4282,29 +4305,29 @@ test_yin_parse_submodule(void **state)
 
     lydict_insert(st->ctx, "a", 0, &st->yin_ctx->parsed_mod->mod->name);
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<submodule name=\"asub\""
-              "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
-              "xmlns:a=\"urn:a\">"
-                "<yang-version value=\"1\"/>\n"
-                "<belongs-to module=\"a\">"
-                    "<prefix value=\"a_pref\"/>"
-                "</belongs-to>"
-                "<include module=\"atop\"/>"
-                "<feature name=\"fox\"/>"
-                "<notification name=\"bar-notif\">"
-                    "<if-feature name=\"bar\"/>"
-                "</notification>"
-                "<notification name=\"fox-notif\">"
-                    "<if-feature name=\"fox\"/>"
-                "</notification>"
-                "<augment target-node=\"/a_pref:top\">"
-                    "<if-feature name=\"bar\"/>"
-                    "<container name=\"bar-sub\"/>"
-                "</augment>"
-                "<augment target-node=\"/top\">"
-                    "<container name=\"bar-sub2\"/>"
-                "</augment>"
+            "    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+            "    xmlns:a=\"urn:a\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <belongs-to module=\"a\">\n"
+            "        <prefix value=\"a_pref\"/>\n"
+            "    </belongs-to>\n"
+            "    <include module=\"atop\"/>\n"
+            "    <feature name=\"fox\"/>\n"
+            "    <notification name=\"bar-notif\">\n"
+            "        <if-feature name=\"bar\"/>\n"
+            "    </notification>\n"
+            "    <notification name=\"fox-notif\">\n"
+            "        <if-feature name=\"fox\"/>\n"
+            "    </notification>\n"
+            "    <augment target-node=\"/a_pref:top\">\n"
+            "        <if-feature name=\"bar\"/>\n"
+            "        <container name=\"bar-sub\"/>\n"
+            "    </augment>\n"
+            "    <augment target-node=\"/top\">\n"
+            "        <container name=\"bar-sub2\"/>\n"
+            "    </augment>\n"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_SUCCESS);
@@ -4314,12 +4337,12 @@ test_yin_parse_submodule(void **state)
     yin_ctx = NULL;
     submod = NULL;
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yang-version value=\"1\"/>\n"
-                "<belongs-to module=\"a\">"
-                    "<prefix value=\"a_pref\"/>"
-                "</belongs-to>"
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <belongs-to module=\"a\">\n"
+            "        <prefix value=\"a_pref\"/>\n"
+            "    </belongs-to>\n"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_SUCCESS);
@@ -4329,7 +4352,7 @@ test_yin_parse_submodule(void **state)
     yin_ctx = NULL;
     submod = NULL;
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
@@ -4341,22 +4364,22 @@ test_yin_parse_submodule(void **state)
     yin_ctx = NULL;
     submod = NULL;
 
-    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yang-version value=\"1\"/>\n"
-                "<belongs-to module=\"a\">"
-                    "<prefix value=\"a_pref\"/>"
-                "</belongs-to>"
-            "</submodule>"
-            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                "<yang-version value=\"1\"/>\n"
-                "<belongs-to module=\"a\">"
-                    "<prefix value=\"a_pref\"/>"
-                "</belongs-to>"
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <belongs-to module=\"a\">\n"
+            "        <prefix value=\"a_pref\"/>\n"
+            "    </belongs-to>\n"
+            "</submodule>\n"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+            "    <yang-version value=\"1\"/>\n"
+            "    <belongs-to module=\"a\">\n"
+            "        <prefix value=\"a_pref\"/>\n"
+            "    </belongs-to>\n"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, (struct lys_parser_ctx *)st->yin_ctx, in, &submod), LY_EVALID);
-    logbuf_assert("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input. Line number 2.");
+    logbuf_assert("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input. Line number 8.");
     lysp_module_free((struct lysp_module *)submod);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);

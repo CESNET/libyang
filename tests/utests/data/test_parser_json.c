@@ -12,22 +12,15 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
-#include <string.h>
-
 #include "context.h"
 #include "in.h"
-#include "parser_data.h"
 #include "out.h"
+#include "parser_data.h"
 #include "printer_data.h"
 #include "tests/config.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -54,6 +47,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -66,9 +60,9 @@ setup(void **state)
             "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;} leaf d {type string;}}"
             "leaf foo { type string;}"
             "container c {"
-                "leaf x {type string;}"
-                "action act { input { leaf al {type string;} } output { leaf al {type uint8;} } }"
-                "notification n1 { leaf nl {type string;} }"
+            "    leaf x {type string;}"
+            "    action act { input { leaf al {type string;} } output { leaf al {type uint8;} } }"
+            "    notification n1 { leaf nl {type string;} }"
             "}"
             "container cp {presence \"container switch\"; leaf y {type string;} leaf z {type int8;}}"
             "anydata any {config false;}"
@@ -131,18 +125,19 @@ test_leaf(void **state)
 
     char *printed;
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo", tree->schema->name);
-    leaf = (struct lyd_node_term*)tree;
+    leaf = (struct lyd_node_term *)tree;
     assert_string_equal("foo value", leaf->value.canonical);
 
     assert_int_equal(LYS_LEAF, tree->next->next->schema->nodetype);
     assert_string_equal("foo2", tree->next->next->schema->name);
-    leaf = (struct lyd_node_term*)tree->next->next;
+    leaf = (struct lyd_node_term *)tree->next->next;
     assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
@@ -158,7 +153,7 @@ test_leaf(void **state)
     tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
-    leaf = (struct lyd_node_term*)tree;
+    leaf = (struct lyd_node_term *)tree;
     assert_string_equal("default-val", leaf->value.canonical);
     assert_false(leaf->flags & LYD_DEFAULT);
 
@@ -174,7 +169,7 @@ test_leaf(void **state)
     tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
-    leaf = (struct lyd_node_term*)tree;
+    leaf = (struct lyd_node_term *)tree;
     assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
@@ -237,6 +232,7 @@ test_leaflist(void **state)
 
     char *printed;
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
@@ -244,13 +240,13 @@ test_leaflist(void **state)
     tree = tree->next;
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
-    ll = (struct lyd_node_term*)tree;
+    ll = (struct lyd_node_term *)tree;
     assert_string_equal("10", ll->value.canonical);
 
     assert_non_null(tree->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->schema->name);
-    ll = (struct lyd_node_term*)tree->next;
+    ll = (struct lyd_node_term *)tree->next;
     assert_string_equal("11", ll->value.canonical);
 
     lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -265,14 +261,14 @@ test_leaflist(void **state)
     tree = tree->next;
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
-    ll = (struct lyd_node_term*)tree;
+    ll = (struct lyd_node_term *)tree;
     assert_string_equal("10", ll->value.canonical);
     assert_null(ll->meta);
 
     assert_non_null(tree->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->schema->name);
-    ll = (struct lyd_node_term*)tree->next;
+    ll = (struct lyd_node_term *)tree->next;
     assert_string_equal("11", ll->value.canonical);
     assert_non_null(ll->meta);
     assert_string_equal("2", ll->meta->value.canonical);
@@ -283,14 +279,14 @@ test_leaflist(void **state)
     ly_out_reset(out);
     lyd_free_all(tree);
 
-        /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
+    /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
     data = "{\"@a:ll1\" : [{\"a:hint\" : 1, \"x:xxx\" :  { \"value\" : \"/x:no/x:yes\" }, \"a:hint\" : 10},null,{\"a:hint\" : 3}], \"a:ll1\" : [1,2,3]}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     tree = tree->next;
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
-    ll = (struct lyd_node_term*)tree;
+    ll = (struct lyd_node_term *)tree;
     assert_string_equal("1", ll->value.canonical);
     assert_non_null(ll->meta);
     assert_string_equal("hint", ll->meta->name);
@@ -309,14 +305,14 @@ test_leaflist(void **state)
     assert_non_null(tree->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->schema->name);
-    ll = (struct lyd_node_term*)tree->next;
+    ll = (struct lyd_node_term *)tree->next;
     assert_string_equal("2", ll->value.canonical);
     assert_null(ll->meta);
 
     assert_non_null(tree->next->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->next->schema->name);
-    ll = (struct lyd_node_term*)tree->next->next;
+    ll = (struct lyd_node_term *)tree->next->next;
     assert_string_equal("3", ll->value.canonical);
     assert_non_null(ll->meta);
     assert_string_equal("hint", ll->meta->name);
@@ -357,6 +353,7 @@ test_anydata(void **state)
     struct lyd_node *tree;
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data = "{\"a:any\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}";
@@ -388,6 +385,7 @@ test_list(void **state)
 
     char *printed;
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     /* check hashes */
@@ -395,7 +393,7 @@ test_list(void **state)
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
-    list = (struct lyd_node_inner*)tree;
+    list = (struct lyd_node_inner *)tree;
     LY_LIST_FOR(list->child, iter) {
         assert_int_not_equal(0, iter->hash);
     }
@@ -430,14 +428,14 @@ test_list(void **state)
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
-    list = (struct lyd_node_inner*)tree;
-    assert_non_null(leaf = (struct lyd_node_term*)list->child);
+    list = (struct lyd_node_inner *)tree;
+    assert_non_null(leaf = (struct lyd_node_term *)list->child);
     assert_string_equal("a", leaf->schema->name);
-    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     assert_string_equal("b", leaf->schema->name);
-    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     assert_string_equal("c", leaf->schema->name);
-    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     assert_string_equal("d", leaf->schema->name);
     logbuf_assert("");
 
@@ -452,12 +450,12 @@ test_list(void **state)
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
-    list = (struct lyd_node_inner*)tree;
-    assert_non_null(leaf = (struct lyd_node_term*)list->child);
+    list = (struct lyd_node_inner *)tree;
+    assert_non_null(leaf = (struct lyd_node_term *)list->child);
     assert_string_equal("a", leaf->schema->name);
-    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     assert_string_equal("b", leaf->schema->name);
-    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_non_null(leaf = (struct lyd_node_term *)leaf->next);
     assert_string_equal("c", leaf->schema->name);
     logbuf_assert("");
 
@@ -497,13 +495,14 @@ test_container(void **state)
 
     char *printed;
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("c", tree->schema->name);
-    cont = (struct lyd_node_inner*)tree;
+    cont = (struct lyd_node_inner *)tree;
     assert_true(cont->flags & LYD_DEFAULT);
 
     lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -517,7 +516,7 @@ test_container(void **state)
     tree = tree->next;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);
-    cont = (struct lyd_node_inner*)tree;
+    cont = (struct lyd_node_inner *)tree;
     assert_false(cont->flags & LYD_DEFAULT);
 
     lyd_print_all(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
@@ -538,6 +537,7 @@ test_opaq(void **state)
     struct lyd_node *tree;
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     /* invalid value, no flags */
@@ -635,12 +635,13 @@ test_rpc(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data = "{\"ietf-netconf:rpc\":{\"edit-config\":{"
-              "\"target\":{\"running\":[null]},"
-              "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
-                          "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
+            "\"target\":{\"running\":[null]},"
+            "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
+            "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
             "}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(ctx, in, LYD_JSON, &tree, &op));
@@ -697,6 +698,7 @@ test_action(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data = "{\"ietf-netconf:rpc\":{\"yang:action\":{\"a:c\":{\"act\":{\"al\":\"value\"}}}}}";
@@ -741,6 +743,7 @@ test_notification(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2037-07-08T00:01:00Z\",\"a:c\":{\"n1\":{\"nl\":\"value\"}}}}";
@@ -806,6 +809,7 @@ test_reply(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data = "{\"a:c\":{\"act\":{\"al\":\"value\"}}}";
@@ -850,7 +854,8 @@ test_reply(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_leaf, setup, teardown),

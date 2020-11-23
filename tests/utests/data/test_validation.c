@@ -12,22 +12,18 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
-
 #include <stdio.h>
 #include <string.h>
 
 #include "context.h"
 #include "in.h"
-#include "parser_data.h"
 #include "out.h"
+#include "parser_data.h"
 #include "printer_data.h"
 #include "tests/config.h"
-#include "tree_schema.h"
 #include "tree_data_internal.h"
+#include "tree_schema.h"
+#include "utests.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -54,6 +50,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
         }
     }
 }
+
 #endif
 
 static int
@@ -62,356 +59,356 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a =
-        "module a {"
-            "namespace urn:tests:a;"
-            "prefix a;"
-            "yang-version 1.1;"
-
-            "container cont {"
-                "leaf a {"
-                    "when \"../../c = 'val_c'\";"
-                    "type string;"
-                "}"
-                "leaf b {"
-                    "type string;"
-                "}"
-            "}"
-            "leaf c {"
-                "when \"/cont/b = 'val_b'\";"
-                "type string;"
-            "}"
-        "}";
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container cont {\n"
+            "        leaf a {\n"
+            "            when \"../../c = 'val_c'\";\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf c {\n"
+            "        when \"/cont/b = 'val_b'\";\n"
+            "        type string;\n"
+            "    }\n"
+            "}";
     const char *schema_b =
-        "module b {"
-            "namespace urn:tests:b;"
-            "prefix b;"
-            "yang-version 1.1;"
-
-            "choice choic {"
-                "mandatory true;"
-                "leaf a {"
-                    "type string;"
-                "}"
-                "case b {"
-                    "leaf l {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-            "leaf c {"
-                "mandatory true;"
-                "type string;"
-            "}"
-            "leaf d {"
-                "type empty;"
-            "}"
-        "}";
+            "module b {\n"
+            "    namespace urn:tests:b;\n"
+            "    prefix b;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    choice choic {\n"
+            "        mandatory true;\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        case b {\n"
+            "            leaf l {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "    leaf c {\n"
+            "        mandatory true;\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf d {\n"
+            "        type empty;\n"
+            "    }\n"
+            "}";
     const char *schema_c =
-        "module c {"
-            "namespace urn:tests:c;"
-            "prefix c;"
-            "yang-version 1.1;"
-
-            "choice choic {"
-                "leaf a {"
-                    "type string;"
-                "}"
-                "case b {"
-                    "leaf-list l {"
-                        "min-elements 3;"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-            "list lt {"
-                "max-elements 4;"
-                "key \"k\";"
-                "leaf k {"
-                    "type string;"
-                "}"
-            "}"
-            "leaf d {"
-                "type empty;"
-            "}"
-        "}";
+            "module c {\n"
+            "    namespace urn:tests:c;\n"
+            "    prefix c;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    choice choic {\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        case b {\n"
+            "            leaf-list l {\n"
+            "                min-elements 3;\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "    list lt {\n"
+            "        max-elements 4;\n"
+            "        key \"k\";\n"
+            "        leaf k {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf d {\n"
+            "        type empty;\n"
+            "    }\n"
+            "}";
     const char *schema_d =
-        "module d {"
-            "namespace urn:tests:d;"
-            "prefix d;"
-            "yang-version 1.1;"
-
-            "list lt {"
-                "key \"k\";"
-                "unique \"l1\";"
-                "leaf k {"
-                    "type string;"
-                "}"
-                "leaf l1 {"
-                    "type string;"
-                "}"
-            "}"
-            "list lt2 {"
-                "key \"k\";"
-                "unique \"cont/l2 l4\";"
-                "unique \"l5 l6\";"
-                "leaf k {"
-                    "type string;"
-                "}"
-                "container cont {"
-                    "leaf l2 {"
-                        "type string;"
-                    "}"
-                "}"
-                "leaf l4 {"
-                    "type string;"
-                "}"
-                "leaf l5 {"
-                    "type string;"
-                "}"
-                "leaf l6 {"
-                    "type string;"
-                "}"
-                "list lt3 {"
-                    "key \"kk\";"
-                    "unique \"l3\";"
-                    "leaf kk {"
-                        "type string;"
-                    "}"
-                    "leaf l3 {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-        "}";
+            "module d {\n"
+            "    namespace urn:tests:d;\n"
+            "    prefix d;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    list lt {\n"
+            "        key \"k\";\n"
+            "        unique \"l1\";\n"
+            "        leaf k {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf l1 {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    list lt2 {\n"
+            "        key \"k\";\n"
+            "        unique \"cont/l2 l4\";\n"
+            "        unique \"l5 l6\";\n"
+            "        leaf k {\n"
+            "            type string;\n"
+            "        }\n"
+            "        container cont {\n"
+            "            leaf l2 {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "        leaf l4 {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf l5 {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf l6 {\n"
+            "            type string;\n"
+            "        }\n"
+            "        list lt3 {\n"
+            "            key \"kk\";\n"
+            "            unique \"l3\";\n"
+            "            leaf kk {\n"
+            "                type string;\n"
+            "            }\n"
+            "            leaf l3 {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_e =
-        "module e {"
-            "namespace urn:tests:e;"
-            "prefix e;"
-            "yang-version 1.1;"
-
-            "choice choic {"
-                "leaf a {"
-                    "type string;"
-                "}"
-                "case b {"
-                    "leaf-list l {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-            "list lt {"
-                "key \"k\";"
-                "leaf k {"
-                    "type string;"
-                "}"
-            "}"
-            "leaf d {"
-                "type uint32;"
-            "}"
-            "leaf-list ll {"
-                "type string;"
-            "}"
-            "container cont {"
-                "list lt {"
-                    "key \"k\";"
-                    "leaf k {"
-                        "type string;"
-                    "}"
-                "}"
-                "leaf d {"
-                    "type uint32;"
-                "}"
-                "leaf-list ll {"
-                    "type string;"
-                "}"
-                "leaf-list ll2 {"
-                    "type enumeration {"
-                        "enum one;"
-                        "enum two;"
-                    "}"
-                "}"
-            "}"
-        "}";
+            "module e {\n"
+            "    namespace urn:tests:e;\n"
+            "    prefix e;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    choice choic {\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        case b {\n"
+            "            leaf-list l {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "    list lt {\n"
+            "        key \"k\";\n"
+            "        leaf k {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf d {\n"
+            "        type uint32;\n"
+            "    }\n"
+            "    leaf-list ll {\n"
+            "        type string;\n"
+            "    }\n"
+            "    container cont {\n"
+            "        list lt {\n"
+            "            key \"k\";\n"
+            "            leaf k {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "        leaf d {\n"
+            "            type uint32;\n"
+            "        }\n"
+            "        leaf-list ll {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf-list ll2 {\n"
+            "            type enumeration {\n"
+            "                enum one;\n"
+            "                enum two;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_f =
-        "module f {"
-            "namespace urn:tests:f;"
-            "prefix f;"
-            "yang-version 1.1;"
-
-            "choice choic {"
-                "default \"c\";"
-                "leaf a {"
-                    "type string;"
-                "}"
-                "case b {"
-                    "leaf l {"
-                        "type string;"
-                    "}"
-                "}"
-                "case c {"
-                    "leaf-list ll1 {"
-                        "type string;"
-                        "default \"def1\";"
-                        "default \"def2\";"
-                        "default \"def3\";"
-                    "}"
-                "}"
-            "}"
-            "leaf d {"
-                "type uint32;"
-                "default 15;"
-            "}"
-            "leaf-list ll2 {"
-                "type string;"
-                "default \"dflt1\";"
-                "default \"dflt2\";"
-            "}"
-            "container cont {"
-                "choice choic {"
-                    "default \"c\";"
-                    "leaf a {"
-                        "type string;"
-                    "}"
-                    "case b {"
-                        "leaf l {"
-                            "type string;"
-                        "}"
-                    "}"
-                    "case c {"
-                        "leaf-list ll1 {"
-                            "type string;"
-                            "default \"def1\";"
-                            "default \"def2\";"
-                            "default \"def3\";"
-                        "}"
-                    "}"
-                "}"
-                "leaf d {"
-                    "type uint32;"
-                    "default 15;"
-                "}"
-                "leaf-list ll2 {"
-                    "type string;"
-                    "default \"dflt1\";"
-                    "default \"dflt2\";"
-                "}"
-            "}"
-        "}";
+            "module f {\n"
+            "    namespace urn:tests:f;\n"
+            "    prefix f;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    choice choic {\n"
+            "        default \"c\";\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        case b {\n"
+            "            leaf l {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "        case c {\n"
+            "            leaf-list ll1 {\n"
+            "                type string;\n"
+            "                default \"def1\";\n"
+            "                default \"def2\";\n"
+            "                default \"def3\";\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "    leaf d {\n"
+            "        type uint32;\n"
+            "        default 15;\n"
+            "    }\n"
+            "    leaf-list ll2 {\n"
+            "        type string;\n"
+            "        default \"dflt1\";\n"
+            "        default \"dflt2\";\n"
+            "    }\n"
+            "    container cont {\n"
+            "        choice choic {\n"
+            "            default \"c\";\n"
+            "            leaf a {\n"
+            "                type string;\n"
+            "            }\n"
+            "            case b {\n"
+            "                leaf l {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "            case c {\n"
+            "                leaf-list ll1 {\n"
+            "                    type string;\n"
+            "                    default \"def1\";\n"
+            "                    default \"def2\";\n"
+            "                    default \"def3\";\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "        leaf d {\n"
+            "            type uint32;\n"
+            "            default 15;\n"
+            "        }\n"
+            "        leaf-list ll2 {\n"
+            "            type string;\n"
+            "            default \"dflt1\";\n"
+            "            default \"dflt2\";\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_g =
-        "module g {"
-            "namespace urn:tests:g;"
-            "prefix g;"
-            "yang-version 1.1;"
-
-            "feature f1;"
-            "feature f2;"
-            "feature f3;"
-
-            "container cont {"
-                "if-feature \"f1\";"
-                "choice choic {"
-                    "if-feature \"f2 or f3\";"
-                    "leaf a {"
-                        "type string;"
-                    "}"
-                    "case b {"
-                        "if-feature \"f2 and f1\";"
-                        "leaf l {"
-                            "type string;"
-                        "}"
-                    "}"
-                "}"
-                "leaf d {"
-                    "type uint32;"
-                "}"
-                "container cont2 {"
-                    "if-feature \"f2\";"
-                    "leaf e {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-        "}";
+            "module g {\n"
+            "    namespace urn:tests:g;\n"
+            "    prefix g;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    feature f1;\n"
+            "    feature f2;\n"
+            "    feature f3;\n"
+            "\n"
+            "    container cont {\n"
+            "        if-feature \"f1\";\n"
+            "        choice choic {\n"
+            "            if-feature \"f2 or f3\";\n"
+            "            leaf a {\n"
+            "                type string;\n"
+            "            }\n"
+            "            case b {\n"
+            "                if-feature \"f2 and f1\";\n"
+            "                leaf l {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "        leaf d {\n"
+            "            type uint32;\n"
+            "        }\n"
+            "        container cont2 {\n"
+            "            if-feature \"f2\";\n"
+            "            leaf e {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_h =
-        "module h {"
-            "namespace urn:tests:h;"
-            "prefix h;"
-            "yang-version 1.1;"
-
-            "container cont {"
-                "container cont2 {"
-                    "config false;"
-                    "leaf l {"
-                        "type string;"
-                    "}"
-                "}"
-            "}"
-        "}";
+            "module h {\n"
+            "    namespace urn:tests:h;\n"
+            "    prefix h;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container cont {\n"
+            "        container cont2 {\n"
+            "            config false;\n"
+            "            leaf l {\n"
+            "                type string;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_i =
-        "module i {"
-            "namespace urn:tests:i;"
-            "prefix i;"
-            "yang-version 1.1;"
-
-            "container cont {"
-                "leaf l {"
-                    "type string;"
-                "}"
-                "leaf l2 {"
-                    "must \"../l = 'right'\";"
-                    "type string;"
-                "}"
-            "}"
-        "}";
+            "module i {\n"
+            "    namespace urn:tests:i;\n"
+            "    prefix i;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container cont {\n"
+            "        leaf l {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf l2 {\n"
+            "            must \"../l = 'right'\";\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "}";
     const char *schema_j =
-        "module j {"
-            "namespace urn:tests:j;"
-            "prefix j;"
-            "yang-version 1.1;"
-
-            "feature feat1;"
-
-            "container cont {"
-                "must \"false()\";"
-                "list l1 {"
-                    "key \"k\";"
-                    "leaf k {"
-                        "type string;"
-                    "}"
-                    "action act {"
-                        "if-feature feat1;"
-                        "input {"
-                            "must \"../../lf1 = 'true'\";"
-                            "leaf lf2 {"
-                                "type leafref {"
-                                    "path /lf3;"
-                                "}"
-                            "}"
-                        "}"
-                        "output {"
-                            "must \"../../lf1 = 'true2'\";"
-                            "leaf lf2 {"
-                                "type leafref {"
-                                    "path /lf4;"
-                                "}"
-                            "}"
-                        "}"
-                    "}"
-                "}"
-
-                "leaf lf1 {"
-                    "type string;"
-                "}"
-            "}"
-
-            "leaf lf3 {"
-                "type string;"
-            "}"
-
-            "leaf lf4 {"
-                "type string;"
-            "}"
-        "}";
+            "module j {\n"
+            "    namespace urn:tests:j;\n"
+            "    prefix j;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    feature feat1;\n"
+            "\n"
+            "    container cont {\n"
+            "        must \"false()\";\n"
+            "        list l1 {\n"
+            "            key \"k\";\n"
+            "            leaf k {\n"
+            "                type string;\n"
+            "            }\n"
+            "            action act {\n"
+            "                if-feature feat1;\n"
+            "                input {\n"
+            "                    must \"../../lf1 = 'true'\";\n"
+            "                    leaf lf2 {\n"
+            "                        type leafref {\n"
+            "                            path /lf3;\n"
+            "                        }\n"
+            "                    }\n"
+            "                }\n"
+            "                output {\n"
+            "                    must \"../../lf1 = 'true2'\";\n"
+            "                    leaf lf2 {\n"
+            "                        type leafref {\n"
+            "                            path /lf4;\n"
+            "                        }\n"
+            "                    }\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "\n"
+            "        leaf lf1 {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "\n"
+            "    leaf lf3 {\n"
+            "        type string;\n"
+            "    }\n"
+            "\n"
+            "    leaf lf4 {\n"
+            "        type string;\n"
+            "    }\n"
+            "}";
     struct ly_in *in;
     const char *feats[] = {"feat1", NULL};
 
@@ -550,29 +547,29 @@ test_minmax(void **state)
     logbuf_assert("Too few \"l\" instances. /c:choic/b/l");
 
     data =
-    "<l xmlns=\"urn:tests:c\">val1</l>"
-    "<l xmlns=\"urn:tests:c\">val2</l>";
+            "<l xmlns=\"urn:tests:c\">val1</l>"
+            "<l xmlns=\"urn:tests:c\">val2</l>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Too few \"l\" instances. /c:choic/b/l");
 
     data =
-    "<l xmlns=\"urn:tests:c\">val1</l>"
-    "<l xmlns=\"urn:tests:c\">val2</l>"
-    "<l xmlns=\"urn:tests:c\">val3</l>";
+            "<l xmlns=\"urn:tests:c\">val1</l>"
+            "<l xmlns=\"urn:tests:c\">val2</l>"
+            "<l xmlns=\"urn:tests:c\">val3</l>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
     data =
-    "<l xmlns=\"urn:tests:c\">val1</l>"
-    "<l xmlns=\"urn:tests:c\">val2</l>"
-    "<l xmlns=\"urn:tests:c\">val3</l>"
-    "<lt xmlns=\"urn:tests:c\"><k>val1</k></lt>"
-    "<lt xmlns=\"urn:tests:c\"><k>val2</k></lt>"
-    "<lt xmlns=\"urn:tests:c\"><k>val3</k></lt>"
-    "<lt xmlns=\"urn:tests:c\"><k>val4</k></lt>"
-    "<lt xmlns=\"urn:tests:c\"><k>val5</k></lt>";
+            "<l xmlns=\"urn:tests:c\">val1</l>"
+            "<l xmlns=\"urn:tests:c\">val2</l>"
+            "<l xmlns=\"urn:tests:c\">val3</l>"
+            "<lt xmlns=\"urn:tests:c\"><k>val1</k></lt>"
+            "<lt xmlns=\"urn:tests:c\"><k>val2</k></lt>"
+            "<lt xmlns=\"urn:tests:c\"><k>val3</k></lt>"
+            "<lt xmlns=\"urn:tests:c\"><k>val4</k></lt>"
+            "<lt xmlns=\"urn:tests:c\"><k>val5</k></lt>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Too many \"lt\" instances. /c:lt");
@@ -589,145 +586,145 @@ test_unique(void **state)
     struct lyd_node *tree;
 
     data =
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<l1>same</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-    "</lt>";
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <l1>same</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
     data =
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<l1>same</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<l1>not-same</l1>"
-    "</lt>";
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <l1>same</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <l1>not-same</l1>\n"
+            "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
     data =
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<l1>same</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<l1>same</l1>"
-    "</lt>";
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <l1>same</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <l1>same</l1>\n"
+            "</lt>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l1\" not satisfied in \"/d:lt[k='val1']\" and \"/d:lt[k='val2']\". /d:lt[k='val2']");
 
     /* now try with more instances */
     data =
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<l1>1</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<l1>2</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-        "<l1>3</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-        "<l1>4</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-        "<l1>5</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val6</k>"
-        "<l1>6</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val7</k>"
-        "<l1>7</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val8</k>"
-        "<l1>8</l1>"
-    "</lt>";
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <l1>1</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <l1>2</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "    <l1>3</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "    <l1>4</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "    <l1>5</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val6</k>\n"
+            "    <l1>6</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val7</k>\n"
+            "    <l1>7</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val8</k>\n"
+            "    <l1>8</l1>\n"
+            "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
     data =
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<l1>1</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<l1>2</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-        "<l1>3</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-        "<l1>5</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val6</k>"
-        "<l1>6</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val7</k>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val8</k>"
-    "</lt>";
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <l1>1</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <l1>2</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "    <l1>3</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "    <l1>5</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val6</k>\n"
+            "    <l1>6</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val7</k>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val8</k>\n"
+            "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
     data =
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<l1>1</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<l1>2</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-        "<l1>4</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val6</k>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val7</k>"
-        "<l1>2</l1>"
-    "</lt>"
-    "<lt xmlns=\"urn:tests:d\">"
-        "<k>val8</k>"
-        "<l1>8</l1>"
-    "</lt>";
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <l1>1</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <l1>2</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "    <l1>4</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val6</k>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val7</k>\n"
+            "    <l1>2</l1>\n"
+            "</lt>\n"
+            "<lt xmlns=\"urn:tests:d\">\n"
+            "    <k>val8</k>\n"
+            "    <l1>8</l1>\n"
+            "</lt>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l1\" not satisfied in \"/d:lt[k='val7']\" and \"/d:lt[k='val2']\". /d:lt[k='val2']");
@@ -745,211 +742,211 @@ test_unique_nested(void **state)
 
     /* nested list uniquest are compared only with instances in the same parent list instance */
     data =
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<cont>"
-            "<l2>1</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<cont>"
-            "<l2>2</l2>"
-        "</cont>"
-        "<l4>2</l4>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>1</l3>"
-        "</lt3>"
-        "<lt3>"
-            "<kk>val2</kk>"
-            "<l3>2</l3>"
-        "</lt3>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-        "<cont>"
-            "<l2>3</l2>"
-        "</cont>"
-        "<l4>3</l4>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>2</l3>"
-        "</lt3>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-        "<cont>"
-            "<l2>4</l2>"
-        "</cont>"
-        "<l4>4</l4>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>3</l3>"
-        "</lt3>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-        "<cont>"
-            "<l2>5</l2>"
-        "</cont>"
-        "<l4>5</l4>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>3</l3>"
-        "</lt3>"
-    "</lt2>";
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <cont>\n"
+            "        <l2>1</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <cont>\n"
+            "        <l2>2</l2>\n"
+            "    </cont>\n"
+            "    <l4>2</l4>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>1</l3>\n"
+            "    </lt3>\n"
+            "    <lt3>\n"
+            "        <kk>val2</kk>\n"
+            "        <l3>2</l3>\n"
+            "    </lt3>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "    <cont>\n"
+            "        <l2>3</l2>\n"
+            "    </cont>\n"
+            "    <l4>3</l4>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>2</l3>\n"
+            "    </lt3>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "    <cont>\n"
+            "        <l2>4</l2>\n"
+            "    </cont>\n"
+            "    <l4>4</l4>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>3</l3>\n"
+            "    </lt3>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "    <cont>\n"
+            "        <l2>5</l2>\n"
+            "    </cont>\n"
+            "    <l4>5</l4>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>3</l3>\n"
+            "    </lt3>\n"
+            "</lt2>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
     data =
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<cont>"
-            "<l2>1</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<cont>"
-            "<l2>2</l2>"
-        "</cont>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>1</l3>"
-        "</lt3>"
-        "<lt3>"
-            "<kk>val2</kk>"
-            "<l3>2</l3>"
-        "</lt3>"
-        "<lt3>"
-            "<kk>val3</kk>"
-            "<l3>1</l3>"
-        "</lt3>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-        "<cont>"
-            "<l2>3</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>2</l3>"
-        "</lt3>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-        "<cont>"
-            "<l2>4</l2>"
-        "</cont>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>3</l3>"
-        "</lt3>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-        "<cont>"
-            "<l2>5</l2>"
-        "</cont>"
-        "<lt3>"
-            "<kk>val1</kk>"
-            "<l3>3</l3>"
-        "</lt3>"
-    "</lt2>";
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <cont>\n"
+            "        <l2>1</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <cont>\n"
+            "        <l2>2</l2>\n"
+            "    </cont>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>1</l3>\n"
+            "    </lt3>\n"
+            "    <lt3>\n"
+            "        <kk>val2</kk>\n"
+            "        <l3>2</l3>\n"
+            "    </lt3>\n"
+            "    <lt3>\n"
+            "        <kk>val3</kk>\n"
+            "        <l3>1</l3>\n"
+            "    </lt3>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "    <cont>\n"
+            "        <l2>3</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>2</l3>\n"
+            "    </lt3>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "    <cont>\n"
+            "        <l2>4</l2>\n"
+            "    </cont>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>3</l3>\n"
+            "    </lt3>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "    <cont>\n"
+            "        <l2>5</l2>\n"
+            "    </cont>\n"
+            "    <lt3>\n"
+            "        <kk>val1</kk>\n"
+            "        <l3>3</l3>\n"
+            "    </lt3>\n"
+            "</lt2>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l3\" not satisfied in \"/d:lt2[k='val2']/lt3[kk='val3']\" and"
-                  " \"/d:lt2[k='val2']/lt3[kk='val1']\". /d:lt2[k='val2']/lt3[kk='val1']");
+            " \"/d:lt2[k='val2']/lt3[kk='val1']\". /d:lt2[k='val2']/lt3[kk='val1']");
 
     data =
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<cont>"
-            "<l2>1</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<cont>"
-            "<l2>2</l2>"
-        "</cont>"
-        "<l4>2</l4>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-        "<cont>"
-            "<l2>3</l2>"
-        "</cont>"
-        "<l4>3</l4>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-        "<cont>"
-            "<l2>2</l2>"
-        "</cont>"
-        "<l4>2</l4>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-        "<cont>"
-            "<l2>5</l2>"
-        "</cont>"
-        "<l4>5</l4>"
-    "</lt2>";
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <cont>\n"
+            "        <l2>1</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <cont>\n"
+            "        <l2>2</l2>\n"
+            "    </cont>\n"
+            "    <l4>2</l4>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "    <cont>\n"
+            "        <l2>3</l2>\n"
+            "    </cont>\n"
+            "    <l4>3</l4>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "    <cont>\n"
+            "        <l2>2</l2>\n"
+            "    </cont>\n"
+            "    <l4>2</l4>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "    <cont>\n"
+            "        <l2>5</l2>\n"
+            "    </cont>\n"
+            "    <l4>5</l4>\n"
+            "</lt2>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"cont/l2 l4\" not satisfied in \"/d:lt2[k='val4']\" and \"/d:lt2[k='val2']\". /d:lt2[k='val2']");
 
     data =
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val1</k>"
-        "<cont>"
-            "<l2>1</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-        "<l5>1</l5>"
-        "<l6>1</l6>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val2</k>"
-        "<cont>"
-            "<l2>2</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-        "<l5>1</l5>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val3</k>"
-        "<cont>"
-            "<l2>3</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-        "<l5>3</l5>"
-        "<l6>3</l6>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val4</k>"
-        "<cont>"
-            "<l2>4</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-        "<l6>1</l6>"
-    "</lt2>"
-    "<lt2 xmlns=\"urn:tests:d\">"
-        "<k>val5</k>"
-        "<cont>"
-            "<l2>5</l2>"
-        "</cont>"
-        "<l4>1</l4>"
-        "<l5>3</l5>"
-        "<l6>3</l6>"
-    "</lt2>";
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val1</k>\n"
+            "    <cont>\n"
+            "        <l2>1</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "    <l5>1</l5>\n"
+            "    <l6>1</l6>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val2</k>\n"
+            "    <cont>\n"
+            "        <l2>2</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "    <l5>1</l5>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val3</k>\n"
+            "    <cont>\n"
+            "        <l2>3</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "    <l5>3</l5>\n"
+            "    <l6>3</l6>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val4</k>\n"
+            "    <cont>\n"
+            "        <l2>4</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "    <l6>1</l6>\n"
+            "</lt2>\n"
+            "<lt2 xmlns=\"urn:tests:d\">\n"
+            "    <k>val5</k>\n"
+            "    <cont>\n"
+            "        <l2>5</l2>\n"
+            "    </cont>\n"
+            "    <l4>1</l4>\n"
+            "    <l5>3</l5>\n"
+            "    <l6>3</l6>\n"
+            "</lt2>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l5 l6\" not satisfied in \"/d:lt2[k='val5']\" and \"/d:lt2[k='val3']\". /d:lt2[k='val3']");
@@ -992,13 +989,13 @@ test_dup(void **state)
     logbuf_assert("Duplicate instance of \"d\". /e:cont/d");
 
     data = "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll>"
-        "<lt><k>a</k></lt><lt><k>b</k></lt><lt><k>c</k></lt><lt><k>d</k></lt><lt><k>c</k></lt></cont>";
+            "<lt><k>a</k></lt><lt><k>b</k></lt><lt><k>c</k></lt><lt><k>d</k></lt><lt><k>c</k></lt></cont>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"lt\". /e:cont/lt[k='c']");
 
     data = "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll>"
-        "<ll>a</ll><ll>b</ll><ll>c</ll><ll>d</ll><ll>d</ll></cont>";
+            "<ll>a</ll><ll>b</ll><ll>c</ll><ll>d</ll><ll>d</ll></cont>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"ll\". /e:cont/ll[.='d']");
@@ -1027,6 +1024,7 @@ test_defaults(void **state)
     const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
 
     struct ly_out *out;
+
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     /* get defaults */
@@ -1036,42 +1034,41 @@ test_defaults(void **state)
     assert_non_null(diff);
 
     /* check all defaults exist */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
-        "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\">"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
-            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "</cont>");
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>\n"
+            "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>\n"
+            "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
     assert_string_equal(str,
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def1</ll1>"
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def2</ll1>"
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def3</ll1>"
-        "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">dflt1</ll2>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">"
-            "<ll1 yang:operation=\"create\">def1</ll1>"
-            "<ll1 yang:operation=\"create\">def2</ll1>"
-            "<ll1 yang:operation=\"create\">def3</ll1>"
-            "<d yang:operation=\"create\">15</d>"
-            "<ll2 yang:operation=\"create\">dflt1</ll2>"
-            "<ll2 yang:operation=\"create\">dflt2</ll2>"
-        "</cont>"
-        );
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def1</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def2</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def3</ll1>\n"
+            "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">dflt1</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
+            "  <ll1 yang:operation=\"create\">def1</ll1>\n"
+            "  <ll1 yang:operation=\"create\">def2</ll1>\n"
+            "  <ll1 yang:operation=\"create\">def3</ll1>\n"
+            "  <d yang:operation=\"create\">15</d>\n"
+            "  <ll2 yang:operation=\"create\">dflt1</ll2>\n"
+            "  <ll2 yang:operation=\"create\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
     lyd_free_siblings(diff);
 
@@ -1081,29 +1078,28 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<l xmlns=\"urn:tests:f\">value</l>"
-        "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\">"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
-            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "</cont>");
+            "<l xmlns=\"urn:tests:f\">value</l>\n"
+            "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>\n"
+            "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
     assert_string_equal(str,
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def1</ll1>"
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def2</ll1>"
-        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def3</ll1>"
-        );
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def1</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def2</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def3</ll1>\n");
     ly_out_reset(out);
     lyd_free_siblings(diff);
 
@@ -1115,28 +1111,27 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<l xmlns=\"urn:tests:f\">value</l>"
-        "<d xmlns=\"urn:tests:f\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\">"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
-            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "</cont>");
+            "<l xmlns=\"urn:tests:f\">value</l>\n"
+            "<d xmlns=\"urn:tests:f\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>\n"
+            "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
     assert_string_equal(str,
-        "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt1</ll2>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt2</ll2>"
-        );
+            "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt1</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt2</ll2>\n");
     ly_out_reset(out);
     lyd_free_siblings(diff);
 
@@ -1146,19 +1141,19 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<l xmlns=\"urn:tests:f\">value</l>"
-        "<d xmlns=\"urn:tests:f\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\">"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
-            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "</cont>");
+            "<l xmlns=\"urn:tests:f\">value</l>\n"
+            "<d xmlns=\"urn:tests:f\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>\n"
+            "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
 
     /* check diff */
@@ -1170,19 +1165,19 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<l xmlns=\"urn:tests:f\">value</l>"
-        "<d xmlns=\"urn:tests:f\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\">"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
-            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
-            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "</cont>");
+            "<l xmlns=\"urn:tests:f\">value</l>\n"
+            "<d xmlns=\"urn:tests:f\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>\n"
+            "  <ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>\n"
+            "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>\n"
+            "  <ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
 
     /* check diff */
@@ -1195,30 +1190,29 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate_all(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_SHRINK);
+    lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<l xmlns=\"urn:tests:f\">value</l>"
-        "<d xmlns=\"urn:tests:f\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\">"
-            "<ll1>def3</ll1>"
-            "<d>5</d>"
-            "<ll2>non-dflt</ll2>"
-        "</cont>");
+            "<l xmlns=\"urn:tests:f\">value</l>\n"
+            "<d xmlns=\"urn:tests:f\">15</d>\n"
+            "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1>def3</ll1>\n"
+            "  <d>5</d>\n"
+            "  <ll2>non-dflt</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
 
     /* check diff */
-    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_SHRINK);
+    lyd_print_all(out, diff, LYD_XML, LYD_PRINT_WD_ALL);
     assert_string_equal(str,
-        "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
-            "<ll1 yang:operation=\"delete\">def1</ll1>"
-            "<ll1 yang:operation=\"delete\">def2</ll1>"
-            "<ll1 yang:operation=\"delete\">def3</ll1>"
-            "<d yang:operation=\"delete\">15</d>"
-            "<ll2 yang:operation=\"delete\">dflt1</ll2>"
-            "<ll2 yang:operation=\"delete\">dflt2</ll2>"
-        "</cont>"
-        );
+            "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ll1 yang:operation=\"delete\">def1</ll1>\n"
+            "  <ll1 yang:operation=\"delete\">def2</ll1>\n"
+            "  <ll1 yang:operation=\"delete\">def3</ll1>\n"
+            "  <d yang:operation=\"delete\">15</d>\n"
+            "  <ll2 yang:operation=\"delete\">dflt1</ll2>\n"
+            "  <ll2 yang:operation=\"delete\">dflt2</ll2>\n"
+            "</cont>\n");
     ly_out_reset(out);
     lyd_free_siblings(diff);
 
@@ -1237,11 +1231,11 @@ test_state(void **state)
     struct lyd_node *tree;
 
     data =
-    "<cont xmlns=\"urn:tests:h\">"
-        "<cont2>"
-            "<l>val</l>"
-        "</cont2>"
-    "</cont>";
+            "<cont xmlns=\"urn:tests:h\">\n"
+            "  <cont2>\n"
+            "    <l>val</l>\n"
+            "  </cont2>\n"
+            "</cont>\n";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_NO_STATE, 0, &tree));
     assert_null(tree);
     logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
@@ -1270,19 +1264,19 @@ test_must(void **state)
     struct lyd_node *tree;
 
     data =
-    "<cont xmlns=\"urn:tests:i\">"
-        "<l>wrong</l>"
-        "<l2>val</l2>"
-    "</cont>";
+            "<cont xmlns=\"urn:tests:i\">\n"
+            "  <l>wrong</l>\n"
+            "  <l2>val</l2>\n"
+            "</cont>\n";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Must condition \"../l = 'right'\" not satisfied. /i:cont/l2");
 
     data =
-    "<cont xmlns=\"urn:tests:i\">"
-        "<l>right</l>"
-        "<l2>val</l2>"
-    "</cont>";
+            "<cont xmlns=\"urn:tests:i\">\n"
+            "  <l>right</l>\n"
+            "  <l2>val</l2>\n"
+            "</cont>\n";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_tree(tree);
@@ -1300,14 +1294,14 @@ test_action(void **state)
     struct lyd_node *tree, *op_tree;
 
     data =
-    "<cont xmlns=\"urn:tests:j\">"
-        "<l1>"
-            "<k>val1</k>"
-            "<act>"
-                "<lf2>target</lf2>"
-            "</act>"
-        "</l1>"
-    "</cont>";
+            "<cont xmlns=\"urn:tests:j\">\n"
+            "  <l1>\n"
+            "    <k>val1</k>\n"
+            "    <act>\n"
+            "      <lf2>target</lf2>\n"
+            "    </act>\n"
+            "  </l1>\n"
+            "</cont>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(ctx, in, LYD_XML, &op_tree, NULL));
     assert_non_null(op_tree);
@@ -1315,14 +1309,14 @@ test_action(void **state)
     /* missing leafref */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_RPC, NULL));
     logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf3\" with the same value."
-        " /j:cont/l1[k='val1']/act/lf2");
+            " /j:cont/l1[k='val1']/act/lf2");
     ly_in_free(in, 0);
 
     data =
-    "<cont xmlns=\"urn:tests:j\">"
-        "<lf1>not true</lf1>"
-    "</cont>"
-    "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
+            "<cont xmlns=\"urn:tests:j\">\n"
+            "  <lf1>not true</lf1>\n"
+            "</cont>\n"
+            "<lf3 xmlns=\"urn:tests:j\">target</lf3>\n";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
@@ -1332,10 +1326,10 @@ test_action(void **state)
 
     lyd_free_siblings(tree);
     data =
-    "<cont xmlns=\"urn:tests:j\">"
-        "<lf1>true</lf1>"
-    "</cont>"
-    "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
+            "<cont xmlns=\"urn:tests:j\">\n"
+            "  <lf1>true</lf1>\n"
+            "</cont>\n"
+            "<lf3 xmlns=\"urn:tests:j\">target</lf3>\n";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
@@ -1358,14 +1352,14 @@ test_reply(void **state)
     struct lyd_node *tree, *op_tree, *request;
 
     data =
-    "<cont xmlns=\"urn:tests:j\">"
-        "<l1>"
-            "<k>val1</k>"
-            "<act>"
-                "<lf2>target</lf2>"
-            "</act>"
-        "</l1>"
-    "</cont>";
+            "<cont xmlns=\"urn:tests:j\">\n"
+            "  <l1>\n"
+            "    <k>val1</k>\n"
+            "    <act>\n"
+            "      <lf2>target</lf2>\n"
+            "    </act>\n"
+            "  </l1>\n"
+            "</cont>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(ctx, in, LYD_XML, &request, NULL));
     assert_non_null(request);
@@ -1381,13 +1375,13 @@ test_reply(void **state)
     /* missing leafref */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_REPLY, NULL));
     logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf4\" with the same value."
-        " /j:cont/l1[k='val1']/act/lf2");
+            " /j:cont/l1[k='val1']/act/lf2");
 
     data =
-    "<cont xmlns=\"urn:tests:j\">"
-        "<lf1>not true</lf1>"
-    "</cont>"
-    "<lf4 xmlns=\"urn:tests:j\">target</lf4>";
+            "<cont xmlns=\"urn:tests:j\">\n"
+            "  <lf1>not true</lf1>\n"
+            "</cont>\n"
+            "<lf4 xmlns=\"urn:tests:j\">target</lf4>\n";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
@@ -1397,10 +1391,10 @@ test_reply(void **state)
 
     lyd_free_siblings(tree);
     data =
-    "<cont xmlns=\"urn:tests:j\">"
-        "<lf1>true2</lf1>"
-    "</cont>"
-    "<lf4 xmlns=\"urn:tests:j\">target</lf4>";
+            "<cont xmlns=\"urn:tests:j\">\n"
+            "  <lf1>true2</lf1>\n"
+            "</cont>\n"
+            "<lf4 xmlns=\"urn:tests:j\">target</lf4>\n";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
@@ -1413,7 +1407,8 @@ test_reply(void **state)
     *state = NULL;
 }
 
-int main(void)
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_when, teardown_s),
