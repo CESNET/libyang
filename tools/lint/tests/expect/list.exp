@@ -5,10 +5,10 @@ set timeout 1
 spawn $env(YANGLINT)
 expect -exact "> "
 send -- "list\r"
-expect { 
+expect {
 	"list\r
 List of the loaded models:\r
-    I ietf-yang-metadata@2016-08-05\r
+    i ietf-yang-metadata@2016-08-05\r
     I yang@2020-06-17\r
     i ietf-inet-types@2013-07-15\r
     i ietf-yang-types@2013-07-15\r

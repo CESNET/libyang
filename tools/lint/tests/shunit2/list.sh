@@ -1,7 +1,7 @@
 #! /bin/sh
 
 LIST_BASE="List of the loaded models:
-    I ietf-yang-metadata@2016-08-05
+    i ietf-yang-metadata@2016-08-05
     I yang@2020-06-17
     i ietf-inet-types@2013-07-15
     i ietf-yang-types@2013-07-15
