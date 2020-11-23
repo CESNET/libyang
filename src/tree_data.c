@@ -356,7 +356,7 @@ lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, ui
             LY_CHECK_GOTO(ret, cleanup);
 
             /* perform final validation that assumes the data tree is final */
-            LY_CHECK_GOTO(ret = lyd_validate_final_r(*first2, NULL, mod, validate_options, 0), cleanup);
+            LY_CHECK_GOTO(ret = lyd_validate_final_r(*first2, NULL, NULL, mod, validate_options, 0), cleanup);
         }
     }
 
