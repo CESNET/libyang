@@ -7130,6 +7130,12 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
         LY_CHECK_GOTO(rc = lydict_insert(set->ctx, ncname, ncname_len, &ncname_dict), cleanup);
     }
 
+    if ((set->format == LY_PREF_JSON) && no_prefix) {
+        /* do not set moveto_mod if there is no explicit prefix for JSON, it should be inherited from
+         * the specific context node */
+        moveto_mod = NULL;
+    }
+
 moveto:
     /* move to the attribute(s), data node(s), or schema node(s) */
     if (attr_axis) {
