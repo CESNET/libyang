@@ -1383,11 +1383,11 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;
-    size_t id_len, prefix_len;
+    size_t id_len, prefix_len, str_len;
     char *errmsg = NULL, *str;
     const struct lys_module *mod = NULL;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_ident *ident = NULL, *identities;
+    struct lysc_ident *ident = NULL, *identities, *base;
     int rc = 0;
     ly_bool dyn;
 
@@ -1467,9 +1467,24 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
         }
     }
     if (u == LY_ARRAY_COUNT(type_ident->bases)) {
+        str = NULL;
+        str_len = 1;
+        LY_ARRAY_FOR(type_ident->bases, u) {
+            base = type_ident->bases[u];
+            str_len += (u ? 2 : 0) + 1 + strlen(base->module->name) + 1 + strlen(base->name) + 1;
+            str = ly_realloc(str, str_len);
+            sprintf(str + (u ? strlen(str) : 0), "%s\"%s:%s\"", u ? ", " : "", base->module->name, base->name);
+        }
+
         /* no match */
-        rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not accepted by the type specification.",
-                (int)value_len, value);
+        if (u == 1) {
+            rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not derived from the base %s.",
+                    (int)value_len, value, str);
+        } else {
+            rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not derived from all the bases %s.",
+                    (int)value_len, value, str);
+        }
+        free(str);
         goto error;
     }
 
