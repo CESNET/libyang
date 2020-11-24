@@ -1832,6 +1832,14 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         /* compile the children */
         if (target->nodetype == LYS_CHOICE) {
             LY_CHECK_GOTO(ret = lys_compile_node_choice_child(ctx, pnode, target, &child_set), cleanup);
+        } else if (target->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+            if (target->nodetype == LYS_INPUT) {
+                ctx->options |= LYS_COMPILE_RPC_INPUT;
+            } else {
+                ctx->options |= LYS_COMPILE_RPC_OUTPUT;
+            }
+            ret = lys_compile_node(ctx, pnode, (struct lysc_node *)lysc_node_parent_full(target), 0, &child_set);
+            LY_CHECK_GOTO(ret, cleanup);
         } else {
             LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
         }
