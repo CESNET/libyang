@@ -2899,7 +2899,7 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t opti
         return LY_SUCCESS;
     }
 
-    if (lysc_data_parent((*target)->schema) || lysc_data_parent(source->schema)) {
+    if ((*target && lysc_data_parent((*target)->schema)) || lysc_data_parent(source->schema)) {
         LOGERR(LYD_CTX(source), LY_EINVAL, "Invalid arguments - can merge only 2 top-level subtrees (%s()).", __func__);
         return LY_EINVAL;
     }
