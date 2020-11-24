@@ -879,7 +879,11 @@ search_file:
      */
     if (implement) {
         /* mark the module implemented, check for collision was already done */
-        (*mod)->implemented = 1;
+        ret = lys_set_implemented(*mod, features);
+        if (ret) {
+            *mod = NULL;
+            return ret;
+        }
     }
 
     return LY_SUCCESS;
