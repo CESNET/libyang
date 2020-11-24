@@ -37,11 +37,22 @@ LY_ERR lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatur
  * can be enabled and have all their if-features true.
  *
  * @param[in] pmod Parsed module to modify.
- * @param[in] features Array of features ended with NULL to enable. NULL for all features disabled, '*' for all enabled
+ * @param[in] features Array of features ended with NULL to enable. NULL for all features disabled, '*' for all enabled.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 LY_ERR lys_enable_features(struct lysp_module *pmod, const char **features);
+
+/**
+ * @brief Set the specified features of a parsed module, with all the checks.
+ *
+ * @param[in] pmod Parsed module to modify.
+ * @param[in] features Array of features ended with NULL to set. NULL for all features disabled, '*' for all enabled.
+ * @return LY_SUCCESS on success.
+ * @return LY_EEXIST if the specified features were already set.
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_set_features(struct lysp_module *pmod, const char **features);
 
 /**
  * @brief Compile if-features of features in the current module and all its submodules.
