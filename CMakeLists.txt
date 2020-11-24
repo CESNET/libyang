@@ -79,7 +79,7 @@ else()
     set(COMPILER_PACKED_ATTR "")
 endif()
 
-set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_COVERAGE} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
+set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
 set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
 set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
@@ -221,7 +221,7 @@ if(ENABLE_COVERAGE)
     endif()
 
     if(ENABLE_COVERAGE)
-        set(CMAKE_C_FLAGS_COVERAGE "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
     endif()
 endif()
 
