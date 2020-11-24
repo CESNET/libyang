@@ -472,12 +472,48 @@ lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check whether all enabled features have their if-features satisfied.
+ * Enabled features with false if-features are disabled with a warning.
+ *
+ * @param[in] pmod Parsed module features to check.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_check_features(struct lysp_module *pmod)
+{
+    LY_ERR r;
+    uint32_t i = 0;
+    struct lysp_feature *f = NULL;
+
+    while ((f = lysp_feature_next(f, pmod, &i))) {
+        if (!(f->flags & LYS_FENABLED) || !f->iffeatures) {
+            /* disabled feature or no if-features to check */
+            continue;
+        }
+
+        assert(f->iffeatures_c);
+        r = lysc_iffeature_value(f->iffeatures_c);
+        if (r == LY_ENOT) {
+            LOGWRN(pmod->mod->ctx, "Feature \"%s\" cannot be enabled because its \"if-feature\" is not satisfied.",
+                    f->name);
+
+            /* disable feature and re-evaluate all the feature if-features again */
+            f->flags &= ~LYS_FENABLED;
+            return lys_check_features(pmod);
+        } else if (r) {
+            return r;
+        } /* else if-feature satisfied */
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_enable_features(struct lysp_module *pmod, const char **features)
 {
-    uint32_t i;
-    struct lysp_feature *f;
-    LY_ERR ret;
+    uint32_t i = 0;
+    struct lysp_feature *f = 0;
 
     if (!features) {
         /* keep all features disabled */
@@ -486,8 +522,6 @@ lys_enable_features(struct lysp_module *pmod, const char **features)
 
     if (!strcmp(features[0], "*")) {
         /* enable all features */
-        f = NULL;
-        i = 0;
         while ((f = lysp_feature_next(f, pmod, &i))) {
             f->flags |= LYS_FENABLED;
         }
@@ -507,31 +541,61 @@ lys_enable_features(struct lysp_module *pmod, const char **features)
         }
     }
 
-check_iffeature:
-    /* check whether all enabled features have their if-features satisfied */
-    f = NULL;
-    i = 0;
-    while ((f = lysp_feature_next(f, pmod, &i))) {
-        if (!(f->flags & LYS_FENABLED) || !f->iffeatures) {
-            /* disabled feature or no if-features to check */
-            continue;
+    /* check final features if-feature state */
+    return lys_check_features(pmod);
+}
+
+LY_ERR
+lys_set_features(struct lysp_module *pmod, const char **features)
+{
+    uint32_t i = 0, j;
+    struct lysp_feature *f = 0;
+    ly_bool change = 0;
+
+    if (!features) {
+        /* disable all the features */
+        while ((f = lysp_feature_next(f, pmod, &i))) {
+            if (f->flags & LYS_FENABLED) {
+                f->flags &= ~LYS_FENABLED;
+                change = 1;
+            }
         }
+    } else if (!strcmp(features[0], "*")) {
+        /* enable all the features */
+        while ((f = lysp_feature_next(f, pmod, &i))) {
+            if (!(f->flags & LYS_FENABLED)) {
+                f->flags |= LYS_FENABLED;
+                change = 1;
+            }
+        }
+    } else {
+        /* enable specific features, disable the rest */
+        while ((f = lysp_feature_next(f, pmod, &i))) {
+            for (j = 0; features[j]; ++j) {
+                if (!strcmp(f->name, features[j])) {
+                    break;
+                }
+            }
 
-        assert(f->iffeatures_c);
-        ret = lysc_iffeature_value(f->iffeatures_c);
-        if (ret == LY_ENOT) {
-            LOGWRN(pmod->mod->ctx, "Feature \"%s\" cannot be enabled because its \"if-feature\" is not satisfied.",
-                    f->name);
-
-            /* disable feature and re-evaluate all the feature if-features again */
-            f->flags &= ~LYS_FENABLED;
-            goto check_iffeature;
-        } else if (ret) {
-            return ret;
-        } /* else if-feature satisfied */
+            if (features[j] && !(f->flags & LYS_FENABLED)) {
+                /* enable */
+                f->flags |= LYS_FENABLED;
+                change = 1;
+            } else if (!features[j] && (f->flags & LYS_FENABLED)) {
+                /* disable */
+                f->flags &= ~LYS_FENABLED;
+                change = 1;
+            }
+        }
     }
 
-    return LY_SUCCESS;
+    if (!change) {
+        /* features already set correctly */
+        return LY_EEXIST;
+    }
+
+    /* check final features if-feature state */
+    return lys_check_features(pmod);
 }
 
 /**

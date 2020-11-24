@@ -138,7 +138,7 @@
  * This is an essential change allowing speed up and simplification of data validation, but requiring carefully determine
  * which format is more suitable for the specific use case. As mentioned, the compiled trees are better for data validation
  * and getting information about the intentioned structure of the schema with all the applied groupings, type modifications,
- * augments and deviations. On the other hand, the parsed trees are useful for the schema format conversions since they
+ * augments, deviations, and any defined if-features. On the other hand, the parsed trees are useful for the schema format conversions since they
  * provide the original structure of the modules. There is a number of new functions intended to work only with the
  * parsed or the compiled tree. These functions are prefixed with `lysp_` and `lysp_` prefixes.
  *
@@ -162,7 +162,7 @@
  * lys_set_private()            | ::lysc_set_private()            | Moving the private pointer only to the compiled tree.
  * lys_is_disabled()            | -                               | Make no sense since the nodes disabled by if-feature are not present in the compiled tree.
  * lys_features_list()          | -                               | Not needed, the list of features is available in the parsed tree of the module and submodule.
- * lys_features_enable(), lys_features_enable_force() | -         | Removed since the features are applied during the schema compilation and the list of enabled features is provided to the schema parser.
+ * lys_features_enable(), lys_features_enable_force() | ::lys_set_implemented()         | Set of enabled features can be changed but it causes the whole context (all the modules) to recompile.
  * lys_features_disable(), lys_features_disable_force() | -       | ^
  * lys_features_state()         | -                               | Redesign of the features handling in the schema tree, the feature's status is newly directly visible as ::LYS_FENABLED flag (in parsed feature structure).
  * -                            | ::lys_feature_value()           | Simplified API to get feature's state only based on a feature name string.

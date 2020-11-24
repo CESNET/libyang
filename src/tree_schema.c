@@ -669,14 +669,25 @@ lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 API LY_ERR
 lys_set_implemented(struct lys_module *mod, const char **features)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *m;
     uint32_t i, idx;
 
     LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
 
     if (mod->implemented) {
-        /* mod is already implemented */
+        /* mod is already implemented, set the features */
+        r = lys_set_features(mod->parsed, features);
+        if (r == LY_EEXIST) {
+            /* no changes */
+            return LY_SUCCESS;
+        } else if (r) {
+            /* error */
+            return r;
+        }
+
+        /* full recompilation */
+        lys_recompile(mod->ctx, NULL);
         return LY_SUCCESS;
     }
 
@@ -725,6 +736,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
 
         ly_set_erase(&mod->ctx->implementing, NULL);
     }
+
     return ret;
 }
 
