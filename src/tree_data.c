@@ -1646,12 +1646,6 @@ lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_s
 
     assert(schema->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
-    str = strndup(val_str, val_str_len);
-    if (!str) {
-        LOGMEM(schema->module->ctx);
-        return NULL;
-    }
-
     /* parse the value into a fake leaf */
     struct lyd_node_leaf_list *node_leaf_list;
 
@@ -1661,7 +1655,7 @@ lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_s
     node_leaf_list->schema = (struct lys_node *)schema;
     node_leaf_list->prev = (struct lyd_node *)node_leaf_list;
     node_leaf_list->value_type = ((struct lys_node_leaf *)schema)->type.base;
-    node_leaf_list->value_str = lydict_insert(schema->module->ctx, str ? str : "", 0);
+    node_leaf_list->value_str = lydict_insert(schema->module->ctx, val_str ? val_str : "", val_str_len);
     node_leaf_list->dflt = 0;
 
     if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &node_leaf_list->value_str, NULL, node_leaf_list, NULL, NULL, 0, 0)) {
@@ -1671,7 +1665,6 @@ lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_s
 
     node = (struct lyd_node *)node_leaf_list;
 
-    free(str);
     if (!node) {
         return NULL;
     }

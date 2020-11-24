@@ -5521,8 +5521,8 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
             return -1;
         }
     } else {
-        if (strcmp(node_name, "*") && (strncmp(node->schema->name, node_name, node_name_len) ||
-            node->schema->name[node_name_len] != '\0')) {
+        if ((strncmp(node_name, "*", 1) || node_name_len != 1) &&
+            (strncmp(node->schema->name, node_name, node_name_len) || node->schema->name[node_name_len] != '\0')) {
             return -1;
         }
     }
