@@ -184,7 +184,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
 
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
 
-    LY_CHECK_RET(lysp_load_module(ctx, name, revision, 1, 0, features, &result), NULL);
+    LY_CHECK_RET(lysp_load_module(ctx, name, revision, 1, features, &result), NULL);
     return result;
 }
 

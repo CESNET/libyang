@@ -762,16 +762,17 @@ cleanup:
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, ly_bool require_parsed,
-        const char **features, struct lys_module **mod)
+lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, const char **features,
+        struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
-    struct lys_module *m = NULL;
+    struct lys_module *ctx_latest = NULL, *m;
     struct ly_in *in;
+    LY_ERR ret;
 
     assert(mod);
 
@@ -779,40 +780,45 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_
         implement = 1;
     }
 
+    /*
+     * try to get the module from the context
+     */
     if (!*mod) {
-        /* try to get the module from the context */
         if (revision) {
             /* get the specific revision */
             *mod = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
-        } else if (implement) {
-            /* prefer the implemented module instead of the latest one */
-            *mod = (struct lys_module *)ly_ctx_get_module_implemented(ctx, name);
-            if (!*mod) {
-                /* there is no implemented module in the context, try to get the latest revision module */
-                goto latest_in_the_context;
-            }
         } else {
-            /* get the requested module of the latest revision in the context */
-latest_in_the_context:
-            *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
-            if (*mod && ((*mod)->latest_revision == 1)) {
-                /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
-                m = *mod;
-                *mod = NULL;
+            if (implement) {
+                /* prefer the implemented module instead of the latest one */
+                *mod = (struct lys_module *)ly_ctx_get_module_implemented(ctx, name);
+            }
+            if (!*mod) {
+                /* get the requested module of the latest revision in the context */
+                *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
+                if (*mod && ((*mod)->latest_revision == 1)) {
+                    /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
+                    ctx_latest = *mod;
+                    *mod = NULL;
+                }
             }
         }
     }
 
-    if (!(*mod) || (require_parsed && !(*mod)->parsed)) {
-        (*mod) = NULL;
-
-        /* check collision with other implemented revision */
-        if (implement && ly_ctx_get_module_implemented(ctx, name)) {
+    /* check collision with other implemented revision */
+    if (implement) {
+        m = ly_ctx_get_module_implemented(ctx, name);
+        if (m && (!*mod || (*mod && (m != *mod)))) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
                     "Module \"%s\" is already present in other implemented revision.", name);
+            *mod = NULL;
             return LY_EDENIED;
         }
+    }
 
+    /*
+     * no suitable module in the context, try to load it
+     */
+    if (!*mod) {
         /* module not present in the context, get the input data and parse it */
         if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
@@ -836,47 +842,41 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, features, implement, NULL, NULL, m ? 0 : 1, (void **)mod);
+                lys_module_localfile(ctx, name, revision, features, implement, NULL, NULL, ctx_latest ? 0 : 1, (void **)mod);
             }
-            if (!(*mod) && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
             }
         }
 
         /* update the latest_revision flag - here we have selected the latest available schema,
          * consider that even the callback provides correct latest revision */
-        if (!(*mod) && m) {
-            LOGVRB("Newer revision than %s-%s not found, using this as the latest revision.", m->name, m->revision);
-            m->latest_revision = 2;
-            *mod = m;
-        } else if ((*mod) && !revision && ((*mod)->latest_revision == 1)) {
+        if (!*mod && ctx_latest) {
+            LOGVRB("Newer revision than %s-%s not found, using this as the latest revision.", ctx_latest->name,
+                    ctx_latest->revision);
+            ctx_latest->latest_revision = 2;
+            *mod = ctx_latest;
+        } else if (*mod && !revision && ((*mod)->latest_revision == 1)) {
             (*mod)->latest_revision = 2;
         }
-    } else {
-        /* we have module from the current context */
-        if (implement) {
-            m = ly_ctx_get_module_implemented(ctx, name);
-            if (m && (m != *mod)) {
-                /* check collision with other implemented revision */
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
-                        "Module \"%s\" is already present in other implemented revision.", name);
-                *mod = NULL;
-                return LY_EDENIED;
-            }
-        }
 
-        /* circular check */
-        if ((*mod)->parsed && (*mod)->parsed->parsing) {
+        if (!*mod) {
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "%s \"%s\" module failed.",
+                    implement ? "Loading" : "Importing", name);
+            return LY_EVALID;
+        }
+    } else {
+        /* we have module from the current context, circular check */
+        if ((*mod)->parsed->parsing) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
             *mod = NULL;
             return LY_EVALID;
         }
     }
-    if (!(*mod)) {
-        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "%s \"%s\" module failed.", implement ? "Loading" : "Importing", name);
-        return LY_EVALID;
-    }
 
+    /*
+     * module found, make sure it is implemented if should be
+     */
     if (implement) {
         /* mark the module implemented, check for collision was already done */
         (*mod)->implemented = 1;

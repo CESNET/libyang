@@ -283,14 +283,12 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * @param[in] implement Flag if the loaded module is supposed to be marked as implemented. If revision is NULL and implement flag set,
  * the implemented module in the context is returned despite it might not be of the latest revision, because in this case the module
  * of the latest revision can not be made implemented.
- * @param[in] require_parsed Flag to require parsed module structure in case the module is already in the context,
- * but only the compiled structure is available.
  * @param[in] features All the features to enable if implementing the module.
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
 LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
-        ly_bool require_parsed, const char **features, struct lys_module **mod);
+        const char **features, struct lys_module **mod);
 
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
