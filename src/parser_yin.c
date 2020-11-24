@@ -3818,6 +3818,9 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
     /* skip possible trailing whitespaces at end of the input */
     while (isspace(in->current[0])) {
+        if (in->current[0] == '\n') {
+            (*yin_ctx)->xmlctx->line++;
+        }
         ly_in_skip(in, 1);
     }
     if (in->current[0]) {
@@ -3878,6 +3881,9 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
 
     /* skip possible trailing whitespaces at end of the input */
     while (isspace(in->current[0])) {
+        if (in->current[0] == '\n') {
+            (*yin_ctx)->xmlctx->line++;
+        }
         ly_in_skip(in, 1);
     }
     if (in->current[0]) {
