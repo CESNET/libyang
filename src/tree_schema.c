@@ -688,8 +688,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
         }
 
         /* full recompilation */
-        lys_recompile(mod->ctx, NULL);
-        return LY_SUCCESS;
+        return lys_recompile(mod->ctx, NULL);
     }
 
     /* we have module from the current context */
