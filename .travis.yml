@@ -85,9 +85,9 @@ jobs:
         - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
         - tar -xzf pcre2-10.30.tar.gz
         - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
-        - pip install --user codecov && export CFLAGS="-coverage"
+        - pip install --user codecov
       script:
-        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
+        - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON  ../ && make -j2 && ctest --output-on-failure && cd -
       after_success:
         - bash <(curl -s https://codecov.io/bash)
     - stage: Test
@@ -124,4 +124,4 @@ jobs:
         - os: osx
       script:
         - mkdir build && cd build && cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
- 
+
