@@ -198,6 +198,11 @@ option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL"
 #endif()
 
 if(ENABLE_COVERAGE)
+    if(NOT ENABLE_BUILD_TESTS)
+        message(WARNING "you cannot generage coverage when tests are disabled. Enable test by additing parameter -DENABLE_BUILD_TESTS=ON or run cmake in some debug mode")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
     find_program(PATH_GCOV NAMES gcov)
     if(NOT PATH_GCOV)
         message(WARNING "'gcov' executable not found! Disabling building code coverage report.")
@@ -353,7 +358,7 @@ if(ENABLE_BUILD_TESTS)
         add_subdirectory(tests)
     else()
         message(STATUS "Disabling tests because of missing CMocka")
-        set(ENABLE_BUILD_TESTS NO)
+        set(ENABLE_BUILD_TESTS OFF)
     endif()
 endif()
 
