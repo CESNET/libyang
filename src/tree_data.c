@@ -7995,7 +7995,7 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, const struct lys_module *
                 }
             }
         }
-    } else if (options & LYD_OPT_NOTIF) {
+    } else if (options & (LYD_OPT_NOTIF | LYD_OPT_NOTIF_FILTER)) {
         if (!(*root) || ((*root)->schema->nodetype != LYS_NOTIF)) {
             LOGERR(ctx, LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;

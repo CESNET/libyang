@@ -487,7 +487,7 @@ attr_error:
         }
         *act_notif = *result;
     } else if (schema->nodetype == LYS_NOTIF) {
-        if (!(options & LYD_OPT_NOTIF) || *act_notif) {
+        if (!(options & (LYD_OPT_NOTIF | LYD_OPT_NOTIF_FILTER)) || *act_notif) {
             LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
             goto unlink_node_error;
