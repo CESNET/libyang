@@ -8,7 +8,7 @@ include(FindPackageHandleStandardArgs)
 
 find_program(UNCRUSTIFY uncrustify)
 if(UNCRUSTIFY)
-    execute_process(COMMAND ${UNCRUSTIFY} --version OUTPUT_VARIABLE VERSION)
+    execute_process(COMMAND ${UNCRUSTIFY} --version OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE VERSION)
     string(FIND ${VERSION} "-" START_IDX)
     math(EXPR START_IDX "${START_IDX} + 1")
     string(SUBSTRING "${VERSION}" ${START_IDX} -1 VERSION)
