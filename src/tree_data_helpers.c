@@ -11,8 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _XOPEN_SOURCE 500 /* strdup */
-#define _POSIX_C_SOURCE 200809L /*strndup */
+#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
 
 #include <assert.h>
 #include <stdint.h>

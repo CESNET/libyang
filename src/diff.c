@@ -11,8 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _XOPEN_SOURCE 500
-#define _POSIX_C_SOURCE 200809L
+#define _POSIX_C_SOURCE 200809L /* strdup */
 
 #include "diff.h"
 
