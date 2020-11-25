@@ -39,18 +39,20 @@ function(add_yanglint_test)
     set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "YANGLINT=${PROJECT_BINARY_DIR}/yanglint")
 endfunction(add_yanglint_test)
 
-# tests of non-interactive mode using shunit2
-find_program(PATH_SHUNIT NAMES shunit2)
-if(NOT PATH_SHUNIT)
-    message(WARNING "'shunit2' not found! The yanglint(1) non-interactive tests will not be available.")
-else()
-    add_yanglint_test(NAME ni_list SCRIPT shunit2/list.sh)
-endif()
+if(ENABLE_BUILD_TESTS)
+    # tests of non-interactive mode using shunit2
+    find_program(PATH_SHUNIT NAMES shunit2)
+    if(NOT PATH_SHUNIT)
+        message(WARNING "'shunit2' not found! The yanglint(1) non-interactive tests will not be available.")
+    else()
+        add_yanglint_test(NAME ni_list SCRIPT shunit2/list.sh)
+    endif()
 
-# tests of interactive mode using expect
-find_program(PATH_EXPECT NAMES expect)
-if(NOT PATH_EXPECT)
-    message(WARNING "'expect' not found! The yanglint(1) interactive tests will not be available.")
-else()
-#    add_yanglint_test(NAME in_list SCRIPT expect/list.exp)
+    # tests of interactive mode using expect
+    find_program(PATH_EXPECT NAMES expect)
+    if(NOT PATH_EXPECT)
+        message(WARNING "'expect' not found! The yanglint(1) interactive tests will not be available.")
+    else()
+#        add_yanglint_test(NAME in_list SCRIPT expect/list.exp)
+    endif()
 endif()
