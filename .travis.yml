@@ -18,6 +18,8 @@ addons:
   homebrew:
     packages:
     - cmocka
+    - shunit2
+    - expect
     update: true
 
 jobs:
