@@ -65,7 +65,7 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
     struct lysc_unres_dflt *r = NULL;
     uint32_t i;
 
-    if (ctx->options & LYS_COMPILE_DISABLED) {
+    if (ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING)) {
         return LY_SUCCESS;
     }
 
@@ -113,7 +113,7 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
     struct lysc_unres_dflt *r = NULL;
     uint32_t i;
 
-    if (ctx->options & LYS_COMPILE_DISABLED) {
+    if (ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING)) {
         return LY_SUCCESS;
     }
 
@@ -2086,7 +2086,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
 
     /* if-features */
     LY_CHECK_RET(lys_eval_iffeatures(ctx->ctx, action_p->iffeatures, &enabled));
-    if (!enabled && !(ctx->options & LYS_COMPILE_DISABLED)) {
+    if (!enabled && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         ly_set_add(&ctx->disabled, action, 1, NULL);
         ctx->options |= LYS_COMPILE_DISABLED;
     }
@@ -2223,7 +2223,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
 
     /* if-features */
     LY_CHECK_RET(lys_eval_iffeatures(ctx->ctx, notif_p->iffeatures, &enabled));
-    if (!enabled && !(ctx->options & LYS_COMPILE_DISABLED)) {
+    if (!enabled && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         ly_set_add(&ctx->disabled, notif, 1, NULL);
         ctx->options |= LYS_COMPILE_DISABLED;
     }
@@ -2351,10 +2351,10 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         LY_CHECK_RET(lysc_unres_leaf_dflt_add(ctx, leaf, dflt));
     }
 
-    if ((leaf->type->basetype == LY_TYPE_LEAFREF) && !(ctx->options & LYS_COMPILE_DISABLED)) {
+    if ((leaf->type->basetype == LY_TYPE_LEAFREF) && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
         LY_CHECK_RET(ly_set_add(&ctx->leafrefs, leaf, 0, NULL));
-    } else if ((leaf->type->basetype == LY_TYPE_UNION) && !(ctx->options & LYS_COMPILE_DISABLED)) {
+    } else if ((leaf->type->basetype == LY_TYPE_UNION) && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         LY_ARRAY_COUNT_TYPE u;
         LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
             if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
@@ -3693,7 +3693,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
 
     /* if-features */
     LY_CHECK_ERR_RET(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), free(node), ret);
-    if (!enabled && !(ctx->options & LYS_COMPILE_DISABLED)) {
+    if (!enabled && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         ly_set_add(&ctx->disabled, node, 1, NULL);
         ctx->options |= LYS_COMPILE_DISABLED;
     }

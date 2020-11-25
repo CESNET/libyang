@@ -1648,13 +1648,10 @@ lys_compile(struct lys_module *mod, uint32_t options)
 
         COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
     }
-
-    /* finish compilation for all unresolved items in the context */
-    LY_CHECK_GOTO(ret = lys_compile_unres(&ctx), error);
+    ctx.pmod = sp;
 
     /* validate non-instantiated groupings from the parsed schema,
      * without it we would accept even the schemas with invalid grouping specification */
-    ctx.pmod = sp;
     ctx.options |= LYS_COMPILE_GROUPING;
     LY_ARRAY_FOR(sp->groupings, u) {
         if (!(sp->groupings[u].flags & LYS_USED_GRP)) {
@@ -1688,6 +1685,9 @@ lys_compile(struct lys_module *mod, uint32_t options)
         }
     }
     ctx.pmod = sp;
+
+    /* finish compilation for all unresolved items in the context */
+    LY_CHECK_GOTO(ret = lys_compile_unres(&ctx), error);
 
     /* there can be no leftover deviations or augments */
     LY_CHECK_ERR_GOTO(ctx.augs.count, LOGINT(ctx.ctx); ret = LY_EINT, error);
