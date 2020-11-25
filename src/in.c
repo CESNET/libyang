@@ -13,6 +13,11 @@
  */
 
 #define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
+
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE /* F_GETPATH */
+#endif
 
 #include "in.h"
 #include "in_internal.h"

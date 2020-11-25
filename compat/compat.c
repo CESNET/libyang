@@ -13,9 +13,8 @@
  */
 #include "compat.h"
 
-#define _POSIX_C_SOURCE 1 /* fdopen, _POSIX_PATH_MAX */
+#define _POSIX_C_SOURCE 200809L /* fdopen, _POSIX_PATH_MAX, strdup */
 #define _ISOC99_SOURCE /* vsnprintf */
-#define _XOPEN_SOURCE 500 /* strdup */
 
 #include <errno.h>
 #include <limits.h>

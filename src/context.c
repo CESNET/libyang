@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _GNU_SOURCE /* asprintf */
+#define _POSIX_C_SOURCE 200809L /* strdup */
 
 #include "context.h"
 
