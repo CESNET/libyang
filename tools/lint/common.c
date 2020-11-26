@@ -426,7 +426,7 @@ check_request_paths(struct ly_ctx *ctx, struct ly_set *request_paths, struct ly_
 int
 evaluate_xpath(const struct lyd_node *tree, const char *xpath)
 {
-    struct ly_set *set;
+    struct ly_set *set = NULL;
 
     if (lyd_find_xpath(tree, xpath, &set)) {
         return -1;
@@ -463,9 +463,9 @@ process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT fo
         struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *request_paths, struct ly_set *requests,
         struct ly_set *xpaths)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     struct lyd_node *tree = NULL, *merged_tree = NULL;
-    struct lyd_node *operational;
+    struct lyd_node *operational = NULL;
 
     /* additional operational datastore */
     if (operational_f && operational_f->in) {
@@ -524,6 +524,9 @@ process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT fo
         case LYD_VALIDATE_OP_NOTIF:
             ret = lyd_parse_notif(ctx, input_f->in, input_f->format, &tree, NULL);
             break;
+        default:
+            YLMSG_E("Internal error (%s:%d).\n", __FILE__, __LINE__);
+            goto cleanup;
         }
 
         if (ret) {
