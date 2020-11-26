@@ -53,7 +53,6 @@ cmd_print_help(void)
 void
 cmd_print(struct ly_ctx **ctx, const char *cmdline)
 {
-    LY_ERR ret;
     int argc = 0;
     char **argv = NULL;
     int opt, opt_index;
@@ -68,7 +67,6 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
     uint16_t options_print = 0;
     const char *node_path = NULL;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
-    const char *out_path = NULL;
     struct ly_out *out = NULL;
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
@@ -80,12 +78,12 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
         case 'o': /* --output */
             if (out) {
                 if (ly_out_filepath(out, optarg) != NULL) {
-                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
                     goto cleanup;
                 }
             } else {
                 if (ly_out_new_filepath(optarg, &out)) {
-                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    YLMSG_E("Unable to use output file %s for printing output.\n", optarg);
                     goto cleanup;
                 }
             }
@@ -130,14 +128,11 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    if (out_path) {
-        ret = ly_out_new_filepath(out_path, &out);
-    } else {
-        ret = ly_out_new_file(stdout, &out);
-    }
-    if (ret) {
-        YLMSG_E("Could not open the output file (%s).\n", strerror(errno));
-        goto cleanup;
+    if (!out) {
+        if (ly_out_new_file(stdout, &out)) {
+            YLMSG_E("Could not use stdout to print output.\n");
+            goto cleanup;
+        }
     }
 
     if (node_path) {
@@ -190,5 +185,5 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
 
 cleanup:
     free_cmdline(argv);
-    ly_out_free(out, NULL, out_path ? 1 : 0);
+    ly_out_free(out, NULL, ly_out_file(out, NULL) != stdout ? 1 : 0);
 }
