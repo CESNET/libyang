@@ -628,7 +628,7 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
     LY_ERR r, ret = LY_SUCCESS;
     struct ht_rec *rec, *crec = NULL;
     int32_t i;
-    values_equal_cb old_val_equal;
+    values_equal_cb old_val_equal = NULL;
 
     if (!lyht_find_first(ht, hash, &rec)) {
         /* we found matching shortened hash */
