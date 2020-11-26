@@ -53,7 +53,7 @@ get_yanglint_dir(void)
     if (ret == -1) {
         if (errno == ENOENT) {
             /* directory does not exist */
-            YLMSG_E("Configuration directory \"%s\" does not exist, creating it.\n", yl_dir);
+            YLMSG_W("Configuration directory \"%s\" does not exist, creating it.\n", yl_dir);
             if (mkdir(yl_dir, 00700)) {
                 YLMSG_E("Configuration directory \"%s\" cannot be created (%s).\n", yl_dir, strerror(errno));
                 free(yl_dir);
@@ -87,7 +87,7 @@ load_config(void)
 
     sprintf(history_file, "%s/history", yl_dir);
     if (access(history_file, F_OK) && (errno == ENOENT)) {
-        YLMSG_E("No saved history.\n");
+        YLMSG_W("No saved history.\n");
     } else if (linenoiseHistoryLoad(history_file)) {
         YLMSG_E("Failed to load history.\n");
     }
