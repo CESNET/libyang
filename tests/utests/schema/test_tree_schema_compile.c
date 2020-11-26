@@ -1234,6 +1234,38 @@ test_type_enum(void **state)
     assert_string_equal("eight", ((struct lysc_type_enum*)type)->enums[1].name);
     assert_int_equal(8, ((struct lysc_type_enum*)type)->enums[1].value);
 
+    const char *new_module = "module moc_c {yang-version 1.1; namespace urn:moc_c;prefix moc_c;feature f; typedef mytype {type enumeration {"
+                                        "enum first{value -270;} enum second; enum third {value -400;} enum fourth;}} leaf l { type mytype;}}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, new_module, LYS_IN_YANG, &mod));
+
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_ENUM, type->basetype);
+    assert_non_null(((struct lysc_type_enum*)type)->enums);
+    assert_int_equal(4, LY_ARRAY_COUNT(((struct lysc_type_enum*)type)->enums));
+    assert_string_equal("first", ((struct lysc_type_enum*)type)->enums[0].name);
+    assert_int_equal(-270, ((struct lysc_type_enum*)type)->enums[0].value);
+    assert_string_equal("second", ((struct lysc_type_enum*)type)->enums[1].name);
+    assert_int_equal(-269, ((struct lysc_type_enum*)type)->enums[1].value);
+    assert_string_equal("third", ((struct lysc_type_enum*)type)->enums[2].name);
+    assert_int_equal(-400, ((struct lysc_type_enum*)type)->enums[2].value);
+    assert_string_equal("fourth", ((struct lysc_type_enum*)type)->enums[3].name);
+    assert_int_equal(-268, ((struct lysc_type_enum*)type)->enums[3].value);
+
+    new_module = "module moc_d {yang-version 1.1; namespace urn:moc_d;prefix moc_d;feature f; typedef mytype {type enumeration {"
+                 "enum first; enum second;}} leaf l { type mytype;}}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, new_module, LYS_IN_YANG, &mod));
+
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_ENUM, type->basetype);
+    assert_non_null(((struct lysc_type_enum*)type)->enums);
+    assert_int_equal(2, LY_ARRAY_COUNT(((struct lysc_type_enum*)type)->enums));
+    assert_string_equal("first", ((struct lysc_type_enum*)type)->enums[0].name);
+    assert_int_equal(0, ((struct lysc_type_enum*)type)->enums[0].value);
+    assert_string_equal("second", ((struct lysc_type_enum*)type)->enums[1].name);
+    assert_int_equal(1, ((struct lysc_type_enum*)type)->enums[1].value);
+
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type enumeration {"
@@ -1304,20 +1336,22 @@ test_type_bits(void **state)
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {yang-version 1.1; namespace urn:a;prefix a;feature f; leaf l {type bits {"
                                         "bit automin; bit one {if-feature f; position 1;}"
-                                        "bit two; bit seven {position 7;}bit eight;}}}", LYS_IN_YANG, &mod));
+                                        "bit two; bit seven {position 7;} bit five {position 5;} bit eight;}}}", LYS_IN_YANG, &mod));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_BITS, type->basetype);
     assert_non_null(((struct lysc_type_bits*)type)->bits);
-    assert_int_equal(4, LY_ARRAY_COUNT(((struct lysc_type_bits*)type)->bits));
+    assert_int_equal(5, LY_ARRAY_COUNT(((struct lysc_type_bits*)type)->bits));
     assert_string_equal("automin", ((struct lysc_type_bits*)type)->bits[0].name);
     assert_int_equal(0, ((struct lysc_type_bits*)type)->bits[0].position);
     assert_string_equal("two", ((struct lysc_type_bits*)type)->bits[1].name);
     assert_int_equal(2, ((struct lysc_type_bits*)type)->bits[1].position);
     assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[2].name);
     assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[2].position);
-    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[3].name);
-    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[3].position);
+    assert_string_equal("five", ((struct lysc_type_bits*)type)->bits[3].name);
+    assert_int_equal(5, ((struct lysc_type_bits*)type)->bits[3].position);
+    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[4].name);
+    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[4].position);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
                                         "bit automin; bit one;bit two; bit seven {position 7;}bit eight;}} leaf l { type mytype {bit eight;bit seven;bit automin;}}}",
