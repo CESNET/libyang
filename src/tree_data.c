@@ -3434,6 +3434,10 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 cleanup:
     lyxp_set_free_content(&xp_set);
     lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
+    if (ret) {
+        ly_set_free(*set, NULL);
+        *set = NULL;
+    }
     return ret;
 }
 
