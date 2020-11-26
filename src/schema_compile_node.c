@@ -1155,7 +1155,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v, match = 0;
     int32_t highest_value = INT32_MIN, cur_val;
-    uint32_t position = 0, cur_pos = 0;
+    uint32_t highest_position = 0, cur_pos;
     struct lysc_type_bitenum_item *e, storage;
     ly_bool enabled;
 
@@ -1219,10 +1219,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             }
         } else { /* LY_TYPE_BITS */
             if (enums_p[u].flags & LYS_SET_VALUE) {
+                /* value assigned by model */
                 cur_pos = (uint32_t)enums_p[u].value;
-                if (!u || (cur_pos >= position)) {
-                    position = cur_pos + 1;
-                }
                 /* check collision with other values */
                 LY_ARRAY_FOR(*enums, v) {
                     if (cur_pos == (*enums)[v].position) {
@@ -1235,19 +1233,24 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             } else if (base_enums) {
                 /* inherit the assigned value */
                 cur_pos = base_enums[match].position;
-                if (!u || (cur_pos >= position)) {
-                    position = cur_pos + 1;
-                }
             } else {
                 /* assign value automatically */
-                if (u && (position == 0)) {
+                if (u == 0) {
+                    cur_pos = 0;
+                } else if (highest_position == UINT32_MAX) {
                     /* counter overflow */
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                             "Invalid bits - it is not possible to auto-assign bit position for "
                             "\"%s\" since the highest value is already 4294967295.", enums_p[u].name);
                     return LY_EVALID;
+                } else {
+                    cur_pos = highest_position + 1;
                 }
-                cur_pos = position++;
+            }
+
+            /* save highest position for auto assing */
+            if (highest_position < cur_pos) {
+                highest_position = cur_pos;
             }
         }
 
