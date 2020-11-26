@@ -1154,7 +1154,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v, match = 0;
-    int32_t value = 0, cur_val = 0;
+    int32_t highest_value = INT32_MIN, cur_val;
     uint32_t position = 0, cur_pos = 0;
     struct lysc_type_bitenum_item *e, storage;
     ly_bool enabled;
@@ -1185,10 +1185,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
 
         if (basetype == LY_TYPE_ENUM) {
             if (enums_p[u].flags & LYS_SET_VALUE) {
+                /* value assigned by model */
                 cur_val = (int32_t)enums_p[u].value;
-                if (!u || (cur_val >= value)) {
-                    value = cur_val + 1;
-                }
                 /* check collision with other values */
                 LY_ARRAY_FOR(*enums, v) {
                     if (cur_val == (*enums)[v].value) {
@@ -1201,19 +1199,23 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             } else if (base_enums) {
                 /* inherit the assigned value */
                 cur_val = base_enums[match].value;
-                if (!u || (cur_val >= value)) {
-                    value = cur_val + 1;
-                }
             } else {
                 /* assign value automatically */
-                if (u && (value == INT32_MIN)) {
-                    /* counter overflow */
+                if (u == 0) {
+                    cur_val = 0;
+                } else if (highest_value == INT32_MAX) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                             "Invalid enumeration - it is not possible to auto-assign enum value for "
                             "\"%s\" since the highest value is already 2147483647.", enums_p[u].name);
                     return LY_EVALID;
+                } else {
+                    cur_val = highest_value + 1;
                 }
-                cur_val = value++;
+            }
+
+            /* save highest value for auto assing */
+            if (highest_value < cur_val) {
+                highest_value = cur_val;
             }
         } else { /* LY_TYPE_BITS */
             if (enums_p[u].flags & LYS_SET_VALUE) {
