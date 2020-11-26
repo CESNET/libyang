@@ -221,7 +221,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
                 for (value = i = 0; i < 4; i++) {
                     if (!in[offset + i]) {
                         LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
-                            "Invalid basic multilingual plane character \"%s\".", &in[slash]);
+                                "Invalid basic multilingual plane character \"%s\".", &in[slash]);
                         goto error;
                     } else if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
