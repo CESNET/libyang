@@ -80,6 +80,18 @@
 #define LYXP_STRING_CAST_SIZE_START 64
 #define LYXP_STRING_CAST_SIZE_STEP 16
 
+/* Number of node checks when it starts being worth using the string dict.
+ * Node checks involves some string comparisons. Consider two ways to compare
+ * strings: one is using the string dict, another is simply comparing the chars
+ * of the strings (like 'strcmp' does). When using the string dict, the hash is
+ * computed using the entire string and after the memory address to that is got,
+ * the pointers are compared (as both strings compared are in the dict). It is
+ * worth using the dict when a lot of string comparisons using the same string
+ * is performed, but to compute just a few, comparing the chars of the strings
+ * is faster.
+ */
+#define LYXP_MIN_NODE_CHECKS_TO_USE_DICT 10
+
 /**
  * @brief Tokens that can be in an XPath expression.
  */

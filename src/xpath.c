@@ -5493,15 +5493,17 @@ moveto_snode_root(struct lyxp_set *set, struct lys_node *cur_node, int options)
  *
  * @param[in] node Node to check.
  * @param[in] root_type XPath root node type.
- * @param[in] node_name Node name to move to. Must be in the dictionary!
+ * @param[in] node_name_dict Optional parameter, contains the node name to move to when it is on the string dict.
+ * @param[in] node_name Contains the node name to move to. Used when node_name_dict is NULL (not provided).
+ * @param[in] node_name_len Length of \p node_name.
  * @param[in] moveto_mod Expected module of the node.
  * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when, -1 on error.
  */
 static int
-moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const char *node_name,
-                  struct lys_module *moveto_mod, int options)
+moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const char *node_name_dict,
+                  const char *node_name, int node_name_len, struct lys_module *moveto_mod, int options)
 {
     /* module check */
     if (moveto_mod && (lyd_node_module(node) != moveto_mod)) {
@@ -5514,8 +5516,15 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
     }
 
     /* name check */
-    if (strcmp(node_name, "*") && !ly_strequal(node->schema->name, node_name, 1)) {
-        return -1;
+    if (node_name_dict) {
+        if (strcmp(node_name_dict, "*") && !ly_strequal(node->schema->name, node_name_dict, 1)) {
+            return -1;
+        }
+    } else {
+        if ((strncmp(node_name, "*", 1) || node_name_len != 1) &&
+            (strncmp(node->schema->name, node_name, node_name_len) || node->schema->name[node_name_len] != '\0')) {
+            return -1;
+        }
     }
 
     /* when check */
@@ -5581,6 +5590,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *
             uint16_t qname_len, int options)
 {
     uint32_t i;
+    int comparison_counter = 0;
     int replaced, pref_len, ret;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod;
@@ -5621,15 +5631,17 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *
         moveto_mod = local_mod;
     }
 
-    /* name */
-    name_dict = lydict_insert(ctx, qname, qname_len);
-
     for (i = 0; i < set->used; ) {
         replaced = 0;
 
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
             LY_TREE_FOR(set->val.nodes[i].node, sub) {
-                ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
+                /* avoid using string dict (lydict_insert call) for few node checks */
+                comparison_counter++;
+                if (!name_dict && (comparison_counter > LYXP_MIN_NODE_CHECKS_TO_USE_DICT)) {
+                    name_dict = lydict_insert(ctx, qname, qname_len);
+                }
+                ret = moveto_node_check(sub, root_type, name_dict, qname, qname_len, moveto_mod, options);
                 if (!ret) {
                     /* pos filled later */
                     if (!replaced) {
@@ -5650,7 +5662,12 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *
                 && !(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
 
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
-                ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
+                /* avoid using string dict (lydict_insert call) for few node checks */
+                comparison_counter++;
+                if (!name_dict && (comparison_counter > LYXP_MIN_NODE_CHECKS_TO_USE_DICT)) {
+                    name_dict = lydict_insert(ctx, qname, qname_len);
+                }
+                ret = moveto_node_check(sub, root_type, name_dict, qname, qname_len, moveto_mod, options);
                 if (!ret) {
                     if (!replaced) {
                         set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
@@ -5682,7 +5699,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, struct lys_module 
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
     uint32_t mod_idx;
-    const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
+    const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_snode_check() */
     struct lys_module *moveto_mod, *tmp_mod;
     const struct lys_node *sub, *start_parent;
     struct lys_node_augment *last_aug;
