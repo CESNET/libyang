@@ -296,7 +296,7 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
 static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {
-    struct ly_in *in;
+    struct ly_in *in = NULL;
     uint8_t request_expected = 0;
 
     /* process the operational content if any */
@@ -309,10 +309,9 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
     for (int i = 0; i < argc - optind; i++) {
         LYS_INFORMAT format_schema = LYS_IN_UNKNOWN;
         LYD_FORMAT format_data = LYD_UNKNOWN;
-        in = NULL;
 
         if (get_input(argv[optind + i], &format_schema, &format_data, &in)) {
-            return -1;
+            goto error;
         }
 
         if (format_schema) {
@@ -324,7 +323,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             const struct lys_module *mod;
 
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
-                return -1;
+                goto error;
             }
 
             /* add temporarily also the path of the module itself */
@@ -341,23 +340,21 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 
             ret = lys_parse(c->ctx, in, format_schema, features, &mod);
             ly_ctx_unset_searchdir_last(c->ctx, path_unset);
-            ly_in_free(in, 1);
             if (ret) {
                 YLMSG_E("Processing schema module from %s failed.\n", argv[optind + i]);
-                return -1;
+                goto error;
             }
 
             if (c->schema_out_format) {
                 /* modules will be printed */
                 if (ly_set_add(&c->schema_modules, (void *)mod, 1, NULL)) {
                     YLMSG_E("Storing parsed schema module (%s) for print failed.\n", argv[optind + i]);
-                    return -1;
+                    goto error;
                 }
             }
         } else if (request_expected) {
             if (fill_cmdline_file(&c->data_requests, in, argv[optind + i], format_data)) {
-                ly_in_free(in, 1);
-                return -1;
+                goto error;
             }
 
             request_expected = 0;
@@ -366,8 +363,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 
             rec = fill_cmdline_file(&c->data_inputs, in, argv[optind + i], format_data);
             if (!rec) {
-                ly_in_free(in, 1);
-                return -1;
+                goto error;
             }
 
             if ((c->data_type == LYD_VALIDATE_OP_REPLY) && !c->data_request_paths.count) {
@@ -375,12 +371,15 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
                 if (++i == argc - optind) {
                     /* there is no such file */
                     YLMSG_E("Missing request input file for the reply input file %s.\n", rec->path);
-                    return -1;
+                    goto error;
                 }
 
                 request_expected = 1;
             }
         }
+
+        ly_in_free(in, 1);
+        in = NULL;
     }
 
     if (request_expected) {
@@ -390,6 +389,10 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
     }
 
     return 0;
+
+error:
+    ly_in_free(in, 1);
+    return -1;
 }
 
 /**
