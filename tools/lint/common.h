@@ -26,7 +26,7 @@
  * @brief log error message
  */
 #define YLMSG_E(MSG, ...) \
-        fprintf(stderr, "YANGLINT[E]" MSG, ##__VA_ARGS__)
+        fprintf(stderr, "YANGLINT[E]: " MSG, ##__VA_ARGS__)
 
 /**
  * @brief log warning message
