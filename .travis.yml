@@ -37,7 +37,7 @@ jobs:
           project:
             name: "CESNET/libyang"
           notification_email: rkrejci@cesnet.cz
-          build_command_prepend: "mkdir build && cd build && cmake .. && make clean"
+          build_command_prepend: "mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make clean"
           build_command: "make"
           branch_pattern: libyang2
       before_install:
@@ -72,7 +72,7 @@ jobs:
         - tar -xzf pcre2-10.30.tar.gz
         - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
       script:
-        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
+        - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j2 && ctest --output-on-failure && cd -
     - stage: Test
       name: Linux with GCC
       os: linux
@@ -103,7 +103,7 @@ jobs:
         - tar -xzf pcre2-10.30.tar.gz
         - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
       script:
-        - mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fsanitize=address,undefined" -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
+        - mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fsanitize=address,undefined" -DENABLE_BUILD_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
     - stage: Test
       name: ABI check
       os: linux
@@ -123,5 +123,5 @@ jobs:
       allow_failures:
         - os: osx
       script:
-        - mkdir build && cd build && cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
+        - mkdir build && cd build && cmake -DENABLE_BUILD_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
 
