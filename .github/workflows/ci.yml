@@ -1,0 +1,154 @@
+name: libyang CI
+on: 
+  push:
+    branches:
+      - libyang2
+  pull_request:
+    branches:
+      - libyang2
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+            name: "Release, Ubuntu 18.04, gcc",
+            os: "ubuntu-18.04",
+            build-type: "Release",
+            cc: "gcc",
+            options: "-DENABLE_BUILD_TESTS=ON",
+            packager: "sudo apt-get",
+            packages: "libcmocka-dev shunit2"
+          }
+          - {
+            name: "Release, Ubuntu 18.04, clang",
+            os: "ubuntu-18.04",
+            build-type: "Release",
+            cc: "clang",
+            options: "-DENABLE_BUILD_TESTS=ON",
+            packager: "sudo apt-get",
+            packages: "libcmocka-dev shunit2"
+          }
+          - {
+            name: "Debug, Ubuntu 18.04, gcc",
+            os: "ubuntu-18.04",
+            build-type: "Debug",
+            cc: "gcc",
+            options: "",
+            packager: "sudo apt-get",
+            packages: "libcmocka-dev valgrind shunit2"
+          }
+          - {
+            name: "Debug, Ubuntu 18.04, clang",
+            os: "ubuntu-18.04",
+            build-type: "Debug",
+            cc: "clang",
+            options: "",
+            packager: "sudo apt-get",
+            packages: "libcmocka-dev valgrind shunit2"
+          }
+          - {
+            name: "Release, macOS 10.15, clang",
+            os: "macos-10.15",
+            build-type: "Release",
+            cc: "clang",
+            options: "-DENABLE_BUILD_TESTS=ON",
+            packager: "brew",
+            packages: "cmocka shunit2"
+          }
+          - {
+            name: "ASAN and UBSAN",
+            os: "ubuntu-18.04",
+            build-type: "Debug",
+            cc: "clang",
+            options: "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -DENABLE_BUILD_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF",
+            packager: "sudo apt-get",
+            packages: "libcmocka-dev"
+          }
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Dependencies
+        shell: bash
+        run: |
+          ${{ matrix.config.packager }} install ${{ matrix.config.packages }}
+
+      - name: Configure
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir build
+          cd build
+          CC=${{ matrix.config.cc }} cmake -DCMAKE_BUILD_TYPE=${{ matrix.config.build-type }} ${{ matrix.config.options }} ..
+
+      - name: Build
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: make
+
+      - name: Test
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure
+
+  abi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Dependencies
+        shell: bash
+        run: |
+          sudo apt-get install abi-dumper abi-compliance-checker
+          sudo snap install core universal-ctags
+
+      - name: Configure
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir build
+          cd build
+          CC=gcc cmake -DCMAKE_BUILD_TYPE=ABICheck ..
+
+      - name: Build
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: LC_ALL=C.UTF-8 PATH=/snap/bin:$PATH make abi-check
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Dependencies
+        shell: bash
+        run: |
+          sudo apt-get install libcmocka-dev
+
+      - name: Configure
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir build
+          cd build
+          CC=gcc cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON ..
+
+      - name: Build
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: make
+
+      - name: Test
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure
+
+      - name: Uploade to Codecov.io
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: bash <(curl -s https://codecov.io/bash)
