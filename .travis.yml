@@ -9,18 +9,8 @@ cache:
    - $HOME/cache
 
 stages:
-  - name: Test
-    if: type != cron
   - name: Coverity
     if: type = cron
-
-addons:
-  homebrew:
-    packages:
-    - cmocka
-    - shunit2
-    - expect
-    update: true
 
 jobs:
   include:
@@ -59,69 +49,4 @@ jobs:
       script:
         # do nothing, everything here is done in coverity addon
         - true
-    - stage: Test
-      name: Linux with CLang
-      os: linux
-      compiler: clang
-      before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind shunit2 expect
-        - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
-        - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
-        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
-        - tar -xzf pcre2-10.30.tar.gz
-        - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
-      script:
-        - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j2 && ctest --output-on-failure && cd -
-    - stage: Test
-      name: Linux with GCC
-      os: linux
-      compiled: gcc
-      before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind shunit2 expect
-        - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
-        - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
-        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
-        - tar -xzf pcre2-10.30.tar.gz
-        - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
-        - pip install --user codecov
-      script:
-        - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON  ../ && make -j2 && ctest --output-on-failure && cd -
-      after_success:
-        - bash <(curl -s https://codecov.io/bash)
-    - stage: Test
-      name: Linux with CLang ASAN and UBSAN
-      os: linux
-      compiler: clang
-      before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind shunit2 expect
-        - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
-        - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
-        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
-        - tar -xzf pcre2-10.30.tar.gz
-        - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
-      script:
-        - mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fsanitize=address,undefined" -DENABLE_BUILD_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
-    - stage: Test
-      name: ABI check
-      os: linux
-      compiled: gcc
-      before_install:
-        - sudo apt-get update -qq && sudo apt-get install -y abi-dumper abi-compliance-checker
-        - sudo snap install core universal-ctags
-        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
-        - tar -xzf pcre2-10.30.tar.gz
-        - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
-      script:
-        - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=ABICheck .. && LC_ALL=C.UTF-8 PATH=/snap/bin:$PATH make abi-check && cd -
-    - stage: Test
-      name: OS X with GCC
-      os: osx
-      compiler: gcc
-      allow_failures:
-        - os: osx
-      script:
-        - mkdir build && cd build && cmake -DENABLE_BUILD_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
 
