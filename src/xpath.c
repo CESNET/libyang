@@ -1797,12 +1797,7 @@ set_canonize(struct lyxp_set *set, const struct lyxp_set *set2)
     struct lys_node *schema;
     enum int_log_opts prev_ilo;
 
-    assert((set2->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_EMPTY));
-
-    if (set2->type == LYXP_SET_EMPTY) {
-        /* nothing to do */
-        return 0;
-    }
+    assert(set2->type == LYXP_SET_NODE_SET);
 
     if ((set2->val.nodes[0].type == LYXP_NODE_ELEM) && (set2->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         schema = set2->val.nodes[0].node->schema;
@@ -6768,8 +6763,6 @@ static int
 moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, struct lyd_node *cur_node,
                struct lys_module *local_mod, int options)
 {
-#define LYXP_IS_NODE_SET_OR_EMPTY(type) (((type) == LYXP_SET_NODE_SET) || ((type) == LYXP_SET_EMPTY))
-
     /*
      * NODE SET + NODE SET = NODE SET + STRING /(1 NODE SET) 2 STRING
      * NODE SET + STRING = STRING + STRING     /1 STRING (2 STRING)
@@ -6808,29 +6801,36 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     iter1.type = LYXP_SET_EMPTY;
     iter2.type = LYXP_SET_EMPTY;
 
+    /* empty node-sets are always false
+     * ref: https://www.w3.org/TR/1999/REC-xpath-19991116/#booleans 5th paragraph, first sentece */
+    if ((set1->type == LYXP_SET_EMPTY) || (set2->type == LYXP_SET_EMPTY)) {
+        set_fill_boolean(set1, 0);
+        return EXIT_SUCCESS;
+    }
+
     /* iterative evaluation with node-sets */
-    if (LYXP_IS_NODE_SET_OR_EMPTY(set1->type) || LYXP_IS_NODE_SET_OR_EMPTY(set2->type)) {
-        if (LYXP_IS_NODE_SET_OR_EMPTY(set1->type)) {
-            if (!LYXP_IS_NODE_SET_OR_EMPTY(set2->type)) {
+    if ((set1->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_NODE_SET)) {
+        if (set1->type == LYXP_SET_NODE_SET) {
+            if (set2->type != LYXP_SET_NODE_SET) {
                 /* canonize the value (wait until set1 is not node set if both are) */
                 if (set_canonize(set2, set1)) {
                     return -1;
                 }
             }
-            if (set1->type == LYXP_SET_EMPTY) {
+            for (i = 0; i < set1->used; ++i) {
                 switch (set2->type) {
                 case LYXP_SET_NUMBER:
-                    if (lyxp_set_cast(&iter1, LYXP_SET_NUMBER, cur_node, local_mod, options)) {
+                    if (set_comp_cast(&iter1, set1, LYXP_SET_NUMBER, cur_node, local_mod, i, options)) {
                         return -1;
                     }
                     break;
                 case LYXP_SET_BOOLEAN:
-                    if (lyxp_set_cast(&iter1, LYXP_SET_BOOLEAN, cur_node, local_mod, options)) {
+                    if (set_comp_cast(&iter1, set1, LYXP_SET_BOOLEAN, cur_node, local_mod, i, options)) {
                         return -1;
                     }
                     break;
                 default:
-                    if (lyxp_set_cast(&iter1, LYXP_SET_STRING, cur_node, local_mod, options)) {
+                    if (set_comp_cast(&iter1, set1, LYXP_SET_STRING, cur_node, local_mod, i, options)) {
                         return -1;
                     }
                     break;
@@ -6841,40 +6841,10 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
                     return -1;
                 }
 
+                /* lazy evaluation until true */
                 if (iter1.val.bool) {
                     set_fill_boolean(set1, 1);
                     return EXIT_SUCCESS;
-                }
-            } else {
-                for (i = 0; i < set1->used; ++i) {
-                    switch (set2->type) {
-                    case LYXP_SET_NUMBER:
-                        if (set_comp_cast(&iter1, set1, LYXP_SET_NUMBER, cur_node, local_mod, i, options)) {
-                            return -1;
-                        }
-                        break;
-                    case LYXP_SET_BOOLEAN:
-                        if (set_comp_cast(&iter1, set1, LYXP_SET_BOOLEAN, cur_node, local_mod, i, options)) {
-                            return -1;
-                        }
-                        break;
-                    default:
-                        if (set_comp_cast(&iter1, set1, LYXP_SET_STRING, cur_node, local_mod, i, options)) {
-                            return -1;
-                        }
-                        break;
-                    }
-
-                    if (moveto_op_comp(&iter1, set2, op, cur_node, local_mod, options)) {
-                        set_free_content(&iter1);
-                        return -1;
-                    }
-
-                    /* lazy evaluation until true */
-                    if (iter1.val.bool) {
-                        set_fill_boolean(set1, 1);
-                        return EXIT_SUCCESS;
-                    }
                 }
             }
         } else {
@@ -6882,41 +6852,8 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
             if (set_canonize(set1, set2)) {
                 return -1;
             }
-            if (set2->type == LYXP_SET_EMPTY) {
+            for (i = 0; i < set2->used; ++i) {
                 switch (set1->type) {
-                case LYXP_SET_NUMBER:
-                    if (lyxp_set_cast(&iter2, LYXP_SET_NUMBER, cur_node, local_mod, options)) {
-                        return -1;
-                    }
-                    break;
-                case LYXP_SET_BOOLEAN:
-                    if (lyxp_set_cast(&iter2, LYXP_SET_BOOLEAN, cur_node, local_mod, options)) {
-                        return -1;
-                    }
-                    break;
-                default:
-                    if (lyxp_set_cast(&iter2, LYXP_SET_STRING, cur_node, local_mod, options)) {
-                        return -1;
-                    }
-                    break;
-                }
-
-                set_fill_set(&iter1, set1);
-
-                if (moveto_op_comp(&iter1, &iter2, op, cur_node, local_mod, options)) {
-                    set_free_content(&iter1);
-                    set_free_content(&iter2);
-                    return -1;
-                }
-                set_free_content(&iter2);
-
-                if (iter1.val.bool) {
-                    set_fill_boolean(set1, 1);
-                    return EXIT_SUCCESS;
-                }
-            } else {
-                for (i = 0; i < set2->used; ++i) {
-                    switch (set1->type) {
                     case LYXP_SET_NUMBER:
                         if (set_comp_cast(&iter2, set2, LYXP_SET_NUMBER, cur_node, local_mod, i, options)) {
                             return -1;
@@ -6932,22 +6869,21 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
                             return -1;
                         }
                         break;
-                    }
+                }
 
-                    set_fill_set(&iter1, set1);
+                set_fill_set(&iter1, set1);
 
-                    if (moveto_op_comp(&iter1, &iter2, op, cur_node, local_mod, options)) {
-                        set_free_content(&iter1);
-                        set_free_content(&iter2);
-                        return -1;
-                    }
+                if (moveto_op_comp(&iter1, &iter2, op, cur_node, local_mod, options)) {
+                    set_free_content(&iter1);
                     set_free_content(&iter2);
+                    return -1;
+                }
+                set_free_content(&iter2);
 
-                    /* lazy evaluation until true */
-                    if (iter1.val.bool) {
-                        set_fill_boolean(set1, 1);
-                        return EXIT_SUCCESS;
-                    }
+                /* lazy evaluation until true */
+                if (iter1.val.bool) {
+                    set_fill_boolean(set1, 1);
+                    return EXIT_SUCCESS;
                 }
             }
         }
@@ -7025,8 +6961,6 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     }
 
     return EXIT_SUCCESS;
-
-#undef LYXP_IS_NODE_SET_OR_EMPTY
 }
 
 /**
