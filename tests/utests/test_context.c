@@ -127,8 +127,7 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC"/../doc"));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN));
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, "/home"));
-    assert_int_equal(8, ctx->search_paths.count);
+    assert_int_equal(7, ctx->search_paths.count);
 
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(ctx);
@@ -137,8 +136,7 @@ test_searchdirs(void **state)
     assert_string_equal(TESTS_BIN"/CMakeFiles", list[1]);
     assert_string_equal(TESTS_SRC, list[5]);
     assert_string_equal(TESTS_BIN, list[6]);
-    assert_string_equal("/home", list[7]);
-    assert_null(list[8]);
+    assert_null(list[7]);
 
     /* removing searchpaths */
     /* nonexisting */
@@ -147,13 +145,13 @@ test_searchdirs(void **state)
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, TESTS_BIN"/utests"));
     assert_string_not_equal(TESTS_BIN"/utests", list[0]);
-    assert_int_equal(7, ctx->search_paths.count);
+    assert_int_equal(6, ctx->search_paths.count);
     /* middle */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, TESTS_SRC));
-    assert_int_equal(6, ctx->search_paths.count);
-    /* last */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, "/home"));
     assert_int_equal(5, ctx->search_paths.count);
+    /* last */
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, TESTS_BIN));
+    assert_int_equal(4, ctx->search_paths.count);
     /* all */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, NULL));
     assert_int_equal(0, ctx->search_paths.count);
@@ -167,10 +165,10 @@ test_searchdirs(void **state)
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &ctx));
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/home:/home:"TESTS_SRC, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":"TESTS_BIN":"TESTS_BIN":"TESTS_SRC, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(2, ctx->search_paths.count);
     assert_string_equal(TESTS_SRC, ctx->search_paths.objs[0]);
-    assert_string_equal("/home", ctx->search_paths.objs[1]);
+    assert_string_equal(TESTS_BIN, ctx->search_paths.objs[1]);
 
     /* cleanup */
     *state = NULL;
