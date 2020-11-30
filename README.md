@@ -1,10 +1,11 @@
 # libyang
 
 [![BSD license](https://img.shields.io/badge/License-BSD-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Build Status](https://secure.travis-ci.org/CESNET/libyang.png?branch=master)](http://travis-ci.org/CESNET/libyang/branches)
+[![libyang CI](https://github.com/CESNET/libyang/workflows/libyang%20CI/badge.svg)
 [![codecov.io](https://codecov.io/github/CESNET/libyang/coverage.svg?branch=master)](https://codecov.io/github/CESNET/libyang?branch=master)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
+
 
 libyang is a YANG data modelling language parser and toolkit written (and
 providing API) in C. The library is used e.g. in [libnetconf2](https://github.com/CESNET/libnetconf2),
