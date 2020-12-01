@@ -582,12 +582,14 @@ yprp_restr(struct ypr_ctx *ctx, const struct lysp_restr *restr, const char *name
 
     ypr_open(ctx->out, flag);
     ly_print_(ctx->out, "%*s%s \"", INDENT, name);
-    ypr_encode(ctx->out, (restr->arg.str[0] != 0x15 && restr->arg.str[0] != 0x06) ? restr->arg.str : &restr->arg.str[1], -1);
+    ypr_encode(ctx->out,
+            (restr->arg.str[0] != LYSP_RESTR_PATTERN_NACK && restr->arg.str[0] != LYSP_RESTR_PATTERN_ACK) ?
+            restr->arg.str : &restr->arg.str[1], -1);
     ly_print_(ctx->out, "\"");
 
     LEVEL++;
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, restr->exts, &inner_flag, 0);
-    if (restr->arg.str[0] == 0x15) {
+    if (restr->arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
         /* special byte value in pattern's expression: 0x15 - invert-match, 0x06 - match */
         ypr_open(ctx->out, &inner_flag);
         ypr_substmt(ctx, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match", restr->exts);

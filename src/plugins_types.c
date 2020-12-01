@@ -468,7 +468,8 @@ decimal:
         memset(&valcopy[len], '0', fraction_digits);
     }
 
-    rc = ly_type_parse_int("decimal64", 10, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), valcopy, len, &d, err);
+    rc = ly_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807),
+            valcopy, len, &d, err);
     if (!rc && ret) {
         *ret = d;
     }
@@ -512,8 +513,9 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
             goto cleanup;
         } else if (rc < 0) {
             /* error */
-            PCRE2_UCHAR pcre2_errmsg[256] = {0};
-            pcre2_get_error_message(rc, pcre2_errmsg, 256);
+            PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
+            pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
+
             *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
             ret = LY_ESYS;
             goto cleanup;
@@ -639,11 +641,11 @@ type_get_hints_base(uint32_t hints)
     /* set allowed base */
     switch (hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM)) {
     case LYD_VALHINT_DECNUM:
-        return 10;
+        return LY_BASE_DEC;
     case LYD_VALHINT_OCTNUM:
-        return 8;
+        return LY_BASE_OCT;
     case LYD_VALHINT_HEXNUM:
-        return 16;
+        return LY_BASE_HEX;
     default:
         break;
     }
@@ -848,7 +850,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
 {
     int64_t d;
     struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
-    char buf[22];
+    char buf[LY_NUMBER_MAXLEN];
 
     if (!value || !value[0] || !value_len) {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, strdup("Invalid empty decimal64 value."), NULL, NULL);
@@ -974,9 +976,10 @@ finish:
 
     /* length of the encoded string */
     if (type_bin->length) {
-        char buf[22];
+        char buf[LY_NUMBER_MAXLEN];
+        /* get correct length based on base64 encoding rules */
         uint64_t len = ((count / 4) * 3) - termination;
-        snprintf(buf, 22, "%" PRIu64, len);
+        snprintf(buf, LY_NUMBER_MAXLEN, "%" PRIu64, len);
         LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, buf, err));
     }
 
@@ -1022,11 +1025,11 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     /* length restriction of the string */
     if (type_str->length) {
-        char buf[22];
+        char buf[LY_NUMBER_MAXLEN];
         size_t char_count = ly_utf8len(value, value_len);
 
         /* value_len is in bytes, but we need number of chaarcters here */
-        snprintf(buf, 22, "%lu", char_count);
+        snprintf(buf, LY_NUMBER_MAXLEN, "%zu", char_count);
         LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err));
     }
 
@@ -1293,9 +1296,9 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     /* check hints */
     LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
 
-    if ((value_len == 4) && !strncmp(value, "true", 4)) {
+    if ((value_len == ly_strlen_const("true")) && !strncmp(value, "true", ly_strlen_const("true"))) {
         i = 1;
-    } else if ((value_len == 5) && !strncmp(value, "false", 5)) {
+    } else if ((value_len == ly_strlen_const("false")) && !strncmp(value, "false", ly_strlen_const("false"))) {
         i = 0;
     } else {
         char *errmsg;

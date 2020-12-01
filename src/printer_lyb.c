@@ -267,8 +267,8 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
 
         if (full) {
             /* write the meta information (inner chunk count and chunk size) */
-            meta_buf[0] = full->written & 0xFF;
-            meta_buf[1] = full->inner_chunks & 0xFF;
+            meta_buf[0] = full->written & LYB_BYTE_MASK;
+            meta_buf[1] = full->inner_chunks & LYB_BYTE_MASK;
             LY_CHECK_RET(ly_write_skipped(out, full->position, (char *)meta_buf, LYB_META_BYTES));
 
             /* zero written and inner chunks */
@@ -305,8 +305,8 @@ lyb_write_stop_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
     uint8_t meta_buf[LYB_META_BYTES];
 
     /* write the meta chunk information */
-    meta_buf[0] = LYB_LAST_SUBTREE(lybctx).written & 0xFF;
-    meta_buf[1] = LYB_LAST_SUBTREE(lybctx).inner_chunks & 0xFF;
+    meta_buf[0] = LYB_LAST_SUBTREE(lybctx).written & LYB_BYTE_MASK;
+    meta_buf[1] = LYB_LAST_SUBTREE(lybctx).inner_chunks & LYB_BYTE_MASK;
     LY_CHECK_RET(ly_write_skipped(out, LYB_LAST_SUBTREE(lybctx).position, (char *)&meta_buf, LYB_META_BYTES));
 
     LY_ARRAY_DECREMENT(lybctx->subtrees);
@@ -432,17 +432,17 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
     revision = 0;
     if (mod && mod->revision) {
         int r = atoi(mod->revision);
-        r -= 2000;
-        r <<= 9;
+        r -= LYB_REV_YEAR_OFFSET;
+        r <<= LYB_REV_YEAR_SHIFT;
 
         revision |= r;
 
-        r = atoi(mod->revision + 5);
-        r <<= 5;
+        r = atoi(mod->revision + ly_strlen_const("YYYY-"));
+        r <<= LYB_REV_MONTH_SHIFT;
 
         revision |= r;
 
-        r = atoi(mod->revision + 8);
+        r = atoi(mod->revision + ly_strlen_const("YYYY-MM-"));
 
         revision |= r;
     }
@@ -514,12 +514,8 @@ cleanup:
 static LY_ERR
 lyb_print_magic_number(struct ly_out *out)
 {
-    char magic_number[3];
-
     /* 'l', 'y', 'b' - 0x6c7962 */
-    magic_number[0] = 'l';
-    magic_number[1] = 'y';
-    magic_number[2] = 'b';
+    char magic_number[] = {'l', 'y', 'b'};
 
     LY_CHECK_RET(ly_write_(out, magic_number, 3));
 

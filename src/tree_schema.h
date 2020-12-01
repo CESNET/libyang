@@ -260,6 +260,8 @@ struct lyxp_expr;
 #define LYS_GROUPING    0x4000
 #define LYS_AUGMENT     0x8000
 
+#define LYS_NODETYPE_MASK 0xffff  /**< Mask for nodetypes, the value is limited for 16 bits */
+
 /**
  * @brief List of YANG statements
  */
@@ -366,13 +368,15 @@ typedef enum {
     LYEXT_PAR_IDENT,     /**< ::lysc_ident */
     LYEXT_PAR_EXT,       /**< ::lysc_ext */
     LYEXT_PAR_IMPORT     /**< ::lysp_import */
-// LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
-// LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
-// LYEXT_PAR_REFINE,    /**< ::lysp_refine */
-// LYEXT_PAR_DEVIATION, /**< ::lysp_deviation */
-// LYEXT_PAR_DEVIATE,   /**< ::lysp_deviate */
-// LYEXT_PAR_INCLUDE,   /**< ::lysp_include */
-// LYEXT_PAR_REVISION,  /**< ::lysp_revision */
+#if 0
+    LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
+    LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
+    LYEXT_PAR_REFINE,    /**< ::lysp_refine */
+    LYEXT_PAR_DEVIATION, /**< ::lysp_deviation */
+    LYEXT_PAR_DEVIATE,   /**< ::lysp_deviate */
+    LYEXT_PAR_INCLUDE,   /**< ::lysp_include */
+    LYEXT_PAR_REVISION   /**< ::lysp_revision */
+#endif
 } LYEXT_PARENT;
 
 /**
@@ -557,6 +561,8 @@ struct lysp_ident {
  * @brief Covers restrictions: range, length, pattern, must
  */
 struct lysp_restr {
+#define LYSP_RESTR_PATTERN_ACK   0x06
+#define LYSP_RESTR_PATTERN_NACK  0x15
     struct lysp_qname arg;           /**< The restriction expression/value (mandatory);
                                           in case of pattern restriction, the first byte has a special meaning:
                                           0x06 (ACK) for regular match and 0x15 (NACK) for invert-match */

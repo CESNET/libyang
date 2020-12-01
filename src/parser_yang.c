@@ -104,8 +104,9 @@ LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct 
 LY_ERR
 buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used)
 {
+#define BUF_STEP 16;
     if (*buf_len <= (*buf_used) + len) {
-        *buf_len += 16;
+        *buf_len += BUF_STEP;
         *buf = ly_realloc(*buf, *buf_len);
         LY_CHECK_ERR_RET(!*buf, LOGMEM(ctx), LY_EMEM);
     }
@@ -117,6 +118,7 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
 
     (*buf_used) += len;
     return LY_SUCCESS;
+#undef BUF_STEP
 }
 
 /**
@@ -223,34 +225,35 @@ buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg 
 LY_ERR
 skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t comment)
 {
-    /* internal statuses: 0 - comment ended,
-     *                    1 - in line comment,
-     *                    2 - in block comment,
-     *                    3 - in block comment with last read character '*'
-     */
+    /* internal statuses: */
+#define COMMENT_NO        0 /* comment ended */
+#define COMMENT_LINE      1 /* in line comment */
+#define COMMENT_BLOCK     2 /* in block comment */
+#define COMMENT_BLOCK_END 3 /* in block comment with last read character '*' */
+
     while (in->current[0] && comment) {
         switch (comment) {
-        case 1:
+        case COMMENT_LINE:
             if (in->current[0] == '\n') {
-                comment = 0;
+                comment = COMMENT_NO;
                 ++ctx->line;
             }
             break;
-        case 2:
+        case COMMENT_BLOCK:
             if (in->current[0] == '*') {
-                comment = 3;
+                comment = COMMENT_BLOCK_END;
             } else if (in->current[0] == '\n') {
                 ++ctx->line;
             }
             break;
-        case 3:
+        case COMMENT_BLOCK_END:
             if (in->current[0] == '/') {
-                comment = 0;
+                comment = COMMENT_NO;
             } else if (in->current[0] != '*') {
                 if (in->current[0] == '\n') {
                     ++ctx->line;
                 }
-                comment = 2;
+                comment = COMMENT_BLOCK;
             }
             break;
         default:
@@ -265,12 +268,17 @@ skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t comment)
         ++in->current;
     }
 
-    if (!in->current[0] && (comment > 1)) {
+    if (!in->current[0] && (comment >= COMMENT_BLOCK)) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Unexpected end-of-input, non-terminated comment.");
         return LY_EVALID;
     }
 
     return LY_SUCCESS;
+
+#undef COMMENT_NO
+#undef COMMENT_LINE
+#undef COMMENT_BLOCK
+#undef COMMENT_BLOCK_END
 }
 
 /**
@@ -293,9 +301,14 @@ static LY_ERR
 read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p, char **word_b,
         size_t *word_len, size_t *buf_len)
 {
-    /* string: 0 - string ended, 1 - string with ', 2 - string with ", 3 - string with " with last character \,
-     *         4 - string finished, now skipping whitespaces looking for +,
-     *         5 - string continues after +, skipping whitespaces */
+    /* string parsing status: */
+#define STRING_ENDED 0 /* string ended */
+#define STRING_SINGLE_QUOTED 1 /* string with ' */
+#define STRING_DOUBLE_QUOTED 2 /* string with " */
+#define STRING_DOUBLE_QUOTED_ESCAPED 3 /* string with " with last character \ */
+#define STRING_PAUSED_NEXTSTRING     4 /* string finished, now skipping whitespaces looking for + */
+#define STRING_PAUSED_CONTINUE       5 /* string continues after +, skipping whitespaces */
+
     uint8_t string;
     uint64_t block_indent = 0, current_indent = 0;
     ly_bool need_buf = 0;
@@ -304,21 +317,21 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
     uint64_t trailing_ws = 0; /* current number of stored trailing whitespace characters */
 
     if (in->current[0] == '\"') {
-        string = 2;
+        string = STRING_DOUBLE_QUOTED;
         current_indent = block_indent = ctx->indent + 1;
     } else {
         assert(in->current[0] == '\'');
-        string = 1;
+        string = STRING_SINGLE_QUOTED;
     }
     MOVE_INPUT(ctx, in, 1);
 
     while (in->current[0] && string) {
         switch (string) {
-        case 1:
+        case STRING_SINGLE_QUOTED:
             switch (in->current[0]) {
             case '\'':
                 /* string may be finished, but check for + */
-                string = 4;
+                string = STRING_PAUSED_NEXTSTRING;
                 MOVE_INPUT(ctx, in, 1);
                 break;
             default:
@@ -327,17 +340,17 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
                 break;
             }
             break;
-        case 2:
+        case STRING_DOUBLE_QUOTED:
             switch (in->current[0]) {
             case '\"':
                 /* string may be finished, but check for + */
-                string = 4;
+                string = STRING_PAUSED_NEXTSTRING;
                 MOVE_INPUT(ctx, in, 1);
                 trailing_ws = 0;
                 break;
             case '\\':
                 /* special character following */
-                string = 3;
+                string = STRING_DOUBLE_QUOTED_ESCAPED;
 
                 /* the backslash sequence is substituted, so we will need a buffer to store the result */
                 need_buf = 1;
@@ -365,8 +378,8 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
             case '\t':
                 if (current_indent < block_indent) {
                     assert(need_buf);
-                    current_indent += 8;
-                    ctx->indent += 8;
+                    current_indent += Y_TAB_SPACES;
+                    ctx->indent += Y_TAB_SPACES;
                     for ( ; current_indent > block_indent; --current_indent, --ctx->indent) {
                         /* store leftover spaces from the tab */
                         c = in->current;
@@ -381,7 +394,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
                     LY_CHECK_RET(buf_store_char(ctx, in, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                     trailing_ws++;
                     /* additional characters for indentation - only 1 was count in buf_store_char */
-                    ctx->indent += 7;
+                    ctx->indent += Y_TAB_SPACES - 1;
                 }
                 break;
             case '\n':
@@ -416,7 +429,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
                 break;
             }
             break;
-        case 3:
+        case STRING_DOUBLE_QUOTED_ESCAPED:
             /* string encoded characters */
             c = in->current;
             switch (in->current[0]) {
@@ -439,19 +452,19 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
             /* check and store character */
             LY_CHECK_RET(buf_store_char(ctx, in, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
 
-            string = 2;
+            string = STRING_DOUBLE_QUOTED;
             in->current = c + 1;
             break;
-        case 4:
+        case STRING_PAUSED_NEXTSTRING:
             switch (in->current[0]) {
             case '+':
                 /* string continues */
-                string = 5;
+                string = STRING_PAUSED_CONTINUE;
                 need_buf = 1;
                 break;
             case '\n':
                 ++ctx->line;
-            /* fallthrough */
+            /* fall through */
             case ' ':
             case '\t':
                 /* just skip */
@@ -462,20 +475,20 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
             }
             MOVE_INPUT(ctx, in, 1);
             break;
-        case 5:
+        case STRING_PAUSED_CONTINUE:
             switch (in->current[0]) {
             case '\n':
                 ++ctx->line;
-            /* fallthrough */
+            /* fall through */
             case ' ':
             case '\t':
                 /* skip */
                 break;
             case '\'':
-                string = 1;
+                string = STRING_SINGLE_QUOTED;
                 break;
             case '\"':
-                string = 2;
+                string = STRING_DOUBLE_QUOTED;
                 break;
             default:
                 /* it must be quoted again */
@@ -496,6 +509,13 @@ string_end:
         return LY_EVALID;
     }
     return LY_SUCCESS;
+
+#undef STRING_ENDED
+#undef STRING_SINGLE_QUOTED
+#undef STRING_DOUBLE_QUOTED
+#undef STRING_DOUBLE_QUOTED_ESCAPED
+#undef STRING_PAUSED_NEXTSTRING
+#undef STRING_PAUSED_CONTINUE
 }
 
 /**
@@ -568,7 +588,7 @@ get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
                 goto str_end;
             }
             /* tabs count for 8 spaces */
-            ctx->indent += 8;
+            ctx->indent += Y_TAB_SPACES;
 
             ++in->current;
             break;
@@ -673,7 +693,7 @@ get_keyword(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt *kw,
             break;
         case '\t':
             /* skip whitespaces (optsep) */
-            ctx->indent += 8;
+            ctx->indent += Y_TAB_SPACES;
             break;
         default:
             /* either a keyword start or an invalid character */
@@ -711,7 +731,7 @@ keyword_start:
             if ((*kw == LY_STMT_INPUT) || (*kw == LY_STMT_OUTPUT)) {
                 break;
             }
-        /* fallthrough */
+        /* fall through */
         default:
             MOVE_INPUT(ctx, in, 1);
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, (int)(in->current - word_start), word_start,
@@ -925,7 +945,7 @@ parse_yangversion(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t *ve
 
     if ((word_len == 1) && !strncmp(word, "1", word_len)) {
         *version = LYS_VERSION_1_0;
-    } else if ((word_len == 3) && !strncmp(word, "1.1", word_len)) {
+    } else if ((word_len == ly_strlen_const("1.1")) && !strncmp(word, "1.1", word_len)) {
         *version = LYS_VERSION_1_1;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "yang-version");
@@ -1329,9 +1349,9 @@ parse_config(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint16_t *flags,
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 4) && !strncmp(word, "true", word_len)) {
+    if ((word_len == ly_strlen_const("true")) && !strncmp(word, "true", word_len)) {
         *flags |= LYS_CONFIG_W;
-    } else if ((word_len == 5) && !strncmp(word, "false", word_len)) {
+    } else if ((word_len == ly_strlen_const("false")) && !strncmp(word, "false", word_len)) {
         *flags |= LYS_CONFIG_R;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "config");
@@ -1379,9 +1399,9 @@ parse_mandatory(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint16_t *fla
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 4) && !strncmp(word, "true", word_len)) {
+    if ((word_len == ly_strlen_const("true")) && !strncmp(word, "true", word_len)) {
         *flags |= LYS_MAND_TRUE;
-    } else if ((word_len == 5) && !strncmp(word, "false", word_len)) {
+    } else if ((word_len == ly_strlen_const("false")) && !strncmp(word, "false", word_len)) {
         *flags |= LYS_MAND_FALSE;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "mandatory");
@@ -1497,11 +1517,11 @@ parse_status(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint16_t *flags,
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 7) && !strncmp(word, "current", word_len)) {
+    if ((word_len == ly_strlen_const("current")) && !strncmp(word, "current", word_len)) {
         *flags |= LYS_STATUS_CURR;
-    } else if ((word_len == 10) && !strncmp(word, "deprecated", word_len)) {
+    } else if ((word_len == ly_strlen_const("deprecated")) && !strncmp(word, "deprecated", word_len)) {
         *flags |= LYS_STATUS_DEPRC;
-    } else if ((word_len == 8) && !strncmp(word, "obsolete", word_len)) {
+    } else if ((word_len == ly_strlen_const("obsolete")) && !strncmp(word, "obsolete", word_len)) {
         *flags |= LYS_STATUS_OBSLT;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "status");
@@ -1680,13 +1700,13 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enu
 
     errno = 0;
     if (val_kw == LY_STMT_VALUE) {
-        num = strtol(word, &ptr, 10);
+        num = strtol(word, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
             goto error;
         }
     } else {
-        unum = strtoul(word, &ptr, 10);
+        unum = strtoul(word, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
             goto error;
@@ -1826,14 +1846,14 @@ parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t
     }
 
     errno = 0;
-    num = strtoul(word, &ptr, 10);
+    num = strtoul(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "fraction-digits");
         free(buf);
         return LY_EVALID;
     }
-    if ((errno == ERANGE) || (num > 18)) {
+    if ((errno == ERANGE) || (num > LY_TYPE_DEC64_FD_MAX)) {
         LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "fraction-digits");
         free(buf);
         return LY_EVALID;
@@ -1883,9 +1903,9 @@ parse_type_reqinstance(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 4) && !strncmp(word, "true", word_len)) {
+    if ((word_len == ly_strlen_const("true")) && !strncmp(word, "true", word_len)) {
         *reqinst = 1;
-    } else if ((word_len != 5) || strncmp(word, "false", word_len)) {
+    } else if ((word_len != ly_strlen_const("false")) || strncmp(word, "false", word_len)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "require-instance");
         free(buf);
         return LY_EVALID;
@@ -1924,7 +1944,7 @@ parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, struct ly_in *in, c
     size_t word_len;
     enum ly_stmt kw;
 
-    if ((*pat)[0] == 0x15) {
+    if ((*pat)[0] == LYSP_RESTR_PATTERN_NACK) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "modifier");
         return LY_EVALID;
     }
@@ -1932,7 +1952,7 @@ parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, struct ly_in *in, c
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len != 12) || strncmp(word, "invert-match", word_len)) {
+    if ((word_len != ly_strlen_const("invert-match")) || strncmp(word, "invert-match", word_len)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "modifier");
         free(buf);
         return LY_EVALID;
@@ -1945,8 +1965,8 @@ parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, struct ly_in *in, c
     strcpy(buf, *pat);
     lydict_remove(PARSER_CTX(ctx), *pat);
 
-    assert(buf[0] == 0x06);
-    buf[0] = 0x15;
+    assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
+    buf[0] = LYSP_RESTR_PATTERN_NACK;
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, pat));
 
     YANG_READ_SUBSTMT_FOR(ctx, in, kw, word, word_len, ret, ) {
@@ -1987,14 +2007,14 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lys
 
     /* add special meaning first byte */
     if (buf) {
-        buf = ly_realloc(buf,  word_len + 2);
+        buf = ly_realloc(buf, word_len + 2);
         word = buf;
     } else {
         buf = malloc(word_len + 2);
     }
     LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     memmove(buf + 1, word, word_len);
-    buf[0] = 0x06; /* pattern's default regular-match flag */
+    buf[0] = LYSP_RESTR_PATTERN_ACK; /* pattern's default regular-match flag */
     buf[word_len + 1] = '\0'; /* terminating NULL byte */
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
     restr->arg.mod = ctx->parsed_mod;
@@ -2257,7 +2277,7 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *m
 
     if (ly_strncmp("unbounded", word, word_len)) {
         errno = 0;
-        num = strtoul(word, &ptr, 10);
+        num = strtoul(word, &ptr, LY_BASE_DEC);
         /* we have not parsed the whole argument */
         if ((size_t)(ptr - word) != word_len) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "max-elements");
@@ -2324,7 +2344,7 @@ parse_minelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *m
     }
 
     errno = 0;
-    num = strtoul(word, &ptr, 10);
+    num = strtoul(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "min-elements");
@@ -2378,9 +2398,9 @@ parse_orderedby(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint16_t *fla
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 6) && !strncmp(word, "system", word_len)) {
+    if ((word_len == ly_strlen_const("system")) && !strncmp(word, "system", word_len)) {
         *flags |= LYS_ORDBY_SYSTEM;
-    } else if ((word_len == 4) && !strncmp(word, "user", word_len)) {
+    } else if ((word_len == ly_strlen_const("user")) && !strncmp(word, "user", word_len)) {
         *flags |= LYS_ORDBY_USER;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "ordered-by");
@@ -3577,9 +3597,9 @@ parse_yinelement(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint16_t *fl
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 4) && !strncmp(word, "true", word_len)) {
+    if ((word_len == ly_strlen_const("true")) && !strncmp(word, "true", word_len)) {
         *flags |= LYS_YINELEM_TRUE;
-    } else if ((word_len == 5) && !strncmp(word, "false", word_len)) {
+    } else if ((word_len == ly_strlen_const("false")) && !strncmp(word, "false", word_len)) {
         *flags |= LYS_YINELEM_FALSE;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "yin-element");
@@ -3724,13 +3744,13 @@ parse_deviate(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_dev
     /* get value */
     LY_CHECK_RET(get_argument(ctx, in, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if ((word_len == 13) && !strncmp(word, "not-supported", word_len)) {
+    if ((word_len == ly_strlen_const("not-supported")) && !strncmp(word, "not-supported", word_len)) {
         dev_mod = LYS_DEV_NOT_SUPPORTED;
-    } else if ((word_len == 3) && !strncmp(word, "add", word_len)) {
+    } else if ((word_len == ly_strlen_const("add")) && !strncmp(word, "add", word_len)) {
         dev_mod = LYS_DEV_ADD;
-    } else if ((word_len == 7) && !strncmp(word, "replace", word_len)) {
+    } else if ((word_len == ly_strlen_const("replace")) && !strncmp(word, "replace", word_len)) {
         dev_mod = LYS_DEV_REPLACE;
-    } else if ((word_len == 6) && !strncmp(word, "delete", word_len)) {
+    } else if ((word_len == ly_strlen_const("delete")) && !strncmp(word, "delete", word_len)) {
         dev_mod = LYS_DEV_DELETE;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "deviate");

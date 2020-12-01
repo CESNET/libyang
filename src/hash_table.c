@@ -25,6 +25,8 @@
 #include "dict.h"
 #include "log.h"
 
+#define LYDICT_MIN_SIZE 1024
+
 /**
  * @brief Comparison callback for dictionary's hash table
  *
@@ -53,7 +55,7 @@ lydict_init(struct dict_table *dict)
 {
     LY_CHECK_ARG_RET(NULL, dict, );
 
-    dict->hash_tab = lyht_new(1024, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
+    dict->hash_tab = lyht_new(LYDICT_MIN_SIZE, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
     LY_CHECK_ERR_RET(!dict->hash_tab, LOGINT(NULL), );
     pthread_mutex_init(&dict->lock, NULL);
 }
@@ -680,7 +682,7 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
     /* check size & enlarge if needed */
     ++ht->used;
     if (ht->resize) {
-        r = (ht->used * 100) / ht->size;
+        r = (ht->used * LYHT_HUNDRED_PERCENTAGE) / ht->size;
         if ((ht->resize == 1) && (r >= LYHT_FIRST_SHRINK_PERCENTAGE)) {
             /* enable shrinking */
             ht->resize = 2;
@@ -760,7 +762,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
     /* check size & shrink if needed */
     --ht->used;
     if (ht->resize == 2) {
-        r = (ht->used * 100) / ht->size;
+        r = (ht->used * LYHT_HUNDRED_PERCENTAGE) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
             if (resize_val_equal) {
                 old_val_equal = lyht_set_cb(ht, resize_val_equal);

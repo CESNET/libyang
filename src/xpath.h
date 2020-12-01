@@ -223,13 +223,15 @@ struct lyxp_set {
         struct lyxp_set_scnode {
             struct lysc_node *scnode;
             enum lyxp_node_type type;
-            /* -2 - scnode not traversed, currently (the only node) in context;
-             * -1 - scnode not traversed except for the eval start, not currently in the context;
-             * 0  - scnode was traversed, but not currently in the context;
-             * 1  - scnode currently in context;
-             * 2  - scnode in context and just added, so skip it for the current operation;
-             * >=3 - scnode is not in context because we are in a predicate and this scnode was used/will be used later */
-            int32_t in_ctx;
+
+#define LYXP_SET_SCNODE_START         -2 /**< scnode not traversed, currently (the only node) in context */
+#define LYXP_SET_SCNODE_START_USED    -1 /**< scnode not traversed except for the eval start, not currently in the context */
+#define LYXP_SET_SCNODE_ATOM           0 /**< scnode was traversed, but not currently in the context */
+#define LYXP_SET_SCNODE_ATOM_CTX       1 /**< scnode currently in context */
+#define LYXP_SET_SCNODE_ATOM_NEW_CTX   2 /**< scnode in context and just added, so skip it for the current operation */
+#define LYXP_SET_SCNODE_ATOM_PRED_CTX  3 /**< includes any higher value - scnode is not in context because we are in
+                                              a predicate and this scnode was used/will be used later */
+            int32_t in_ctx; /**< values defined as LYXP_SET_SCNODE_* */
         } *scnodes;
         struct lyxp_set_meta {
             struct lyd_meta *meta;

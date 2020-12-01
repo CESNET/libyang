@@ -49,6 +49,9 @@ uint32_t dict_hash(const char *key, size_t len);
  */
 typedef ly_bool (*values_equal_cb)(void *val1_p, void *val2_p, ly_bool mod, void *cb_data);
 
+/** reference value for 100% */
+#define LYHT_HUNDRED_PERCENTAGE 100
+
 /** when the table is at least this much percent full, it is enlarged (double the size) */
 #define LYHT_ENLARGE_PERCENTAGE 75
 

@@ -152,6 +152,16 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 
 /* Just a helper macro */
 #define LYB_META_BYTES (LYB_INCHUNK_BYTES + LYB_SIZE_BYTES)
+#define LYB_BYTE_MASK 0xff
+
+/* model revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
+ *                   YYYY YYYM MMMD DDDD */
+#define LYB_REV_YEAR_OFFSET 2000
+#define LYB_REV_YEAR_MASK   0xfe00U
+#define LYB_REV_YEAR_SHIFT  9
+#define LYB_REV_MONTH_MASK  0x01E0U
+#define LYB_REV_MONTH_SHIFT 5
+#define LYB_REV_DAY_MASK    0x001fU
 
 /* Type large enough for all meta data */
 #define LYB_META uint16_t

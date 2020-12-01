@@ -855,7 +855,8 @@ uniquecheck:
             path2 = lyd_path(second, LYD_PATH_LOG, NULL, 0);
 
             /* use buffer to rebuild the unique string */
-            uniq_str = malloc(1024);
+#define UNIQ_BUF_SIZE 1024
+            uniq_str = malloc(UNIQ_BUF_SIZE);
             uniq_str[0] = '\0';
             ptr = uniq_str;
             LY_ARRAY_FOR(slist->uniques[u], v) {
@@ -864,7 +865,7 @@ uniquecheck:
                     ++ptr;
                 }
                 ptr = lysc_path_until((struct lysc_node *)slist->uniques[u][v], (struct lysc_node *)slist, LYSC_PATH_LOG,
-                        ptr, 1024 - (ptr - uniq_str));
+                        ptr, UNIQ_BUF_SIZE - (ptr - uniq_str));
                 if (!ptr) {
                     /* path will be incomplete, whatever */
                     break;
@@ -877,6 +878,8 @@ uniquecheck:
             free(path1);
             free(path2);
             free(uniq_str);
+#undef UNIQ_BUF_SIZE
+
             return 1;
         }
 
@@ -931,8 +934,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
         }
     } else if (set->count > 2) {
         /* use hashes for comparison */
-        /* first, allocate the table, the size depends on number of items in the set */
-        for (i = 31; i > 0; i--) {
+        /* first, allocate the table, the size depends on number of items in the set,
+         * the following code detects number of upper zero bits in the items' counter value ... */
+        for (i = (sizeof set->count * CHAR_BIT) - 1; i > 0; i--) {
             size = set->count << i;
             size = size >> i;
             if (size == set->count) {
@@ -940,7 +944,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
             }
         }
         LY_CHECK_ERR_GOTO(!i, LOGINT(ctx); ret = LY_EINT, cleanup);
-        i = 32 - i;
+        /* ... and then we convert it to the position of the highest non-zero bit ... */
+        i = (sizeof set->count * CHAR_BIT) - i;
+        /* ... and by using it to shift 1 to the left we get the closest sufficient hash table size */
         size = 1 << i;
 
         uniqtables = malloc(LY_ARRAY_COUNT(uniques) * sizeof *uniqtables);

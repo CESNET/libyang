@@ -141,10 +141,12 @@ ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *index_p)
     }
 
     if (set->size == set->count) {
-        new = realloc(set->objs, (set->size + 8) * sizeof *(set->objs));
+#define SET_SIZE_STEP 8
+        new = realloc(set->objs, (set->size + SET_SIZE_STEP) * sizeof *(set->objs));
         LY_CHECK_ERR_RET(!new, LOGMEM(NULL), LY_EMEM);
-        set->size += 8;
+        set->size += SET_SIZE_STEP;
         set->objs = new;
+#undef SET_SIZE_STEP
     }
 
     if (index_p) {

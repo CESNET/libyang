@@ -25,7 +25,14 @@
 struct lysc_ctx;
 struct lys_glob_unres;
 
+#define LY_YANG_SUFFIX ".yang"
+#define LY_YANG_SUFFIX_LEN 5
+#define LY_YIN_SUFFIX ".yin"
+#define LY_YIN_SUFFIX_LEN 4
+
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
+
+#define LY_PCRE2_MSG_LIMIT 256
 
 /**
  * @brief Check module version is at least 2 (YANG 1.1) because of the keyword presence.
@@ -78,6 +85,12 @@ struct lys_glob_unres;
     if (!VALUE_LEN) { \
         LOGWRN(PARSER_CTX(CTX), "Empty argument of %s statement does not make sense.", STMT); \
     }
+
+/*
+ * Additional YANG constants
+ */
+#define Y_TAB_SPACES         8  /**< number of spaces instead of tab character */
+#define LY_TYPE_DEC64_FD_MAX 18 /**< Maximal value of decimal64's fraction-digits */
 
 /**
  * @brief List of YANG statement groups - the (sub)module's substatements

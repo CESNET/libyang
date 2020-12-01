@@ -149,16 +149,16 @@ lyb_read_number(void *num, size_t num_size, size_t bytes, struct lylyb_ctx *lybc
     buf = le64toh(buf);
 
     switch (num_size) {
-    case 1:
+    case sizeof(uint8_t):
         *((uint8_t *)num) = buf;
         break;
-    case 2:
+    case sizeof(uint16_t):
         *((uint16_t *)num) = buf;
         break;
-    case 4:
+    case sizeof(uint32_t):
         *((uint32_t *)num) = buf;
         break;
-    case 8:
+    case sizeof(uint64_t):
         *((uint64_t *)num) = buf;
         break;
     default:
@@ -278,7 +278,7 @@ static LY_ERR
 lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *mod_name = NULL, mod_rev[11];
+    char *mod_name = NULL, mod_rev[LY_REV_SIZE];
     uint16_t rev;
 
     /* model name */
@@ -295,7 +295,8 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
     }
 
     if (rev) {
-        sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, rev & 0x001Fu);
+        sprintf(mod_rev, "%04u-%02u-%02u", ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
+                (rev & LYB_REV_MONTH_MASK) >> LYB_REV_MONTH_SHIFT, rev & LYB_REV_DAY_MASK);
         *mod = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
         if ((parse_options & LYD_PARSE_LYB_MOD_UPDATE) && !(*mod)) {
             /* try to use an updated module */

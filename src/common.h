@@ -333,6 +333,29 @@ int ly_strncmp(const char *refstr, const char *str, size_t str_len);
 #define ly_strlen(STR) (STR ? strlen(STR) : 0)
 
 /**
+ * @brief Compile-time strlen() for string contants.
+ *
+ * Use to avoid magic numbers usage
+ */
+#define ly_strlen_const(STR) (sizeof STR - 1)
+
+#define ly_sizeofarray(ARRAY) (sizeof ARRAY / sizeof *ARRAY)
+
+/*
+ * Numerical bases for use in functions like strtoll() instead of magic numbers
+ */
+#define LY_BASE_DEC 10  /**< Decimal numeral base */
+#define LY_BASE_OCT 8   /**< Octal numeral base */
+#define LY_BASE_HEX 16  /**< Hexadecimal numeral base */
+
+/**
+ * Maximal length of (needed storage for) a number encoded as a string.
+ *
+ * Applies not only for standard numbers, but also for YANG's decimal64.
+ */
+#define LY_NUMBER_MAXLEN 22
+
+/**
  * @brief Get UTF8 code point of the next character in the input string.
  *
  * @param[in,out] input Input string to process, updated according to the processed/read data.

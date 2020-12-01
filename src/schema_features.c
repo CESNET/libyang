@@ -31,15 +31,19 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
+#define IFF_RECORDS_IN_BYTE 4
+#define IFF_RECORD_BITS 2
+#define IFF_RECORD_MASK 0x3
+
 uint8_t
 lysc_iff_getop(uint8_t *list, size_t pos)
 {
     uint8_t *item;
-    uint8_t mask = 3, result;
+    uint8_t mask = IFF_RECORD_MASK, result;
 
-    item = &list[pos / 4];
-    result = (*item) & (mask << 2 * (pos % 4));
-    return result >> 2 * (pos % 4);
+    item = &list[pos / IFF_RECORDS_IN_BYTE];
+    result = (*item) & (mask << IFF_RECORD_BITS * (pos % IFF_RECORDS_IN_BYTE));
+    return result >> IFF_RECORD_BITS * (pos % IFF_RECORDS_IN_BYTE);
 }
 
 static LY_ERR
@@ -186,6 +190,7 @@ struct iff_stack {
     size_t index;   /**< first empty item */
     uint8_t *stack; /**< stack - array of @ref ifftokens to create the if-feature expression in prefix format */
 };
+#define IFF_STACK_SIZE_STEP 4
 
 /**
  * @brief Add @ref ifftokens into the stack.
@@ -198,7 +203,7 @@ static LY_ERR
 iff_stack_push(struct iff_stack *stack, uint8_t value)
 {
     if (stack->index == stack->size) {
-        stack->size += 4;
+        stack->size += IFF_STACK_SIZE_STEP;
         stack->stack = ly_realloc(stack->stack, stack->size * sizeof *stack->stack);
         LY_CHECK_ERR_RET(!stack->stack, LOGMEM(NULL); stack->size = 0, LY_EMEM);
     }
@@ -242,14 +247,14 @@ static void
 iff_setop(uint8_t *list, uint8_t op, size_t pos)
 {
     uint8_t *item;
-    uint8_t mask = 3;
+    uint8_t mask = IFF_RECORD_MASK;
 
-    assert(op <= 3); /* max 2 bits */
+    assert(op <= IFF_RECORD_MASK); /* max 2 bits */
 
-    item = &list[pos / 4];
-    mask = mask << 2 * (pos % 4);
+    item = &list[pos / IFF_RECORDS_IN_BYTE];
+    mask = mask << IFF_RECORD_BITS * (pos % IFF_RECORDS_IN_BYTE);
     *item = (*item) & ~mask;
-    *item = (*item) | (op << 2 * (pos % 4));
+    *item = (*item) | (op << IFF_RECORD_BITS * (pos % IFF_RECORDS_IN_BYTE));
 }
 
 #define LYS_IFF_LP 0x04 /**< Additional, temporary, value of @ref ifftokens: ( */
@@ -283,7 +288,9 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
             continue;
         }
 
-        if (!strncmp(&c[i], "not", op_len = 3) || !strncmp(&c[i], "and", op_len = 3) || !strncmp(&c[i], "or", op_len = 2)) {
+        if (!strncmp(&c[i], "not", op_len = ly_strlen_const("not")) ||
+                !strncmp(&c[i], "and", op_len = ly_strlen_const("and")) ||
+                !strncmp(&c[i], "or", op_len = ly_strlen_const("or"))) {
             uint64_t spaces;
             for (spaces = 0; c[i + op_len + spaces] && isspace(c[i + op_len + spaces]); spaces++) {}
             if (c[i + op_len + spaces] == '\0') {
@@ -354,7 +361,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
 
     /* allocate the memory */
     LY_ARRAY_CREATE_RET(ctx, iff->features, f_size, LY_EMEM);
-    iff->expr = calloc((j = (expr_size / 4) + ((expr_size % 4) ? 1 : 0)), sizeof *iff->expr);
+    iff->expr = calloc((j = (expr_size / IFF_RECORDS_IN_BYTE) + ((expr_size % IFF_RECORDS_IN_BYTE) ? 1 : 0)), sizeof *iff->expr);
     stack.stack = malloc(expr_size * sizeof *stack.stack);
     LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr, LOGMEM(ctx); rc = LY_EMEM, error);
 
@@ -383,7 +390,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
         }
         i++; /* go back by one step */
 
-        if (!strncmp(&c[i], "not", 3) && isspace(c[i + 3])) {
+        if (!strncmp(&c[i], "not", ly_strlen_const("not")) && isspace(c[i + ly_strlen_const("not")])) {
             if (stack.index && (stack.stack[stack.index - 1] == LYS_IFF_NOT)) {
                 /* double not */
                 iff_stack_pop(&stack);
@@ -392,7 +399,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
                  * as in case of AND and OR */
                 iff_stack_push(&stack, LYS_IFF_NOT);
             }
-        } else if (!strncmp(&c[i], "and", 3) && isspace(c[i + 3])) {
+        } else if (!strncmp(&c[i], "and", ly_strlen_const("and")) && isspace(c[i + ly_strlen_const("and")])) {
             /* as for OR - pop from the stack all operators with the same or higher
              * priority and store them to the result, then push the AND to the stack */
             while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_AND) {

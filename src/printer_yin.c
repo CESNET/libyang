@@ -338,12 +338,14 @@ yprp_restr(struct ypr_ctx *ctx, const struct lysp_restr *restr, const char *name
     }
 
     ly_print_(ctx->out, "%*s<%s %s=\"", INDENT, name, attr);
-    lyxml_dump_text(ctx->out, (restr->arg.str[0] != 0x15 && restr->arg.str[0] != 0x06) ? restr->arg.str : &restr->arg.str[1], 1);
+    lyxml_dump_text(ctx->out,
+            (restr->arg.str[0] != LYSP_RESTR_PATTERN_NACK && restr->arg.str[0] != LYSP_RESTR_PATTERN_ACK) ?
+            restr->arg.str : &restr->arg.str[1], 1);
     ly_print_(ctx->out, "\"");
 
     LEVEL++;
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, restr->exts, &inner_flag, 0);
-    if (restr->arg.str[0] == 0x15) {
+    if (restr->arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
         ypr_close_parent(ctx, &inner_flag);
         /* special byte value in pattern's expression: 0x15 - invert-match, 0x06 - match */
         ypr_substmt(ctx, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match", restr->exts);
@@ -1465,8 +1467,8 @@ yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, con
 
     ly_print_(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print_(ctx->out, "%*s<module name=\"%s\"\n", INDENT, module->name);
-    ypr_xmlns(ctx, module, 8);
-    ypr_import_xmlns(ctx, modp, 8);
+    ypr_xmlns(ctx, module, XML_NS_INDENT);
+    ypr_import_xmlns(ctx, modp, XML_NS_INDENT);
     ly_print_(ctx->out, ">\n");
 
     LEVEL++;
@@ -1527,8 +1529,8 @@ yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, 
 
     ly_print_(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print_(ctx->out, "%*s<submodule name=\"%s\"\n", INDENT, submodp->name);
-    ypr_xmlns(ctx, module, 8);
-    ypr_import_xmlns(ctx, (struct lysp_module *)submodp, 8);
+    ypr_xmlns(ctx, module, XML_NS_INDENT);
+    ypr_import_xmlns(ctx, (struct lysp_module *)submodp, XML_NS_INDENT);
     ly_print_(ctx->out, ">\n");
 
     LEVEL++;

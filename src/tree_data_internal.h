@@ -26,6 +26,13 @@
 struct ly_path_predicate;
 struct lysc_module;
 
+#define LY_XML_SUFFIX ".xml"
+#define LY_XML_SUFFIX_LEN 4
+#define LY_JSON_SUFFIX ".json"
+#define LY_JSON_SUFFIX_LEN 5
+#define LY_LYB_SUFFIX ".lyb"
+#define LY_LYB_SUFFIX_LEN 4
+
 /**
  * @brief Internal data parser flags.
  */

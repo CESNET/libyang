@@ -1300,7 +1300,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
     case LYD_DIFF_OP_REPLACE:
         /* similar to none operation but also remove the redundant attribute */
         lyd_diff_del_meta(diff_match, "orig-value");
-    /* fallthrough */
+    /* fall through */
     case LYD_DIFF_OP_NONE:
         /* it was not modified, but should be deleted -> set DELETE operation */
         LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_DELETE));
