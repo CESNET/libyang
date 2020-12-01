@@ -514,14 +514,14 @@ cleanup:
 static LY_ERR
 lyb_print_magic_number(struct ly_out *out)
 {
-    uint32_t magic_number;
+    char magic_number[3];
 
     /* 'l', 'y', 'b' - 0x6c7962 */
-    ((char *)&magic_number)[0] = 'l';
-    ((char *)&magic_number)[1] = 'y';
-    ((char *)&magic_number)[2] = 'b';
+    magic_number[0] = 'l';
+    magic_number[1] = 'y';
+    magic_number[2] = 'b';
 
-    LY_CHECK_RET(ly_write_(out, (char *)&magic_number, 3));
+    LY_CHECK_RET(ly_write_(out, magic_number, 3));
 
     return LY_SUCCESS;
 }
