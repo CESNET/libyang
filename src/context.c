@@ -33,6 +33,7 @@
 #include "parser_data.h"
 #include "path.h"
 #include "plugins_types.h"
+#include "schema_compile.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -182,10 +183,22 @@ API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
 {
     struct lys_module *result = NULL;
+    struct lys_glob_unres unres = {0};
+    LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
 
-    LY_CHECK_RET(lysp_load_module(ctx, name, revision, 1, features, &result), NULL);
+    LY_CHECK_GOTO(ret = lysp_load_module(ctx, name, revision, 1, features, &unres, &result), cleanup);
+
+    /* resolve unres and revert, if needed */
+    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
+
+cleanup:
+    if (ret) {
+        lys_compile_unres_glob_revert(ctx, &unres);
+        result = NULL;
+    }
+    lys_compile_unres_glob_erase(ctx, &unres);
     return result;
 }
 
@@ -199,6 +212,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     uint32_t i;
     struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
+    struct lys_glob_unres unres = {0};
 
     LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
 
@@ -254,15 +268,20 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
         LY_CHECK_GOTO(rc = lys_create_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
-                NULL, NULL, NULL, &module), error);
+                NULL, NULL, NULL, &unres, &module), error);
     }
 
+    /* resolve global unres */
+    LY_CHECK_GOTO(rc = lys_compile_unres_glob(ctx, &unres), error);
+
     ly_in_free(in, 0);
+    lys_compile_unres_glob_erase(ctx, &unres);
     *new_ctx = ctx;
     return rc;
 
 error:
     ly_in_free(in, 0);
+    lys_compile_unres_glob_erase(ctx, &unres);
     ly_ctx_destroy(ctx, NULL);
     return rc;
 }

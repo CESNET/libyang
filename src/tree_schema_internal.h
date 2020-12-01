@@ -23,6 +23,7 @@
 #include "xml.h"
 
 struct lysc_ctx;
+struct lys_glob_unres;
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
 
@@ -116,6 +117,7 @@ struct lys_parser_ctx {
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
+    struct lys_glob_unres *unres;   /**< global unres structure */
 };
 
 /**
@@ -126,6 +128,7 @@ struct lys_yang_parser_ctx {
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
+    struct lys_glob_unres *unres;   /**< global unres structure */
     enum LY_VLOG_ELEM pos_type;     /**< */
     union {
         uint64_t line;              /**< line number */
@@ -147,6 +150,7 @@ struct lys_yin_parser_ctx {
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
     struct lysp_module *parsed_mod;/**< (sub)module being parsed */
+    struct lys_glob_unres *unres;   /**< global unres structure */
     struct lyxml_ctx *xmlctx;      /**< context for xml parser */
 };
 
@@ -284,11 +288,12 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * the implemented module in the context is returned despite it might not be of the latest revision, because in this case the module
  * of the latest revision can not be made implemented.
  * @param[in] features All the features to enable if implementing the module.
+ * @param[in] unres Global unres structure for all newly implemented modules.
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
 LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
-        const char **features, struct lys_module **mod);
+        const char **features, struct lys_glob_unres *unres, struct lys_module **mod);
 
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
@@ -430,6 +435,16 @@ struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module
  */
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
+/**
+ * @brief Implement a module (just like ::lys_set_implemented()), can be called recursively.
+ *
+ * @param[in] mod Module to implement.
+ * @param[in] features Array of features to enable.
+ * @param[in,out] unres Global unres to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+
 typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
         void *check_data);
 
@@ -445,11 +460,13 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @param[in] features Array of features to enable ended with NULL. NULL for all features disabled and '*' for all enabled.
+ * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] module Created module.
  * @return LY_ERR value.
  */
 LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
-        lys_custom_check custom_check, void *check_data, const char **features, struct lys_module **module);
+        lys_custom_check custom_check, void *check_data, const char **features, struct lys_glob_unres *unres,
+        struct lys_module **module);
 
 /**
  * @brief Parse submodule.
@@ -494,12 +511,14 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * @param[in] main_name Main module name in case of loading submodule.
  * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
  * backup and it is actually ok if the input data are not found. However, parser reports errors even in this case.
+ * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
 LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
-        ly_bool implement, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result);
+        ly_bool implement, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
+        struct lys_glob_unres *unres, void **result);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array

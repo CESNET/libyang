@@ -726,7 +726,8 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
 static LY_ERR
 ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     LY_ERR ret;
     int64_t num;
@@ -782,7 +783,8 @@ ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const 
 static LY_ERR
 ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     LY_ERR ret;
     uint64_t num;
@@ -836,7 +838,8 @@ ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const
 static LY_ERR
 ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     int64_t d;
     struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
@@ -901,7 +904,8 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
 static LY_ERR
 ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -1003,7 +1007,8 @@ error:
 static LY_ERR
 ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
@@ -1042,7 +1047,8 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
 static LY_ERR
 ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     size_t item_len;
@@ -1221,7 +1227,8 @@ ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 static LY_ERR
 ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u;
     char *errmsg = NULL;
@@ -1273,7 +1280,8 @@ error:
 static LY_ERR
 ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     int8_t i;
 
@@ -1314,7 +1322,8 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
 static LY_ERR
 ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct ly_err_item **err)
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     /* check hints */
     LY_CHECK_RET(type_check_hints(hints, value, value_len, type->basetype, NULL, err));
@@ -1380,7 +1389,7 @@ static const char *ly_type_print_identityref(const struct lyd_value *value, LY_P
 static LY_ERR
 ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct ly_err_item **err)
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;
@@ -1452,7 +1461,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     } else if (!mod->implemented) {
         /* non-implemented module */
         if (options & LY_TYPE_STORE_IMPLEMENT) {
-            LY_CHECK_RET(lys_set_implemented((struct lys_module *)mod, NULL));
+            LY_CHECK_RET(lys_set_implemented_r((struct lys_module *)mod, NULL, unres));
         } else {
             rc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
                     (int)value_len, value, mod->name);
@@ -1555,7 +1564,7 @@ static const char *ly_type_print_instanceid(const struct lyd_value *value, LY_PR
 static LY_ERR
 ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct ly_err_item **err)
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
@@ -1593,12 +1602,12 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     if (options & LY_TYPE_STORE_IMPLEMENT) {
         /* implement all prefixes */
-        LY_CHECK_GOTO(ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, NULL), error);
+        LY_CHECK_GOTO(ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, unres, NULL), error);
     }
 
     /* resolve it on schema tree */
     ret = ly_path_compile(ctx, NULL, ctx_node, exp, LY_PATH_LREF_FALSE, lysc_is_output(ctx_node) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, &path);
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, unres, &path);
     if (ret) {
         rc = asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
         goto error;
@@ -1953,7 +1962,7 @@ error:
 static LY_ERR
 ly_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct ly_err_item **err)
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
@@ -1962,7 +1971,7 @@ ly_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     /* store the value as the real type of the leafref target */
     ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options, format, prefix_data,
-            hints, ctx_node, storage, err);
+            hints, ctx_node, storage, unres, err);
     if (ret == LY_EINCOMPLETE) {
         /* it is irrelevant whether the target type needs some resolving */
         ret = LY_SUCCESS;
@@ -2053,7 +2062,8 @@ ly_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 
 static LY_ERR
 ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_value_subvalue *subvalue,
-        ly_bool resolve, const struct lyd_node *ctx_node, const struct lyd_node *tree, struct ly_err_item **err)
+        ly_bool resolve, const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lys_glob_unres *unres,
+        struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
@@ -2069,9 +2079,8 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
 
     /* use the first usable subtype to store the value */
     for (u = 0; u < LY_ARRAY_COUNT(types); ++u) {
-        ret = types[u]->plugin->store(ctx, types[u], subvalue->original, strlen(subvalue->original),
-                0, subvalue->format, subvalue->prefix_data,
-                subvalue->hints, subvalue->ctx_node, &subvalue->value, err);
+        ret = types[u]->plugin->store(ctx, types[u], subvalue->original, strlen(subvalue->original), 0, subvalue->format,
+                subvalue->prefix_data, subvalue->hints, subvalue->ctx_node, &subvalue->value, unres, err);
         if ((ret == LY_SUCCESS) || (ret == LY_EINCOMPLETE)) {
             if (resolve && (ret == LY_EINCOMPLETE)) {
                 /* we need the value resolved */
@@ -2117,7 +2126,7 @@ cleanup:
 static LY_ERR
 ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct ly_err_item **err)
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
@@ -2149,7 +2158,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     subvalue->ctx_node = ctx_node;
 
     /* use the first usable subtype to store the value */
-    ret = ly_type_union_store_type(ctx, type_u->types, subvalue, 0, NULL, NULL, err);
+    ret = ly_type_union_store_type(ctx, type_u->types, subvalue, 0, NULL, NULL, unres, err);
     LY_CHECK_GOTO((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), cleanup);
 
 cleanup:
@@ -2201,7 +2210,7 @@ ly_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     *err = NULL;
 
     /* store and resolve the value */
-    ret = ly_type_union_store_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, err);
+    ret = ly_type_union_store_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, err);
     LY_CHECK_RET(ret);
 
     /* success, update the canonical value */

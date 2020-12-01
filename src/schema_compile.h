@@ -59,19 +59,32 @@ struct lysc_ctx {
     struct lys_module *cur_mod; /**< module currently being compiled, used as the current module for unprefixed nodes */
     struct lysp_module *pmod;   /**< parsed module being processed, used for searching imports to resolve prefixed nodes */
     struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set xpath;        /**< when/must to check */
-    struct ly_set leafrefs;     /**< to validate leafref's targets */
-    struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
     struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisifed */
     struct ly_set augs;         /**< set of compiled non-applied top-level augments */
     struct ly_set devs;         /**< set of compiled non-applied deviations */
     struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
     struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines */
+    struct lys_glob_unres *unres;  /**< global unres sets */
     uint32_t path_len;
     uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
+};
+
+/**
+ * @brief Structure for unresolved items that may depend on any implemented module data so their resolution
+ * can only be performed after all module basic compilation is done.
+ */
+struct lys_glob_unres {
+    struct ly_set implementing; /**< set of YANG schemas being atomically implemented (compiled); the first added
+                                    module is always the explcitly implemented module, the other ones are dependencies */
+    struct ly_set creating;     /**< set of YANG schemas being atomically created (parsed); it is a subset of implemented
+                                    and all these modules are freed if any error occurs */
+    struct ly_set xpath;        /**< when/must to check */
+    struct ly_set leafrefs;     /**< to validate leafref's targets */
+    struct ly_set dflts;        /**< set of incomplete default values */
+    ly_bool recompile;          /**< flag whether all the modules need to be recompiled (because of new deviations) */
 };
 
 /**
@@ -229,23 +242,48 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, cons
  * @param[in] prefix_data Format-specific data (see ::ly_resolve_prefix()).
  * @param[in] implement Whether all the non-implemented modules should are implemented or the first
  * non-implemented module, if any, returned in @p mod_p.
+ * @param[in,out] unres Global unres structure of newly implemented modules.
  * @param[out] mod_p Module that is not implemented.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
 LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
-        void *prefix_data, ly_bool implement, const struct lys_module **mod_p);
+        void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p);
+
+/**
+ * @brief Finish compilation of all the global unres sets.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets to resolve.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres);
+
+/**
+ * @brief Revert a failed compilation (free new modules, unimplement newly implemented modules).
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres set with newly implemented modules.
+ */
+void lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres);
+
+/**
+ * @brief Erase all the global unres sets.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets.
+ */
+void lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres);
 
 /**
  * @brief Recompile the whole context based on the current flags.
  *
  * @param[in] ctx Context to recompile.
- * @param[in] skip Module to skip. If set, recompilation logs normally and stops on error.
- * If not set, recompilation hides any errors and prints just generic messages even though it should always succeed.
+ * @param[in] log Whether to log all the errors.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_recompile(struct ly_ctx *ctx, const struct lys_module *skip);
+LY_ERR lys_recompile(struct ly_ctx *ctx, ly_bool log);
 
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
@@ -253,8 +291,9 @@ LY_ERR lys_recompile(struct ly_ctx *ctx, const struct lys_module *skip);
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
  * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] unres Global unres structure for newly implemented modules.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-LY_ERR lys_compile(struct lys_module *mod, uint32_t options);
+LY_ERR lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unres);
 
 #endif /* LY_SCHEMA_COMPILE_H_ */

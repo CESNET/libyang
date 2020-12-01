@@ -1552,7 +1552,7 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
 
     /* ignore errors, the value may not satisfy schema constraints */
     rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
-            LYD_HINT_DATA, xp_node->node->schema, &val, &err);
+            LYD_HINT_DATA, xp_node->node->schema, &val, NULL, &err);
     ly_err_free(err);
     if (rc) {
         /* invalid value */
@@ -3333,7 +3333,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint16_t 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
             rc = type->plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
-                    LYD_HINT_DATA, scnode, &storage, &err);
+                    LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;
             }
@@ -3701,7 +3701,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 
             /* it was already evaluated on schema, it must succeed */
             rc = ly_path_compile(set->ctx, sleaf->module, (struct lysc_node *)sleaf, lref->path,
-                    LY_PATH_LREF_TRUE, oper, LY_PATH_TARGET_MANY, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, &p);
+                    LY_PATH_LREF_TRUE, oper, LY_PATH_TARGET_MANY, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
             assert(!rc);
 
             /* get the target node */
@@ -3810,7 +3810,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
 
             /* store args[1] as ident */
             rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
-                    0, set->format, set->prefix_data, LYD_HINT_DATA, leaf->schema, &data, &err);
+                    0, set->format, set->prefix_data, LYD_HINT_DATA, leaf->schema, &data, NULL, &err);
         } else {
             meta = args[0]->val.meta[i].meta;
             val = &meta->value;
@@ -3821,7 +3821,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
 
             /* store args[1] as ident */
             rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str), 0,
-                    set->format, set->prefix_data, LYD_HINT_DATA, meta->parent->schema, &data, &err);
+                    set->format, set->prefix_data, LYD_HINT_DATA, meta->parent->schema, &data, NULL, &err);
         }
 
         if (err) {
