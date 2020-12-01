@@ -1987,7 +1987,7 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lys
 
     /* add special meaning first byte */
     if (buf) {
-        buf = realloc(buf, word_len + 2);
+        buf = ly_realloc(buf,  word_len + 2);
         word = buf;
     } else {
         buf = malloc(word_len + 2);
