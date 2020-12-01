@@ -1786,29 +1786,29 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                 case LY_PATH_PREDTYPE_LIST: {
                     /* key-predicate */
                     ly_bool d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
+                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
-                    if (strchr(value, quot)) {
+                    if (strchr(str, quot)) {
                         quot = '"';
                     }
                     ly_strcat(&result, "[%s:%s=%c%s%c]", ly_type_print_get_prefix(pred->key->module, format, prefix_data),
-                            pred->key->name, quot, value, quot);
+                            pred->key->name, quot, str, quot);
                     if (d) {
-                        free((char *)value);
+                        free((char *)str);
                     }
                     break;
                 }
                 case LY_PATH_PREDTYPE_LEAFLIST: {
                     /* leaf-list-predicate */
                     ly_bool d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
+                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
-                    if (strchr(value, quot)) {
+                    if (strchr(str, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[.=%c%s%c]", quot, value, quot);
+                    ly_strcat(&result, "[.=%c%s%c]", quot, str, quot);
                     if (d) {
-                        free((char *)value);
+                        free((char *)str);
                     }
                     break;
                 }
@@ -1838,28 +1838,28 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                 case LY_PATH_PREDTYPE_LIST: {
                     /* key-predicate */
                     ly_bool d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
+                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
-                    if (strchr(value, quot)) {
+                    if (strchr(str, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, value, quot);
+                    ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, str, quot);
                     if (d) {
-                        free((char *)value);
+                        free((char *)str);
                     }
                     break;
                 }
                 case LY_PATH_PREDTYPE_LEAFLIST: {
                     /* leaf-list-predicate */
                     ly_bool d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
+                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
-                    if (strchr(value, quot)) {
+                    if (strchr(str, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[.=%c%s%c]", quot, value, quot);
+                    ly_strcat(&result, "[.=%c%s%c]", quot, str, quot);
                     if (d) {
-                        free((char *)value);
+                        free((char *)str);
                     }
                     break;
                 }
