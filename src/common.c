@@ -579,7 +579,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
     uint8_t expr = 0; /* 0 - position predicate; 1 - leaf-list-predicate; 2 - key-predicate */
     char quot;
 
-    assert(in[0] == '\[');
+    assert(in[0] == '[');
 
     *prefix = *id = *value = NULL;
     *prefix_len = *id_len = *value_len = 0;
