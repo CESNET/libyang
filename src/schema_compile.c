@@ -364,7 +364,7 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
 
     if (!ctx_sc) {
         context.ctx = ctx;
-        context.cur_mod = parsed_mod->mod;
+        context.cur_mod = parsed_mod ? parsed_mod->mod : NULL;
         context.pmod = parsed_mod;
         context.path_len = 1;
         context.path[0] = '/';
