@@ -440,7 +440,7 @@ decimal:
         uint64_t u;
         for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u) {}
         if (u != value_len) {
-            if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
+            if (asprintf(&errmsg, "Invalid %" PRIu64 ". character of decimal64 value \"%.*s\".",
                     u + 1, (int)value_len, value) == -1) {
                 errmsg = NULL;
                 rc = LY_EMEM;
