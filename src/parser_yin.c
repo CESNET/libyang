@@ -3258,6 +3258,7 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subel
     struct lysp_stmt *last_subelem = NULL, *new_subelem = NULL;
 
     assert(ctx->xmlctx->status == LYXML_ELEMENT);
+    assert(exts);
 
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *exts, e, LY_EMEM);
 
