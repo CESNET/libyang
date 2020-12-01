@@ -1904,7 +1904,7 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     uint32_t i;
 
     /* find all target data instances */
-    ret = lyxp_eval(lref->path, node->schema->module, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, node, tree, &set, 0);
+    ret = lyxp_eval(lref->path, lref->cur_mod, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, node, tree, &set, 0);
     if (ret) {
         ret = LY_ENOTFOUND;
         val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);

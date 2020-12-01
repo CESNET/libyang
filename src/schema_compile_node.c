@@ -1536,6 +1536,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "path", "leafref type", "");
             return LY_EVALID;
         }
+        lref->cur_mod = type_p->pmod->mod;
         break;
     case LY_TYPE_INST:
         /* RFC 7950 9.9.3 - require-instance */
@@ -1585,6 +1586,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                             lref->basetype = LY_TYPE_LEAFREF;
                             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, &lref->path));
                             lref->refcount = 1;
+                            lref->cur_mod = ((struct lysc_type_leafref *)un_aux->types[v])->cur_mod;
                             lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
                             LY_CHECK_RET(lysc_prefixes_dup(((struct lysc_type_leafref *)un_aux->types[v])->prefixes,
                                     &lref->prefixes));
