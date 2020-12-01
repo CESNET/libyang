@@ -1324,7 +1324,8 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
 
     /* starting top-level */
     for (i = 0; in->current[i] != '\0' && is_jsonws(in->current[i]); i++) {
-        if (in->current[i] == 0x0a) { /* new line */
+        if (in->current[i] == '\n') {
+            /* new line */
             line++;
         }
     }
@@ -1444,12 +1445,14 @@ lydjson_notif_envelope(struct lyjson_ctx *jsonctx, struct lyd_node **envp_p, enu
     /* now the notificationContent is expected, which will be parsed by the caller */
 
     /* create notification envelope */
-    ret = lyd_create_opaq(jsonctx->ctx, "notification", 12, NULL, 0, "ietf-restconf", 13, "", 0, NULL, LY_PREF_JSON,
-            NULL, LYD_NODEHINT_ENVELOPE, envp_p);
+    ret = lyd_create_opaq(jsonctx->ctx, "notification", ly_strlen_const("notification"), NULL, 0,
+            "ietf-restconf", ly_strlen_const("ietf-restconf"), "", ly_strlen_const(""), NULL, LY_PREF_JSON, NULL,
+            LYD_NODEHINT_ENVELOPE, envp_p);
     LY_CHECK_GOTO(ret, cleanup);
     /* create notification envelope */
-    ret = lyd_create_opaq(jsonctx->ctx, "eventTime", 9, NULL, 0, "ietf-restconf", 13, value, value_len, &dynamic,
-            LY_PREF_JSON, NULL, LYD_VALHINT_STRING, &et);
+    ret = lyd_create_opaq(jsonctx->ctx, "eventTime", ly_strlen_const("eventTime"), NULL, 0,
+            "ietf-restconf", ly_strlen_const("ietf-restconf"), value, value_len, &dynamic, LY_PREF_JSON, NULL,
+            LYD_VALHINT_STRING, &et);
     LY_CHECK_GOTO(ret, cleanup);
     /* insert eventTime into notification */
     lyd_insert_node(*envp_p, NULL, et);

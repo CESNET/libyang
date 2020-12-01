@@ -285,7 +285,7 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
 
     LY_CHECK_ARG_RET(NULL, module, name, NULL);
     if (!nodetype) {
-        nodetype = 0xffff;
+        nodetype = LYS_NODETYPE_MASK;
     }
 
     while ((node = lys_getnext(node, parent, module->compiled, options))) {
@@ -381,7 +381,7 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
     (*set)->size = xp_set.used;
 
     for (i = 0; i < xp_set.used; ++i) {
-        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == 1)) {
+        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX)) {
             ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
@@ -427,7 +427,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
     (*set)->size = xp_set.used;
 
     for (i = 0; i < xp_set.used; ++i) {
-        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == 1)) {
+        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX)) {
             ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
@@ -1151,7 +1151,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         }
         if (rev) {
             len = dot - ++rev;
-            if (!mod->parsed->revs || (len != 10) || strncmp(mod->parsed->revs[0].date, rev, len)) {
+            if (!mod->parsed->revs || (len != LY_REV_SIZE - 1) || strncmp(mod->parsed->revs[0].date, rev, len)) {
                 LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
                         mod->parsed->revs ? mod->parsed->revs[0].date : "none");
             }
@@ -1249,9 +1249,11 @@ lys_parse_get_format(const struct ly_in *in, LYS_INFORMAT format)
         /* ignore trailing whitespaces */
         for ( ; len > 0 && isspace(path[len - 1]); len--) {}
 
-        if ((len >= 5) && !strncmp(&path[len - 5], ".yang", 5)) {
+        if ((len >= LY_YANG_SUFFIX_LEN + 1) &&
+                !strncmp(&path[len - LY_YANG_SUFFIX_LEN], LY_YANG_SUFFIX, LY_YANG_SUFFIX_LEN)) {
             format = LYS_IN_YANG;
-        } else if ((len >= 6) && !strncmp(&path[len - 4], ".yin", 4)) {
+        } else if ((len >= LY_YIN_SUFFIX_LEN + 1) &&
+                !strncmp(&path[len - LY_YIN_SUFFIX_LEN], LY_YIN_SUFFIX, LY_YIN_SUFFIX_LEN)) {
             format = LYS_IN_YIN;
         } /* else still unknown */
     }
@@ -1453,9 +1455,11 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
 
                 /* get type according to filename suffix */
                 flen = strlen(file->d_name);
-                if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+                if ((flen >= LY_YANG_SUFFIX_LEN + 1) &&
+                        !strcmp(&file->d_name[flen - LY_YANG_SUFFIX_LEN], LY_YANG_SUFFIX)) {
                     format_aux = LYS_IN_YANG;
-                } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                } else if ((flen >= LY_YIN_SUFFIX_LEN + 1) &&
+                        !strcmp(&file->d_name[flen - LY_YIN_SUFFIX_LEN], LY_YIN_SUFFIX)) {
                     format_aux = LYS_IN_YIN;
                 } else {
                     /* not supportde suffix/file format */
@@ -1491,7 +1495,8 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                     /* remember the revision and try to find the newest one */
                     if (match_name) {
                         if ((file->d_name[len] != '@') ||
-                                lysp_check_date(NULL, &file->d_name[len + 1], flen - ((format_aux == LYS_IN_YANG) ? 5 : 4) - len - 1, NULL)) {
+                                lysp_check_date(NULL, &file->d_name[len + 1],
+                                flen - ((format_aux == LYS_IN_YANG) ? LY_YANG_SUFFIX_LEN : LY_YIN_SUFFIX_LEN) - len - 1, NULL)) {
                             continue;
                         } else if ((match_name[match_len] == '@') &&
                                 (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {

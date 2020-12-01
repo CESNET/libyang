@@ -275,11 +275,14 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         /* ignore trailing whitespaces */
         for ( ; len > 0 && isspace(path[len - 1]); len--) {}
 
-        if ((len >= 5) && !strncmp(&path[len - 4], ".xml", 4)) {
+        if ((len >= LY_XML_SUFFIX_LEN + 1) &&
+                !strncmp(&path[len - LY_XML_SUFFIX_LEN], LY_XML_SUFFIX, LY_XML_SUFFIX_LEN)) {
             format = LYD_XML;
-        } else if ((len >= 6) && !strncmp(&path[len - 5], ".json", 5)) {
+        } else if ((len >= LY_JSON_SUFFIX_LEN + 1) &&
+                !strncmp(&path[len - LY_JSON_SUFFIX_LEN], LY_JSON_SUFFIX, LY_JSON_SUFFIX_LEN)) {
             format = LYD_JSON;
-        } else if ((len >= 5) && !strncmp(&path[len - 4], ".lyb", 4)) {
+        } else if ((len >= LY_LYB_SUFFIX_LEN + 1) &&
+                !strncmp(&path[len - LY_LYB_SUFFIX_LEN], LY_LYB_SUFFIX, LY_LYB_SUFFIX_LEN)) {
             format = LYD_LYB;
         } /* else still unknown */
     }
@@ -1342,7 +1345,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
                 }
                 break;
             }
-        /* fallthrough */
+        /* fall through */
         case LYS_CONTAINER:
         case LYS_NOTIF:
         case LYS_RPC:
@@ -3000,7 +3003,7 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
     char quot;
 
     val = LYD_CANON_VALUE(node);
-    len = 4 + strlen(val) + 2;
+    len = 4 + strlen(val) + 2; /* "[.='" + val + "']" */
     LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 
     quot = '\'';

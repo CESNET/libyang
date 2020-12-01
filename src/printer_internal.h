@@ -56,6 +56,8 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *mod
 #define LEVEL_INC LEVEL++                     /**< increase indentation level */
 #define LEVEL_DEC LEVEL--                     /**< decrease indentation level */
 
+#define XML_NS_INDENT 8
+
 /**
  * @brief YANG printer of the parsed submodule. Full YANG printer.
  *

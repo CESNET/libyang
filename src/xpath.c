@@ -133,8 +133,9 @@ lyxp_print_token(enum lyxp_token tok)
 static void
 print_expr_struct_debug(const struct lyxp_expr *exp)
 {
+#define MSG_BUFFER_SIZE 128
+    char tmp[MSG_BUFFER_SIZE];
     uint16_t i, j;
-    char tmp[128];
 
     if (!exp || (ly_ll < LY_LLDBG)) {
         return;
@@ -153,6 +154,7 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
         }
         LOGDBG(LY_LDGXPATH, tmp);
     }
+#undef MSG_BUFFER_SIZE
 }
 
 #ifndef NDEBUG
@@ -781,7 +783,8 @@ set_copy(struct lyxp_set *set)
         ret->type = set->type;
 
         for (i = 0; i < set->used; ++i) {
-            if ((set->val.scnodes[i].in_ctx == 1) || (set->val.scnodes[i].in_ctx == -2)) {
+            if ((set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) ||
+                    (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START)) {
                 uint32_t idx;
                 LY_CHECK_ERR_RET(lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type, &idx),
                         lyxp_set_free(ret), NULL);
@@ -935,10 +938,10 @@ set_scnode_clear_ctx(struct lyxp_set *set)
     uint32_t i;
 
     for (i = 0; i < set->used; ++i) {
-        if (set->val.scnodes[i].in_ctx == 1) {
-            set->val.scnodes[i].in_ctx = 0;
-        } else if (set->val.scnodes[i].in_ctx == -2) {
-            set->val.scnodes[i].in_ctx = -1;
+        if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+        } else if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START) {
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         }
     }
 }
@@ -1192,7 +1195,7 @@ lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, 
     assert(set->type == LYXP_SET_SCNODE_SET);
 
     if (lyxp_set_scnode_contains(set, node, node_type, -1, &index)) {
-        set->val.scnodes[index].in_ctx = 1;
+        set->val.scnodes[index].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
     } else {
         if (set->used == set->size) {
             set->val.scnodes = ly_realloc(set->val.scnodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->val.scnodes);
@@ -1203,7 +1206,7 @@ lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, 
         index = set->used;
         set->val.scnodes[index].scnode = (struct lysc_node *)node;
         set->val.scnodes[index].type = node_type;
-        set->val.scnodes[index].in_ctx = 1;
+        set->val.scnodes[index].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
         ++set->used;
     }
 
@@ -1253,7 +1256,7 @@ set_scnode_new_in_ctx(struct lyxp_set *set)
 
     assert(set->type == LYXP_SET_SCNODE_SET);
 
-    ret_ctx = 3;
+    ret_ctx = LYXP_SET_SCNODE_ATOM_PRED_CTX;
 retry:
     for (i = 0; i < set->used; ++i) {
         if (set->val.scnodes[i].in_ctx >= ret_ctx) {
@@ -1262,7 +1265,7 @@ retry:
         }
     }
     for (i = 0; i < set->used; ++i) {
-        if (set->val.scnodes[i].in_ctx == 1) {
+        if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
             set->val.scnodes[i].in_ctx = ret_ctx;
         }
     }
@@ -1377,7 +1380,7 @@ set_assign_pos(struct lyxp_set *set, const struct lyd_node *root, enum lyxp_node
                 if (!tmp_node) {
                     LOGINT_RET(root->schema->module->ctx);
                 }
-            /* fallthrough */
+            /* fall through */
             case LYXP_NODE_ELEM:
             case LYXP_NODE_TEXT:
                 if (!tmp_node) {
@@ -3028,7 +3031,7 @@ warn_get_scnode_in_ctx(struct lyxp_set *set)
     i = set->used;
     do {
         --i;
-        if (set->val.scnodes[i].in_ctx == 1) {
+        if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
             /* if there are more, simply return the first found (last added) */
             return set->val.scnodes[i].scnode;
         }
@@ -5021,7 +5024,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *s
     if (options & LYXP_SCNODE_ALL) {
         if (args[0]->type == LYXP_SET_SCNODE_SET) {
             for (i = 0; i < args[0]->used; ++i) {
-                if (args[0]->val.scnodes[i].in_ctx == 1) {
+                if (args[0]->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
                     sleaf = (struct lysc_node_leaf *)args[0]->val.scnodes[i].scnode;
                     if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                         LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__,
@@ -5648,15 +5651,15 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     for (i = 0; i < orig_used; ++i) {
         uint32_t idx;
 
-        if (set->val.scnodes[i].in_ctx != 1) {
-            if (set->val.scnodes[i].in_ctx != -2) {
+        if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_ATOM_CTX) {
+            if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START) {
                 continue;
             }
 
             /* remember context node */
-            set->val.scnodes[i].in_ctx = -1;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = 0;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
         }
 
         start_parent = set->val.scnodes[i].scnode;
@@ -5674,7 +5677,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
 
                         /* we need to prevent these nodes from being considered in this moveto */
                         if ((idx < orig_used) && (idx > i)) {
-                            set->val.scnodes[idx].in_ctx = 2;
+                            set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_NEW_CTX;
                             temp_ctx = 1;
                         }
                     }
@@ -5688,7 +5691,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
                     LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, &idx));
 
                     if ((idx < orig_used) && (idx > i)) {
-                        set->val.scnodes[idx].in_ctx = 2;
+                        set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_NEW_CTX;
                         temp_ctx = 1;
                     }
                 }
@@ -5699,8 +5702,8 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     /* correct temporary in_ctx values */
     if (temp_ctx) {
         for (i = 0; i < orig_used; ++i) {
-            if (set->val.scnodes[i].in_ctx == 2) {
-                set->val.scnodes[i].in_ctx = 1;
+            if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_NEW_CTX) {
+                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
             }
         }
     }
@@ -5822,15 +5825,15 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod,
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {
-        if (set->val.scnodes[i].in_ctx != 1) {
-            if (set->val.scnodes[i].in_ctx != -2) {
+        if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_ATOM_CTX) {
+            if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START) {
                 continue;
             }
 
             /* remember context node */
-            set->val.scnodes[i].in_ctx = -1;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = 0;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
         }
 
         /* TREE DFS */
@@ -5846,7 +5849,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod,
                 uint32_t idx;
 
                 if (lyxp_set_scnode_contains(set, elem, LYXP_NODE_ELEM, i, &idx)) {
-                    set->val.scnodes[idx].in_ctx = 1;
+                    set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
                     if ((uint32_t)idx > i) {
                         /* we will process it later in the set */
                         goto skip_children;
@@ -6235,15 +6238,15 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 
     /* add all the children, recursively as they are being added into the same set */
     for (uint32_t i = 0; i < set->used; ++i) {
-        if (set->val.scnodes[i].in_ctx != 1) {
-            if (set->val.scnodes[i].in_ctx != -2) {
+        if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_ATOM_CTX) {
+            if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START) {
                 continue;
             }
 
             /* remember context node */
-            set->val.scnodes[i].in_ctx = -1;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = 0;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
         }
 
         start_parent = set->val.scnodes[i].scnode;
@@ -6390,15 +6393,15 @@ moveto_scnode_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {
-        if (set->val.scnodes[i].in_ctx != 1) {
-            if (set->val.scnodes[i].in_ctx != -2) {
+        if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_ATOM_CTX) {
+            if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START) {
                 continue;
             }
 
             /* remember context node */
-            set->val.scnodes[i].in_ctx = -1;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = 0;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
         }
 
         node = set->val.scnodes[i].scnode;
@@ -6421,15 +6424,15 @@ moveto_scnode_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 
         LY_CHECK_RET(lyxp_set_scnode_insert_node(set, new_node, new_type, &idx));
         if ((idx < orig_used) && (idx > i)) {
-            set->val.scnodes[idx].in_ctx = 2;
+            set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_NEW_CTX;
             temp_ctx = 1;
         }
     }
 
     if (temp_ctx) {
         for (i = 0; i < orig_used; ++i) {
-            if (set->val.scnodes[i].in_ctx == 2) {
-                set->val.scnodes[i].in_ctx = 1;
+            if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_NEW_CTX) {
+                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
             }
         }
     }
@@ -6779,7 +6782,7 @@ only_parse:
 
     } else if (set->type == LYXP_SET_SCNODE_SET) {
         for (i = 0; i < set->used; ++i) {
-            if (set->val.scnodes[i].in_ctx == 1) {
+            if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
                 /* there is a currently-valid node */
                 break;
             }
@@ -6799,7 +6802,7 @@ only_parse:
             if (set->val.scnodes[i].in_ctx != pred_in_ctx) {
                 continue;
             }
-            set->val.scnodes[i].in_ctx = 1;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
 
             *tok_idx = orig_exp;
 
@@ -6811,10 +6814,10 @@ only_parse:
 
         /* restore the state as it was before the predicate */
         for (i = 0; i < set->used; ++i) {
-            if (set->val.scnodes[i].in_ctx == 1) {
-                set->val.scnodes[i].in_ctx = 0;
+            if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
+                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
             } else if (set->val.scnodes[i].in_ctx == pred_in_ctx) {
-                set->val.scnodes[i].in_ctx = 1;
+                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
             }
         }
 
@@ -7162,7 +7165,7 @@ moveto:
             LY_CHECK_GOTO(rc, cleanup);
 
             for (i = set->used - 1; i > -1; --i) {
-                if (set->val.scnodes[i].in_ctx > 0) {
+                if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM) {
                     break;
                 }
             }
@@ -8737,7 +8740,7 @@ lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_P
     set->type = LYXP_SET_SCNODE_SET;
     set->root_type = lyxp_get_root_type(NULL, ctx_scnode, options);
     LY_CHECK_RET(lyxp_set_scnode_insert_node(set, ctx_scnode, ctx_scnode ? LYXP_NODE_ELEM : set->root_type, NULL));
-    set->val.scnodes[0].in_ctx = -2;
+    set->val.scnodes[0].in_ctx = LYXP_SET_SCNODE_START;
 
     set->ctx = cur_mod ? cur_mod->ctx : (ctx_scnode ? ctx_scnode->module->ctx : NULL);
     set->cur_scnode = ctx_scnode;

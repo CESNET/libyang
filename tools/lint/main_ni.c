@@ -638,12 +638,12 @@ fill_context(int argc, char *argv[], struct context *c)
             const char *ptr = optarg;
 
             while (ptr[0]) {
-                if (!strncasecmp(ptr, "dict", 4)) {
+                if (!strncasecmp(ptr, "dict", sizeof "dict" - 1)) {
                     dbg_groups |= LY_LDGDICT;
-                    ptr += 4;
-                } else if (!strncasecmp(ptr, "xpath", 5)) {
+                    ptr += sizeof "dict" - 1;
+                } else if (!strncasecmp(ptr, "xpath", sizeof "xpath" - 1)) {
                     dbg_groups |= LY_LDGXPATH;
-                    ptr += 5;
+                    ptr += sizeof "xpath" - 1;
                 }
 
                 if (ptr[0]) {

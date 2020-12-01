@@ -71,7 +71,8 @@ skip_ws(struct lyjson_ctx *jsonctx)
 {
     /* skip leading whitespaces */
     while (*jsonctx->in->current != '\0' && is_jsonws(*jsonctx->in->current)) {
-        if (*jsonctx->in->current == 0x0a) { /* new line */
+        if (*jsonctx->in->current == '\n') {
+            /* new line */
             jsonctx->line++;
         }
         ly_in_skip(jsonctx->in, 1);
@@ -226,11 +227,11 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
                     } else if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
                     } else if (in[offset + i] > 'F') {
-                        u = 10 + (in[offset + i] - 'a');
+                        u = LY_BASE_DEC + (in[offset + i] - 'a');
                     } else {
-                        u = 10 + (in[offset + i] - 'A');
+                        u = LY_BASE_DEC + (in[offset + i] - 'A');
                     }
-                    value = (16 * value) + u;
+                    value = (LY_BASE_HEX * value) + u;
                 }
                 break;
             default:
@@ -383,7 +384,7 @@ invalid_character:
         int64_t dp_position; /* final position of the deciaml point */
 
         errno = 0;
-        e_val = strtol(e_ptr, &ptr, 10);
+        e_val = strtol(e_ptr, &ptr, LY_BASE_DEC);
         if (errno) {
             LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SEMANTICS,
                     "Exponent out-of-bounds in a JSON Number value (%.*s).", offset - minus - (e_ptr - in), e_ptr);
@@ -561,24 +562,24 @@ lyjson_value(struct lyjson_ctx *jsonctx)
         return LY_SUCCESS;
     }
 
-    if ((*jsonctx->in->current == 'f') && !strncmp(jsonctx->in->current, "false", 5)) {
+    if ((*jsonctx->in->current == 'f') && !strncmp(jsonctx->in->current, "false", ly_strlen_const("false"))) {
         /* false */
-        lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 5, 0);
-        ly_in_skip(jsonctx->in, 5);
+        lyjson_ctx_set_value(jsonctx, jsonctx->in->current, ly_strlen_const("false"), 0);
+        ly_in_skip(jsonctx->in, ly_strlen_const("false"));
         JSON_PUSH_STATUS_RET(jsonctx, LYJSON_FALSE);
         LY_CHECK_RET(lyjson_check_next(jsonctx));
 
-    } else if ((*jsonctx->in->current == 't') && !strncmp(jsonctx->in->current, "true", 4)) {
+    } else if ((*jsonctx->in->current == 't') && !strncmp(jsonctx->in->current, "true", ly_strlen_const("true"))) {
         /* true */
-        lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 4, 0);
-        ly_in_skip(jsonctx->in, 4);
+        lyjson_ctx_set_value(jsonctx, jsonctx->in->current, ly_strlen_const("true"), 0);
+        ly_in_skip(jsonctx->in, ly_strlen_const("true"));
         JSON_PUSH_STATUS_RET(jsonctx, LYJSON_TRUE);
         LY_CHECK_RET(lyjson_check_next(jsonctx));
 
-    } else if ((*jsonctx->in->current == 'n') && !strncmp(jsonctx->in->current, "null", 4)) {
+    } else if ((*jsonctx->in->current == 'n') && !strncmp(jsonctx->in->current, "null", ly_strlen_const("null"))) {
         /* none */
         lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 0, 0);
-        ly_in_skip(jsonctx->in, 4);
+        ly_in_skip(jsonctx->in, ly_strlen_const("null"));
         JSON_PUSH_STATUS_RET(jsonctx, LYJSON_NULL);
         LY_CHECK_RET(lyjson_check_next(jsonctx));
 

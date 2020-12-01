@@ -251,11 +251,11 @@ lysp_stmt_status(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint1
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
     arg_len = strlen(stmt->arg);
-    if ((arg_len == 7) && !strncmp(stmt->arg, "current", arg_len)) {
+    if ((arg_len == ly_strlen_const("current")) && !strncmp(stmt->arg, "current", arg_len)) {
         *flags |= LYS_STATUS_CURR;
-    } else if ((arg_len == 10) && !strncmp(stmt->arg, "deprecated", arg_len)) {
+    } else if ((arg_len == ly_strlen_const("deprecated")) && !strncmp(stmt->arg, "deprecated", arg_len)) {
         *flags |= LYS_STATUS_DEPRC;
-    } else if ((arg_len == 8) && !strncmp(stmt->arg, "obsolete", arg_len)) {
+    } else if ((arg_len == ly_strlen_const("obsolete")) && !strncmp(stmt->arg, "obsolete", arg_len)) {
         *flags |= LYS_STATUS_OBSLT;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "status");
@@ -386,13 +386,13 @@ lysp_stmt_type_enum_value_pos(struct lys_parser_ctx *ctx, const struct lysp_stmt
 
     errno = 0;
     if (val_kw == LY_STMT_VALUE) {
-        num = strtol(stmt->arg, &ptr, 10);
+        num = strtol(stmt->arg, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, ly_stmt2str(val_kw));
             goto error;
         }
     } else {
-        unum = strtoul(stmt->arg, &ptr, 10);
+        unum = strtoul(stmt->arg, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, ly_stmt2str(val_kw));
             goto error;
@@ -533,13 +533,13 @@ lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *st
     }
 
     errno = 0;
-    num = strtoul(stmt->arg, &ptr, 10);
+    num = strtoul(stmt->arg, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - stmt->arg) != arg_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "fraction-digits");
         return LY_EVALID;
     }
-    if ((errno == ERANGE) || (num > 18)) {
+    if ((errno == ERANGE) || (num > LY_TYPE_DEC64_FD_MAX)) {
         LOGVAL_PARSER(ctx, LY_VCODE_OOB, arg_len, stmt->arg, "fraction-digits");
         return LY_EVALID;
     }
@@ -589,9 +589,9 @@ lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *s
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
     arg_len = strlen(stmt->arg);
-    if ((arg_len == 4) && !strncmp(stmt->arg, "true", arg_len)) {
+    if ((arg_len == ly_strlen_const("true")) && !strncmp(stmt->arg, "true", arg_len)) {
         *reqinst = 1;
-    } else if ((arg_len != 5) || strncmp(stmt->arg, "false", arg_len)) {
+    } else if ((arg_len != ly_strlen_const("false")) || strncmp(stmt->arg, "false", arg_len)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "require-instance");
         return LY_EVALID;
     }
@@ -631,14 +631,14 @@ lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_st
     char *buf;
     const struct lysp_stmt *child;
 
-    if ((*pat)[0] == 0x15) {
+    if ((*pat)[0] == LYSP_RESTR_PATTERN_NACK) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "modifier");
         return LY_EVALID;
     }
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
     arg_len = strlen(stmt->arg);
-    if ((arg_len != 12) || strncmp(stmt->arg, "invert-match", arg_len)) {
+    if ((arg_len != ly_strlen_const("invert-match")) || strncmp(stmt->arg, "invert-match", arg_len)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, arg_len, stmt->arg, "modifier");
         return LY_EVALID;
     }
@@ -649,8 +649,8 @@ lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_st
     strcpy(buf, *pat);
     lydict_remove(PARSER_CTX(ctx), *pat);
 
-    assert(buf[0] == 0x06);
-    buf[0] = 0x15;
+    assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
+    buf[0] = LYSP_RESTR_PATTERN_NACK;
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, pat));
 
     for (child = stmt->child; child; child = child->next) {
@@ -696,7 +696,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     buf = malloc(arg_len + 2);
     LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
     memmove(buf + 1, stmt->arg, arg_len);
-    buf[0] = 0x06; /* pattern's default regular-match flag */
+    buf[0] = LYSP_RESTR_PATTERN_ACK; /* pattern's default regular-match flag */
     buf[arg_len + 1] = '\0'; /* terminating NULL byte */
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
     restr->arg.mod = ctx->parsed_mod;

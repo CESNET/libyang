@@ -876,8 +876,8 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
     }*/
 
     /* create node */
-    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
-            xmlctx->value_len, NULL, LY_PREF_XML, NULL, LYD_NODEHINT_ENVELOPE, &et);
+    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", ly_strlen_const("eventTime"), prefix, prefix_len,
+            ns->uri, strlen(ns->uri), xmlctx->value, xmlctx->value_len, NULL, LY_PREF_XML, NULL, LYD_NODEHINT_ENVELOPE, &et);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* assign atributes */

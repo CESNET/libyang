@@ -24,7 +24,7 @@
 /**
  * @brief list of all extension plugins implemented internally
  */
-struct lyext_plugins_list lyext_plugins_internal[6] = {
+struct lyext_plugins_list lyext_plugins_internal[] = {
     {"ietf-netconf-acm", "2012-02-22", "default-deny-write", &nacm_plugin},
     {"ietf-netconf-acm", "2018-02-14", "default-deny-write", &nacm_plugin},
     {"ietf-netconf-acm", "2012-02-22", "default-deny-all", &nacm_plugin},

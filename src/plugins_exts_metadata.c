@@ -26,7 +26,14 @@
 LYEXT_VERSION_CHECK
  */
 
-struct lysc_ext_substmt annotation_substmt[7] = {
+#define ANNOTATION_SUBSTMT_IFF     0
+#define ANNOTATION_SUBSTMT_UNITS   1
+#define ANNOTATION_SUBSTMT_STATUS  2
+#define ANNOTATION_SUBSTMT_TYPE    3
+#define ANNOTATION_SUBSTMT_DSC     4
+#define ANNOTATION_SUBSTMT_REF     5
+
+struct lysc_ext_substmt annotation_substmt[] = {
     {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL},
     {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL},
     {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL},
@@ -75,10 +82,10 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     /* compile annotation substatements */
     c_ext->data = annotation = calloc(1, sizeof *annotation);
     LY_CHECK_ERR_RET(!annotation, LOGMEM(cctx->ctx), LY_EMEM);
-    annotation_substmt[0].storage = &annotation->iffeatures;
-    annotation_substmt[1].storage = &annotation->units;
-    annotation_substmt[2].storage = &annotation->flags;
-    annotation_substmt[3].storage = &annotation->type;
+    annotation_substmt[ANNOTATION_SUBSTMT_IFF].storage = &annotation->iffeatures;
+    annotation_substmt[ANNOTATION_SUBSTMT_UNITS].storage = &annotation->units;
+    annotation_substmt[ANNOTATION_SUBSTMT_STATUS].storage = &annotation->flags;
+    annotation_substmt[ANNOTATION_SUBSTMT_TYPE].storage = &annotation->type;
     /* description and reference are allowed, but not compiled */
 
     LY_CHECK_RET(lys_compile_extension_instance(cctx, p_ext, annotation_substmt));
@@ -100,10 +107,10 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 
     struct lyext_metadata *annotation = (struct lyext_metadata *)ext->data;
 
-    annotation_substmt[0].storage = &annotation->iffeatures;
-    annotation_substmt[1].storage = &annotation->units;
-    annotation_substmt[2].storage = &annotation->flags;
-    annotation_substmt[3].storage = &annotation->type;
+    annotation_substmt[ANNOTATION_SUBSTMT_IFF].storage = &annotation->iffeatures;
+    annotation_substmt[ANNOTATION_SUBSTMT_UNITS].storage = &annotation->units;
+    annotation_substmt[ANNOTATION_SUBSTMT_STATUS].storage = &annotation->flags;
+    annotation_substmt[ANNOTATION_SUBSTMT_TYPE].storage = &annotation->type;
 
     lysc_extension_instance_free(ctx, annotation_substmt);
     free(ext->data);

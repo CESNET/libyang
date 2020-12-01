@@ -170,7 +170,8 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
                 /* FuncName */
                 LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_FUNCNAME), token_error);
-                if ((exp->tok_len[*tok_idx] != 7) || strncmp(exp->expr + exp->tok_pos[*tok_idx], "current", 7)) {
+                if ((exp->tok_len[*tok_idx] != ly_strlen_const("current")) ||
+                        strncmp(exp->expr + exp->tok_pos[*tok_idx], "current", ly_strlen_const("current"))) {
                     LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Invalid function \"%.*s\" invocation in path.",
                             exp->tok_len[*tok_idx], exp->expr + exp->tok_pos[*tok_idx]);
                     goto token_error;
@@ -582,7 +583,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         LY_ARRAY_NEW_RET(ctx, *predicates, p, LY_EMEM);
 
         /* syntax was already checked */
-        p->position = strtoull(expr->expr + expr->tok_pos[*tok_idx], (char **)&name, 10);
+        p->position = strtoull(expr->expr + expr->tok_pos[*tok_idx], (char **)&name, LY_BASE_DEC);
         ++(*tok_idx);
 
         /* ']' */

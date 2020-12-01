@@ -63,7 +63,7 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, 
     LY_CHECK_ARG_RET(ctx ? PARSER_CTX(ctx) : NULL, date, LY_EINVAL);
     LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? PARSER_CTX(ctx) : NULL, date_len), LY_EINVAL);
 
-    /* check format */
+    /* check format: YYYY-MM-DD */
     for (uint8_t i = 0; i < date_len; i++) {
         if ((i == 4) || (i == 7)) {
             if (date[i] != '-') {
@@ -497,8 +497,8 @@ lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     LY_ERR ret = LY_SUCCESS;
 
     /* check name collisions - typedefs and groupings */
-    ids_global = lyht_new(8, sizeof(char *), lysp_id_cmp, NULL, 1);
-    ids_scoped = lyht_new(8, sizeof(char *), lysp_id_cmp, NULL, 1);
+    ids_global = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
+    ids_scoped = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
     LY_ARRAY_FOR(mod->typedefs, v) {
         ret = lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global, ids_scoped);
         LY_CHECK_GOTO(ret, cleanup);
@@ -697,7 +697,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
         /* revision */
         if (rev) {
             len = dot - ++rev;
-            if (!revs || (len != 10) || strncmp(revs[0].date, rev, len)) {
+            if (!revs || (len != LY_REV_SIZE - 1) || strncmp(revs[0].date, rev, len)) {
                 LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
                         revs ? revs[0].date : "none");
             }

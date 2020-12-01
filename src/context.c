@@ -117,15 +117,17 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
+#define LY_CTX_SEARCHDIRS_SIZE_STEP 8
     void **new;
 
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
 
     if (ctx->search_paths.count == ctx->search_paths.size) {
         /* not enough space for terminating NULL byte */
-        new = realloc(((struct ly_ctx *)ctx)->search_paths.objs, (ctx->search_paths.size + 8) * sizeof *ctx->search_paths.objs);
+        new = realloc(((struct ly_ctx *)ctx)->search_paths.objs,
+                (ctx->search_paths.size + LY_CTX_SEARCHDIRS_SIZE_STEP) * sizeof *ctx->search_paths.objs);
         LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
-        ((struct ly_ctx *)ctx)->search_paths.size += 8;
+        ((struct ly_ctx *)ctx)->search_paths.size += LY_CTX_SEARCHDIRS_SIZE_STEP;
         ((struct ly_ctx *)ctx)->search_paths.objs = new;
     }
     /* set terminating NULL byte to the strings list */
@@ -704,7 +706,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
     uint32_t i;
     ly_bool bis = 0;
     int r;
-    char id[8], *str;
+    char *str;
     const struct lys_module *mod;
     struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL;
 
@@ -809,18 +811,21 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
     }
 
     /* IDs */
-    sprintf(id, "%u", ctx->module_set_id);
-    LY_CHECK_GOTO(ret = lyd_new_term(root, NULL, "module-set-id", id, 0, NULL), error);
+    r = asprintf(&str, "%u", ctx->module_set_id);
+    LY_CHECK_ERR_GOTO(r == -1, LOGMEM(ctx); ret = LY_EMEM, error);
+    ret = lyd_new_term(root, NULL, "module-set-id", str, 0, NULL);
+    LY_CHECK_ERR_GOTO(ret, free(str), error);
 
     if (bis) {
         /* create one complete schema */
-        LY_CHECK_GOTO(ret = lyd_new_list(root_bis, NULL, "schema", 0, &cont, "complete"), error);
+        LY_CHECK_ERR_GOTO(ret = lyd_new_list(root_bis, NULL, "schema", 0, &cont, "complete"), free(str), error);
 
-        LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "module-set", "complete", 0, NULL), error);
+        LY_CHECK_ERR_GOTO(ret = lyd_new_term(cont, NULL, "module-set", "complete", 0, NULL), free(str), error);
 
         /* content-id */
-        LY_CHECK_GOTO(ret = lyd_new_term(root_bis, NULL, "content-id", id, 0, NULL), error);
+        LY_CHECK_ERR_GOTO(ret = lyd_new_term(root_bis, NULL, "content-id", str, 0, NULL), free(str), error);
     }
+    free(str);
 
     if (root_bis) {
         if (lyd_insert_sibling(root, root_bis, &root)) {

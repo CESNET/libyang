@@ -469,7 +469,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
     switch (basetype) {
     case LY_TYPE_INT8: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-128), INT64_C(127), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-128), INT64_C(127), LY_BASE_DEC, max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(127);
         } else {
@@ -481,7 +481,8 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
         break;
     case LY_TYPE_INT16: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-32768), INT64_C(32767), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-32768), INT64_C(32767), LY_BASE_DEC,
+                    max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(32767);
         } else {
@@ -493,7 +494,8 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
         break;
     case LY_TYPE_INT32: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-2147483648), INT64_C(2147483647), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-2147483648), INT64_C(2147483647), LY_BASE_DEC,
+                    max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(2147483647);
         } else {
@@ -506,8 +508,8 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
     case LY_TYPE_INT64: /* range */
     case LY_TYPE_DEC64: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), 10,
-                    max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807),
+                    LY_BASE_DEC, max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(9223372036854775807);
         } else {
@@ -519,7 +521,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
         break;
     case LY_TYPE_UINT8: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(255), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(255), LY_BASE_DEC, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(255);
         } else {
@@ -531,7 +533,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
         break;
     case LY_TYPE_UINT16: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(65535), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(65535), LY_BASE_DEC, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(65535);
         } else {
@@ -543,7 +545,8 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
         break;
     case LY_TYPE_UINT32: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(4294967295), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(4294967295), LY_BASE_DEC,
+                    max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(4294967295);
         } else {
@@ -557,7 +560,8 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, ly_bool ma
     case LY_TYPE_STRING: /* length */
     case LY_TYPE_BINARY: /* length */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(18446744073709551615), LY_BASE_DEC,
+                    max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(18446744073709551615);
         } else {
@@ -636,7 +640,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             }
             parts_done++;
             break;
-        } else if (!strncmp(expr, "min", 3)) {
+        } else if (!strncmp(expr, "min", ly_strlen_const("min"))) {
             if (parts) {
                 /* min cannot be used elsewhere than in the first part */
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
@@ -644,7 +648,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                         expr - range_p->arg.str, range_p->arg.str);
                 goto cleanup;
             }
-            expr += 3;
+            expr += ly_strlen_const("min");
 
             LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
             LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, base_range, NULL), cleanup);
@@ -684,8 +688,8 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             }
 
             /* continue with possible another expression part */
-        } else if (!strncmp(expr, "max", 3)) {
-            expr += 3;
+        } else if (!strncmp(expr, "max", ly_strlen_const("max"))) {
+            expr += ly_strlen_const("max");
             while (isspace(*expr)) {
                 expr++;
             }
@@ -1005,7 +1009,8 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const c
 
         /* find our range */
         for (idx = 0; ublock2urange[idx][0]; ++idx) {
-            if (!strncmp(perl_regex + start + 5, ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
+            if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
+                    ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
                 break;
             }
         }
@@ -1040,8 +1045,8 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const c
             PCRE2_UTF | PCRE2_ANCHORED | PCRE2_ENDANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE,
             &err_code, &err_offset, NULL);
     if (!code_local) {
-        PCRE2_UCHAR err_msg[256] = {0};
-        pcre2_get_error_message(err_code, err_msg, 256);
+        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
+        pcre2_get_error_message(err_code, err_msg, LY_PCRE2_MSG_LIMIT);
         LOGVAL(ctx, LY_VLOG_STR, log_path, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);
         free(perl_regex);
         return LY_EVALID;
@@ -1090,7 +1095,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
         ret = lys_compile_type_pattern_check(ctx->ctx, ctx->path, &patterns_p[u].arg.str[1], &(*pattern)->code);
         LY_CHECK_RET(ret);
 
-        if (patterns_p[u].arg.str[0] == 0x15) {
+        if (patterns_p[u].arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
             (*pattern)->inverted = 1;
         }
         DUP_STRING_GOTO(ctx->ctx, &patterns_p[u].arg.str[1], (*pattern)->expr, ret, done);
@@ -1917,6 +1922,11 @@ cleanup:
 }
 
 /**
+ * @brief Special bits combination marking the uses_status value and propagated by ::lys_compile_uses() function.
+ */
+#define LYS_STATUS_USES LYS_CONFIG_MASK
+
+/**
  * @brief Compile status information of the given node.
  *
  * To simplify getting status of the node, the flags are set following inheritance rules, so all the nodes
@@ -1936,9 +1946,9 @@ lys_compile_status(struct lysc_ctx *ctx, uint16_t *node_flags, uint16_t parent_f
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     if (!((*node_flags) & LYS_STATUS_MASK)) {
         if (parent_flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT)) {
-            if ((parent_flags & 0x3) != 0x3) {
+            if ((parent_flags & LYS_STATUS_USES) != LYS_STATUS_USES) {
                 /* do not print the warning when inheriting status from uses - the uses_status value has a special
-                 * combination of bits (0x3) which marks the uses_status value */
+                 * combination of bits (LYS_STATUS_USES) which marks the uses_status value */
                 LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
                         (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
             }
@@ -3375,8 +3385,8 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     /* compile data nodes */
     LY_LIST_FOR(grp->data, pnode) {
-        /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
-        ret = lys_compile_node(ctx, pnode, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3, &uses_child_set);
+        /* LYS_STATUS_USES in uses_status is a special bits combination to be able to detect status flags from uses */
+        ret = lys_compile_node(ctx, pnode, parent, (uses_p->flags & LYS_STATUS_MASK) | LYS_STATUS_USES, &uses_child_set);
         LY_CHECK_GOTO(ret, cleanup);
     }
 

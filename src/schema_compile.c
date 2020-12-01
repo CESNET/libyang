@@ -768,15 +768,15 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
     for (i = 0; i < set->used; ++i) {
         xp_scnode = &set->val.scnodes[i];
 
-        if (xp_scnode->in_ctx != -1) {
+        if (xp_scnode->in_ctx != LYXP_SET_SCNODE_START_USED) {
             /* check node when, skip the context node (it was just checked) */
-            xp_scnode->in_ctx = 1;
+            xp_scnode->in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
         }
     }
 
     for (i = 0; i < set->used; ++i) {
         xp_scnode = &set->val.scnodes[i];
-        if (xp_scnode->in_ctx != 1) {
+        if (xp_scnode->in_ctx != LYXP_SET_SCNODE_ATOM_CTX) {
             /* already checked */
             continue;
         }
@@ -784,7 +784,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
         if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) ||
                 !xp_scnode->scnode->when) {
             /* no when to check */
-            xp_scnode->in_ctx = 0;
+            xp_scnode->in_ctx = LYXP_SET_SCNODE_ATOM;
             continue;
         }
 
@@ -804,17 +804,18 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                     if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                         /* try to find this node in our set */
                         uint32_t idx;
-                        if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) && (set->val.scnodes[idx].in_ctx == -1)) {
+                        if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) &&
+                                (set->val.scnodes[idx].in_ctx == LYXP_SET_SCNODE_START_USED)) {
                             LOGVAL(set->ctx, LY_VLOG_LYSC, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
                             ret = LY_EVALID;
                             goto cleanup;
                         }
 
                         /* needs to be checked, if in both sets, will be ignored */
-                        tmp_set.val.scnodes[j].in_ctx = 1;
+                        tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
                     } else {
                         /* no when, nothing to check */
-                        tmp_set.val.scnodes[j].in_ctx = 0;
+                        tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM;
                     }
                 }
 
@@ -827,7 +828,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
         } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
         /* this node when was checked (xp_scnode could have been reallocd) */
-        set->val.scnodes[i].in_ctx = -1;
+        set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
     }
 
 cleanup:
@@ -997,7 +998,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
         lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (i = 0; i < tmp_set.used; ++i) {
             /* skip roots'n'stuff */
-            if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (tmp_set.val.scnodes[i].in_ctx != -1)) {
+            if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
                 struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
 
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
