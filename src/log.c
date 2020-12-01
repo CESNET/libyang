@@ -162,7 +162,9 @@ ly_err_free(void *ptr)
     /* clean the error list */
     for (i = (struct ly_err_item *)ptr; i; i = next) {
         next = i->next;
-        free(i->msg);
+        if (i->msg && strcmp(i->msg, LY_EMEM_MSG)) {
+            free(i->msg);
+        }
         free(i->path);
         free(i->apptag);
         free(i);

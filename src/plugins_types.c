@@ -324,7 +324,7 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
 
 error:
     if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -363,7 +363,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
 
 error:
     if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -452,7 +452,7 @@ decimal:
     /* prepare value string without decimal point to easily parse using standard functions */
     valcopy = malloc(size * sizeof *valcopy);
     if (!valcopy) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     }
 
@@ -496,14 +496,14 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
         /* match_data needs to be allocated each time because of possible multi-threaded evaluation */
         match_data = pcre2_match_data_create_from_pattern(patterns[u]->code, NULL);
         if (!match_data) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             return LY_EMEM;
         }
 
         rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
         if (rc == PCRE2_ERROR_NOMATCH) {
             if (asprintf(&errmsg, "String \"%.*s\" does not conform to the pattern \"%s\".", (int)str_len, str, patterns[u]->expr) == -1) {
-                *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+                *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
                 ret = LY_EMEM;
             } else {
                 *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
@@ -591,7 +591,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
 
 error:
     if ((rc == -1) || !errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, range->eapptag ? strdup(range->eapptag) : NULL);
@@ -715,7 +715,7 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
 
 error:
     if ((rc == -1) || !msg) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
@@ -996,7 +996,7 @@ finish:
 error:
     if (!*err) {
         if ((rc == -1) || !errmsg) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         } else {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
         }
@@ -1176,7 +1176,7 @@ next:
 
 cleanup:
     if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         ret = LY_EMEM;
     } else if (errmsg) {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1269,7 +1269,7 @@ match:
 
 error:
     if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1300,7 +1300,7 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     } else {
         char *errmsg;
         if (asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             return LY_EMEM;
         } else {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1336,7 +1336,7 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     if (value_len) {
         char *errmsg;
         if (asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             return LY_EMEM;
         } else {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1518,7 +1518,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
 
 error:
     if ((rc == -1) || !errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1650,7 +1650,7 @@ error:
 
     if (!*err) {
         if (rc == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             ret = LY_EMEM;
         } else if (errmsg) {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1684,7 +1684,7 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     ret = ly_path_eval(storage->target, tree, NULL);
     if (ret) {
         if (asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", storage->canonical) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             ret = LY_EMEM;
         } else {
             *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -2112,7 +2112,7 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
 
     if (u == LY_ARRAY_COUNT(types)) {
         if (asprintf(&errmsg, "Invalid union value \"%s\" - no matching subtype found.", subvalue->original) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             ret = LY_EMEM;
             goto cleanup;
         }
@@ -2144,7 +2144,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     /* prepare subvalue storage */
     subvalue = calloc(1, sizeof *subvalue);
     if (!subvalue) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         return LY_EMEM;
     }
 
