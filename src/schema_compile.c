@@ -1641,7 +1641,7 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
     struct lys_module *mod;
     struct lys_glob_unres unres = {0};
     LY_ERR ret = LY_SUCCESS;
-    uint32_t prev_lo;
+    uint32_t prev_lo = 0;
 
     if (!log) {
         /* recompile, must succeed because the modules were already compiled; hide messages because any
