@@ -123,6 +123,7 @@ static char *lyp_ublock2urange[][2] = {
     {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]"},
     {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]"},
     {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]"},
+    {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]"},
     {NULL, NULL}
 };
 
