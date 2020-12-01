@@ -928,6 +928,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const c
         {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]"},
         {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]"},
         {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]"},
+        {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]"},
         {NULL, NULL}
     };
 
