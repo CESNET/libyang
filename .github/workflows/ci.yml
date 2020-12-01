@@ -128,7 +128,7 @@ jobs:
       - name: Dependencies
         shell: bash
         run: |
-          sudo apt-get install libcmocka-dev
+          sudo apt-get install libcmocka-dev lcov
 
       - name: Configure
         shell: bash
