@@ -3775,6 +3775,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
+    (*yin_ctx)->unres = main_ctx->unres;
     LY_CHECK_RET(lyxml_ctx_new(ctx, in, &(*yin_ctx)->xmlctx));
 
     mod_p = calloc(1, sizeof *mod_p);
@@ -3827,7 +3828,7 @@ cleanup:
 }
 
 LY_ERR
-yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod)
+yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS;
     enum ly_stmt kw = LY_STMT_NONE;
@@ -3837,6 +3838,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
+    (*yin_ctx)->unres = unres;
     LY_CHECK_RET(lyxml_ctx_new(mod->ctx, in, &(*yin_ctx)->xmlctx));
 
     mod_p = calloc(1, sizeof *mod_p);

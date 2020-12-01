@@ -28,6 +28,7 @@ extern "C" {
 
 struct ly_ctx;
 struct lys_module;
+struct lys_glob_unres;
 struct lysc_ident;
 struct lysc_node;
 struct lysc_pattern;
@@ -192,6 +193,7 @@ void lysc_prefixes_free(struct lysc_prefix *prefixes);
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
  * @param[in] ctx_node The @p value schema context node.
  * @param[out] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
+ * @param[in,out] unres Global unres structure for newly implemented modules. Set only if ::LY_TYPE_STORE_IMPLEMENT is used.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  *             error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
@@ -200,7 +202,7 @@ void lysc_prefixes_free(struct lysc_prefix *prefixes);
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value,
         size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
-        const struct lysc_node *ctx_node, struct lyd_value *storage, struct ly_err_item **err);
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Callback to validate the stored value in data.

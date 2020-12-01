@@ -105,21 +105,28 @@ test_module(void **state)
     struct lys_module *mod = NULL;
     struct lysp_feature *f;
     struct lysc_iffeature *iff;
+    struct lys_glob_unres unres = {0};
 
     str = "module test {namespace urn:test; prefix t;"
           "feature f1;feature f2 {if-feature f1;}}";
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
-    assert_int_equal(LY_EINVAL, lys_compile(NULL, 0));
+    assert_int_equal(LY_EINVAL, lys_compile(NULL, 0, NULL));
     logbuf_assert("Invalid argument mod (lys_compile()).");
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, NULL, &mod));
+    assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL, NULL, &unres, &mod));
+    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(ctx, &unres));
+    lys_compile_unres_glob_erase(ctx, &unres);
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
-    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0, &unres));
+    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(ctx, &unres));
+    lys_compile_unres_glob_erase(ctx, &unres);
     assert_null(mod->compiled);
     mod->implemented = 1;
-    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0, &unres));
+    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(ctx, &unres));
+    lys_compile_unres_glob_erase(ctx, &unres);
     assert_non_null(mod->compiled);
     assert_string_equal("test", mod->name);
     assert_string_equal("urn:test", mod->ns);
@@ -139,15 +146,17 @@ test_module(void **state)
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EINVAL, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL, NULL));
+    assert_int_equal(LY_EINVAL, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL, &unres, NULL));
+    lys_compile_unres_glob_erase(ctx, &unres);
     ly_in_free(in, 0);
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
 
     /* data definition name collision in top level */
     str = "module aa {namespace urn:aa;prefix aa; leaf a {type string;} container a{presence x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EEXIST, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL, &mod));
+    assert_int_equal(LY_EEXIST, lys_create_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, NULL, &unres, &mod));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /aa:a");
+    lys_compile_unres_glob_erase(ctx, &unres);
     ly_in_free(in, 0);
 
     *state = NULL;
@@ -3360,7 +3369,7 @@ test_when(void **state)
             "}"
         "}"
     , LYS_IN_YANG, NULL));
-    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"l\"). /a:cont2");
+    logbuf_assert("When condition of \"val\" includes a self-reference (referenced by when of \"cont2\"). /a:cont/lst/val");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx,
         "module a {"
@@ -3388,7 +3397,7 @@ test_when(void **state)
             "}"
         "}"
     , LYS_IN_YANG, NULL));
-    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"val\"). /a:cont2");
+    logbuf_assert("When condition of \"val\" includes a self-reference (referenced by when of \"cont2\"). /a:cont/lst/val");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx,
         "module a {"

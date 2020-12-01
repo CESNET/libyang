@@ -24,6 +24,7 @@
 #include "common.h"
 #include "in.h"
 #include "parser_internal.h"
+#include "schema_compile.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
@@ -4147,6 +4148,7 @@ test_yin_parse_module(void **state)
     struct lys_module *mod;
     struct lys_yin_parser_ctx *yin_ctx = NULL;
     struct ly_in *in = NULL;
+    struct lys_glob_unres unres = {0};
 
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
@@ -4172,9 +4174,10 @@ test_yin_parse_module(void **state)
            "</md:annotation>\n"
            "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
+    assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_SUCCESS);
     assert_null(mod->parsed->exts->child->next->child);
     assert_string_equal(mod->parsed->exts->child->next->arg, "test");
+    lys_compile_unres_glob_erase(st->ctx, &unres);
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -4212,7 +4215,8 @@ test_yin_parse_module(void **state)
                 "</list>\n"
             "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
+    assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_SUCCESS);
+    lys_compile_unres_glob_erase(st->ctx, &unres);
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -4227,7 +4231,8 @@ test_yin_parse_module(void **state)
                 "<prefix value=\"foo\"/>\n"
             "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
+    assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_SUCCESS);
+    lys_compile_unres_glob_erase(st->ctx, &unres);
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
@@ -4240,7 +4245,7 @@ test_yin_parse_module(void **state)
     data =  "<submodule name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</submodule>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EINVAL);
+    assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_EINVAL);
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);
@@ -4255,7 +4260,7 @@ test_yin_parse_module(void **state)
             "</module>"
             "<module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EVALID);
+    assert_int_equal(yin_parse_module(&yin_ctx, in, mod, &unres), LY_EVALID);
     logbuf_assert("Trailing garbage \"<module>\" after module, expected end-of-input. Line number 5.");
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);

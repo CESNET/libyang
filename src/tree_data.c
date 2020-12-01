@@ -66,7 +66,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         *incomplete = 0;
     }
 
-    ret = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, &err);
+    ret = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
     if (ret == LY_EINCOMPLETE) {
         if (incomplete) {
             *incomplete = 1;
@@ -128,7 +128,7 @@ _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, cons
 
     type = ((struct lysc_node_leaf *)node)->type;
     rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data,
-            LYD_HINT_SCHEMA, node, &storage, &err);
+            LYD_HINT_SCHEMA, node, &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success since we do not provide the context tree and call validation with
          * LY_TYPE_OPTS_INCOMPLETE_DATA */
@@ -168,7 +168,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
     type = ((struct lysc_node_leaf *)node->schema)->type;
     /* store */
     rc = type->plugin->store(ctx ? ctx : LYD_CTX(node), type, value, value_len, 0, LY_PREF_JSON, NULL,
-            LYD_HINT_DATA, node->schema, &val, &err);
+            LYD_HINT_DATA, node->schema, &val, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         stored = 1;
 
@@ -1264,7 +1264,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     /* compile path */
     LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, exp, LY_PATH_LREF_FALSE,
             options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, LY_PREF_JSON,
-            NULL, &p), cleanup);
+            NULL, NULL, &p), cleanup);
 
     schema = p[LY_ARRAY_COUNT(p) - 1].node;
     if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE) &&

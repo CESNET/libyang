@@ -4529,6 +4529,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
+    (*context)->unres = main_ctx->unres;
     (*context)->pos_type = LY_VLOG_LINE;
     (*context)->line = 1;
 
@@ -4587,7 +4588,7 @@ cleanup:
 }
 
 LY_ERR
-yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod)
+yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
@@ -4599,6 +4600,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(mod->ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
+    (*context)->unres = unres;
     (*context)->pos_type = LY_VLOG_LINE;
     (*context)->line = 1;
 

@@ -297,7 +297,7 @@ test_target(void **state)
     assert_int_equal(LY_SUCCESS, ly_path_parse(ctx, NULL, path_str, strlen(path_str), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
                                                LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp));
     assert_int_equal(LY_SUCCESS, ly_path_compile(ctx, NULL, NULL, exp, LY_PATH_LREF_FALSE, LY_PATH_OPER_INPUT,
-                                                 LY_PATH_TARGET_SINGLE, LY_PREF_JSON, NULL, &path));
+                                                 LY_PATH_TARGET_SINGLE, LY_PREF_JSON, NULL, NULL, &path));
     term = lyd_target(path, tree);
 
     assert_string_equal(term->schema->name, "d");

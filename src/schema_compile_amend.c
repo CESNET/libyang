@@ -100,7 +100,7 @@ lys_nodeid_check(struct lysc_ctx *ctx, const char *nodeid, ly_bool abs, struct l
 
             /* all the modules must be implemented */
             if (!mod->implemented) {
-                ret = lys_set_implemented(mod, NULL);
+                ret = lys_set_implemented_r(mod, NULL, ctx->unres);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
@@ -2226,7 +2226,7 @@ lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_m
 LY_ERR
 lys_precompile_augments_deviations(struct lysc_ctx *ctx)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lysp_module *mod_p;
     const struct lysc_node *target;
@@ -2236,12 +2236,12 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     uint16_t flags;
     uint32_t idx, opt_prev = ctx->options;
 
-    for (idx = 0; idx < ctx->ctx->implementing.count; ++idx) {
-        if (ctx->cur_mod == ctx->ctx->implementing.objs[idx]) {
+    for (idx = 0; idx < ctx->unres->implementing.count; ++idx) {
+        if (ctx->cur_mod == ctx->unres->implementing.objs[idx]) {
             break;
         }
     }
-    if (idx == ctx->ctx->implementing.count) {
+    if (idx == ctx->unres->implementing.count) {
         /* it was already implemented and all the augments and deviations fully applied */
         return LY_SUCCESS;
     }
@@ -2334,16 +2334,12 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
         }
     }
 
-    if (!has_dev) {
-        /* no need to recompile any modules */
-        return LY_SUCCESS;
+    if (has_dev) {
+        /* all modules (may) need to be recompiled */
+        ctx->unres->recompile = 1;
     }
 
-    /* recompile all modules except this one */
-    LY_CHECK_GOTO(ret = lys_recompile(ctx->ctx, mod_p->mod), cleanup);
-
-cleanup:
-    return ret;
+    return LY_SUCCESS;
 }
 
 void

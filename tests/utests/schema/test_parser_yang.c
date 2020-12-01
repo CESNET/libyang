@@ -23,6 +23,7 @@
 #include "common.h"
 #include "in_internal.h"
 #include "parser_internal.h"
+#include "schema_compile.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
@@ -879,6 +880,7 @@ test_module(void **state)
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
     struct ly_in in = {0};
+    struct lys_glob_unres unres = {0};
 
     mod = mod_renew(ctx);
 
@@ -1050,7 +1052,7 @@ test_module(void **state)
     in.current = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = calloc(1, sizeof *m);
     m->ctx = ctx->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
     logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m, NULL);
@@ -1058,7 +1060,7 @@ test_module(void **state)
     in.current = "prefix " SCHEMA_BEGINNING "}";
     m = calloc(1, sizeof *m);
     m->ctx = ctx->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
     logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m, NULL);
@@ -1066,7 +1068,7 @@ test_module(void **state)
     in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
     m = calloc(1, sizeof *m);
     m->ctx = ctx->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
     logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m, NULL);

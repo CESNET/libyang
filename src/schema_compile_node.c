@@ -69,10 +69,10 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
         return LY_SUCCESS;
     }
 
-    for (i = 0; i < ctx->dflts.count; ++i) {
-        if (((struct lysc_unres_dflt *)ctx->dflts.objs[i])->leaf == leaf) {
+    for (i = 0; i < ctx->unres->dflts.count; ++i) {
+        if (((struct lysc_unres_dflt *)ctx->unres->dflts.objs[i])->leaf == leaf) {
             /* just replace the default */
-            r = ctx->dflts.objs[i];
+            r = ctx->unres->dflts.objs[i];
             lysp_qname_free(ctx->ctx, r->dflt);
             free(r->dflt);
             break;
@@ -84,7 +84,7 @@ lysc_unres_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, stru
         LY_CHECK_ERR_RET(!r, LOGMEM(ctx->ctx), LY_EMEM);
         r->leaf = leaf;
 
-        LY_CHECK_RET(ly_set_add(&ctx->dflts, r, 1, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->unres->dflts, r, 1, NULL));
     }
 
     r->dflt = malloc(sizeof *r->dflt);
@@ -117,10 +117,10 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
         return LY_SUCCESS;
     }
 
-    for (i = 0; i < ctx->dflts.count; ++i) {
-        if (((struct lysc_unres_dflt *)ctx->dflts.objs[i])->llist == llist) {
+    for (i = 0; i < ctx->unres->dflts.count; ++i) {
+        if (((struct lysc_unres_dflt *)ctx->unres->dflts.objs[i])->llist == llist) {
             /* just replace the defaults */
-            r = ctx->dflts.objs[i];
+            r = ctx->unres->dflts.objs[i];
             lysp_qname_free(ctx->ctx, r->dflt);
             free(r->dflt);
             r->dflt = NULL;
@@ -134,7 +134,7 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
         LY_CHECK_ERR_RET(!r, LOGMEM(ctx->ctx), LY_EMEM);
         r->llist = llist;
 
-        LY_CHECK_RET(ly_set_add(&ctx->dflts, r, 1, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->unres->dflts, r, 1, NULL));
     }
 
     DUP_ARRAY(ctx->ctx, dflts, r->dflts, lysp_qname_dup);
@@ -292,7 +292,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
     if (!(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "when" semantics in a grouping, but repeat the check for different node because
          * of dummy node check */
-        LY_CHECK_RET(ly_set_add(&ctx->xpath, node, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->unres->xpath, node, 0, NULL));
     }
 
     return LY_SUCCESS;
@@ -2175,7 +2175,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct ly
 
     if ((action->input.musts || action->output.musts) && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->xpath, action, 0, NULL);
+        ret = ly_set_add(&ctx->unres->xpath, action, 0, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -2244,7 +2244,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_
     COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, lys_compile_must, ret, cleanup);
     if (notif_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->xpath, notif, 0, NULL);
+        ret = ly_set_add(&ctx->unres->xpath, notif, 0, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -2324,7 +2324,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, lys_compile_must, ret, done);
     if (cont_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->xpath, cont, 0, NULL);
+        ret = ly_set_add(&ctx->unres->xpath, cont, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
     COMPILE_OP_ARRAY_GOTO(ctx, cont_p->actions, cont->actions, node, lys_compile_action, 0, ret, done);
@@ -2358,13 +2358,13 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
 
     if ((leaf->type->basetype == LY_TYPE_LEAFREF) && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-        LY_CHECK_RET(ly_set_add(&ctx->leafrefs, leaf, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->unres->leafrefs, leaf, 0, NULL));
     } else if ((leaf->type->basetype == LY_TYPE_UNION) && !(ctx->options & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
         LY_ARRAY_COUNT_TYPE u;
         LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
             if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
                 /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-                LY_CHECK_RET(ly_set_add(&ctx->leafrefs, leaf, 0, NULL));
+                LY_CHECK_RET(ly_set_add(&ctx->unres->leafrefs, leaf, 0, NULL));
             }
         }
     } else if (leaf->type->basetype == LY_TYPE_EMPTY) {
@@ -2396,7 +2396,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, lys_compile_must, ret, done);
     if (leaf_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->xpath, leaf, 0, NULL);
+        ret = ly_set_add(&ctx->unres->xpath, leaf, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
     if (leaf_p->units) {
@@ -2443,7 +2443,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, lys_compile_must, ret, done);
     if (llist_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->xpath, llist, 0, NULL);
+        ret = ly_set_add(&ctx->unres->xpath, llist, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
     if (llist_p->units) {
@@ -2748,7 +2748,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, lys_compile_must, ret, done);
     if (list_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
-        LY_CHECK_RET(ly_set_add(&ctx->xpath, list, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->unres->xpath, list, 0, NULL));
     }
 
     /* keys */
@@ -3035,7 +3035,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
     COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, lys_compile_must, ret, done);
     if (any_p->musts && !(ctx->options & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
         /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->xpath, any, 0, NULL);
+        ret = ly_set_add(&ctx->unres->xpath, any, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
 
