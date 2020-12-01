@@ -77,9 +77,12 @@ cmd_list(struct ly_ctx **ctx, const char *cmdline)
         }
     }
 
-    ly_out_new_file(stdout, &out);
-    print_list(out, *ctx, format);
-    ly_out_free(out, NULL,  0);
+    if (!ly_out_new_file(stdout, &out)) {
+        print_list(out, *ctx, format);
+        ly_out_free(out, NULL,  0);
+    } else {
+        YLMSG_E("Unable to print to the standard output.\n");
+    }
 
 cleanup:
     free_cmdline(argv);
