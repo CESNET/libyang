@@ -29,7 +29,7 @@ int
 vdprintf(int fd, const char *format, va_list ap)
 {
     FILE *stream;
-    int count;
+    int count = 0;
 
     stream = fdopen(dup(fd), "a+");
     if (stream) {
