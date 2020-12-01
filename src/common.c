@@ -439,6 +439,7 @@ ly_strcat(char **dest, const char *format, ...)
     if (*dest) {
         *dest = ly_realloc(*dest, len);
         if (!*dest) {
+            va_end(fp);
             return LY_EMEM;
         }
         *dest = strcat(*dest, addition);
