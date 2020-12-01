@@ -929,7 +929,7 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
     }
 
     /* must return 0, already checked during parsing */
-    precomp = pcre_compile(perl_regex, PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
+    precomp = pcre_compile(perl_regex, PCRE_UTF8 | PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
                            &err_msg, &err_offset, NULL);
     if (!precomp) {
         LOGVAL(ctx, LYE_INREGEX, LY_VLOG_NONE, NULL, pattern, perl_regex + err_offset, err_msg);
