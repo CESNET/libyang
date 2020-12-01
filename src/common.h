@@ -102,6 +102,11 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #  define LOGDBG(dbg_group, str, ...) ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
 #endif
 
+/**
+ * Simple EMEM message, it can be safely stored in ::ly_err_item structures without problems when freeing.
+ */
+#define LY_EMEM_MSG "Memory allocation failed."
+
 #define LOGMEM(CTX) LOGERR(CTX, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
