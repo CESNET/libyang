@@ -657,6 +657,7 @@ type_get_hints_base(uint32_t hints)
 static LY_ERR
 type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
 {
+    int rc;
     char *msg;
 
     switch (type) {
@@ -667,18 +668,16 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
         if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM))) {
-            asprintf(&msg, "Invalid non-number-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
-            return LY_EVALID;
+            rc = asprintf(&msg, "Invalid non-number-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
+            goto error;
         }
         *base = type_get_hints_base(hints);
         break;
     case LY_TYPE_UINT64:
     case LY_TYPE_INT64:
         if (!(hints & LYD_VALHINT_NUM64)) {
-            asprintf(&msg, "Invalid non-num64-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
-            return LY_EVALID;
+            rc = asprintf(&msg, "Invalid non-num64-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
+            goto error;
         }
         *base = type_get_hints_base(hints);
         break;
@@ -690,23 +689,20 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
         if (!(hints & LYD_VALHINT_STRING)) {
-            asprintf(&msg, "Invalid non-string-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
-            return LY_EVALID;
+            rc = asprintf(&msg, "Invalid non-string-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
+            goto error;
         }
         break;
     case LY_TYPE_BOOL:
         if (!(hints & LYD_VALHINT_BOOLEAN)) {
-            asprintf(&msg, "Invalid non-boolean-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
-            return LY_EVALID;
+            rc = asprintf(&msg, "Invalid non-boolean-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
+            goto error;
         }
         break;
     case LY_TYPE_EMPTY:
         if (!(hints & LYD_VALHINT_EMPTY)) {
-            asprintf(&msg, "Invalid non-empty-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
-            return LY_EVALID;
+            rc = asprintf(&msg, "Invalid non-empty-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
+            goto error;
         }
         break;
     case LY_TYPE_UNKNOWN:
@@ -716,6 +712,15 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     }
 
     return LY_SUCCESS;
+
+error:
+    if ((rc == -1) || !msg) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    } else {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
+        return LY_EVALID;
+    }
 }
 
 /**
@@ -1678,8 +1683,12 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     /* find the target in data */
     ret = ly_path_eval(storage->target, tree, NULL);
     if (ret) {
-        asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", storage->canonical);
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        if (asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", storage->canonical) == -1) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            ret = LY_EMEM;
+        } else {
+            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        }
         return ret;
     }
 
