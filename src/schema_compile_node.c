@@ -1154,8 +1154,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v, match = 0;
-    int32_t highest_value = INT32_MIN, cur_val;
-    uint32_t highest_position = 0, cur_pos;
+    int32_t highest_value = INT32_MIN, cur_val = INT32_MIN;
+    uint32_t highest_position = 0, cur_pos = 0;
     struct lysc_type_bitenum_item *e, storage;
     ly_bool enabled;
 
