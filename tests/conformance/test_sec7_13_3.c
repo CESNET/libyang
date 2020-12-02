@@ -86,7 +86,7 @@ TEST_RPC_OUTPUT(void **state)
     const int data_files_fail[] = {TEST_DATA_FILE_LOAD_FAIL};
     char buf[1024];
     LYS_INFORMAT schema_format = LYS_IN_YANG;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     int i, j, ret;
     const int data_compare_fail[] = {TEST_DATA_COMPARE_FAIL};
     const char *data_compare_string[] = {TEST_DATA_COMPARE};

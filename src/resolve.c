@@ -5843,7 +5843,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     int mod_name_len, nam_len, rc;
     int need_implemented = 0;
     unsigned int i, j, found;
-    struct lys_ident *der, *cur;
+    struct lys_ident *der = NULL, *cur;
     struct lys_module *imod = NULL, *m, *tmod;
     struct ly_ctx *ctx;
 
@@ -6280,6 +6280,7 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
             break;
         default:
             must_size = 0;
+            must = NULL;
             break;
         }
     }

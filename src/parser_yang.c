@@ -508,7 +508,7 @@ int
 yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres)
 {
     int i, j;
-    char *vaux, c;
+    char *vaux, c = 0;
     struct unres_list_uniq *unique_info;
 
     /* count the number of unique leafs in the value */
@@ -1991,7 +1991,7 @@ yang_deviate_delete_unique(struct lys_module *module, struct lys_deviate *deviat
                            struct lys_node_list *list, int index, char * value)
 {
     struct ly_ctx *ctx = module->ctx;
-    int i, j, k;
+    int i, j, k = 0;
 
     /* find unique structures to delete */
     for (i = 0; i < list->unique_size; i++) {
