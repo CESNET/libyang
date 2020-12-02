@@ -723,7 +723,6 @@ lys_set_implemented(struct lys_module *mod, const char **features)
 
     /* implement this module and any other required modules, recursively */
     ret = lys_set_implemented_r(mod, features, &unres);
-    assert(mod == unres.implementing.objs[0]);
 
     /* the first module being implemented is finished, resolve global unres, consolidate the set */
     if (!ret) {
