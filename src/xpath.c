@@ -355,7 +355,7 @@ static int
 cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int fake_cont, enum lyxp_node_type root_type,
                       uint16_t indent, char **str, uint16_t *used, uint16_t *size)
 {
-    char *buf, *line, *ptr;
+    char *buf, *line, *ptr = NULL;
     const char *value_str;
     struct lyd_node *child;
     struct lyd_node_anydata *any;
@@ -1250,7 +1250,7 @@ static uint32_t
 get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyd_node *root,
              enum lyxp_node_type root_type, const struct lyd_node **prev, uint32_t *prev_pos)
 {
-    const struct lyd_node *next, *elem, *top_sibling;
+    const struct lyd_node *next, *elem = NULL, *top_sibling;
     uint32_t pos = 1;
 
     assert(prev && prev_pos && !root->prev->next);

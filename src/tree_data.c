@@ -1885,7 +1885,7 @@ lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *p
     const struct lys_module *module, *prev_mod;
     int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
     int is_relative = -1, has_predicate, first_iter = 1;
-    int backup_is_relative, backup_mod_name_len, yang_data_name_len;
+    int backup_is_relative, backup_mod_name_len, yang_data_name_len = 0;
 
     if (!path || (!data_tree && !ctx)
             || (!data_tree && (path[0] != '/'))) {
@@ -4565,7 +4565,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
 {
     struct ly_ctx *ctx;
     struct lys_node *par1, *par2;
-    struct lyd_node *iter, *start = NULL, *ins, *next1, *next2, *last;
+    struct lyd_node *iter, *start = NULL, *ins, *next1, *next2, *last = NULL;
     struct lyd_node *orig_parent = NULL, *orig_prev = NULL, *orig_next = NULL;
     int invalid = 0;
     char *str;
@@ -8045,7 +8045,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                        int mod_count, const struct lyd_node *data_tree, struct lyd_node *act_notif,
                        struct unres_data *unres, int wd)
 {
-    struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling, *data_tree_parent;
+    struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling = NULL, *data_tree_parent = NULL;
     struct lys_node *msg_op = NULL;
     struct ly_set *set;
     int ret = EXIT_FAILURE;

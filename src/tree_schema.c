@@ -3889,7 +3889,7 @@ lys_features_change(const struct lys_module *module, const char *name, int op, i
 {
     int all = 0;
     int i, j, k;
-    int progress, faili, failj, failk;
+    int progress, faili = 0, failj = 0, failk = 0;
 
     uint8_t fsize;
     struct lys_feature *f;

@@ -534,7 +534,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int rc, val_set, c_ftrs, c_ext = 0;
     unsigned int i, j;
     int ret = -1;
-    int64_t v, v_;
+    int64_t v, v_ = 0;
     int64_t p, p_;
     size_t len;
     int in_grp = 0;
@@ -2014,7 +2014,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
     struct ly_ctx *ctx = module->ctx;
     int i, j, ret = EXIT_FAILURE;
     const char *orig;
-    char *value, *vaux, *start = NULL, c;
+    char *value, *vaux, *start = NULL, c = 0;
     struct unres_list_uniq *unique_info;
 
     /* get unique value (list of leafs supposed to be unique */
@@ -2191,7 +2191,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lyxml_elem *next, *next2, *child, *develem;
     int c_dev = 0, c_must, c_uniq, c_dflt, c_ext = 0;
     int f_min = 0, f_max = 0; /* flags */
-    int i, j, k, rc;
+    int i, j, k = 0, rc;
     unsigned int u;
     struct ly_ctx *ctx = module->ctx;
     struct lys_deviate *d = NULL;
