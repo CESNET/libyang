@@ -1245,16 +1245,16 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
  * @brief Validate the whole data subtree.
  *
  * @param[in] root Subtree root.
- * @param[in,out] type_check Set for unres node types.
- * @param[in,out] type_meta_check Set for unres metadata types.
- * @param[in,out] when_check Set for nodes with when conditions.
+ * @param[in,out] node_types Set for unres node types.
+ * @param[in,out] meta_types Set for unres metadata types.
+ * @param[in,out] node_when Set for nodes with when conditions.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly_set *type_meta_check,
-        struct ly_set *when_check, uint32_t val_opts, struct lyd_node **diff)
+lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_types, struct ly_set *meta_types,
+        struct ly_set *node_when, uint32_t val_opts, struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
     struct lyd_node *node;
@@ -1263,13 +1263,13 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
         LY_LIST_FOR(node->meta, meta) {
             if (((struct lyext_metadata *)meta->annotation->data)->type->plugin->validate) {
                 /* metadata type resolution */
-                LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, 1, NULL));
+                LY_CHECK_RET(ly_set_add(meta_types, (void *)meta, 1, NULL));
             }
         }
 
         if ((node->schema->nodetype & LYD_NODE_TERM) && ((struct lysc_node_leaf *)node->schema)->type->plugin->validate) {
             /* node type resolution */
-            LY_CHECK_RET(ly_set_add(type_check, (void *)node, 1, NULL));
+            LY_CHECK_RET(ly_set_add(node_types, (void *)node, 1, NULL));
         } else if (node->schema->nodetype & LYD_NODE_INNER) {
             /* new node validation, autodelete */
             LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
@@ -1281,7 +1281,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
 
         if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
             /* when evaluation */
-            LY_CHECK_RET(ly_set_add(when_check, (void *)node, 1, NULL));
+            LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
         }
 
         LYD_TREE_DFS_END(root, node);
@@ -1308,7 +1308,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *first, *next, **first2;
     const struct lys_module *mod;
-    struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
+    struct ly_set node_types = {0}, meta_types = {0}, node_when = {0};
     uint32_t i = 0;
 
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx || module, LY_EINVAL);
@@ -1344,12 +1344,12 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
 
         /* process nested nodes */
         LY_LIST_FOR(*first2, first) {
-            ret = lyd_validate_subtree(first, &type_check, &type_meta_check, &when_check, val_opts, diff);
+            ret = lyd_validate_subtree(iter, &node_types, &meta_types, &node_when, val_opts, diff);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
         /* finish incompletely validated terminal values/attributes and when conditions */
-        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_meta_check, diff);
+        ret = lyd_validate_unres(tree, &node_when, &node_types, &meta_types, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* perform final validation that assumes the data tree is final */
@@ -1358,9 +1358,9 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
     }
 
 cleanup:
-    ly_set_erase(&type_check, NULL);
-    ly_set_erase(&type_meta_check, NULL);
-    ly_set_erase(&when_check, NULL);
+    ly_set_erase(&node_types, NULL);
+    ly_set_erase(&meta_types, NULL);
+    ly_set_erase(&node_when, NULL);
     return ret;
 }
 
