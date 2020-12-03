@@ -1547,8 +1547,9 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 API LY_ERR
 lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct lyd_node **diff)
 {
-    struct lyd_node *node;
     LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *node;
+    struct ly_set node_when = {0};
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
     if (diff) {
@@ -1560,13 +1561,17 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
         if (((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) &&
                 (node->schema->nodetype & LYD_NODE_INNER)) {
             LY_CHECK_GOTO(ret = lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, NULL,
-                    NULL, implicit_options, diff), cleanup);
+                    &node_when, implicit_options, diff), cleanup);
         }
 
         LYD_TREE_DFS_END(tree, node);
     }
 
+    /* resolve when and remove any invalid defaults */
+    LY_CHECK_GOTO(ret = lyd_validate_unres(&tree, &node_when, NULL, NULL, diff), cleanup);
+
 cleanup:
+    ly_set_erase(&node_when, NULL);
     if (ret && diff) {
         lyd_free_all(*diff);
         *diff = NULL;
@@ -1616,8 +1621,9 @@ cleanup:
 API LY_ERR
 lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options, struct lyd_node **diff)
 {
-    struct lyd_node *root, *d = NULL;
     LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *root, *d = NULL;
+    struct ly_set node_when = {0};
 
     LY_CHECK_ARG_RET(NULL, tree, module, LY_EINVAL);
     if (diff) {
@@ -1625,7 +1631,10 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     }
 
     /* add all top-level defaults for this module */
-    LY_CHECK_GOTO(ret = lyd_new_implicit_r(NULL, tree, NULL, module, NULL, NULL, implicit_options, diff), cleanup);
+    LY_CHECK_GOTO(ret = lyd_new_implicit_r(NULL, tree, NULL, module, NULL, &node_when, implicit_options, diff), cleanup);
+
+    /* resolve when and remove any invalid defaults */
+    LY_CHECK_GOTO(ret = lyd_validate_unres(tree, &node_when, NULL, NULL, diff), cleanup);
 
     /* process nested nodes */
     LY_LIST_FOR(*tree, root) {
@@ -1643,6 +1652,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     }
 
 cleanup:
+    ly_set_erase(&node_when, NULL);
     if (ret && diff) {
         lyd_free_all(*diff);
         *diff = NULL;
