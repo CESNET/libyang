@@ -1470,8 +1470,8 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
         LY_CHECK_RET(lyd_diff_change_op(diff_node, src_op));
 
         if (diff_cb) {
-            /* call callback */
-            LY_CHECK_RET(diff_cb(src_diff, diff_node, cb_data));
+            /* call callback with no source diff node since it was duplicated and just added */
+            LY_CHECK_RET(diff_cb(NULL, diff_node, cb_data));
         }
 
         /* update diff parent */

@@ -1558,7 +1558,9 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
  * @param[in,out] diff Target diff to merge into.
  * @param[in] src_diff Source diff.
  * @param[in] mod Module, whose diff only to consider, NULL for all modules.
- * @param[in] diff_cb Optional diff callback that will be called for every changed node.
+ * @param[in] diff_cb Optional diff callback that will be called for every merged node. Param @p diff_node is the source
+ * diff node while @p data_node is the updated target diff node. In case a whole subtree is added, the callback is
+ * called on the root with @p diff_node being NULL.
  * @param[in] cb_data Arbitrary callback data.
  * @param[in] options Bitmask of options flags, see @ref diffmergeoptions.
  * @return LY_SUCCESS on success,
@@ -1573,7 +1575,9 @@ LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_
  * @param[in,out] diff_first Target diff first sibling to merge into.
  * @param[in] diff_parent Target diff parent to merge into.
  * @param[in] src_sibling Source diff sibling to merge.
- * @param[in] diff_cb Optional diff callback that will be called for every changed node.
+ * @param[in] diff_cb Optional diff callback that will be called for every merged node. Param @p diff_node is the source
+ * diff node while @p data_node is the updated target diff node. In case a whole subtree is added, the callback is
+ * called on the root with @p diff_node being NULL.
  * @param[in] cb_data Arbitrary callback data.
  * @param[in] options Bitmask of options flags, see @ref diffmergeoptions.
  * @return LY_SUCCESS on success,
