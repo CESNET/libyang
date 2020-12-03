@@ -459,4 +459,12 @@ LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, con
 LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
         void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
 
+/**
+ * @brief Get string name of the format.
+ *
+ * @param[in] format Format whose name to get.
+ * @return Format string name.
+ */
+const char *ly_format2str(LY_PREFIX_FORMAT format);
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

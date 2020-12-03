@@ -1832,7 +1832,7 @@ test_type_leafref(void **state)
     logbuf_assert("Too many parent references in path. /bb:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path /a:invalid;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("No module connected with the prefix \"a\" found (prefix format 1). /cc:ref1");
+    logbuf_assert("No module connected with the prefix \"a\" found (prefix format schema stored mapping). /cc:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;leaf target1 {type string;}"
                                         "container a {leaf target2 {type uint8;}} leaf ref1 {type leafref {"
                                         "path '/a[target2 = current()/../target1]/target2';}}}", LYS_IN_YANG, &mod));
@@ -1885,7 +1885,7 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[x:name=current()/../ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("No module connected with the prefix \"x\" found (prefix format 1). /pp:address");
+    logbuf_assert("No module connected with the prefix \"x\" found (prefix format schema stored mapping). /pp:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module qq {namespace urn:qq;prefix qq;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -1948,7 +1948,7 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("No module connected with the prefix \"x\" found (prefix format 1). /yy:address");
+    logbuf_assert("No module connected with the prefix \"x\" found (prefix format schema stored mapping). /yy:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module zz {namespace urn:zz;prefix zz;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"

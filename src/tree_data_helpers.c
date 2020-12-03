@@ -585,3 +585,22 @@ cleanup:
     }
     return ret;
 }
+
+const char *
+ly_format2str(LY_PREFIX_FORMAT format)
+{
+    switch (format) {
+    case LY_PREF_SCHEMA:
+        return "schema imports";
+    case LY_PREF_SCHEMA_RESOLVED:
+        return "schema stored mapping";
+    case LY_PREF_XML:
+        return "XML prefixes";
+    case LY_PREF_JSON:
+        return "JSON module names";
+    default:
+        break;
+    }
+
+    return NULL;
+}

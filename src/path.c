@@ -403,8 +403,8 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
     if (pref) {
         *mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
         if (!*mod) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "No module connected with the prefix \"%.*s\" found (prefix format %d).",
-                    len, pref, format);
+            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "No module connected with the prefix \"%.*s\" found (prefix format %s).",
+                    len, pref, ly_format2str(format));
             return LY_EVALID;
         } else if (!(*mod)->implemented) {
             if (lref == LY_PATH_LREF_FALSE) {
