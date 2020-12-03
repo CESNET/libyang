@@ -1350,7 +1350,7 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     if (options & LY_TYPE_STORE_DYNAMIC) {
         LY_CHECK_RET(lydict_insert_zc(ctx, (char *)value, &storage->canonical));
     } else {
-        LY_CHECK_RET(lydict_insert(ctx, value, value_len, &storage->canonical));
+        LY_CHECK_RET(lydict_insert(ctx, "", value_len, &storage->canonical));
     }
     storage->ptr = NULL;
     storage->realtype = type;
