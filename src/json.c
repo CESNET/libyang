@@ -578,7 +578,7 @@ lyjson_value(struct lyjson_ctx *jsonctx)
 
     } else if ((*jsonctx->in->current == 'n') && !strncmp(jsonctx->in->current, "null", ly_strlen_const("null"))) {
         /* none */
-        lyjson_ctx_set_value(jsonctx, jsonctx->in->current, 0, 0);
+        lyjson_ctx_set_value(jsonctx, "", 0, 0);
         ly_in_skip(jsonctx->in, ly_strlen_const("null"));
         JSON_PUSH_STATUS_RET(jsonctx, LYJSON_NULL);
         LY_CHECK_RET(lyjson_check_next(jsonctx));
