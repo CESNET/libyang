@@ -1044,7 +1044,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
         void *check_data, const char **features, struct lys_glob_unres *unres, struct lys_module **module)
 {
-    struct lys_module *mod = NULL, *latest, *mod_dup;
+    struct lys_module *mod = NULL, *latest, *mod_dup, *mod_impl;
     struct lysp_submodule *submod;
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;
@@ -1064,6 +1064,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), LY_EMEM);
     mod->ctx = ctx;
 
+    /* parse */
     switch (format) {
     case LYS_IN_YIN:
         ret = yin_parse_module(&yinctx, in, mod, unres);
@@ -1078,12 +1079,12 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         ret = LY_EINVAL;
         break;
     }
-    LY_CHECK_GOTO(ret, error);
+    LY_CHECK_GOTO(ret, free_mod_cleanup);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);
     if (mod->parsed->revs) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx, mod->parsed->revs[0].date, 0, &mod->revision), error);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, mod->parsed->revs[0].date, 0, &mod->revision), free_mod_cleanup);
     }
 
     /* decide the latest revision */
@@ -1108,26 +1109,38 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     }
 
     if (custom_check) {
-        LY_CHECK_GOTO(ret = custom_check(ctx, mod->parsed, NULL, check_data), error);
+        LY_CHECK_GOTO(ret = custom_check(ctx, mod->parsed, NULL, check_data), free_mod_cleanup);
     }
 
-    /* check for duplicity in the context */
-    if (implement && ly_ctx_get_module_implemented(ctx, mod->name)) {
-        LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->name);
-        ret = LY_EDENIED;
-        goto error;
-    }
+    /* check whether it is not already in the context in the same revision */
     mod_dup = (struct lys_module *)ly_ctx_get_module(ctx, mod->name, mod->revision);
-    if (mod_dup) {
-        if (mod->parsed->revs) {
-            LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
-                    mod->name, mod->parsed->revs[0].date);
-        } else {
-            LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
-                    mod->name);
+    if (implement) {
+        mod_impl = ly_ctx_get_module_implemented(ctx, mod->name);
+        if (mod_impl && (mod_impl != mod_dup)) {
+            LOGERR(ctx, LY_EDENIED, "Module \"%s@%s\" is already implemented in the context.", mod_impl->name,
+                    mod_impl->revision ? mod_impl->revision : "<none>");
+            ret = LY_EDENIED;
+            goto free_mod_cleanup;
         }
-        ret = LY_EEXIST;
-        goto error;
+    }
+    if (mod_dup) {
+        if (implement) {
+            if (!mod_dup->implemented) {
+                /* just implement it */
+                LY_CHECK_GOTO(ret = lys_set_implemented_r(mod_dup, features, unres), free_mod_cleanup);
+                goto free_mod_cleanup;
+            }
+
+            /* nothing to do */
+            LOGVRB("Module \"%s@%s\" is already implemented in the context.", mod_dup->name,
+                    mod_dup->revision ? mod_dup->revision : "<none>");
+            goto free_mod_cleanup;
+        }
+
+        /* nothing to do */
+        LOGVRB("Module \"%s@%s\" is already present in the context.", mod_dup->name,
+                mod_dup->revision ? mod_dup->revision : "<none>");
+        goto free_mod_cleanup;
     }
 
     switch (in->type) {
@@ -1165,7 +1178,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     case LY_IN_ERROR:
         LOGINT(ctx);
         ret = LY_EINT;
-        goto error;
+        goto free_mod_cleanup;
     }
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
 
@@ -1175,13 +1188,13 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     /* add internal data in case specific modules were parsed */
     if (!strcmp(mod->name, "ietf-netconf")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), error);
+        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), free_mod_cleanup);
     } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), error);
+        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), free_mod_cleanup);
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */
-    LY_CHECK_GOTO(ret = ly_set_add(&unres->creating, mod, 1, NULL), error);
+    LY_CHECK_GOTO(ret = ly_set_add(&unres->creating, mod, 1, NULL), free_mod_cleanup);
 
     /* add into context */
     ret = ly_set_add(&ctx->list, mod, 1, NULL);
@@ -1202,13 +1215,13 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     if (!implement) {
         /* pre-compile identities of the module */
-        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), error);
+        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), cleanup);
 
         /* pre-compile identities of any submodules */
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             submod = mod->parsed->includes[u].submodule;
             ret = lys_identity_precompile(NULL, ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
-            LY_CHECK_GOTO(ret, error);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
         /* implement (compile) */
@@ -1218,9 +1231,10 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     /* success */
     goto cleanup;
 
-error:
-    assert(ret);
+free_mod_cleanup:
     lys_module_free(mod, NULL);
+    mod = NULL;
+
 cleanup:
     if (pctx) {
         ly_set_erase(&pctx->tpdfs_nodes, NULL);
