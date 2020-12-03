@@ -478,11 +478,11 @@ test_get_models(void **state)
     lys_compile_unres_glob_erase(ctx, &unres);
     /* invalid attempts - implementing module of the same name and inserting the same module */
     assert_int_equal(LY_EDENIED, lys_create_module(ctx, in2, LYS_IN_YANG, 1, NULL, NULL, NULL, &unres, NULL));
-    logbuf_assert("Module \"a\" is already implemented in the context.");
+    logbuf_assert("Module \"a@2018-10-23\" is already implemented in the context.");
     lys_compile_unres_glob_erase(ctx, &unres);
     ly_in_reset(in1);
-    assert_int_equal(LY_EEXIST, lys_create_module(ctx, in1, LYS_IN_YANG, 0, NULL, NULL, NULL, &unres, NULL));
-    logbuf_assert("Module \"a\" of revision \"2018-10-23\" is already present in the context.");
+    /* it is already there, fine */
+    assert_int_equal(LY_SUCCESS, lys_create_module(ctx, in1, LYS_IN_YANG, 0, NULL, NULL, NULL, &unres, NULL));
     /* insert the second module only as imported, not implemented */
     lys_compile_unres_glob_erase(ctx, &unres);
     ly_in_reset(in2);
