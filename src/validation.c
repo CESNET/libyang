@@ -1306,7 +1306,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *first, *next, **first2;
+    struct lyd_node *first, *next, **first2, *iter;
     const struct lys_module *mod;
     struct ly_set node_types = {0}, meta_types = {0}, node_when = {0};
     uint32_t i = 0;
@@ -1343,7 +1343,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process nested nodes */
-        LY_LIST_FOR(*first2, first) {
+        LY_LIST_FOR(*first2, iter) {
             ret = lyd_validate_subtree(iter, &node_types, &meta_types, &node_when, val_opts, diff);
             LY_CHECK_GOTO(ret, cleanup);
         }
