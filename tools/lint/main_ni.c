@@ -767,28 +767,33 @@ main_ni(int argc, char *argv[])
     if (c.list) {
         /* print the list of schemas */
         print_list(c.out, c.ctx, c.data_out_format);
-    } else if (c.schema_out_format) {
-        if (c.schema_node) {
-            ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, 0, c.schema_print_options);
-            if (ret) {
-                YLMSG_E("Unable to print schema node %s.\n", c.schema_node_path);
-                goto cleanup;
-            }
-        } else {
-            for (uint32_t u = 0; u < c.schema_modules.count; ++u) {
-                ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format, 0,
-                        c.schema_print_options);
+    } else {
+        if (c.schema_out_format) {
+            if (c.schema_node) {
+                ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, 0, c.schema_print_options);
                 if (ret) {
-                    YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)c.schema_modules.objs[u])->name);
+                    YLMSG_E("Unable to print schema node %s.\n", c.schema_node_path);
                     goto cleanup;
+                }
+            } else {
+                for (uint32_t u = 0; u < c.schema_modules.count; ++u) {
+                    ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format, 0,
+                            c.schema_print_options);
+                    if (ret) {
+                        YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)c.schema_modules.objs[u])->name);
+                        goto cleanup;
+                    }
                 }
             }
         }
-    } else if (c.data_out_format) {
-        if (process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out,
-                c.data_parse_options, c.data_validate_options, c.data_print_options,
-                &c.data_operational, &c.data_inputs, &c.data_request_paths, &c.data_requests, NULL)) {
-            goto cleanup;
+
+        /* do the data validation despite the schema was printed */
+        if (c.data_inputs.size) {
+            if (process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out,
+                    c.data_parse_options, c.data_validate_options, c.data_print_options,
+                    &c.data_operational, &c.data_inputs, &c.data_request_paths, &c.data_requests, NULL)) {
+                goto cleanup;
+            }
         }
     }
 
