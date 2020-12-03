@@ -152,6 +152,11 @@ lysp_feature_find(const struct lysp_module *pmod, const char *name, size_t len, 
         name = ptr + 1;
     }
 
+    /* feature without prefix, look in main module and all submodules */
+    if (pmod->is_submod) {
+        pmod = pmod->mod->parsed;
+    }
+
     /* we have the correct module, get the feature */
     while ((f = lysp_feature_next(f, pmod, &idx))) {
         if (!ly_strncmp(f->name, name, len)) {
