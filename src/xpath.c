@@ -7171,8 +7171,8 @@ moveto:
             }
             if (i == -1) {
                 path = lysc_path(set->cur_scnode, LYSC_PATH_LOG, NULL, 0);
-                LOGWRN(set->ctx, "Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
-                        ncname_len, ncname, ncname - exp->expr, exp->expr, path);
+                LOGWRN(set->ctx, "Schema node \"%.*s\" not found (\"%.*s\") with context node \"%s\".",
+                        ncname_len, ncname, (ncname - exp->expr) + ncname_len, exp->expr, path);
                 free(path);
             }
         } else {

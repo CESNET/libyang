@@ -389,7 +389,7 @@ test_accessible_tree(void **state)
             "}"
         "}";
     assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    logbuf_assert("Schema node \"l\" not found (../../cont/) with context node \"/b:cont2/l2\".");
+    logbuf_assert("Schema node \"l\" not found (\"../../cont/l\") with context node \"/b:cont2/l2\".");
     logbuf_clean();
 
     /* state -> config */
@@ -549,7 +549,7 @@ test_accessible_tree(void **state)
             "}"
         "}";
     assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    logbuf_assert("Schema node \"l\" not found (../) with context node \"/h:rp/l2\".");
+    logbuf_assert("Schema node \"l\" not found (\"../l\") with context node \"/h:rp/l2\".");
     logbuf_clean();
 
     /* rpc input -> notif leafref */
@@ -596,7 +596,7 @@ test_accessible_tree(void **state)
             "}"
         "}";
     assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    logbuf_assert("Schema node \"l\" not found (/notif/) with context node \"/i:rp/l2\".");
+    logbuf_assert("Schema node \"l\" not found (\"/notif/l\") with context node \"/i:rp/l2\".");
     logbuf_clean();
 
     /* action output -> state */
@@ -693,7 +693,7 @@ test_accessible_tree(void **state)
             "}"
         "}";
     assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    logbuf_assert("Schema node \"l\" not found (/cont/ll/act/) with context node \"/k:cont/ll/act/l2\".");
+    logbuf_assert("Schema node \"l\" not found (\"/cont/ll/act/l\") with context node \"/k:cont/ll/act/l2\".");
     logbuf_clean();
 
     *state = NULL;
