@@ -296,7 +296,7 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
 static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {
-    struct ly_in *in = NULL;
+    struct ly_in *in;
     uint8_t request_expected = 0;
 
     /* process the operational content if any */
@@ -309,6 +309,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
     for (int i = 0; i < argc - optind; i++) {
         LYS_INFORMAT format_schema = LYS_IN_UNKNOWN;
         LYD_FORMAT format_data = LYD_UNKNOWN;
+        in = NULL;
 
         if (get_input(argv[optind + i], &format_schema, &format_data, &in)) {
             goto error;
@@ -340,6 +341,8 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 
             ret = lys_parse(c->ctx, in, format_schema, features, &mod);
             ly_ctx_unset_searchdir_last(c->ctx, path_unset);
+            ly_in_free(in, 1);
+            in = NULL;
             if (ret) {
                 YLMSG_E("Processing schema module from %s failed.\n", argv[optind + i]);
                 goto error;
@@ -356,6 +359,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             if (fill_cmdline_file(&c->data_requests, in, argv[optind + i], format_data)) {
                 goto error;
             }
+            in = NULL;
 
             request_expected = 0;
         } else if (format_data) {
@@ -365,6 +369,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             if (!rec) {
                 goto error;
             }
+            in = NULL;
 
             if ((c->data_type == LYD_VALIDATE_OP_REPLY) && !c->data_request_paths.count) {
                 /* requests for the replies are expected in another input file */
@@ -377,9 +382,6 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
                 request_expected = 1;
             }
         }
-
-        ly_in_free(in, 1);
-        in = NULL;
     }
 
     if (request_expected) {
