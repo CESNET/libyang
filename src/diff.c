@@ -885,6 +885,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
         if (op == LYD_DIFF_OP_REPLACE) {
             /* find the node (we must have some siblings because the node was only moved) */
             lyd_diff_find_node(*first_node, diff_node, &match);
+            LY_CHECK_ERR_RET(!match, LOGINT(LYD_CTX(diff_node)), LY_EINT);
         } else {
             /* duplicate the node */
             LY_CHECK_RET(lyd_dup_single(diff_node, NULL, LYD_DUP_NO_META, &match));
@@ -916,6 +917,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
     case LYD_DIFF_OP_NONE:
         /* find the node */
         lyd_diff_find_node(*first_node, diff_node, &match);
+        LY_CHECK_ERR_RET(!match, LOGINT(LYD_CTX(diff_node)), LY_EINT);
 
         if (match->schema->nodetype & LYD_NODE_TERM) {
             /* special case of only dflt flag change */
@@ -951,6 +953,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
     case LYD_DIFF_OP_DELETE:
         /* find the node */
         lyd_diff_find_node(*first_node, diff_node, &match);
+        LY_CHECK_ERR_RET(!match, LOGINT(LYD_CTX(diff_node)), LY_EINT);
 
         /* remove it */
         if ((match == *first_node) && !match->parent) {
@@ -967,6 +970,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
 
         /* find the node */
         lyd_diff_find_node(*first_node, diff_node, &match);
+        LY_CHECK_ERR_RET(!match, LOGINT(LYD_CTX(diff_node)), LY_EINT);
 
         /* update its value */
         ret = lyd_change_term(match, LYD_CANON_VALUE(diff_node));
