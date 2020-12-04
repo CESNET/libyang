@@ -885,7 +885,7 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
 }
 
 API LY_ERR
-lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, void *value,
         LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
