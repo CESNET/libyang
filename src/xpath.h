@@ -284,7 +284,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
  * @param[in] ctx_node Current (context) data node, NULL in case of the root node.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
- * the tree of @p ctx_node).
+ * the tree of @p ctx_node). Can be any node of the tree, it is adjusted.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions.
  * @return LY_EVALID for invalid argument types/count,

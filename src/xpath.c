@@ -8470,6 +8470,14 @@ lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREF
         return LY_EINVAL;
     }
 
+    if (tree) {
+        /* adjust the pointer to be the first top-level sibling */
+        while (tree->parent) {
+            tree = lyd_parent(tree);
+        }
+        tree = lyd_first_sibling(tree);
+    }
+
     /* prepare set for evaluation */
     memset(set, 0, sizeof *set);
     set->type = LYXP_SET_NODE_SET;

@@ -60,12 +60,14 @@ LYB_HASH lyb_hash(struct lysc_node *sibling, uint8_t collision_id);
 ly_bool lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models);
 
 /**
- * @brief Check whether a node to be deleted is the first top-level sibling.
+ * @brief Check whether a node to be deleted is the root node, move it if it is.
  *
- * @param[in] first First sibling.
+ * @param[in] root Root sibling.
  * @param[in] to_del Node to be deleted.
+ * @param[in] mod If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
+ * the first top-level sibling.
  */
-#define LYD_DEL_IS_ROOT(first, to_del) (((first) == (to_del)) && !(first)->parent && !(first)->prev->next)
+void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod);
 
 /**
  * @brief Get address of a node's child pointer if any.
