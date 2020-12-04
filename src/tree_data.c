@@ -1950,8 +1950,12 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
 {
     const struct lysc_node *par2;
 
-    assert(schema);
     assert(!parent || !(parent->nodetype & (LYS_CASE | LYS_CHOICE)));
+
+    if (!parent || !schema) {
+        /* opaque nodes can be inserted wherever */
+        return LY_SUCCESS;
+    }
 
     /* find schema parent */
     par2 = lysc_data_parent(schema);
@@ -2017,7 +2021,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     }
 
     while (node) {
-        if (node->schema->flags & LYS_KEY) {
+        if (lysc_is_key(node->schema)) {
             LOGERR(LYD_CTX(node), LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
             return LY_EINVAL;
         }
