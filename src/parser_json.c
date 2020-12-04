@@ -1100,7 +1100,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             ret = lydjson_metadata_finish(lydctx, &tree);
             LY_CHECK_RET(ret);
 
-            ret = lyd_create_any(snode, tree, LYD_ANYDATA_DATATREE, node);
+            ret = lyd_create_any(snode, tree, LYD_ANYDATA_DATATREE, 1, node);
             LY_CHECK_RET(ret);
         }
     } else if (ret == LY_ENOT) {

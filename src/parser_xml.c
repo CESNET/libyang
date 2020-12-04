@@ -584,7 +584,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         lydctx->parse_options = prev_opts;
 
         /* create node */
-        ret = lyd_create_any(snode, anchor, LYD_ANYDATA_DATATREE, &node);
+        ret = lyd_create_any(snode, anchor, LYD_ANYDATA_DATATREE, 1, &node);
         LY_CHECK_GOTO(ret, error);
     }
     assert(node);

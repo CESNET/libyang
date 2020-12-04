@@ -162,14 +162,15 @@ LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_pred
  * Hash is calculated and flags are properly set based on @p is_valid.
  *
  * @param[in] schema Schema node of the new data node.
- * @param[in] value Value of the any node, is directly assigned into the data node.
+ * @param[in] value Value of the any node.
  * @param[in] value_type Value type of the value.
+ * @param[in] use_value Whether to directly assign (eat) the value or duplicate it.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type,
-        struct lyd_node **node);
+        ly_bool use_value, struct lyd_node **node);
 
 /**
  * @brief Create an opaque node.
