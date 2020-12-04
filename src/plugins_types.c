@@ -1080,13 +1080,15 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     /* remember the present items for further work */
     LY_CHECK_RET(ly_set_new(&items));
 
-    for (index = ws_count = lws_count = 0; index < value_len; index++, ws_count++) {
+    ws_count = lws_count = 0;
+    for (index = 0; index < value_len; ++index) {
         if (isspace(value[index])) {
+            ++ws_count;
             continue;
         }
         if (index == ws_count) {
             lws_count = ws_count;
-        } else if (ws_count > 1) {
+        } else if (ws_count) {
             iscanonical = 0;
         }
         ws_count = 0;
