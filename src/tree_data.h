@@ -1074,7 +1074,9 @@ LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, s
 /**
  * @brief Add any missing implicit nodes. Default nodes with a false "when" are not added.
  *
- * @param[in,out] tree Tree to add implicit nodes into.
+ * @param[in,out] tree Tree to add implicit nodes into. Note that in case a first top-level sibling is used,
+ * it may no longer be first if an implicit node was inserted before @p tree. Use ::lyd_first_sibling() to
+ * adjust @p tree in these cases.
  * @param[in] ctx libyang context, must be set only if @p tree is an empty tree.
  * @param[in] implicit_options Options for implicit node creation, see @ref implicitoptions.
  * @param[out] diff Optional diff with any created nodes.
@@ -1085,7 +1087,9 @@ LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, ui
 /**
  * @brief Add any missing implicit nodes of one module. Default nodes with a false "when" are not added.
  *
- * @param[in,out] tree Tree to add implicit nodes into.
+ * @param[in,out] tree Tree to add implicit nodes into. Note that in case a first top-level sibling is used,
+ * it may no longer be first if an implicit node was inserted before @p tree. Use ::lyd_first_sibling() to
+ * adjust @p tree in these cases.
  * @param[in] module Module whose implicit nodes to create.
  * @param[in] implicit_options Options for implicit node creation, see @ref implicitoptions.
  * @param[out] diff Optional diff with any created nodes.

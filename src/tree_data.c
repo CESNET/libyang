@@ -354,8 +354,13 @@ lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, ui
                     (validate_options & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
+            /* our first module node pointer may no longer be the first */
+            while (*first2 && (*first2)->prev->next && (lyd_owner_module(*first2) == lyd_owner_module((*first2)->prev))) {
+                *first2 = (*first2)->prev;
+            }
+
             /* finish incompletely validated terminal values/attributes and when conditions */
-            ret = lyd_validate_unres(tree, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types, NULL);
+            ret = lyd_validate_unres(first2, mod, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* perform final validation that assumes the data tree is final */
@@ -1568,7 +1573,7 @@ lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct l
     }
 
     /* resolve when and remove any invalid defaults */
-    LY_CHECK_GOTO(ret = lyd_validate_unres(&tree, &node_when, NULL, NULL, diff), cleanup);
+    LY_CHECK_GOTO(ret = lyd_validate_unres(&tree, NULL, &node_when, NULL, NULL, diff), cleanup);
 
 cleanup:
     ly_set_erase(&node_when, NULL);
@@ -1634,7 +1639,7 @@ lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
     LY_CHECK_GOTO(ret = lyd_new_implicit_r(NULL, tree, NULL, module, NULL, &node_when, implicit_options, diff), cleanup);
 
     /* resolve when and remove any invalid defaults */
-    LY_CHECK_GOTO(ret = lyd_validate_unres(tree, &node_when, NULL, NULL, diff), cleanup);
+    LY_CHECK_GOTO(ret = lyd_validate_unres(tree, module, &node_when, NULL, NULL, diff), cleanup);
 
     /* process nested nodes */
     LY_LIST_FOR(*tree, root) {

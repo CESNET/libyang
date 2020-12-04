@@ -397,6 +397,25 @@ lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **
 }
 
 void
+lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod)
+{
+    if (*root && (lyd_owner_module(*root) != mod)) {
+        /* there are no data of mod so this is simply the first top-level sibling */
+        mod = NULL;
+    }
+
+    if ((*root != to_del) || (*root)->parent) {
+        return;
+    }
+
+    *root = (*root)->next;
+    if (mod && *root && (lyd_owner_module(to_del) != lyd_owner_module(*root))) {
+        /* there are no more nodes from mod */
+        *root = lyd_first_sibling(*root);
+    }
+}
+
+void
 ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
 {
     struct ly_set *ns_list;
