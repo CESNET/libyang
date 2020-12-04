@@ -891,7 +891,7 @@ LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, co
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, void *value,
         LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
 
 /**
