@@ -180,6 +180,7 @@
  * -                            | ::lys_value_validate()          | Supplement functionality to ::lyd_value_validate().
  * lys_is_key()                 | ::lysc_is_key()                 | Renamed to connect with the compiled schema tree.
  * -                            | ::lysc_is_userordered()         | Added functionality to simplify the examination of generic compiled schema nodes.
+ * -                            | ::lysc_is_np_cont()             | ^
  * -                            | ::lysc_node_children()          | ^
  * -                            | ::lysc_node_children_full()     | ^
  * -                            | ::lysc_node_actions()           | ^

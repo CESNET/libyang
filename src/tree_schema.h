@@ -1772,6 +1772,15 @@ struct lysc_module {
     ((!lysc_node || !(lysc_node->nodetype & (LYS_LEAF)) || !(lysc_node->flags & LYS_KEY)) ? 0 : 1)
 
 /**
+ * @brief Examine whether a node is a non-presence container.
+ *
+ * @param[in] lysc_node Schema node to examine.
+ * @return Boolean value whether the @p node is a NP container or not.
+ */
+#define lysc_is_np_cont(lysc_node) \
+    ((!lysc_node || !(lysc_node->nodetype & (LYS_CONTAINER)) || (lysc_node->flags & LYS_PRESENCE)) ? 0 : 1)
+
+/**
  * @brief Check whether the schema node data instance existence depends on any when conditions.
  * This node and any direct parent choice and case schema nodes are also examined for when conditions.
  *
