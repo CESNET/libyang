@@ -2230,7 +2230,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                             $1.node.ptr_leaflist->max = $2;
                                             $1.node.flag |= LYS_MAX_ELEMENTS;
                                             $$ = $1;
-                                            if ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max) {
+                                            if ($1.node.ptr_leaflist->max && ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max)) {
                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, $1.node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", $2, "max-elements");
                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, $1.node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
                                               YYABORT;
@@ -2367,7 +2367,7 @@ list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                                        $1.node.ptr_list->max = $2;
                                        $1.node.flag |= LYS_MAX_ELEMENTS;
                                        $$ = $1;
-                                       if ($1.node.ptr_list->min > $1.node.ptr_list->max) {
+                                       if ($1.node.ptr_list->max && ($1.node.ptr_list->min > $1.node.ptr_list->max)) {
                                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, $1.node.ptr_list, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, $1.node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
                                          YYABORT;
