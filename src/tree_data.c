@@ -737,7 +737,8 @@ finish:
 }
 
 API LY_ERR
-lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node)
+lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
@@ -765,7 +766,8 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
 }
 
 API LY_ERR
-lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node, ...)
+lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...)
 {
     struct lyd_node *ret = NULL, *key;
     const struct lysc_node *schema, *key_s;
