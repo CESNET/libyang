@@ -5315,7 +5315,7 @@ yyreduce:
                                             (yyvsp[-1].nodes).node.ptr_leaflist->max = (yyvsp[0].uint);
                                             (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
                                             (yyval.nodes) = (yyvsp[-1].nodes);
-                                            if ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max) {
+                                            if ((yyvsp[-1].nodes).node.ptr_leaflist->max && ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max)) {
                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "max-elements");
                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
                                               YYABORT;
@@ -5479,7 +5479,7 @@ yyreduce:
                                        (yyvsp[-1].nodes).node.ptr_list->max = (yyvsp[0].uint);
                                        (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
                                        (yyval.nodes) = (yyvsp[-1].nodes);
-                                       if ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max) {
+                                       if ((yyvsp[-1].nodes).node.ptr_list->max && ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max)) {
                                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
                                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
                                          YYABORT;
