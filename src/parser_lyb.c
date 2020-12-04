@@ -857,7 +857,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         }
 
         /* create node */
-        ret = lyd_create_any(snode, value, value_type, &node);
+        ret = lyd_create_any(snode, value, value_type, 1, &node);
         LY_CHECK_GOTO(ret, cleanup);
 
         dynamic = 0;

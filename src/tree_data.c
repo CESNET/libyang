@@ -656,9 +656,12 @@ cleanup:
 }
 
 LY_ERR
-lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node)
+lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type, ly_bool use_value,
+        struct lyd_node **node)
 {
+    LY_ERR ret;
     struct lyd_node_any *any;
+    union lyd_any_value any_val;
 
     assert(schema->nodetype & LYD_NODE_ANY);
 
@@ -670,8 +673,15 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
     any->flags = LYD_NEW;
 
     /* TODO: convert XML/JSON strings into a opaq data tree */
-    any->value.str = value;
-    any->value_type = value_type;
+
+    if (use_value) {
+        any->value.str = value;
+        any->value_type = value_type;
+    } else {
+        any_val.str = value;
+        ret = lyd_any_copy_value((struct lyd_node *)any, &any_val, value_type);
+        LY_CHECK_ERR_RET(ret, free(any), ret);
+    }
     lyd_hash((struct lyd_node *)any);
 
     *node = (struct lyd_node *)any;
@@ -889,7 +899,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_ANY, output ? LYS_GETNEXT_OUTPUT : 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    LY_CHECK_RET(lyd_create_any(schema, value, value_type, &ret));
+    LY_CHECK_RET(lyd_create_any(schema, value, value_type, 1, &ret));
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
     }
@@ -945,7 +955,7 @@ lyd_new_path_update(struct lyd_node *node, const void *value, LYD_ANYDATA_VALUET
     case LYS_ANYDATA:
     case LYS_ANYXML:
         /* create a new any node */
-        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, &new_any));
+        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, 0, &new_any));
 
         /* compare with the existing one */
         if (lyd_compare_single(node, new_any, 0)) {
@@ -1389,7 +1399,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, &node), cleanup);
+            LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, 0, &node), cleanup);
             break;
         default:
             LOGINT(ctx);
