@@ -381,6 +381,9 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 
                 request_expected = 1;
             }
+        } else {
+            ly_in_free(in, 1);
+            in = NULL;
         }
     }
 
