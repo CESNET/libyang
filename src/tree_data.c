@@ -339,7 +339,7 @@ lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, ui
             if (!mod) {
                 break;
             }
-            if (!first || first == *tree) {
+            if (!first || (first == *tree)) {
                 /* make sure first2 changes are carried to tree */
                 first2 = tree;
             } else {
