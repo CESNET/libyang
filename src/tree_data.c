@@ -1945,16 +1945,31 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     }
 }
 
+/**
+ * @brief Check schema place of a node to be inserted.
+ *
+ * @param[in] parent Schema node of the parent data node.
+ * @param[in] sibling Schema node of a sibling data node.
+ * @param[in] schema Schema node if the data node to be inserted.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINVAL if the place is invalid.
+ */
 static LY_ERR
-lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *schema)
+lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *sibling, const struct lysc_node *schema)
 {
     const struct lysc_node *par2;
 
     assert(!parent || !(parent->nodetype & (LYS_CASE | LYS_CHOICE)));
+    assert(!sibling || !(sibling->nodetype & (LYS_CASE | LYS_CHOICE)));
+    assert(!schema || !(schema->nodetype & (LYS_CASE | LYS_CHOICE)));
 
-    if (!parent || !schema) {
+    if (!schema || (!parent && !sibling)) {
         /* opaque nodes can be inserted wherever */
         return LY_SUCCESS;
+    }
+
+    if (!parent) {
+        parent = lysc_data_parent(sibling);
     }
 
     /* find schema parent */
@@ -1985,7 +2000,7 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 
     LY_CHECK_ARG_RET(NULL, parent, node, parent->schema->nodetype & LYD_NODE_INNER, LY_EINVAL);
 
-    LY_CHECK_RET(lyd_insert_check_schema(parent->schema, node->schema));
+    LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
 
     if (node->schema->flags & LYS_KEY) {
         LOGERR(parent->schema->module->ctx, LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
@@ -2013,7 +2028,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
     if (sibling) {
-        LY_CHECK_RET(lyd_insert_check_schema(lysc_data_parent(sibling->schema), node->schema));
+        LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
     }
 
     if (sibling == node) {
@@ -2055,7 +2070,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
-    LY_CHECK_RET(lyd_insert_check_schema(lysc_data_parent(sibling->schema), node->schema));
+    LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
     if (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER)) {
         LOGERR(LYD_CTX(sibling), LY_EINVAL, "Can be used only for user-ordered nodes.");
@@ -2090,7 +2105,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
-    LY_CHECK_RET(lyd_insert_check_schema(lysc_data_parent(sibling->schema), node->schema));
+    LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
     if (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER)) {
         LOGERR(LYD_CTX(sibling), LY_EINVAL, "Can be used only for user-ordered nodes.");
