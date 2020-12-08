@@ -1091,13 +1091,15 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
     }
 
 cleanup:
-    if (ret || !lydctx_p) {
+    if (ret) {
         lyd_lyb_ctx_free((struct lyd_ctx *)lybctx);
-        if (ret) {
-            lyd_free_all(tree);
-        }
+        lyd_free_all(tree);
     } else {
-        *lydctx_p = (struct lyd_ctx *)lybctx;
+        if (lydctx_p) {
+            *lydctx_p = (struct lyd_ctx *)lybctx;
+        } else {
+            lyd_lyb_ctx_free((struct lyd_ctx *)lybctx);
+        }
         if (tree_p) {
             *tree_p = tree;
         }
