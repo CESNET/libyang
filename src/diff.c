@@ -189,7 +189,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 /**
  * @brief Get a userord entry for a specific user-ordered list/leaf-list. Create if does not exist yet.
  *
- * @param[in] first
+ * @param[in] first Node from the first tree, can be NULL (on create).
  * @param[in] schema Schema node of the list/leaf-list.
  * @param[in,out] userord Sized array of userord items.
  * @return Userord item for all the user-ordered list/leaf-list instances.
