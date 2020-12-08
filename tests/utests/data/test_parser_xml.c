@@ -305,23 +305,21 @@ test_rpc(void **state)
 
     assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", feats)));
 
-    data = "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">\n"
-            "  <edit-config>\n"
-            "    <target>\n"
-            "      <running/>\n"
-            "    </target>\n"
-            "    <config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
-            "      <l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">\n"
-            "        <a>val_a</a>\n"
-            "        <b>val_b</b>\n"
-            "        <c>val_c</c>\n"
-            "      </l1>\n"
-            "      <cp xmlns=\"urn:tests:a\">\n"
-            "        <z nc:operation=\"delete\"/>\n"
-            "      </cp>\n"
-            "    </config>\n"
-            "  </edit-config>\n"
-            "</rpc>\n";
+    data = "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <target>\n"
+            "    <running/>\n"
+            "  </target>\n"
+            "  <config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "    <l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">\n"
+            "      <a>val_a</a>\n"
+            "      <b>val_b</b>\n"
+            "      <c>val_c</c>\n"
+            "    </l1>\n"
+            "    <cp xmlns=\"urn:tests:a\">\n"
+            "      <z nc:operation=\"delete\"/>\n"
+            "    </cp>\n"
+            "  </config>\n"
+            "</edit-config>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_XML, &tree, &op));
     ly_in_free(in, 0);
@@ -333,10 +331,8 @@ test_rpc(void **state)
             0, 0, 0, 0, 0, ref, 0);
 
     assert_non_null(tree);
-    assert_null(tree->schema);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0x1, 0x1, LY_PREF_XML, "rpc", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
+    node = tree;
     CHECK_LYSC_ACTION((struct lysc_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
@@ -356,23 +352,21 @@ test_rpc(void **state)
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0x1, LY_PREF_XML, "l1", 0, 0, NULL,  0,  "");
 
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
-            "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">\n"
-            "  <edit-config>\n"
-            "    <target>\n"
-            "      <running/>\n"
-            "    </target>\n"
-            "    <config>\n"
-            "      <cp xmlns=\"urn:tests:a\">\n"
-            "        <z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>\n"
-            "      </cp>\n"
-            "      <l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">\n"
-            "        <a>val_a</a>\n"
-            "        <b>val_b</b>\n"
-            "        <c>val_c</c>\n"
-            "      </l1>\n"
-            "    </config>\n"
-            "  </edit-config>\n"
-            "</rpc>\n");
+            "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <target>\n"
+            "    <running/>\n"
+            "  </target>\n"
+            "  <config>\n"
+            "    <cp xmlns=\"urn:tests:a\">\n"
+            "      <z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>\n"
+            "    </cp>\n"
+            "    <l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">\n"
+            "      <a>val_a</a>\n"
+            "      <b>val_b</b>\n"
+            "      <c>val_c</c>\n"
+            "    </l1>\n"
+            "  </config>\n"
+            "</edit-config>\n");
 
     lyd_free_all(tree);
 
@@ -386,17 +380,12 @@ test_action(void **state)
     const char *data;
     struct ly_in *in;
     struct lyd_node *tree, *op;
-    const struct lyd_node *node;
 
-    data = "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">\n"
-            "  <action xmlns=\"urn:ietf:params:xml:ns:yang:1\">\n"
-            "    <c xmlns=\"urn:tests:a\">\n"
-            "      <act>\n"
-            "        <al>value</al>\n"
-            "      </act>\n"
-            "    </c>\n"
-            "  </action>\n"
-            "</rpc>\n";
+    data = "<c xmlns=\"urn:tests:a\">\n"
+            "  <act>\n"
+            "    <al>value</al>\n"
+            "  </act>\n"
+            "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_XML, &tree, &op));
     ly_in_free(in, 0);
@@ -406,19 +395,12 @@ test_action(void **state)
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0x1, 0x1, LY_PREF_XML, "rpc", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x0, 0x1, LY_PREF_XML, "action", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
-            "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">\n"
-            "  <action xmlns=\"urn:ietf:params:xml:ns:yang:1\">\n"
-            "    <c xmlns=\"urn:tests:a\">\n"
-            "      <act>\n"
-            "        <al>value</al>\n"
-            "      </act>\n"
-            "    </c>\n"
-            "  </action>\n"
-            "</rpc>\n");
+            "<c xmlns=\"urn:tests:a\">\n"
+            "  <act>\n"
+            "    <al>value</al>\n"
+            "  </act>\n"
+            "</c>\n");
 
     lyd_free_all(tree);
 
@@ -432,16 +414,12 @@ test_notification(void **state)
     const char *data;
     struct ly_in *in;
     struct lyd_node *tree, *ntf;
-    const struct lyd_node *node;
 
-    data = "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n"
-            "  <eventTime>2037-07-08T00:01:00Z</eventTime>\n"
-            "  <c xmlns=\"urn:tests:a\">\n"
-            "    <n1>\n"
-            "      <nl>value</nl>\n"
-            "    </n1>\n"
-            "  </c>\n"
-            "</notification>\n";
+    data = "<c xmlns=\"urn:tests:a\">\n"
+            "  <n1>\n"
+            "    <nl>value</nl>\n"
+            "  </n1>\n"
+            "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_notif(UTEST_LYCTX, in, LYD_XML, &tree, &ntf));
     ly_in_free(in, 0);
@@ -449,11 +427,7 @@ test_notification(void **state)
     assert_non_null(ntf);
     CHECK_LYSC_NOTIF((struct lysc_notif *)ntf->schema, 1, NULL, 0, 0x4, 1, 0, "n1", 1, 0, NULL, 0);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0x0, 0x1, LY_PREF_XML, "notification", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x0, 0, LY_PREF_XML, "eventTime", 0, 0, NULL,  0,  "2037-07-08T00:01:00Z");
-    node = node->next;
-    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
@@ -482,27 +456,17 @@ test_reply(void **state)
 {
     const char *data;
     struct ly_in *in;
-    struct lyd_node *request, *tree, *op;
+    struct lyd_node *tree, *op;
     const struct lyd_node *node;
 
-    data =
-            "<c xmlns=\"urn:tests:a\">\n"
+    data ="<c xmlns=\"urn:tests:a\">\n"
             "  <act>\n"
-            "    <al>value</al>\n"
+            "    <al>25</al>\n"
             "  </act>\n"
             "</c>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_XML, &request, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_reply(UTEST_LYCTX, in, LYD_XML, &tree, &op));
     ly_in_free(in, 0);
-
-    data =
-            "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\">\n"
-            "  <al xmlns=\"urn:tests:a\">25</al>\n"
-            "</rpc-reply>\n";
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_reply(request, in, LYD_XML, &tree, &op));
-    ly_in_free(in, 0);
-    lyd_free_all(request);
 
     assert_non_null(op);
 
@@ -513,9 +477,7 @@ test_reply(void **state)
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "al", 0, LYS_LEAF, 1, 0, NULL, 0);
     assert_true(node->schema->flags & LYS_CONFIG_R);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0x1, 0x1, LY_PREF_XML, "rpc-reply", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
-    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     /* TODO print only rpc-reply node and then output subtree */
     CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_WITHSIBLINGS, "<al xmlns=\"urn:tests:a\">25</al>\n");

@@ -1111,7 +1111,7 @@ static void
 test_reply(void **state)
 {
     struct ly_in *in;
-    struct lyd_node *tree, *op_tree, *request;
+    struct lyd_node *tree, *op_tree;
 
     UTEST_ADD_MODULE(schema_j, LYS_IN_YANG, feats_j, NULL);
 
@@ -1124,13 +1124,7 @@ test_reply(void **state)
             "    </act>\n"
             "  </l1>\n"
             "</cont>\n", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_XML, &request, NULL));
-    assert_non_null(request);
-    ly_in_free(in, 0);
-
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory("<lf2 xmlns=\"urn:tests:j\">target</lf2>", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_reply(request, in, LYD_XML, &op_tree, NULL));
-    lyd_free_all(request);
+    assert_int_equal(LY_SUCCESS, lyd_parse_reply(UTEST_LYCTX, in, LYD_XML, &op_tree, NULL));
     assert_non_null(op_tree);
     ly_in_free(in, 0);
 

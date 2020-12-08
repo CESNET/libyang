@@ -386,7 +386,7 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     }
 
     if (snode->nodetype & (LYS_RPC | LYS_ACTION)) {
-        if (lydctx->int_opts & LYD_INTOPT_RPC) {
+        if (lydctx->int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) {
             if (lydctx->op_node) {
                 LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
                         lys_nodetype2str(snode->nodetype), snode->name,

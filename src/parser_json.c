@@ -182,8 +182,7 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
  * @param[in] prefix_len Length of the @p prefix.
  * @param[in] name Requested node's name.
  * @param[in] name_len Length of the @p name.
- * @param[in] parent Parent of the node beeing processed, can be NULL in case of top-level. Also the opaq node with LYD_NODE_OPAQ_ISENVELOPE hint
- * is accepted for searching top-level nodes.
+ * @param[in] parent Parent of the node being processed, can be NULL in case of top-level.
  * @param[out] snode_p Pointer to the found schema node corresponding to the input parameters.
  * @return LY_SUCCES on success, note that even in this case the returned value of @p snode_p can be NULL, so the data are expected to be parsed as opaq.
  * @return LY_EVALID on failure, error message is logged
@@ -200,11 +199,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     *snode_p = NULL;
 
     /* get the element module */
-    if (prefix_len || (parent && !parent->schema && (((struct lyd_node_opaq *)parent)->hints & LYD_NODEHINT_ENVELOPE))) {
-        if (!prefix_len) {
-            /* opaq parent (envelope) - the second part of the condition */
-            lydjson_get_node_prefix((struct lyd_node *)parent, NULL, 0, &prefix, &prefix_len);
-        }
+    if (prefix_len) {
         mod = ly_ctx_get_module_implemented2(lydctx->jsonctx->ctx, prefix, prefix_len);
     } else if (parent) {
         if (parent->schema) {
@@ -223,11 +218,6 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
         if (!(lydctx->parse_options & LYD_PARSE_OPAQ)) {
             return LY_ENOT;
         }
-    }
-
-    if (parent && !parent->schema && (((struct lyd_node_opaq *)parent)->hints & LYD_NODEHINT_ENVELOPE)) {
-        /* ignore the envelope parent when searchinf for the schema node */
-        parent = NULL;
     }
 
     /* get the schema node */
@@ -1389,6 +1379,7 @@ cleanup:
     return ret;
 }
 
+#if 0
 /**
  * @brief Parse optional JSON envelope around the Notification data, including the eventTime data.
  *
@@ -1469,13 +1460,13 @@ cleanup:
     }
     return ret;
 }
+#endif
 
 LY_ERR
 lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
-    struct lyd_node *ntf_e = NULL;
     struct lyd_node *tree = NULL;
     enum LYJSON_PARSER_STATUS status;
 
@@ -1485,6 +1476,7 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
 
     lydctx->int_opts = LYD_INTOPT_NOTIF;
 
+#if 0
     /* parse "notification" and "eventTime", if present */
     ret = lydjson_notif_envelope(lydctx->jsonctx, &ntf_e, &status);
     if (ret == LY_ENOT) {
@@ -1492,6 +1484,7 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
     } else if (ret) {
         goto cleanup;
     }
+#endif
 
     assert(status == LYJSON_OBJECT);
 
@@ -1515,31 +1508,10 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
         goto cleanup;
     }
 
-    if (ntf_e) {
-        /* finish notification envelope */
-        ret = lyjson_ctx_next(lydctx->jsonctx, &status);
-        LY_CHECK_GOTO(ret, cleanup);
-        if (status == LYJSON_END) {
-            LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LY_VCODE_EOF);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (status != LYJSON_OBJECT_CLOSED) {
-            LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling member \"%.*s\" of \"notification\".",
-                    lydctx->jsonctx->value_len, lydctx->jsonctx->value);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-    }
-
     if (ntf_p) {
         *ntf_p = lydctx->op_node;
     }
     assert(tree);
-    if (ntf_e) {
-        /* connect to the notification */
-        lyd_insert_node(ntf_e, NULL, tree);
-        tree = ntf_e;
-    }
     if (tree_p) {
         *tree_p = tree;
     }
@@ -1551,11 +1523,11 @@ cleanup:
     lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     if (ret) {
         lyd_free_all(tree);
-        lyd_free_tree(ntf_e);
     }
     return ret;
 }
 
+#if 0
 /**
  * @brief Parse optional JSON envelope around the processed content.
  *
@@ -1619,13 +1591,13 @@ lydjson_object_envelope_close(struct lyjson_ctx *jsonctx, const char *object_id,
     }
     return LY_SUCCESS;
 }
+#endif
 
 LY_ERR
 lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
-    struct lyd_node *rpc_e = NULL, *act_e = NULL;
     struct lyd_node *tree = NULL;
     enum LYJSON_PARSER_STATUS status;
 
@@ -1635,6 +1607,7 @@ lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node *
 
     lydctx->int_opts = LYD_INTOPT_RPC;
 
+#if 0
     /* process envelope(s), if present */
 
     /* process rpc */
@@ -1655,10 +1628,11 @@ lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node *
     }
 
 parse_content:
+#endif
     assert(status == LYJSON_OBJECT);
 
     /* read subtree(s) */
-    ret = lydjson_subtree_r(lydctx, act_e ? (struct lyd_node_inner *)act_e : (struct lyd_node_inner *)rpc_e, &tree);
+    ret = lydjson_subtree_r(lydctx, NULL, &tree);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* finish linking metadata */
@@ -1667,8 +1641,7 @@ parse_content:
 
     /* make sure we have parsed some operation */
     if (!lydctx->op_node) {
-        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the %s node.",
-                act_e ? "action" : (rpc_e ? "rpc" : "rpc/action"));
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the rpc/action node.");
         ret = LY_EVALID;
         goto cleanup;
     } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
@@ -1678,41 +1651,12 @@ parse_content:
         goto cleanup;
     }
 
-    if (act_e) {
-        /* finish action envelope */
-        ret = lydjson_object_envelope_close(lydctx->jsonctx, "action", &status);
-        LY_CHECK_GOTO(ret, cleanup);
-        if (lydctx->op_node->schema->nodetype != LYS_ACTION) {
-            LOGVAL(ctx, LY_VLOG_LYD, lydctx->op_node, LYVE_DATA, "Unexpected %s element, an \"action\" expected.",
-                    lys_nodetype2str(lydctx->op_node->schema->nodetype));
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-    }
-    if (rpc_e) {
-        /* finish rpc envelope */
-        ret = lydjson_object_envelope_close(lydctx->jsonctx, "rpc", &status);
-        LY_CHECK_GOTO(ret, cleanup);
-        if (!act_e && (lydctx->op_node->schema->nodetype != LYS_RPC)) {
-            LOGVAL(ctx, LY_VLOG_LYD, lydctx->op_node, LYVE_DATA, "Unexpected %s element, an \"rpc\" expected.",
-                    lys_nodetype2str(lydctx->op_node->schema->nodetype));
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-    }
-
     if (op_p) {
         *op_p = lydctx->op_node;
     }
     assert(tree);
     if (tree_p) {
-        if (rpc_e) {
-            *tree_p = rpc_e;
-        } else if (act_e) {
-            *tree_p = act_e;
-        } else {
-            *tree_p = tree;
-        }
+        *tree_p = tree;
     }
 
 cleanup:
@@ -1722,42 +1666,25 @@ cleanup:
     lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     if (ret) {
         lyd_free_all(tree);
-        lyd_free_tree(act_e);
-        lyd_free_tree(rpc_e);
     }
     return ret;
 }
 
 LY_ERR
-lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
+lyd_parse_json_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
-    struct lyd_node *rpcr_e = NULL, *tree, *req_op, *rep_op = NULL;
+    struct lyd_node *tree = NULL;
     enum LYJSON_PARSER_STATUS status;
 
     /* init */
-    ret = lyd_parse_json_init(LYD_CTX(request), in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &lydctx, &status);
+    ret = lyd_parse_json_init(ctx, in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &lydctx, &status);
     LY_CHECK_GOTO(ret || status == LYJSON_END || status == LYJSON_OBJECT_EMPTY, cleanup);
 
     lydctx->int_opts = LYD_INTOPT_REPLY;
 
-    /* find request OP */
-    LYD_TREE_DFS_BEGIN((struct lyd_node *)request, req_op) {
-        if (req_op->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
-            break;
-        }
-        LYD_TREE_DFS_END(request, req_op);
-    }
-    if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-        LOGERR(LYD_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
-        ret = LY_EINVAL;
-        goto cleanup;
-    }
-
-    /* duplicate request OP with parents */
-    LY_CHECK_GOTO(ret = lyd_dup_single(req_op, NULL, LYD_DUP_WITH_PARENTS, &rep_op), cleanup);
-
+#if 0
     /* parse "rpc-reply", if any */
     ret = lydjson_object_envelope(lydctx->jsonctx, NULL, "ietf-netconf", "rpc-reply", &rpcr_e, &status);
     if (ret == LY_ENOT) {
@@ -1765,35 +1692,24 @@ lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct ly
     } else if (ret) {
         goto cleanup;
     }
+#endif
 
     assert(status == LYJSON_OBJECT);
 
     /* read subtree(s) */
     while (lydctx->jsonctx->in->current[0] && status != LYJSON_OBJECT_CLOSED) {
-        ret = lydjson_subtree_r(lydctx, (struct lyd_node_inner *)rep_op, lyd_node_children_p(rep_op));
+        ret = lydjson_subtree_r(lydctx, NULL, &tree);
         LY_CHECK_GOTO(ret, cleanup);
 
         status = lyjson_ctx_status(lydctx->jsonctx, 0);
     }
 
     /* finish linking metadata */
-    ret = lydjson_metadata_finish(lydctx, lyd_node_children_p(rep_op));
+    ret = lydjson_metadata_finish(lydctx, &tree);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (rpcr_e) {
-        /* finish rpc-reply envelope */
-        ret = lydjson_object_envelope_close(lydctx->jsonctx, "rpc-reply", &status);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
     if (op_p) {
-        *op_p = rep_op;
-    }
-    for (tree = rep_op; tree->parent; tree = lyd_parent(tree)) {}
-    if (rpcr_e) {
-        /* connect to the operation */
-        lyd_insert_node(rpcr_e, NULL, tree);
-        tree = rpcr_e;
+        *op_p =  lydctx->op_node;
     }
     if (tree_p) {
         *tree_p = tree;
@@ -1805,8 +1721,7 @@ cleanup:
 
     lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     if (ret) {
-        lyd_free_all(rep_op);
-        lyd_free_tree(rpcr_e);
+        lyd_free_all(tree);
     }
     return ret;
 }
