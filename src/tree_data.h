@@ -119,8 +119,8 @@ struct lysc_type;
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
  * the node name and/or its parent (::lyd_new_inner(), ::lyd_new_term(), ::lyd_new_any(), ::lyd_new_list(), ::lyd_new_list2()
- * and ::lyd_new_opaq()) or address the nodes using a [simple XPath addressing](@ref howtoXPath) (::lyd_new_path(),
- * ::lyd_new_path2() and ::lyd_new_path_any()). The latter enables to create a whole path of nodes, requires less information
+ * and ::lyd_new_opaq()) or address the nodes using a [simple XPath addressing](@ref howtoXPath) (::lyd_new_path() and
+ * ::lyd_new_path2()). The latter enables to create a whole path of nodes, requires less information
  * about the modified data, and is generally simpler to use. Actually the third way is duplicating the existing data using
  * ::lyd_dup_single(), ::lyd_dup_siblings() and ::lyd_dup_meta_single().
  *
@@ -164,7 +164,6 @@ struct lysc_type;
  * - ::lyd_new_meta()
  * - ::lyd_new_path()
  * - ::lyd_new_path2()
- * - ::lyd_new_path_any()
  *
  * - ::lyd_dup_single()
  * - ::lyd_dup_siblings()
@@ -980,7 +979,7 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
 
 /**
  * @brief Create a new node in the data tree based on a path. Cannot be used for anyxml/anydata nodes,
- * for those use ::lyd_new_path_any.
+ * for those use ::lyd_new_path2.
  *
  * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
@@ -998,27 +997,6 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
  */
 LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
         uint32_t options, struct lyd_node **node);
-
-/**
- * @brief Create a new node in the data tree based on a path. All node types can be created.
- *
- * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
- * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
- * and @p value is set, the predicate is preferred.
- *
- * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
- * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
- * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
- * @param[in] ctx libyang context, must be set if @p parent is NULL.
- * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
- * @param[in] value_type Anyxml/anydata node @p value type.
- * @param[in] options Bitmask of options, see @ref pathoptions.
- * @param[out] node Optional first created node.
- * @return LY_ERR value.
- */
-LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
