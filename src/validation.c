@@ -1251,13 +1251,13 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
  * @param[in,out] node_types Set for unres node types.
  * @param[in,out] meta_types Set for unres metadata types.
  * @param[in,out] node_when Set for nodes with when conditions.
- * @param[in] val_opts Validation options, see @ref datavalidationoptions.
+ * @param[in] impl_opts Implicit options, see @ref implicitoptions.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_types, struct ly_set *meta_types,
-        struct ly_set *node_when, uint32_t val_opts, struct lyd_node **diff)
+        struct ly_set *node_when, uint32_t impl_opts, struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
     struct lyd_node *node;
@@ -1279,7 +1279,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_types, struct ly
 
             /* add nested defaults */
             LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, NULL,
-                    NULL, val_opts & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0, diff));
+                    NULL, impl_opts, diff));
         }
 
         if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
@@ -1352,7 +1352,8 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
 
         /* process nested nodes */
         LY_LIST_FOR(*first2, iter) {
-            ret = lyd_validate_subtree(iter, &node_types, &meta_types, &node_when, val_opts, diff);
+            ret = lyd_validate_subtree(iter, &node_types, &meta_types, &node_when, val_opts & LYD_VALIDATE_NO_STATE
+                    ? LYD_IMPLICIT_NO_STATE : 0, diff);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
@@ -1484,7 +1485,8 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
     }
 
     /* prevalidate whole operation subtree */
-    LY_CHECK_GOTO(ret = lyd_validate_subtree(op_node, &type_check, &type_meta_check, &when_check, 0, diff), cleanup);
+    LY_CHECK_GOTO(ret = lyd_validate_subtree(op_node, &type_check, &type_meta_check, &when_check,
+            op == LYD_VALIDATE_OP_REPLY ? LYD_IMPLICIT_OUTPUT : 0, diff), cleanup);
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree */
     LY_CHECK_GOTO(ret = lyd_validate_unres((struct lyd_node **)&tree, NULL, &when_check, &type_check, &type_meta_check,
