@@ -1381,7 +1381,15 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             }
             break;
         case LYS_LEAF:
-            /* make there is some value */
+            if (lysc_is_key(schema)) {
+                /* it must have been already created or some error will occur later */
+                assert(cur_parent);
+                node = lyd_child(cur_parent);
+                assert(node && (node->schema == schema));
+                goto next_iter;
+            }
+
+            /* make sure there is some value */
             if (!value) {
                 value = "";
             }
@@ -1417,6 +1425,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             lyd_insert_node(NULL, &parent, node);
         }
 
+next_iter:
         /* update remembered nodes */
         if (!nparent) {
             nparent = node;
