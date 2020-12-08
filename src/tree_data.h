@@ -1153,9 +1153,9 @@ LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struc
 
 /**
  * @brief Insert a node before another node, can be used only for user-ordered nodes.
+ * If inserting several siblings, each of them must be inserted individually.
  *
  * - if the node is part of some other tree, it is automatically unlinked.
- * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
  *
  * @param[in] sibling Sibling node to insert before.
  * @param[in] node Node to insert.
@@ -1166,9 +1166,9 @@ LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert a node after another node, can be used only for user-ordered nodes.
+ * If inserting several siblings, each of them must be inserted individually.
  *
  * - if the node is part of some other tree, it is automatically unlinked.
- * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
  *
  * @param[in] sibling Sibling node to insert after.
  * @param[in] node Node to insert.
