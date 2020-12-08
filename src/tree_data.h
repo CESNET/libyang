@@ -1026,13 +1026,15 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  *
  * Default behavior:
  * - both configuration and state missing implicit nodes are added.
+ * - for existing RPC/action nodes, input implicit nodes are added.
  * - all implicit node types are added (non-presence containers, default leaves, and default leaf-lists).
  * @{
  */
 
 #define LYD_IMPLICIT_NO_STATE    0x01   /**< Do not add any implicit state nodes. */
 #define LYD_IMPLICIT_NO_CONFIG   0x02   /**< Do not add any implicit config nodes. */
-#define LYD_IMPLICIT_NO_DEFAULTS 0x04   /**< Do not add any default nodes (leaves/leaf-lists), only non-presence
+#define LYD_IMPLICIT_OUTPUT      0x04   /**< For RPC/action nodes, add output implicit nodes instead of input. */
+#define LYD_IMPLICIT_NO_DEFAULTS 0x08   /**< Do not add any default nodes (leaves/leaf-lists), only non-presence
                                              containers. */
 
 /** @} implicitoptions */

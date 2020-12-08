@@ -1453,10 +1453,11 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
         struct lyd_node **diff)
 {
     LY_ERR ret;
-    const struct lysc_node *iter = NULL;
+    const struct lysc_node *iter = NULL, *sp;
     struct lyd_node *node = NULL;
     struct lyd_value **dflts;
     LY_ARRAY_COUNT_TYPE u;
+    uint32_t getnext_opts;
 
     assert(first && (parent || sparent || mod));
 
@@ -1464,7 +1465,19 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
         sparent = parent->schema;
     }
 
-    while ((iter = lys_getnext(iter, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
+    for (sp = sparent; sp && !(sp->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); sp = sp->parent) {}
+    if (sp) {
+        /* these options lose meaning in operations and could cause skipping some nodes
+         * (because LYS_CONFIG* flags are set in the schema nodes with a different meaning) */
+        impl_opts &= ~(LYD_IMPLICIT_NO_STATE | LYD_IMPLICIT_NO_CONFIG);
+    }
+
+    getnext_opts = LYS_GETNEXT_WITHCHOICE;
+    if (impl_opts & LYD_IMPLICIT_OUTPUT) {
+        getnext_opts |= LYS_GETNEXT_OUTPUT;
+    }
+
+    while ((iter = lys_getnext(iter, sparent, mod ? mod->compiled : NULL, getnext_opts))) {
         if ((impl_opts & LYD_IMPLICIT_NO_STATE) && (iter->flags & LYS_CONFIG_R)) {
             continue;
         } else if ((impl_opts & LYD_IMPLICIT_NO_CONFIG) && (iter->flags & LYS_CONFIG_W)) {
