@@ -2066,8 +2066,6 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
 API LY_ERR
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
-    struct lyd_node *iter;
-
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
@@ -2077,32 +2075,16 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
         return LY_EINVAL;
     }
 
-    if (node->parent || node->prev->next) {
-        lyd_unlink_tree(node);
-    }
+    lyd_unlink_tree(node);
+    lyd_insert_before_node(sibling, node);
+    lyd_insert_hash(node);
 
-    /* insert in reverse order to get the original order */
-    node = node->prev;
-    while (node) {
-        iter = node->prev;
-        lyd_unlink_tree(node);
-
-        lyd_insert_before_node(sibling, node);
-        lyd_insert_hash(node);
-
-        /* move the anchor accordingly */
-        sibling = node;
-
-        node = (iter == node) ? NULL : iter;
-    }
     return LY_SUCCESS;
 }
 
 API LY_ERR
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
-    struct lyd_node *iter;
-
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
@@ -2112,22 +2094,10 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
         return LY_EINVAL;
     }
 
-    if (node->parent || node->prev->next) {
-        lyd_unlink_tree(node);
-    }
+    lyd_unlink_tree(node);
+    lyd_insert_after_node(sibling, node);
+    lyd_insert_hash(node);
 
-    while (node) {
-        iter = node->next;
-        lyd_unlink_tree(node);
-
-        lyd_insert_after_node(sibling, node);
-        lyd_insert_hash(node);
-
-        /* move the anchor accordingly */
-        sibling = node;
-
-        node = iter;
-    }
     return LY_SUCCESS;
 }
 
