@@ -347,7 +347,13 @@ xml_print_inner(struct xmlpr_ctx *ctx, const struct lyd_node_inner *node)
 
     xml_print_node_open(ctx, (struct lyd_node *)node);
 
-    if (!node->child) {
+    LY_LIST_FOR(node->child, child) {
+        if (ly_should_print(child, ctx->options)) {
+            break;
+        }
+    }
+    if (!child) {
+        /* there are no children that will be printed */
         ly_print_(ctx->out, "/>%s", DO_FORMAT ? "\n" : "");
         return LY_SUCCESS;
     }

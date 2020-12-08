@@ -595,10 +595,14 @@ static LY_ERR
 json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_node *child;
-    struct lyd_node *children = lyd_child(node);
     ly_bool has_content = 0;
 
-    if (node->meta || children) {
+    LY_LIST_FOR(lyd_child(node), child) {
+        if (ly_should_print(child, ctx->options)) {
+            break;
+        }
+    }
+    if (node->meta || child) {
         has_content = 1;
     } else if (node->schema && (node->schema->nodetype & LYD_NODE_ANY) && ((struct lyd_node_any *)node)->value.tree) {
         has_content = 1;
@@ -617,7 +621,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 
     if (!node->schema || !(node->schema->nodetype & LYS_ANYDATA)) {
         /* print children */
-        LY_LIST_FOR(children, child) {
+        LY_LIST_FOR(lyd_child(node), child) {
             LY_CHECK_RET(json_print_node(ctx, child));
         }
     } else {
