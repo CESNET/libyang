@@ -430,11 +430,11 @@ test_rpc(void **state)
 
     assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", feats)));
 
-    data = "{\"ietf-netconf:rpc\":{\"edit-config\":{"
+    data = "{\"ietf-netconf:edit-config\":{"
             "\"target\":{\"running\":[null]},"
             "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
             "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
-            "}}}";
+            "}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_JSON, &tree, &op));
     ly_in_free(in, 0);
@@ -445,12 +445,7 @@ test_rpc(void **state)
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "rpc", 0, 0, NULL,  0,  "");
-    /* TODO support generic attributes in JSON ?
-    assert_non_null(((struct lyd_node_opaq *)tree)->attr);
-    */
-
-    node = lyd_child(tree);
+    node = tree;
     CHECK_LYSC_ACTION((struct lysc_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
@@ -481,9 +476,8 @@ test_action(void **state)
     const char *data;
     struct ly_in *in;
     struct lyd_node *tree, *op;
-    const struct lyd_node *node;
 
-    data = "{\"ietf-netconf:rpc\":{\"yang:action\":{\"a:c\":{\"act\":{\"al\":\"value\"}}}}}";
+    data = "{\"a:c\":{\"act\":{\"al\":\"value\"}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_JSON, &tree, &op));
     ly_in_free(in, 0);
@@ -492,10 +486,6 @@ test_action(void **state)
     CHECK_LYSC_ACTION((struct lysc_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
-
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "rpc", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0, 0x1, LY_PREF_JSON, "action", 0, 0, NULL,  0,  "");
 
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
@@ -510,9 +500,8 @@ test_notification(void **state)
     const char *data;
     struct ly_in *in;
     struct lyd_node *tree, *ntf;
-    const struct lyd_node *node;
 
-    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2037-07-08T00:01:00Z\",\"a:c\":{\"n1\":{\"nl\":\"value\"}}}}";
+    data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_notif(UTEST_LYCTX, in, LYD_JSON, &tree, &ntf));
     ly_in_free(in, 0);
@@ -520,16 +509,11 @@ test_notification(void **state)
     assert_non_null(ntf);
     CHECK_LYSC_NOTIF((struct lysc_notif *)ntf->schema, 1, NULL, 0, 0x4, 1, 0, "n1", 1, 0, NULL, 0);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "notification", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0, 0, LY_PREF_JSON, "eventTime", 0, 0, NULL,  0,  "2037-07-08T00:01:00Z");
-    node = node->next;
-    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
-    /* top-level notif without envelope */
     data = "{\"a:n2\":{}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
     assert_int_equal(LY_SUCCESS, lyd_parse_notif(UTEST_LYCTX, in, LYD_JSON, &tree, &ntf));
@@ -553,19 +537,13 @@ test_reply(void **state)
 {
     const char *data;
     struct ly_in *in;
-    struct lyd_node *request, *tree, *op;
+    struct lyd_node *tree, *op;
     const struct lyd_node *node;
 
-    data = "{\"a:c\":{\"act\":{\"al\":\"value\"}}}";
+    data = "{\"a:c\":{\"act\":{\"al\":25}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_JSON, &request, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_reply(UTEST_LYCTX, in, LYD_JSON, &tree, &op));
     ly_in_free(in, 0);
-
-    data = "{\"ietf-netconf:rpc-reply\":{\"a:al\":25}}";
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_reply(request, in, LYD_JSON, &tree, &op));
-    ly_in_free(in, 0);
-    lyd_free_all(request);
 
     assert_non_null(op);
     CHECK_LYSC_ACTION((struct lysc_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
@@ -574,13 +552,11 @@ test_reply(void **state)
     node = lyd_child(op);
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "al", 0, LYS_LEAF, 1, 0, NULL, 0);
 
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "rpc-reply", 0, 0, NULL,  0,  "");
-    node = lyd_child(tree);
-    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
     /* TODO print only rpc-reply node and then output subtree */
     CHECK_LYD_STRING(lyd_child(op), LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:al\":25}");
-    CHECK_LYD_STRING(lyd_child(tree), LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:c\":{\"act\":{\"al\":25}}}");
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:c\":{\"act\":{\"al\":25}}}");
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */

@@ -1052,7 +1052,7 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
     /* read the last zero, parsing finished */
     ly_in_skip(lybctx->lybctx->in, 1);
 
-    if (data_type == LYD_INTOPT_RPC) {
+    if (data_type == (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) {
         /* make sure we have parsed some operation */
         if (!lybctx->op_node) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"rpc\"/\"action\" node.");
@@ -1064,17 +1064,6 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
             *op_p = lybctx->op_node;
         }
         assert(tree);
-    } else if (data_type == LYD_INTOPT_REPLY) {
-        struct lyd_node_inner *iter;
-
-        assert(parent);
-
-        if (op_p) {
-            *op_p = (struct lyd_node *)(*parent);
-        }
-        for (iter = *parent; iter->parent; iter = iter->parent) {}
-        tree = (struct lyd_node *)iter;
-        *parent = NULL;
 
     } else if (data_type == LYD_INTOPT_NOTIF) {
         /* make sure we have parsed some notification */
@@ -1127,33 +1116,9 @@ lyd_parse_lyb_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
 }
 
 LY_ERR
-lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
+lyd_parse_lyb_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
 {
-    LY_ERR ret;
-    struct lyd_node *req_op, *rep_op = NULL;
-    const struct ly_ctx *ctx = LYD_CTX(request);
-
-    /* find request OP */
-    LYD_TREE_DFS_BEGIN((struct lyd_node *)request, req_op) {
-        if (req_op->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
-            break;
-        }
-        LYD_TREE_DFS_END(request, req_op);
-    }
-    if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-        LOGERR(LYD_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
-        return LY_EINVAL;
-    }
-
-    /* duplicate request OP with parents */
-    LY_CHECK_RET(lyd_dup_single(req_op, NULL, LYD_DUP_WITH_PARENTS, &rep_op));
-
-    ret = lyd_parse_lyb_(ctx, (struct lyd_node_inner **)&rep_op, in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0,
-            LYD_INTOPT_REPLY, tree_p, op_p, NULL);
-
-    lyd_free_all(rep_op);
-
-    return ret;
+    return lyd_parse_lyb_(ctx, NULL, in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LYD_INTOPT_REPLY, tree_p, op_p, NULL);
 }
 
 API int

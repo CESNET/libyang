@@ -658,6 +658,7 @@ cleanup:
     return ret;
 }
 
+#if 0
 static LY_ERR
 lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, struct lyd_node **envp)
 {
@@ -717,13 +718,13 @@ cleanup:
     lyd_free_attr_siblings(xmlctx->ctx, attr);
     return ret;
 }
+#endif
 
 LY_ERR
 lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
-    struct lyd_node *rpc_e = NULL, *act_e = NULL;
     struct lyd_node *tree = NULL;
 
     /* init */
@@ -731,6 +732,7 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **
     lydctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lydctx.int_opts = LYD_INTOPT_RPC;
 
+#if 0
     /* parse "rpc", if any */
     LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpc_e), cleanup);
 
@@ -738,6 +740,7 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **
         /* parse "action", if any */
         LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "action", "urn:ietf:params:xml:ns:yang:1", &act_e), cleanup);
     }
+#endif
 
     /* parse the rest of data normally */
     LY_CHECK_GOTO(ret = lydxml_subtree_r(&lydctx, NULL, &tree), cleanup);
@@ -754,52 +757,10 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **
         goto cleanup;
     }
 
-    /* finish XML parsing and check operation type */
-    if (act_e) {
-        if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
-            assert(lydctx.xmlctx->status == LYXML_ELEMENT);
-            LOGVAL(ctx, LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element \"%.*s\" of \"action\".",
-                    lydctx.xmlctx->name_len, lydctx.xmlctx->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (lydctx.op_node->schema->nodetype != LYS_ACTION) {
-            LOGVAL(ctx, LY_VLOG_LYD, lydctx.op_node, LYVE_DATA, "Unexpected %s element, an \"action\" expected.",
-                    lys_nodetype2str(lydctx.op_node->schema->nodetype));
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-        LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
-    }
-    if (rpc_e) {
-        if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
-            assert(lydctx.xmlctx->status == LYXML_ELEMENT);
-            LOGVAL(ctx, LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element \"%.*s\" of \"rpc\".",
-                    lydctx.xmlctx->name_len, lydctx.xmlctx->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (!act_e && (lydctx.op_node->schema->nodetype != LYS_RPC)) {
-            LOGVAL(ctx, LY_VLOG_LYD, lydctx.op_node, LYVE_DATA, "Unexpected %s element, an \"rpc\" expected.",
-                    lys_nodetype2str(lydctx.op_node->schema->nodetype));
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-        LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
-    }
-
     if (op_p) {
         *op_p = lydctx.op_node;
     }
     assert(tree);
-    if (act_e) {
-        /* connect to the action */
-        lyd_insert_node(act_e, NULL, tree);
-        tree = act_e;
-    }
-    if (rpc_e) {
-        /* connect to the rpc */
-        lyd_insert_node(rpc_e, NULL, tree);
-        tree = rpc_e;
-    }
     if (tree_p) {
         *tree_p = tree;
     }
@@ -810,12 +771,11 @@ cleanup:
     lyxml_ctx_free(lydctx.xmlctx);
     if (ret) {
         lyd_free_all(tree);
-        lyd_free_tree(act_e);
-        lyd_free_tree(rpc_e);
     }
     return ret;
 }
 
+#if 0
 static LY_ERR
 lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
 {
@@ -905,13 +865,13 @@ cleanup:
     }
     return ret;
 }
+#endif
 
 LY_ERR
 lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
-    struct lyd_node *ntf_e = NULL;
     struct lyd_node *tree = NULL;
 
     /* init */
@@ -919,8 +879,10 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
     lydctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lydctx.int_opts = LYD_INTOPT_NOTIF;
 
+#if 0
     /* parse "notification" and "eventTime", if present */
     LY_CHECK_GOTO(ret = lydxml_notif_envelope(lydctx.xmlctx, &ntf_e), cleanup);
+#endif
 
     /* parse the rest of data normally */
     LY_CHECK_GOTO(ret = lydxml_subtree_r(&lydctx, NULL, &tree), cleanup);
@@ -937,26 +899,50 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
         goto cleanup;
     }
 
-    /* finish XML parsing */
-    if (ntf_e) {
-        if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
-            assert(lydctx.xmlctx->status == LYXML_ELEMENT);
-            LOGVAL(ctx, LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element \"%.*s\" of \"notification\".",
-                    lydctx.xmlctx->name_len, lydctx.xmlctx->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-        LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
-    }
-
     if (ntf_p) {
         *ntf_p = lydctx.op_node;
     }
     assert(tree);
-    if (ntf_e) {
-        /* connect to the notification */
-        lyd_insert_node(ntf_e, NULL, tree);
-        tree = ntf_e;
+    if (tree_p) {
+        *tree_p = tree;
+    }
+
+cleanup:
+    /* we have used parse_only flag */
+    assert(!lydctx.node_types.count && !lydctx.meta_types.count && !lydctx.node_when.count);
+    lyxml_ctx_free(lydctx.xmlctx);
+    if (ret) {
+        lyd_free_all(tree);
+    }
+    return ret;
+}
+
+LY_ERR
+lyd_parse_xml_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_xml_ctx lydctx = {0};
+    struct lyd_node *tree = NULL;
+
+    /* init */
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, in, &lydctx.xmlctx), cleanup);
+    lydctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
+    lydctx.int_opts = LYD_INTOPT_REPLY;
+
+#if 0
+    /* parse "rpc-reply", if any */
+    LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpcr_e),
+            cleanup);
+#endif
+
+    /* parse the rest of data normally but connect them to the duplicated operation */
+    while (lydctx.xmlctx->status == LYXML_ELEMENT) {
+        ret = lydxml_subtree_r(&lydctx, NULL, &tree);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    if (op_p) {
+        *op_p =  lydctx.op_node;
     }
     if (tree_p) {
         *tree_p = tree;
@@ -968,81 +954,6 @@ cleanup:
     lyxml_ctx_free(lydctx.xmlctx);
     if (ret) {
         lyd_free_all(tree);
-        lyd_free_tree(ntf_e);
-    }
-    return ret;
-}
-
-LY_ERR
-lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lyd_xml_ctx lydctx = {0};
-    struct lyd_node *rpcr_e = NULL, *tree, *req_op, *rep_op = NULL;
-
-    /* init */
-    LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_CTX(request), in, &lydctx.xmlctx), cleanup);
-    lydctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
-    lydctx.int_opts = LYD_INTOPT_REPLY;
-
-    /* find request OP */
-    LYD_TREE_DFS_BEGIN((struct lyd_node *)request, req_op) {
-        if (req_op->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
-            break;
-        }
-        LYD_TREE_DFS_END(request, req_op);
-    }
-    if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-        LOGERR(LYD_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
-        ret = LY_EINVAL;
-        goto cleanup;
-    }
-
-    /* duplicate request OP with parents */
-    LY_CHECK_GOTO(ret = lyd_dup_single(req_op, NULL, LYD_DUP_WITH_PARENTS, &rep_op), cleanup);
-
-    /* parse "rpc-reply", if any */
-    LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpcr_e),
-            cleanup);
-
-    /* parse the rest of data normally but connect them to the duplicated operation */
-    while (lydctx.xmlctx->status == LYXML_ELEMENT) {
-        ret = lydxml_subtree_r(&lydctx, (struct lyd_node_inner *)rep_op, lyd_node_children_p(rep_op));
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* finish XML parsing and check operation type */
-    if (rpcr_e) {
-        if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
-            assert(lydctx.xmlctx->status == LYXML_ELEMENT);
-            LOGVAL(LYD_CTX(request), LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX,
-                    "Unexpected sibling element \"%.*s\" of \"rpc-reply\".", lydctx.xmlctx->name_len, lydctx.xmlctx->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-        LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
-    }
-
-    if (op_p) {
-        *op_p = rep_op;
-    }
-    for (tree = rep_op; tree->parent; tree = lyd_parent(tree)) {}
-    if (rpcr_e) {
-        /* connect to the operation */
-        lyd_insert_node(rpcr_e, NULL, tree);
-        tree = rpcr_e;
-    }
-    if (tree_p) {
-        *tree_p = tree;
-    }
-
-cleanup:
-    /* we have used parse_only flag */
-    assert(!lydctx.node_types.count && !lydctx.meta_types.count && !lydctx.node_when.count);
-    lyxml_ctx_free(lydctx.xmlctx);
-    if (ret) {
-        lyd_free_all(rep_op);
-        lyd_free_tree(rpcr_e);
     }
     return ret;
 }

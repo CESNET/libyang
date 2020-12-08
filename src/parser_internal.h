@@ -125,10 +125,6 @@ LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t p
 /**
  * @brief Parse XML string as YANG RPC/action invocation.
  *
- * Optional \<rpc\> envelope element is accepted if present. It is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and all
- * its XML attributes are parsed. As a content of the envelope, an RPC data or \<action\> envelope element is expected. The \<action\> envelope element is
- * also [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action data is expected as a content of this envelope.
- *
  * @param[in] ctx libyang context.
  * @param[in] in Input structure.
  * @param[out] tree_p Parsed full RPC/action tree.
@@ -139,9 +135,6 @@ LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_
 
 /**
  * @brief Parse XML string as YANG notification.
- *
- * Optional \<notification\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc5277#page-25)
- * and parsed. Specifically, its namespace and the child \<eventTime\> element and its value.
  *
  * @param[in] ctx libyang context.
  * @param[in] in Input structure.
@@ -154,16 +147,13 @@ LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct ly
 /**
  * @brief Parse XML string as YANG RPC/action reply.
  *
- * Optional \<rpc-reply\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.2)
- * and all its XML attributes parsed.
- *
- * @param[in] request Data tree of the RPC/action request.
+ * @param[in] ctx libyang context.
  * @param[in] in Input structure.
- * @param[out] tree_p Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] tree_p Parsed full RPC/action reply tree.
  * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+LY_ERR lyd_parse_xml_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
 
 /**
  * @brief Parse JSON string as YANG data tree.
@@ -182,9 +172,6 @@ LY_ERR lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t 
 /**
  * @brief Parse JSON string as YANG notification.
  *
- * Optional top-level "notification" envelope object, if present, is [checked](https://tools.ietf.org/html/rfc5277#page-25)
- * and parsed. Specifically the child "eventTime" member and its value.
- *
  * @param[in] ctx libyang context.
  * @param[in] in Input structure.
  * @param[out] tree_p Parsed full notification tree.
@@ -195,10 +182,6 @@ LY_ERR lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct l
 
 /**
  * @brief Parse JSON string as YANG RPC/action invocation.
- *
- * Optional top-level "rpc" envelope object, if present is is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and the parser
- * goes inside for the content, which is an RPC data or "action" envelope objects. The "action" envelope object is
- * also [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action data is expected as a content of this envelope.
  *
  * @param[in] ctx libyang context.
  * @param[in] in Input structure.
@@ -211,15 +194,13 @@ LY_ERR lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd
 /**
  * @brief Parse JSON string as YANG RPC/action reply.
  *
- * Optional "rpc-reply" envelope object, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.2).
- *
- * @param[in] request Data tree of the RPC/action request.
+ * @param[in] ctx libyang context.
  * @param[in] in Input structure.
- * @param[out] tree_p Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] tree_p Parsed full RPC/action reply tree.
  * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+LY_ERR lyd_parse_json_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
 
 /**
  * @brief Parse binary data as YANG data tree.
@@ -260,13 +241,13 @@ LY_ERR lyd_parse_lyb_notif(const struct ly_ctx *ctx, struct ly_in *in, struct ly
 /**
  * @brief Parse binary data as YANG RPC/action reply.
  *
- * @param[in] request Data tree of the RPC/action request.
+ * @param[in] ctx libyang context.
  * @param[in] in Input structure.
- * @param[out] tree_p Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] tree_p Parsed full RPC/action reply tree.
  * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+LY_ERR lyd_parse_lyb_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
 
 /**
  * @brief Check that a data node representing the @p snode is suitable based on options.

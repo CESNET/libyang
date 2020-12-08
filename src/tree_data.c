@@ -451,14 +451,13 @@ lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, str
 }
 
 API LY_ERR
-lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
+lyd_parse_reply(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
         struct lyd_node **op)
 {
-    LY_CHECK_ARG_RET(NULL, request, LY_EINVAL);
-    LY_CHECK_ARG_RET(LYD_CTX(request), in, tree || op, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, in, tree || op, LY_EINVAL);
 
     format = lyd_parse_get_format(in, format);
-    LY_CHECK_ARG_RET(LYD_CTX(request), format, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
 
     /* init */
     if (tree) {
@@ -473,16 +472,16 @@ lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FORMAT for
 
     switch (format) {
     case LYD_XML:
-        return lyd_parse_xml_reply(request, in, tree, op);
+        return lyd_parse_xml_reply(ctx, in, tree, op);
     case LYD_JSON:
-        return lyd_parse_json_reply(request, in, tree, op);
+        return lyd_parse_json_reply(ctx, in, tree, op);
     case LYD_LYB:
-        return lyd_parse_lyb_reply(request, in, tree, op);
+        return lyd_parse_lyb_reply(ctx, in, tree, op);
     case LYD_UNKNOWN:
         break;
     }
 
-    LOGINT_RET(LYD_CTX(request));
+    LOGINT_RET(ctx);
 }
 
 API LY_ERR

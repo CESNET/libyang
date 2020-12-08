@@ -672,8 +672,6 @@ struct lyd_node_any {
  */
 #define LYD_NODEHINT_LIST       0x0080 /**< node is allowed to be a list instance */
 #define LYD_NODEHINT_LEAFLIST   0x0100 /**< node is allowed to be a leaf-list instance */
-#define LYD_NODEHINT_ENVELOPE   0x8000 /**< only found in opaque node hints; node is a special protocol-dependent
-                                            RPC/Action/Notification envelope */
 /**
  * @} lydnodehints
  */
