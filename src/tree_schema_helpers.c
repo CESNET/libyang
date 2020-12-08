@@ -30,6 +30,8 @@
 #include "in_internal.h"
 #include "log.h"
 #include "parser_schema.h"
+#include "schema_features.h"
+#include "schema_compile.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -874,11 +876,24 @@ search_file:
     /*
      * module found, make sure it is implemented if should be
      */
-    if (implement && !(*mod)->implemented) {
-        ret = lys_set_implemented_r(*mod, features, unres);
-        if (ret) {
-            *mod = NULL;
-            return ret;
+    if (implement) {
+        if ((*mod)->implemented) {
+            /* set features if different */
+            ret = lys_set_features((*mod)->parsed, features);
+            if (!ret) {
+                /* context need to be recompiled so that feature changes are properly applied */
+                unres->recompile = 1;
+            } else if (ret != LY_EEXIST) {
+                /* error */
+                return ret;
+            } /* else no feature changes */
+        } else {
+            /* implement */
+            ret = lys_set_implemented_r(*mod, features, unres);
+            if (ret) {
+                *mod = NULL;
+                return ret;
+            }
         }
     }
 
