@@ -370,8 +370,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
     if (*op == LYD_DIFF_OP_CREATE) {
         /* insert the instance */
-        LY_ARRAY_RESIZE_ERR_RET(schema->module->ctx, userord_item->inst, LY_ARRAY_COUNT(userord_item->inst) + 1,
-                ; , LY_EMEM);
+        LY_ARRAY_CREATE_RET(schema->module->ctx, userord_item->inst, 1, LY_EMEM);
         if (second_pos < LY_ARRAY_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + second_pos + 1, userord_item->inst + second_pos,
                     (LY_ARRAY_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);
