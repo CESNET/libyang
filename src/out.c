@@ -76,7 +76,7 @@ struct ext_substmt_info_s ext_substmt_info[] = {
 ly_bool
 ly_should_print(const struct lyd_node *node, uint32_t options)
 {
-    const struct lyd_node *elem;
+    const struct lyd_node *elem, *op;
 
     if (options & LYD_PRINT_WD_TRIM) {
         /* do not print default nodes */
@@ -89,16 +89,20 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
                 return 0;
             }
         }
-    } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK) && !(node->schema->flags & LYS_CONFIG_R)) {
-        /* LYDP_WD_EXPLICIT
-         * - print only if it contains status data in its subtree */
-        LYD_TREE_DFS_BEGIN(node, elem) {
-            if ((elem->schema->nodetype != LYS_CONTAINER) || (elem->schema->flags & LYS_PRESENCE)) {
-                if (elem->schema->flags & LYS_CONFIG_R) {
-                    return 1;
+    } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK)) {
+        /* LYD_PRINT_WD_EXPLICIT, find out if this is some input/output */
+        for (op = node; op && (op->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = lyd_parent(op)) {}
+
+        if (!op && (node->schema->flags & LYS_CONFIG_W)) {
+            /* print only if it contains status data in its subtree */
+            LYD_TREE_DFS_BEGIN(node, elem) {
+                if ((elem->schema->nodetype != LYS_CONTAINER) || (elem->schema->flags & LYS_PRESENCE)) {
+                    if (elem->schema->flags & LYS_CONFIG_R) {
+                        return 1;
+                    }
                 }
+                LYD_TREE_DFS_END(node, elem)
             }
-            LYD_TREE_DFS_END(node, elem)
         }
         return 0;
     } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER) && !(options & LYD_PRINT_KEEPEMPTYCONT)) {
