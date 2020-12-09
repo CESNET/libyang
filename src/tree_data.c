@@ -3251,7 +3251,8 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
 
-    if (!siblings || (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema))) {
+    if (!siblings || (siblings->schema && target->schema &&
+            (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
         /* no data or schema mismatch */
         if (match) {
             *match = NULL;
@@ -3269,7 +3270,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     }
 
     parent = (struct lyd_node_inner *)siblings->parent;
-    if (parent && parent->children_ht) {
+    if (parent && parent->schema && parent->children_ht) {
         assert(target->hash);
 
         /* find by hash */
