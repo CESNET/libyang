@@ -768,7 +768,8 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         while ((lref == LY_PATH_LREF_TRUE) && (expr->tokens[tok_idx] == LYXP_TOKEN_DDOT)) {
             if (!ctx_node) {
                 LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Too many parent references in path.");
-                return LY_EVALID;
+                ret = LY_EVALID;
+                goto cleanup;
             }
 
             /* get parent */
@@ -790,8 +791,12 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
                 (p->node->nodetype == LYS_LIST) && !p->predicates) {
             LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                     lys_nodetype2str(p->node->nodetype), p->node->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+
+        /* NameTest */
+        LY_CHECK_ERR_GOTO(lyxp_check_token(ctx, expr, tok_idx, LYXP_TOKEN_NAMETEST), ret = LY_EVALID, cleanup);
 
         /* get module and node name */
         LY_CHECK_GOTO(ret = ly_path_compile_prefix(ctx, cur_node, cur_mod, ctx_node, expr, tok_idx, lref, format,
@@ -821,12 +826,21 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         LY_CHECK_GOTO(ret, cleanup);
     } while (!lyxp_next_token(NULL, expr, &tok_idx, LYXP_TOKEN_OPER_PATH));
 
+    /* check leftover tokens */
+    if (tok_idx < expr->used) {
+        LOGVAL_P(ctx, cur_node, LY_VCODE_XP_INTOK, lyxp_print_token(expr->tokens[tok_idx]),
+                    &expr->expr[expr->tok_pos[tok_idx]]);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
     /* check last compiled node */
     if ((lref == LY_PATH_LREF_FALSE) && (target == LY_PATH_TARGET_SINGLE) &&
             (p->node->nodetype & (LYS_LIST | LYS_LEAFLIST)) && !p->predicates) {
         LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                 lys_nodetype2str(p->node->nodetype), p->node->name);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
 cleanup:
