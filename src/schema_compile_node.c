@@ -1314,6 +1314,73 @@ done:
     return ret;
 }
 
+static LY_ERR
+lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct lysp_node *context_pnode, uint16_t context_flags,
+        struct lysp_module *context_mod, const char *context_name, struct lysc_type ***utypes_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_type **utypes = *utypes_p;
+    struct lysc_type_union *un_aux = NULL;
+
+    LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes, LY_ARRAY_COUNT(ptypes), ret, error);
+    for (LY_ARRAY_COUNT_TYPE u = 0, additional = 0; u < LY_ARRAY_COUNT(ptypes); ++u) {
+        ret = lys_compile_type(ctx, context_pnode, context_flags, context_mod, context_name, &ptypes[u], &utypes[u + additional], NULL, NULL);
+        LY_CHECK_GOTO(ret, error);
+        if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
+            /* add space for additional types from the union subtype */
+            un_aux = (struct lysc_type_union *)utypes[u + additional];
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes,
+                    LY_ARRAY_COUNT(ptypes) + additional + LY_ARRAY_COUNT(un_aux->types) - LY_ARRAY_COUNT(utypes), ret, error);
+
+            /* copy subtypes of the subtype union */
+            for (LY_ARRAY_COUNT_TYPE v = 0; v < LY_ARRAY_COUNT(un_aux->types); ++v) {
+                if (un_aux->types[v]->basetype == LY_TYPE_LEAFREF) {
+                    struct lysc_type_leafref *lref;
+
+                    /* duplicate the whole structure because of the instance-specific path resolving for realtype */
+                    utypes[u + additional] = calloc(1, sizeof(struct lysc_type_leafref));
+                    LY_CHECK_ERR_GOTO(!utypes[u + additional], LOGMEM(ctx->ctx); ret = LY_EMEM, error);
+                    lref = (struct lysc_type_leafref *)utypes[u + additional];
+
+                    lref->basetype = LY_TYPE_LEAFREF;
+                    ret = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, &lref->path);
+                    LY_CHECK_GOTO(ret, error);
+                    lref->refcount = 1;
+                    lref->cur_mod = ((struct lysc_type_leafref *)un_aux->types[v])->cur_mod;
+                    lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
+                    ret = lysc_prefixes_dup(((struct lysc_type_leafref *)un_aux->types[v])->prefixes, &lref->prefixes);
+                    LY_CHECK_GOTO(ret, error);
+                    /* TODO extensions */
+
+                } else {
+                    utypes[u + additional] = un_aux->types[v];
+                    ++un_aux->types[v]->refcount;
+                }
+                ++additional;
+                LY_ARRAY_INCREMENT(utypes);
+            }
+            /* compensate u increment in main loop */
+            --additional;
+
+            /* free the replaced union subtype */
+            lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
+            un_aux = NULL;
+        } else {
+            LY_ARRAY_INCREMENT(utypes);
+        }
+    }
+
+    *utypes_p = utypes;
+    return LY_SUCCESS;
+
+error:
+    if (un_aux) {
+        lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
+    }
+    *utypes_p = utypes;
+    return ret;
+}
+
 /**
  * @brief The core of the lys_compile_type() - compile information about the given type (from typedef or leaf/leaf-list).
  * @param[in] ctx Compile context.
@@ -1342,7 +1409,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     struct lysc_type_dec *dec;
     struct lysc_type_identityref *idref;
     struct lysc_type_leafref *lref;
-    struct lysc_type_union *un, *un_aux;
+    struct lysc_type_union *un;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
@@ -1571,49 +1638,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 return LY_EVALID;
             }
             /* compile the type */
-            LY_ARRAY_CREATE_RET(ctx->ctx, un->types, LY_ARRAY_COUNT(type_p->types), LY_EVALID);
-            for (LY_ARRAY_COUNT_TYPE u = 0, additional = 0; u < LY_ARRAY_COUNT(type_p->types); ++u) {
-                LY_CHECK_RET(lys_compile_type(ctx, context_pnode, context_flags, context_mod, context_name,
-                        &type_p->types[u], &un->types[u + additional], NULL, NULL));
-                if (un->types[u + additional]->basetype == LY_TYPE_UNION) {
-                    /* add space for additional types from the union subtype */
-                    un_aux = (struct lysc_type_union *)un->types[u + additional];
-                    LY_ARRAY_RESIZE_ERR_RET(ctx->ctx, un->types, (*((uint64_t *)(type_p->types) - 1)) + additional + LY_ARRAY_COUNT(un_aux->types) - 1,
-                            lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux), LY_EMEM);
-
-                    /* copy subtypes of the subtype union */
-                    for (LY_ARRAY_COUNT_TYPE v = 0; v < LY_ARRAY_COUNT(un_aux->types); ++v) {
-                        if (un_aux->types[v]->basetype == LY_TYPE_LEAFREF) {
-                            /* duplicate the whole structure because of the instance-specific path resolving for realtype */
-                            un->types[u + additional] = calloc(1, sizeof(struct lysc_type_leafref));
-                            LY_CHECK_ERR_RET(!un->types[u + additional], LOGMEM(ctx->ctx); lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux), LY_EMEM);
-                            lref = (struct lysc_type_leafref *)un->types[u + additional];
-
-                            lref->basetype = LY_TYPE_LEAFREF;
-                            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, &lref->path));
-                            lref->refcount = 1;
-                            lref->cur_mod = ((struct lysc_type_leafref *)un_aux->types[v])->cur_mod;
-                            lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
-                            LY_CHECK_RET(lysc_prefixes_dup(((struct lysc_type_leafref *)un_aux->types[v])->prefixes,
-                                    &lref->prefixes));
-                            /* TODO extensions */
-
-                        } else {
-                            un->types[u + additional] = un_aux->types[v];
-                            ++un_aux->types[v]->refcount;
-                        }
-                        ++additional;
-                        LY_ARRAY_INCREMENT(un->types);
-                    }
-                    /* compensate u increment in main loop */
-                    --additional;
-
-                    /* free the replaced union subtype */
-                    lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
-                } else {
-                    LY_ARRAY_INCREMENT(un->types);
-                }
-            }
+            LY_CHECK_RET(lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_mod, context_name,
+                    &un->types));
         }
 
         if (!base && !type_p->flags) {
