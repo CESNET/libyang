@@ -398,32 +398,6 @@ print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
 }
 
 int
-check_request_paths(struct ly_ctx *ctx, struct ly_set *request_paths, struct ly_set *data_inputs)
-{
-    if ((request_paths->count > 1) && (request_paths->count != data_inputs->count)) {
-        YLMSG_E("Number of request paths does not match the number of reply data files (%u:%u).\n",
-                request_paths->count, data_inputs->count);
-        return -1;
-    }
-
-    for (uint32_t u = 0; u < request_paths->count; ++u) {
-        const char *path = (const char *)request_paths->objs[u];
-        const struct lysc_node *action = NULL;
-
-        action = lys_find_path(ctx, NULL, path, 0);
-        if (!action) {
-            YLMSG_E("The request path \"%s\" is not valid.\n", path);
-            return -1;
-        } else if (!(action->nodetype & (LYS_RPC | LYS_ACTION))) {
-            YLMSG_E("The request path \"%s\" does not represent RPC/Action.\n", path);
-            return -1;
-        }
-    }
-
-    return 0;
-}
-
-int
 evaluate_xpath(const struct lyd_node *tree, const char *xpath)
 {
     struct ly_set *set = NULL;
@@ -460,8 +434,7 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
 LY_ERR
 process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
         uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
-        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *request_paths, struct ly_set *requests,
-        struct ly_set *xpaths)
+        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *tree = NULL, *merged_tree = NULL;
@@ -478,7 +451,6 @@ process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT fo
 
     for (uint32_t u = 0; u < inputs->count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)inputs->objs[u];
-        struct cmdline_file *request_f;
         switch (data_type) {
         case 0:
             ret = lyd_parse_data(ctx, input_f->in, input_f->format, options_parse, options_validate, &tree);
@@ -486,41 +458,9 @@ process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT fo
         case LYD_VALIDATE_OP_RPC:
             ret = lyd_parse_rpc(ctx, input_f->in, input_f->format, &tree, NULL);
             break;
-        case LYD_VALIDATE_OP_REPLY: {
-            struct lyd_node *request = NULL;
-
-            /* get the request data */
-            if (request_paths->count) {
-                const char *path;
-                if (request_paths->count > 1) {
-                    /* one to one */
-                    path = (const char *)request_paths->objs[u];
-                } else {
-                    /* one to all */
-                    path = (const char *)request_paths->objs[0];
-                }
-                ret = lyd_new_path(NULL, ctx, path, NULL, 0, &request);
-                if (ret) {
-                    YLMSG_E("Failed to create request data from path \"%s\".\n", path);
-                    goto cleanup;
-                }
-            } else {
-                assert(requests->count > u);
-                request_f = (struct cmdline_file *)requests->objs[u];
-
-                ret = lyd_parse_rpc(ctx, request_f->in, request_f->format, &request, NULL);
-                if (ret) {
-                    YLMSG_E("Failed to parse input data file \"%s\".\n", input_f->path);
-                    goto cleanup;
-                }
-            }
-
-            /* get the reply data */
-            ret = lyd_parse_reply(request, input_f->in, input_f->format, &tree, NULL);
-            lyd_free_all(request);
-
+        case LYD_VALIDATE_OP_REPLY:
+            ret = lyd_parse_reply(ctx, input_f->in, input_f->format, &tree, NULL);
             break;
-        } /* case PARSE_REPLY */
         case LYD_VALIDATE_OP_NOTIF:
             ret = lyd_parse_notif(ctx, input_f->in, input_f->format, &tree, NULL);
             break;

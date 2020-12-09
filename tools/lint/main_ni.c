@@ -81,20 +81,6 @@ struct context {
     /* input data files (struct cmdline_file *) */
     struct ly_set data_inputs;
 
-    /* the request files for reply data (struct cmdline_file *)
-     * In case the data_type is PARSE_REPLY, the parsing function requires information about the request for this reply.
-     * One way to provide the request is a data file containing the full RPC/Action request which will be parsed.
-     * Alternatively, it can be set as the Path of the requested RPC/Action and in that case it is stored in
-     * data_request_paths.
-     */
-    struct ly_set data_requests;
-    /* An alternative way of providing requests for parsing data replies, instead of providing full
-     * request in a data file, only the Path of the requested RPC/Action is provided and stored as
-     * const char *. Note that the number of items in the set must be 1 (1 applies to all) or equal to
-     * data_inputs_count (1 to 1 mapping).
-     */
-    struct ly_set data_request_paths;
-
     /* storage for --operational */
     struct cmdline_file data_operational;
 };
@@ -104,8 +90,6 @@ erase_context(struct context *c)
 {
     /* data */
     ly_set_erase(&c->data_inputs, free_cmdline_file);
-    ly_set_erase(&c->data_requests, free_cmdline_file);
-    ly_set_erase(&c->data_request_paths, NULL);
     ly_in_free(c->data_operational.in, 1);
 
     /* schema */
@@ -132,7 +116,7 @@ help(int shortout)
     printf("Usage:\n"
             "    yanglint [Options] [-f { yang | yin | info}] <schema>...\n"
             "        Validates the YANG module in <schema>, and all its dependencies.\n\n"
-            "    yanglint [Options] [-f { xml | json }] <schema>... <file> [<request>]...\n"
+            "    yanglint [Options] [-f { xml | json }] <schema>... <file> ...\n"
             "        Validates the YANG modeled data in <file> according to the <schema>.\n\n"
             "    yanglint\n"
             "        Starts interactive mode with more features.\n\n");
@@ -222,23 +206,12 @@ help(int shortout)
             "        edit          - Content of the NETCONF <edit-config> operation.\n"
             "        rpc           - Content of the NETCONF <rpc> message, defined as YANG's\n"
             "                        RPC/Action input statement.\n"
-            "        reply         - Reply to the RPC/Action. Besides the reply itself,\n"
-            "                        yanglint(1) requires information about the request for\n"
-            "                        the reply. The request (RPC/Action) can be provided as\n"
-            "                        the --request option or as another input data <file>\n"
-            "                        provided right after the reply data <file> and\n"
-            "                        containing complete RPC/Action for the reply.\n"
+            "        reply         - Reply to the RPC/Action. Note that the reply data are\n"
+            "                        expected inside a container representing the original\n"
+            "                        RPC/Action. This is necessary to identify appropriate\n"
+            "                        data definitions in the schema module.\n"
             "        notif         - Notification instance (content of the <notification>\n"
             "                        element without <eventTime>).\n"
-            "  -r PATH, --request=PATH\n"
-            "                The alternative way of providing request information for the\n"
-            "                '--type=reply'. The PATH is the XPath subset described in\n"
-            "                documentation as Path format. It is required to point to the\n"
-            "                RPC or Action in the schema which is supposed to be a request\n"
-            "                for the reply(ies) being parsed from the input data files.\n"
-            "                In case of multiple input data files, the 'request' option can\n"
-            "                be set once for all the replies or multiple times each for the\n"
-            "                respective input data file.\n\n"
 
             "  -O FILE, --operational=FILE\n"
             "                Provide optional data to extend validation of the 'rpc',\n"
@@ -297,7 +270,6 @@ static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {
     struct ly_in *in;
-    uint8_t request_expected = 0;
 
     /* process the operational content if any */
     if (c->data_operational.path) {
@@ -355,42 +327,15 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
                     goto error;
                 }
             }
-        } else if (request_expected) {
-            if (fill_cmdline_file(&c->data_requests, in, argv[optind + i], format_data)) {
-                goto error;
-            }
-            in = NULL;
-
-            request_expected = 0;
         } else if (format_data) {
-            struct cmdline_file *rec;
-
-            rec = fill_cmdline_file(&c->data_inputs, in, argv[optind + i], format_data);
-            if (!rec) {
+            if (!fill_cmdline_file(&c->data_inputs, in, argv[optind + i], format_data)) {
                 goto error;
             }
             in = NULL;
-
-            if ((c->data_type == LYD_VALIDATE_OP_REPLY) && !c->data_request_paths.count) {
-                /* requests for the replies are expected in another input file */
-                if (++i == argc - optind) {
-                    /* there is no such file */
-                    YLMSG_E("Missing request input file for the reply input file %s.\n", rec->path);
-                    goto error;
-                }
-
-                request_expected = 1;
-            }
         } else {
             ly_in_free(in, 1);
             in = NULL;
         }
-    }
-
-    if (request_expected) {
-        YLMSG_E("Missing request input file for the reply input file %s.\n",
-                ((struct cmdline_file *)c->data_inputs.objs[c->data_inputs.count - 1])->path);
-        return -1;
     }
 
     return 0;
@@ -431,7 +376,6 @@ fill_context(int argc, char *argv[], struct context *c)
         {"path",             required_argument, NULL, 'p'},
         {"schema-node",      required_argument, NULL, 'P'},
         {"single-node",      no_argument,       NULL, 'q'},
-        {"request",          required_argument, NULL, 'r'},
         {"strict",           no_argument,       NULL, 's'},
         {"type",             required_argument, NULL, 't'},
         {"version",          no_argument,       NULL, 'v'},
@@ -443,9 +387,9 @@ fill_context(int argc, char *argv[], struct context *c)
     uint8_t data_type_set = 0;
 
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmo:P:qr:st:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmo:P:qst:vV", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmo:P:qr:st:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmo:P:qst:vV", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'd': /* --default */
@@ -608,13 +552,6 @@ fill_context(int argc, char *argv[], struct context *c)
             c->data_operational.path = optarg;
             break;
 
-        case 'r': /* --request */
-            if (ly_set_add(&c->data_request_paths, optarg, 0, NULL)) {
-                YLMSG_E("Storing request path failed.\n");
-                return -1;
-            }
-            break;
-
         case 'm': /* --merge */
             c->data_merge = 1;
             break;
@@ -739,12 +676,6 @@ fill_context(int argc, char *argv[], struct context *c)
         }
     }
 
-    if (c->data_type == LYD_VALIDATE_OP_REPLY) {
-        if (check_request_paths(c->ctx, &c->data_request_paths, &c->data_inputs)) {
-            return -1;
-        }
-    }
-
     return 0;
 }
 
@@ -794,7 +725,7 @@ main_ni(int argc, char *argv[])
         if (c.data_inputs.size) {
             if (process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out,
                     c.data_parse_options, c.data_validate_options, c.data_print_options,
-                    &c.data_operational, &c.data_inputs, &c.data_request_paths, &c.data_requests, NULL)) {
+                    &c.data_operational, &c.data_inputs, NULL)) {
                 goto cleanup;
             }
         }

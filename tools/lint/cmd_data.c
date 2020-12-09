@@ -33,14 +33,10 @@ cmd_data_help(void)
 {
     printf("Usage: data [-ems] [-t TYPE]\n"
             "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
-            "       data [-s] -t (rpc | notif) [-O FILE]\n"
+            "       data [-s] -t (rpc | notif | reply) [-O FILE]\n"
             "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
-            "       data [-s] -t reply -r <request-file> [-O FILE]\n"
-            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
-            "       data [-s] -t reply [-O FILE]\n"
-            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> <request1> ...\n"
             "       data [-es] [-t TYPE] -x XPATH [-o OUTFILE] <data1> ...\n"
-            "                  Parse, validate and optionaly print data instances\n\n"
+            "                  Parse, validate and optionally print data instances\n\n"
 
             "  -t TYPE, --type=TYPE\n"
             "                Specify data tree type in the input data file(s):\n"
@@ -51,12 +47,10 @@ cmd_data_help(void)
             "        edit          - Content of the NETCONF <edit-config> operation.\n"
             "        rpc           - Content of the NETCONF <rpc> message, defined as YANG's\n"
             "                        RPC/Action input statement.\n"
-            "        reply         - Reply to the RPC/Action. Besides the reply itself,\n"
-            "                        yanglint(1) requires information about the request for\n"
-            "                        the reply. The request (RPC/Action) can be provide as\n"
-            "                        the --request option or as another input data <file>\n"
-            "                        provided right after the reply data <file> and\n"
-            "                        containing complete RPC/Action for the reply.\n"
+            "        reply         - Reply to the RPC/Action. Note that the reply data are\n"
+            "                        expected inside a container representing the original\n"
+            "                        RPC/Action. This is necessary to identify appropriate\n"
+            "                        data definitions in the schema module.\n"
             "        notif         - Notification instance (content of the <notification>\n"
             "                        element without <eventTime>).\n\n"
 
@@ -70,15 +64,6 @@ cmd_data_help(void)
             "                In case of using -x option, the data are always merged.\n"
             "  -s, --strict  Strict data parsing (do not skip unknown data), has no effect\n"
             "                for schemas.\n"
-            "  -r PATH, --request=PATH\n"
-            "                The alternative way of providing request information for the\n"
-            "                '--type=reply'. The PATH is the XPath subset described in\n"
-            "                documentation as Path format. It is required to point to the\n"
-            "                RPC or Action in the schema which is supposed to be a request\n"
-            "                for the reply(ies) being parsed from the input data files.\n"
-            "                In case of multiple input data files, the 'request' option can\n"
-            "                be set once for all the replies or multiple times each for the\n"
-            "                respective input data file.\n"
             "  -O FILE, --operational=FILE\n"
             "                Provide optional data to extend validation of the 'rpc',\n"
             "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
@@ -110,55 +95,6 @@ cmd_data_help(void)
 
 }
 
-static int
-prepare_inputs(int argc, char *argv[], struct ly_set *requests, struct ly_set *inputs)
-{
-    struct ly_in *in;
-    uint8_t request_expected = 0;
-
-    for (int i = 0; i < argc - optind; i++) {
-        LYD_FORMAT format = LYD_UNKNOWN;
-        struct cmdline_file *rec;
-
-        if (get_input(argv[optind + i], NULL, &format, &in)) {
-            return -1;
-        }
-
-        if (request_expected) {
-            if (fill_cmdline_file(requests, in, argv[optind + i], format)) {
-                ly_in_free(in, 1);
-                return -1;
-            }
-
-            request_expected = 0;
-        } else {
-            rec = fill_cmdline_file(inputs, in, argv[optind + i], format);
-            if (!rec) {
-                ly_in_free(in, 1);
-                return -1;
-            }
-
-            if (requests) {
-                /* requests for the replies are expected in another input file */
-                if (++i == argc - optind) {
-                    /* there is no such file */
-                    YLMSG_E("Missing request input file for the reply input file %s.\n", rec->path);
-                    return -1;
-                }
-
-                request_expected = 1;
-            }
-        }
-    }
-
-    if (request_expected) {
-        YLMSG_E("Missing request input file for the reply input file %s.\n", argv[argc - optind - 1]);
-        return -1;
-    }
-
-    return 0;
-}
-
 void
 cmd_data(struct ly_ctx **ctx, const char *cmdline)
 {
@@ -173,7 +109,6 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         {"merge", no_argument, NULL, 'm'},
         {"output", required_argument, NULL, 'o'},
         {"operational", required_argument, NULL, 'O'},
-        {"request", required_argument, NULL, 'r'},
         {"strict", no_argument, NULL, 's'},
         {"type", required_argument, NULL, 't'},
         {"xpath", required_argument, NULL, 'x'},
@@ -190,8 +125,6 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     struct ly_out *out = NULL;
     struct cmdline_file *operational = NULL;
     struct ly_set inputs = {0};
-    struct ly_set requests = {0};
-    struct ly_set request_paths = {0};
     struct ly_set xpaths = {0};
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
@@ -253,12 +186,6 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
             operational = fill_cmdline_file(NULL, in, optarg, f);
             break;
         } /* case 'O' */
-        case 'r': /* --request */
-            if (ly_set_add(&request_paths, optarg, 0, NULL)) {
-                YLMSG_E("Storing request path \"%s\" failed.\n", optarg);
-                goto cleanup;
-            }
-            break;
 
         case 'e': /* --present */
             options_validate |= LYD_VALIDATE_PRESENT;
@@ -346,13 +273,16 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     }
 
     /* process input data files provided as standalone command line arguments */
-    if (prepare_inputs(argc, argv, ((data_type == LYD_VALIDATE_OP_REPLY) && !request_paths.count) ? &requests : NULL,
-            &inputs)) {
-        goto cleanup;
-    }
+    for (int i = 0; i < argc - optind; i++) {
+        struct ly_in *in;
+        LYD_FORMAT format = LYD_UNKNOWN;
 
-    if (data_type == LYD_VALIDATE_OP_REPLY) {
-        if (check_request_paths(*ctx, &request_paths, &inputs)) {
+        if (get_input(argv[optind + i], NULL, &format, &in)) {
+            goto cleanup;
+        }
+
+        if (fill_cmdline_file(&inputs, in, argv[optind + i], format)) {
+            ly_in_free(in, 1);
             goto cleanup;
         }
     }
@@ -368,15 +298,13 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     /* parse, validate and print data */
     if (process_data(*ctx, data_type, data_merge, format, out,
             options_parse, options_validate, options_print,
-            operational, &inputs, &request_paths, &requests, &xpaths)) {
+            operational, &inputs, &xpaths)) {
         goto cleanup;
     }
 
 cleanup:
     ly_out_free(out, NULL, 0);
     ly_set_erase(&inputs, free_cmdline_file);
-    ly_set_erase(&requests, free_cmdline_file);
-    ly_set_erase(&request_paths, NULL);
     ly_set_erase(&xpaths, NULL);
     free_cmdline_file(operational);
     free_cmdline(argv);
