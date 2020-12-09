@@ -123,15 +123,21 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
     const struct lysc_node *parent;
     const struct lys_module *mod;
     LYB_HASH i;
+    uint32_t getnext_opts;
 
     ht = lyht_new(1, sizeof(struct lysc_node *), lyb_hash_equal_cb, NULL, 1);
     LY_CHECK_ERR_RET(!ht, LOGMEM(sibling->module->ctx), LY_EMEM);
+
+    getnext_opts = 0;
+    if (sibling->flags & LYS_CONFIG_R) {
+        getnext_opts = LYS_GETNEXT_OUTPUT;
+    }
 
     parent = lysc_data_parent(sibling);
     mod = sibling->module;
 
     sibling = NULL;
-    while ((sibling = (struct lysc_node *)lys_getnext(sibling, parent, mod->compiled, 0))) {
+    while ((sibling = (struct lysc_node *)lys_getnext(sibling, parent, mod->compiled, getnext_opts))) {
         /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
@@ -841,8 +847,9 @@ lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_
 
     /* create whole sibling HT if not already created and saved */
     if (!*sibling_ht) {
-        /* get first schema data sibling (or input/output) */
-        first_sibling = (struct lysc_node *)lys_getnext(NULL, lysc_data_parent(schema), schema->module->compiled, 0);
+        /* get first schema data sibling */
+        first_sibling = (struct lysc_node *)lys_getnext(NULL, lysc_data_parent(schema), schema->module->compiled,
+                (schema->flags & LYS_CONFIG_R) ? LYS_GETNEXT_OUTPUT : 0);
         LY_ARRAY_FOR(lybctx->sib_hts, u) {
             if (lybctx->sib_hts[u].first_sibling == first_sibling) {
                 /* we have already created a hash table for these siblings */
