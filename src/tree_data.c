@@ -1207,7 +1207,9 @@ lyd_change_term(struct lyd_node *term, const char *val_str)
     } /* else value changed, LY_SUCCESS */
 
 cleanup:
-    type->plugin->free(LYD_CTX(term), &val);
+    if (val.realtype) {
+        type->plugin->free(LYD_CTX(term), &val);
+    }
     return ret;
 }
 
