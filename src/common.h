@@ -556,18 +556,18 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  *
  * @param[in] CTX libyang context for logging.
  * @param[in,out] ARRAY Pointer to the array to create.
- * @param[in] SIZE Number of items the array is supposed to hold. The size of the allocated
+ * @param[in] SIZE Number of the new items the array is supposed to hold. The size of the allocated
  * space is then counted from the type of the ARRAY, so do not provide placeholder void pointers.
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_ARRAY_CREATE_RET(CTX, ARRAY, SIZE, RETVAL) \
         if (ARRAY) { \
-            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
+            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
             ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
+            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
         } else { \
-            ARRAY = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + SIZE * sizeof *(ARRAY)); \
+            ARRAY = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
             ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
         }
