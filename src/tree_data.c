@@ -1707,6 +1707,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
     const struct lysc_node *schema, *sparent;
     struct lyd_node *match = NULL;
     ly_bool found;
+    uint32_t getnext_opts;
 
     assert(new_node);
 
@@ -1715,10 +1716,15 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
         return NULL;
     }
 
+    getnext_opts = 0;
+    if (new_node->schema->flags & LYS_CONFIG_R) {
+        getnext_opts = LYS_GETNEXT_OUTPUT;
+    }
+
     if (first_sibling->parent && first_sibling->parent->children_ht) {
         /* find the anchor using hashes */
         sparent = first_sibling->parent->schema;
-        schema = lys_getnext(new_node->schema, sparent, NULL, 0);
+        schema = lys_getnext(new_node->schema, sparent, NULL, getnext_opts);
         while (schema) {
             /* keep trying to find the first existing instance of the closest following schema sibling,
              * otherwise return NULL - inserting at the end */
@@ -1726,7 +1732,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
                 break;
             }
 
-            schema = lys_getnext(schema, sparent, NULL, 0);
+            schema = lys_getnext(schema, sparent, NULL, getnext_opts);
         }
     } else {
         /* find the anchor without hashes */
@@ -1742,7 +1748,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 
         /* get the first schema sibling */
         sparent = lysc_data_parent(new_node->schema);
-        schema = lys_getnext(NULL, sparent, new_node->schema->module->compiled, 0);
+        schema = lys_getnext(NULL, sparent, new_node->schema->module->compiled, getnext_opts);
 
         found = 0;
         LY_LIST_FOR(match, match) {
@@ -1765,7 +1771,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
                     /* current node (match) is a data node still before the new node, continue search in data */
                     break;
                 }
-                schema = lys_getnext(schema, sparent, new_node->schema->module->compiled, 0);
+                schema = lys_getnext(schema, sparent, new_node->schema->module->compiled, getnext_opts);
                 assert(schema);
             }
 
