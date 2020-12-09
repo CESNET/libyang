@@ -1916,6 +1916,7 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     const char *val_str;
     ly_bool dynamic;
     uint32_t i;
+    int rc;
 
     /* find all target data instances */
     ret = lyxp_eval(lref->path, lref->cur_mod, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, node, tree, &set, 0);
@@ -1945,8 +1946,14 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     if (i == set.used) {
         ret = LY_ENOTFOUND;
         val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
-        if (asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.", val_str,
-                lref->path->expr) == -1) {
+        if (set.used) {
+            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.",
+                    val_str, lref->path->expr);
+        } else {
+            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - no existing target instance \"%s\".",
+                    val_str, lref->path->expr);
+        }
+        if (rc == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
         }
