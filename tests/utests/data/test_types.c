@@ -907,13 +907,13 @@ test_leafref(void **state)
             "<lref2 xmlns=\"urn:tests:types\">b</lref2>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"b\" - "
-            "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
+            "no existing target instance \"../list[id = current()/../str-norestr]/targets\".",
             "/types:lref2");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"b\" - "
-            "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
+            "no existing target instance \"../list[id = current()/../str-norestr]/targets\".",
             "/types:lref2");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
@@ -926,8 +926,8 @@ test_leafref(void **state)
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
             "<l><id>x</id><value>x</value><lr2>z</lr2></l></c>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid leafref value \"z\" - no target instance \"../../l[id=current()/../../../t:str-norestr]"
-            "[value=current()/../../../t:str-norestr]/value\" with the same value.",
+    CHECK_LOG_CTX("Invalid leafref value \"z\" - no existing target instance \"../../l[id=current()/../../../t:str-norestr]"
+            "[value=current()/../../../t:str-norestr]/value\".",
             "/leafrefs:c/l[id='x'][value='x']/lr2");
 }
 
