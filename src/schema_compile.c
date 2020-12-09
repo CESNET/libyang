@@ -439,9 +439,6 @@ lys_compile_identity_circular_check(struct lysc_ctx *ctx, struct lysc_ident *ide
 
     for (v = 0; v < recursion.count; ++v) {
         drv = recursion.objs[v];
-        if (!drv->derived) {
-            continue;
-        }
         for (u = 0; u < LY_ARRAY_COUNT(drv->derived); ++u) {
             if (ident == drv->derived[u]) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -560,7 +557,7 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     lysc_update_path(ctx, NULL, "{identity}");
 
 restart:
-    for (u = 0, v = 0; *idents && (u < LY_ARRAY_COUNT(*idents)); ++u) {
+    for (u = 0, v = 0; u < LY_ARRAY_COUNT(*idents); ++u) {
         /* find matching parsed identity, the disabled ones are missing in the compiled array */
         while (v < LY_ARRAY_COUNT(idents_p)) {
             if (idents_p[v].name == (*idents)[u].name) {
@@ -1243,20 +1240,11 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
 
     assert(dflt || dflts);
 
-    if (llist->dflts) {
-        /* there were already some defaults and we are adding new by deviations */
-        assert(dflts);
-        orig_count = LY_ARRAY_COUNT(llist->dflts);
-    } else {
-        orig_count = 0;
-    }
+    /* in case there were already some defaults and we are adding new by deviations */
+    orig_count = LY_ARRAY_COUNT(llist->dflts);
 
     /* allocate new items */
-    if (dflts) {
-        LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, orig_count + LY_ARRAY_COUNT(dflts), LY_EMEM);
-    } else {
-        LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, orig_count + 1, LY_EMEM);
-    }
+    LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, orig_count + (dflts ? LY_ARRAY_COUNT(dflts) : 1), LY_EMEM);
 
     /* fill each new default value */
     if (dflts) {

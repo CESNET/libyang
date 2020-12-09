@@ -1285,6 +1285,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, LY_PREF_JSON,
             NULL, NULL, &p), cleanup);
 
+    assert(p);
     schema = p[LY_ARRAY_COUNT(p) - 1].node;
     if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE) &&
             !(options & LYD_NEW_PATH_OPAQ)) {
