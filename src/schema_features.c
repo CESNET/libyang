@@ -105,7 +105,7 @@ lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmo
     if (!*idx) {
         /* module features */
         features = pmod->features;
-    } else if (pmod->includes && ((*idx - 1) < LY_ARRAY_COUNT(pmod->includes))) {
+    } else if ((*idx - 1) < LY_ARRAY_COUNT(pmod->includes)) {
         /* submodule features */
         features = pmod->includes[*idx - 1].submodule->features;
     } else {
@@ -647,9 +647,6 @@ lys_compile_feature_circular_check(const struct ly_ctx *ctx, struct lysp_feature
 
     for (v = 0; v < recursion.count; ++v) {
         drv = recursion.objs[v];
-        if (!drv->depfeatures) {
-            continue;
-        }
         for (u = 0; u < LY_ARRAY_COUNT(drv->depfeatures); ++u) {
             if (feature == drv->depfeatures[u]) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.",

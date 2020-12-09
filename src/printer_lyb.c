@@ -325,12 +325,7 @@ lyb_write_start_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     LY_ARRAY_COUNT_TYPE u;
 
-    if (!lybctx->subtrees) {
-        assert(lybctx->subtree_size == 0);
-        u = 0;
-    } else {
-        u = LY_ARRAY_COUNT(lybctx->subtrees);
-    }
+    u = LY_ARRAY_COUNT(lybctx->subtrees);
     if (u == lybctx->subtree_size) {
         LY_ARRAY_CREATE_RET(lybctx->ctx, lybctx->subtrees, u + LYB_SUBTREE_STEP, LY_EMEM);
         lybctx->subtree_size = u + LYB_SUBTREE_STEP;

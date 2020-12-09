@@ -140,15 +140,13 @@ extern "C" {
  */
 #define LY_ARRAY_FOR_INDEX(ARRAY, INDEX) \
     for (INDEX = 0; \
-         ARRAY && INDEX < (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+         INDEX < LY_ARRAY_COUNT(ARRAY); \
          ++INDEX)
 
 /**
  * @brief Get the number of records in the ARRAY.
- *
- * Does not check if array exists!
  */
-#define LY_ARRAY_COUNT(ARRAY) (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1))
+#define LY_ARRAY_COUNT(ARRAY) (ARRAY ? (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)) : 0)
 
 /**
  * @brief Sized-array iterator (for-loop).
