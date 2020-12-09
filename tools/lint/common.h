@@ -164,20 +164,6 @@ int get_format(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data);
 int print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
 
 /**
- * @brief Check correctness of the specified Request XPaths for the input data files representing RPCs/Actions.
- *
- * If the requests specified as XPath(s) of the RPC/Action, there must be only a single path applying to all the replies
- * or their number must correspond to the number of replies in input data files.
- *
- * @param[in] ctx libyang context with the schema modules to check the correctness of the paths.
- * @param[in] request_paths The set of Requests' XPaths to check.
- * @param[in] data_inputs The set of data file inputs with the replies to be parsed.
- * @return 0 on success
- * @return -1 on error
- */
-int check_request_paths(struct ly_ctx *ctx, struct ly_set *request_paths, struct ly_set *data_inputs);
-
-/**
  * @brief Process the input data files - parse, validate and print according to provided options.
  *
  * @param[in] ctx libyang context with schema.
@@ -192,16 +178,12 @@ int check_request_paths(struct ly_ctx *ctx, struct ly_set *request_paths, struct
  * @param[in] operational_f Optional operational datastore file information for the case of an extended validation of
  * operation(s).
  * @param[in] inputs Set of file informations of input data files.
- * @param[in] request_paths Set of xpaths refering to the request RPCs/Actions for the replies being processed.
- * @param[in] requests The set of input data files containing request RPCs/Actions for the replies being processed.
- * Alternative to @p request_paths.
  * @param[in] xpath The set of XPaths to be evaluated on the processed data tree, basic information about the resulting set
  * is printed. Alternative to data printing.
  * return LY_ERR value.
  */
 LY_ERR process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
         uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
-        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *request_paths, struct ly_set *requests,
-        struct ly_set *xpaths);
+        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths);
 
 #endif /* COMMON_H_ */
