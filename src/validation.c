@@ -1392,15 +1392,20 @@ lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uin
  * @param[in] op_node Operation node itself.
  * @param[in] tree Data tree to be merged into.
  * @param[out] op_subtree Operation subtree to merge.
- * @param[out] tree_sibling Data tree sibling to merge next to.
+ * @param[out] tree_sibling Data tree sibling to merge next to, is set if @p tree_parent is NULL.
+ * @param[out] tree_parent Data tree parent to merge into, is set if @p tree_sibling is NULL.
  */
 static void
 lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_node, const struct lyd_node *tree,
-        struct lyd_node **op_subtree, struct lyd_node **tree_sibling)
+        struct lyd_node **op_subtree, struct lyd_node **tree_sibling, struct lyd_node **tree_parent)
 {
     const struct lyd_node *tree_iter, *op_iter;
     struct lyd_node *match;
     uint32_t i, cur_depth, op_depth;
+
+    *op_subtree = NULL;
+    *tree_sibling = NULL;
+    *tree_parent = NULL;
 
     /* learn op depth (top-level being depth 0) */
     op_depth = 0;
@@ -1411,14 +1416,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
     /* find where to merge op */
     tree_iter = tree;
     cur_depth = op_depth;
-    op_iter = op_node;
-    while (cur_depth) {
-        /* find next op parent */
-        op_iter = op_node;
-        for (i = 0; i < cur_depth; ++i) {
-            op_iter = (struct lyd_node *)op_iter->parent;
-        }
-
+    while (cur_depth && tree_iter) {
         /* find op iter in tree */
         lyd_find_sibling_first(tree_iter, op_iter, &match);
         if (!match) {
@@ -1430,17 +1428,31 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
 
         /* move depth */
         --cur_depth;
+
+        /* find next op parent */
+        op_iter = op_node;
+        for (i = 0; i < cur_depth; ++i) {
+            op_iter = (struct lyd_node *)op_iter->parent;
+        }
     }
 
+    assert(op_iter);
     *op_subtree = (struct lyd_node *)op_iter;
-    *tree_sibling = (struct lyd_node *)tree_iter;
+    if (!tree || tree_iter) {
+        /* there is no tree whatsoever or this is the last found sibling */
+        *tree_sibling = (struct lyd_node *)tree_iter;
+    } else {
+        /* matching parent was found but it has no children to insert next to */
+        assert(match);
+        *tree_parent = match;
+    }
 }
 
 API LY_ERR
 lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALIDATE_OP op, struct lyd_node **diff)
 {
     LY_ERR ret;
-    struct lyd_node *tree_sibling, *op_subtree, *op_node, *op_parent;
+    struct lyd_node *tree_sibling, *tree_parent, *op_subtree, *op_node, *op_parent;
     struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
 
     LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !tree || !tree->parent,
@@ -1476,10 +1488,10 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
     }
 
     /* merge op_tree into tree */
-    lyd_val_op_merge_find(op_tree, op_node, tree, &op_subtree, &tree_sibling);
-    op_parent = (struct lyd_node *)op_subtree->parent;
+    lyd_val_op_merge_find(op_tree, op_node, tree, &op_subtree, &tree_sibling, &tree_parent);
+    op_parent = lyd_parent(op_subtree);
     lyd_unlink_tree(op_subtree);
-    lyd_insert_node(NULL, (struct lyd_node **)&tree_sibling, op_subtree);
+    lyd_insert_node(tree_parent, &tree_sibling, op_subtree);
     if (!tree) {
         tree = tree_sibling;
     }
