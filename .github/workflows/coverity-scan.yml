@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+        with:
+          ref: libyang2
 
       - name: Download Coverity Build Tool
         shell: bash
