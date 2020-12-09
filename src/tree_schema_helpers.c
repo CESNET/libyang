@@ -1004,9 +1004,25 @@ lysc_has_when(const struct lysc_node *node)
     }
 
     do {
-        if (node->when) {
-            return *node->when;
+        switch (node->nodetype) {
+        case LYS_RPC:
+        case LYS_ACTION:
+            if (((struct lysc_action *)node)->when) {
+                return *((struct lysc_action *)node)->when;
+            }
+            break;
+        case LYS_NOTIF:
+            if (((struct lysc_notif *)node)->when) {
+                return *((struct lysc_notif *)node)->when;
+            }
+            break;
+        default:
+            if (node->when) {
+                return *node->when;
+            }
+            break;
         }
+
         node = node->parent;
     } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
