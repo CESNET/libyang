@@ -6230,11 +6230,6 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
         return LY_EVALID;
     }
 
-    /* nothing to do */
-    if (!all_desc) {
-        return LY_SUCCESS;
-    }
-
     /* getnext opts */
     getnext_opts = 0;
     if (options & LYXP_SCNODE_OUTPUT) {
@@ -6243,6 +6238,14 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
 
     /* add all the children, recursively as they are being added into the same set */
     for (uint32_t i = 0; i < set->used; ++i) {
+        if (!all_desc) {
+            /* traverse the start node */
+            if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START) {
+                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
+            }
+            continue;
+        }
+
         if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_ATOM_CTX) {
             if (set->val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START) {
                 continue;
