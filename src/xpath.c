@@ -1116,7 +1116,12 @@ lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
             }
         }
 
-        if (j == orig_used) {
+        if (j < orig_used) {
+            /* node is there, but update its status if needed */
+            if (set1->val.scnodes[j].in_ctx == LYXP_SET_SCNODE_START_USED) {
+                set1->val.scnodes[j].in_ctx = set2->val.scnodes[i].in_ctx;
+            }
+        } else {
             memcpy(&set1->val.scnodes[set1->used], &set2->val.scnodes[i], sizeof *set2->val.scnodes);
             ++set1->used;
         }
