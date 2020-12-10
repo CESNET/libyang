@@ -1315,6 +1315,9 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
     uint32_t i = 0;
 
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx || module, LY_EINVAL);
+    if (!ctx && !module) {
+        ctx = LYD_CTX(*tree);
+    }
     if (diff) {
         *diff = NULL;
     }
