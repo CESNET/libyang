@@ -224,6 +224,7 @@ struct lyxp_set {
             struct lysc_node *scnode;
             enum lyxp_node_type type;
 
+/* _START and _ATOM values should have grouped values */
 #define LYXP_SET_SCNODE_START         -2 /**< scnode not traversed, currently (the only node) in context */
 #define LYXP_SET_SCNODE_START_USED    -1 /**< scnode not traversed except for the eval start, not currently in the context */
 #define LYXP_SET_SCNODE_ATOM           0 /**< scnode was traversed, but not currently in the context */
