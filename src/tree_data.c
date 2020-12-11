@@ -1446,6 +1446,8 @@ cleanup:
         if (new_node) {
             *new_node = nnode;
         }
+    } else {
+        lyd_free_tree(nparent);
     }
     return ret;
 }
