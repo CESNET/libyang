@@ -699,7 +699,7 @@ struct utest_context {
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
     { \
-    	LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
+        LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).bits_items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
             assert_string_equal(VALUE[it], (NODE).bits_items[it]->name); \
@@ -719,7 +719,7 @@ struct utest_context {
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_INST, (NODE).realtype->basetype); \
     { \
-    	LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
+        LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).target)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
             assert_int_equal(VALUE[it], (NODE).target[it].pred_type); \

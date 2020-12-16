@@ -1460,6 +1460,7 @@ cleanup:
     }
     return ret;
 }
+
 #endif
 
 LY_ERR
@@ -1591,6 +1592,7 @@ lydjson_object_envelope_close(struct lyjson_ctx *jsonctx, const char *object_id,
     }
     return LY_SUCCESS;
 }
+
 #endif
 
 LY_ERR
@@ -1709,7 +1711,7 @@ lyd_parse_json_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
     LY_CHECK_GOTO(ret, cleanup);
 
     if (op_p) {
-        *op_p =  lydctx->op_node;
+        *op_p = lydctx->op_node;
     }
     if (tree_p) {
         *tree_p = tree;

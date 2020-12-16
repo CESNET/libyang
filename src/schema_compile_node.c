@@ -203,7 +203,7 @@ lysc_range_dup(struct ly_ctx *ctx, const struct lysc_range *orig)
     LY_CHECK_ERR_RET(!dup, LOGMEM(ctx), NULL);
     if (orig->parts) {
         LY_ARRAY_CREATE_GOTO(ctx, dup->parts, LY_ARRAY_COUNT(orig->parts), ret, cleanup);
-        (*((LY_ARRAY_COUNT_TYPE*)(dup->parts) - 1)) = LY_ARRAY_COUNT(orig->parts);
+        (*((LY_ARRAY_COUNT_TYPE *)(dup->parts) - 1)) = LY_ARRAY_COUNT(orig->parts);
         memcpy(dup->parts, orig->parts, LY_ARRAY_COUNT(dup->parts) * sizeof *dup->parts);
     }
     DUP_STRING_GOTO(ctx, orig->eapptag, dup->eapptag, ret, cleanup);

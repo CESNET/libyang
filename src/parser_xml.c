@@ -718,6 +718,7 @@ cleanup:
     lyd_free_attr_siblings(xmlctx->ctx, attr);
     return ret;
 }
+
 #endif
 
 LY_ERR
@@ -865,6 +866,7 @@ cleanup:
     }
     return ret;
 }
+
 #endif
 
 LY_ERR
@@ -942,7 +944,7 @@ lyd_parse_xml_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
     }
 
     if (op_p) {
-        *op_p =  lydctx.op_node;
+        *op_p = lydctx.op_node;
     }
     if (tree_p) {
         *tree_p = tree;

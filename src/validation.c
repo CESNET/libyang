@@ -1355,8 +1355,8 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
 
         /* process nested nodes */
         LY_LIST_FOR(*first2, iter) {
-            ret = lyd_validate_subtree(iter, &node_types, &meta_types, &node_when, val_opts & LYD_VALIDATE_NO_STATE
-                    ? LYD_IMPLICIT_NO_STATE : 0, diff);
+            ret = lyd_validate_subtree(iter, &node_types, &meta_types, &node_when, val_opts & LYD_VALIDATE_NO_STATE ?
+                    LYD_IMPLICIT_NO_STATE : 0, diff);
             LY_CHECK_GOTO(ret, cleanup);
         }
 

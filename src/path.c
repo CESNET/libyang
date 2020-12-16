@@ -829,7 +829,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     /* check leftover tokens */
     if (tok_idx < expr->used) {
         LOGVAL_P(ctx, cur_node, LY_VCODE_XP_INTOK, lyxp_print_token(expr->tokens[tok_idx]),
-                    &expr->expr[expr->tok_pos[tok_idx]]);
+                &expr->expr[expr->tok_pos[tok_idx]]);
         ret = LY_EVALID;
         goto cleanup;
     }

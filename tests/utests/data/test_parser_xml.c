@@ -459,7 +459,7 @@ test_reply(void **state)
     struct lyd_node *tree, *op;
     const struct lyd_node *node;
 
-    data ="<c xmlns=\"urn:tests:a\">\n"
+    data = "<c xmlns=\"urn:tests:a\">\n"
             "  <act>\n"
             "    <al>25</al>\n"
             "  </act>\n"
