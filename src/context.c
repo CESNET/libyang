@@ -229,8 +229,9 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     ly_load_plugins();
 #endif
 
-    /* initialize thread-specific key */
+    /* initialize thread-specific keys */
     while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
+    while ((pthread_key_create(&ctx->log_location_key, ly_log_location_free)) == EAGAIN) {}
 
     /* models list */
     ctx->flags = options;
@@ -865,6 +866,11 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     /* clean the error list */
     ly_err_clean(ctx, 0);
     pthread_key_delete(ctx->errlist_key);
+
+    /* clean the error location data */
+    ly_log_location_free(pthread_getspecific(ctx->log_location_key));
+    pthread_setspecific(ctx->log_location_key, NULL);
+    pthread_key_delete(ctx->log_location_key);
 
     /* dictionary */
     lydict_clean(&ctx->dict);
