@@ -35,7 +35,15 @@ struct ly_in {
             char *filepath; /**< stored original filepath */
         } fpath;            /**< filepath structure for LY_IN_FILEPATH */
     } method;               /**< type-specific information about the output */
+    uint64_t line;          /**< current line of the input */
 };
+
+/**
+ * @brief Increment line counter.
+ * @param[in] IN The input handler.
+ */
+#define LY_IN_NEW_LINE(IN) \
+    (IN)->line++
 
 /**
  * @brief Read bytes from an input.

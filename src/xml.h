@@ -78,7 +78,6 @@ enum LYXML_PARSER_STATUS {
 
 struct lyxml_ctx {
     const struct ly_ctx *ctx;
-    uint64_t line;          /* current line */
     struct ly_in *in;       /* input structure */
 
     enum LYXML_PARSER_STATUS status; /* status providing information about the last parsed object, following attributes

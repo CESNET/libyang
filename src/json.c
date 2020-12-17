@@ -71,10 +71,6 @@ skip_ws(struct lyjson_ctx *jsonctx)
 {
     /* skip leading whitespaces */
     while (*jsonctx->in->current != '\0' && is_jsonws(*jsonctx->in->current)) {
-        if (*jsonctx->in->current == '\n') {
-            /* new line */
-            jsonctx->line++;
-        }
         ly_in_skip(jsonctx->in, 1);
     }
     if (*jsonctx->in->current == '\0') {
@@ -119,7 +115,7 @@ lyjson_check_next(struct lyjson_ctx *jsonctx)
             return LY_SUCCESS;
         }
     } else {
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX,
                 "Unexpected character \"%c\" after JSON %s.", *jsonctx->in->current, lyjson_token2str(lyjson_ctx_status(jsonctx, 0)));
     }
 
@@ -148,7 +144,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
 
     /* init */
     start = in;
-    start_line = jsonctx->line;
+    start_line = jsonctx->in->line;
     offset = len = 0;
 
     /* parse */
@@ -221,7 +217,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
                 offset++;
                 for (value = i = 0; i < 4; i++) {
                     if (!in[offset + i]) {
-                        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+                        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX,
                                 "Invalid basic multilingual plane character \"%s\".", &in[slash]);
                         goto error;
                     } else if (isdigit(in[offset + i])) {
@@ -236,7 +232,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
                 break;
             default:
                 /* invalid escape sequence */
-                LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+                LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX,
                         "Invalid character escape sequence \\%c.", in[offset]);
                 goto error;
 
@@ -244,7 +240,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
 
             offset += i;   /* add read escaped characters */
             LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], value, &u),
-                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX,
                     "Invalid character reference \"%.*s\" (0x%08x).", offset - slash, &in[slash], value),
                     error);
             len += u;      /* update number of bytes in buffer */
@@ -274,10 +270,10 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
             size_t code_len = 0;
 
             LY_CHECK_ERR_GOTO(ly_getutf8(&c, &code, &code_len),
-                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INCHAR, in[offset]), error);
+                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_INCHAR, in[offset]), error);
 
             LY_CHECK_ERR_GOTO(!is_jsonstrchar(code),
-                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+                    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX,
                     "Invalid character in JSON string \"%.*s\" (0x%08x).", &in[offset] - start + code_len, start, code),
                     error);
 
@@ -287,7 +283,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
     }
 
     /* EOF reached before endchar */
-    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_EOF);
+    LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_EOF);
     LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &start_line, LYVE_SYNTAX, "Missing quotation-mark at the end of a JSON string.");
 
 error:
@@ -295,7 +291,7 @@ error:
     return LY_EVALID;
 
 success:
-    ly_in_skip(jsonctx->in, in - jsonctx->in->current);
+    jsonctx->in->current = in;
     if (buf) {
         lyjson_ctx_set_value(jsonctx, buf, len, 1);
     } else {
@@ -345,9 +341,9 @@ lyjson_number(struct lyjson_ctx *jsonctx)
     } else {
 invalid_character:
         if (in[offset]) {
-            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX, "Invalid character in JSON Number value (\"%c\").", in[offset]);
+            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX, "Invalid character in JSON Number value (\"%c\").", in[offset]);
         } else {
-            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_EOF);
+            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_EOF);
         }
         return LY_EVALID;
     }
@@ -386,7 +382,7 @@ invalid_character:
         errno = 0;
         e_val = strtol(e_ptr, &ptr, LY_BASE_DEC);
         if (errno) {
-            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SEMANTICS,
+            LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SEMANTICS,
                     "Exponent out-of-bounds in a JSON Number value (%.*s).", offset - minus - (e_ptr - in), e_ptr);
             return LY_EVALID;
         }
@@ -488,7 +484,7 @@ static LY_ERR
 lyjson_object_name(struct lyjson_ctx *jsonctx)
 {
     if (*jsonctx->in->current != '"') {
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON object's member");
         return LY_EVALID;
     }
@@ -497,7 +493,7 @@ lyjson_object_name(struct lyjson_ctx *jsonctx)
     LY_CHECK_RET(lyjson_string_(jsonctx));
     LY_CHECK_RET(skip_ws(jsonctx));
     if (*jsonctx->in->current != ':') {
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INSTREXP,
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_INSTREXP,
                 LY_VCODE_INSTREXP_len(jsonctx->in->current), jsonctx->in->current, "a JSON object's name-separator ':'");
         return LY_EVALID;
     }
@@ -604,7 +600,7 @@ lyjson_value(struct lyjson_ctx *jsonctx)
 
     } else {
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON value");
         return LY_EVALID;
     }
@@ -626,7 +622,6 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyjson_ctx **j
     jsonctx = calloc(1, sizeof *jsonctx);
     LY_CHECK_ERR_RET(!jsonctx, LOGMEM(ctx), LY_EMEM);
     jsonctx->ctx = ctx;
-    jsonctx->line = 1;
     jsonctx->in = in;
 
     /* parse JSON value, if any */
@@ -639,7 +634,7 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyjson_ctx **j
     ret = lyjson_value(jsonctx);
 
     if ((jsonctx->status.count > 1) && (lyjson_ctx_status(jsonctx, 0) == LYJSON_END)) {
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_EOF);
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_EOF);
         ret = LY_EVALID;
     }
 
@@ -710,7 +705,7 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
     LY_CHECK_RET(skip_ws(jsonctx));
     if (toplevel && !jsonctx->status.count) {
         /* EOF expected, but there are some data after the top level token */
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LYVE_SYNTAX,
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LYVE_SYNTAX,
                 "Expecting end-of-input, but some data follows the top level JSON value.");
         return LY_EVALID;
     }
@@ -741,14 +736,14 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
         JSON_PUSH_STATUS_RET(jsonctx, prev + 1);
     } else {
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, prev == LYJSON_ARRAY ? "another JSON value in array" : "another JSON object's member");
         return LY_EVALID;
     }
 
 result:
     if ((ret == LY_SUCCESS) && (jsonctx->status.count > 1) && (lyjson_ctx_status(jsonctx, 0) == LYJSON_END)) {
-        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->line, LY_VCODE_EOF);
+        LOGVAL(jsonctx->ctx, LY_VLOG_LINE, &jsonctx->in->line, LY_VCODE_EOF);
         ret = LY_EVALID;
     }
 

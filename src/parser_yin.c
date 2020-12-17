@@ -189,7 +189,7 @@ yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_
 
     LY_CHECK_RET(ly_in_new_memory(name, &in), LY_STMT_NONE);
     start = in->current;
-    kw = lysp_match_kw(NULL, in);
+    kw = lysp_match_kw(in, NULL);
     name = in->current;
     ly_in_free(in, 0);
 
@@ -3818,9 +3818,6 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
     /* skip possible trailing whitespaces at end of the input */
     while (isspace(in->current[0])) {
-        if (in->current[0] == '\n') {
-            (*yin_ctx)->xmlctx->line++;
-        }
         ly_in_skip(in, 1);
     }
     if (in->current[0]) {
@@ -3881,9 +3878,6 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
 
     /* skip possible trailing whitespaces at end of the input */
     while (isspace(in->current[0])) {
-        if (in->current[0] == '\n') {
-            (*yin_ctx)->xmlctx->line++;
-        }
         ly_in_skip(in, 1);
     }
     if (in->current[0]) {

@@ -68,6 +68,7 @@ struct lys_yang_parser_ctx *YCTX;
 
 #define YCTX_INIT \
     struct ly_in in = {0}; \
+    in.line = 1; \
     YCTX->in = &in
 
 static int
@@ -79,7 +80,6 @@ setup(void **state)
     YCTX = calloc(1, sizeof(*YCTX));
     YCTX->format = LYS_IN_YANG;
     YCTX->pos_type = LY_VLOG_LINE;
-    YCTX->line = 1;
 
     /* allocate new parsed module */
     YCTX->parsed_mod = calloc(1, sizeof *YCTX->parsed_mod);
@@ -310,7 +310,7 @@ test_arg(void **state)
 
     in.current = "\"hel\"  +\t\nlo"; /* unquoted the second part */
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", "Line number 6.");
+    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", "Line number 8.");
 
     TEST_GET_ARGUMENT_SUCCESS("\'he\'\t\n+ \"llo\"", YCTX, Y_STR_ARG, "hello", 5, "");
     free(buf);
@@ -321,7 +321,7 @@ test_arg(void **state)
     /* missing argument */
     in.current = ";";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid character sequence \";\", expected an argument.", "Line number 8.");
+    CHECK_LOG_CTX("Invalid character sequence \";\", expected an argument.", "Line number 10.");
 }
 
 #define TEST_STMS_SUCCESS(INPUT_TEXT, CTX, ACTION, EXPECT_WORD)\
@@ -754,6 +754,9 @@ test_module(void **state)
     assert_int_equal(2, mod->version);
     mod = mod_renew(YCTX);
 
+    /* reset line */
+    in.line = 1;
+
     in.current = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
@@ -787,7 +790,7 @@ test_module(void **state)
     /* invalid substatement */
     in.current = SCHEMA_BEGINNING "must false;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"module\".", "Line number 3.");
+    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"module\".", "Line number 1.");
 
     /* submodule */
     submod = submod_renew(YCTX);
@@ -795,7 +798,7 @@ test_module(void **state)
     /* missing mandatory substatements */
     in.current = " subname {}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\".", "Line number 3.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\".", "Line number 1.");
     assert_string_equal("subname", submod->name);
 
     submod = submod_renew(YCTX);
@@ -811,17 +814,17 @@ test_module(void **state)
     /* duplicated namespace, prefix */
     in.current = " subname {belongs-to name {prefix x;}belongs-to module1;belongs-to module2;} ...";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Duplicate keyword \"belongs-to\".", "Line number 3.");
+    CHECK_LOG_CTX("Duplicate keyword \"belongs-to\".", "Line number 1.");
     submod = submod_renew(YCTX);
 
     /* not allowed in submodule (module-specific) */
     in.current = SCHEMA_BEGINNING "namespace \"urn:z\";}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Invalid keyword \"namespace\" as a child of \"submodule\".", "Line number 3.");
+    CHECK_LOG_CTX("Invalid keyword \"namespace\" as a child of \"submodule\".", "Line number 1.");
     submod = submod_renew(YCTX);
     in.current = SCHEMA_BEGINNING "prefix m;}}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Invalid keyword \"prefix\" as a child of \"submodule\".", "Line number 3.");
+    CHECK_LOG_CTX("Invalid keyword \"prefix\" as a child of \"submodule\".", "Line number 1.");
     submod = submod_renew(YCTX);
 
     in.current = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";

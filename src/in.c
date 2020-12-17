@@ -70,6 +70,7 @@ ly_in_new_fd(int fd, struct ly_in **in)
     (*in)->type = LY_IN_FD;
     (*in)->method.fd = fd;
     (*in)->current = (*in)->start = (*in)->func_start = addr;
+    (*in)->line = 1;
     (*in)->length = length;
 
     return LY_SUCCESS;
@@ -97,6 +98,7 @@ ly_in_fd(struct ly_in *in, int fd)
 
         in->method.fd = fd;
         in->current = in->start = addr;
+        in->line = 1;
         in->length = length;
     }
 
@@ -154,6 +156,7 @@ ly_in_new_memory(const char *str, struct ly_in **in)
 
     (*in)->type = LY_IN_MEMORY;
     (*in)->start = (*in)->current = (*in)->func_start = str;
+    (*in)->line = 1;
 
     return LY_SUCCESS;
 }
@@ -169,6 +172,7 @@ ly_in_memory(struct ly_in *in, const char *str)
 
     if (str) {
         in->start = in->current = str;
+        in->line = 1;
     }
 
     return data;
@@ -180,6 +184,7 @@ ly_in_reset(struct ly_in *in)
     LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
 
     in->current = in->func_start = in->start;
+    in->line = 1;
     return LY_SUCCESS;
 }
 
@@ -344,6 +349,12 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
         return LY_EDENIED;
     }
 
+    for (size_t i = 0; i < count; i++) {
+        if (in->current[i] == '\n') {
+            LY_IN_NEW_LINE(in);
+        }
+    }
+
     memcpy(buf, in->current, count);
     in->current += count;
     return LY_SUCCESS;
@@ -361,6 +372,12 @@ ly_in_skip(struct ly_in *in, size_t count)
     if (in->length && (in->length - (in->current - in->start) < count)) {
         /* EOF */
         return LY_EDENIED;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        if (in->current[i] == '\n') {
+            LY_IN_NEW_LINE(in);
+        }
     }
 
     in->current += count;

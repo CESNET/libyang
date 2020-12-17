@@ -52,7 +52,6 @@ enum LYJSON_PARSER_STATUS {
 
 struct lyjson_ctx {
     const struct ly_ctx *ctx;
-    uint64_t line;          /* current line */
     struct ly_in *in;       /* input structure */
 
     struct ly_set status;   /* stack of LYJSON_PARSER_STATUS values corresponding to the JSON items being processed */
