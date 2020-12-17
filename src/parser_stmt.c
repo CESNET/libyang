@@ -22,6 +22,7 @@
 #include "common.h"
 #include "dict.h"
 #include "in.h"
+#include "in_internal.h"
 #include "log.h"
 #include "parser_schema.h"
 #include "path.h"
@@ -126,7 +127,7 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -170,7 +171,7 @@ lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -213,7 +214,7 @@ lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -265,7 +266,7 @@ lysp_stmt_status(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint1
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -302,7 +303,7 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum l
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -416,7 +417,7 @@ lysp_stmt_type_enum_value_pos(struct lys_parser_ctx *ctx, const struct lysp_stmt
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -464,7 +465,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -548,7 +549,7 @@ lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *st
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -599,7 +600,7 @@ lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *s
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -656,7 +657,7 @@ lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_st
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -704,7 +705,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {
@@ -762,7 +763,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
     for (child = stmt->child; child; child = child->next) {
         struct ly_in *in;
         LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
-        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        enum ly_stmt kw = lysp_match_kw(in, NULL);
         ly_in_free(in, 0);
 
         switch (kw) {

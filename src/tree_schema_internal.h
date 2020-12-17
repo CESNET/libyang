@@ -119,11 +119,11 @@ enum yang_arg {
 
 #define LOGVAL_YANG(CTX, ...) LOGVAL(PARSER_CTX(CTX), ((struct lys_yang_parser_ctx *)CTX)->pos_type, \
                                      ((struct lys_yang_parser_ctx *)CTX)->pos_type == LY_VLOG_LINE ? \
-                                        (void *)&((struct lys_yang_parser_ctx *)CTX)->line : \
+                                        (void *)&((struct lys_yang_parser_ctx *)CTX)->in->line : \
                                         (void *)((struct lys_yang_parser_ctx *)CTX)->path, __VA_ARGS__)
 
 #define LOGVAL_YIN(CTX, ...) LOGVAL(PARSER_CTX(CTX), LY_VLOG_LINE, \
-                                     &((struct lys_yin_parser_ctx *)CTX)->xmlctx->line, __VA_ARGS__)
+                                     &((struct lys_yin_parser_ctx *)CTX)->xmlctx->in->line, __VA_ARGS__)
 
 struct lys_parser_ctx {
     LYS_INFORMAT format;            /**< parser format */
@@ -144,10 +144,9 @@ struct lys_yang_parser_ctx {
     struct lys_glob_unres *unres;   /**< global unres structure */
     enum LY_VLOG_ELEM pos_type;     /**< */
     struct ly_in *in;               /**< input handler for the parser */
-    union {
-        uint64_t line;              /**< line number */
-        const char *path;           /**< path */
-    };
+
+    const char *path;           /**< path */
+
     uint64_t indent;                /**< current position on the line for YANG indentation */
 };
 
@@ -692,11 +691,11 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
 /**
  * @brief match yang keyword
  *
- * @param[in] ctx yang parser context for logging, can be NULL if keyword is from YIN data.
  * @param[in,out] in Input structure, is updated.
+ * @param[in,out] indent Pointer to the counter of current position on the line for YANG indentation (optional).
  * @return yang_keyword values.
  */
-enum ly_stmt lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in);
+enum ly_stmt lysp_match_kw(struct ly_in *in, uint64_t *indent);
 
 /**
  * @brief Generate path of the given node in the requested format.

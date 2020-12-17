@@ -1426,20 +1426,29 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum ly_stmt
-lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
+lysp_match_kw(struct ly_in *in, uint64_t *indent)
 {
 /**
- * @brief Move the INPUT by COUNT items. Also updates the indent value in yang parser context
- * @param[in] CTX yang parser context to update its indent value.
- * @param[in,out] IN input to move
+ * @brief Move the input by COUNT items. Also updates the indent value in yang parser context
  * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
  *
  * *INDENT-OFF*
  */
-#define MOVE_IN(CTX, IN, COUNT) ly_in_skip(IN, COUNT);if(CTX){(CTX)->indent+=COUNT;}
-#define IF_KW(STR, LEN, STMT) if (!strncmp(in->current, STR, LEN)) {MOVE_IN(ctx, in, LEN);*kw=STMT;}
-#define IF_KW_PREFIX(STR, LEN) if (!strncmp(in->current, STR, LEN)) {MOVE_IN(ctx, in, LEN);
-#define IF_KW_PREFIX_END }
+#define MOVE_IN(COUNT) \
+    ly_in_skip(in, COUNT); \
+    if (indent) { \
+        (*indent)+=COUNT; \
+    }
+#define IF_KW(STR, LEN, STMT) \
+    if (!strncmp(in->current, STR, LEN)) { \
+        MOVE_IN(LEN); \
+        (*kw)=STMT; \
+    }
+#define IF_KW_PREFIX(STR, LEN) \
+    if (!strncmp(in->current, STR, LEN)) { \
+        MOVE_IN(LEN);
+#define IF_KW_PREFIX_END \
+    }
 
     const char *start = in->current;
     enum ly_stmt result = LY_STMT_NONE;
@@ -1447,7 +1456,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
     /* read the keyword itself */
     switch (in->current[0]) {
     case 'a':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("rgument", 7, LY_STMT_ARGUMENT)
         else IF_KW("ugment", 6, LY_STMT_AUGMENT)
         else IF_KW("ction", 5, LY_STMT_ACTION)
@@ -1457,13 +1466,13 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         IF_KW_PREFIX_END
         break;
     case 'b':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ase", 3, LY_STMT_BASE)
         else IF_KW("elongs-to", 9, LY_STMT_BELONGS_TO)
         else IF_KW("it", 2, LY_STMT_BIT)
         break;
     case 'c':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ase", 3, LY_STMT_CASE)
         else IF_KW("hoice", 5, LY_STMT_CHOICE)
         else IF_KW_PREFIX("on", 2)
@@ -1475,7 +1484,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         IF_KW_PREFIX_END
         break;
     case 'd':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW_PREFIX("e", 1)
             IF_KW("fault", 5, LY_STMT_DEFAULT)
             else IF_KW("scription", 9, LY_STMT_DESCRIPTION)
@@ -1486,7 +1495,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         IF_KW_PREFIX_END
         break;
     case 'e':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("num", 3, LY_STMT_ENUM)
         else IF_KW_PREFIX("rror-", 5)
             IF_KW("app-tag", 7, LY_STMT_ERROR_APP_TAG)
@@ -1495,16 +1504,16 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         else IF_KW("xtension", 8, LY_STMT_EXTENSION)
         break;
     case 'f':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("eature", 6, LY_STMT_FEATURE)
         else IF_KW("raction-digits", 14, LY_STMT_FRACTION_DIGITS)
         break;
     case 'g':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("rouping", 7, LY_STMT_GROUPING)
         break;
     case 'i':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("dentity", 7, LY_STMT_IDENTITY)
         else IF_KW("f-feature", 9, LY_STMT_IF_FEATURE)
         else IF_KW("mport", 5, LY_STMT_IMPORT)
@@ -1514,11 +1523,11 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         IF_KW_PREFIX_END
         break;
     case 'k':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ey", 2, LY_STMT_KEY)
         break;
     case 'l':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW_PREFIX("e", 1)
             IF_KW("af-list", 7, LY_STMT_LEAF_LIST)
             else IF_KW("af", 2, LY_STMT_LEAF)
@@ -1527,7 +1536,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         else IF_KW("ist", 3, LY_STMT_LIST)
         break;
     case 'm':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW_PREFIX("a", 1)
             IF_KW("ndatory", 7, LY_STMT_MANDATORY)
             else IF_KW("x-elements", 10, LY_STMT_MAX_ELEMENTS)
@@ -1540,12 +1549,12 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         IF_KW_PREFIX_END
         break;
     case 'n':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("amespace", 8, LY_STMT_NAMESPACE)
         else IF_KW("otification", 11, LY_STMT_NOTIFICATION)
         break;
     case 'o':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW_PREFIX("r", 1)
             IF_KW("dered-by", 8, LY_STMT_ORDERED_BY)
             else IF_KW("ganization", 10, LY_STMT_ORGANIZATION)
@@ -1553,7 +1562,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         else IF_KW("utput", 5, LY_STMT_OUTPUT)
         break;
     case 'p':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ath", 3, LY_STMT_PATH)
         else IF_KW("attern", 6, LY_STMT_PATTERN)
         else IF_KW("osition", 7, LY_STMT_POSITION)
@@ -1563,7 +1572,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         IF_KW_PREFIX_END
         break;
     case 'r':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ange", 4, LY_STMT_RANGE)
         else IF_KW_PREFIX("e", 1)
             IF_KW_PREFIX("f", 1)
@@ -1577,17 +1586,17 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         else IF_KW("pc", 2, LY_STMT_RPC)
         break;
     case 's':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("tatus", 5, LY_STMT_STATUS)
         else IF_KW("ubmodule", 8, LY_STMT_SUBMODULE)
         break;
     case 't':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ypedef", 6, LY_STMT_TYPEDEF)
         else IF_KW("ype", 3, LY_STMT_TYPE)
         break;
     case 'u':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW_PREFIX("ni", 2)
             IF_KW("que", 3, LY_STMT_UNIQUE)
             else IF_KW("ts", 2, LY_STMT_UNITS)
@@ -1595,29 +1604,29 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
         else IF_KW("ses", 3, LY_STMT_USES)
         break;
     case 'v':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("alue", 4, LY_STMT_VALUE)
         break;
     case 'w':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("hen", 3, LY_STMT_WHEN)
         break;
     case 'y':
-        MOVE_IN(ctx, in, 1);
+        MOVE_IN(1);
         IF_KW("ang-version", 11, LY_STMT_YANG_VERSION)
         else IF_KW("in-element", 10, LY_STMT_YIN_ELEMENT)
         break;
     default:
-        /* if context is not NULL we are matching keyword from YANG data*/
-        if (ctx) {
+        /* if indent is not NULL we are matching keyword from YANG data */
+        if (indent) {
             if (in->current[0] == ';') {
-                MOVE_IN(ctx, in, 1);
+                MOVE_IN(1);
                 *kw = LY_STMT_SYNTAX_SEMICOLON;
             } else if (in->current[0] == '{') {
-                MOVE_IN(ctx, in, 1);
+                MOVE_IN(1);
                 *kw = LY_STMT_SYNTAX_LEFT_BRACE;
             } else if (in->current[0] == '}') {
-                MOVE_IN(ctx, in, 1);
+                MOVE_IN(1);
                 *kw = LY_STMT_SYNTAX_RIGHT_BRACE;
             }
         }

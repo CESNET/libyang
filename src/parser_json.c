@@ -25,7 +25,6 @@
 #include "in_internal.h"
 #include "json.h"
 #include "log.h"
-#include "parser_data.h"
 #include "parser_internal.h"
 #include "set.h"
 #include "tree.h"
@@ -1300,7 +1299,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx;
-    size_t i, line = 1;
+    size_t i;
 
     assert(lydctx_p);
     assert(status);
@@ -1316,7 +1315,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     for (i = 0; in->current[i] != '\0' && is_jsonws(in->current[i]); i++) {
         if (in->current[i] == '\n') {
             /* new line */
-            line++;
+            LY_IN_NEW_LINE(in);
         }
     }
 
@@ -1327,7 +1326,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
         return LY_SUCCESS;
     } else {
         /* expecting top-level object */
-        LOGVAL(ctx, LY_VLOG_LINE, &line, LYVE_SYNTAX_JSON, "Expected top-level JSON object, but %s found.",
+        LOGVAL(ctx, LY_VLOG_LINE, &in->line, LYVE_SYNTAX_JSON, "Expected top-level JSON object, but %s found.",
                 lyjson_token2str(*status));
         *lydctx_p = NULL;
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
@@ -1503,7 +1502,7 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
         ret = LY_EVALID;
         goto cleanup;
     } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
-        LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
+        LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->in->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
                 tree->schema->name);
         ret = LY_EVALID;
         goto cleanup;
@@ -1647,7 +1646,7 @@ parse_content:
         ret = LY_EVALID;
         goto cleanup;
     } else if (lydctx->jsonctx->in->current[0] && (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_OBJECT_CLOSED)) {
-        LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
+        LOGVAL(ctx, LY_VLOG_LINE, &lydctx->jsonctx->in->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
                 tree->schema->name);
         ret = LY_EVALID;
         goto cleanup;

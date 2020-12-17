@@ -401,14 +401,14 @@ test_text(void **state)
     xmlctx->in = in;
     xmlctx->status = LYXML_ELEM_CONTENT;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 2.");
+    CHECK_LOG_CTX("Unexpected end-of-input.", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("xxx", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ELEM_CONTENT;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character sequence \"xxx\", expected element tag start ('<').", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character sequence \"xxx\", expected element tag start ('<').", "Line number 1.");
     ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
@@ -444,49 +444,49 @@ test_text(void **state)
     xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character sequence \"'\", expected ;.", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character sequence \"'\", expected ;.", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\"&#82\"", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character sequence \"\"\", expected ;.", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character sequence \"\"\", expected ;.", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\"&nonsense;\"", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Entity reference \"&nonsense;\" not supported, only predefined references allowed.", "Line number 2.");
+    CHECK_LOG_CTX("Entity reference \"&nonsense;\" not supported, only predefined references allowed.", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(">&#o122;", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ELEMENT;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character reference \"&#o122;\".", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character reference \"&#o122;\".", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#x06;\'", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character reference \"&#x06;\'\" (0x00000006).", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character reference \"&#x06;\'\" (0x00000006).", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#xfdd0;\'", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character reference \"&#xfdd0;\'\" (0x0000fdd0).", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character reference \"&#xfdd0;\'\" (0x0000fdd0).", "Line number 1.");
     ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#xffff;\'", &in));
     xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
-    CHECK_LOG_CTX("Invalid character reference \"&#xffff;\'\" (0x0000ffff).", "Line number 2.");
+    CHECK_LOG_CTX("Invalid character reference \"&#xffff;\'\" (0x0000ffff).", "Line number 1.");
     ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);

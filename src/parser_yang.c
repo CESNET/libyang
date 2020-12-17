@@ -50,7 +50,7 @@
  * @param[in] CTX yang parser context to update its indent value.
  * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
  */
-#define MOVE_INPUT(CTX, COUNT) ly_in_skip(CTX->in, COUNT);(CTX)->indent+=COUNT
+#define MOVE_INPUT(CTX, COUNT) ly_in_skip((CTX)->in, COUNT);(CTX)->indent+=COUNT
 
 /**
  * @brief Loop through all substatements providing, return if there are none.
@@ -232,14 +232,14 @@ skip_comment(struct lys_yang_parser_ctx *ctx, uint8_t comment)
         case COMMENT_LINE:
             if (ctx->in->current[0] == '\n') {
                 comment = COMMENT_NO;
-                ++ctx->line;
+                LY_IN_NEW_LINE(ctx->in);
             }
             break;
         case COMMENT_BLOCK:
             if (ctx->in->current[0] == '*') {
                 comment = COMMENT_BLOCK_END;
             } else if (ctx->in->current[0] == '\n') {
-                ++ctx->line;
+                LY_IN_NEW_LINE(ctx->in);
             }
             break;
         case COMMENT_BLOCK_END:
@@ -247,7 +247,7 @@ skip_comment(struct lys_yang_parser_ctx *ctx, uint8_t comment)
                 comment = COMMENT_NO;
             } else if (ctx->in->current[0] != '*') {
                 if (ctx->in->current[0] == '\n') {
-                    ++ctx->line;
+                    LY_IN_NEW_LINE(ctx->in);
                 }
                 comment = COMMENT_BLOCK;
             }
@@ -407,9 +407,6 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
                 /* check and store character */
                 LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
 
-                /* maintain line number */
-                ++ctx->line;
-
                 /* reset context indentation counter for possible string after this one */
                 ctx->indent = 0;
                 trailing_ws = 0;
@@ -458,8 +455,6 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
                 need_buf = 1;
                 break;
             case '\n':
-                ++ctx->line;
-            /* fall through */
             case ' ':
             case '\t':
                 /* just skip */
@@ -473,8 +468,6 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
         case STRING_PAUSED_CONTINUE:
             switch (ctx->in->current[0]) {
             case '\n':
-                ++ctx->line;
-            /* fall through */
             case ' ':
             case '\t':
                 /* skip */
@@ -591,13 +584,10 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
                 /* word is finished */
                 goto str_end;
             }
+            MOVE_INPUT(ctx, 1);
+
             /* reset indent */
             ctx->indent = 0;
-
-            /* track line numbers */
-            ++ctx->line;
-
-            ++ctx->in->current;
             break;
         case ';':
         case '{':
@@ -677,7 +667,6 @@ get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, si
             continue;
         case '\n':
             /* skip whitespaces (optsep) */
-            ++ctx->line;
             ctx->indent = 0;
             break;
         case ' ':
@@ -698,7 +687,7 @@ get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, si
 
 keyword_start:
     word_start = ctx->in->current;
-    *kw = lysp_match_kw(ctx, ctx->in);
+    *kw = lysp_match_kw(ctx->in, &ctx->indent);
 
     if ((*kw == LY_STMT_SYNTAX_SEMICOLON) || (*kw == LY_STMT_SYNTAX_LEFT_BRACE) || (*kw == LY_STMT_SYNTAX_RIGHT_BRACE)) {
         goto success;
@@ -735,8 +724,8 @@ keyword_start:
         /* still can be an extension */
         prefix = 0;
 extension:
-        while (ctx->in->current[0] && (ctx->in->current[0] != ' ') && (ctx->in->current[0] != '\t') && (ctx->in->current[0] != '\n') &&
-                (ctx->in->current[0] != '{') && (ctx->in->current[0] != ';')) {
+        while (ctx->in->current[0] && (ctx->in->current[0] != ' ') && (ctx->in->current[0] != '\t') &&
+                (ctx->in->current[0] != '\n') && (ctx->in->current[0] != '{') && (ctx->in->current[0] != ';')) {
             uint32_t c = 0;
 
             LY_CHECK_ERR_RET(ly_getutf8(&ctx->in->current, &c, &len),
@@ -4490,7 +4479,6 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     (*context)->unres = main_ctx->unres;
     (*context)->pos_type = LY_VLOG_LINE;
     (*context)->in = in;
-    (*context)->line = 1;
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ly_ctx); ret = LY_EMEM, cleanup);
@@ -4562,7 +4550,6 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     (*context)->unres = unres;
     (*context)->pos_type = LY_VLOG_LINE;
     (*context)->in = in;
-    (*context)->line = 1;
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
