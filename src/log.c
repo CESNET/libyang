@@ -28,6 +28,7 @@
 
 #include "common.h"
 #include "compat.h"
+#include "in_internal.h"
 #include "plugins_exts.h"
 #include "tree_data.h"
 #include "tree_schema.h"
@@ -238,6 +239,93 @@ API ly_log_clb
 ly_get_log_clb(void)
 {
     return log_clb;
+}
+
+void
+ly_log_location(const struct ly_ctx *ctx, const struct lysc_node *scnode, const struct lyd_node *dnode,
+        const char *path, const struct ly_in *in, uint64_t line, ly_bool reset)
+{
+    struct ly_log_location_s *loc = pthread_getspecific(ctx->log_location_key);
+
+    if (!loc) {
+        reset = 0; /* no needed */
+        loc = calloc(1, sizeof *loc);
+        LY_CHECK_ERR_RET(!loc, LOGMEM(ctx), );
+
+        pthread_setspecific(ctx->log_location_key, loc);
+    }
+
+    if (scnode) {
+        ly_set_add(&loc->scnodes, (void *)scnode, 1, NULL);
+    } else if (reset) {
+        ly_set_erase(&loc->scnodes, NULL);
+    }
+
+    if (dnode) {
+        ly_set_add(&loc->dnodes, (void *)dnode, 1, NULL);
+    } else if (reset) {
+        ly_set_erase(&loc->dnodes, NULL);
+    }
+
+    if (path) {
+        char *s = strdup(path);
+        LY_CHECK_ERR_RET(!s, LOGMEM(ctx), );
+        ly_set_add(&loc->paths, s, 1, NULL);
+    } else if (reset) {
+        ly_set_erase(&loc->paths, free);
+    }
+
+    if (in) {
+        ly_set_add(&loc->inputs, (void *)in, 1, NULL);
+    } else if (reset) {
+        ly_set_erase(&loc->inputs, NULL);
+    }
+
+    if (line) {
+        loc->line = line;
+    }
+}
+
+void
+ly_log_location_revert(const struct ly_ctx *ctx, uint32_t scnode_steps, uint32_t dnode_steps,
+        uint32_t path_steps, uint32_t in_steps)
+{
+
+    struct ly_log_location_s *loc = pthread_getspecific(ctx->log_location_key);
+
+    if (!loc) {
+        return;
+    }
+
+    for (uint32_t i = scnode_steps; i && loc->scnodes.count; i--) {
+        loc->scnodes.count--;
+    }
+
+    for (uint32_t i = dnode_steps; i && loc->dnodes.count; i--) {
+        loc->dnodes.count--;
+    }
+
+    for (uint32_t i = path_steps; i && loc->paths.count; i--) {
+        ly_set_rm_index(&loc->paths, loc->paths.count - 1, free);
+    }
+
+    for (uint32_t i = in_steps; i && loc->inputs.count; i--) {
+        loc->inputs.count--;
+    }
+}
+
+void
+ly_log_location_free(void *ptr)
+{
+    struct ly_log_location_s *loc = (struct ly_log_location_s *)ptr;
+
+    if (loc) {
+        ly_set_erase(&loc->scnodes, NULL);
+        ly_set_erase(&loc->dnodes, NULL);
+        ly_set_erase(&loc->paths, free);
+        ly_set_erase(&loc->inputs, NULL);
+        free(loc);
+    }
 }
 
 static LY_ERR

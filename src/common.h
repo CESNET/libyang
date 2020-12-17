@@ -28,6 +28,7 @@
 #include "tree_data.h"
 
 struct ly_ctx;
+struct ly_in;
 struct lys_module;
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
@@ -70,6 +71,19 @@ extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile LY_LOG_LEVEL ly_ll;
 extern volatile uint32_t ly_log_opts;
 
+struct ly_log_location_s {
+    uint64_t line;                   /**< One-time line value being reset after use - replaces whatever is in inputs */
+    struct ly_set inputs;            /**< Set of const struct ly_in *in pointers providing the input handler with the line information (LIFO) */
+    struct ly_set scnodes;           /**< Set of const struct lysc_node *scnode pointers providing the compiled schema node to generate path (LIFO) */
+    struct ly_set dnodes;            /**< Set of const struct lyd_node *dnode pointers providing the data node to generate path (LIFO) */
+    struct ly_set paths;             /**< Set of path strings (LIFO) */
+};
+
+/**
+ * @brief Destructor for the thread-specific data providing location information for the logger.
+ */
+void ly_log_location_free(void *ptr);
+
 /**
  * @brief Print a log message and store it into the context (if provided).
  *
@@ -90,6 +104,60 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
  * @param[in] format Format string to print.
  */
 void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
+
+/**
+ * @brief Logger's location data setter.
+ *
+ * @param[in] ctx libyang context, mandatory argument.
+ * @param[in] scnode Compiled schema node.
+ * @param[in] dnode Data node.
+ * @param[in] path Direct path string to print.
+ * @param[in] in Input handler (providing line number)
+ * @param[in] line One-time line value to be reset when used.
+ * @param[in] reset Flag to indicate if the not set arguments (NULLs) are intended to rewrite the current values or if they
+ * are supposed to be ignored and the previous values should be kept.
+ */
+void ly_log_location(const struct ly_ctx *ctx, const struct lysc_node *scnode, const struct lyd_node *dnode,
+        const char *path, const struct ly_in *in, uint64_t line, ly_bool reset);
+
+/**
+ * @brief Revert the specific logger's location data by number of changes made by ::ly_log_location().
+ *
+ * @param[in] ctx libyang context, mandatory argument.
+ * @param[in] scnode_steps Number of items in ::ly_log_location.scnodes to forget.
+ * @param[in] dnode_steps Number of items in ::ly_log_location.dnodes to forget.
+ * @param[in] path_steps Number of path strings in ::ly_log_location.paths to forget.
+ * @param[in] in_steps Number of input handlers ::ly_log_location.inputs to forget.
+ */
+void ly_log_location_revert(const struct ly_ctx *ctx, uint32_t scnode_steps, uint32_t dnode_steps,
+        uint32_t path_steps, uint32_t in_steps);
+
+/**
+ * @brief Initiate location data for logger, all arguments are set as provided (even NULLs) - overrides the current values.
+ *
+ * @param[in] CTX libyang context, mandatory argument.
+ * @param[in] SCNODE Compiled schema node.
+ * @param[in] DNODE Data node.
+ * @param[in] PATH Direct path string to print.
+ * @param[in] IN Input handler (providing line number)
+ */
+#define LOG_LOCINIT(CTX, SCNODE, DNODE, PATH, IN) \
+    ly_log_location(CTX, SCNODE, DNODE, PATH, IN, 0, 1)
+
+/**
+ * @brief Update location data for logger, not provided arguments (NULLs) are kept (does not override).
+ *
+ * @param[in] CTX libyang context, mandatory argument.
+ * @param[in] SCNODE Compiled schema node.
+ * @param[in] DNODE Data node.
+ * @param[in] PATH Direct path string to print.
+ * @param[in] IN Input handler (providing line number)
+ */
+#define LOG_LOCSET(CTX, SCNODE, DNODE, PATH, IN) \
+    ly_log_location(CTX, SCNODE, DNODE, PATH, IN, 0, 0)
+
+#define LOG_LOCBACK(CTX, SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS) \
+    ly_log_location_revert(CTX, SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS)
 
 #define LOGERR(ctx, errno, str, ...) ly_log(ctx, LY_LLERR, errno, str, ##__VA_ARGS__)
 #define LOGWRN(ctx, str, ...) ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__)
@@ -231,6 +299,7 @@ struct ly_ctx {
     uint16_t module_set_id;           /**< ID of the current set of schemas */
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
+    pthread_key_t log_location_key;   /**< key for the thread-specific tracing of current location for logging error location */
 };
 
 /**
