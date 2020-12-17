@@ -143,6 +143,7 @@ struct lys_yang_parser_ctx {
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
     struct lys_glob_unres *unres;   /**< global unres structure */
     enum LY_VLOG_ELEM pos_type;     /**< */
+    struct ly_in *in;               /**< input handler for the parser */
     union {
         uint64_t line;              /**< line number */
         const char *path;           /**< path */
