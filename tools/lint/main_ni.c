@@ -387,9 +387,9 @@ fill_context(int argc, char *argv[], struct context *c)
     uint8_t data_type_set = 0;
 
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmo:P:qst:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmo:p:P:qst:vV", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmo:P:qst:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmo:p:P:qst:vV", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'd': /* --default */
