@@ -159,6 +159,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INVAL_MINMAX   LYVE_SEMANTICS, "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u."
 #define LY_VCODE_CIRC_WHEN      LYVE_SEMANTICS, "When condition of \"%s\" includes a self-reference (referenced by when of \"%s\")."
 #define LY_VCODE_DUMMY_WHEN     LYVE_SEMANTICS, "When condition of \"%s\" is accessing its own conditional node."
+#define LY_VCODE_NAME_COL       LYVE_SEMANTICS, "Name collision between %s of name \"%s\"."
+#define LY_VCODE_NAME2_COL      LYVE_SEMANTICS, "Name collision between %s and %s of name \"%s\"."
 
 #define LY_VCODE_INSTMT         LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT    LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
@@ -185,7 +187,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_UNEXP_ATTR     LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\" of \"%s\" element."
 #define LY_VCODE_MAND_SUBELEM   LYVE_SYNTAX_YIN, "Missing mandatory sub-element \"%s\" of \"%s\" element."
 #define LY_VCODE_FIRT_SUBELEM   LYVE_SYNTAX_YIN, "Sub-element \"%s\" of \"%s\" element must be defined as it's first sub-element."
-#define LY_VCODE_NAME_COL       LYVE_SYNTAX_YIN, "Name collision between module and submodule of name \"%s\"."
 #define LY_VCODE_SUBELEM_REDEF  LYVE_SYNTAX_YIN, "Redefinition of \"%s\" sub-element in \"%s\" element."
 
 #define LY_VCODE_XP_EOE         LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."

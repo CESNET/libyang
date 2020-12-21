@@ -1076,7 +1076,7 @@ parse_include(struct lys_yang_parser_ctx *ctx, const char *module_name, struct l
     /* submodules share the namespace with the module names, so there must not be
      * a module of the same name in the context, no need for revision matching */
     if (!strcmp(module_name, inc->name) || ly_ctx_get_module_latest(PARSER_CTX(ctx), inc->name)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", inc->name);
+        LOGVAL_PARSER(ctx, LY_VCODE_NAME2_COL, "module", "submodule", inc->name);
         return LY_EVALID;
     }
 
@@ -4219,7 +4219,7 @@ checks:
      * a submodule of the same name in the context, no need for revision matching */
     dup = ly_ctx_get_submodule(PARSER_CTX(ctx), NULL, mod->mod->name, NULL);
     if (dup) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", mod->mod->name);
+        LOGVAL_PARSER(ctx, LY_VCODE_NAME2_COL, "module", "submodule", mod->mod->name);
         return LY_EVALID;
     }
 
@@ -4424,7 +4424,7 @@ checks:
     dup = ly_ctx_get_submodule(PARSER_CTX(ctx), NULL, submod->name, NULL);
     /* main modules may have different revisions */
     if (dup && strcmp(dup->mod->name, submod->mod->name)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Name collision between submodules of name \"%s\".", dup->name);
+        LOGVAL_PARSER(ctx, LY_VCODE_NAME_COL, "submodules", dup->name);
         return LY_EVALID;
     }
 
