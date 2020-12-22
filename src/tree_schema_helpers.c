@@ -94,11 +94,7 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, 
 
 error:
     if (stmt) {
-        if (ctx) {
-            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, date_len, date, stmt);
-        } else {
-            LOGVAL(NULL, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
-        }
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, date_len, date, stmt);
     }
     return LY_EINVAL;
 }
@@ -670,13 +666,13 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 
         /* check that the submodule belongs-to our module */
         if (strcmp(info->submoduleof, submod->mod->name)) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
+            LOGVAL(ctx, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
                     submod->name, info->submoduleof, submod->mod->name);
             return LY_EVALID;
         }
         /* check circular dependency */
         if (submod->parsing) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".", submod->name);
+            LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".", submod->name);
             return LY_EVALID;
         }
     }
@@ -806,8 +802,7 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_
     if (implement) {
         m = ly_ctx_get_module_implemented(ctx, name);
         if (m && (!*mod || (*mod && (m != *mod)))) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
-                    "Module \"%s\" is already present in other implemented revision.", name);
+            LOGVAL(ctx, LYVE_REFERENCE, "Module \"%s\" is already present in other implemented revision.", name);
             *mod = NULL;
             return LY_EDENIED;
         }
@@ -860,14 +855,13 @@ search_file:
         }
 
         if (!*mod) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "%s \"%s\" module failed.",
-                    implement ? "Loading" : "Importing", name);
+            LOGVAL(ctx, LYVE_REFERENCE, "%s \"%s\" module failed.", implement ? "Loading" : "Importing", name);
             return LY_EVALID;
         }
     } else {
         /* we have module from the current context, circular check */
         if ((*mod)->parsed->parsing) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
+            LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
             *mod = NULL;
             return LY_EVALID;
         }
@@ -988,8 +982,7 @@ search_file:
         inc->submodule = submod;
     }
     if (!inc->submodule) {
-        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.",
-                inc->name, pctx->parsed_mod->mod->name);
+        LOGVAL(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, pctx->parsed_mod->mod->name);
         return LY_EVALID;
     }
 

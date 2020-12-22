@@ -499,57 +499,73 @@ ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *form
 }
 
 static LY_ERR
-ly_vlog_build_path(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, char **path)
+ly_vlog_build_path(const struct ly_ctx *ctx, struct ly_log_location_s *location, char **path)
 {
     int rc;
+    char *str = NULL, *prev = NULL;
+    *path = NULL;
 
-    switch (elem_type) {
-    case LY_VLOG_STR:
-        *path = strdup(elem);
+    if (location->paths.count && ((const char *)(location->paths.objs[location->paths.count - 1]))[0]) {
+        /* simply get what is in the provided path string */
+        *path = strdup((const char *)location->paths.objs[location->paths.count - 1]);
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
-        break;
-    case LY_VLOG_LINE:
-        rc = asprintf(path, "Line number %" PRIu64 ".", *((uint64_t *)elem));
-        LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
-        break;
-    case LY_VLOG_LYSC:
-        *path = lysc_path(elem, LYSC_PATH_LOG, NULL, 0);
-        LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
-        break;
-    case LY_VLOG_LYD:
-        *path = lyd_path(elem, LYD_PATH_STD, NULL, 0);
-        LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
-        break;
-    default:
-        /* shouldn't be here */
-        LOGINT_RET(ctx);
+    } else {
+        /* generate location string */
+        if (location->scnodes.count) {
+            str = lysc_path(location->scnodes.objs[location->scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
+            LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
+
+            rc = asprintf(path, "Schema location %s", str);
+            free(str);
+            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+        }
+        if (location->dnodes.count) {
+            prev = *path;
+            str = lyd_path(location->dnodes.objs[location->dnodes.count - 1], LYD_PATH_STD, NULL, 0);
+            LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
+
+            rc = asprintf(path, "%s%sata location %s", prev ? prev : "", prev ? ", d" : "D", str);
+            free(str);
+            free(prev);
+            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+        }
+        if (location->line) {
+            prev = *path;
+            rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", location->line);
+            free(prev);
+            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+
+            location->line = 0;
+        } else if (location->inputs.count) {
+            prev = *path;
+            rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L",
+                    ((struct ly_in *)location->inputs.objs[location->inputs.count - 1])->line);
+            free(prev);
+            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+        }
+
+        if (*path) {
+            prev = *path;
+            rc = asprintf(path, "%s.", prev);
+            free(prev);
+            LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+        }
     }
 
     return LY_SUCCESS;
 }
 
 void
-ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...)
+ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...)
 {
     va_list ap;
     char *path = NULL;
-    const struct ly_err_item *first;
 
-    if (path_flag && (elem_type != LY_VLOG_NONE)) {
-        if (elem_type == LY_VLOG_PREV) {
-            /* use previous path */
-            first = ly_err_first(ctx);
-            if (first && first->prev->path) {
-                path = strdup(first->prev->path);
-            }
-        } else {
-            /* print path */
-            if (!elem) {
-                /* top-level */
-                path = strdup("/");
-            } else {
-                ly_vlog_build_path(ctx, elem_type, elem, &path);
-            }
+    if (path_flag && ctx) {
+        /* get the location information */
+        struct ly_log_location_s *location = pthread_getspecific(ctx->log_location_key);
+        if (location) {
+            ly_vlog_build_path(ctx, location, &path);
         }
     }
 

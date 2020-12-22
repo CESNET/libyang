@@ -167,17 +167,17 @@ test_list(void **state)
 
     /* missing keys */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"a\".", "/a:l1[b='b'][c='1']");
+            "List instance is missing its key \"a\".", "Schema location /a:l1, data location /a:l1[b='b'][c='1'], line number 1.");
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"b\".", "/a:l1[a='a']");
+            "List instance is missing its key \"b\".", "Schema location /a:l1, data location /a:l1[a='a'], line number 1.");
 
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><b>b</b><a>a</a></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "/a:l1[a='a'][b='b']");
+            "List instance is missing its key \"c\".", "Schema location /a:l1, data location /a:l1[a='a'][b='b'], line number 1.");
 
     /* key duplicate */
     PARSER_CHECK_ERROR("<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a><c>1</c></l1>", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Duplicate instance of \"c\".", "/a:l1[a='a'][b='b'][c='1'][c='1']/c");
+            "Duplicate instance of \"c\".", "Schema location /a:l1/c, data location /a:l1[a='a'][b='b'][c='1'][c='1']/c, line number 1.");
 
     /* keys order */
     CHECK_PARSE_LYD("<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>1</c><b>b</b></l1>", 0, LYD_VALIDATE_PRESENT, tree);
@@ -209,7 +209,7 @@ test_list(void **state)
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid position of the key \"b\" in a list.", "Line number 1.");
+            "Invalid position of the key \"b\" in a list.", "Schema location /a:l1/b, data location /a:b, line number 1.");
 }
 
 static void
@@ -243,7 +243,7 @@ test_opaq(void **state)
     /* invalid value, no flags */
     data = "<foo3 xmlns=\"urn:tests:a\"/>";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid empty uint32 value.", "/a:foo3");
+            "Invalid empty uint32 value.", "Schema location /a:foo3, line number 1.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -258,7 +258,7 @@ test_opaq(void **state)
             "  <d>val_d</d>\n"
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "/a:l1[a='val_a'][b='val_b']");
+            "List instance is missing its key \"c\".", "Schema location /a:l1, data location /a:l1[a='val_a'][b='val_b'], line number 5.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
@@ -273,7 +273,7 @@ test_opaq(void **state)
             "  <c>val_c</c>\n"
             "</l1>\n";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid int16 value \"val_c\".", "/a:l1/c");
+            "Invalid int16 value \"val_c\".", "Schema location /a:l1/c, data location /a:l1[a='val_a'][b='val_b'], line number 4.");
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);

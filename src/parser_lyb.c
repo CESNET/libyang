@@ -652,10 +652,10 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 
     if (!sibling && (lybctx->parse_options & LYD_PARSE_STRICT)) {
         if (mod) {
-            LOGVAL(lybctx->lybctx->ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Failed to find matching hash for a top-level node"
+            LOGVAL(lybctx->lybctx->ctx, LYVE_REFERENCE, "Failed to find matching hash for a top-level node"
                     " from \"%s\".", mod->name);
         } else {
-            LOGVAL(lybctx->lybctx->ctx, LY_VLOG_LYSC, sparent, LYVE_REFERENCE, "Failed to find matching hash for a child node"
+            LOGVAL(lybctx->lybctx->ctx, LYVE_REFERENCE, "Failed to find matching hash for a child node"
                     " of \"%s\".", sparent->name);
         }
         return LY_EVALID;
@@ -1050,7 +1050,7 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
     if (data_type == (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) {
         /* make sure we have parsed some operation */
         if (!lybctx->op_node) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"rpc\"/\"action\" node.");
+            LOGVAL(ctx, LYVE_DATA, "Missing the \"rpc\"/\"action\" node.");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1063,7 +1063,7 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
     } else if (data_type == LYD_INTOPT_NOTIF) {
         /* make sure we have parsed some notification */
         if (!lybctx->op_node) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"notification\" node.");
+            LOGVAL(ctx, LYVE_DATA, "Missing the \"notification\" node.");
             ret = LY_EVALID;
             goto cleanup;
         }

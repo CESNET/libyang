@@ -239,7 +239,7 @@ lyd_parse_check_keys(struct lyd_node *node)
     key = lyd_child(node);
     while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
         if (!key || (key->schema != skey)) {
-            LOGVAL(LYD_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOKEY, skey->name);
+            LOGVAL(LYD_CTX(node), LY_VCODE_NOKEY, skey->name);
             return LY_EVALID;
         }
 

@@ -69,7 +69,8 @@ struct lys_yang_parser_ctx *YCTX;
 #define YCTX_INIT \
     struct ly_in in = {0}; \
     in.line = 1; \
-    YCTX->in = &in
+    YCTX->in = &in; \
+    LOG_LOCINIT(UTEST_LYCTX, NULL, NULL, NULL, &in)
 
 static int
 setup(void **state)
@@ -79,7 +80,6 @@ setup(void **state)
     /* allocate parser context */
     YCTX = calloc(1, sizeof(*YCTX));
     YCTX->format = LYS_IN_YANG;
-    YCTX->pos_type = LY_VLOG_LINE;
 
     /* allocate new parsed module */
     YCTX->parsed_mod = calloc(1, sizeof *YCTX->parsed_mod);
@@ -550,6 +550,8 @@ mod_renew(struct lys_yang_parser_ctx *ctx)
     ctx->parsed_mod->mod->parsed = ctx->parsed_mod;
     ctx->parsed_mod->mod->ctx = ly_ctx;
 
+    ctx->in->line = 1;
+
     return ctx->parsed_mod;
 }
 
@@ -683,14 +685,16 @@ test_module(void **state)
     /* import - prefix collision */
     in.current = SCHEMA_BEGINNING "import zzz {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Prefix \"x\" already used as module prefix.", "Line number 2.");
+    CHECK_LOG_CTX("Prefix \"x\" already used as module prefix.", "Line number 1.");
     mod = mod_renew(YCTX);
 
     in.current = SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix y;}}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Prefix \"y\" already used to import \"zzz\" module.", "Line number 2.");
+    CHECK_LOG_CTX("Prefix \"y\" already used to import \"zzz\" module.", "Line number 1.");
 
     mod = mod_renew(YCTX);
+    LOG_LOCBACK(UTEST_LYCTX, 0, 0, 0, 1);
+
     in.current = "module name10 {yang-version 1.1;namespace urn:x;prefix \"x\";import zzz {prefix y;}import zzz {prefix z;}}";
     assert_int_equal(lys_parse_mem(YCTX->parsed_mod->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_SUCCESS);
     CHECK_LOG_CTX("Single revision of the module \"zzz\" imported twice.", NULL);
@@ -739,11 +743,11 @@ test_module(void **state)
     /* yang-version */
     in.current = SCHEMA_BEGINNING2 "\n\tyang-version 10;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Invalid value \"10\" of \"yang-version\".", "Line number 3.");
+    CHECK_LOG_CTX("Invalid value \"10\" of \"yang-version\".", NULL);
     mod = mod_renew(YCTX);
     in.current = SCHEMA_BEGINNING2 "yang-version 1;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Duplicate keyword \"yang-version\".", "Line number 3.");
+    CHECK_LOG_CTX("Duplicate keyword \"yang-version\".", NULL);
     mod = mod_renew(YCTX);
     in.current = SCHEMA_BEGINNING2 "yang-version 1;}";
     assert_int_equal(LY_SUCCESS, parse_module(YCTX, mod));
@@ -753,9 +757,6 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, parse_module(YCTX, mod));
     assert_int_equal(2, mod->version);
     mod = mod_renew(YCTX);
-
-    /* reset line */
-    in.line = 1;
 
     in.current = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = calloc(1, sizeof *m);
@@ -790,7 +791,7 @@ test_module(void **state)
     /* invalid substatement */
     in.current = SCHEMA_BEGINNING "must false;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"module\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"must\" as a child of \"module\".", NULL);
 
     /* submodule */
     submod = submod_renew(YCTX);
@@ -798,7 +799,7 @@ test_module(void **state)
     /* missing mandatory substatements */
     in.current = " subname {}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\".", "Line number 1.");
+    CHECK_LOG_CTX("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\".", NULL);
     assert_string_equal("subname", submod->name);
 
     submod = submod_renew(YCTX);
@@ -814,17 +815,17 @@ test_module(void **state)
     /* duplicated namespace, prefix */
     in.current = " subname {belongs-to name {prefix x;}belongs-to module1;belongs-to module2;} ...";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Duplicate keyword \"belongs-to\".", "Line number 1.");
+    CHECK_LOG_CTX("Duplicate keyword \"belongs-to\".", NULL);
     submod = submod_renew(YCTX);
 
     /* not allowed in submodule (module-specific) */
     in.current = SCHEMA_BEGINNING "namespace \"urn:z\";}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Invalid keyword \"namespace\" as a child of \"submodule\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"namespace\" as a child of \"submodule\".", NULL);
     submod = submod_renew(YCTX);
     in.current = SCHEMA_BEGINNING "prefix m;}}";
     assert_int_equal(LY_EVALID, parse_submodule(YCTX, submod));
-    CHECK_LOG_CTX("Invalid keyword \"prefix\" as a child of \"submodule\".", "Line number 1.");
+    CHECK_LOG_CTX("Invalid keyword \"prefix\" as a child of \"submodule\".", NULL);
     submod = submod_renew(YCTX);
 
     in.current = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";

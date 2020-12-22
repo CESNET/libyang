@@ -54,6 +54,8 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     const char *name;
     size_t name_len;
 
+    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+
     if (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[' */
 
@@ -69,11 +71,11 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* check prefix based on the options */
                 name = strnstr(exp->expr + exp->tok_pos[*tok_idx], ":", exp->tok_len[*tok_idx]);
                 if ((prefix == LY_PATH_PREFIX_MANDATORY) && !name) {
-                    LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", exp->tok_len[*tok_idx],
+                    LOGVAL(ctx, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", exp->tok_len[*tok_idx],
                             exp->expr + exp->tok_pos[*tok_idx]);
                     goto token_error;
                 } else if ((prefix == LY_PATH_PREFIX_STRICT_INHERIT) && name) {
-                    LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Redundant prefix for \"%.*s\" in path.", exp->tok_len[*tok_idx],
+                    LOGVAL(ctx, LYVE_XPATH, "Redundant prefix for \"%.*s\" in path.", exp->tok_len[*tok_idx],
                             exp->expr + exp->tok_pos[*tok_idx]);
                     goto token_error;
                 }
@@ -89,7 +91,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 for (i = 0; i < set->count; ++i) {
                     /* all the keys must be from the same module so this comparison should be fine */
                     if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
-                        LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
+                        LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
                         goto token_error;
                     }
                 }
@@ -153,7 +155,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 for (i = 0; i < set->count; ++i) {
                     /* all the keys must be from the same module so this comparison should be fine */
                     if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
-                        LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
+                        LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
                         goto token_error;
                     }
                 }
@@ -172,7 +174,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_FUNCNAME), token_error);
                 if ((exp->tok_len[*tok_idx] != ly_strlen_const("current")) ||
                         strncmp(exp->expr + exp->tok_pos[*tok_idx], "current", ly_strlen_const("current"))) {
-                    LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Invalid function \"%.*s\" invocation in path.",
+                    LOGVAL(ctx, LYVE_XPATH, "Invalid function \"%.*s\" invocation in path.",
                             exp->tok_len[*tok_idx], exp->expr + exp->tok_pos[*tok_idx]);
                     goto token_error;
                 }
@@ -210,17 +212,18 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
 
         } else {
-            LOGVAL_P(ctx, cur_node, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*tok_idx]),
-                    exp->expr + exp->tok_pos[*tok_idx]);
+            LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*tok_idx]), exp->expr + exp->tok_pos[*tok_idx]);
             goto token_error;
         }
     }
 
 cleanup:
+    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
     ly_set_free(set, NULL);
     return ret;
 
 token_error:
+    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
     ly_set_free(set, NULL);
     return LY_EVALID;
 }
@@ -239,6 +242,8 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
     assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY) ||
             (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
+
+    LOG_LOCSET(ctx, ctx_node, NULL, NULL, NULL);
 
     /* parse as a generic XPath expression */
     LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 1, &exp), error);
@@ -274,7 +279,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         cur_len = exp->tok_len[tok_idx];
         if (prefix == LY_PATH_PREFIX_MANDATORY) {
             if (!strnstr(cur_node, ":", cur_len)) {
-                LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
+                LOGVAL(ctx, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
                 ret = LY_EVALID;
                 goto error;
             }
@@ -282,7 +287,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
             if (!prev_prefix) {
                 /* the first node must have a prefix */
                 if (!strnstr(cur_node, ":", cur_len)) {
-                    LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
+                    LOGVAL(ctx, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
                     ret = LY_EVALID;
                     goto error;
                 }
@@ -294,7 +299,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
                 ptr = strnstr(cur_node, ":", cur_len);
                 if (ptr) {
                     if (!strncmp(prev_prefix, cur_node, ptr - cur_node) && (prev_prefix[ptr - cur_node] == ':')) {
-                        LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Duplicate prefix for \"%.*s\" in path.", cur_len, cur_node);
+                        LOGVAL(ctx, LYVE_XPATH, "Duplicate prefix for \"%.*s\" in path.", cur_len, cur_node);
                         ret = LY_EVALID;
                         goto error;
                     }
@@ -315,17 +320,19 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     /* trailing token check */
     if (exp->used > tok_idx) {
-        LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of path.",
-                exp->expr + exp->tok_pos[tok_idx]);
+        LOGVAL(ctx, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of path.", exp->expr + exp->tok_pos[tok_idx]);
         ret = LY_EVALID;
         goto error;
     }
 
     *expr = exp;
+
+    LOG_LOCBACK(ctx, ctx_node ? 1 : 0, 0, 0, 0);
     return LY_SUCCESS;
 
 error:
     lyxp_expr_free(ctx, exp);
+    LOG_LOCBACK(ctx, ctx_node ? 1 : 0, 0, 0, 0);
     return ret;
 }
 
@@ -340,6 +347,8 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
+    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+
     /* parse as a generic XPath expression */
     LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 0, &exp), error);
     tok_idx = 0;
@@ -348,17 +357,20 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
     /* trailing token check */
     if (exp->used > tok_idx) {
-        LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of predicate.",
+        LOGVAL(ctx, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of predicate.",
                 exp->expr + exp->tok_pos[tok_idx]);
         ret = LY_EVALID;
         goto error;
     }
 
     *expr = exp;
+
+    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
     return LY_SUCCESS;
 
 error:
     lyxp_expr_free(ctx, exp);
+    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
     return ret;
 }
 
@@ -385,6 +397,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
         LY_PREFIX_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, const struct lys_module **mod,
         const char **name, size_t *name_len)
 {
+    LY_ERR ret;
     const char *pref;
     size_t len;
 
@@ -401,18 +414,24 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
     /* find next node module */
     if (pref) {
+        ret = LY_EVALID;
+
+        LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+
         *mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
         if (!*mod) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "No module connected with the prefix \"%.*s\" found (prefix format %s).",
+            LOGVAL(ctx, LYVE_XPATH, "No module connected with the prefix \"%.*s\" found (prefix format %s).",
                     len, pref, ly_format2str(format));
-            return LY_EVALID;
+            goto error;
         } else if (!(*mod)->implemented) {
             if (lref == LY_PATH_LREF_FALSE) {
-                LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
-                return LY_EVALID;
+                LOGVAL(ctx, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
+                goto error;
             }
-            LY_CHECK_RET(lys_set_implemented_r((struct lys_module *)*mod, NULL, unres));
+            LY_CHECK_GOTO(ret = lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
         }
+
+        LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
     } else {
         switch (format) {
         case LY_PREF_SCHEMA:
@@ -446,6 +465,10 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
     }
 
     return LY_SUCCESS;
+
+error:
+    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    return LY_EVALID;
 }
 
 LY_ERR
@@ -453,6 +476,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format,
         void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct ly_path_predicate *p;
     const struct lysc_node *key;
     const struct lys_module *mod = NULL;
@@ -461,22 +485,26 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
     assert(ctx && ctx_node);
 
+    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+
     *pred_type = 0;
 
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[', no predicate */
-        return LY_SUCCESS;
+        goto cleanup; /* LY_SUCCESS */
     }
 
     if (expr->tokens[*tok_idx] == LYXP_TOKEN_NAMETEST) {
         if (ctx_node->nodetype != LYS_LIST) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "List predicate defined for %s \"%s\" in path.",
+            LOGVAL(ctx, LYVE_XPATH, "List predicate defined for %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         } else if (ctx_node->flags & LYS_KEYLESS) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "List predicate defined for keyless %s \"%s\" in path.",
+            LOGVAL(ctx, LYVE_XPATH, "List predicate defined for keyless %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
 
         do {
@@ -485,12 +513,14 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                     format, prefix_data, NULL, &mod, &name, &name_len));
             key = lys_find_child(ctx_node, mod, name, name_len, 0, 0);
             if (!key) {
-                LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-                return LY_ENOTFOUND;
+                LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+                ret = LY_ENOTFOUND;
+                goto cleanup;
             } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
-                LOGVAL_P(ctx, cur_node ? cur_node : key, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.",
-                        lys_nodetype2str(key->nodetype), key->name);
-                return LY_EVALID;
+                LOGVAL(ctx, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.", lys_nodetype2str(key->nodetype),
+                        key->name);
+                ret = LY_EVALID;
+                goto cleanup;
             }
             ++(*tok_idx);
 
@@ -499,7 +529,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                 *pred_type = LY_PATH_PREDTYPE_LIST;
             }
             assert(*pred_type == LY_PATH_PREDTYPE_LIST);
-            LY_ARRAY_NEW_RET(ctx, *predicates, p, LY_EMEM);
+            LY_ARRAY_NEW_GOTO(ctx, *predicates, p, ret, cleanup);
             p->key = key;
 
             /* '=' */
@@ -508,9 +538,12 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
             /* Literal */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL);
-            LY_CHECK_RET(lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type,
+            LOG_LOCSET(ctx, key, NULL, NULL, NULL);
+            ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type,
                     expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
-                    LYD_HINT_DATA, key, NULL, LY_VLOG_LYSC, key));
+                    LYD_HINT_DATA, key, NULL);
+            LOG_LOCBACK(ctx, key ? 1 : 0, 0, 0, 0);
+            LY_CHECK_GOTO(ret, cleanup);
             ++(*tok_idx);
 
             /* "allocate" the type to avoid problems when freeing the value after the type was freed */
@@ -530,24 +563,26 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         }
         if (LY_ARRAY_COUNT(*predicates) != key_count) {
             /* names (keys) are unique - it was checked when parsing */
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
+            LOGVAL(ctx, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
             ly_path_predicates_free(ctx, LY_PATH_PREDTYPE_LIST, *predicates);
             *predicates = NULL;
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
 
     } else if (expr->tokens[*tok_idx] == LYXP_TOKEN_DOT) {
         if (ctx_node->nodetype != LYS_LEAFLIST) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Leaf-list predicate defined for %s \"%s\" in path.",
+            LOGVAL(ctx, LYVE_XPATH, "Leaf-list predicate defined for %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
         ++(*tok_idx);
 
         /* new predicate */
         *pred_type = LY_PATH_PREDTYPE_LEAFLIST;
-        LY_ARRAY_NEW_RET(ctx, *predicates, p, LY_EMEM);
+        LY_ARRAY_NEW_GOTO(ctx, *predicates, p, ret, cleanup);
 
         /* '=' */
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_OPER_EQUAL);
@@ -555,9 +590,12 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL);
         /* store the value */
-        LY_CHECK_RET(lyd_value_store(ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type,
+        LOG_LOCSET(ctx, ctx_node, NULL, NULL, NULL);
+        ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type,
                 expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
-                LYD_HINT_DATA, ctx_node, NULL, LY_VLOG_LYSC, ctx_node));
+                LYD_HINT_DATA, ctx_node, NULL);
+        LOG_LOCBACK(ctx, ctx_node ? 1 : 0, 0, 0, 0);
+        LY_CHECK_GOTO(ret, cleanup);
         ++(*tok_idx);
 
         /* "allocate" the type to avoid problems when freeing the value after the type was freed */
@@ -569,18 +607,20 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
     } else {
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_NUMBER);
         if (!(ctx_node->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Positional predicate defined for %s \"%s\" in path.",
+            ret = LY_EVALID;
+            LOGVAL(ctx, LYVE_XPATH, "Positional predicate defined for %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EVALID;
+            goto cleanup;
         } else if (ctx_node->flags & LYS_CONFIG_W) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Positional predicate defined for configuration %s \"%s\" in path.",
+            ret = LY_EVALID;
+            LOGVAL(ctx, LYVE_XPATH, "Positional predicate defined for configuration %s \"%s\" in path.",
                     lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EVALID;
+            goto cleanup;
         }
 
         /* new predicate */
         *pred_type = LY_PATH_PREDTYPE_POSITION;
-        LY_ARRAY_NEW_RET(ctx, *predicates, p, LY_EMEM);
+        LY_ARRAY_NEW_GOTO(ctx, *predicates, p, ret, cleanup);
 
         /* syntax was already checked */
         p->position = strtoull(expr->expr + expr->tok_pos[*tok_idx], (char **)&name, LY_BASE_DEC);
@@ -591,7 +631,9 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         ++(*tok_idx);
     }
 
-    return LY_SUCCESS;
+cleanup:
+    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    return ret;
 }
 
 /**
@@ -611,38 +653,47 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format, void *prefix_data,
         struct lys_glob_unres *unres)
 {
+    LY_ERR ret = LY_SUCCESS;
     const struct lysc_node *key, *node, *node2;
     const struct lys_module *mod;
     const char *name;
     size_t name_len;
+    struct ly_ctx *ctx = cur_node->module->ctx;
+
+    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
 
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[', no predicate */
-        return LY_SUCCESS;
+        goto cleanup; /* LY_SUCCESS */
     }
 
     if (ctx_node->nodetype != LYS_LIST) {
-        LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "List predicate defined for %s \"%s\" in path.",
+        LOGVAL(ctx, LYVE_XPATH, "List predicate defined for %s \"%s\" in path.",
                 lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     } else if (ctx_node->flags & LYS_KEYLESS) {
-        LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "List predicate defined for keyless %s \"%s\" in path.",
+        LOGVAL(ctx, LYVE_XPATH, "List predicate defined for keyless %s \"%s\" in path.",
                 lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     do {
         /* NameTest, find the key */
-        LY_CHECK_RET(ly_path_compile_prefix(cur_node->module->ctx, cur_node, cur_node->module, ctx_node, expr, *tok_idx,
-                LY_PATH_LREF_TRUE, format, prefix_data, unres, &mod, &name, &name_len));
+        ret = ly_path_compile_prefix(ctx, cur_node, cur_node->module, ctx_node, expr, *tok_idx,
+                LY_PATH_LREF_TRUE, format, prefix_data, unres, &mod, &name, &name_len);
+        LY_CHECK_GOTO(ret, cleanup);
         key = lys_find_child(ctx_node, mod, name, name_len, 0, 0);
         if (!key) {
-            LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-            return LY_EVALID;
+            LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+            ret = LY_EVALID;
+            goto cleanup;
         } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
-            LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.",
+            LOGVAL(ctx, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.",
                     lys_nodetype2str(key->nodetype), key->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
         ++(*tok_idx);
 
@@ -675,8 +726,9 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
 
             /* go to parent */
             if (!node) {
-                LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "Too many parent references in path.");
-                return LY_EVALID;
+                LOGVAL(ctx, LYVE_XPATH, "Too many parent references in path.");
+                ret = LY_EVALID;
+                goto cleanup;
             }
             node = lysc_data_parent(node);
 
@@ -692,12 +744,13 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
 
             /* NameTest */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_NAMETEST);
-            LY_CHECK_RET(ly_path_compile_prefix(cur_node->module->ctx, cur_node, cur_node->module, node, expr, *tok_idx,
+            LY_CHECK_RET(ly_path_compile_prefix(ctx, cur_node, cur_node->module, node, expr, *tok_idx,
                     LY_PATH_LREF_TRUE, format, prefix_data, unres, &mod, &name, &name_len));
             node2 = lys_find_child(node, mod, name, name_len, 0, 0);
             if (!node2) {
-                LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-                return LY_EVALID;
+                LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+                ret = LY_EVALID;
+                goto cleanup;
             }
             node = node2;
             ++(*tok_idx);
@@ -705,10 +758,10 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
 
         /* check the last target node */
         if (node->nodetype != LYS_LEAF) {
-            LOGVAL_P(cur_node->module->ctx, cur_node, LYVE_XPATH,
-                    "Leaf expected instead of %s \"%s\" in leafref predicate in path.",
+            LOGVAL(ctx, LYVE_XPATH, "Leaf expected instead of %s \"%s\" in leafref predicate in path.",
                     lys_nodetype2str(node->nodetype), node->name);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
 
         /* we are not actually compiling, throw the rightside node away */
@@ -721,7 +774,9 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         /* another predicate follows? */
     } while (!lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1));
 
-    return LY_SUCCESS;
+cleanup:
+    LOG_LOCBACK(ctx, 1, 0, 0, 0);
+    return ret;
 }
 
 LY_ERR
@@ -747,10 +802,11 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     /* find operation, if we are in any */
     for (op = ctx_node; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
 
+    *path = NULL;
+
     /* remember original context node */
     cur_node = ctx_node;
-
-    *path = NULL;
+    LOG_LOCINIT(ctx, cur_node, NULL, NULL, NULL);
 
     if (oper == LY_PATH_OPER_OUTPUT) {
         getnext_opts = LYS_GETNEXT_OUTPUT;
@@ -767,7 +823,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         /* relative path */
         while ((lref == LY_PATH_LREF_TRUE) && (expr->tokens[tok_idx] == LYXP_TOKEN_DDOT)) {
             if (!ctx_node) {
-                LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Too many parent references in path.");
+                LOGVAL(ctx, LYVE_XPATH, "Too many parent references in path.");
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -789,7 +845,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         /* check last compiled inner node, whether it is uniquely identified (even key-less list) */
         if (p && (lref == LY_PATH_LREF_FALSE) && (target == LY_PATH_TARGET_SINGLE) &&
                 (p->node->nodetype == LYS_LIST) && !p->predicates) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
+            LOGVAL(ctx, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                     lys_nodetype2str(p->node->nodetype), p->node->name);
             ret = LY_EVALID;
             goto cleanup;
@@ -806,7 +862,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         /* find the next node */
         node2 = lys_find_child(ctx_node, mod, name, name_len, 0, getnext_opts);
         if (!node2 || (op && (node2->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node2 != op))) {
-            LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+            LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -828,8 +884,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
 
     /* check leftover tokens */
     if (tok_idx < expr->used) {
-        LOGVAL_P(ctx, cur_node, LY_VCODE_XP_INTOK, lyxp_print_token(expr->tokens[tok_idx]),
-                &expr->expr[expr->tok_pos[tok_idx]]);
+        LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_print_token(expr->tokens[tok_idx]), &expr->expr[expr->tok_pos[tok_idx]]);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -837,7 +892,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     /* check last compiled node */
     if ((lref == LY_PATH_LREF_FALSE) && (target == LY_PATH_TARGET_SINGLE) &&
             (p->node->nodetype & (LYS_LIST | LYS_LEAFLIST)) && !p->predicates) {
-        LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
+        LOGVAL(ctx, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                 lys_nodetype2str(p->node->nodetype), p->node->name);
         ret = LY_EVALID;
         goto cleanup;
@@ -848,6 +903,7 @@ cleanup:
         ly_path_free(ctx, *path);
         *path = NULL;
     }
+    LOG_LOCBACK(ctx, 1, 0, 0, 0);
     return ret;
 }
 
