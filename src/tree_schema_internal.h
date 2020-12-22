@@ -114,16 +114,7 @@ enum yang_arg {
 };
 
 #define PARSER_CTX(CTX) ((CTX)->parsed_mod->mod->ctx)
-
-#define LOGVAL_PARSER(CTX, ...) (CTX)->format == LYS_IN_YANG ? LOGVAL_YANG(CTX, __VA_ARGS__) : LOGVAL_YIN(CTX, __VA_ARGS__)
-
-#define LOGVAL_YANG(CTX, ...) LOGVAL(PARSER_CTX(CTX), ((struct lys_yang_parser_ctx *)CTX)->pos_type, \
-                                     ((struct lys_yang_parser_ctx *)CTX)->pos_type == LY_VLOG_LINE ? \
-                                        (void *)&((struct lys_yang_parser_ctx *)CTX)->in->line : \
-                                        (void *)((struct lys_yang_parser_ctx *)CTX)->path, __VA_ARGS__)
-
-#define LOGVAL_YIN(CTX, ...) LOGVAL(PARSER_CTX(CTX), LY_VLOG_LINE, \
-                                     &((struct lys_yin_parser_ctx *)CTX)->xmlctx->in->line, __VA_ARGS__)
+#define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX) ? PARSER_CTX(CTX) : NULL, __VA_ARGS__)
 
 struct lys_parser_ctx {
     LYS_INFORMAT format;            /**< parser format */
@@ -142,11 +133,7 @@ struct lys_yang_parser_ctx {
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
     struct lys_glob_unres *unres;   /**< global unres structure */
-    enum LY_VLOG_ELEM pos_type;     /**< */
     struct ly_in *in;               /**< input handler for the parser */
-
-    const char *path;           /**< path */
-
     uint64_t indent;                /**< current position on the line for YANG indentation */
 };
 

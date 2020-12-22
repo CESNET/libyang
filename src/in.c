@@ -395,42 +395,48 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
 LY_ERR
 lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {
-    /* alternatively, we could provide line for the error messages, but it doesn't work for the LYB format */
+    LY_ERR ret = LY_EVALID;
+
+    LOG_LOCSET(lydctx->data_ctx->ctx, snode, NULL, NULL, NULL);
 
     if ((lydctx->parse_options & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
-        LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LY_VCODE_INNODE, "state", snode->name);
-        return LY_EVALID;
+        LOGVAL(lydctx->data_ctx->ctx, LY_VCODE_INNODE, "state", snode->name);
+        goto cleanup;
     }
 
     if (snode->nodetype & (LYS_RPC | LYS_ACTION)) {
         if (lydctx->int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) {
             if (lydctx->op_node) {
-                LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+                LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
                         lys_nodetype2str(snode->nodetype), snode->name,
                         lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
-                return LY_EVALID;
+                goto cleanup;
             }
         } else {
-            LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\".",
+            LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".",
                     lys_nodetype2str(snode->nodetype), snode->name);
-            return LY_EVALID;
+            goto cleanup;
         }
     } else if (snode->nodetype == LYS_NOTIF) {
         if (lydctx->int_opts & LYD_INTOPT_NOTIF) {
             if (lydctx->op_node) {
-                LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+                LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
                         lys_nodetype2str(snode->nodetype), snode->name,
                         lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
-                return LY_EVALID;
+                goto cleanup;
             }
         } else {
-            LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\".",
+            LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".",
                     lys_nodetype2str(snode->nodetype), snode->name);
-            return LY_EVALID;
+            goto cleanup;
         }
     }
 
-    return LY_SUCCESS;
+    ret = LY_SUCCESS;
+
+cleanup:
+    LOG_LOCBACK(lydctx->data_ctx->ctx, 1, 0, 0, 0);
+    return ret;
 }
 
 LY_ERR

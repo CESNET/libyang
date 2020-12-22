@@ -117,11 +117,11 @@ setup(void **state)
         value.realtype->plugin->free(UTEST_LYCTX, &value); \
     }
 
-#define TEST_TYPE_ERROR(TYPE, VALUE, ERROR_MSG) \
+#define TEST_TYPE_ERROR(TYPE, VALUE, ERROR_MSG, LINE) \
     { \
         const char *data = "<" TYPE " xmlns=\"urn:tests:types\">" VALUE "</" TYPE">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
-        CHECK_LOG_CTX(ERROR_MSG, "/types:"TYPE); \
+        CHECK_LOG_CTX(ERROR_MSG, "Schema location /types:"TYPE", line number "LINE"."); \
     }
 
 #define TEST_PRINTED_VALUE(VALUE, EXPECTED, FORMAT, PREFIX_DATA) \
@@ -152,19 +152,19 @@ test_int(void **state)
 
     /* invalid range */
     error_msg = "Value \"1\" does not satisfy the range constraint.";
-    TEST_TYPE_ERROR("int8", "1", error_msg);
+    TEST_TYPE_ERROR("int8", "1", error_msg, "1");
     error_msg = "Value \"100\" does not satisfy the range constraint.";
-    TEST_TYPE_ERROR("int16", "100", error_msg);
+    TEST_TYPE_ERROR("int16", "100", error_msg, "1");
 
     /* invalid value */
     error_msg = "Invalid int32 value \"0x01\".";
-    TEST_TYPE_ERROR("int32", "0x01", error_msg);
+    TEST_TYPE_ERROR("int32", "0x01", error_msg, "1");
     error_msg = "Invalid empty int64 value.";
-    TEST_TYPE_ERROR("int64", "", error_msg);
+    TEST_TYPE_ERROR("int64", "", error_msg, "1");
     error_msg = "Invalid empty int64 value.";
-    TEST_TYPE_ERROR("int64", "   ", error_msg);
+    TEST_TYPE_ERROR("int64", "   ", error_msg, "1");
     error_msg = "Invalid int64 value \"-10  xxx\".";
-    TEST_TYPE_ERROR("int64", "-10  xxx", error_msg);
+    TEST_TYPE_ERROR("int64", "-10  xxx", error_msg, "1");
 }
 
 static void
@@ -181,17 +181,17 @@ test_uint(void **state)
 
     /* invalid range */
     TEST_TYPE_ERROR("uint8", "\n 15 \t\n  ",
-            "Value \"15\" does not satisfy the range constraint.");
+            "Value \"15\" does not satisfy the range constraint.", "3");
     TEST_TYPE_ERROR("uint16", "\n 1500 \t\n  ",
-            "Value \"1500\" does not satisfy the range constraint.");
+            "Value \"1500\" does not satisfy the range constraint.", "3");
 
     /* invalid value */
     TEST_TYPE_ERROR("uint32", "-10",
-            "Value \"-10\" is out of uint32's min/max bounds.");
+            "Value \"-10\" is out of uint32's min/max bounds.", "1");
     CHECK_PARSE_LYD_PARAM("<uint64 xmlns=\"urn:tests:types\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid empty uint64 value.", "/types:uint64");
-    TEST_TYPE_ERROR("uint64", "   ", "Invalid empty uint64 value.");
-    TEST_TYPE_ERROR("uint64", "10  xxx", "Invalid uint64 value \"10  xxx\".");
+    CHECK_LOG_CTX("Invalid empty uint64 value.", "Schema location /types:uint64, line number 1.");
+    TEST_TYPE_ERROR("uint64", "   ", "Invalid empty uint64 value.", "1");
+    TEST_TYPE_ERROR("uint64", "10  xxx", "Invalid uint64 value \"10  xxx\".", "1");
 }
 
 static void
@@ -225,16 +225,16 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     /* invalid range */
-    TEST_TYPE_ERROR("dec64", "\n 15 \t\n  ", "Value \"15.0\" does not satisfy the range constraint.");
-    TEST_TYPE_ERROR("dec64", "\n 0 \t\n  ", "Value \"0.0\" does not satisfy the range constraint.");
+    TEST_TYPE_ERROR("dec64", "\n 15 \t\n  ", "Value \"15.0\" does not satisfy the range constraint.", "3");
+    TEST_TYPE_ERROR("dec64", "\n 0 \t\n  ", "Value \"0.0\" does not satisfy the range constraint.", "3");
 
     /* invalid value */
-    TEST_TYPE_ERROR("dec64", "xxx", "Invalid 1. character of decimal64 value \"xxx\".");
+    TEST_TYPE_ERROR("dec64", "xxx", "Invalid 1. character of decimal64 value \"xxx\".", "1");
     CHECK_PARSE_LYD_PARAM("<dec64 xmlns=\"urn:tests:types\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid empty decimal64 value.", "/types:dec64");
-    TEST_TYPE_ERROR("dec64", "   ", "Invalid empty decimal64 value.");
-    TEST_TYPE_ERROR("dec64", "8.5  xxx", "Invalid 6. character of decimal64 value \"8.5  xxx\".");
-    TEST_TYPE_ERROR("dec64", "8.55  xxx", "Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits.");
+    CHECK_LOG_CTX("Invalid empty decimal64 value.", "Schema location /types:dec64, line number 1.");
+    TEST_TYPE_ERROR("dec64", "   ", "Invalid empty decimal64 value.", "1");
+    TEST_TYPE_ERROR("dec64", "8.5  xxx", "Invalid 6. character of decimal64 value \"8.5  xxx\".", "1");
+    TEST_TYPE_ERROR("dec64", "8.55  xxx", "Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits.", "1");
 }
 
 static void
@@ -258,20 +258,20 @@ test_string(void **state)
 
     /*error */
     TEST_TYPE_ERROR("str-utf8", "€",
-            "Length \"1\" does not satisfy the length constraint.");
+            "Length \"1\" does not satisfy the length constraint.", "1");
     TEST_TYPE_ERROR("str-utf8", "€€€€€€",
-            "Length \"6\" does not satisfy the length constraint.");
+            "Length \"6\" does not satisfy the length constraint.", "1");
     TEST_TYPE_ERROR("str-utf8", "€€x",
-            "String \"€€x\" does not conform to the pattern \"€*\".");
+            "String \"€€x\" does not conform to the pattern \"€*\".", "1");
 
     /* invalid length */
     TEST_TYPE_ERROR("str", "short",
-            "Length \"5\" does not satisfy the length constraint.");
+            "Length \"5\" does not satisfy the length constraint.", "1");
     TEST_TYPE_ERROR("str", "tooooo long",
-            "Length \"11\" does not satisfy the length constraint.");
+            "Length \"11\" does not satisfy the length constraint.", "1");
 
     /* invalid pattern */
-    TEST_TYPE_ERROR("str", "string15", "String \"string15\" does not conform to the pattern \"[a-z ]*\".");
+    TEST_TYPE_ERROR("str", "string15", "String \"string15\" does not conform to the pattern \"[a-z ]*\".", "1");
 }
 
 static void
@@ -295,16 +295,16 @@ test_bits(void **state)
     lyd_free_all(tree);
 
     /* disabled feature */
-    TEST_TYPE_ERROR("bits", " \t one \n\t ", "Invalid bit value \"one\".");
+    TEST_TYPE_ERROR("bits", " \t one \n\t ", "Invalid bit value \"one\".", "2");
 
     /* disabled feature */
-    TEST_TYPE_ERROR("bits",  "\t one \n\t", "Invalid bit value \"one\".");
+    TEST_TYPE_ERROR("bits",  "\t one \n\t", "Invalid bit value \"one\".", "2");
 
     /* multiple instances of the bit */
-    TEST_TYPE_ERROR("bits", "one zero one", "Invalid bit value \"one\".");
+    TEST_TYPE_ERROR("bits", "one zero one", "Invalid bit value \"one\".", "1");
 
     /* invalid bit value */
-    TEST_TYPE_ERROR("bits", "one xero one", "Invalid bit value \"one\".");
+    TEST_TYPE_ERROR("bits", "one xero one", "Invalid bit value \"one\".", "1");
 }
 
 static void
@@ -320,14 +320,14 @@ test_enums(void **state)
     lyd_free_all(tree);
 
     /* disabled feature */
-    TEST_TYPE_ERROR("enums", "yellow", "Invalid enumeration value \"yellow\".");
+    TEST_TYPE_ERROR("enums", "yellow", "Invalid enumeration value \"yellow\".", "1");
 
     /* leading/trailing whitespaces are not valid */
-    TEST_TYPE_ERROR("enums", " white", "Invalid enumeration value \" white\".");
-    TEST_TYPE_ERROR("enums", "white\n", "Invalid enumeration value \"white\n\".");
+    TEST_TYPE_ERROR("enums", " white", "Invalid enumeration value \" white\".", "1");
+    TEST_TYPE_ERROR("enums", "white\n", "Invalid enumeration value \"white\n\".", "2");
 
     /* invalid enumeration value */
-    TEST_TYPE_ERROR("enums", "black", "Invalid enumeration value \"black\".");
+    TEST_TYPE_ERROR("enums", "black", "Invalid enumeration value \"black\".", "1");
 }
 
 static void
@@ -368,19 +368,19 @@ test_binary(void **state)
     lyd_free_all(tree);
 
     /* invalid base64 character */
-    TEST_TYPE_ERROR("binary-norestr", "a@bcd=", "Invalid Base64 character (@).");
+    TEST_TYPE_ERROR("binary-norestr", "a@bcd=", "Invalid Base64 character (@).", "1");
 
     /* missing data */
-    TEST_TYPE_ERROR("binary-norestr", "aGVsbG8", "Base64 encoded value length must be divisible by 4.");
+    TEST_TYPE_ERROR("binary-norestr", "aGVsbG8", "Base64 encoded value length must be divisible by 4.", "1");
 
-    TEST_TYPE_ERROR("binary-norestr", "VsbG8=", "Base64 encoded value length must be divisible by 4.");
+    TEST_TYPE_ERROR("binary-norestr", "VsbG8=", "Base64 encoded value length must be divisible by 4.", "1");
 
     /* invalid binary length */
     /* helloworld */
-    TEST_TYPE_ERROR("binary", "aGVsbG93b3JsZA==", "This base64 value must be of length 5.");
+    TEST_TYPE_ERROR("binary", "aGVsbG93b3JsZA==", "This base64 value must be of length 5.", "1");
 
     /* M */
-    TEST_TYPE_ERROR("binary", "TQ==", "This base64 value must be of length 5.");
+    TEST_TYPE_ERROR("binary", "TQ==", "This base64 value must be of length 5.", "1");
 }
 
 static void
@@ -408,9 +408,9 @@ test_boolean(void **state)
     lyd_free_all(tree);
 
     /* invalid value */
-    TEST_TYPE_ERROR("bool", "unsure", "Invalid boolean value \"unsure\".");
+    TEST_TYPE_ERROR("bool", "unsure", "Invalid boolean value \"unsure\".", "1");
 
-    TEST_TYPE_ERROR("bool", " true", "Invalid boolean value \" true\".");
+    TEST_TYPE_ERROR("bool", " true", "Invalid boolean value \" true\".", "1");
 }
 
 static void
@@ -438,9 +438,9 @@ test_empty(void **state)
     lyd_free_all(tree);
 
     /* invalid value */
-    TEST_TYPE_ERROR("empty", "x", "Invalid empty value \"x\".");
+    TEST_TYPE_ERROR("empty", "x", "Invalid empty value \"x\".", "1");
 
-    TEST_TYPE_ERROR("empty", " ", "Invalid empty value \" \".");
+    TEST_TYPE_ERROR("empty", " ", "Invalid empty value \" \".", "1");
 }
 
 static void
@@ -473,22 +473,22 @@ test_identityref(void **state)
 
     /* invalid value */
     TEST_TYPE_ERROR("ident", "fast-ethernet",
-            "Invalid identityref \"fast-ethernet\" value - identity not found in module \"types\".");
+            "Invalid identityref \"fast-ethernet\" value - identity not found in module \"types\".", "1");
 
     CHECK_PARSE_LYD_PARAM("<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:slow-ethernet</ident>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid identityref \"x:slow-ethernet\" value - identity not found in module \"defs\".",
-            "/types:ident");
+            "Schema location /types:ident, line number 1.");
 
     CHECK_PARSE_LYD_PARAM("<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:crypto-alg</ident>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid identityref \"x:crypto-alg\" value - identity not derived from the base \"defs:interface-type\".",
-            "/types:ident");
+            "Schema location /types:ident, line number 1.");
 
     CHECK_PARSE_LYD_PARAM("<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:unknown\">x:fast-ethernet</ident>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid identityref \"x:fast-ethernet\" value - unable to map prefix to YANG schema.",
-            "/types:ident");
+            "Schema location /types:ident, line number 1.");
 }
 
 /* dummy get_prefix callback for test_instanceid() */
@@ -659,131 +659,131 @@ test_instanceid(void **state)
             "<list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
             "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[2]/xdf:value</xdf:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[2]/xdf:value\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[2]/xdf:value\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:1leaftarget</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:1leaftarget\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:1leaftarget\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<t:inst xmlns:t=\"urn:tests:types\">/t:cont:t:1leaftarget</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont:t:1leaftarget\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont:t:1leaftarget\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:invalid/t:path</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:invalid/t:path\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:invalid/t:path\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<inst xmlns=\"urn:tests:types\" xmlns:t=\"urn:tests:invalid\">/t:cont/t:leaftarget</inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - semantic error.", "Schema location /types:inst.");
 
-    TEST_TYPE_ERROR("inst", "/cont/leaftarget", "Invalid instance-identifier \"/cont/leaftarget\" value - syntax error.");
+    TEST_TYPE_ERROR("inst", "/cont/leaftarget", "Invalid instance-identifier \"/cont/leaftarget\" value - syntax error.", "1");
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
     data = "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_ENOTFOUND, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found.", "Schema location /types:inst, data location /types:inst.");
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
     data = "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_ENOTFOUND, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found.", "Schema location /types:inst, data location /types:inst.");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:leaflisttarget[1</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:leaflisttarget[1\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:leaflisttarget[1\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont[1]</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont[1]\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont[1]\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">[1]</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"[1]\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"[1]\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[id='1']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[id='1']\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[id='1']\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[t:id='1']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[t:id='1']\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[t:id='1']\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget><leaflisttarget>2</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[4]</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[4]\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[4]\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[6]</t:inst-noreq>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[6]\" value - semantic error.", "/types:inst-noreq");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[6]\" value - semantic error.", "Schema location /types:inst-noreq.");
 
     data = "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst-noreq>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error.", "/types:inst-noreq");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error.", "Schema location /types:inst-noreq.");
 
     data = "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:x='x']</t:inst-noreq>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_ENOTFOUND, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:x='x']\" value - semantic error.", "/types:inst-noreq");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:x='x']\" value - semantic error.", "Schema location /types:inst-noreq.");
 
     data = "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[.='x']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[.='x']\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[.='x']\" value - semantic error.", "Schema location /types:inst.");
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
     data = "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_ENOTFOUND, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/leaflisttarget[.='2']\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/leaflisttarget[.='2']\" value - required instance not found.", "Schema location /types:inst, data location /types:inst.");
 
     data = "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='x']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='x']\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='x']\" value - semantic error.", "Schema location /types:inst.");
 
     data = "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='x']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='x']\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='x']\" value - semantic error.", "Schema location /types:inst.");
 
     /* instance-identifier is here in JSON format because it is already in internal representation without canonical prefixes */
     data = "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_ENOTFOUND, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/listtarget[id='2']\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:cont/listtarget[id='2']\" value - required instance not found.", "Schema location /types:inst, data location /types:inst.");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
             "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
             "<a:inst xmlns:a=\"urn:tests:types\">/a:leaflisttarget[1][2]</a:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/a:leaflisttarget[1][2]\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/a:leaflisttarget[1][2]\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
             "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
             "<a:inst xmlns:a=\"urn:tests:types\">/a:leaflisttarget[.='a'][.='b']</a:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/a:leaflisttarget[.='a'][.='b']\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/a:leaflisttarget[.='a'][.='b']\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id><value>x</value></list>"
             "<list xmlns=\"urn:tests:types\"><id>b</id><value>y</value></list>"
             "<a:inst xmlns:a=\"urn:tests:types\">/a:list[a:id='a'][a:id='b']/a:value</a:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/a:list[a:id='a'][a:id='b']/a:value\" value - syntax error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/a:list[a:id='a'][a:id='b']/a:value\" value - syntax error.", "Schema location /types:inst, line number 1.");
 
     data = "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>x</value></list2>"
             "<list2 xmlns=\"urn:tests:types\"><id>b</id><value>y</value></list2>"
             "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a']/a:value</a:inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/a:list2[a:id='a']/a:value\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/a:list2[a:id='a']/a:value\" value - semantic error.", "Schema location /types:inst.");
 
     /* check for validting instance-identifier with a complete data tree */
     data = "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>a</value></list2>"
@@ -796,24 +796,24 @@ test_instanceid(void **state)
     data = "/types:list2[id='a'][value='b']/id";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, (const struct lyd_node_term *)tree->prev, data, strlen(data),
             tree, NULL));
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - required instance not found.", "Data location /types:inst.");
     /* leaf-list-predicate */
     data = "/types:leaflisttarget[.='c']";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, (const struct lyd_node_term *)tree->prev, data, strlen(data),
             tree, NULL));
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - required instance not found.", "Data location /types:inst.");
     /* position predicate */
     data = "/types:list_keyless[4]";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, (const struct lyd_node_term *)tree->prev, data, strlen(data),
             tree, NULL));
-    CHECK_LOG_CTX("Invalid instance-identifier \"/types:list_keyless[4]\" value - required instance not found.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/types:list_keyless[4]\" value - required instance not found.", "Data location /types:inst.");
 
     lyd_free_all(tree);
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
             "<inst xmlns=\"urn:tests:types\">/a:leaflisttarget[1]</inst>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - semantic error.", "/types:inst");
+    CHECK_LOG_CTX("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - semantic error.", "Schema location /types:inst.");
 }
 
 static void
@@ -892,7 +892,7 @@ test_leafref(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"y\" - "
             "no target instance \"/leaflisttarget\" with the same value.",
-            "/types:lref");
+            "Schema location /types:lref, data location /types:lref.");
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
@@ -900,7 +900,7 @@ test_leafref(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"b\" - "
             "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
-            "/types:lref2");
+            "Schema location /types:lref2, data location /types:lref2.");
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
@@ -908,19 +908,19 @@ test_leafref(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"b\" - "
             "no existing target instance \"../list[id = current()/../str-norestr]/targets\".",
-            "/types:lref2");
+            "Schema location /types:lref2, data location /types:lref2.");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"b\" - "
             "no existing target instance \"../list[id = current()/../str-norestr]/targets\".",
-            "/types:lref2");
+            "Schema location /types:lref2, data location /types:lref2.");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>a</lr1></l></c>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"a\" - no target instance \"../../../t:str-norestr\" with the same value.",
-            "/leafrefs:c/l[id='x'][value='x']/lr1");
+            "Schema location /leafrefs:c/l/lr1, data location /leafrefs:c/l[id='x'][value='x']/lr1.");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">z</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
@@ -928,7 +928,7 @@ test_leafref(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Invalid leafref value \"z\" - no existing target instance \"../../l[id=current()/../../../t:str-norestr]"
             "[value=current()/../../../t:str-norestr]/value\".",
-            "/leafrefs:c/l[id='x'][value='x']/lr2");
+            "Schema location /leafrefs:c/l/lr2, data location /leafrefs:c/l[id='x'][value='x']/lr2.");
 }
 
 static void
@@ -1012,7 +1012,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     TEST_TYPE_ERROR("un1", "123456789012345678901",
-            "Invalid union value \"123456789012345678901\" - no matching subtype found.");
+            "Invalid union value \"123456789012345678901\" - no matching subtype found.", "1");
 }
 
 int

@@ -316,14 +316,12 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser.
  * @param[in] ctx_node Context schema node.
  * @param[out] incomplete Optional, set if the value also needs to be resolved.
- * @param[in] log_elem_type Elem type for logging.
- * @param[in] log_elem Elem for logging.
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const char *value,
         size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
-        const struct lysc_node *ctx_node, ly_bool *incomplete, enum LY_VLOG_ELEM log_elem_type, const void *log_elem);
+        const struct lysc_node *ctx_node, ly_bool *incomplete);
 
 /**
  * @brief Validate previously incompletely stored value.
@@ -333,13 +331,11 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const st
  * @param[in,out] val Stored value to resolve.
  * @param[in] ctx_node Context node for the resolution.
  * @param[in] tree Data tree for the resolution.
- * @param[in] log_elem_type Elem type for logging.
- * @param[in] log_elem Elem for logging.
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, enum LY_VLOG_ELEM log_elem_type, const void *log_elem);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree);
 
 /* generic function lys_value_validate */
 LY_ERR _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,

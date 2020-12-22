@@ -51,7 +51,7 @@ lys_nodeid_check(struct lysc_ctx *ctx, const char *nodeid, ly_bool abs, struct l
     /* parse */
     ret = lyxp_expr_parse(ctx->ctx, nodeid, strlen(nodeid), 0, &e);
     if (ret) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid %s value \"%s\" - invalid syntax.",
+        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid %s value \"%s\" - invalid syntax.",
                 nodeid_type, nodeid);
         ret = LY_EVALID;
         goto cleanup;
@@ -63,7 +63,7 @@ lys_nodeid_check(struct lysc_ctx *ctx, const char *nodeid, ly_bool abs, struct l
     } else {
         /* descendant schema nodeid */
         if (e->tokens[0] != LYXP_TOKEN_NAMETEST) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
                     nodeid_type, nodeid, e->tok_len[0], e->expr + e->tok_pos[0]);
             ret = LY_EVALID;
             goto cleanup;
@@ -74,17 +74,17 @@ lys_nodeid_check(struct lysc_ctx *ctx, const char *nodeid, ly_bool abs, struct l
     /* check all the tokens */
     for ( ; i < e->used; i += 2) {
         if (e->tokens[i] != LYXP_TOKEN_OPER_PATH) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s value \"%s\" - \"/\" expected instead of \"%.*s\".",
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s value \"%s\" - \"/\" expected instead of \"%.*s\".",
                     nodeid_type, nodeid, e->tok_len[i], e->expr + e->tok_pos[i]);
             ret = LY_EVALID;
             goto cleanup;
         } else if (e->used == i + 1) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid %s value \"%s\" - unexpected end of expression.", nodeid_type, e->expr);
             ret = LY_EVALID;
             goto cleanup;
         } else if (e->tokens[i + 1] != LYXP_TOKEN_NAMETEST) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s value \"%s\" - name test expected instead of \"%.*s\".",
                     nodeid_type, nodeid, e->tok_len[i + 1], e->expr + e->tok_pos[i + 1]);
             ret = LY_EVALID;
             goto cleanup;
@@ -652,14 +652,14 @@ cleanup:
 }
 
 #define AMEND_WRONG_NODETYPE(AMEND_STR, OP_STR, PROPERTY) \
-    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid %s of %s node - it is not possible to %s \"%s\" property.", \
+    LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s of %s node - it is not possible to %s \"%s\" property.", \
             AMEND_STR, lys_nodetype2str(target->nodetype), OP_STR, PROPERTY);\
     ret = LY_EVALID; \
     goto cleanup;
 
 #define AMEND_CHECK_CARDINALITY(ARRAY, MAX, AMEND_STR, PROPERTY) \
     if (LY_ARRAY_COUNT(ARRAY) > MAX) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid %s of %s with too many (%"LY_PRI_ARRAY_COUNT_TYPE") %s properties.", \
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid %s of %s with too many (%"LY_PRI_ARRAY_COUNT_TYPE") %s properties.", \
                AMEND_STR, lys_nodetype2str(target->nodetype), LY_ARRAY_COUNT(ARRAY), PROPERTY); \
         ret = LY_EVALID; \
         goto cleanup; \
@@ -693,7 +693,7 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
             break;
         case LYS_LEAFLIST:
             if (rfn->dflts[0].mod->version < LYS_VERSION_1_1) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                         "Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.");
                 ret = LY_EVALID;
                 goto cleanup;
@@ -870,8 +870,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
 
 #define DEV_CHECK_NONPRESENCE(TYPE, MEMBER, PROPERTY, VALUEMEMBER) \
     if (((TYPE)target)->MEMBER) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
-                "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", \
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", \
                 PROPERTY, ((TYPE)target)->VALUEMEMBER); \
         ret = LY_EVALID; \
         goto cleanup; \
@@ -976,7 +975,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
         }
 
         if (target->flags & LYS_CONFIG_MASK) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid deviation adding \"config\" property which already exists (with value \"config %s\").",
                     target->flags & LYS_CONFIG_W ? "true" : "false");
             ret = LY_EVALID;
@@ -999,7 +998,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
         }
 
         if (target->flags & LYS_MAND_MASK) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid deviation adding \"mandatory\" property which already exists (with value \"mandatory %s\").",
                     target->flags & LYS_MAND_TRUE ? "true" : "false");
             ret = LY_EVALID;
@@ -1023,7 +1022,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
         }
 
         if (target->flags & LYS_SET_MIN) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid deviation adding \"min-elements\" property which already exists (with value \"%u\").", *num);
             ret = LY_EVALID;
             goto cleanup;
@@ -1047,11 +1046,11 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
 
         if (target->flags & LYS_SET_MAX) {
             if (*num) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid deviation adding \"max-elements\" property which already exists (with value \"%u\").",
                         *num);
             } else {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid deviation adding \"max-elements\" property which already exists (with value \"unbounded\").");
             }
             ret = LY_EVALID;
@@ -1091,7 +1090,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             } \
         } \
         if (!found) { \
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, \
                     "Invalid deviation deleting \"%s\" property \"%s\" which does not match any of the target's property values.", \
                     PROPERTY, d->DEV_ARRAY[u]DEV_MEMBER); \
             ret = LY_EVALID; \
@@ -1108,11 +1107,11 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
 
 #define DEV_CHECK_PRESENCE_VALUE(TYPE, MEMBER, DEVTYPE, PROPERTY, VALUE) \
     if (!((TYPE)target)->MEMBER) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT, DEVTYPE, PROPERTY, VALUE); \
+        LOGVAL(ctx->ctx, LY_VCODE_DEV_NOT_PRESENT, DEVTYPE, PROPERTY, VALUE); \
         ret = LY_EVALID; \
         goto cleanup; \
     } else if (strcmp(((TYPE)target)->MEMBER, VALUE)) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, \
                 "Invalid deviation deleting \"%s\" property \"%s\" which does not match the target's property value \"%s\".", \
                 PROPERTY, VALUE, ((TYPE)target)->MEMBER); \
         ret = LY_EVALID; \
@@ -1218,7 +1217,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
 
 #define DEV_CHECK_PRESENCE(TYPE, MEMBER, DEVTYPE, PROPERTY, VALUE) \
     if (!((TYPE)target)->MEMBER) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT, DEVTYPE, PROPERTY, VALUE); \
+        LOGVAL(ctx->ctx, LY_VCODE_DEV_NOT_PRESENT, DEVTYPE, PROPERTY, VALUE); \
         ret = LY_EVALID; \
         goto cleanup; \
     }
@@ -1288,8 +1287,8 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         }
 
         if (!(target->flags & LYS_CONFIG_MASK)) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT,
-                    "replacing", "config", d->flags & LYS_CONFIG_W ? "config true" : "config false");
+            LOGVAL(ctx->ctx, LY_VCODE_DEV_NOT_PRESENT, "replacing", "config",
+                    d->flags & LYS_CONFIG_W ? "config true" : "config false");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1311,8 +1310,8 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         }
 
         if (!(target->flags & LYS_MAND_MASK)) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT,
-                    "replacing", "mandatory", d->flags & LYS_MAND_TRUE ? "mandatory true" : "mandatory false");
+            LOGVAL(ctx->ctx, LY_VCODE_DEV_NOT_PRESENT, "replacing", "mandatory",
+                    d->flags & LYS_MAND_TRUE ? "mandatory true" : "mandatory false");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1335,8 +1334,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         }
 
         if (!(target->flags & LYS_SET_MIN)) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                    "Invalid deviation replacing \"min-elements\" property which is not present.");
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid deviation replacing \"min-elements\" property which is not present.");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1358,8 +1356,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         }
 
         if (!(target->flags & LYS_SET_MAX)) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                    "Invalid deviation replacing \"max-elements\" property which is not present.");
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid deviation replacing \"max-elements\" property which is not present.");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1393,7 +1390,7 @@ lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_
     if (ptr) {
         target_mod = ly_resolve_prefix(ctx, nametest, ptr - nametest, LY_PREF_SCHEMA, (void *)mod);
         if (!target_mod) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
+            LOGVAL(ctx, LYVE_REFERENCE,
                     "Invalid absolute-schema-nodeid nametest \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
                     nametest_len, nametest, ptr - nametest, nametest, LYSP_MODULE_NAME(mod));
             return NULL;
@@ -1802,7 +1799,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
     uint32_t i, opt_prev = ctx->options;
 
     if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+        LOGVAL(ctx->ctx, LYVE_REFERENCE,
                 "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
                 aug_p->nodeid[0] == '/' ? "absolute" : "descendant", aug_p->nodeid, lys_nodetype2str(target->nodetype));
         ret = LY_EVALID;
@@ -1822,7 +1819,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE)) ||
                 ((pnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && !(target->nodetype & (LYS_CONTAINER | LYS_LIST))) ||
                 ((pnode->nodetype == LYS_USES) && (target->nodetype == LYS_CHOICE))) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid augment of %s node which is not allowed to contain %s node \"%s\".",
                     lys_nodetype2str(target->nodetype), lys_nodetype2str(pnode->nodetype), pnode->name);
             ret = LY_EVALID;
@@ -1857,7 +1854,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
             if (!allow_mandatory && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
                 node->flags &= ~LYS_MAND_TRUE;
                 lys_compile_mandatory_parents(target, 0);
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                         "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.", node->name);
                 ret = LY_EVALID;
                 goto cleanup;
@@ -1899,7 +1896,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
 
     if (aug_p->actions) {
         if (!actions) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid augment of %s node which is not allowed to contain RPC/action node \"%s\".",
                     lys_nodetype2str(target->nodetype), aug_p->actions[0].name);
             ret = LY_EVALID;
@@ -1920,7 +1917,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
     }
     if (aug_p->notifs) {
         if (!notifs) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
                     lys_nodetype2str(target->nodetype), aug_p->notifs[0].name);
             ret = LY_EVALID;
@@ -2184,7 +2181,7 @@ lys_precompile_own_deviations(struct lysc_ctx *ctx)
             }
         }
         if (not_supported && (LY_ARRAY_COUNT(dev->devs) > 1)) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                     "Multiple deviations of \"%s\" with one of them being \"not-supported\".", dev->nodeid->expr);
             return LY_EVALID;
         }

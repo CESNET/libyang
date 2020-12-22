@@ -54,12 +54,11 @@ LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t
  * @brief Checks pattern syntax.
  *
  * @param[in] ctx Context.
- * @param[in] log_path Path for logging errors.
  * @param[in] pattern Pattern to check.
  * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
-LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code);
+LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_code **code);
 
 /**
  * @brief Compile information about the leaf/leaf-list's type.
