@@ -673,7 +673,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
 
-        type->info.bits.bit = calloc(type->info.bits.count, sizeof *type->info.bits.bit);
+        type->info.bits.bit = calloc((type->info.bits.count ? type->info.bits.count : 1), sizeof *type->info.bits.bit);
         LY_CHECK_ERR_GOTO(!type->info.bits.bit, LOGMEM(ctx), error);
 
         p = 0;
@@ -968,7 +968,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
 
-        type->info.enums.enm = calloc(type->info.enums.count, sizeof *type->info.enums.enm);
+        type->info.enums.enm = calloc((type->info.enums.count ? type->info.enums.count : 1), sizeof *type->info.enums.enm);
         LY_CHECK_ERR_GOTO(!type->info.enums.enm, LOGMEM(ctx), error);
 
         v = 0;
