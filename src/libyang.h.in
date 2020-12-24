@@ -17,6 +17,8 @@
 
 #include <stdint.h>
 
+#cmakedefine LY_ENABLED_LYD_PRIV
+
 #ifdef __cplusplus
 extern "C" {
 #endif
