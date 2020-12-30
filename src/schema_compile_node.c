@@ -2515,7 +2515,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     /* checks */
     if ((llist->flags & LYS_SET_DFLT) && (llist->flags & LYS_MAND_TRUE)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                "Invalid mandatory leaf-list with default value(s).");
+                "The default statement is present on leaf-list with a nonzero min-elements.");
         return LY_EVALID;
     }
 

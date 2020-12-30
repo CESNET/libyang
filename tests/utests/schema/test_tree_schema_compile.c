@@ -2335,9 +2335,9 @@ test_refine(void **state)
     CHECK_LOG_CTX("Invalid refine of leaf node - it is not possible to replace \"min-elements\" property.", "/ll:{uses='g:grp'}/ll:c/x/{refine='c/x'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module mm {namespace urn:mm;prefix mm;import grp {prefix g;}"
-            "uses g:grp {refine c/ll {min-elements 10;}}}", LYS_IN_YANG, &mod));
-    // CHECK_LOG_CTX("Invalid refine of min-elements statement - \"min-elements\" is bigger than \"max-elements\".", "/mm:{uses='g:grp'}/{refine='c/ll'}");
-    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm:{uses='g:grp'}/mm:c/ll");
+            "uses g:grp {refine c/ll {min-elements 1;}}}", LYS_IN_YANG, &mod));
+    CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm:{uses='g:grp'}/mm:c/ll",
+            "The default statement is present on leaf-list with a nonzero min-elements.", "/mm:{uses='g:grp'}/mm:c/ll");
 }
 
 static void
