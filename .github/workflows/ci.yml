@@ -76,6 +76,7 @@ jobs:
       - name: Dependencies
         shell: bash
         run: |
+          ${{ matrix.config.packager }} update
           ${{ matrix.config.packager }} install ${{ matrix.config.packages }}
 
       - name: Configure
