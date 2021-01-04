@@ -186,7 +186,11 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @param[in] value_len Length of @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value and @p ns.
- * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails).
+ * @param[in] val_prefix_data Format-specific prefix data, param is spent (even in case the function fails):
+ *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
+ *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
+ *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_PREF_JSON            - NULL
  * @param[in] hints [Hints](@ref lydhints) from the parser regarding the node/value type.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
@@ -432,7 +436,11 @@ LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_
  * @brief Free stored prefix data.
  *
  * @param[in] format Format of the prefixes.
- * @param[in] prefix_data Prefix data to free.
+ * @param[in] prefix_data Format-specific data to free:
+ *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
+ *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
+ *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_PREF_JSON            - NULL
  */
 void ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data);
 

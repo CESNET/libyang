@@ -495,7 +495,7 @@ struct lyd_attr {
     struct ly_opaq_name name;       /**< attribute name with module information */
     const char *value;              /**< attribute value */
     LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
-    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
+    void *val_prefix_data;          /**< format-specific prefix data */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 
 };
@@ -704,7 +704,7 @@ struct lyd_node_opaq {
     struct ly_opaq_name name;       /**< node name with module information */
     const char *value;              /**< original value */
     LY_PREFIX_FORMAT format;        /**< format of the node and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
-    void *val_prefix_data;          /**< format-specific prefix data (see ::ly_resolve_prefix()) */
+    void *val_prefix_data;          /**< format-specific prefix data */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 
     const struct ly_ctx *ctx;       /**< libyang context */
