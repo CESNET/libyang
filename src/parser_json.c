@@ -1564,7 +1564,12 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         /* action reply */
         act_notif = reply_parent;
     } else if ((options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) && !act_notif) {
-        LOGVAL(ctx, LYE_MISSELEM, LY_VLOG_LYD, result, (options & LYD_OPT_RPC ? "action" : "notification"), result->schema->name);
+        if (result) {
+            LOGVAL(ctx, LYE_MISSELEM, LY_VLOG_LYD, result, (options & LYD_OPT_RPC ? "action" : "notification"),
+                   result->schema->name);
+        } else {
+            LOGVAL(ctx, LYE_MISSELEM, LY_VLOG_NONE, NULL, (options & LYD_OPT_RPC ? "action" : "notification"), "data");
+        }
         goto error;
     }
 
