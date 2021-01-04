@@ -4599,7 +4599,7 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
 
     LY_ARRAY_NEW_RET(set->ctx, patterns, pattern, LY_EMEM);
     *pattern = malloc(sizeof **pattern);
-    path = lyd_path(set->cur_node, LYD_PATH_LOG, NULL, 0);
+    path = lyd_path(set->cur_node, LYD_PATH_STD, NULL, 0);
     rc = lys_compile_type_pattern_check(set->ctx, path, args[1]->val.str, &(*pattern)->code);
     free(path);
     if (rc != LY_SUCCESS) {

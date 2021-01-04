@@ -3134,8 +3134,8 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
     }
 
     switch (pathtype) {
-    case LYD_PATH_LOG:
-    case LYD_PATH_LOG_NO_LAST_PRED:
+    case LYD_PATH_STD:
+    case LYD_PATH_STD_NO_LAST_PRED:
         depth = 1;
         for (iter = node; iter->parent; iter = (const struct lyd_node *)iter->parent) {
             ++depth;
@@ -3165,7 +3165,7 @@ iter_print:
                     iter->schema ? iter->schema->name : ((struct lyd_node_opaq *)iter)->name.name);
 
             /* do not always print the last (first) predicate */
-            if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_LOG))) {
+            if (iter->schema && ((depth > 1) || (pathtype == LYD_PATH_STD))) {
                 switch (iter->schema->nodetype) {
                 case LYS_LIST:
                     if (iter->schema->flags & LYS_KEYLESS) {

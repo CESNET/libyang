@@ -854,8 +854,8 @@ uniquecheck:
         }
         if (v && (v == LY_ARRAY_COUNT(slist->uniques[u]))) {
             /* all unique leafs are the same in this set, create this nice error */
-            path1 = lyd_path(first, LYD_PATH_LOG, NULL, 0);
-            path2 = lyd_path(second, LYD_PATH_LOG, NULL, 0);
+            path1 = lyd_path(first, LYD_PATH_STD, NULL, 0);
+            path2 = lyd_path(second, LYD_PATH_STD, NULL, 0);
 
             /* use buffer to rebuild the unique string */
 #define UNIQ_BUF_SIZE 1024
