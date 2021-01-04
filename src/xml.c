@@ -37,26 +37,38 @@
     LY_CHECK_ERR_RET(!c->in->current[0], LOGVAL(c->ctx, LY_VCODE_EOF), LY_EVALID)
 
 /* Ignore whitespaces in the input string p */
-#define ign_xmlws(c) while (is_xmlws(*(c)->in->current)) {ly_in_skip(c->in, 1);}
+#define ign_xmlws(c) \
+    while (is_xmlws(*(c)->in->current)) { \
+        if (*(c)->in->current == '\n') {  \
+            LY_IN_NEW_LINE((c)->in);      \
+        }                                 \
+        ly_in_skip(c->in, 1);             \
+    }
 
 static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, ly_bool *ws_only,
         ly_bool *dynamic);
 
 /**
- * @brief Ignore any characters until the delim of the size delim_len is read
+ * @brief Ignore and skip any characters until the delim of the size delim_len is read, including the delim
  *
- * Detects number of read new lines.
- * Returns Boolean value whether delim was found or not.
+ * @param[in] xmlctx XML parser context to provide input handler and libyang context
+ * @param[in] in input handler to read the data, it is updated only in case the section is correctly terminated.
+ * @param[in] delim Delimiter to detect end of the section.
+ * @param[in] delim_len Length of the delimiter string to use.
+ * @param[in] sectname Section name to refer in error message.
  */
-static ly_bool
-ign_todelim(register const char *input, const char *delim, size_t delim_len, size_t *parsed)
+LY_ERR
+skip_section(struct lyxml_ctx *xmlctx, const char *delim, size_t delim_len, const char *sectname)
 {
     size_t i;
-    register const char *a, *b;
+    register const char *input, *a, *b;
+    uint64_t parsed = 0, newlines = 0;
 
-    (*parsed) = 0;
-    for ( ; *input; ++input, ++(*parsed)) {
+    for (input = xmlctx->in->current; *input; ++input, ++parsed) {
         if (*input != *delim) {
+            if (*input == '\n') {
+                ++newlines;
+            }
             continue;
         }
         a = input;
@@ -68,12 +80,16 @@ ign_todelim(register const char *input, const char *delim, size_t delim_len, siz
         }
         if (i == delim_len) {
             /* delim found */
-            return 0;
+            xmlctx->in->line += newlines;
+            ly_in_skip(xmlctx->in, parsed + delim_len);
+            return LY_SUCCESS;
         }
     }
 
-    /* delim not found */
-    return 1;
+    /* delim not found,
+     * do not update input handler to refer to the beginning of the section in error message */
+    LOGVAL(xmlctx->ctx, LY_VCODE_NTERM, sectname);
+    return LY_EVALID;
 }
 
 /**
@@ -224,8 +240,7 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
 {
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
     const char *endtag, *sectname;
-    size_t endtag_len, parsed;
-    ly_bool rc;
+    size_t endtag_len;
 
     while (1) {
         ign_xmlws(xmlctx);
@@ -267,13 +282,9 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
                 LOGVAL(ctx, LYVE_SYNTAX, "Unknown XML section \"%.20s\".", &xmlctx->in->current[-2]);
                 return LY_EVALID;
             }
-            rc = ign_todelim(xmlctx->in->current, endtag, endtag_len, &parsed);
-            LY_CHECK_ERR_RET(rc, LOGVAL(ctx, LY_VCODE_NTERM, sectname), LY_EVALID);
-            ly_in_skip(xmlctx->in, parsed + endtag_len);
+            LY_CHECK_RET(skip_section(xmlctx, endtag, endtag_len, sectname));
         } else if (xmlctx->in->current[0] == '?') {
-            rc = ign_todelim(xmlctx->in->current, "?>", 2, &parsed);
-            LY_CHECK_ERR_RET(rc, LOGVAL(ctx, LY_VCODE_NTERM, "Declaration"), LY_EVALID);
-            ly_in_skip(xmlctx->in, parsed + 2);
+            LY_CHECK_RET(skip_section(xmlctx, "?>", 2, "Declaration"));
         } else {
             /* other non-WS character */
             break;

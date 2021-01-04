@@ -180,14 +180,16 @@ test_helpers(void **state)
     CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
 }
 
-#define TEST_GET_ARGUMENT_SUCCESS(INPUT_TEXT, CTX, ARG_TYPE, EXPECT_WORD, EXPECT_LEN, EXPECT_CURRENT)\
+#define TEST_GET_ARGUMENT_SUCCESS(INPUT_TEXT, CTX, ARG_TYPE, EXPECT_WORD, EXPECT_LEN, EXPECT_CURRENT, EXPECT_LINE)\
     {\
-        const char * text  = INPUT_TEXT;\
+        const char * text = INPUT_TEXT;\
+        in.line = 1;\
         in.current = text;\
         assert_int_equal(LY_SUCCESS, get_argument(CTX, Y_MAYBE_STR_ARG, NULL, &word, &buf, &len));\
         assert_string_equal(word, EXPECT_WORD);\
         assert_int_equal(len, EXPECT_LEN);\
         assert_string_equal(EXPECT_CURRENT, in.current);\
+        assert_int_equal(EXPECT_LINE, in.line);\
     }
 
 static void
@@ -195,27 +197,27 @@ test_comments(void **state)
 {
     char *word, *buf;
     size_t len;
-    const char *in_text;
 
     YCTX_INIT;
 
-    // in.current = " // this is a text of / one * line */ comment\nargument;";
-    in_text = " // this is a text of / one * line */ comment\nargument;";
-    TEST_GET_ARGUMENT_SUCCESS(in_text, YCTX, Y_STR_ARG, "argument;", 8, ";");
+    TEST_GET_ARGUMENT_SUCCESS(" // this is a text of / one * line */ comment\nargument;",
+            YCTX, Y_STR_ARG, "argument;", 8, ";", 2);
     assert_null(buf);
 
-    in_text = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\";";
-    TEST_GET_ARGUMENT_SUCCESS(in_text, YCTX, Y_STR_ARG, "argument", 8, ";");
+    TEST_GET_ARGUMENT_SUCCESS("/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\";",
+            YCTX, Y_STR_ARG, "argument", 8, ";", 4);
     assert_ptr_equal(buf, word);
     free(word);
 
+    in.line = 1;
     in.current = " this is one line comment on last line";
     assert_int_equal(LY_SUCCESS, skip_comment(YCTX, 1));
     assert_true(in.current[0] == '\0');
 
+    in.line = 1;
     in.current = " this is a not terminated comment x";
     assert_int_equal(LY_EVALID, skip_comment(YCTX, 2));
-    CHECK_LOG_CTX("Unexpected end-of-input, non-terminated comment.", "Line number 5.");
+    CHECK_LOG_CTX("Unexpected end-of-input, non-terminated comment.", "Line number 1.");
     assert_true(in.current[0] == '\0');
 }
 
@@ -241,7 +243,7 @@ test_arg(void **state)
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
     CHECK_LOG_CTX("Double-quoted string unknown special character \'\\s\'.", "Line number 1.");
 
-    TEST_GET_ARGUMENT_SUCCESS("\'\\s\'", YCTX, Y_STR_ARG, "\\s\'", 2, "");
+    TEST_GET_ARGUMENT_SUCCESS("\'\\s\'", YCTX, Y_STR_ARG, "\\s\'", 2, "", 1);
 
     /* invalid character after the argument */
     in.current = "hello\"";
@@ -265,63 +267,65 @@ test_arg(void **state)
     CHECK_LOG_CTX("Statement argument is required.", "Line number 1.");
 
     /* slash is not an invalid character */
-    TEST_GET_ARGUMENT_SUCCESS("hello/x\t", YCTX, Y_STR_ARG, "hello/x\t", 7, "\t");
+    TEST_GET_ARGUMENT_SUCCESS("hello/x\t", YCTX, Y_STR_ARG, "hello/x\t", 7, "\t", 1);
     assert_null(buf);
 
     /* different quoting */
-    TEST_GET_ARGUMENT_SUCCESS("hello/x\t", YCTX, Y_STR_ARG, "hello/x\t", 7, "\t");
+    TEST_GET_ARGUMENT_SUCCESS("hello/x\t", YCTX, Y_STR_ARG, "hello/x\t", 7, "\t", 1);
 
-    TEST_GET_ARGUMENT_SUCCESS("hello ", YCTX, Y_STR_ARG, "hello ", 5, " ");
+    TEST_GET_ARGUMENT_SUCCESS("hello ", YCTX, Y_STR_ARG, "hello ", 5, " ", 1);
 
-    TEST_GET_ARGUMENT_SUCCESS("hello/*comment*/\n", YCTX, Y_STR_ARG, "hello/*comment*/\n", 5, "\n");
+    TEST_GET_ARGUMENT_SUCCESS("hello/*comment*/\n", YCTX, Y_STR_ARG, "hello/*comment*/\n", 5, "\n", 1);
 
-    TEST_GET_ARGUMENT_SUCCESS("\"hello\\n\\t\\\"\\\\\";", YCTX, Y_STR_ARG, "hello\n\t\"\\", 9, ";");
+    TEST_GET_ARGUMENT_SUCCESS("\"hello\\n\\t\\\"\\\\\";", YCTX, Y_STR_ARG, "hello\n\t\"\\", 9, ";", 1);
     free(buf);
 
     YCTX->indent = 14;
     /* - space and tabs before newline are stripped out
      * - space and tabs after newline (indentation) are stripped out
      */
-    TEST_GET_ARGUMENT_SUCCESS("\"hello \t\n\t\t world!\"", YCTX, Y_STR_ARG, "hello\n  world!", 14, "");
+    TEST_GET_ARGUMENT_SUCCESS("\"hello \t\n\t\t world!\"", YCTX, Y_STR_ARG, "hello\n  world!", 14, "", 2);
     free(buf);
 
 /* In contrast to previous, the backslash-escaped tabs are expanded after trimming, so they are preserved */
     YCTX->indent = 14;
-    TEST_GET_ARGUMENT_SUCCESS("\"hello \\t\n\t\\t world!\"", YCTX, Y_STR_ARG, "hello \t\n\t world!", 16, "");
+    TEST_GET_ARGUMENT_SUCCESS("\"hello \\t\n\t\\t world!\"", YCTX, Y_STR_ARG, "hello \t\n\t world!", 16, "", 2);
     assert_ptr_equal(word, buf);
     free(buf);
 
     /* Do not handle whitespaces after backslash-escaped newline as indentation */
     YCTX->indent = 14;
-    TEST_GET_ARGUMENT_SUCCESS("\"hello\\n\t\t world!\"", YCTX, Y_STR_ARG, "hello\n\t\t world!", 15, "");
+    TEST_GET_ARGUMENT_SUCCESS("\"hello\\n\t\t world!\"", YCTX, Y_STR_ARG, "hello\n\t\t world!", 15, "", 1);
     assert_ptr_equal(word, buf);
     free(buf);
 
     YCTX->indent = 14;
-    TEST_GET_ARGUMENT_SUCCESS("\"hello\n \tworld!\"", YCTX, Y_STR_ARG, "hello\nworld!", 12, "");
+    TEST_GET_ARGUMENT_SUCCESS("\"hello\n \tworld!\"", YCTX, Y_STR_ARG, "hello\nworld!", 12, "", 2);
     assert_ptr_equal(word, buf);
     free(buf);
 
-    TEST_GET_ARGUMENT_SUCCESS("\'hello\'", YCTX, Y_STR_ARG, "hello'", 5, "");
+    TEST_GET_ARGUMENT_SUCCESS("\'hello\'", YCTX, Y_STR_ARG, "hello'", 5, "", 1);
 
-    TEST_GET_ARGUMENT_SUCCESS("\"hel\"  +\t\n\"lo\"", YCTX, Y_STR_ARG, "hello", 5, "");
+    TEST_GET_ARGUMENT_SUCCESS("\"hel\"  +\t\n\"lo\"", YCTX, Y_STR_ARG, "hello", 5, "", 2);
     assert_ptr_equal(word, buf);
     free(buf);
 
+    in.line = 1;
     in.current = "\"hel\"  +\t\nlo"; /* unquoted the second part */
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", "Line number 8.");
+    CHECK_LOG_CTX("Both string parts divided by '+' must be quoted.", "Line number 2.");
 
-    TEST_GET_ARGUMENT_SUCCESS("\'he\'\t\n+ \"llo\"", YCTX, Y_STR_ARG, "hello", 5, "");
+    TEST_GET_ARGUMENT_SUCCESS("\'he\'\t\n+ \"llo\"", YCTX, Y_STR_ARG, "hello", 5, "", 2);
     free(buf);
 
-    TEST_GET_ARGUMENT_SUCCESS(" \t\n\"he\"+\'llo\'", YCTX, Y_STR_ARG, "hello", 5, "");
+    TEST_GET_ARGUMENT_SUCCESS(" \t\n\"he\"+\'llo\'", YCTX, Y_STR_ARG, "hello", 5, "", 2);
     free(buf);
 
     /* missing argument */
+    in.line = 1;
     in.current = ";";
     assert_int_equal(LY_EVALID, get_argument(YCTX, Y_STR_ARG, NULL, &word, &buf, &len));
-    CHECK_LOG_CTX("Invalid character sequence \";\", expected an argument.", "Line number 10.");
+    CHECK_LOG_CTX("Invalid character sequence \";\", expected an argument.", "Line number 1.");
 }
 
 #define TEST_STMS_SUCCESS(INPUT_TEXT, CTX, ACTION, EXPECT_WORD)\

@@ -48,6 +48,9 @@ struct ly_in {
 /**
  * @brief Read bytes from an input.
  *
+ * Does not count new lines, which is expected from the caller who has better idea about
+ * the content of the read data and can better optimize counting.
+ *
  * @param[in] in Input structure.
  * @param[in] buf Destination buffer.
  * @param[in] count Number of bytes to read.
@@ -58,6 +61,9 @@ LY_ERR ly_in_read(struct ly_in *in, void *buf, size_t count);
 
 /**
  * @brief Just skip bytes in an input.
+ *
+ * Does not count new lines, which is expected from the caller who has better idea about
+ * the content of the skipped data and can better optimize counting.
  *
  * @param[in] in Input structure.
  * @param[in] count Number of bytes to skip.

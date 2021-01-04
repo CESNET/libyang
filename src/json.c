@@ -71,6 +71,9 @@ skip_ws(struct lyjson_ctx *jsonctx)
 {
     /* skip leading whitespaces */
     while (*jsonctx->in->current != '\0' && is_jsonws(*jsonctx->in->current)) {
+        if (*jsonctx->in->current == '\n') {
+            LY_IN_NEW_LINE(jsonctx->in);
+        }
         ly_in_skip(jsonctx->in, 1);
     }
     if (*jsonctx->in->current == '\0') {
