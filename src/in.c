@@ -349,12 +349,6 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
         return LY_EDENIED;
     }
 
-    for (size_t i = 0; i < count; i++) {
-        if (in->current[i] == '\n') {
-            LY_IN_NEW_LINE(in);
-        }
-    }
-
     memcpy(buf, in->current, count);
     in->current += count;
     return LY_SUCCESS;
@@ -372,12 +366,6 @@ ly_in_skip(struct ly_in *in, size_t count)
     if (in->length && (in->length - (in->current - in->start) < count)) {
         /* EOF */
         return LY_EDENIED;
-    }
-
-    for (size_t i = 0; i < count; i++) {
-        if (in->current[i] == '\n') {
-            LY_IN_NEW_LINE(in);
-        }
     }
 
     in->current += count;

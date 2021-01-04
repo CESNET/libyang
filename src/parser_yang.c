@@ -153,6 +153,7 @@ buf_store_char(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p
     ctx->in->current -= len;
     if (c == '\n') {
         ctx->indent = 0;
+        LY_IN_NEW_LINE(ctx->in);
     } else {
         /* note - even the multibyte character is count as 1 */
         ++ctx->indent;
@@ -427,6 +428,8 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
             switch (ctx->in->current[0]) {
             case 'n':
                 ctx->in->current = "\n";
+                /* fix false newline count in buf_store_char() */
+                ctx->in->line--;
                 break;
             case 't':
                 ctx->in->current = "\t";
@@ -455,6 +458,8 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
                 need_buf = 1;
                 break;
             case '\n':
+                LY_IN_NEW_LINE(ctx->in);
+                /* fall through */
             case ' ':
             case '\t':
                 /* just skip */
@@ -468,6 +473,8 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
         case STRING_PAUSED_CONTINUE:
             switch (ctx->in->current[0]) {
             case '\n':
+                LY_IN_NEW_LINE(ctx->in);
+                /* fall through */
             case ' ':
             case '\t':
                 /* skip */
@@ -584,6 +591,7 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
                 /* word is finished */
                 goto str_end;
             }
+            LY_IN_NEW_LINE(ctx->in);
             MOVE_INPUT(ctx, 1);
 
             /* reset indent */
@@ -667,6 +675,7 @@ get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, si
             continue;
         case '\n':
             /* skip whitespaces (optsep) */
+            LY_IN_NEW_LINE(ctx->in);
             ctx->indent = 0;
             break;
         case ' ':
@@ -4453,6 +4462,9 @@ skip_redundant_chars(struct lys_yang_parser_ctx *ctx)
             LY_CHECK_RET(skip_comment(ctx, 2));
         } else if (isspace(ctx->in->current[0])) {
             /* whitespace */
+            if (ctx->in->current[0] == '\n') {
+                LY_IN_NEW_LINE(ctx->in);
+            }
             ly_in_skip(ctx->in, 1);
         } else {
             break;
