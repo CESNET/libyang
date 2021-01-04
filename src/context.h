@@ -297,7 +297,7 @@ typedef void (*ly_module_imp_data_free_clb)(void *module_data, void *user_data);
 /**
  * @brief Callback for retrieving missing included or imported models in a custom way.
  *
- * When submod_name is provided, the submodule is requested instead of the module (in this case only
+ * When @p submod_name is provided, the submodule is requested instead of the module (in this case only
  * the module name without its revision is provided).
  *
  * If an @arg free_module_data callback is provided, it will be used later to free the allegedly const data
@@ -316,7 +316,7 @@ typedef void (*ly_module_imp_data_free_clb)(void *module_data, void *user_data);
  * @return LY_ERR value. If the returned value differs from LY_SUCCESS, libyang continue in trying to get the module data
  * according to the settings of its mechanism to search for the imported/included schemas.
  */
-typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
+typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *submod_rev,
         void *user_data, LYS_INFORMAT *format, const char **module_data, ly_module_imp_data_free_clb *free_module_data);
 
 /**
