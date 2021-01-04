@@ -429,7 +429,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const 
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
         break;
     case LY_VLOG_LYD:
-        *path = lyd_path(elem, LYD_PATH_LOG, NULL, 0);
+        *path = lyd_path(elem, LYD_PATH_STD, NULL, 0);
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
         break;
     default:

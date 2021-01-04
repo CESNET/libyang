@@ -87,6 +87,7 @@
  * -                         | ::lys_find_xpath()                   | New function reflecting updated @ref howtoXPath\.
  * lys_xpath_atomize()       | ::lys_find_xpath_atoms()             | Rename to unify with the new API, extends ::lys_find_xpath().
  * -                         | ::lys_find_expr_atoms()              | Extension of ::lys_find_xpath().
+ * %lyd_path()               | ::lyd_path()                         | Same purpose, just extended functionality.
  * lyd_find_path()           | ::lyd_find_xpath()                   | Rename to unify with the new API.
  * -                         | ::lyxp_get_expr()                    | Added functionality due to the changed representation of XPath expressions.
  * ly_path_data2schema()     | -                                    | Removed since the schema path is not available in API.

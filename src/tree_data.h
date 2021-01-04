@@ -1589,14 +1589,16 @@ const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct 
  * @brief Types of the different data paths.
  */
 typedef enum {
-    LYD_PATH_LOG, /**< Descriptive path format used in log messages */
-    LYD_PATH_LOG_NO_LAST_PRED  /**< Similar to ::LYD_PATH_LOG except there is never a predicate on the last node */
+    LYD_PATH_STD, /**< Generic data path used for logging, node searching (::lyd_find_xpath(), ::lys_find_path()) as well as
+                       creating new nodes (::lyd_new_path(), ::lyd_new_path2()). */
+    LYD_PATH_STD_NO_LAST_PRED  /**< Similar to ::LYD_PATH_STD except there is never a predicate on the last node. While it
+                                    can be used to search for nodes, do not use it to create new data nodes (lists). */
 } LYD_PATH_TYPE;
 
 /**
  * @brief Generate path of the given node in the requested format.
  *
- * @param[in] node Schema path of this node will be generated.
+ * @param[in] node Data path of this node will be generated.
  * @param[in] pathtype Format of the path to generate.
  * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
  *                If NULL, memory for the complete path is allocated.
