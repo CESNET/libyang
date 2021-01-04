@@ -184,7 +184,6 @@ option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL"
 
 #option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
 #option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
-#option(ENABLE_LYD_PRIV "Add a private pointer also to struct lyd_node (data node structure), just like in struct lys_node, for arbitrary user data" OFF)
 #set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
 
 #if(ENABLE_CACHE)
@@ -192,9 +191,6 @@ option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL"
 #endif()
 #if(ENABLE_LATEST_REVISIONS)
 #    set(LY_ENABLED_LATEST_REVISIONS 1)
-#endif()
-#if(ENABLE_LYD_PRIV)
-#    set(LY_ENABLED_LYD_PRIV 1)
 #endif()
 
 if(ENABLE_COVERAGE)

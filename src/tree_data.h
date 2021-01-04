@@ -551,10 +551,7 @@ struct lyd_node {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-
-#ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
-#endif
 };
 
 /**
@@ -574,10 +571,7 @@ struct lyd_node_inner {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-
-#ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
-#endif
 
     struct lyd_node *child;          /**< pointer to the first child node. */
     struct hash_table *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
@@ -601,10 +595,7 @@ struct lyd_node_term {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-
-#ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
-#endif
 
     struct lyd_value value;          /**< node's value representation */
 };
@@ -626,10 +617,7 @@ struct lyd_node_any {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-
-#ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
-#endif
 
     union lyd_any_value {
         struct lyd_node *tree;       /**< data tree */
@@ -709,10 +697,7 @@ struct lyd_node_opaq {
     struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
     struct lyd_node *prev;          /**< pointer to the previous sibling node (last sibling if there is none) */
     struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
-
-#ifdef LY_ENABLED_LYD_PRIV
     void *priv;                     /**< private user data, not used by libyang */
-#endif
 
     struct lyd_node *child;         /**< pointer to the child node (compatible with ::lyd_node_inner) */
 
