@@ -803,9 +803,8 @@ next_entry:
     ret = lyjson_ctx_next(lydctx->jsonctx, NULL);
     LY_CHECK_GOTO(ret, cleanup);
 
-cleanup:
-    LOG_LOCBACK(ctx, 1, 0, 0, 0);
-    return ret;
+    /* success */
+    goto cleanup;
 
 representation_error:
     LOGVAL(ctx, LYVE_SYNTAX_JSON,
@@ -814,7 +813,10 @@ representation_error:
             expected, lyjson_token2str(status), in_parent ? "" : "name");
 
     ret = LY_EVALID;
-    goto cleanup;
+
+cleanup:
+    LOG_LOCBACK(ctx, 1, 0, 0, 0);
+    return ret;
 }
 
 /**
@@ -1290,9 +1292,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
     /* finally connect the parsed node */
     lydjson_maintain_children(parent, first_p, &node);
 
-cleanup:
-    lyd_free_tree(node);
-    return ret;
+    /* success */
+    goto cleanup;
 
 representation_error:
     LOG_LOCSET(ctx, NULL, (const struct lyd_node *)parent, NULL, NULL);
@@ -1300,7 +1301,10 @@ representation_error:
             lys_nodetype2str(snode->nodetype), snode->name, expected, lyjson_token2str(status));
     LOG_LOCBACK(ctx, 0, parent ? 1 : 0, 0, 0);
     ret = LY_EVALID;
-    goto cleanup;
+
+cleanup:
+    lyd_free_tree(node);
+    return ret;
 }
 
 /**
