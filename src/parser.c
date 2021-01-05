@@ -1044,8 +1044,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
             /* copy WS */
             if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
                 if (count + (cur_expr - end) > buf_len) {
-                    lyxp_expr_free(exp);
                     LOGBUF(end);
+                    lyxp_expr_free(exp);
                     return -1;
                 }
                 strncpy(&buf[count], end, cur_expr - end);
@@ -1060,8 +1060,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
                 if (!module_name || strncmp(cur_expr, module_name, j)) {
                     /* print module name with colon, it does not equal to the parent one */
                     if (count + j > buf_len) {
-                        lyxp_expr_free(exp);
                         LOGBUF(cur_expr);
+                        lyxp_expr_free(exp);
                         return -1;
                     }
                     strncpy(&buf[count], cur_expr, j);
@@ -1071,8 +1071,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
 
                 /* copy the rest */
                 if (count + (exp->tok_len[i] - j) > buf_len) {
-                    lyxp_expr_free(exp);
                     LOGBUF(end);
+                    lyxp_expr_free(exp);
                     return -1;
                 }
                 strncpy(&buf[count], end, exp->tok_len[i] - j);
