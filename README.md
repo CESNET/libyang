@@ -1,7 +1,7 @@
 # libyang
 
 [![BSD license](https://img.shields.io/badge/License-BSD-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Build](https://github.com/CESNET/libyang/workflows/libyang%20CI/badge.svg)](https://github.com/CESNET/libyang/actions?query=workflow%3A%22libyang+CI%22) 
+[![Build](https://github.com/CESNET/libyang/workflows/libyang%20CI/badge.svg)](https://github.com/CESNET/libyang/actions?query=workflow%3A%22libyang+CI%22)
 [![codecov.io](https://codecov.io/github/CESNET/libyang/coverage.svg?branch=master)](https://codecov.io/github/CESNET/libyang?branch=master)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
@@ -143,14 +143,6 @@ libyang to always search for the schema anew by:
 $ cmake -DENABLE_LATEST_REVISIONS=OFF ..
 ```
 
-Also, it can be efficient to store certain information about schemas that is generated during parsing
-so that it does not need to be generated every time the schema is used, but it will consume some
-additional space. You can enable this cache with:
-
-```
-$ cmake -DENABLE_CACHE=ON ..
-```
-
 ### CMake Notes
 
 Note that, with CMake, if you want to change the compiler or its options after
@@ -177,6 +169,13 @@ linker. To help with setting all the compiler's options, there is `libyang.pc` f
 
 If you are using `cmake` in you project, it is also possible to use the provided
 `FindLibYANG.cmake` file to detect presence of the libyang library in the system.
+
+## Bindings
+
+There are no bindings for other languages directly in this project but they are
+available separately.
+
+* [RUST](https://github.com/rwestphal/yang2-rs/)
 
 ## yanglint
 
@@ -243,23 +242,6 @@ make's `coverage` target:
 $ make coverage
 ```
 
-## Bindings
-
-We provide bindings for high-level languages using [SWIG](http://www.swig.org/)
-generator. The bindings are optional and to enable building of the specific
-binding, the appropriate cmake option must be enabled, for example:
-```
-$ cmake -DJAVASCRIPT_BINDING=ON ..
-```
-
-More information about the specific binding can be found in their README files.
-
-Currently supported bindings are:
-
-* JavaScript
- * cmake option: `JAVASCRIPT_BINDING`
- * [README](./swig/javascript/README.md)
- 
 ## Fuzzing
 
 Multiple YANG fuzzing targets and fuzzing instructions are available in the
@@ -267,6 +249,5 @@ Multiple YANG fuzzing targets and fuzzing instructions are available in the
 
 All of the targets can be fuzzed with LLVM's LibFuzzer and AFL, and new targets
 can easily be added.
-Asciinema examples which describe the fuzzing setup for both AFL (https://asciinema.org/a/311060) 
+Asciinema examples which describe the fuzzing setup for both AFL (https://asciinema.org/a/311060)
 and LibFuzzer (https://asciinema.org/a/311035) are available.
-
