@@ -1711,7 +1711,7 @@ yin_parse_revision(struct lys_yin_parser_ctx *ctx, struct lysp_revision **revs)
         FREE_STRING(ctx->xmlctx->ctx, temp_date);
         return LY_EVALID;
     }
-    strcpy(rev->date, temp_date);
+    strncpy(rev->date, temp_date, LY_REV_SIZE);
     FREE_STRING(ctx->xmlctx->ctx, temp_date);
 
     /* parse content */
