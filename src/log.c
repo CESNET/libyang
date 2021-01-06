@@ -503,6 +503,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, struct ly_log_location_s *location,
 {
     int rc;
     char *str = NULL, *prev = NULL;
+
     *path = NULL;
 
     if (location->paths.count && ((const char *)(location->paths.objs[location->paths.count - 1]))[0]) {

@@ -459,7 +459,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
                 break;
             case '\n':
                 LY_IN_NEW_LINE(ctx->in);
-                /* fall through */
+            /* fall through */
             case ' ':
             case '\t':
                 /* just skip */
@@ -474,7 +474,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
             switch (ctx->in->current[0]) {
             case '\n':
                 LY_IN_NEW_LINE(ctx->in);
-                /* fall through */
+            /* fall through */
             case ' ':
             case '\t':
                 /* skip */

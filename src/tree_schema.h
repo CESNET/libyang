@@ -577,7 +577,7 @@ struct lysp_restr {
  * @brief YANG revision-stmt
  */
 struct lysp_revision {
-    char date[LY_REV_SIZE];           /**< revision date (madatory) */
+    char date[LY_REV_SIZE];          /**< revision date (madatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
