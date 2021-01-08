@@ -66,8 +66,9 @@ LY_ERR parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt v
 
 struct lys_yang_parser_ctx *YCTX;
 
+struct ly_in in = {0};
+
 #define YCTX_INIT \
-    struct ly_in in = {0}; \
     in.line = 1; \
     YCTX->in = &in; \
     LOG_LOCINIT(UTEST_LYCTX, NULL, NULL, NULL, &in)
@@ -89,6 +90,11 @@ setup(void **state)
     YCTX->parsed_mod->mod->ctx = UTEST_LYCTX;
     YCTX->parsed_mod->mod->parsed = YCTX->parsed_mod;
 
+    /* initilize and use the global easily available and customizable input handler */
+    in.line = 1;
+    YCTX->in = &in;
+    LOG_LOCINIT(UTEST_LYCTX, NULL, NULL, NULL, &in);
+
     return 0;
 }
 
@@ -96,6 +102,8 @@ static int
 teardown(void **state)
 {
     lys_module_free(YCTX->parsed_mod->mod, NULL);
+    LOG_LOCBACK(UTEST_LYCTX, 0, 0, 0, 1);
+
     free(YCTX);
     YCTX = NULL;
 
@@ -115,8 +123,6 @@ test_helpers(void **state)
     char *buf, *p;
     size_t len, size;
     uint8_t prefix = 0;
-
-    YCTX_INIT;
 
     /* storing into buffer */
     in.current = "abcd";
@@ -198,8 +204,6 @@ test_comments(void **state)
     char *word, *buf;
     size_t len;
 
-    YCTX_INIT;
-
     TEST_GET_ARGUMENT_SUCCESS(" // this is a text of / one * line */ comment\nargument;",
             YCTX, Y_STR_ARG, "argument;", 8, ";", 2);
     assert_null(buf);
@@ -226,8 +230,6 @@ test_arg(void **state)
 {
     char *word, *buf;
     size_t len;
-
-    YCTX_INIT;
 
     /* missing argument */
     in.current = ";";
@@ -342,8 +344,6 @@ test_stmts(void **state)
     enum ly_stmt kw;
     char *word;
     size_t len;
-
-    YCTX_INIT;
 
     in.current = "\n// comment\n\tinput\t{";
     assert_int_equal(LY_SUCCESS, get_keyword(YCTX, &kw, &word, &len));
@@ -477,8 +477,6 @@ test_minmax(void **state)
     uint16_t flags = 0;
     uint32_t value = 0;
     struct lysp_ext_instance *ext = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     in.current = " 1invalid; ...";
@@ -593,8 +591,6 @@ test_module(void **state)
     struct lys_module *m;
     struct lys_glob_unres unres = {0};
     struct lys_yang_parser_ctx *ctx_p;
-
-    YCTX_INIT;
 
     mod = mod_renew(YCTX);
 
@@ -854,8 +850,6 @@ test_deviation(void **state)
 {
     struct lysp_deviation *d = NULL;
 
-    YCTX_INIT;
-
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     TEST_DUP_GENERIC(" test {deviate not-supported;", MEMBER, VALUE1, VALUE2, parse_deviation, \
@@ -899,8 +893,6 @@ static void
 test_deviate(void **state)
 {
     struct lysp_deviate *d = NULL;
-
-    YCTX_INIT;
 
     /* invalid cardinality */
 #define TEST_DUP(TYPE, MEMBER, VALUE1, VALUE2) \
@@ -958,8 +950,6 @@ static void
 test_container(void **state)
 {
     struct lysp_node_container *c = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1015,8 +1005,6 @@ test_leaf(void **state)
 {
     struct lysp_node_leaf *l = NULL;
 
-    YCTX_INIT;
-
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
@@ -1064,8 +1052,6 @@ static void
 test_leaflist(void **state)
 {
     struct lysp_node_leaflist *ll = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1132,8 +1118,6 @@ static void
 test_list(void **state)
 {
     struct lysp_node_list *l = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1184,8 +1168,6 @@ static void
 test_choice(void **state)
 {
     struct lysp_node_choice *ch = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1223,8 +1205,6 @@ static void
 test_case(void **state)
 {
     struct lysp_node_case *cs = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1258,8 +1238,6 @@ static void
 test_any(void **state, enum ly_stmt kw)
 {
     struct lysp_node_anydata *any = NULL;
-
-    YCTX_INIT;
     if (kw == LY_STMT_ANYDATA) {
         YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
     } else {
@@ -1307,8 +1285,6 @@ static void
 test_grouping(void **state)
 {
     struct lysp_grp *grp = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1355,8 +1331,6 @@ test_action(void **state)
 {
     struct lysp_action *rpcs = NULL;
     struct lysp_node_container *c = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1424,8 +1398,6 @@ test_notification(void **state)
 {
     struct lysp_notif *notifs = NULL;
     struct lysp_node_container *c = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1475,8 +1447,6 @@ static void
 test_uses(void **state)
 {
     struct lysp_node_uses *u = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1505,8 +1475,6 @@ static void
 test_augment(void **state)
 {
     struct lysp_augment *a = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1543,8 +1511,6 @@ static void
 test_when(void **state)
 {
     struct lysp_when *w = NULL;
-
-    YCTX_INIT;
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1582,8 +1548,6 @@ test_value(void **state)
 {
     int64_t val = 0;
     uint16_t flags = 0;
-
-    YCTX_INIT;
 
     in.current = "-0;";
     assert_int_equal(parse_type_enum_value_pos(YCTX, LY_STMT_VALUE, &val, &flags, NULL), LY_SUCCESS);
