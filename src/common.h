@@ -58,7 +58,6 @@ struct lys_module;
  * Logger
  *****************************************************************************/
 
-extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile LY_LOG_LEVEL ly_ll;
 extern volatile uint32_t ly_log_opts;
 
