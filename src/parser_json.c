@@ -198,7 +198,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     /* init return value */
     *snode_p = NULL;
 
-    LOG_LOCSET(lydctx->jsonctx->ctx, NULL, (const struct lyd_node *)parent, NULL, NULL);
+    LOG_LOCSET(NULL, (const struct lyd_node *)parent, NULL, NULL);
 
     /* get the element module */
     if (prefix_len) {
@@ -246,7 +246,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     }
 
 cleanup:
-    LOG_LOCBACK(lydctx->jsonctx->ctx, 0, parent ? 1 : 0, 0, 0);
+    LOG_LOCBACK(0, parent ? 1 : 0, 0, 0);
     return ret;
 }
 
@@ -508,7 +508,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             continue;
         }
 
-        LOG_LOCSET(lydctx->jsonctx->ctx, NULL, attr, NULL, NULL);
+        LOG_LOCSET(NULL, attr, NULL, NULL);
         log_location_items++;
 
         if (prev != meta_container->name.name) {
@@ -619,14 +619,14 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             lyd_free_tree(attr);
         }
 
-        LOG_LOCBACK(lydctx->jsonctx->ctx, 0, log_location_items, 0, 0);
+        LOG_LOCBACK(0, log_location_items, 0, 0);
         log_location_items = 0;
     }
 
 cleanup:
     lydict_remove(lydctx->jsonctx->ctx, prev);
 
-    LOG_LOCBACK(lydctx->jsonctx->ctx, 0, log_location_items, 0, 0);
+    LOG_LOCBACK(0, log_location_items, 0, 0);
     return ret;
 }
 
@@ -724,7 +724,7 @@ next_entry:
     /* process all the members inside a single metadata object */
     assert(status == LYJSON_OBJECT);
 
-    LOG_LOCSET(ctx, snode, NULL, NULL, NULL);
+    LOG_LOCSET(snode, NULL, NULL, NULL);
 
     while (status != LYJSON_OBJECT_CLOSED) {
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
@@ -815,7 +815,7 @@ representation_error:
     ret = LY_EVALID;
 
 cleanup:
-    LOG_LOCBACK(ctx, 1, 0, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 
@@ -1052,38 +1052,38 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             ret = lyd_create_inner(snode, node);
             LY_CHECK_RET(ret);
 
-            LOG_LOCSET(lydctx->jsonctx->ctx, snode, *node, NULL, NULL);
+            LOG_LOCSET(snode, *node, NULL, NULL);
 
             /* process children */
             while (*status != LYJSON_OBJECT_CLOSED && *status != LYJSON_OBJECT_EMPTY) {
                 ret = lydjson_subtree_r(lydctx, (struct lyd_node_inner *)*node, lyd_node_children_p(*node));
-                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(lydctx->jsonctx->ctx, 1, 1, 0, 0), ret);
+                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
                 *status = lyjson_ctx_status(lydctx->jsonctx, 0);
             }
 
             /* finish linking metadata */
             ret = lydjson_metadata_finish(lydctx, lyd_node_children_p(*node));
-            LY_CHECK_ERR_RET(ret, LOG_LOCBACK(lydctx->jsonctx->ctx, 1, 1, 0, 0), ret);
+            LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
 
             if (snode->nodetype == LYS_LIST) {
                 /* check all keys exist */
                 ret = lyd_parse_check_keys(*node);
-                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(lydctx->jsonctx->ctx, 1, 1, 0, 0), ret);
+                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
             }
 
             if (!(lydctx->parse_options & LYD_PARSE_ONLY)) {
                 /* new node validation, autodelete CANNOT occur, all nodes are new */
                 ret = lyd_validate_new(lyd_node_children_p(*node), snode, NULL, NULL);
-                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(lydctx->jsonctx->ctx, 1, 1, 0, 0), ret);
+                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
 
                 /* add any missing default children */
                 ret = lyd_new_implicit_r(*node, lyd_node_children_p(*node), NULL, NULL, &lydctx->node_types,
                         &lydctx->node_when, (lydctx->validate_options & LYD_VALIDATE_NO_STATE) ?
                         LYD_IMPLICIT_NO_STATE : 0, NULL);
-                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(lydctx->jsonctx->ctx, 1, 1, 0, 0), ret);
+                LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
             }
 
-            LOG_LOCBACK(lydctx->jsonctx->ctx, 1, 1, 0, 0);
+            LOG_LOCBACK(1, 1, 0, 0);
 
             /* move JSON parser */
             ret = lyjson_ctx_next(lydctx->jsonctx, status);
@@ -1296,10 +1296,10 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
     goto cleanup;
 
 representation_error:
-    LOG_LOCSET(ctx, NULL, (const struct lyd_node *)parent, NULL, NULL);
+    LOG_LOCSET(NULL, (const struct lyd_node *)parent, NULL, NULL);
     LOGVAL(ctx, LYVE_SYNTAX_JSON, "The %s \"%s\" is expected to be represented as JSON %s, but input data contains name/%s.",
             lys_nodetype2str(snode->nodetype), snode->name, expected, lyjson_token2str(status));
-    LOG_LOCBACK(ctx, 0, parent ? 1 : 0, 0, 0);
+    LOG_LOCBACK(0, parent ? 1 : 0, 0, 0);
     ret = LY_EVALID;
 
 cleanup:

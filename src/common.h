@@ -70,11 +70,6 @@ struct ly_log_location_s {
 };
 
 /**
- * @brief Destructor for the thread-specific data providing location information for the logger.
- */
-void ly_log_location_free(void *ptr);
-
-/**
  * @brief Print a log message and store it into the context (if provided).
  *
  * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
@@ -96,7 +91,6 @@ void ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...);
 /**
  * @brief Logger's location data setter.
  *
- * @param[in] ctx libyang context, mandatory argument.
  * @param[in] scnode Compiled schema node.
  * @param[in] dnode Data node.
  * @param[in] path Direct path string to print.
@@ -105,47 +99,51 @@ void ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...);
  * @param[in] reset Flag to indicate if the not set arguments (NULLs) are intended to rewrite the current values or if they
  * are supposed to be ignored and the previous values should be kept.
  */
-void ly_log_location(const struct ly_ctx *ctx, const struct lysc_node *scnode, const struct lyd_node *dnode,
+void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
         const char *path, const struct ly_in *in, uint64_t line, ly_bool reset);
 
 /**
  * @brief Revert the specific logger's location data by number of changes made by ::ly_log_location().
  *
- * @param[in] ctx libyang context, mandatory argument.
- * @param[in] scnode_steps Number of items in ::ly_log_location.scnodes to forget.
- * @param[in] dnode_steps Number of items in ::ly_log_location.dnodes to forget.
- * @param[in] path_steps Number of path strings in ::ly_log_location.paths to forget.
- * @param[in] in_steps Number of input handlers ::ly_log_location.inputs to forget.
+ * @param[in] scnode_steps Number of items in ::log_location.scnodes to forget.
+ * @param[in] dnode_steps Number of items in ::log_location.dnodes to forget.
+ * @param[in] path_steps Number of path strings in ::log_location.paths to forget.
+ * @param[in] in_steps Number of input handlers ::log_location.inputs to forget.
  */
-void ly_log_location_revert(const struct ly_ctx *ctx, uint32_t scnode_steps, uint32_t dnode_steps,
-        uint32_t path_steps, uint32_t in_steps);
+void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps);
 
 /**
  * @brief Initiate location data for logger, all arguments are set as provided (even NULLs) - overrides the current values.
  *
- * @param[in] CTX libyang context, mandatory argument.
  * @param[in] SCNODE Compiled schema node.
  * @param[in] DNODE Data node.
  * @param[in] PATH Direct path string to print.
  * @param[in] IN Input handler (providing line number)
  */
-#define LOG_LOCINIT(CTX, SCNODE, DNODE, PATH, IN) \
-    ly_log_location(CTX, SCNODE, DNODE, PATH, IN, 0, 1)
+#define LOG_LOCINIT(SCNODE, DNODE, PATH, IN) \
+    ly_log_location(SCNODE, DNODE, PATH, IN, 0, 1)
 
 /**
  * @brief Update location data for logger, not provided arguments (NULLs) are kept (does not override).
  *
- * @param[in] CTX libyang context, mandatory argument.
  * @param[in] SCNODE Compiled schema node.
  * @param[in] DNODE Data node.
  * @param[in] PATH Direct path string to print.
  * @param[in] IN Input handler (providing line number)
  */
-#define LOG_LOCSET(CTX, SCNODE, DNODE, PATH, IN) \
-    ly_log_location(CTX, SCNODE, DNODE, PATH, IN, 0, 0)
+#define LOG_LOCSET(SCNODE, DNODE, PATH, IN) \
+    ly_log_location(SCNODE, DNODE, PATH, IN, 0, 0)
 
-#define LOG_LOCBACK(CTX, SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS) \
-    ly_log_location_revert(CTX, SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS)
+/**
+ * @brief Update location data for logger, not provided arguments (NULLs) are kept (does not override).
+ *
+ * @param[in] SCNODE_STEPS Number of the compiled schema nodes to remove from the stack.
+ * @param[in] DNODE_STEPS Number of the data nodes to remove from the stack.
+ * @param[in] PATH_STEPS Number of the direct path strings to remove from the stack.
+ * @param[in] IN_STEPS Number of the input handlers (providing line number) to remove from the stack.
+ */
+#define LOG_LOCBACK(SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS) \
+    ly_log_location_revert(SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS)
 
 #define LOGERR(ctx, errno, str, ...) ly_log(ctx, LY_LLERR, errno, str, ##__VA_ARGS__)
 #define LOGWRN(ctx, str, ...) ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__)
@@ -168,7 +166,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
 #define LOGVAL(CTX, CODE, ...) ly_vlog(CTX, CODE, ##__VA_ARGS__)
 #define LOGVAL_LINE(CTX, LINE, CODE, ...) \
-    ly_log_location(CTX, NULL, NULL, NULL, NULL, LINE, 0); \
+    ly_log_location(NULL, NULL, NULL, NULL, LINE, 0); \
     ly_vlog(CTX, CODE, ##__VA_ARGS__)
 
 #define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
@@ -288,7 +286,6 @@ struct ly_ctx {
     uint16_t module_set_id;           /**< ID of the current set of schemas */
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
-    pthread_key_t log_location_key;   /**< key for the thread-specific tracing of current location for logging error location */
 };
 
 /**

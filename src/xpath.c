@@ -4592,9 +4592,9 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
 
     LY_ARRAY_NEW_RET(set->ctx, patterns, pattern, LY_EMEM);
     *pattern = malloc(sizeof **pattern);
-    LOG_LOCSET(set->ctx, NULL, set->cur_node, NULL, NULL);
+    LOG_LOCSET(NULL, set->cur_node, NULL, NULL);
     rc = lys_compile_type_pattern_check(set->ctx, args[1]->val.str, &(*pattern)->code);
-    LOG_LOCBACK(set->ctx, 0, 1, 0, 0);
+    LOG_LOCBACK(0, 1, 0, 0);
     if (rc != LY_SUCCESS) {
         LY_ARRAY_FREE(patterns);
         return rc;
@@ -8489,7 +8489,7 @@ lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREF
     set->format = format;
     set->prefix_data = prefix_data;
 
-    LOG_LOCSET(set->ctx, NULL, set->cur_node, NULL, NULL);
+    LOG_LOCSET(NULL, set->cur_node, NULL, NULL);
 
     /* evaluate */
     rc = eval_expr_select(exp, &tok_idx, 0, set, options);
@@ -8497,7 +8497,7 @@ lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREF
         lyxp_set_free_content(set);
     }
 
-    LOG_LOCBACK(set->ctx, 0, 1, 0, 0);
+    LOG_LOCBACK(0, 1, 0, 0);
     return rc;
 }
 
@@ -8758,12 +8758,12 @@ lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_P
     set->format = format;
     set->prefix_data = prefix_data;
 
-    LOG_LOCSET(set->ctx, set->cur_scnode, NULL, NULL, NULL);
+    LOG_LOCSET(set->cur_scnode, NULL, NULL, NULL);
 
     /* evaluate */
     ret = eval_expr_select(exp, &tok_idx, 0, set, options);
 
-    LOG_LOCBACK(set->ctx, 1, 0, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 

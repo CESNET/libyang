@@ -846,7 +846,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
     pctx.format = LYS_IN_YANG;
     pctx.parsed_mod = ctx->pmod;
 
-    LOG_LOCSET(ctx->ctx, NULL, NULL, ctx->path, NULL);
+    LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 
     switch (kw) {
     case LY_STMT_STATUS:
@@ -865,6 +865,6 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
         return LY_EINT;
     }
 
-    LOG_LOCBACK(ctx->ctx, 0, 0, 1, 0);
+    LOG_LOCBACK(0, 0, 1, 0);
     return ret;
 }

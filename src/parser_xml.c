@@ -487,7 +487,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         /* create node */
         LY_CHECK_GOTO(ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, xmlctx->value, xmlctx->value_len,
                 &xmlctx->dynamic, LY_PREF_XML, &xmlctx->ns, LYD_HINT_DATA, &node), error);
-        LOG_LOCSET(ctx, snode, node, NULL, NULL);
+        LOG_LOCSET(snode, node, NULL, NULL);
 
         if (parent && (node->schema->flags & LYS_KEY)) {
             /* check the key order, the anchor must never be a key */
@@ -526,7 +526,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         ret = lyd_create_inner(snode, &node);
         LY_CHECK_GOTO(ret, error);
 
-        LOG_LOCSET(ctx, snode, node, NULL, NULL);
+        LOG_LOCSET(snode, node, NULL, NULL);
 
         /* parser next */
         LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
@@ -608,11 +608,11 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         *first_p = (*first_p)->prev;
     }
 
-    LOG_LOCBACK(ctx, node ? 1 : 0, node ? 1 : 0, 0, 0);
+    LOG_LOCBACK(node ? 1 : 0, node ? 1 : 0, 0, 0);
     return LY_SUCCESS;
 
 error:
-    LOG_LOCBACK(ctx, node ? 1 : 0, node ? 1 : 0, 0, 0);
+    LOG_LOCBACK(node ? 1 : 0, node ? 1 : 0, 0, 0);
     lyd_free_meta_siblings(meta);
     lyd_free_attr_siblings(ctx, attr);
     lyd_free_tree(node);

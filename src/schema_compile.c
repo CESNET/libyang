@@ -309,8 +309,8 @@ remove_nodelevel:
         }
     }
 
-    LOG_LOCBACK(ctx->ctx, 0, 0, 1, 0);
-    LOG_LOCSET(ctx->ctx, NULL, NULL, ctx->path, NULL);
+    LOG_LOCBACK(0, 0, 1, 0);
+    LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 }
 
 /**
@@ -795,7 +795,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
 
         node = xp_scnode->scnode;
         do {
-            LOG_LOCSET(set->ctx, node, NULL, NULL, NULL);
+            LOG_LOCSET(node, NULL, NULL, NULL);
             LY_ARRAY_FOR(node->when, u) {
                 when = node->when[u];
                 ret = lyxp_atomize(when->cond, node->module, LY_PREF_SCHEMA_RESOLVED, when->prefixes, when->context,
@@ -832,7 +832,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             /* check when of non-data parents as well */
             node = node->parent;
 
-            LOG_LOCBACK(set->ctx, 1, 0, 0, 0);
+            LOG_LOCBACK(1, 0, 0, 0);
         } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
         /* this node when was checked (xp_scnode could have been reallocd) */
@@ -928,7 +928,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
     const struct lysc_node *op;
     const struct lys_module *mod;
 
-    LOG_LOCSET(ctx->ctx, node, NULL, NULL, NULL);
+    LOG_LOCSET(node, NULL, NULL, NULL);
 
     memset(&tmp_set, 0, sizeof tmp_set);
     opts = LYXP_SCNODE_SCHEMA;
@@ -1079,7 +1079,7 @@ check_musts:
 
 cleanup:
     lyxp_set_free_content(&tmp_set);
-    LOG_LOCBACK(ctx->ctx, 1, 0, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 
@@ -1182,14 +1182,14 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     }
 
     if (ret) {
-        LOG_LOCSET(ctx->ctx, node, NULL, NULL, NULL);
+        LOG_LOCSET(node, NULL, NULL, NULL);
         if (err) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid default - value does not fit the type (%s).", err->msg);
             ly_err_free(err);
         } else {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid default - value does not fit the type.");
         }
-        LOG_LOCBACK(ctx->ctx, 1, 0, 0, 0);
+        LOG_LOCBACK(1, 0, 0, 0);
         return ret;
     }
 
@@ -1325,7 +1325,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
-        LOG_LOCSET(ctx, node, NULL, NULL, NULL);
+        LOG_LOCSET(node, NULL, NULL, NULL);
 
         assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
         type = ((struct lysc_node_leaf *)node)->type;
@@ -1343,7 +1343,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
             }
         }
 
-        LOG_LOCBACK(ctx, 1, 0, 0, 0);
+        LOG_LOCBACK(1, 0, 0, 0);
         if (ret) {
             return ret;
         }
@@ -1353,7 +1353,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
-        LOG_LOCSET(ctx, node, NULL, NULL, NULL);
+        LOG_LOCSET(node, NULL, NULL, NULL);
 
         /* store pointer to the real type */
         type = ((struct lysc_node_leaf *)node)->type;
@@ -1372,7 +1372,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
                 }
             }
         }
-        LOG_LOCBACK(ctx, 1, 0, 0, 0);
+        LOG_LOCBACK(1, 0, 0, 0);
 
         ly_set_rm_index(&unres->leafrefs, unres->leafrefs.count - 1, NULL);
     }
@@ -1383,10 +1383,10 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
-        LOG_LOCSET(ctx, node, NULL, NULL, NULL);
+        LOG_LOCSET(node, NULL, NULL, NULL);
 
         ret = lys_compile_unres_xpath(&cctx, node, unres);
-        LOG_LOCBACK(ctx, 1, 0, 0, 0);
+        LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
 
         ly_set_rm_index(&unres->xpath, unres->xpath.count - 1, NULL);
@@ -1398,14 +1398,14 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         cctx.cur_mod = r->leaf->module;
         cctx.pmod = r->leaf->module->parsed;
 
-        LOG_LOCSET(ctx, (struct lysc_node *)r->leaf, NULL, NULL, NULL);
+        LOG_LOCSET((struct lysc_node *)r->leaf, NULL, NULL, NULL);
 
         if (r->leaf->nodetype == LYS_LEAF) {
             ret = lys_compile_unres_leaf_dlft(&cctx, r->leaf, r->dflt, unres);
         } else {
             ret = lys_compile_unres_llist_dflts(&cctx, r->llist, r->dflt, r->dflts, unres);
         }
-        LOG_LOCBACK(ctx, 1, 0, 0, 0);
+        LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
 
         lysc_unres_dflt_free(ctx, r);
@@ -1503,9 +1503,9 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     for (i = 0; i < ctx->disabled.count; ++i) {
         node = ctx->disabled.snodes[i];
         if (node->flags & LYS_KEY) {
-            LOG_LOCSET(ctx->ctx, node, NULL, NULL, NULL);
+            LOG_LOCSET(node, NULL, NULL, NULL);
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Key \"%s\" is disabled by its if-features.", node->name);
-            LOG_LOCBACK(ctx->ctx, 1, 0, 0, 0);
+            LOG_LOCBACK(1, 0, 0, 0);
             return LY_EVALID;
         }
 
@@ -1837,7 +1837,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     }
     ctx.pmod = sp;
 
-    LOG_LOCBACK(ctx.ctx, 0, 0, 1, 0);
+    LOG_LOCBACK(0, 0, 1, 0);
 
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), error);
@@ -1846,7 +1846,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     return LY_SUCCESS;
 
 error:
-    LOG_LOCBACK(ctx.ctx, 0, 0, 1, 0);
+    LOG_LOCBACK(0, 0, 1, 0);
     lys_precompile_augments_deviations_revert(ctx.ctx, mod);
     lys_compile_unres_mod_erase(&ctx, 1);
     lysc_module_free(mod_c, NULL);
