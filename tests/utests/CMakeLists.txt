@@ -25,6 +25,7 @@ ly_add_utest(NAME schema SOURCES schema/test_schema.c schema/test_schema_common.
 ly_add_utest(NAME parser_yang SOURCES schema/test_parser_yang.c)
 ly_add_utest(NAME parser_yin SOURCES schema/test_parser_yin.c)
 ly_add_utest(NAME tree_schema_compile SOURCES schema/test_tree_schema_compile.c)
+ly_add_utest(NAME printer_tree SOURCES schema/test_printer_tree.c)
 ly_add_utest(NAME printer_yang SOURCES schema/test_printer_yang.c)
 ly_add_utest(NAME printer_yin SOURCES schema/test_printer_yin.c)
 
