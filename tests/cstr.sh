@@ -377,7 +377,7 @@ function yang2cstring()
     local input_text="$1"
     # backslashing character "
     ret=${input_text//\"/\\\"}
-    ret=$(echo "$ret" | awk -v q="\"" '{print q$0q}')
+    ret=$(echo "$ret" | awk -v s="\"" -v e="\\\n\"" '{print s$0e}')
     ret="$ret"";"
     echo "$ret"
 }
@@ -387,6 +387,12 @@ function get_yang_module_name()
 {
     local text="$1"
     local linenum="$2"
+    local input_ext="$3"
+    if [ "$input_ext" == "yang" ]; then
+        # module name search on line 1 in .yang file
+        linenum=1
+    fi
+    # else get module name on line $linenum in .c file
     echo "$(echo "$text" | awk -v linenum="$linenum" 'NR >= linenum' | grep -oP -m 1 "\s*module\s+\K\S+")"
 }
 
@@ -439,7 +445,10 @@ function insert_text2file()
 
 #---------- Create temporary file ----------
 
-module_name=$(get_yang_module_name "$input_text" "$linenum")
+module_name=$(get_yang_module_name "$input_text" "$linenum" "$input_ext")
+if [ -z "$module_name" ]; then
+    print_error_then_exit "Error: module name not found"
+fi
 tmpfile="/tmp/""$module_name"".yang"
 touch "$tmpfile"
 exit_if_error "Error: error while creating temporary file"
