@@ -135,7 +135,7 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
 {
 #define MSG_BUFFER_SIZE 128
     char tmp[MSG_BUFFER_SIZE];
-    uint16_t i, j;
+    uint32_t i, j;
 
     if (!exp || (ly_ll < LY_LLDBG)) {
         return;
@@ -769,7 +769,7 @@ static struct lyxp_set *
 set_copy(struct lyxp_set *set)
 {
     struct lyxp_set *ret;
-    uint16_t i;
+    uint32_t i;
 
     if (!set) {
         return NULL;
@@ -997,8 +997,8 @@ set_remove_node_none(struct lyxp_set *set, uint32_t idx)
 static void
 set_remove_nodes_none(struct lyxp_set *set)
 {
-    uint16_t i, orig_used, end = 0;
-    int32_t start;
+    uint32_t i, orig_used, end = 0;
+    int64_t start;
 
     assert(set);
 
@@ -3755,7 +3755,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 static LY_ERR
 xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, ly_bool self_match, const char *func)
 {
-    uint16_t i;
+    uint32_t i;
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
@@ -5014,7 +5014,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *s
 {
     long double num;
     char *str;
-    uint16_t i;
+    uint32_t i;
     struct lyxp_set set_item;
     struct lysc_node_leaf *sleaf;
     LY_ERR rc = LY_SUCCESS;
@@ -6709,8 +6709,8 @@ static LY_ERR
 eval_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options, ly_bool parent_pos_pred)
 {
     LY_ERR rc;
-    uint16_t i, orig_exp;
-    uint32_t orig_pos, orig_size;
+    uint16_t orig_exp;
+    uint32_t i, orig_pos, orig_size;
     int32_t pred_in_ctx;
     struct lyxp_set set2;
     struct lyd_node *orig_parent;
