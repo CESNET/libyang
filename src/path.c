@@ -54,7 +54,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     const char *name;
     size_t name_len;
 
-    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+    LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
     if (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[' */
@@ -218,12 +218,12 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     }
 
 cleanup:
-    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     ly_set_free(set, NULL);
     return ret;
 
 token_error:
-    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     ly_set_free(set, NULL);
     return LY_EVALID;
 }
@@ -243,7 +243,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
             (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
-    LOG_LOCSET(ctx, ctx_node, NULL, NULL, NULL);
+    LOG_LOCSET(ctx_node, NULL, NULL, NULL);
 
     /* parse as a generic XPath expression */
     LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 1, &exp), error);
@@ -327,12 +327,12 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     *expr = exp;
 
-    LOG_LOCBACK(ctx, ctx_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(ctx_node ? 1 : 0, 0, 0, 0);
     return LY_SUCCESS;
 
 error:
     lyxp_expr_free(ctx, exp);
-    LOG_LOCBACK(ctx, ctx_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(ctx_node ? 1 : 0, 0, 0, 0);
     return ret;
 }
 
@@ -347,7 +347,7 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
-    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+    LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
     /* parse as a generic XPath expression */
     LY_CHECK_GOTO(ret = lyxp_expr_parse(ctx, str_path, path_len, 0, &exp), error);
@@ -365,12 +365,12 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
     *expr = exp;
 
-    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     return LY_SUCCESS;
 
 error:
     lyxp_expr_free(ctx, exp);
-    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     return ret;
 }
 
@@ -416,7 +416,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
     if (pref) {
         ret = LY_EVALID;
 
-        LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+        LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
         *mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
         if (!*mod) {
@@ -431,7 +431,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             LY_CHECK_GOTO(ret = lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
         }
 
-        LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+        LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     } else {
         switch (format) {
         case LY_PREF_SCHEMA:
@@ -467,7 +467,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
     return LY_SUCCESS;
 
 error:
-    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     return LY_EVALID;
 }
 
@@ -485,7 +485,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
     assert(ctx && ctx_node);
 
-    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+    LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
     *pred_type = 0;
 
@@ -538,11 +538,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
             /* Literal */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL);
-            LOG_LOCSET(ctx, key, NULL, NULL, NULL);
+            LOG_LOCSET(key, NULL, NULL, NULL);
             ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaf *)key)->type,
                     expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
                     LYD_HINT_DATA, key, NULL);
-            LOG_LOCBACK(ctx, key ? 1 : 0, 0, 0, 0);
+            LOG_LOCBACK(key ? 1 : 0, 0, 0, 0);
             LY_CHECK_GOTO(ret, cleanup);
             ++(*tok_idx);
 
@@ -590,11 +590,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_LITERAL);
         /* store the value */
-        LOG_LOCSET(ctx, ctx_node, NULL, NULL, NULL);
+        LOG_LOCSET(ctx_node, NULL, NULL, NULL);
         ret = lyd_value_store(ctx, &p->value, ((struct lysc_node_leaflist *)ctx_node)->type,
                 expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
                 LYD_HINT_DATA, ctx_node, NULL);
-        LOG_LOCBACK(ctx, ctx_node ? 1 : 0, 0, 0, 0);
+        LOG_LOCBACK(ctx_node ? 1 : 0, 0, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
         ++(*tok_idx);
 
@@ -632,7 +632,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
     }
 
 cleanup:
-    LOG_LOCBACK(ctx, cur_node ? 1 : 0, 0, 0, 0);
+    LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     return ret;
 }
 
@@ -660,7 +660,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
     size_t name_len;
     struct ly_ctx *ctx = cur_node->module->ctx;
 
-    LOG_LOCSET(ctx, cur_node, NULL, NULL, NULL);
+    LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
         /* '[', no predicate */
@@ -775,7 +775,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
     } while (!lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1));
 
 cleanup:
-    LOG_LOCBACK(ctx, 1, 0, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 
@@ -806,7 +806,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
 
     /* remember original context node */
     cur_node = ctx_node;
-    LOG_LOCINIT(ctx, cur_node, NULL, NULL, NULL);
+    LOG_LOCINIT(cur_node, NULL, NULL, NULL);
 
     if (oper == LY_PATH_OPER_OUTPUT) {
         getnext_opts = LYS_GETNEXT_OUTPUT;
@@ -903,7 +903,7 @@ cleanup:
         ly_path_free(ctx, *path);
         *path = NULL;
     }
-    LOG_LOCBACK(ctx, 1, 0, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 

@@ -4497,7 +4497,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     mod_p->parsing = 1;
     (*context)->parsed_mod = (struct lysp_module *)mod_p;
 
-    LOG_LOCINIT(PARSER_CTX(*context), NULL, NULL, NULL, in);
+    LOG_LOCINIT(NULL, NULL, NULL, in);
 
     /* map the typedefs and groupings list from main context to the submodule's context */
     memcpy(&(*context)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
@@ -4538,7 +4538,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     *submod = mod_p;
 
 cleanup:
-    LOG_LOCBACK(PARSER_CTX(*context), 0, 0, 0, 1);
+    LOG_LOCBACK(0, 0, 0, 1);
     if (ret) {
         lysp_module_free((struct lysp_module *)mod_p);
         yang_parser_ctx_free(*context);
@@ -4570,7 +4570,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     mod_p->parsing = 1;
     (*context)->parsed_mod = mod_p;
 
-    LOG_LOCINIT(PARSER_CTX(*context), NULL, NULL, NULL, in);
+    LOG_LOCINIT(NULL, NULL, NULL, in);
 
     /* skip redundant but valid characters at the beginning */
     ret = skip_redundant_chars(*context);
@@ -4607,7 +4607,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     mod->parsed = mod_p;
 
 cleanup:
-    LOG_LOCBACK(PARSER_CTX(*context), 0, 0, 0, 1);
+    LOG_LOCBACK(0, 0, 0, 1);
     if (ret) {
         lysp_module_free(mod_p);
         yang_parser_ctx_free(*context);

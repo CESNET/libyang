@@ -625,7 +625,7 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyjson_ctx **j
     jsonctx->ctx = ctx;
     jsonctx->in = in;
 
-    LOG_LOCINIT(ctx, NULL, NULL, NULL, in);
+    LOG_LOCINIT(NULL, NULL, NULL, in);
 
     /* parse JSON value, if any */
     LY_CHECK_GOTO(ret = skip_ws(jsonctx), cleanup);
@@ -777,7 +777,7 @@ lyjson_ctx_free(struct lyjson_ctx *jsonctx)
         return;
     }
 
-    LOG_LOCBACK(jsonctx->ctx, 0, 0, 0, 1);
+    LOG_LOCBACK(0, 0, 0, 1);
 
     if (jsonctx->dynamic) {
         free((char *)jsonctx->value);

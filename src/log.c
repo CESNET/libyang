@@ -41,6 +41,8 @@ static volatile ly_bool path_flag = 1;
 volatile uint32_t ly_ldbg_groups = 0;
 #endif
 
+THREAD_LOCAL struct ly_log_location_s log_location = {0};
+
 /* how many bytes add when enlarging buffers */
 #define LY_BUF_STEP 128
 
@@ -242,89 +244,72 @@ ly_get_log_clb(void)
 }
 
 void
-ly_log_location(const struct ly_ctx *ctx, const struct lysc_node *scnode, const struct lyd_node *dnode,
+ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
         const char *path, const struct ly_in *in, uint64_t line, ly_bool reset)
 {
-    struct ly_log_location_s *loc = pthread_getspecific(ctx->log_location_key);
-
-    if (!loc) {
-        reset = 0; /* no needed */
-        loc = calloc(1, sizeof *loc);
-        LY_CHECK_ERR_RET(!loc, LOGMEM(ctx), );
-
-        pthread_setspecific(ctx->log_location_key, loc);
-    }
-
     if (scnode) {
-        ly_set_add(&loc->scnodes, (void *)scnode, 1, NULL);
+        ly_set_add(&log_location.scnodes, (void *)scnode, 1, NULL);
     } else if (reset) {
-        ly_set_erase(&loc->scnodes, NULL);
+        ly_set_erase(&log_location.scnodes, NULL);
     }
 
     if (dnode) {
-        ly_set_add(&loc->dnodes, (void *)dnode, 1, NULL);
+        ly_set_add(&log_location.dnodes, (void *)dnode, 1, NULL);
     } else if (reset) {
-        ly_set_erase(&loc->dnodes, NULL);
+        ly_set_erase(&log_location.dnodes, NULL);
     }
 
     if (path) {
         char *s = strdup(path);
-        LY_CHECK_ERR_RET(!s, LOGMEM(ctx), );
-        ly_set_add(&loc->paths, s, 1, NULL);
+        LY_CHECK_ERR_RET(!s, LOGMEM(NULL), );
+        ly_set_add(&log_location.paths, s, 1, NULL);
     } else if (reset) {
-        ly_set_erase(&loc->paths, free);
+        ly_set_erase(&log_location.paths, free);
     }
 
     if (in) {
-        ly_set_add(&loc->inputs, (void *)in, 1, NULL);
+        ly_set_add(&log_location.inputs, (void *)in, 1, NULL);
     } else if (reset) {
-        ly_set_erase(&loc->inputs, NULL);
+        ly_set_erase(&log_location.inputs, NULL);
     }
 
     if (line) {
-        loc->line = line;
+        log_location.line = line;
     }
 }
 
 void
-ly_log_location_revert(const struct ly_ctx *ctx, uint32_t scnode_steps, uint32_t dnode_steps,
+ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps,
         uint32_t path_steps, uint32_t in_steps)
 {
-
-    struct ly_log_location_s *loc = pthread_getspecific(ctx->log_location_key);
-
-    if (!loc) {
-        return;
+    for (uint32_t i = scnode_steps; i && log_location.scnodes.count; i--) {
+        log_location.scnodes.count--;
     }
 
-    for (uint32_t i = scnode_steps; i && loc->scnodes.count; i--) {
-        loc->scnodes.count--;
+    for (uint32_t i = dnode_steps; i && log_location.dnodes.count; i--) {
+        log_location.dnodes.count--;
     }
 
-    for (uint32_t i = dnode_steps; i && loc->dnodes.count; i--) {
-        loc->dnodes.count--;
+    for (uint32_t i = path_steps; i && log_location.paths.count; i--) {
+        ly_set_rm_index(&log_location.paths, log_location.paths.count - 1, free);
     }
 
-    for (uint32_t i = path_steps; i && loc->paths.count; i--) {
-        ly_set_rm_index(&loc->paths, loc->paths.count - 1, free);
+    for (uint32_t i = in_steps; i && log_location.inputs.count; i--) {
+        log_location.inputs.count--;
     }
 
-    for (uint32_t i = in_steps; i && loc->inputs.count; i--) {
-        loc->inputs.count--;
+    /* deallocate the empty sets */
+    if (scnode_steps && !log_location.scnodes.count) {
+        ly_set_erase(&log_location.scnodes, NULL);
     }
-}
-
-void
-ly_log_location_free(void *ptr)
-{
-    struct ly_log_location_s *loc = (struct ly_log_location_s *)ptr;
-
-    if (loc) {
-        ly_set_erase(&loc->scnodes, NULL);
-        ly_set_erase(&loc->dnodes, NULL);
-        ly_set_erase(&loc->paths, free);
-        ly_set_erase(&loc->inputs, NULL);
-        free(loc);
+    if (dnode_steps && !log_location.dnodes.count) {
+        ly_set_erase(&log_location.dnodes, NULL);
+    }
+    if (path_steps && !log_location.paths.count) {
+        ly_set_erase(&log_location.paths, free);
+    }
+    if (in_steps && !log_location.inputs.count) {
+        ly_set_erase(&log_location.inputs, NULL);
     }
 }
 
@@ -499,30 +484,30 @@ ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *form
 }
 
 static LY_ERR
-ly_vlog_build_path(const struct ly_ctx *ctx, struct ly_log_location_s *location, char **path)
+ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
 {
     int rc;
     char *str = NULL, *prev = NULL;
 
     *path = NULL;
 
-    if (location->paths.count && ((const char *)(location->paths.objs[location->paths.count - 1]))[0]) {
+    if (log_location.paths.count && ((const char *)(log_location.paths.objs[log_location.paths.count - 1]))[0]) {
         /* simply get what is in the provided path string */
-        *path = strdup((const char *)location->paths.objs[location->paths.count - 1]);
+        *path = strdup((const char *)log_location.paths.objs[log_location.paths.count - 1]);
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
     } else {
         /* generate location string */
-        if (location->scnodes.count) {
-            str = lysc_path(location->scnodes.objs[location->scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
+        if (log_location.scnodes.count) {
+            str = lysc_path(log_location.scnodes.objs[log_location.scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
             LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
             rc = asprintf(path, "Schema location %s", str);
             free(str);
             LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
         }
-        if (location->dnodes.count) {
+        if (log_location.dnodes.count) {
             prev = *path;
-            str = lyd_path(location->dnodes.objs[location->dnodes.count - 1], LYD_PATH_STD, NULL, 0);
+            str = lyd_path(log_location.dnodes.objs[log_location.dnodes.count - 1], LYD_PATH_STD, NULL, 0);
             LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
             rc = asprintf(path, "%s%sata location %s", prev ? prev : "", prev ? ", d" : "D", str);
@@ -530,17 +515,17 @@ ly_vlog_build_path(const struct ly_ctx *ctx, struct ly_log_location_s *location,
             free(prev);
             LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
         }
-        if (location->line) {
+        if (log_location.line) {
             prev = *path;
-            rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", location->line);
+            rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L", log_location.line);
             free(prev);
             LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
 
-            location->line = 0;
-        } else if (location->inputs.count) {
+            log_location.line = 0;
+        } else if (log_location.inputs.count) {
             prev = *path;
             rc = asprintf(path, "%s%sine number %" PRIu64, prev ? prev : "", prev ? ", l" : "L",
-                    ((struct ly_in *)location->inputs.objs[location->inputs.count - 1])->line);
+                    ((struct ly_in *)log_location.inputs.objs[log_location.inputs.count - 1])->line);
             free(prev);
             LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
         }
@@ -563,11 +548,7 @@ ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...)
     char *path = NULL;
 
     if (path_flag && ctx) {
-        /* get the location information */
-        struct ly_log_location_s *location = pthread_getspecific(ctx->log_location_key);
-        if (location) {
-            ly_vlog_build_path(ctx, location, &path);
-        }
+        ly_vlog_build_path(ctx, &path);
     }
 
     va_start(ap, format);

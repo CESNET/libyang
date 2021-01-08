@@ -385,7 +385,7 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {
     LY_ERR ret = LY_EVALID;
 
-    LOG_LOCSET(lydctx->data_ctx->ctx, snode, NULL, NULL, NULL);
+    LOG_LOCSET(snode, NULL, NULL, NULL);
 
     if ((lydctx->parse_options & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
         LOGVAL(lydctx->data_ctx->ctx, LY_VCODE_INNODE, "state", snode->name);
@@ -423,7 +423,7 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     ret = LY_SUCCESS;
 
 cleanup:
-    LOG_LOCBACK(lydctx->data_ctx->ctx, 1, 0, 0, 0);
+    LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
 
