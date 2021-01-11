@@ -993,7 +993,8 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
+ * @param[in] value Value of the new leaf/leaf-list (const char *) or anyxml/anydata (expected type depends on @p value_type).
+ * For other node types, it is ignored.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
