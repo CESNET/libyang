@@ -605,12 +605,12 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
             node->flags &= ~LYD_NEW;
         }
 
+        LOG_LOCBACK(node->schema ? 1 : 0, 1, 0, 0);
+
         if (node->flags & LYD_DEFAULT) {
             /* remove leftover default nodes from a no-longer existing case */
             lyd_validate_autodel_case_dflt(first, node, mod, &next, diff);
         }
-
-        LOG_LOCBACK(node->schema ? 1 : 0, 1, 0, 0);
     }
 
     return LY_SUCCESS;
