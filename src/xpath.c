@@ -6966,32 +6966,34 @@ cleanup:
  * @brief Search for/check the next schema node that could be the only matching schema node meaning the
  * data node(s) could be found using a single hash-based search.
  *
+ * @param[in] ctx libyang context.
  * @param[in] node Next context node to check.
  * @param[in] name Expected node name.
  * @param[in] name_len Length of @p name.
- * @param[in] moveto_mod Expected node module.
+ * @param[in] moveto_mod Expected node module, can be NULL for JSON format with no prefix.
  * @param[in] root_type XPath root type.
- * @param[in] no_prefix Whether the node name was unprefixed.
  * @param[in] format Prefix format.
  * @param[in,out] found Previously found node, is updated.
  * @return LY_SUCCESS on success,
  * @return LY_ENOT if the whole check failed and hashes cannot be used.
  */
 static LY_ERR
-eval_name_test_with_predicate_get_scnode(const struct lyd_node *node, const char *name, uint16_t name_len,
-        const struct lys_module *moveto_mod, enum lyxp_node_type root_type, ly_bool no_prefix, LY_PREFIX_FORMAT format,
+eval_name_test_with_predicate_get_scnode(const struct ly_ctx *ctx, const struct lyd_node *node, const char *name,
+        uint16_t name_len, const struct lys_module *moveto_mod, enum lyxp_node_type root_type, LY_PREFIX_FORMAT format,
         const struct lysc_node **found)
 {
     const struct lysc_node *scnode;
     const struct lys_module *mod;
     uint32_t idx = 0;
 
+    assert((format == LY_PREF_JSON) || moveto_mod);
+
 continue_search:
     scnode = NULL;
     if (!node) {
-        if (no_prefix && (format == LY_PREF_JSON)) {
+        if ((format == LY_PREF_JSON) && !moveto_mod) {
             /* search all modules for a single match */
-            while ((mod = ly_ctx_get_module_iter(moveto_mod->ctx, &idx))) {
+            while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
                 scnode = lys_find_child(NULL, mod, name, name_len, 0, 0);
                 if (scnode) {
                     /* we have found a match */
@@ -7008,7 +7010,7 @@ continue_search:
             scnode = lys_find_child(NULL, moveto_mod, name, name_len, 0, 0);
         }
     } else if (!*found || (lysc_data_parent(*found) != node->schema)) {
-        if (no_prefix && (format == LY_PREF_JSON)) {
+        if ((format == LY_PREF_JSON) && !moveto_mod) {
             /* we must adjust the module to inherit the one from the context node */
             moveto_mod = node->schema->module;
         }
@@ -7064,11 +7066,10 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
     const char *ncname, *ncname_dict = NULL;
     uint16_t ncname_len;
     const struct lys_module *moveto_mod = NULL;
-    const struct lysc_node *scnode = NULL, *ctx_scnode;
+    const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
     enum ly_path_pred_type pred_type = 0;
     LY_ERR rc = LY_SUCCESS;
-    ly_bool no_prefix;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
@@ -7081,34 +7082,20 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
     ncname = &exp->expr[exp->tok_pos[*tok_idx - 1]];
     ncname_len = exp->tok_len[*tok_idx - 1];
 
-    /* get the first schema context node */
-    if (set->used) {
-        if (set->type == LYXP_SET_NODE_SET) {
-            ctx_scnode = set->val.nodes[0].node ? set->val.nodes[0].node->schema : NULL;
-        } else {
-            ctx_scnode = set->val.scnodes[0].scnode;
-        }
-    } else {
-        ctx_scnode = NULL;
+    if ((ncname[0] == '*') && (ncname_len == 1)) {
+        /* all nodes will match */
+        goto moveto;
     }
 
-    /* parse (and skip) module name, use any context node (if available) just so we get some moveto_mod if there
-     * is no prefix for ::LY_PREF_JSON */
-    rc = moveto_resolve_model(&ncname, &ncname_len, set, ctx_scnode, &moveto_mod);
+    /* parse (and skip) module name */
+    rc = moveto_resolve_model(&ncname, &ncname_len, set, NULL, &moveto_mod);
     LY_CHECK_GOTO(rc, cleanup);
 
-    if (ncname_len == exp->tok_len[*tok_idx - 1]) {
-        /* remember that there is no prefix */
-        no_prefix = 1;
-    } else {
-        no_prefix = 0;
-    }
-
-    if (moveto_mod && !attr_axis && !all_desc && (set->type == LYXP_SET_NODE_SET)) {
+    if (((set->format == LY_PREF_JSON) || moveto_mod) && !attr_axis && !all_desc && (set->type == LYXP_SET_NODE_SET)) {
         /* find the matching schema node in some parent in the context */
         for (uint32_t i = 0; i < set->used; ++i) {
-            if (eval_name_test_with_predicate_get_scnode(set->val.nodes[i].node, ncname, ncname_len, moveto_mod,
-                    set->root_type, no_prefix, set->format, &scnode)) {
+            if (eval_name_test_with_predicate_get_scnode(set->ctx, set->val.nodes[i].node, ncname, ncname_len,
+                    moveto_mod, set->root_type, set->format, &scnode)) {
                 /* check failed */
                 scnode = NULL;
                 break;
@@ -7125,16 +7112,10 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
         }
     }
 
-    if (!scnode && moveto_mod) {
-        /* we are not able to match based on a schema node and not all the modules match,
+    if (!scnode) {
+        /* we are not able to match based on a schema node and not all the modules match ("*"),
          * use dictionary for efficient comparison */
         LY_CHECK_GOTO(rc = lydict_insert(set->ctx, ncname, ncname_len, &ncname_dict), cleanup);
-    }
-
-    if ((set->format == LY_PREF_JSON) && no_prefix) {
-        /* do not set moveto_mod if there is no explicit prefix for JSON, it should be inherited from
-         * the specific context node */
-        moveto_mod = NULL;
     }
 
 moveto:
