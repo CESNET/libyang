@@ -279,6 +279,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @brief Evaluate an XPath expression on data. Be careful when using this function, the result can often
  * be confusing without thorough understanding of XPath evaluation rules defined in RFC 7950.
  *
+ * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
@@ -292,12 +293,14 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @return LY_EINCOMPLETE for unresolved when,
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
-LY_ERR lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options);
+LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        struct lyxp_set *set, uint32_t options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
  *
+ * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
@@ -307,8 +310,9 @@ LY_ERR lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, 
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as ::lyxp_eval()).
  */
-LY_ERR lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
-        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
+LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
+        uint32_t options);
 
 /* used only internally, maps with @ref findxpathoptions */
 #define LYXP_IGNORE_WHEN    0x01    /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */

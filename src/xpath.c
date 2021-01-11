@@ -8453,13 +8453,14 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 }
 
 LY_ERR
-lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyxp_set *set, uint32_t options)
+lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
     LY_ERR rc;
 
-    LY_CHECK_ARG_RET(NULL, exp, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
     if (!cur_mod && ((format == LY_PREF_SCHEMA) || (format == LY_PREF_SCHEMA_RESOLVED))) {
         LOGARG(NULL, "Current module must be set if schema format is used.");
         return LY_EINVAL;
@@ -8479,7 +8480,7 @@ lyxp_eval(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREF
     set->root_type = lyxp_get_root_type(ctx_node, NULL, options);
     set_insert_node(set, (struct lyd_node *)ctx_node, 0, ctx_node ? LYXP_NODE_ELEM : set->root_type, 0);
 
-    set->ctx = (struct ly_ctx *)(cur_mod ? cur_mod->ctx : (ctx_node ? LYD_CTX(ctx_node) : (tree ? LYD_CTX(tree) : NULL)));
+    set->ctx = (struct ly_ctx *)ctx;
     set->cur_node = ctx_node;
     for (set->context_op = ctx_node ? ctx_node->schema : NULL;
             set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
@@ -8730,13 +8731,14 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target)
 }
 
 LY_ERR
-lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
-        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options)
+lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
+        uint32_t options)
 {
     LY_ERR ret;
     uint16_t tok_idx = 0;
 
-    LY_CHECK_ARG_RET(NULL, exp, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
     if (!cur_mod && ((format == LY_PREF_SCHEMA) || (format == LY_PREF_SCHEMA_RESOLVED))) {
         LOGARG(NULL, "Current module must be set if schema format is used.");
         return LY_EINVAL;
@@ -8749,7 +8751,7 @@ lyxp_atomize(const struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_P
     LY_CHECK_RET(lyxp_set_scnode_insert_node(set, ctx_scnode, ctx_scnode ? LYXP_NODE_ELEM : set->root_type, NULL));
     set->val.scnodes[0].in_ctx = LYXP_SET_SCNODE_START;
 
-    set->ctx = cur_mod ? cur_mod->ctx : (ctx_scnode ? ctx_scnode->module->ctx : NULL);
+    set->ctx = (struct ly_ctx *)ctx;
     set->cur_scnode = ctx_scnode;
     for (set->context_op = ctx_scnode;
             set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));

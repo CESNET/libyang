@@ -333,7 +333,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(exp, NULL, LY_PREF_JSON, NULL, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(ctx, exp, NULL, LY_PREF_JSON, NULL, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -372,7 +372,7 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
     }
 
     /* atomize expression */
-    ret = lyxp_atomize(expr, cur_mod, LY_PREF_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(cur_mod->ctx, expr, cur_mod, LY_PREF_SCHEMA_RESOLVED, (void *)prefixes, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -409,7 +409,6 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set = {0};
     struct lyxp_expr *exp = NULL;
-    const struct lys_module *yanglib_mod;
     uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
@@ -419,18 +418,13 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     if (!ctx) {
         ctx = ctx_node->module->ctx;
     }
-    if (!ctx_node) {
-        yanglib_mod = ctx->list.objs[5];
-        assert(!strcmp(yanglib_mod->name, "ietf-yang-library"));
-        ctx_node = yanglib_mod->compiled->data;
-    }
 
     /* compile expression */
     ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(exp, NULL, LY_PREF_JSON, NULL, ctx_node, &xp_set, options);
+    ret = lyxp_atomize(ctx, exp, NULL, LY_PREF_JSON, NULL, ctx_node, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */

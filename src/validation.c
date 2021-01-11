@@ -128,8 +128,8 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
 
             /* evaluate when */
             memset(&xp_set, 0, sizeof xp_set);
-            ret = lyxp_eval(when->cond, schema->module, LY_PREF_SCHEMA_RESOLVED, when->prefixes, ctx_node, tree,
-                    &xp_set, LYXP_SCHEMA);
+            ret = lyxp_eval(LYD_CTX(node), when->cond, schema->module, LY_PREF_SCHEMA_RESOLVED, when->prefixes,
+                    ctx_node, tree, &xp_set, LYXP_SCHEMA);
             lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
 
             /* return error or LY_EINCOMPLETE for dependant unresolved when */
@@ -1211,8 +1211,8 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
         memset(&xp_set, 0, sizeof xp_set);
 
         /* evaluate must */
-        LY_CHECK_RET(lyxp_eval(musts[u].cond, node->schema->module, LY_PREF_SCHEMA_RESOLVED, musts[u].prefixes, node,
-                tree, &xp_set, LYXP_SCHEMA));
+        LY_CHECK_RET(lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_PREF_SCHEMA_RESOLVED,
+                musts[u].prefixes, node, tree, &xp_set, LYXP_SCHEMA));
 
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
