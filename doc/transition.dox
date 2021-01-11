@@ -241,10 +241,16 @@
  * Conceptually, the data tree did not change as much as the schema tree. There is still a generic ::lyd_node structure that
  * maps according to the schema node's nodetype to some of the other lyd_node_* structures. All the data nodes were extended
  * by hashes to improve performance when searching and processing data trees. The hashes are used for example in the
- * lyd_find_* functions. All the data nodes are also implicitly ordered following the order of the schema nodes. This is the
+ * lyd_find_* functions.
+ *
+ * All the data nodes are also implicitly ordered following the order of the schema nodes. This is the
  * reason to change the insertion function. Only the user-ordered lists and leaf-lists can be now placed relative to other
  * instances of the same list/leaf-list. Otherwise, the data instance is always inserted/created at the correct place beside
  * the right sibling nodes.
+ *
+ * For any functions that are available on inputs of different scale (node, subtree, all siblings, whole data tree),
+ * there are several variants of the specific function with suffix specifying what exactly the processed input will be
+ * (_single, _tree, _siblings, _all). This way the behavior is always clear in the code.
  *
  * libyang 1.x                  | libyang 2.0                     | Notes
  * :----------------------------|:--------------------------------|:---------------------------------------------------------
