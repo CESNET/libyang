@@ -1965,19 +1965,21 @@ struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const st
 /**
  * @brief Get all the schema nodes that are required for @p xpath to be evaluated (atoms).
  *
- * @param[in] ctx_node XPath schema context node.
+ * @param[in] ctx libyang context to use. May be NULL if @p ctx_node is set.
+ * @param[in] ctx_node XPath schema context node. Use NULL for the root node.
  * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_PREF_JSON prefix format is expected.
  * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found atoms (schema nodes).
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value on error.
  */
-LY_ERR lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
+LY_ERR lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath,
+        uint32_t options, struct ly_set **set);
 
 /**
  * @brief Get all the schema nodes that are required for @p expr to be evaluated (atoms).
  *
- * @param[in] ctx_node XPath schema context node.
+ * @param[in] ctx_node XPath schema context node. Use NULL for the root node.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] expr Parsed expression to use.
  * @param[in] prefixes Sized array of compiled prefixes.
@@ -1992,14 +1994,16 @@ LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_mo
 /**
  * @brief Evaluate an @p xpath expression on schema nodes.
  *
- * @param[in] ctx_node XPath schema context node.
+ * @param[in] ctx libyang context to use for absolute @p xpath. May be NULL if @p ctx_node is set.
+ * @param[in] ctx_node XPath schema context node for relative @p xpath. Use NULL for the root node.
  * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_PREF_JSON prefix format is expected.
  * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found schema nodes.
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
+LY_ERR lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
+        struct ly_set **set);
 
 /**
  * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
@@ -2014,8 +2018,8 @@ LY_ERR lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set);
 /**
  * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
  *
- * @param[in] ctx libyang context, set for absolute paths.
- * @param[in] ctx_node Starting context node for a relative data path, set for relative paths.
+ * @param[in] ctx libyang context to use for absolute @p path. May be NULL if @p ctx_node is set.
+ * @param[in] ctx_node XPath schema context node for relative @p path. Use NULL for the root node.
  * @param[in] path JSON path to examine.
  * @param[in] output Search operation output instead of input.
  * @param[out] set Set of found atoms (schema nodes).
@@ -2027,8 +2031,8 @@ LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx
 /**
  * @brief Get a schema node based on the given data path (JSON format, see @ref howtoXPath).
  *
- * @param[in] ctx libyang context, set for absolute paths.
- * @param[in] ctx_node Starting context node for a relative data path, set for relative paths.
+ * @param[in] ctx libyang context to use for absolute @p path. May be NULL if @p ctx_node is set.
+ * @param[in] ctx_node XPath schema context node for relative @p path. Use NULL for the root node.
  * @param[in] path JSON path of the node to get.
  * @param[in] output Search operation output instead of input.
  * @return Found schema node or NULL.

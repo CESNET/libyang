@@ -310,22 +310,26 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
 }
 
 API LY_ERR
-lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
+lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
+        struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
     struct lyxp_expr *exp = NULL;
     uint32_t i;
 
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options = LYXP_SCNODE;
+    }
+    if (!ctx) {
+        ctx = ctx_node->module->ctx;
     }
 
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
-    ret = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
@@ -338,7 +342,7 @@ lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32
 
     /* transform into ly_set */
     (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
-    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(ctx_node->module->ctx); ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     (*set)->size = xp_set.used;
 
     for (i = 0; i < xp_set.used; ++i) {
@@ -350,7 +354,7 @@ lys_find_xpath_atoms(const struct lysc_node *ctx_node, const char *xpath, uint32
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free(ctx_node->module->ctx, exp);
+    lyxp_expr_free(ctx, exp);
     return ret;
 }
 
@@ -399,20 +403,30 @@ cleanup:
 }
 
 API LY_ERR
-lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
+lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
+        struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set = {0};
     struct lyxp_expr *exp = NULL;
+    const struct lys_module *yanglib_mod;
     uint32_t i;
 
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
         options = LYXP_SCNODE;
     }
+    if (!ctx) {
+        ctx = ctx_node->module->ctx;
+    }
+    if (!ctx_node) {
+        yanglib_mod = ctx->list.objs[5];
+        assert(!strcmp(yanglib_mod->name, "ietf-yang-library"));
+        ctx_node = yanglib_mod->compiled->data;
+    }
 
     /* compile expression */
-    ret = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
@@ -425,7 +439,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 
     /* transform into ly_set */
     (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
-    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(ctx_node->module->ctx); ret = LY_EMEM, cleanup);
+    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     (*set)->size = xp_set.used;
 
     for (i = 0; i < xp_set.used; ++i) {
@@ -437,7 +451,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free(ctx_node->module->ctx, exp);
+    lyxp_expr_free(ctx, exp);
     if (ret) {
         ly_set_free(*set, NULL);
         *set = NULL;
