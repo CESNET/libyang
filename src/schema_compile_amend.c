@@ -1678,11 +1678,17 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
             LY_CHECK_GOTO(ret = lysp_dup_single(ctx->ctx, pnode, 1, dev_pnode), cleanup);
         }
 
+        /* use modules from the refine */
+        ctx->cur_mod = rfn->nodeid_pmod->mod;
+        ctx->pmod = (struct lysp_module *)rfn->nodeid_pmod;
+
         /* apply all the refines by changing (the copy of) the parsed node */
         LY_ARRAY_FOR(rfn->rfns, u) {
-            /* apply refine, keep the current path and add to it */
+            /* keep the current path and add to it */
             lysc_update_path(ctx, NULL, "{refine}");
             lysc_update_path(ctx, NULL, rfn->rfns[u]->nodeid);
+
+            /* apply refine and restore the path */
             ret = lys_apply_refine(ctx, rfn->rfns[u], *dev_pnode);
             lysc_update_path(ctx, NULL, NULL);
             lysc_update_path(ctx, NULL, NULL);
@@ -1963,9 +1969,13 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
             continue;
         }
 
-        /* apply augment, keep the current path and add to it */
+        /* use the path and modules from the augment */
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
+        ctx->cur_mod = aug->nodeid_pmod->mod;
+        ctx->pmod = (struct lysp_module *)aug->nodeid_pmod;
+
+        /* apply augment, restore the path */
         ret = lys_compile_augment(ctx, aug->aug_p, node);
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
@@ -1986,13 +1996,15 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
             continue;
         }
 
-        /* apply augment, use the path and modules from the augment */
+        /* use the path and modules from the augment */
         strcpy(orig_path, ctx->path);
         ctx->path_len = 1;
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
         ctx->cur_mod = aug->nodeid_pmod->mod;
         ctx->pmod = (struct lysp_module *)aug->nodeid_pmod;
+
+        /* apply augment, restore the path */
         ret = lys_compile_augment(ctx, aug->aug_p, node);
         strcpy(ctx->path, orig_path);
         ctx->path_len = strlen(ctx->path);

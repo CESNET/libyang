@@ -56,8 +56,16 @@ struct lyxp_expr;
  */
 struct lysc_ctx {
     struct ly_ctx *ctx;
-    struct lys_module *cur_mod; /**< module currently being compiled, used as the current module for unprefixed nodes */
-    struct lysp_module *pmod;   /**< parsed module being processed, used for searching imports to resolve prefixed nodes */
+    struct lys_module *cur_mod; /**< module currently being compiled,
+                                     - identifier/path - used as the current module for unprefixed nodes
+                                     - augment - module where the augment is defined
+                                     - deviation - module where the deviation is defined
+                                     - uses - module where the uses is defined */
+    struct lysp_module *pmod;   /**< parsed module being processed,
+                                     - identifier/path - used for searching imports to resolve prefixed nodes
+                                     - augment - module where the augment is defined
+                                     - deviation - module where the deviation is defined
+                                     - uses - module where the grouping is defined */
     struct ly_set groupings;    /**< stack for groupings circular check */
     struct ly_set tpdf_chain;
     struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisifed */
