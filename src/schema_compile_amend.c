@@ -1871,7 +1871,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
 
             if (aug_p->when) {
                 /* pass augment's when to all the children */
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_xpath_context(target), node, &when_shared);
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
 
                 if ((node->nodetype == LYS_CONTAINER) && !(node->flags & LYS_PRESENCE)) {
@@ -1918,7 +1918,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         if (aug_p->when) {
             /* inherit when */
             LY_ARRAY_FOR(*actions, u) {
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_xpath_context(target),
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target),
                         (struct lysc_node *)&(*actions)[u], &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
@@ -1939,7 +1939,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lys
         if (aug_p->when) {
             /* inherit when */
             LY_ARRAY_FOR(*notifs, u) {
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_xpath_context(target),
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target),
                         (struct lysc_node *)&(*notifs)[u], &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }

@@ -217,14 +217,6 @@ cleanup:
     return NULL;
 }
 
-struct lysc_node *
-lysc_xpath_context(struct lysc_node *start)
-{
-    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC | LYS_ACTION | LYS_NOTIF));
-            start = start->parent) {}
-    return start;
-}
-
 /**
  * @brief Compile information from the when statement
  *
@@ -2371,7 +2363,7 @@ done:
     return ret;
 }
 
-/*
+/**
  * @brief Compile type in leaf/leaf-list node and do all the necessary checks.
  * @param[in] ctx Compile context.
  * @param[in] context_node Schema node where the type/typedef is placed to correctly find the base types.
@@ -3424,7 +3416,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         for (i = 0; i < uses_child_set.count; ++i) {
             child = uses_child_set.snodes[i];
 
-            ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_xpath_context(parent), child, &when_shared);
+            ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_data_node(parent), child, &when_shared);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -3444,7 +3436,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         if (uses_p->when) {
             /* inherit when */
             LY_ARRAY_FOR(*actions, u) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_xpath_context(parent),
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_data_node(parent),
                         (struct lysc_node *)&(*actions)[u], &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
@@ -3466,7 +3458,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         if (uses_p->when) {
             /* inherit when */
             LY_ARRAY_FOR(*notifs, u) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_xpath_context(parent),
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_data_node(parent),
                         (struct lysc_node *)&(*notifs)[u], &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
@@ -3778,7 +3770,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
 
     if (pnode->when) {
         /* compile when */
-        ret = lys_compile_when(ctx, pnode->when, pnode->flags, lysc_xpath_context(node), node, NULL);
+        ret = lys_compile_when(ctx, pnode->when, pnode->flags, lysc_data_node(node), node, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 

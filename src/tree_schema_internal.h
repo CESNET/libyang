@@ -700,12 +700,17 @@ char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *pare
         size_t buflen);
 
 /**
- * @brief Get schema parent that can be instantiated in data. In other words, skip any choice or case nodes.
+ * @brief Get nearest @p schema parent (including the node itself) that can be instantiated in data.
  *
- * @param[in] schema Schema node to get the parent for.
- * @return Parent, NULL if top-level (in data).
+ * @param[in] schema Schema node to get the nearest data node for.
+ * @return Schema data node, NULL if top-level (in data).
  */
-const struct lysc_node *lysc_data_parent(const struct lysc_node *schema);
+const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
+
+/**
+ * @brief Same as ::lysc_data_node() but never returns the node itself.
+ */
+#define lysc_data_parent(schema) lysc_data_node(lysc_node_parent_full(schema))
 
 /**
  * @brief Learn whether a node is inside an operation output.

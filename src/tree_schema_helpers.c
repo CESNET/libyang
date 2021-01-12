@@ -1656,11 +1656,15 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
 }
 
 const struct lysc_node *
-lysc_data_parent(const struct lysc_node *schema)
+lysc_data_node(const struct lysc_node *schema)
 {
     const struct lysc_node *parent;
 
-    for (parent = schema->parent; parent && (parent->nodetype & (LYS_CHOICE | LYS_CASE)); parent = parent->parent) {}
+    parent = schema;
+    while (parent && !(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC
+            | LYS_ACTION | LYS_NOTIF))) {
+        parent = lysc_node_parent_full(parent);
+    }
 
     return parent;
 }

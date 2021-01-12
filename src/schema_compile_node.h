@@ -27,14 +27,6 @@ struct ly_set;
 struct lysc_ctx;
 
 /**
- * @brief Get the XPath context node for the given schema node.
- * @param[in] start The schema node where the XPath expression appears.
- * @return The context node to evaluate XPath expression in given schema node.
- * @return NULL in case the context node is the root node.
- */
-struct lysc_node *lysc_xpath_context(struct lysc_node *start);
-
-/**
  * @brief Compile information from the when statement by either standard compilation or by reusing
  * another compiled when structure.
  *
