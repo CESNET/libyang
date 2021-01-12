@@ -2814,8 +2814,22 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t opt
     }
 
     LY_LIST_FOR(node, orig) {
-        /* if there is no local parent, it will be inserted into first */
-        LY_CHECK_GOTO(rc = lyd_dup_r(orig, (struct lyd_node *)local_parent, &first, options, first ? NULL : &first), error);
+        if (lysc_is_key(orig->schema)) {
+            if (local_parent) {
+                /* the key must already exist in the parent */
+                rc = lyd_find_sibling_schema(local_parent->child, orig->schema, first ? NULL : &first);
+                LY_CHECK_ERR_GOTO(rc, LOGINT(LYD_CTX(node)), error);
+            } else {
+                assert(!(options & LYD_DUP_WITH_PARENTS));
+                /* duplicating a single key, okay, I suppose... */
+                rc = lyd_dup_r(orig, NULL, &first, options, first ? NULL : &first);
+                LY_CHECK_GOTO(rc, error);
+            }
+        } else {
+            /* if there is no local parent, it will be inserted into first */
+            rc = lyd_dup_r(orig, (struct lyd_node *)local_parent, &first, options, first ? NULL : &first);
+            LY_CHECK_GOTO(rc, error);
+        }
         if (nosiblings) {
             break;
         }
