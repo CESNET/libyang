@@ -230,6 +230,7 @@ lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses
             exp = NULL;
             rfn->nodeid_pmod = ctx->pmod;
             rfn->nodeid_ctx_node = ctx_node;
+            rfn->uses_p = uses_p;
         } else {
             /* just free exp */
             lyxp_expr_free(ctx->ctx, exp);

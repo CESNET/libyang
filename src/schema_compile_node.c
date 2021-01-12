@@ -3475,8 +3475,12 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     /* check that all augments were applied */
     for (i = 0; i < ctx->uses_augs.count; ++i) {
-        LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                "Augment target node \"%s\" in grouping \"%s\" was not found.",
+        if (((struct lysc_augment *)ctx->uses_augs.objs[i])->aug_p->parent != (struct lysp_node *)uses_p) {
+            /* augment of some parent uses, irrelevant now */
+            continue;
+        }
+
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" in grouping \"%s\" was not found.",
                 ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
         ret = LY_ENOTFOUND;
     }
@@ -3484,8 +3488,12 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     /* check that all refines were applied */
     for (i = 0; i < ctx->uses_rfns.count; ++i) {
-        LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
+        if (((struct lysc_refine *)ctx->uses_rfns.objs[i])->uses_p != uses_p) {
+            /* refine of some paretn uses, irrelevant now */
+            continue;
+        }
+
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
                 ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->expr, grp->name);
         ret = LY_ENOTFOUND;
     }

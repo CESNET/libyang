@@ -57,6 +57,7 @@ struct lysc_refine {
     struct lyxp_expr *nodeid;                    /**< refine target */
     const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
     const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node */
+    struct lysp_node_uses *uses_p;               /**< parsed uses node of the refine, for tracking recursive refines */
 
     struct lysp_refine **rfns;                   /**< sized array of parsed refines to apply */
 };
