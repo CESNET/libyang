@@ -1378,7 +1378,15 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
                             schema->module->name, strlen(schema->module->name), NULL, 0, NULL, LY_PREF_JSON, NULL,
                             LYD_NODEHINT_LIST, &node), cleanup);
                 } else {
-                    assert(p[path_idx].pred_type == LY_PATH_PREDTYPE_LIST);
+                    if (p[path_idx].pred_type != LY_PATH_PREDTYPE_LIST) {
+                        LOG_LOCSET(schema, NULL, NULL, NULL);
+                        LOGVAL(ctx, LYVE_XPATH, "Predicate missing for %s \"%s\" in path \"%s\".",
+                                lys_nodetype2str(schema->nodetype), schema->name, path);
+                        LOG_LOCBACK(1, 0, 0, 0);
+                        ret = LY_EINVAL;
+                        goto cleanup;
+                    }
+
                     LY_CHECK_GOTO(ret = lyd_create_list(schema, p[path_idx].predicates, &node), cleanup);
                 }
                 break;
