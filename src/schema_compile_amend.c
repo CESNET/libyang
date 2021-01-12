@@ -1769,6 +1769,8 @@ dev_applied:
     }
 
 cleanup:
+    ctx->cur_mod = orig_mod;
+    ctx->pmod = orig_pmod;
     if (ret) {
         lysp_dev_node_free(ctx->ctx, *dev_pnode);
         *dev_pnode = NULL;
