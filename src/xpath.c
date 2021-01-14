@@ -153,7 +153,7 @@ print_token(enum lyxp_token tok)
 
 #define DBG_BUFF_SIZE 8192
 
-void
+static void
 dbg_sprintf_append(char *buff, size_t buff_size, const char *fmt, ...)
 {
     va_list argptr;
