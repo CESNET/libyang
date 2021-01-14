@@ -91,7 +91,7 @@ lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value
 {
     assert(jsonctx);
 
-    if (dynamic) {
+    if (jsonctx->dynamic) {
         free((char *)jsonctx->value);
     }
     jsonctx->value = value;
