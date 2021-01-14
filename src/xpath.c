@@ -151,6 +151,17 @@ print_token(enum lyxp_token tok)
     }
 }
 
+#define DBG_BUFF_SIZE 8192
+
+static void
+dbg_sprintf_append(char *buff, size_t buff_size, const char *fmt, ...)
+{
+    va_list argptr;
+    va_start(argptr,fmt);
+    size_t offset = strlen(buff);
+    vsnprintf(buff + offset, buff_size - offset - 1, fmt, argptr);
+}
+
 /**
  * @brief Print the whole expression \p exp to debug output.
  *
@@ -160,7 +171,7 @@ static void
 print_expr_struct_debug(struct lyxp_expr *exp)
 {
     uint16_t i, j;
-    char tmp[128];
+    char tmp[DBG_BUFF_SIZE];
 
     if (!exp || (ly_log_level < LY_LLDBG)) {
         return;
@@ -168,14 +179,14 @@ print_expr_struct_debug(struct lyxp_expr *exp)
 
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", print_token(exp->tokens[i]), exp->tok_len[i],
+        dbg_sprintf_append(tmp, DBG_BUFF_SIZE, "\ttoken %s, in expression \"%.*s\"", print_token(exp->tokens[i]), exp->tok_len[i],
                &exp->expr[exp->expr_pos[i]]);
         if (exp->repeat[i]) {
-            sprintf(tmp + strlen(tmp), " (repeat %d", exp->repeat[i][0]);
+            dbg_sprintf_append(tmp, DBG_BUFF_SIZE, " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
-                sprintf(tmp + strlen(tmp), ", %d", exp->repeat[i][j]);
+                dbg_sprintf_append(tmp, DBG_BUFF_SIZE, ", %d", exp->repeat[i][j]);
             }
-            strcat(tmp, ")");
+            dbg_sprintf_append(tmp, DBG_BUFF_SIZE, ")");
         }
         LOGDBG(LY_LDGXPATH, tmp);
     }
