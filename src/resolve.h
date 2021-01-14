@@ -249,7 +249,8 @@ int resolve_leafref(struct lyd_node_leaf_list *leaf, const char *path, int req_i
 int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store, int ignore_fail,
                   struct lys_type **resolved_type);
 
-int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fail, struct lys_when **failed_when);
+int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fail, int multi_error,
+        struct lys_when **failed_when);
 
 int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
