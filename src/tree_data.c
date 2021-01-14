@@ -3545,6 +3545,35 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *expr = NULL;
+    struct ly_path *lypath = NULL;
+
+    LY_CHECK_ARG_RET(NULL, ctx_node, ctx_node->schema, path, LY_EINVAL);
+
+    /* parse the path */
+    ret = ly_path_parse(LYD_CTX(ctx_node), ctx_node->schema, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
+            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &expr);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* compile the path */
+    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, expr, LY_PATH_LREF_FALSE,
+            output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, LY_PREF_JSON,
+            (void *)LYD_CTX(ctx_node), NULL, &lypath);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* evaluate the path */
+    ret = ly_path_eval_partial(lypath, ctx_node, NULL, match);
+
+cleanup:
+    lyxp_expr_free(LYD_CTX(ctx_node), expr);
+    ly_path_free(LYD_CTX(ctx_node), lypath);
+    return ret;
+}
+
 API uint32_t
 lyd_list_pos(const struct lyd_node *instance)
 {

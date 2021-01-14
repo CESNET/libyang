@@ -89,6 +89,7 @@ struct lysc_type;
  * - ::lyd_parent()
  * - ::lyd_owner_module()
  * - ::lyd_find_xpath()
+ * - ::lyd_find_path()
  * - ::lyd_find_sibling_val()
  * - ::lyd_find_sibling_first()
  * - ::lyd_find_meta()
@@ -1663,22 +1664,33 @@ LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_n
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
- * The expected format of the expression is ::LYD_JSON, meaning the first node in every path
- * must have its module name as prefix or be the special `*` value for all the nodes.
- *
  * If a list instance is being selected with all its key values specified (but not necessarily ordered)
  * in the form `list[key1='val1'][key2='val2'][key3='val3']` or a leaf-list instance in the form
  * `leaf-list[.='val']`, these instances are found using hashes with constant (*O(1)*) complexity
  * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
  *
  * @param[in] ctx_node XPath context node.
- * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
  * the returned set is empty.
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
+
+/**
+ * @brief Search in given data for a node uniquely identifier by a path.
+ *
+ * @param[in] ctx_node Path context node.
+ * @param[in] path [Path](@ref howtoXPath) to find.
+ * @param[in] output Whether to search in RPC/action output nodes or in input nodes.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match is set to the found node.
+ * @return LY_EINCOMPLETE if only a parent of the node was found, @p match is set to this parent node.
+ * @return LY_ENOTFOUND if no nodes in the path were found.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
 
 #ifdef __cplusplus
 }
