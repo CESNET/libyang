@@ -538,6 +538,11 @@ char *lyd_path(const struct lyd_node *node);
                                       in a diff structure. */
 #define LYD_OPT_LYB_MOD_UPDATE 0x80000 /**< Allow to parse data using an updated revision of a module, relevant only for LYB format. */
 #define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
+#define LYD_OPT_MULTI_ERRORS  0x2000000 /**< Report all validation errors instead of the first one.
+                                             Applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
+                                             And, the @ref logopts need support storing multiple error messages.
+                                             NOTE: Only some kinds of validation error are supported:
+                                                   must, unique, unresolved union and unresolved instance-identifier.  */
 
 /**@} parseroptions */
 

@@ -6219,17 +6219,20 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
  *
  * @param[in] node Data node with optional must statements.
  * @param[in] inout_parent If set, must in input or output parent of node->schema will be resolved.
+ * @param[in] ignore_fail 0 - no, 1 - yes, 2 - yes, but only for external dependencies.
+ * @param[in] multi_error 0 - no, 1 - yes.
  *
  * @return EXIT_SUCCESS on pass, EXIT_FAILURE on fail, -1 on error.
  */
 static int
-resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
+resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail, int multi_error)
 {
     uint8_t i, must_size;
     struct lys_node *schema;
     struct lys_restr *must;
     struct lyxp_set set;
     struct ly_ctx *ctx = node->schema->module->ctx;
+    int rc = EXIT_SUCCESS;
 
     assert(node);
     memset(&set, 0, sizeof set);
@@ -6303,12 +6306,15 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
                 if (must[i].eapptag) {
                     ly_err_last_set_apptag(ctx, must[i].eapptag);
                 }
-                return 1;
+                rc = 1;
+                if (!multi_error) {
+                    break;
+                }
             }
         }
     }
 
-    return EXIT_SUCCESS;
+    return rc;
 }
 
 /**
@@ -8172,11 +8178,13 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
  * @param[in] node Data node to resolve.
  * @param[in] type Type of the unresolved item.
  * @param[in] ignore_fail 0 - no, 1 - yes, 2 - yes, but only for external dependencies.
+ * @param[in] multi_error 0 - no, 1 - yes.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_fail, struct lys_when **failed_when)
+resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_fail, int multi_error,
+        struct lys_when **failed_when)
 {
     int rc, req_inst, ext_dep;
     struct lyd_node_leaf_list *leaf;
@@ -8270,13 +8278,13 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         break;
 
     case UNRES_MUST:
-        if ((rc = resolve_must(node, 0, ignore_fail))) {
+        if ((rc = resolve_must(node, 0, ignore_fail, multi_error))) {
             return rc;
         }
         break;
 
     case UNRES_MUST_INOUT:
-        if ((rc = resolve_must(node, 1, ignore_fail))) {
+        if ((rc = resolve_must(node, 1, ignore_fail, multi_error))) {
             return rc;
         }
         break;
@@ -8397,7 +8405,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
 {
     uint32_t i, j, first, resolved, del_items, stmt_count;
     uint8_t prev_when_status;
-    int rc, progress, ignore_fail;
+    int rc, rc2, progress, ignore_fail, multi_error;
     enum int_log_opts prev_ilo;
     struct ly_err_item *prev_eitem;
     LY_ERR prev_ly_errno = ly_errno;
@@ -8418,6 +8426,8 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     } else {
         ignore_fail = 0;
     }
+
+    multi_error = (options & LYD_OPT_MULTI_ERRORS) ? 1 : 0;
 
     LOGVRB("Resolving unresolved data nodes and their constraints...");
     if (!ignore_fail) {
@@ -8465,7 +8475,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
             }
 
             prev_when_status = unres->node[i]->when_status;
-            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, &when);
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, 0, &when);
             if (!rc) {
                 /* finish with error/delete the node only if when was changed from true to false, an external
                  * dependency was not required, or it was not provided (the flag would not be passed down otherwise,
@@ -8587,7 +8597,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                 stmt_count++;
             }
 
-            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, 0, NULL);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 if (!ignore_fail) {
@@ -8613,6 +8623,8 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         ly_errno = prev_ly_errno;
     }
 
+    rc = 0;
+
     /*
      * rest
      */
@@ -8622,10 +8634,13 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         }
         assert(!(options & LYD_OPT_TRUSTED) || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
 
-        rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
-        if (rc) {
-            /* since when was already resolved, a forward reference is an error */
-            return -1;
+        rc2 = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, multi_error, NULL);
+        if (rc2) {
+            if (!multi_error) {
+                /* since when was already resolved, a forward reference is an error */
+                return -1;
+            }
+            rc = -1;
         }
 
         unres->type[i] = UNRES_RESOLVED;
@@ -8633,7 +8648,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
 
     LOGVRB("All data nodes and constraints resolved.");
     unres->count = 0;
-    return EXIT_SUCCESS;
+    return rc;
 
 error:
     if (!ignore_fail) {
