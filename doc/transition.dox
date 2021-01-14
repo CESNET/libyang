@@ -89,6 +89,7 @@
  * -                         | ::lys_find_expr_atoms()              | Extension of ::lys_find_xpath().
  * %lyd_path()               | ::lyd_path()                         | Same purpose, just extended functionality.
  * lyd_find_path()           | ::lyd_find_xpath()                   | Rename to unify with the new API.
+ * -                         | ::lyd_find_path()                    | Simplified version of ::lyd_find_path().
  * -                         | ::lyxp_get_expr()                    | Added functionality due to the changed representation of XPath expressions.
  * ly_path_data2schema()     | -                                    | Removed since the schema path is not available in API.
  * ly_path_xml2json()        | -                                    | Removed since done internally, note that even the generic XML parser is not available now.

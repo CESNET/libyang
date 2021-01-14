@@ -1681,6 +1681,9 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
 /**
  * @brief Search in given data for a node uniquely identifier by a path.
  *
+ * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth
+ * of the path used.
+ *
  * @param[in] ctx_node Path context node.
  * @param[in] path [Path](@ref howtoXPath) to find.
  * @param[in] output Whether to search in RPC/action output nodes or in input nodes.
