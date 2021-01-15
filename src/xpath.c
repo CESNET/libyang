@@ -172,6 +172,7 @@ print_expr_struct_debug(struct lyxp_expr *exp)
 {
     uint16_t i, j;
     char tmp[DBG_BUFF_SIZE];
+    tmp[0] = 0;
 
     if (!exp || (ly_log_level < LY_LLDBG)) {
         return;
