@@ -168,7 +168,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
             /* allocate enough for the offset and next character,
              * we will need 4 bytes at most since we support only the predefined
              * (one-char) entities and character references */
-            if (len + offset + 4 >= size) {
+            while (len + offset + 4 >= size) {
                 buf = ly_realloc(buf, size + BUFSIZE_STEP);
                 LY_CHECK_ERR_RET(!buf, LOGMEM(jsonctx->ctx), LY_EMEM);
                 size += BUFSIZE_STEP;
