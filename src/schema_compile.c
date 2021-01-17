@@ -1731,7 +1731,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     struct lysp_submodule *submod;
     struct lysp_node *pnode;
     struct lysp_grp *grps;
-    LY_ARRAY_COUNT_TYPE u;
+    LY_ARRAY_COUNT_TYPE u, v;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
@@ -1822,16 +1822,16 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
         submod = sp->includes[u].submodule;
         ctx.pmod = (struct lysp_module *)submod;
 
-        LY_ARRAY_FOR(submod->groupings, u) {
-            if (!(submod->groupings[u].flags & LYS_USED_GRP)) {
-                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, &submod->groupings[u]), error);
+        LY_ARRAY_FOR(submod->groupings, v) {
+            if (!(submod->groupings[v].flags & LYS_USED_GRP)) {
+                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, &submod->groupings[v]), error);
             }
         }
         LY_LIST_FOR(submod->data, pnode) {
             grps = (struct lysp_grp *)lysp_node_groupings(pnode);
-            LY_ARRAY_FOR(grps, u) {
-                if (!(grps[u].flags & LYS_USED_GRP)) {
-                    LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, &grps[u]), error);
+            LY_ARRAY_FOR(grps, v) {
+                if (!(grps[v].flags & LYS_USED_GRP)) {
+                    LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, &grps[v]), error);
                 }
             }
         }
