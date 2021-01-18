@@ -1525,6 +1525,22 @@ int lyd_lyb_data_length(const char *data);
  */
 void *lyd_set_private(const struct lyd_node *node, void *priv);
 
+/**
+ * @brief Get the data node based on a simple XPath.
+ * This API returns the closest parent of the node (or the node itself)
+ * identified by the nodeid (path). This API uses lyd_find_sibling() If cache is
+ * enabled and the siblings are NOT top-level nodes, this function finds the
+ * node in a constant time.
+ * @param[in] data_tree Existing data tree to get.
+ * @param[in] ctx Context to use.
+ * @param[in] path Simple data path (see @ref howtoxpath).
+ * @param[in] output possible values are 1 and 0.
+ * when set to 1, changes the behavior to ignoring RPC/action input schema nodes and using only output ones.
+ * @return NULL If no lyd_node exists for the given xpath.
+ */
+struct lyd_node *lyd_find_path_hash_based(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path,
+                                          int output);
+
 #endif
 
 /**@} */

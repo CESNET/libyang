@@ -8297,3 +8297,54 @@ lyd_set_private(const struct lyd_node *node, void *priv)
 }
 
 #endif
+
+API struct lyd_node *
+lyd_find_path_hash_based(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path, int output)
+{
+    FUN_IN;
+
+    const char *id;
+    struct lyd_node *node, *parent = NULL;
+    int parsed = 0;
+    int options = 0;
+
+    if (!path || (!data_tree && !ctx)
+            || (!data_tree && (path[0] != '/'))) {
+        LOGARG;
+        return NULL;
+    }
+
+    /* The only relevant option is LYD_PATH_OPT_OUTPUT  */
+    if (output)
+        options = LYD_PATH_OPT_OUTPUT;
+
+
+    if (!ctx) {
+        ctx = data_tree->schema->module->ctx;
+    }
+
+    id = path;
+
+    if (data_tree) {
+        if (path[0] == '/') {
+            /* absolute path, go through all the siblings and try to find the right parent, if exists,
+             * first go through all the next siblings keeping the original order, for positional predicates */
+            for (node = data_tree; !parsed && node; node = node->next) {
+                parent = resolve_partial_json_data_nodeid(id, NULL, node, options, &parsed);
+            }
+            if (!parsed) {
+                for (node = data_tree->prev; !parsed && node->next; node = node->prev) {
+                    parent = resolve_partial_json_data_nodeid(id, NULL, node, options, &parsed);
+                }
+            }
+        } else {
+            /* relative path, use only the provided data tree root */
+            parent = resolve_partial_json_data_nodeid(id, NULL, data_tree, options, &parsed);
+        }
+        if (parsed == -1) {
+            return NULL;
+        }
+    }
+
+    return parent;
+}
