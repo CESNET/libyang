@@ -2037,6 +2037,10 @@ yang_print_parsed_linkage(struct ypr_ctx *ctx, const struct lysp_module *modp)
         ly_print_(ctx->out, "%*s}\n", INDENT);
     }
     LY_ARRAY_FOR(modp->includes, u) {
+        if (modp->includes[u].injected) {
+            /* do not print the includes injected from submodules */
+            continue;
+        }
         if (modp->includes[u].rev[0] || modp->includes[u].dsc || modp->includes[u].ref || modp->includes[u].exts) {
             ly_print_(ctx->out, "%s%*sinclude %s {\n", u ? "" : "\n",  INDENT, modp->includes[u].name);
             LEVEL++;

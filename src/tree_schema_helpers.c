@@ -929,61 +929,180 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
     return LY_SUCCESS;
 }
 
-LY_ERR
-lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+/**
+ * @brief Try to find the parsed submodule in main module for the given include record.
+ *
+ * @param[in] pctx main parser context
+ * @param[in] inc The include record with missing parsed submodule. According to include info try to find
+ * the corresponding parsed submodule in main module's includes.
+ * @return LY_SUCCESS - the parsed submodule was found and inserted into the @p inc record
+ * @return LY_ENOT - the parsed module was not found.
+ * @return LY_EVALID - YANG rule violation
+ */
+static LY_ERR
+lysp_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 {
-    struct ly_ctx *ctx = (struct ly_ctx *)(PARSER_CTX(pctx));
-    struct lysp_submodule *submod = NULL;
-    const char *submodule_data = NULL;
-    LYS_INFORMAT format = LYS_IN_UNKNOWN;
+    LY_ARRAY_COUNT_TYPE i;
+    struct lysp_module *main_pmod = pctx->parsed_mod->mod->parsed;
 
-    void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
-    struct lysp_load_module_check_data check_data = {0};
-    struct ly_in *in;
+    LY_ARRAY_FOR(main_pmod->includes, i) {
+        if (strcmp(main_pmod->includes[i].name, inc->name)) {
+            continue;
+        }
 
-    /* submodule not present in the context, get the input data and parse it */
-    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-search_clb:
-        if (ctx->imp_clb) {
-            if (ctx->imp_clb(pctx->parsed_mod->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
-                    &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
-                LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
-                check_data.name = inc->name;
-                check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                check_data.submoduleof = pctx->parsed_mod->mod->name;
-                lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
-                ly_in_free(in, 0);
-                if (submodule_data_free) {
-                    submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
+        if (inc->rev[0] && strncmp(inc->rev, main_pmod->includes[i].rev, LY_REV_SIZE)) {
+            LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
+                    "Submodule %s includes different revision (%s) of the submodule %s:%s included by the main module %s.",
+                    ((struct lysp_submodule *)pctx->parsed_mod)->name, inc->rev,
+                    main_pmod->includes[i].name, main_pmod->includes[i].rev, main_pmod->mod->name);
+            return LY_EVALID;
+        }
+
+        inc->submodule = main_pmod->includes[i].submodule;
+        return inc->submodule ? LY_SUCCESS : LY_ENOT;
+    }
+
+    if (main_pmod->version == LYS_VERSION_1_1) {
+        LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
+                "YANG 1.1 requires all submodules to be included from main module. "
+                "But submodule \"%s\" includes submodule \"%s\" which is not included by main module \"%s\".",
+                ((struct lysp_submodule *)pctx->parsed_mod)->name, inc->name, main_pmod->mod->name);
+        return LY_EVALID;
+    } else {
+        return LY_ENOT;
+    }
+}
+
+/**
+ * @brief Make the copy of the given include record into the main module.
+ *
+ * YANG 1.0 does not require the main module to include all the submodules. Therefore, parsing submodules can cause
+ * reallocating and extending the includes array in the main module by the submodules included only in submodules.
+ *
+ * @param[in] pctx main parser context
+ * @param[in] inc Include record to copy into main module taken from @p pctx.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+{
+    LY_ARRAY_COUNT_TYPE i;
+    struct lysp_include *inc_new, *inc_tofill = NULL;
+    struct lysp_module *main_pmod = pctx->parsed_mod->mod->parsed;
+
+    /* first, try to find the corresponding record with missing parsed submodule */
+    LY_ARRAY_FOR(main_pmod->includes, i) {
+        if (strcmp(main_pmod->includes[i].name, inc->name)) {
+            continue;
+        }
+        inc_tofill = &main_pmod->includes[i];
+        break;
+    }
+
+    if (inc_tofill) {
+        inc_tofill->submodule = inc->submodule;
+    } else {
+        LY_ARRAY_NEW_RET(PARSER_CTX(pctx), main_pmod->includes, inc_new, LY_EMEM);
+
+        inc_new->submodule = inc->submodule;
+        DUP_STRING_RET(PARSER_CTX(pctx), inc->name, inc_new->name);
+        DUP_STRING_RET(PARSER_CTX(pctx), inc->dsc, inc_new->dsc);
+        DUP_STRING_RET(PARSER_CTX(pctx), inc->ref, inc_new->ref);
+        /* TODO duplicate extensions */
+        memcpy(inc_new->rev, inc->rev, LY_REV_SIZE);
+        inc_new->injected = 1;
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct ly_ctx *ctx = PARSER_CTX(pctx);
+
+    LY_ARRAY_FOR(pmod->includes, u) {
+        LY_ERR ret = LY_SUCCESS;
+        struct lysp_submodule *submod = NULL;
+        struct lysp_include *inc = &pmod->includes[u];
+
+        if (inc->submodule) {
+            continue;
+        }
+
+        if (pmod->is_submod) {
+            /* try to find the submodule in the main module or its submodules */
+            ret = lysp_get_submodule(pctx, inc);
+            LY_CHECK_RET(ret && ret != LY_ENOT, ret);
+            LY_CHECK_RET(ret == LY_SUCCESS, LY_SUCCESS); /* submodule found in linked with the inc */
+        }
+
+        /* submodule not present in the main module, get the input data and parse it */
+        if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+    search_clb:
+            if (ctx->imp_clb) {
+                const char *submodule_data = NULL;
+                LYS_INFORMAT format = LYS_IN_UNKNOWN;
+                void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
+                struct lysp_load_module_check_data check_data = {0};
+                struct ly_in *in;
+
+                if (ctx->imp_clb(pctx->parsed_mod->mod->name, NULL, inc->name,
+                        inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
+                        &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
+                    LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
+                    check_data.name = inc->name;
+                    check_data.revision = inc->rev[0] ? inc->rev : NULL;
+                    check_data.submoduleof = pctx->parsed_mod->mod->name;
+                    lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
+
+                    /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
+                     * submodule's include into main module, where it is missing */
+                    inc = &pmod->includes[u];
+
+                    ly_in_free(in, 0);
+                    if (submodule_data_free) {
+                        submodule_data_free((void *)submodule_data, ctx->imp_clb_data);
+                    }
                 }
             }
-        }
-        if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-            goto search_file;
-        }
-    } else {
-search_file:
-        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-            /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, NULL, 0, pctx,
-                    pctx->parsed_mod->mod->name, 1, NULL, (void **)&submod);
-        }
-        if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-            goto search_clb;
-        }
-    }
-    if (submod) {
-        if (!inc->rev[0] && (submod->latest_revision == 1)) {
-            /* update the latest_revision flag - here we have selected the latest available schema,
-             * consider that even the callback provides correct latest revision */
-            submod->latest_revision = 2;
-        }
+            if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+                goto search_file;
+            }
+        } else {
+    search_file:
+            if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+                /* submodule was not received from the callback or there is no callback set */
+                lys_module_localfile(ctx, inc->name,
+                        inc->rev[0] ? inc->rev : NULL, NULL, 0, pctx,
+                        pctx->parsed_mod->mod->name, 1, NULL, (void **)&submod);
 
-        inc->submodule = submod;
-    }
-    if (!inc->submodule) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, pctx->parsed_mod->mod->name);
-        return LY_EVALID;
+                /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
+                 * submodule's include into main module, where it is missing */
+                inc = &pmod->includes[u];
+            }
+            if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+                goto search_clb;
+            }
+        }
+        if (submod) {
+            if (!inc->rev[0] && (submod->latest_revision == 1)) {
+                /* update the latest_revision flag - here we have selected the latest available schema,
+                 * consider that even the callback provides correct latest revision */
+                submod->latest_revision = 2;
+            }
+
+            inc->submodule = submod;
+            if (ret == LY_ENOT) {
+                /* the submodule include is not present in YANG 1.0 main module - add it there */
+                LY_CHECK_RET(lysp_inject_submodule(pctx, &pmod->includes[u]));
+            }
+        }
+        if (!inc->submodule) {
+            LOGVAL(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name,
+                    pctx->parsed_mod->is_submod ? ((struct lysp_submodule *)pctx->parsed_mod)->name : pctx->parsed_mod->mod->name);
+            return LY_EVALID;
+        }
     }
 
     return LY_SUCCESS;

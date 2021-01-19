@@ -462,6 +462,9 @@ struct lysp_include {
     const char *ref;                 /**< reference */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule */
+    ly_bool injected;                /**< flag to mark includes copied into main module from submodules,
+                                          only for backward compatibility with YANG 1.0, which does not require the
+                                          main module to include all submodules. */
 };
 
 /**

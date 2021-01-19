@@ -1390,6 +1390,10 @@ yin_print_parsed_linkage(struct ypr_ctx *ctx, const struct lysp_module *modp)
         ypr_close(ctx, "import", 1);
     }
     LY_ARRAY_FOR(modp->includes, u) {
+        if (modp->includes[u].injected) {
+            /* do not print the includes injected from submodules */
+            continue;
+        }
         if (modp->includes[u].rev[0] || modp->includes[u].dsc || modp->includes[u].ref || modp->includes[u].exts) {
             ypr_open(ctx, "include", "module", modp->includes[u].name, 1);
             LEVEL++;
