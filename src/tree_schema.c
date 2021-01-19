@@ -1430,7 +1430,7 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
         dirs->count--;
         wd = (char *)dirs->objs[dirs->count];
         dirs->objs[dirs->count] = NULL;
-        LOGVRB("Searching for \"%s\" in %s.", name, wd);
+        LOGVRB("Searching for \"%s\" in \"%s\".", name, wd);
 
         if (dir) {
             closedir(dir);
