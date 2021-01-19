@@ -69,16 +69,40 @@ lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
 }
 
-void
-lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
+/**
+ * @brief Common function to erase include record in main module and submodule.
+ *
+ * There is a difference since the main module is expected to have the complete list if the included submodules and
+ * the parsed submodule is shared with any include in a submodule. Therefore, the referenced submodules in the include
+ * record are freed only from main module's records.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] include The include record to be erased, the record itself is not freed.
+ * @param[in] main_module Flag to get know if the include record is placed in main module so also the referenced submodule
+ * is supposed to be freed.
+ */
+static void
+lysp_include_free_(struct ly_ctx *ctx, struct lysp_include *include, ly_bool main_module)
 {
-    if (include->submodule) {
+    if (main_module && include->submodule) {
         lysp_module_free((struct lysp_module *)include->submodule);
     }
     FREE_STRING(ctx, include->name);
     FREE_STRING(ctx, include->dsc);
     FREE_STRING(ctx, include->ref);
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
+}
+
+void
+lysp_include_free_submodule(struct ly_ctx *ctx, struct lysp_include *include)
+{
+    return lysp_include_free_(ctx, include, 0);
+}
+
+void
+lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
+{
+    return lysp_include_free_(ctx, include, 1);
 }
 
 void
@@ -423,7 +447,7 @@ lysp_module_free(struct lysp_module *module)
     ctx = module->mod->ctx;
 
     FREE_ARRAY(ctx, module->imports, lysp_import_free);
-    FREE_ARRAY(ctx, module->includes, lysp_include_free);
+    FREE_ARRAY(ctx, module->includes, module->is_submod ? lysp_include_free_submodule : lysp_include_free);
 
     FREE_ARRAY(ctx, module->revs, lysp_revision_free);
     FREE_ARRAY(ctx, module->extensions, lysp_ext_free);

@@ -296,14 +296,16 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
         const char **features, struct lys_glob_unres *unres, struct lys_module **mod);
 
 /**
- * @brief Parse included submodule into the simply parsed YANG module.
+ * @brief Parse included submodules into the simply parsed YANG module.
+ *
+ * YANG 1.0 does not require the main module to include all the submodules. Therefore, parsing submodules can cause
+ * reallocating and extending the includes array in the main module by the submodules included only in submodules.
  *
  * @param[in] pctx main parser context
- * @param[in,out] inc Include structure holding all available information about the include statement, the parsed
- * submodule is stored into this structure.
+ * @param[in] pmod Parsed module with the includes array to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc);
+LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod);
 
 /**
  * @brief Free a parsed restriction.

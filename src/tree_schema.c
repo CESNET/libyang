@@ -751,7 +751,6 @@ static LY_ERR
 lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
 {
     struct lysp_import *imp;
-    struct lysp_include *inc;
     LY_ARRAY_COUNT_TYPE u, v;
 
     pmod->parsing = 1;
@@ -768,12 +767,8 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
             }
         }
     }
-    LY_ARRAY_FOR(pmod->includes, u) {
-        inc = &pmod->includes[u];
-        if (!inc->submodule) {
-            LY_CHECK_RET(lysp_load_submodule(pctx, inc));
-        }
-    }
+    LY_CHECK_RET(lysp_load_submodules(pctx, pmod));
+
     pmod->parsing = 0;
 
     return LY_SUCCESS;
