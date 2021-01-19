@@ -4328,6 +4328,10 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
 
         /* linkage */
         case LY_STMT_INCLUDE:
+            if (submod->version == LYS_VERSION_1_1) {
+                LOGWRN(PARSER_CTX(ctx), "YANG version 1.1 expects all includes in main module, includes in submodules (%s) are not necessary.",
+                        submod->name);
+            }
             LY_CHECK_RET(parse_include(ctx, submod->name, &submod->includes));
             break;
         case LY_STMT_IMPORT:

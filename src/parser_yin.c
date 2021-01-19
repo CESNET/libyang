@@ -3507,6 +3507,10 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
                 ret = yin_parse_import(ctx, (struct import_meta *)subelem->dest);
                 break;
             case LY_STMT_INCLUDE:
+                if ((current_element == LY_STMT_SUBMODULE) && (ctx->parsed_mod->version == LYS_VERSION_1_1)) {
+                    LOGWRN(PARSER_CTX(ctx), "YANG version 1.1 expects all includes in main module, includes in submodules (%s) are not necessary.",
+                            ((struct lysp_submodule *)(ctx->parsed_mod))->name);
+                }
                 ret = yin_parse_include(ctx, (struct include_meta *)subelem->dest);
                 break;
             case LY_STMT_INPUT:
