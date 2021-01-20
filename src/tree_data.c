@@ -1070,6 +1070,7 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
         LOGERR(ctx, LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         return NULL;
     } else if (!data) {
+        LOGERR(ctx, LY_ESYS, "Data file is empty.");
         return NULL;
     }
 
