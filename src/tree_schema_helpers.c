@@ -871,7 +871,14 @@ search_file:
      * module found, make sure it is implemented if should be
      */
     if (implement) {
-        if ((*mod)->implemented) {
+        if (!(*mod)->implemented) {
+            /* implement */
+            ret = lys_set_implemented_r(*mod, features, unres);
+            if (ret) {
+                *mod = NULL;
+                return ret;
+            }
+        } else if (features) {
             /* set features if different */
             ret = lys_set_features((*mod)->parsed, features);
             if (!ret) {
@@ -881,13 +888,6 @@ search_file:
                 /* error */
                 return ret;
             } /* else no feature changes */
-        } else {
-            /* implement */
-            ret = lys_set_implemented_r(*mod, features, unres);
-            if (ret) {
-                *mod = NULL;
-                return ret;
-            }
         }
     }
 

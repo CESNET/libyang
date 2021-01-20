@@ -560,6 +560,9 @@ lys_set_features(struct lysp_module *pmod, const char **features)
     ly_bool change = 0;
 
     if (!features) {
+        /* do not touch the features */
+
+    } else if (!features[0]) {
         /* disable all the features */
         while ((f = lysp_feature_next(f, pmod, &i))) {
             if (f->flags & LYS_FENABLED) {

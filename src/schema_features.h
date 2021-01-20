@@ -47,7 +47,10 @@ LY_ERR lys_enable_features(struct lysp_module *pmod, const char **features);
  * @brief Set the specified features of a parsed module, with all the checks.
  *
  * @param[in] pmod Parsed module to modify.
- * @param[in] features Array of features ended with NULL to set. NULL for all features disabled, '*' for all enabled.
+ * @param[in] features Array of features ended with NULL to be enabled if the module is being implemented.
+ * The feature string '*' enables all and array of length 1 with only the terminating NULL explicitly disables all
+ * the features. In case the parameter is NULL, the features are untouched - left disabled in newly loaded module or
+ * with the current features settings in case the module is already present in the context.
  * @return LY_SUCCESS on success.
  * @return LY_EEXIST if the specified features were already set.
  * @return LY_ERR on error.
