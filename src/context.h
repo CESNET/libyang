@@ -456,7 +456,9 @@ uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
  * @param[in] name Name of the module to load.
  * @param[in] revision Optional revision date of the module. If not specified, the latest revision is loaded.
  * @param[in] features Optional array of features ended with NULL to be enabled if the module is being implemented.
- * NULL for all features disabled and '*' for all enabled.
+ * The feature string '*' enables all and array of length 1 with only the terminating NULL explicitly disables all
+ * the features. In case the parameter is NULL, the features are untouched - left disabled in newly loaded module or
+ * with the current features settings in case the module is already present in the context.
  * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
 const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision,

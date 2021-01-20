@@ -2172,9 +2172,11 @@ const struct lysc_node *lys_find_child(const struct lysc_node *parent, const str
  *
  * @param[in] mod Module to make implemented. It is not an error
  * to provide already implemented module, it just does nothing.
- * @param[in] features Optional array of features ended with NULL to be enabled. NULL for all features disabled
- * and '*' for all enabled. If the module is already implemented, these features are still correctly set and all
- * the modules recompiled.
+ * @param[in] features Optional array of features ended with NULL to be enabled if the module is being implemented.
+ * The feature string '*' enables all and array of length 1 with only the terminating NULL explicitly disables all
+ * the features. In case the parameter is NULL, the features are untouched - left disabled in newly implemented module or
+ * with the current features settings in case the module is already implemented. If the features changes already implemented
+ * module, the context is recompiled.
  * @return LY_SUCCESS on success.
  * @return LY_EDENIED in case the context contains some other revision of the same module which is already implemented.
  * @return LY_ERR on other errors during module compilation.
