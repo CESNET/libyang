@@ -3255,6 +3255,27 @@ lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add)
 }
 
 /**
+ * @brief Get the grouping with the specified name from given groupings sized array.
+ * @param[in] grp Sized array of groupings.
+ * @param[in] name Name of the grouping to find,
+ * @return NULL when there is no grouping with the specified name
+ * @return Pointer to the grouping of the specified @p name.
+ */
+static struct lysp_grp *
+match_grouping(struct lysp_grp *grp, const char *name)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(grp, u) {
+        if (!strcmp(grp[u].name, name)) {
+            return &grp[u];
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Find grouping for a uses.
  *
  * @param[in] ctx Compile context.
@@ -3269,7 +3290,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
 {
     struct lysp_node *pnode;
     struct lysp_grp *grp;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u;
     const char *id, *name, *prefix, *local_pref;
     size_t prefix_len, name_len;
     struct lysp_module *pmod, *found = NULL;
@@ -3284,7 +3305,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
     local_pref = ctx->pmod->is_submod ? ((struct lysp_submodule *)ctx->pmod)->prefix : ctx->pmod->mod->prefix;
     if (!prefix || !ly_strncmp(local_pref, prefix, prefix_len)) {
         /* current module, search local groupings first */
-        pmod = ctx->pmod;
+        pmod = ctx->pmod->mod->parsed; /* make sure that we will start in main_module, not submodule */
         for (pnode = uses_p->parent; !found && pnode; pnode = pnode->parent) {
             grp = (struct lysp_grp *)lysp_node_groupings(pnode);
             LY_ARRAY_FOR(grp, u) {
@@ -3308,26 +3329,13 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
 
     if (!found) {
         /* search in top-level groupings of the main module ... */
-        grp = pmod->groupings;
-        LY_ARRAY_FOR(grp, u) {
-            if (!strcmp(grp[u].name, name)) {
-                grp = &grp[u];
-                found = pmod;
-                break;
-            }
-        }
-        if (!found) {
+        if ((grp = match_grouping(pmod->groupings, name))) {
+            found = pmod;
+        } else {
             /* ... and all the submodules */
             LY_ARRAY_FOR(pmod->includes, u) {
-                grp = pmod->includes[u].submodule->groupings;
-                LY_ARRAY_FOR(grp, v) {
-                    if (!strcmp(grp[v].name, name)) {
-                        grp = &grp[v];
-                        found = (struct lysp_module *)pmod->includes[u].submodule;
-                        break;
-                    }
-                }
-                if (found) {
+                if ((grp = match_grouping(pmod->includes[u].submodule->groupings, name))) {
+                    found = (struct lysp_module *)pmod->includes[u].submodule;
                     break;
                 }
             }
