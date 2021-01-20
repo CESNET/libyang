@@ -638,3 +638,85 @@ test_accessible_tree(void **state)
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
     CHECK_LOG_CTX("Schema node \"l\" not found (\"/cont/ll/act/l\") with context node \"/k:cont/ll/act/l2\".", NULL);
 }
+
+struct module_clb_list {
+    const char *name;
+    const char *data;
+};
+
+static LY_ERR
+module_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod_name,
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    struct module_clb_list *list = (struct module_clb_list *)user_data;
+
+    for (unsigned int i = 0; list[i].data; i++) {
+
+        if ((submod_name && !strcmp(list[i].name, submod_name)) ||
+                (!submod_name && mod_name && !strcmp(list[i].name, mod_name))) {
+            *module_data = list[i].data;
+            *format = LYS_IN_YANG;
+            *free_module_data = NULL;
+            return LY_SUCCESS;
+        }
+    }
+    return LY_EINVAL;
+}
+
+void
+test_includes(void **state)
+{
+    const struct lys_module *mod;
+
+    {
+        /* YANG 1.0 - the missing include sub_a_two in main_a will be injected from sub_a_one */
+        struct module_clb_list list[] = {
+                {"main_a", "module main_a { namespace urn:test:main_a; prefix ma; include sub_a_one;}"},
+                {"sub_a_one", "submodule sub_a_one { belongs-to main_a { prefix ma; } include sub_a_two;}"},
+                {"sub_a_two", "submodule sub_a_two { belongs-to main_a { prefix ma; } }"},
+                {NULL, NULL}
+        };
+        ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+        mod = ly_ctx_load_module(UTEST_LYCTX, "main_a", NULL, NULL);
+        assert_non_null(mod);
+        assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
+        assert_true(mod->parsed->includes[1].injected);
+    }
+
+    {
+        /* YANG 1.1 - the missing include sub_b_two in main_b is error */
+        struct module_clb_list list[] = {
+                {"main_b", "module main_b { yang-version 1.1; namespace urn:test:main_b; prefix mb; include sub_b_one;}"},
+                {"sub_b_one", "submodule sub_b_one { yang-version 1.1; belongs-to main_b { prefix mb; } include sub_b_two;}"},
+                {"sub_b_two", "submodule sub_b_two { yang-version 1.1; belongs-to main_b { prefix mb; } }"},
+                {NULL, NULL}
+        };
+        ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+        mod = ly_ctx_load_module(UTEST_LYCTX, "main_b", NULL, NULL);
+        assert_null(mod);
+        CHECK_LOG_CTX("Loading \"main_b\" module failed.", NULL,
+                "Data model \"main_b\" not found in local searchdirs.", NULL,
+                "Including \"sub_b_one\" submodule into \"main_b\" failed.", NULL,
+                "Data model \"sub_b_one\" not found in local searchdirs.", NULL,
+                "YANG 1.1 requires all submodules to be included from main module. But submodule \"sub_b_one\" includes "
+                "submodule \"sub_b_two\" which is not included by main module \"main_b\".", NULL);
+    }
+
+    {
+        /* YANG 1.1 - all includes are in main_c, includes in submodules are not necessary, so expect warning */
+        struct module_clb_list list[] = {
+                {"main_c", "module main_c { yang-version 1.1; namespace urn:test:main_c; prefix mc; include sub_c_one; include sub_c_two;}"},
+                {"sub_c_one", "submodule sub_c_one { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_two;}"},
+                {"sub_c_two", "submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } }"},
+                {NULL, NULL}
+        };
+        ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+        mod = ly_ctx_load_module(UTEST_LYCTX, "main_c", NULL, NULL);
+        assert_non_null(mod);
+        assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
+        assert_false(mod->parsed->includes[1].injected);
+        /* result is ok, but log includes the warning */
+        CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (sub_c_one) are not necessary.", NULL);
+    }
+}

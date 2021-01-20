@@ -40,6 +40,7 @@ void test_date(void **state);
 void test_revisions(void **state);
 void test_typedef(void **state);
 void test_accessible_tree(void **state);
+void test_includes(void **state);
 
 /* test_schema_stmts.c */
 void test_identity(void **state);
@@ -55,6 +56,7 @@ main(void)
         UTEST(test_revisions),
         UTEST(test_typedef),
         UTEST(test_accessible_tree),
+        UTEST(test_includes),
 
         /** test_schema_stmts.c */
         UTEST(test_identity),
