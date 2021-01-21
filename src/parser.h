@@ -86,7 +86,7 @@ enum LY_IDENT {
 };
 int lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
                      struct lys_module *module, struct lyxml_elem *yin, struct lys_ext_instance ***ext,
-                     uint8_t ext_index, struct unres_schema *unres);
+                     uint8_t *ext_size, struct unres_schema *unres);
 
 int lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_complex *ext,
                               struct lyxml_elem *yin, struct unres_schema *unres);
@@ -161,6 +161,30 @@ const char *lyp_get_yang_data_template_name(const struct lyd_node *node);
 const struct lys_node *lyp_get_yang_data_template(const struct lys_module *module, const char *yang_data_name, int yang_data_name_len);
 
 void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index);
+
+/**
+ * @brief Get extension instances from given parent node
+ *
+ * @param[in] ctx Context with the modules
+ * @param[in] elem Parent of the extension instances
+ * @param[in] elem_type Parent type of the extension instances
+ * @param[out] ext_list Address of the extension instance pointer array
+ * @param[out] ext_size Address of size of the extension instance pointer array
+ * @param[out] stmt Short name of the extension instance parent
+ * @return 0 for success, -1 for failure
+ */
+int lyp_get_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type,
+        struct lys_ext_instance ****ext_list, uint8_t **ext_size, const char **stmt);
+
+/**
+ * @brief Reduce extension instance pointer array
+ *
+ * @param[in] ext Address of the extension instance pointer array
+ * @param[in] new_size New size of the extension instance pointer array
+ * @param[in] orig_size Origin size of the extension instance pointer array
+ * @return 0 for success, -1 for failure
+ */
+void lyp_reduce_ext_list(struct lys_ext_instance ***ext, uint8_t new_size, uint8_t orig_size);
 
 /**
  * @brief Propagate imports and includes into the main module

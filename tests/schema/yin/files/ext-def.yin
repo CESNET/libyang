@@ -18,6 +18,9 @@
   <extension name="complex"/>
   <extension name="complex-arrays"/>
   <extension name="complex-mand"/>
+  <extension name="skipped">
+    <argument name="value"/>
+  </extension>
   <typedef name="mystring">
     <type name="string"/>
   </typedef>

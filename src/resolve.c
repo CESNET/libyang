@@ -4852,6 +4852,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
     struct lys_ext_instance *tmp_ext;
     struct ly_ctx *ctx = NULL;
     LYEXT_TYPE etype;
+    int rt = 0;
 
     switch (info->parent_type) {
     case LYEXT_PAR_NODE:
@@ -4907,10 +4908,14 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
 
         if (e->plugin && e->plugin->check_position) {
             /* common part - we have plugin with position checking function, use it first */
-            if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
+            rt = (*e->plugin->check_position)(info->parent, info->parent_type, info->substmt);
+            if (rt == 1) {
                 /* extension is not allowed here */
                 LOGVAL(ctx, LYE_INSTMT, vlog_type, vlog_node, e->name);
                 return -1;
+            } else if (rt == 2) {
+                *ext = NULL;
+                return EXIT_SUCCESS;
             }
         }
 
@@ -5066,10 +5071,18 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
 
         if (e->plugin && e->plugin->check_position) {
             /* common part - we have plugin with position checking function, use it first */
-            if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
+            rt = (*e->plugin->check_position)(info->parent, info->parent_type, info->substmt);
+            if (rt == 1) {
                 /* extension is not allowed here */
                 LOGVAL(ctx, LYE_INSTMT, vlog_type, vlog_node, e->name);
                 goto error;
+            } else if (rt == 2) {
+                lys_extension_instances_free(ctx, (*ext)->ext, (*ext)->ext_size, NULL);
+                lydict_remove(ctx, (*ext)->arg_value);
+                free(*ext);
+                *ext = NULL;
+                free(ext_prefix);
+                return EXIT_SUCCESS;
             }
         }
 
@@ -5131,9 +5144,10 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             goto error;
         }
 
-        if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
+        if (yang_check_ext_instance(info->mod, &(*ext)->ext, &(*ext)->ext_size, *ext, unres)) {
             goto error;
         }
+
         free(ext_prefix);
     }
 
@@ -6885,6 +6899,21 @@ check_type_union_leafref(struct lys_type *type)
     return type->der->has_union_leafref;
 }
 
+static void
+free_ext_data(struct ly_ctx *ctx, struct unres_ext *ext_data)
+{
+    /* cleanup on success or fatal error */
+    if (ext_data->datatype == LYS_IN_YIN) {
+        /* YIN */
+        lyxml_free(ctx, ext_data->data.yin);
+    } else {
+        /* YANG */
+        yang_free_ext_data(ext_data->data.yang);
+    }
+
+    free(ext_data);
+}
+
 /**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
@@ -7130,7 +7159,7 @@ featurecheckdone:
         ext_data = (struct unres_ext *)str_snode;
         extlist = &(*(struct lys_ext_instance ***)item)[ext_data->ext_index];
         rc = resolve_extension(ext_data, extlist, unres);
-        if (!rc) {
+        if (!rc && extlist[0]) {
             /* success */
             /* is there a callback to be done to finalize the extension? */
             eplugin = extlist[0]->def->plugin;
@@ -7147,17 +7176,6 @@ featurecheckdone:
                     }
                 }
             }
-        }
-        if (!rc || rc == -1) {
-            /* cleanup on success or fatal error */
-            if (ext_data->datatype == LYS_IN_YIN) {
-                /* YIN */
-                lyxml_free(ctx, ext_data->data.yin);
-            } else {
-                /* YANG */
-                yang_free_ext_data(ext_data->data.yang);
-            }
-            free(ext_data);
         }
         break;
     case UNRES_EXT_FINALIZE:
@@ -7348,6 +7366,73 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     }
 }
 
+/**
+ * @brief Save extension instance parent for Compacting later.
+ *
+ * @param[in] ext_parents Extension instance parent set
+ * @param[in] ext_par_types Extension instance parent type list, same size with ext_parents
+ * @param[in] ext_list Extension instance array
+ * @param[in] ext_data Unsolved extension instance data
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+save_skipped_ext_parent(struct ly_set *ext_parents, struct ly_set *ext_par_types,
+        struct lys_ext_instance **ext_list, struct unres_ext *ext_data)
+{
+    int rt;
+
+    if(!ext_list[ext_data->ext_index]) {
+        rt = ly_set_add(ext_parents, ext_data->parent, 0);
+        LY_CHECK_RETURN(rt == -1, rt);
+        if (ext_parents->number != ext_par_types->number) {
+            // a new skipped extension instance parent
+            rt = ly_set_add(ext_par_types, (void *)ext_data->datatype, 1);
+            LY_CHECK_RETURN(rt == -1, rt);
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Remove all NULL items from the extension instance array of given parent.
+ *
+ * @param[in] ctx Context with the modules
+ * @param[in] elem Extension instance parent
+ * @param[in] elem_type Extension instance parent type
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+compact_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type)
+{
+    int rt;
+    uint8_t *ext_size = 0, orig_size, i = 0, j = 0;
+    struct lys_ext_instance ***ext_list = NULL;
+
+    rt = lyp_get_ext_list(ctx, elem, elem_type, &ext_list, &ext_size, NULL);
+    LY_CHECK_RETURN(rt, -1);
+
+    orig_size = *ext_size;
+
+    while (i < *ext_size) {
+        if (!(*ext_list)[i]) {
+            /* this extension is skipped, move all extensions after it */
+            for (j = i; j < *ext_size - 1; j++) {
+                (*ext_list)[j] = (*ext_list)[j + 1];
+            }
+            --(*ext_size);
+        } else {
+            ++i;
+        }
+    }
+
+    lyp_reduce_ext_list(ext_list, *ext_size, orig_size);
+
+    return 0;
+}
+
 static int
 resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, struct ly_ctx *ctx, int forward_ref,
                            int print_all_errors, uint32_t *resolved)
@@ -7356,12 +7441,19 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
     int ret = 0, rc;
     struct ly_err_item *prev_eitem;
     enum int_log_opts prev_ilo;
-    LY_ERR prev_ly_errno;
+    LY_ERR prev_ly_errno = LY_SUCCESS;
+    struct ly_set *ext_parents = NULL, *ext_par_types = NULL;
 
     /* if there can be no forward references, every failure is final, so we can print it directly */
     if (forward_ref) {
         prev_ly_errno = ly_errno;
         ly_ilo_change(ctx, ILO_STORE, &prev_ilo, &prev_eitem);
+    }
+
+    if ((types & UNRES_EXT)) {
+        ext_parents = ly_set_new();
+        ext_par_types = ly_set_new();
+        LY_CHECK_ERR_GOTO(!ext_parents || !ext_par_types, ret = -1, finish);
     }
 
     do {
@@ -7379,6 +7471,19 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     /* to avoid double free */
                     unres->type[i] = UNRES_RESOLVED;
                 }
+
+                if (unres->type[i] == UNRES_EXT) {
+                    if (!rc) {
+                        ret = save_skipped_ext_parent(ext_parents, ext_par_types,
+                                *(struct lys_ext_instance***) unres->item[i],
+                                (struct unres_ext*) unres->str_snode[i]);
+                    }
+                    if (!rc || rc == -1) {
+                        free_ext_data(ctx, unres->str_snode[i]);
+                    }
+                    LY_CHECK_GOTO(ret, finish);
+                }
+
                 if (!rc || (unres->type[i] == UNRES_XPATH)) {
                     /* invalid XPath can never cause an error, only a warning */
                     if (unres->type[i] == UNRES_LIST_UNIQ) {
@@ -7387,6 +7492,7 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     }
 
                     unres->type[i] = UNRES_RESOLVED;
+
                     ++(*resolved);
                     ++res_count;
                 } else if ((rc == EXIT_FAILURE) && forward_ref) {
@@ -7400,7 +7506,8 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     if (forward_ref) {
                         ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
                     }
-                    return -1;
+                    ret = -1;
+                    goto finish;
                 }
             }
         }
@@ -7416,7 +7523,8 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                 resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
             }
         }
-        return -1;
+        ret = -1;
+        goto finish;
     }
 
     if (forward_ref) {
@@ -7425,6 +7533,17 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
         ly_errno = prev_ly_errno;
     }
 
+    if ((types & UNRES_EXT)) {
+        assert(ext_parents->number == ext_par_types->number);
+        for (i = 0; i < ext_parents->number; ++i) {
+            ret = compact_ext_list(ctx, ext_parents->set.g[i], (LYEXT_PAR)ext_parents->set.g[i]);
+            LY_CHECK_GOTO(ret == -1, finish);
+        }
+    }
+
+finish:
+    ly_set_free(ext_parents);
+    ly_set_free(ext_par_types);
     return ret;
 }
 
@@ -7552,6 +7671,9 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
         rc = resolve_unres_schema_item(mod, item, type, snode, unres);
         if (rc != EXIT_FAILURE) {
+            if (type == UNRES_EXT) {
+                free_ext_data(mod->ctx, (struct unres_ext*)snode);
+            }
             ly_ilo_restore(ctx, prev_ilo, prev_eitem, rc == -1 ? 1 : 0);
             if (rc != -1) {
                 /* print warnings here so that they are actually printed */

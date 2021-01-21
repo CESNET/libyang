@@ -3975,3 +3975,133 @@ lyp_get_yang_data_template(const struct lys_module *module, const char *yang_dat
 
     return ret;
 }
+
+int
+lyp_get_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type,
+        struct lys_ext_instance ****ext_list, uint8_t **ext_size, const char **stmt)
+{
+    const char *statement = NULL;
+
+    switch (elem_type) {
+    case LYEXT_PAR_MODULE:
+        *ext_size = &((struct lys_module *)elem)->ext_size;
+        *ext_list = &((struct lys_module *)elem)->ext;
+        statement = ((struct lys_module *)elem)->type ? "submodule" : "module";
+        break;
+    case LYEXT_PAR_IMPORT:
+        *ext_size = &((struct lys_import *)elem)->ext_size;
+        *ext_list = &((struct lys_import *)elem)->ext;
+        statement = "import";
+        break;
+    case LYEXT_PAR_INCLUDE:
+        *ext_size = &((struct lys_include *)elem)->ext_size;
+        *ext_list = &((struct lys_include *)elem)->ext;
+        statement = "include";
+        break;
+    case LYEXT_PAR_REVISION:
+        *ext_size = &((struct lys_revision *)elem)->ext_size;
+        *ext_list = &((struct lys_revision *)elem)->ext;
+        statement = "revision";
+        break;
+    case LYEXT_PAR_NODE:
+        *ext_size = &((struct lys_node *)elem)->ext_size;
+        *ext_list = &((struct lys_node *)elem)->ext;
+        statement = strnodetype(((struct lys_node *)elem)->nodetype);
+        break;
+    case LYEXT_PAR_IDENT:
+        *ext_size = &((struct lys_ident *)elem)->ext_size;
+        *ext_list = &((struct lys_ident *)elem)->ext;
+        statement = "identity";
+        break;
+    case LYEXT_PAR_TYPE:
+        *ext_size = &((struct lys_type *)elem)->ext_size;
+        *ext_list = &((struct lys_type *)elem)->ext;
+        statement = "type";
+        break;
+    case LYEXT_PAR_TYPE_BIT:
+        *ext_size = &((struct lys_type_bit *)elem)->ext_size;
+        *ext_list = &((struct lys_type_bit *)elem)->ext;
+        statement = "bit";
+        break;
+    case LYEXT_PAR_TYPE_ENUM:
+        *ext_size = &((struct lys_type_enum *)elem)->ext_size;
+        *ext_list = &((struct lys_type_enum *)elem)->ext;
+        statement = "enum";
+        break;
+    case LYEXT_PAR_TPDF:
+        *ext_size = &((struct lys_tpdf *)elem)->ext_size;
+        *ext_list = &((struct lys_tpdf *)elem)->ext;
+        statement = "typedef";
+        break;
+    case LYEXT_PAR_EXT:
+        *ext_size = &((struct lys_ext *)elem)->ext_size;
+        *ext_list = &((struct lys_ext *)elem)->ext;
+        statement = "extension";
+        break;
+    case LYEXT_PAR_EXTINST:
+        *ext_size = &((struct lys_ext_instance *)elem)->ext_size;
+        *ext_list = &((struct lys_ext_instance *)elem)->ext;
+        statement = "extension instance";
+        break;
+    case LYEXT_PAR_FEATURE:
+        *ext_size = &((struct lys_feature *)elem)->ext_size;
+        *ext_list = &((struct lys_feature *)elem)->ext;
+        statement = "feature";
+        break;
+    case LYEXT_PAR_REFINE:
+        *ext_size = &((struct lys_refine *)elem)->ext_size;
+        *ext_list = &((struct lys_refine *)elem)->ext;
+        statement = "refine";
+        break;
+    case LYEXT_PAR_RESTR:
+        *ext_size = &((struct lys_restr *)elem)->ext_size;
+        *ext_list = &((struct lys_restr *)elem)->ext;
+        statement = "YANG restriction";
+        break;
+    case LYEXT_PAR_WHEN:
+        *ext_size = &((struct lys_when *)elem)->ext_size;
+        *ext_list = &((struct lys_when *)elem)->ext;
+        statement = "when";
+        break;
+    case LYEXT_PAR_DEVIATE:
+        *ext_size = &((struct lys_deviate *)elem)->ext_size;
+        *ext_list = &((struct lys_deviate *)elem)->ext;
+        statement = "deviate";
+        break;
+    case LYEXT_PAR_DEVIATION:
+        *ext_size = &((struct lys_deviation *)elem)->ext_size;
+        *ext_list = &((struct lys_deviation *)elem)->ext;
+        statement = "deviation";
+        break;
+    default:
+        LOGERR(ctx, LY_EINT, "parent type %d", elem_type);
+        return -1;
+    }
+
+    if (stmt) {
+        *stmt = statement;
+    }
+
+    return 0;
+}
+
+inline void
+lyp_reduce_ext_list(struct lys_ext_instance ***ext, uint8_t new_size, uint8_t orig_size)
+{
+    struct lys_ext_instance **tmp;
+
+    if (new_size != orig_size) {
+        if (new_size == 0) {
+            free(*ext);
+            *ext = NULL;
+        } else {
+            tmp = realloc(*ext, new_size * sizeof(*tmp));
+            if (!tmp) {
+                /* we just reduce the size, so this failure is harmless. */
+                return;
+            }
+            *ext = tmp;
+        }
+    }
+}
+

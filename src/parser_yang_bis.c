@@ -7865,7 +7865,7 @@ yyreduce:
        if (yang_fill_type(trg, &tpdf->type, (struct yang_type *)tpdf->type.der, tpdf, param->unres)) {
          yang_type_free(trg->ctx, &tpdf->type);
        }
-       if (yang_check_ext_instance(trg, &tpdf->ext, tpdf->ext_size, tpdf, param->unres)) {
+       if (yang_check_ext_instance(trg, &tpdf->ext, &tpdf->ext_size, tpdf, param->unres)) {
          YYABORT;
        }
        if (unres_schema_add_node(trg, param->unres, &tpdf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)ext_instance) == -1) {
@@ -8052,7 +8052,7 @@ yyreduce:
        if (yang_fill_iffeature(trg, iffeature, ext_instance, s, param->unres, 0)) {
          YYABORT;
        }
-       if (yang_check_ext_instance(trg, &iffeature->ext, iffeature->ext_size, iffeature, param->unres)) {
+       if (yang_check_ext_instance(trg, &iffeature->ext, &iffeature->ext_size, iffeature, param->unres)) {
          YYABORT;
        }
        s = NULL;
@@ -8061,7 +8061,7 @@ yyreduce:
     break;
 
   case 823:
-     { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[-2].v))->ext, ((struct lys_restr *)(yyvsp[-2].v))->ext_size, (yyvsp[-2].v), param->unres)) {
+     { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[-2].v))->ext, &((struct lys_restr *)(yyvsp[-2].v))->ext_size, (yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
        actual = ext_instance;
@@ -8069,7 +8069,7 @@ yyreduce:
     break;
 
   case 824:
-     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)(yyvsp[-2].v))->ext, (*(struct lys_when **)(yyvsp[-2].v))->ext_size,
+     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)(yyvsp[-2].v))->ext, &(*(struct lys_when **)(yyvsp[-2].v))->ext_size,
                                    *(struct lys_when **)(yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
@@ -8086,7 +8086,7 @@ yyreduce:
            break;
          }
        }
-       if (yang_check_ext_instance(trg, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext_size,
+       if (yang_check_ext_instance(trg, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext_size,
                                    &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index], param->unres)) {
          YYABORT;
        }
