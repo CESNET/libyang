@@ -4084,3 +4084,24 @@ lyp_get_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type,
 
     return 0;
 }
+
+inline void
+lyp_reduce_ext_list(struct lys_ext_instance ***ext, uint8_t new_size, uint8_t orig_size)
+{
+    struct lys_ext_instance **tmp;
+
+    if (new_size != orig_size) {
+        if (new_size == 0) {
+            free(*ext);
+            *ext = NULL;
+        } else {
+            tmp = realloc(*ext, new_size * sizeof(*tmp));
+            if (!tmp) {
+                /* we just reduce the size, so this failure is harmless. */
+                return;
+            }
+            *ext = tmp;
+        }
+    }
+}
+

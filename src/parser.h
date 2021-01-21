@@ -177,6 +177,16 @@ int lyp_get_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type,
         struct lys_ext_instance ****ext_list, uint8_t **ext_size, const char **stmt);
 
 /**
+ * @brief Reduce extension instance pointer array
+ *
+ * @param[in] ext Address of the extension instance pointer array
+ * @param[in] new_size New size of the extension instance pointer array
+ * @param[in] orig_size Origin size of the extension instance pointer array
+ * @return 0 for success, -1 for failure
+ */
+void lyp_reduce_ext_list(struct lys_ext_instance ***ext, uint8_t new_size, uint8_t orig_size);
+
+/**
  * @brief Propagate imports and includes into the main module
  *
  * @param module Main module

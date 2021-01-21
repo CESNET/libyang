@@ -3339,7 +3339,7 @@ yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ex
 {
     struct unres_ext *info;
     struct lys_ext_instance **ext_list = *ext;
-    uint8_t i = 0, j, orig_size = *size;
+    uint8_t i = 0, orig_size = *size;
     int rc;
 
     while (i < *size) {
@@ -3367,16 +3367,7 @@ yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ex
         }
     }
 
-    if (*size != orig_size) {
-        if (*size == 0) {
-            free(*ext);
-            *ext = NULL;
-        } else {
-            ext_list = realloc(*ext, (*size) * sizeof(*ext_list));
-            LY_CHECK_ERR_RETURN(!ext_list, LOGMEM(module->ctx), EXIT_FAILURE);
-            *ext = ext_list;
-        }
-    }
+    lyp_reduce_ext_list(ext, *size, orig_size);
 
     return EXIT_SUCCESS;
 }

@@ -5077,6 +5077,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
                 LOGVAL(ctx, LYE_INSTMT, vlog_type, vlog_node, e->name);
                 goto error;
             } else if (rt == 2) {
+                lys_extension_instances_free(ctx, (*ext)->ext, (*ext)->ext_size, NULL);
                 lydict_remove(ctx, (*ext)->arg_value);
                 free(*ext);
                 *ext = NULL;
@@ -7402,7 +7403,7 @@ compact_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type)
 {
     int rt;
     uint8_t *ext_size = 0, orig_size, i = 0, j = 0;
-    struct lys_ext_instance ***ext_list = NULL, **ext;
+    struct lys_ext_instance ***ext_list = NULL;
 
     rt = lyp_get_ext_list(ctx, elem, elem_type, &ext_list, &ext_size, NULL);
     LY_CHECK_RETURN(rt, -1);
@@ -7421,16 +7422,7 @@ compact_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type)
         }
     }
 
-    if (*ext_size != orig_size) {
-        if (*ext_size == 0) {
-            free(*ext_list);
-            *ext_list = NULL;
-        } else {
-            ext = realloc(*ext_list, (*ext_size) * sizeof(*ext_list));
-            LY_CHECK_ERR_RETURN(!ext, LOGMEM(ctx), -1);
-            *ext_list = ext;
-        }
-    }
+    lyp_reduce_ext_list(ext_list, *ext_size, orig_size);
 
     return 0;
 }

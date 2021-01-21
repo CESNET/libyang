@@ -186,6 +186,8 @@ parseext:
             return EXIT_FAILURE;
         }
 
+        lyp_reduce_ext_list(ext, *ext_size, 1 + (*ext_size));
+
         /* done - do not free the child, it is unlinked in lyp_yin_fill_ext */
     }
 
@@ -244,6 +246,8 @@ error:
                 return EXIT_FAILURE;
             }
         }
+
+        lyp_reduce_ext_list(&iffeat->ext, iffeat->ext_size, c_ext + iffeat->ext_size);
     }
 
     return EXIT_SUCCESS;
@@ -343,6 +347,8 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
             }
         }
     }
+
+    lyp_reduce_ext_list(&ident->ext, ident->ext_size, c_ext + ident->ext_size);
 
     return EXIT_SUCCESS;
 
@@ -544,6 +550,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         }
+
+        lyp_reduce_ext_list(&type->ext, type->ext_size, c_ext + type->ext_size);
     }
 
     switch (type->base) {
@@ -1645,6 +1653,8 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
                 goto error;
             }
         }
+
+        lyp_reduce_ext_list(&tpdf->ext, tpdf->ext_size, c_ext + tpdf->ext_size);
     }
 
     for (i = 0; i < tpdf->ext_size; ++i) {
@@ -1736,6 +1746,8 @@ fill_yin_extension(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
         }
+
+        lyp_reduce_ext_list(&ext->ext, ext->ext_size, c_ext + ext->ext_size);
     }
 
     /* search for plugin */
@@ -1811,6 +1823,8 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
             }
         }
     }
+
+    lyp_reduce_ext_list(&f->ext, f->ext_size, c_ext + f->ext_size);
 
     /* check for circular dependencies */
     if (f->iffeature_size) {
@@ -2093,7 +2107,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 {
     const char *value, **stritem;
     struct lyxml_elem *next, *next2, *child, *develem;
-    int c_dev = 0, c_must, c_uniq, c_dflt, c_ext = 0;
+    int c_dev = 0, c_must, c_uniq, c_dflt, c_ext = 0, c_ext2;
     int f_min = 0, f_max = 0; /* flags */
     int i, j, k = 0, rc;
     unsigned int u;
@@ -2221,7 +2235,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         c_must = 0;
         c_uniq = 0;
         c_dflt = 0;
-        c_ext = 0;
+        c_ext2 = 0;
 
         /* get deviation type */
         GETVAL(ctx, value, develem, "value");
@@ -2307,8 +2321,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 continue;
             } else if  (strcmp(child->ns->value, LY_NSYIN)) {
                 /* extensions */
-                YIN_CHECK_ARRAY_OVERFLOW_GOTO(ctx, c_ext, d->ext_size, "extensions", "deviate", error);
-                c_ext++;
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(ctx, c_ext2, d->ext_size, "extensions", "deviate", error);
+                c_ext2++;
             } else if (d->mod == LY_DEVIATE_NO) {
                 /* no YIN substatement expected in this case */
                 LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
@@ -2744,14 +2758,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             d->dflt = calloc(c_dflt, sizeof *d->dflt);
             LY_CHECK_ERR_GOTO(!d->dflt, LOGMEM(ctx), error);
         }
-        if (c_ext) {
+        if (c_ext2) {
             /* some extensions may be already present from the substatements */
-            reallocated = realloc(d->ext, (c_ext + d->ext_size) * sizeof *d->ext);
+            reallocated = realloc(d->ext, (c_ext2 + d->ext_size) * sizeof *d->ext);
             LY_CHECK_ERR_GOTO(!reallocated, LOGMEM(ctx), error);
             d->ext = reallocated;
 
             /* init memory */
-            memset(&d->ext[d->ext_size], 0, c_ext * sizeof *d->ext);
+            memset(&d->ext[d->ext_size], 0, c_ext2 * sizeof *d->ext);
         }
 
         /* process deviation properties with 0..n cardinality */
@@ -3008,6 +3022,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             }
         }
 
+        lyp_reduce_ext_list(&d->ext, d->ext_size, c_ext2 + d->ext_size);
+
         if (c_dflt && dev_target->nodetype == LYS_LEAFLIST && d->mod == LY_DEVIATE_DEL) {
             /* consolidate the final list in the target after removing items from it */
             llist = (struct lys_node_leaflist *)dev_target;
@@ -3020,6 +3036,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             llist->dflt_size = i + 1;
         }
     }
+
+    lyp_reduce_ext_list(&dev->ext, dev->ext_size, c_ext + dev->ext_size);
 
     /* now check whether default value, if any, matches the type */
     if (!(ctx->models.flags & LY_CTX_TRUSTED)) {
@@ -3189,6 +3207,8 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             lyxml_free(ctx, sub);
         }
     }
+
+    lyp_reduce_ext_list(&aug->ext, aug->ext_size, c_ext + aug->ext_size);
 
     /* aug->child points to the parsed nodes, they must now be
      * connected to the tree and adjusted (if possible right now).
@@ -3583,6 +3603,8 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
         }
     }
 
+    lyp_reduce_ext_list(&rfn->ext, rfn->ext_size, c_ext + rfn->ext_size);
+
     return EXIT_SUCCESS;
 
 error:
@@ -3689,6 +3711,8 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
                 goto error;
             }
         }
+
+        lyp_reduce_ext_list(&imp->ext, imp->ext_size, c_ext + imp->ext_size);
     }
 
     GETVAL(ctx, value, yin, "module");
@@ -3790,6 +3814,8 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
                 goto error;
             }
         }
+
+        lyp_reduce_ext_list(&inc->ext, inc->ext_size, c_ext + inc->ext_size);
     }
 
     GETVAL(ctx, value, yin, "module");
@@ -4136,6 +4162,8 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -4353,6 +4381,8 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         }
     }
 
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
+
     /* check - default is prohibited in combination with mandatory */
     if (dflt && (choice->flags & LYS_MAND_TRUE)) {
         LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "default", "choice");
@@ -4520,6 +4550,8 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
             }
         }
     }
+
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
 
     /* check XPath dependencies */
     if (!(ctx->models.flags & LY_CTX_TRUSTED) && (anyxml->when || anyxml->must)) {
@@ -4726,6 +4758,8 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
     }
+
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
 
     /* finalize type parsing */
     if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, retval) == -1) {
@@ -5029,6 +5063,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             llist->dflt[llist->dflt_size++] = lydict_insert(ctx, value, strlen(value));
         }
     }
+
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
 
     /* finalize type parsing */
     if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, retval) == -1) {
@@ -5359,6 +5395,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -5611,6 +5649,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -5773,6 +5813,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
             }
         }
     }
+
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
 
     /* last part - process data nodes */
     if (!root.child) {
@@ -5941,6 +5983,8 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
             }
         }
     }
+
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
 
     /* last part - process data nodes */
     options |= LYS_PARSE_OPT_CFG_IGNORE;
@@ -6121,6 +6165,8 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
     }
 
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
+
     /* last part - process data nodes */
     options |= LYS_PARSE_OPT_CFG_IGNORE;
     LY_TREE_FOR_SAFE(root.child, next, sub) {
@@ -6299,6 +6345,8 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
         }
     }
 
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "grouping")) {
@@ -6447,6 +6495,8 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
     }
+
+    lyp_reduce_ext_list(&retval->ext, retval->ext_size, c_ext + retval->ext_size);
 
     if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
         goto error;
@@ -7059,6 +7109,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
         }
+
+        lyp_reduce_ext_list(&trg->ext, trg->ext_size, c_ext + trg->ext_size);
     }
 
     /* process data nodes. Start with groupings to allow uses
