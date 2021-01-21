@@ -4646,7 +4646,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        if (yang_fill_type(trg, &tpdf->type, (struct yang_type *)tpdf->type.der, tpdf, param->unres)) {
          yang_type_free(trg->ctx, &tpdf->type);
        }
-       if (yang_check_ext_instance(trg, &tpdf->ext, tpdf->ext_size, tpdf, param->unres)) {
+       if (yang_check_ext_instance(trg, &tpdf->ext, &tpdf->ext_size, tpdf, param->unres)) {
          YYABORT;
        }
        if (unres_schema_add_node(trg, param->unres, &tpdf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)ext_instance) == -1) {
@@ -4796,7 +4796,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        if (yang_fill_iffeature(trg, iffeature, ext_instance, s, param->unres, 0)) {
          YYABORT;
        }
-       if (yang_check_ext_instance(trg, &iffeature->ext, iffeature->ext_size, iffeature, param->unres)) {
+       if (yang_check_ext_instance(trg, &iffeature->ext, &iffeature->ext_size, iffeature, param->unres)) {
          YYABORT;
        }
        s = NULL;
@@ -4804,13 +4804,13 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
      }
   |  ext_substatements argument_stmt stmtsep
   |  ext_substatements restriction_ext_alloc restriction_ext_stmt stmtsep
-     { if (yang_check_ext_instance(trg, &((struct lys_restr *)$2)->ext, ((struct lys_restr *)$2)->ext_size, $2, param->unres)) {
+     { if (yang_check_ext_instance(trg, &((struct lys_restr *)$2)->ext, &((struct lys_restr *)$2)->ext_size, $2, param->unres)) {
          YYABORT;
        }
        actual = ext_instance;
      }
   |  ext_substatements when_ext_alloc when_stmt stmtsep
-     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)$2)->ext, (*(struct lys_when **)$2)->ext_size,
+     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)$2)->ext, &(*(struct lys_when **)$2)->ext_size,
                                    *(struct lys_when **)$2, param->unres)) {
          YYABORT;
        }
@@ -4825,7 +4825,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
            break;
          }
        }
-       if (yang_check_ext_instance(trg, &$2.revision[$2.index]->ext, $2.revision[$2.index]->ext_size,
+       if (yang_check_ext_instance(trg, &$2.revision[$2.index]->ext, &$2.revision[$2.index]->ext_size,
                                    &$2.revision[$2.index], param->unres)) {
          YYABORT;
        }

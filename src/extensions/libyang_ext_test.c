@@ -45,6 +45,13 @@ int libyang_ext_test_position(const void * UNUSED(parent), LYEXT_PAR UNUSED(pare
     return 0;
 }
 
+int libyang_ext_skipped_position(const void * UNUSED(parent), LYEXT_PAR UNUSED(parent_type),
+                              LYEXT_SUBSTMT UNUSED(substmt_type))
+{
+    /* skip extension instance */
+    return 2;
+}
+
 struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_ARGUMENT,      0,                       LY_STMT_CARD_OPT}, /* const char* + uint8_t */
     {LY_STMT_BASE,          1 * sizeof(const char*) + 1 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* const char* */
@@ -225,6 +232,15 @@ struct lyext_plugin_complex libyang_ext_test_mand_p = {
     .instance_size = (sizeof(struct lys_ext_instance_complex) - 1) + 5 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t)
 };
 
+struct lyext_plugin libyang_ext_test_skipped = {
+    .type = LYEXT_FLAG,
+    .flags = 0,
+    .check_position = &libyang_ext_skipped_position,
+    .check_result = NULL,
+    .check_inherit = NULL,
+    .valid_data = NULL
+};
+
 /**
  * @brief list of all extension plugins implemented here
  *
@@ -234,5 +250,6 @@ struct lyext_plugin_list libyang_ext_test[] = {
     {"ext-def", "2017-01-18", "complex", (struct lyext_plugin*)&libyang_ext_test_p},
     {"ext-def", "2017-01-18", "complex-arrays", (struct lyext_plugin*)&libyang_ext_test_arrays_p},
     {"ext-def", "2017-01-18", "complex-mand", (struct lyext_plugin*)&libyang_ext_test_mand_p},
+    {"ext-def", "2017-01-18", "skipped", (struct lyext_plugin*)&libyang_ext_test_skipped},
     {NULL, NULL, NULL, NULL} /* terminating item */
 };
