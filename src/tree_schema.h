@@ -1512,6 +1512,7 @@ struct lysc_action {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node - RPC) */
+    void *priv;                      /** private arbitrary user data, not used by libyang */
 
     struct lysc_ext_instance *input_exts;  /**< list of the extension instances of input ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *output_exts; /**< list of the extension instances of outpu ([sized array](@ref sizedarrays)) */
@@ -1524,8 +1525,6 @@ struct lysc_action {
     struct lysc_action_inout input;  /**< RPC's/action's input */
     struct lysc_action_inout output; /**< RPC's/action's output */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /** private arbitrary user data, not used by libyang */
-
 };
 
 struct lysc_notif {
@@ -1534,6 +1533,7 @@ struct lysc_notif {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /** private arbitrary user data, not used by libyang */
 
     struct lysc_node *data;          /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1543,7 +1543,6 @@ struct lysc_notif {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /** private arbitrary user data, not used by libyang */
 };
 
 /**
@@ -1555,6 +1554,7 @@ struct lysc_node {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1565,7 +1565,6 @@ struct lysc_node {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 };
 
 struct lysc_node_container {
@@ -1574,6 +1573,7 @@ struct lysc_node_container {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1584,7 +1584,6 @@ struct lysc_node_container {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1598,6 +1597,7 @@ struct lysc_node_case {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1608,7 +1608,6 @@ struct lysc_node_case {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
                                           each other as siblings with the parent pointer pointing to appropriate case node. */
@@ -1620,6 +1619,7 @@ struct lysc_node_choice {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1630,7 +1630,6 @@ struct lysc_node_choice {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
                                           as siblings. Their parent pointers points to the specific case they belongs to, so distinguish the
@@ -1644,6 +1643,7 @@ struct lysc_node_leaf {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1654,7 +1654,6 @@ struct lysc_node_leaf {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
@@ -1669,6 +1668,7 @@ struct lysc_node_leaflist {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1679,7 +1679,6 @@ struct lysc_node_leaflist {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
@@ -1698,6 +1697,7 @@ struct lysc_node_list {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1708,7 +1708,6 @@ struct lysc_node_list {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1726,6 +1725,7 @@ struct lysc_node_anydata {
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1736,7 +1736,6 @@ struct lysc_node_anydata {
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
