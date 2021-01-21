@@ -1468,7 +1468,7 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
         return NULL;
     }
 
-    children = lysc_node_children_p((struct lysc_node *)node, flags);
+    children = lysc_node_children_p(node, flags);
     if (children) {
         return *children;
     } else {
@@ -1479,30 +1479,19 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
 API const struct lysc_node *
 lysc_node_children_full(const struct lysc_node *node, uint16_t flags)
 {
-    switch (node->nodetype) {
-    case LYS_CONTAINER:
-        return ((struct lysc_node_container *)node)->child;
-    case LYS_CHOICE:
-        return (struct lysc_node *)((struct lysc_node_choice *)node)->cases;
-    case LYS_CASE:
-        return ((struct lysc_node_case *)node)->child;
-    case LYS_LIST:
-        return ((struct lysc_node_list *)node)->child;
-    case LYS_RPC:
-    case LYS_ACTION:
+    if (!node) {
+        return NULL;
+    }
+
+    if (node->nodetype == LYS_RPC || node->nodetype == LYS_ACTION) {
         if (flags & LYS_CONFIG_R) {
             return (struct lysc_node *)&((struct lysc_action *)node)->output;
         } else {
             /* LYS_CONFIG_W, but also the default case */
             return (struct lysc_node *)&((struct lysc_action *)node)->input;
         }
-    case LYS_INPUT:
-    case LYS_OUTPUT:
-        return ((struct lysc_action_inout *)node)->data;
-    case LYS_NOTIF:
-        return ((struct lysc_notif *)node)->data;
-    default:
-        return NULL;
+    } else {
+        return lysc_node_children(node, flags);
     }
 }
 
