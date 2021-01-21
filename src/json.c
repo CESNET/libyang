@@ -170,7 +170,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
              * (one-char) entities and character references */
             if (len + offset + 4 >= size) {
                 size_t increment;
-                for (increment = BUFSIZE_STEP; len + offset + 4 >= size + increment; increment += BUFSIZE_STEP) ;
+                for (increment = BUFSIZE_STEP; len + offset + 4 >= size + increment; increment += BUFSIZE_STEP) {}
                 buf = ly_realloc(buf, size + increment);
                 LY_CHECK_ERR_RET(!buf, LOGMEM(jsonctx->ctx), LY_EMEM);
                 size += BUFSIZE_STEP;

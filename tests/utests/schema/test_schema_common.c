@@ -672,10 +672,10 @@ test_includes(void **state)
     {
         /* YANG 1.0 - the missing include sub_a_two in main_a will be injected from sub_a_one */
         struct module_clb_list list[] = {
-                {"main_a", "module main_a { namespace urn:test:main_a; prefix ma; include sub_a_one;}"},
-                {"sub_a_one", "submodule sub_a_one { belongs-to main_a { prefix ma; } include sub_a_two;}"},
-                {"sub_a_two", "submodule sub_a_two { belongs-to main_a { prefix ma; } }"},
-                {NULL, NULL}
+            {"main_a", "module main_a { namespace urn:test:main_a; prefix ma; include sub_a_one;}"},
+            {"sub_a_one", "submodule sub_a_one { belongs-to main_a { prefix ma; } include sub_a_two;}"},
+            {"sub_a_two", "submodule sub_a_two { belongs-to main_a { prefix ma; } }"},
+            {NULL, NULL}
         };
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_a", NULL, NULL);
@@ -687,10 +687,10 @@ test_includes(void **state)
     {
         /* YANG 1.1 - the missing include sub_b_two in main_b is error */
         struct module_clb_list list[] = {
-                {"main_b", "module main_b { yang-version 1.1; namespace urn:test:main_b; prefix mb; include sub_b_one;}"},
-                {"sub_b_one", "submodule sub_b_one { yang-version 1.1; belongs-to main_b { prefix mb; } include sub_b_two;}"},
-                {"sub_b_two", "submodule sub_b_two { yang-version 1.1; belongs-to main_b { prefix mb; } }"},
-                {NULL, NULL}
+            {"main_b", "module main_b { yang-version 1.1; namespace urn:test:main_b; prefix mb; include sub_b_one;}"},
+            {"sub_b_one", "submodule sub_b_one { yang-version 1.1; belongs-to main_b { prefix mb; } include sub_b_two;}"},
+            {"sub_b_two", "submodule sub_b_two { yang-version 1.1; belongs-to main_b { prefix mb; } }"},
+            {NULL, NULL}
         };
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_b", NULL, NULL);
@@ -706,10 +706,10 @@ test_includes(void **state)
     {
         /* YANG 1.1 - all includes are in main_c, includes in submodules are not necessary, so expect warning */
         struct module_clb_list list[] = {
-                {"main_c", "module main_c { yang-version 1.1; namespace urn:test:main_c; prefix mc; include sub_c_one; include sub_c_two;}"},
-                {"sub_c_one", "submodule sub_c_one { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_two;}"},
-                {"sub_c_two", "submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } }"},
-                {NULL, NULL}
+            {"main_c", "module main_c { yang-version 1.1; namespace urn:test:main_c; prefix mc; include sub_c_one; include sub_c_two;}"},
+            {"sub_c_one", "submodule sub_c_one { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_two;}"},
+            {"sub_c_two", "submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } }"},
+            {NULL, NULL}
         };
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_c", NULL, NULL);

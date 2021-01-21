@@ -1039,7 +1039,7 @@ lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
 
         /* submodule not present in the main module, get the input data and parse it */
         if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-    search_clb:
+search_clb:
             if (ctx->imp_clb) {
                 const char *submodule_data = NULL;
                 LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -1070,7 +1070,7 @@ lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
                 goto search_file;
             }
         } else {
-    search_file:
+search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
                 lys_module_localfile(ctx, inc->name,
@@ -1780,8 +1780,8 @@ lysc_data_node(const struct lysc_node *schema)
     const struct lysc_node *parent;
 
     parent = schema;
-    while (parent && !(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC
-            | LYS_ACTION | LYS_NOTIF))) {
+    while (parent && !(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC |
+            LYS_ACTION | LYS_NOTIF))) {
         parent = lysc_node_parent_full(parent);
     }
 

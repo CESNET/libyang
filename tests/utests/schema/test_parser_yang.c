@@ -477,6 +477,7 @@ test_minmax(void **state)
     uint16_t flags = 0;
     uint32_t value = 0;
     struct lysp_ext_instance *ext = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     in.current = " 1invalid; ...";
@@ -950,6 +951,7 @@ static void
 test_container(void **state)
 {
     struct lysp_node_container *c = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1052,6 +1054,7 @@ static void
 test_leaflist(void **state)
 {
     struct lysp_node_leaflist *ll = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1118,6 +1121,7 @@ static void
 test_list(void **state)
 {
     struct lysp_node_list *l = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1168,6 +1172,7 @@ static void
 test_choice(void **state)
 {
     struct lysp_node_choice *ch = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1205,6 +1210,7 @@ static void
 test_case(void **state)
 {
     struct lysp_node_case *cs = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1238,6 +1244,7 @@ static void
 test_any(void **state, enum ly_stmt kw)
 {
     struct lysp_node_anydata *any = NULL;
+
     if (kw == LY_STMT_ANYDATA) {
         YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
     } else {
@@ -1285,6 +1292,7 @@ static void
 test_grouping(void **state)
 {
     struct lysp_grp *grp = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1331,6 +1339,7 @@ test_action(void **state)
 {
     struct lysp_action *rpcs = NULL;
     struct lysp_node_container *c = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1398,6 +1407,7 @@ test_notification(void **state)
 {
     struct lysp_notif *notifs = NULL;
     struct lysp_node_container *c = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1447,6 +1457,7 @@ static void
 test_uses(void **state)
 {
     struct lysp_node_uses *u = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1475,6 +1486,7 @@ static void
 test_augment(void **state)
 {
     struct lysp_augment *a = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
@@ -1511,6 +1523,7 @@ static void
 test_when(void **state)
 {
     struct lysp_when *w = NULL;
+
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
