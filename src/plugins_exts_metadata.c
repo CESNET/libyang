@@ -33,15 +33,15 @@ LYEXT_VERSION_CHECK
 #define ANNOTATION_SUBSTMT_DSC     4
 #define ANNOTATION_SUBSTMT_REF     5
 
-struct lysc_ext_substmt annotation_substmt[] = {
-    {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL},
-    {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL},
-    {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL},
-    {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL},
-    {LY_STMT_DESCRIPTION, LY_STMT_CARD_OPT, NULL},
-    {LY_STMT_REFERENCE, LY_STMT_CARD_OPT, NULL},
-    {0, 0, 0} /* terminating item */
-};
+#define INIT_ANNOTATION_SUBSTMT { \
+    {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL}, \
+    {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL}, \
+    {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL}, \
+    {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL}, \
+    {LY_STMT_DESCRIPTION, LY_STMT_CARD_OPT, NULL}, \
+    {LY_STMT_REFERENCE, LY_STMT_CARD_OPT, NULL}, \
+    {0, 0, 0} /* terminating item */ \
+} \
 
 /**
  * @brief Compile annotation extension instances.
@@ -54,6 +54,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     struct lyext_metadata *annotation;
     struct lysc_module *mod_c;
     LY_ARRAY_COUNT_TYPE u;
+    struct lysc_ext_substmt annotation_substmt[] = INIT_ANNOTATION_SUBSTMT;
 
     /* annotations can appear only at the top level of a YANG module or submodule */
     if (c_ext->parent_type != LYEXT_PAR_MODULE) {
@@ -101,6 +102,8 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 void
 annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
+    struct lysc_ext_substmt annotation_substmt[] = INIT_ANNOTATION_SUBSTMT;
+
     if (!ext->data) {
         return;
     }
