@@ -72,6 +72,20 @@ free_mlist(struct mlist **mlist) {
     }
 }
 
+inline static int
+is_netconf_filter(const struct lyd_node *node)
+{
+    return !strcmp(node->schema->name, "filter")
+            && (!strcmp(node->schema->module->name, "ietf-netconf")
+                    || !strcmp(node->schema->module->name, "notifications"));
+}
+
+inline static int
+is_type_or_select(const struct lyd_attr *attr)
+{
+    return (!strcmp(attr->name, "type") || !strcmp(attr->name, "select"));
+}
+
 static void
 xml_print_ns(struct lyout *out, const struct lyd_node *node, struct mlist **mlist, int options)
 {
@@ -86,9 +100,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, struct mlist **mlis
 
     /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
-        if (!strcmp(node->schema->name, "filter") &&
-                (!strcmp(node->schema->module->name, "ietf-netconf") ||
-                 !strcmp(node->schema->module->name, "notifications"))) {
+        if (is_netconf_filter(node) && is_type_or_select(attr)) {
             /* exception for NETCONF's filter attributes */
             continue;
         } else {
@@ -127,9 +139,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, struct mlist **mlis
         LY_TREE_FOR(node->child, node2) {
             LY_TREE_DFS_BEGIN(node2, next, cur) {
                 for (attr = cur->attr; attr; attr = attr->next) {
-                    if (!strcmp(cur->schema->name, "filter") &&
-                            (!strcmp(cur->schema->module->name, "ietf-netconf") ||
-                             !strcmp(cur->schema->module->name, "notifications"))) {
+                    if (is_netconf_filter(cur) && is_type_or_select(attr)) {
                         /* exception for NETCONF's filter attributes */
                         continue;
                     } else {
@@ -167,7 +177,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     const char *xml_expr = NULL, *mod_name;
     char *ident_val;
     uint32_t ns_count, i;
-    int rpc_filter = 0;
+    int is_nc_filter = 0;
     size_t len;
     const struct lys_module *wdmod = NULL;
 
@@ -187,9 +197,8 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
         }
     }
     /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
-    if (!strcmp(node->schema->name, "filter")
-            && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
-        rpc_filter = 1;
+    if (is_netconf_filter(node)) {
+        is_nc_filter = 1;
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
@@ -225,7 +234,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
         }
 
 normal_print:
-        if (rpc_filter) {
+        if (is_nc_filter && is_type_or_select(attr)) {
             /* exception for NETCONF's filter's attributes */
             if (!strcmp(attr->name, "select")) {
                 /* xpath content, we have to convert the JSON format into XML first */
