@@ -83,7 +83,7 @@ LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, str
 LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_grp **groupings);
+LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
 
 /**
  * @brief Add another character to dynamic buffer, a low-level function.
@@ -2617,12 +2617,13 @@ checks:
  */
 static LY_ERR
 parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_node *parent,
-        struct lysp_action_inout *inout_p)
+        struct lysp_node_action_inout *inout_p)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
     size_t word_len;
     enum ly_stmt kw;
+    ly_bool input = &((struct lysp_node_action *)parent)->input == inout_p ? 1 : 0;
 
     if (inout_p->nodetype) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(inout_kw));
@@ -2630,7 +2631,8 @@ parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_
     }
 
     /* initiate structure */
-    inout_p->nodetype = &((struct lysp_action *)parent)->input == inout_p ? LYS_INPUT : LYS_OUTPUT;
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), input ? "input" : "output", 0, &inout_p->name));
+    inout_p->nodetype = input ? LYS_INPUT : LYS_OUTPUT;
     inout_p->parent = parent;
 
     /* parse substatements */
@@ -2681,9 +2683,6 @@ parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_
     LY_CHECK_RET(ret);
 
 checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, inout_p->groupings, NULL, NULL, NULL));
-
     if (!inout_p->data) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
         return LY_EVALID;
@@ -2701,15 +2700,15 @@ checks:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_action **actions)
+parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
     enum ly_stmt kw;
-    struct lysp_action *act;
+    struct lysp_node_action *act;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *actions, act, LY_EMEM);
+    LY_LIST_NEW_RET(PARSER_CTX(ctx), actions, act, next, LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -2755,19 +2754,18 @@ parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct l
     }
     LY_CHECK_RET(ret);
 
+checks:
     /* always initialize inout, they are technically present (needed for later deviations/refines) */
     if (!act->input.nodetype) {
         act->input.nodetype = LYS_INPUT;
         act->input.parent = (struct lysp_node *)act;
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "input", 0, &act->input.name));
     }
     if (!act->output.nodetype) {
         act->output.nodetype = LYS_OUTPUT;
         act->output.parent = (struct lysp_node *)act;
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "output", 0, &act->output.name));
     }
-
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, act->groupings, NULL, NULL, NULL));
 
     return ret;
 }
@@ -2781,15 +2779,15 @@ checks:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_notif **notifs)
+parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
     enum ly_stmt kw;
-    struct lysp_notif *notif;
+    struct lysp_node_notif *notif;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *notifs, notif, LY_EMEM);
+    LY_LIST_NEW_RET(PARSER_CTX(ctx), notifs, notif, next, LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -2797,7 +2795,7 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct ly
     notif->nodetype = LYS_NOTIF;
     notif->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks) {
+    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, &notif->dsc, Y_STR_ARG, &notif->exts));
@@ -2855,10 +2853,6 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct ly
             return LY_EVALID;
         }
     }
-    LY_CHECK_RET(ret);
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, notif->groupings, NULL, NULL, NULL));
 
     return ret;
 }
@@ -2872,15 +2866,15 @@ checks:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_grp **groupings)
+parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
     enum ly_stmt kw;
-    struct lysp_grp *grp;
+    struct lysp_node_grp *grp;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *groupings, grp, LY_EMEM);
+    LY_LIST_NEW_RET(PARSER_CTX(ctx), groupings, grp, next, LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -2888,7 +2882,7 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
     grp->nodetype = LYS_GROUPING;
     grp->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks) {
+    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, &grp->dsc, Y_STR_ARG, &grp->exts));
@@ -2904,40 +2898,40 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "grouping");
         /* fall through */
         case LY_STMT_ANYXML:
-            LY_CHECK_RET(parse_any(ctx, kw, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_any(ctx, kw, &grp->node, &grp->data));
             break;
         case LY_STMT_CHOICE:
-            LY_CHECK_RET(parse_choice(ctx, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_choice(ctx, &grp->node, &grp->data));
             break;
         case LY_STMT_CONTAINER:
-            LY_CHECK_RET(parse_container(ctx, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_container(ctx, &grp->node, &grp->data));
             break;
         case LY_STMT_LEAF:
-            LY_CHECK_RET(parse_leaf(ctx, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_leaf(ctx, &grp->node, &grp->data));
             break;
         case LY_STMT_LEAF_LIST:
-            LY_CHECK_RET(parse_leaflist(ctx, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_leaflist(ctx, &grp->node, &grp->data));
             break;
         case LY_STMT_LIST:
-            LY_CHECK_RET(parse_list(ctx, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_list(ctx, &grp->node, &grp->data));
             break;
         case LY_STMT_USES:
-            LY_CHECK_RET(parse_uses(ctx, (struct lysp_node *)grp, &grp->data));
+            LY_CHECK_RET(parse_uses(ctx, &grp->node, &grp->data));
             break;
 
         case LY_STMT_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node *)grp, &grp->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, &grp->node, &grp->typedefs));
             break;
         case LY_STMT_ACTION:
             PARSER_CHECK_STMTVER2_RET(ctx, "action", "grouping");
-            LY_CHECK_RET(parse_action(ctx, (struct lysp_node *)grp, &grp->actions));
+            LY_CHECK_RET(parse_action(ctx, &grp->node, &grp->actions));
             break;
         case LY_STMT_GROUPING:
-            LY_CHECK_RET(parse_grouping(ctx, (struct lysp_node *)grp, &grp->groupings));
+            LY_CHECK_RET(parse_grouping(ctx, &grp->node, &grp->groupings));
             break;
         case LY_STMT_NOTIFICATION:
             PARSER_CHECK_STMTVER2_RET(ctx, "notification", "grouping");
-            LY_CHECK_RET(parse_notif(ctx, (struct lysp_node *)grp, &grp->notifs));
+            LY_CHECK_RET(parse_notif(ctx, &grp->node, &grp->notifs));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LYEXT_SUBSTMT_SELF, 0, &grp->exts));
@@ -2947,10 +2941,6 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
             return LY_EVALID;
         }
     }
-    LY_CHECK_RET(ret);
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, grp->groupings, NULL, grp->actions, grp->notifs));
 
     return ret;
 }
@@ -2964,15 +2954,15 @@ checks:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_augment **augments)
+parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
     enum ly_stmt kw;
-    struct lysp_augment *aug;
+    struct lysp_node_augment *aug;
 
-    LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *augments, aug, LY_EMEM);
+    LY_LIST_NEW_RET(PARSER_CTX(ctx), augments, aug, next, LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
@@ -2981,7 +2971,7 @@ parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
     aug->nodetype = LYS_AUGMENT;
     aug->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks) {
+    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, &aug->dsc, Y_STR_ARG, &aug->exts));
@@ -3043,10 +3033,6 @@ parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
             return LY_EVALID;
         }
     }
-    LY_CHECK_RET(ret);
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, NULL, aug->actions, aug->notifs));
 
     return ret;
 }
@@ -3078,7 +3064,7 @@ parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
     INSERT_WORD_RET(ctx, buf, uses->name, word, word_len);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks) {
+    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, &uses->dsc, Y_STR_ARG, &uses->exts));
@@ -3110,9 +3096,6 @@ parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
             return LY_EVALID;
         }
     }
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, uses->augments, NULL, NULL));
 
     return ret;
 }
@@ -3316,7 +3299,7 @@ parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struc
     INSERT_WORD_RET(ctx, buf, cont->name, word, word_len);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks) {
+    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &cont->flags, &cont->exts));
@@ -3390,9 +3373,7 @@ parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struc
             return LY_EVALID;
         }
     }
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, cont->groupings, NULL, cont->actions, cont->notifs));
+
     return ret;
 }
 
@@ -3423,7 +3404,7 @@ parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
     INSERT_WORD_RET(ctx, buf, list->name, word, word_len);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks) {
+    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &list->flags, &list->exts));
@@ -3509,10 +3490,6 @@ parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
             return LY_EVALID;
         }
     }
-    LY_CHECK_RET(ret);
-checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, list->groupings, NULL, list->actions, list->notifs));
 
     return ret;
 }
@@ -4212,9 +4189,6 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod)
     LY_CHECK_RET(ret);
 
 checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, mod->groupings, mod->augments, mod->rpcs, mod->notifs));
-
     /* mandatory substatements */
     if (!mod->mod->ns) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "namespace", "module");
@@ -4422,10 +4396,6 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
     LY_CHECK_RET(ret);
 
 checks:
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, submod->groupings, submod->augments,
-            submod->rpcs, submod->notifs));
-
     /* mandatory substatements */
     if (!submod->prefix) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "belongs-to", "submodule");

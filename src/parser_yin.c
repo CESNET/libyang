@@ -137,7 +137,7 @@ struct include_meta {
  */
 struct inout_meta {
     struct lysp_node *parent;          /**< Parent node. */
-    struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
+    struct lysp_node_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
 };
 
 /**
@@ -372,7 +372,7 @@ subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_nod
             inout_meta = calloc(1, sizeof *inout_meta);
             LY_CHECK_GOTO(!inout_meta, mem_err);
             inout_meta->parent = parent;
-            inout_meta->inout_p = va_arg(ap, struct lysp_action_inout *);
+            inout_meta->inout_p = va_arg(ap, struct lysp_node_action_inout *);
             (*result)[i].dest = inout_meta;
         } else {
             (*result)[i].dest = va_arg(ap, void *);
@@ -1681,7 +1681,6 @@ yin_parse_uses(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
     };
 
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_USES, NULL, &uses->exts));
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, uses->augments, NULL, NULL));
 
     return LY_SUCCESS;
 }
@@ -2200,9 +2199,6 @@ yin_parse_list(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
     subelems_deallocator(subelems_size, subelems);
     LY_CHECK_RET(ret);
 
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, list->groupings, NULL, list->actions, list->notifs));
-
     if (list->max && (list->min > list->max)) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_MINMAX, list->min, list->max);
         return LY_EVALID;
@@ -2222,14 +2218,14 @@ yin_parse_list(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
 static LY_ERR
 yin_parse_notification(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *notif_meta)
 {
-    struct lysp_notif *notif;
-    struct lysp_notif **notifs = (struct lysp_notif **)notif_meta->nodes;
+    struct lysp_node_notif *notif;
+    struct lysp_node_notif **notifs = (struct lysp_node_notif **)notif_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* allocate new notification */
-    LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *notifs, notif, LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xmlctx->ctx, notifs, notif, next, LY_EMEM);
     notif->nodetype = LYS_NOTIF;
     notif->parent = notif_meta->parent;
 
@@ -2260,9 +2256,6 @@ yin_parse_notification(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *no
     subelems_deallocator(subelems_size, subelems);
     LY_CHECK_RET(ret);
 
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, notif->groupings, NULL, NULL, NULL));
-
     return LY_SUCCESS;
 }
 
@@ -2277,14 +2270,14 @@ yin_parse_notification(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *no
 static LY_ERR
 yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_meta)
 {
-    struct lysp_grp *grp;
-    struct lysp_grp **grps = (struct lysp_grp **)gr_meta->nodes;
+    struct lysp_node_grp *grp;
+    struct lysp_node_grp **grps = (struct lysp_node_grp **)gr_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* create new grouping */
-    LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *grps, grp, LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xmlctx->ctx, grps, grp, next, LY_EMEM);
     grp->nodetype = LYS_GROUPING;
     grp->parent = gr_meta->parent;
 
@@ -2293,7 +2286,7 @@ yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_met
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &grp->name, Y_IDENTIF_ARG, LY_STMT_GROUPING));
 
     /* parse grouping content */
-    LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 16, (struct lysp_node *)grp, &subelems,
+    LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 16, &grp->node, &subelems,
             LY_STMT_ACTION, &grp->actions, 0,
             LY_STMT_ANYDATA, &grp->data, 0,
             LY_STMT_ANYXML, &grp->data, 0,
@@ -2312,12 +2305,8 @@ yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_met
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_GROUPING, NULL, &grp->exts);
     subelems_deallocator(subelems_size, subelems);
-    LY_CHECK_RET(ret);
 
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, grp->groupings, NULL, grp->actions, grp->notifs));
-
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
@@ -2370,11 +2359,8 @@ yin_parse_container(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_CONTAINER, NULL, &cont->exts);
     subelems_deallocator(subelems_size, subelems);
-    LY_CHECK_RET(ret);
 
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, cont->groupings, NULL, cont->actions, cont->notifs));
-
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
@@ -2491,6 +2477,7 @@ yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct in
     size_t subelems_size;
 
     /* initiate structure */
+    LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), (inout_kw == LY_STMT_INPUT) ? "input" : "output", 0, &inout_meta->inout_p->name));
     inout_meta->inout_p->nodetype = (inout_kw == LY_STMT_INPUT) ? LYS_INPUT : LYS_OUTPUT;
     inout_meta->inout_p->parent = inout_meta->parent;
 
@@ -2521,9 +2508,6 @@ yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct in
         return LY_EVALID;
     }
 
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, inout_meta->inout_p->groupings, NULL, NULL, NULL));
-
     return LY_SUCCESS;
 }
 
@@ -2538,13 +2522,13 @@ yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct in
 static LY_ERR
 yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta)
 {
-    struct lysp_action *act, **acts = (struct lysp_action **)act_meta->nodes;
+    struct lysp_node_action *act, **acts = (struct lysp_node_action **)act_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* create new action */
-    LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *acts, act, LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xmlctx->ctx, acts, act, next, LY_EMEM);
     act->nodetype = act_meta->parent ? LYS_ACTION : LYS_RPC;
     act->parent = act_meta->parent;
 
@@ -2571,13 +2555,13 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
     if (!act->input.nodetype) {
         act->input.nodetype = LYS_INPUT;
         act->input.parent = (struct lysp_node *)act;
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "input", 0, &act->input.name));
     }
     if (!act->output.nodetype) {
         act->output.nodetype = LYS_OUTPUT;
         act->output.parent = (struct lysp_node *)act;
+        LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), "output", 0, &act->output.name));
     }
-
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, act->groupings, NULL, NULL, NULL));
 
     return LY_SUCCESS;
 }
@@ -2593,14 +2577,14 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
 static LY_ERR
 yin_parse_augment(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *aug_meta)
 {
-    struct lysp_augment *aug;
-    struct lysp_augment **augs = (struct lysp_augment **)aug_meta->nodes;
+    struct lysp_node_augment *aug;
+    struct lysp_node_augment **augs = (struct lysp_node_augment **)aug_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
 
     /* create new augment */
-    LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *augs, aug, LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xmlctx->ctx, augs, aug, next, LY_EMEM);
     aug->nodetype = LYS_AUGMENT;
     aug->parent = aug_meta->parent;
 
@@ -2630,11 +2614,8 @@ yin_parse_augment(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *aug_met
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_AUGMENT, NULL, &aug->exts);
     subelems_deallocator(subelems_size, subelems);
-    LY_CHECK_RET(ret);
 
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, NULL, aug->actions, aug->notifs));
-
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
@@ -3697,9 +3678,6 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
     subelems_deallocator(subelems_size, subelems);
     LY_CHECK_RET(ret);
 
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, mod->groupings, mod->augments, mod->rpcs, mod->notifs));
-
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
     dup = ly_ctx_get_submodule(ctx->xmlctx->ctx, NULL, mod->mod->name, NULL);
@@ -3764,9 +3742,6 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_SUBMODULE, NULL, &submod->exts);
     subelems_deallocator(subelems_size, subelems);
     LY_CHECK_RET(ret);
-
-    /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, submod->groupings, submod->augments, submod->rpcs, submod->notifs));
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */

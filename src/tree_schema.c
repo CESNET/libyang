@@ -51,9 +51,8 @@ API LY_ERR
 lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data)
 {
     struct lysc_node *elem, *elem2;
-    const struct lysc_action *acts;
-    const struct lysc_notif *notifs;
-    LY_ARRAY_COUNT_TYPE u;
+    const struct lysc_node_action *action;
+    const struct lysc_node_notif *notif;
 
     LY_CHECK_ARG_RET(NULL, root, dfs_clb, LY_EINVAL);
 
@@ -61,23 +60,21 @@ lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *dat
         /* schema node */
         LY_CHECK_RET(dfs_clb(elem, data, &LYSC_TREE_DFS_continue));
 
-        acts = lysc_node_actions(elem);
-        LY_ARRAY_FOR(acts, u) {
-            LYSC_TREE_DFS_BEGIN(&acts[u], elem2) {
+        LY_LIST_FOR(lysc_node_actions(elem), action) {
+            LYSC_TREE_DFS_BEGIN(action, elem2) {
                 /* action subtree */
                 LY_CHECK_RET(dfs_clb(elem2, data, &LYSC_TREE_DFS_continue));
 
-                LYSC_TREE_DFS_END(&acts[u], elem2);
+                LYSC_TREE_DFS_END(action, elem2);
             }
         }
 
-        notifs = lysc_node_notifs(elem);
-        LY_ARRAY_FOR(notifs, u) {
-            LYSC_TREE_DFS_BEGIN(&notifs[u], elem2) {
+        LY_LIST_FOR(lysc_node_notifs(elem), notif) {
+            LYSC_TREE_DFS_BEGIN(notif, elem2) {
                 /* notification subtree */
                 LY_CHECK_RET(dfs_clb(elem2, data, &LYSC_TREE_DFS_continue));
 
-                LYSC_TREE_DFS_END(&notifs[u], elem2);
+                LYSC_TREE_DFS_END(notif, elem2);
             }
         }
 
@@ -90,7 +87,6 @@ lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *dat
 API LY_ERR
 lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data)
 {
-    LY_ARRAY_COUNT_TYPE u;
     const struct lysc_node *root;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->compiled, dfs_clb, LY_EINVAL);
@@ -101,13 +97,13 @@ lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *d
     }
 
     /* RPCs */
-    LY_ARRAY_FOR(mod->compiled->rpcs, u) {
-        LY_CHECK_RET(lysc_tree_dfs_full((struct lysc_node *)&mod->compiled->rpcs[u], dfs_clb, data));
+    LY_LIST_FOR((const struct lysc_node *)mod->compiled->rpcs, root) {
+        LY_CHECK_RET(lysc_tree_dfs_full(root, dfs_clb, data));
     }
 
     /* notifications */
-    LY_ARRAY_FOR(mod->compiled->notifs, u) {
-        LY_CHECK_RET(lysc_tree_dfs_full((struct lysc_node *)&mod->compiled->notifs[u], dfs_clb, data));
+    LY_LIST_FOR((const struct lysc_node *)mod->compiled->notifs, root) {
+        LY_CHECK_RET(lysc_tree_dfs_full(root, dfs_clb, data));
     }
 
     return LY_SUCCESS;
@@ -135,9 +131,6 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
     const struct lysc_node *next = NULL;
     struct lysc_node **snode;
     ly_bool action_flag = 0, notif_flag = 0;
-    const struct lysc_action *actions;
-    const struct lysc_notif *notifs;
-    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
 
@@ -172,36 +165,10 @@ next:
 
     } else if (last->nodetype & (LYS_RPC | LYS_ACTION)) {
         action_flag = 1;
-        if (last->parent) {
-            actions = lysc_node_actions(last->parent);
-        } else {
-            actions = module->rpcs;
-        }
-        LY_ARRAY_FOR(actions, u) {
-            if (&actions[u] == (struct lysc_action *)last) {
-                break;
-            }
-        }
-        if (u + 1 < LY_ARRAY_COUNT(actions)) {
-            next = (struct lysc_node *)(&actions[u + 1]);
-        }
-        goto repeat;
+        next = last->next;
     } else if (last->nodetype == LYS_NOTIF) {
         action_flag = notif_flag = 1;
-        if (last->parent) {
-            notifs = lysc_node_notifs(last->parent);
-        } else {
-            notifs = module->notifs;
-        }
-        LY_ARRAY_FOR(notifs, u) {
-            if (&notifs[u] == (struct lysc_notif *)last) {
-                break;
-            }
-        }
-        if (u + 1 < LY_ARRAY_COUNT(notifs)) {
-            next = (struct lysc_node *)(&notifs[u + 1]);
-        }
-        goto repeat;
+        next = last->next;
     } else {
         next = last->next;
     }
@@ -637,8 +604,8 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
 API LY_ERR
 lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 {
-    struct lysc_action *act;
-    struct lysc_notif *notif;
+    struct lysc_node_action *act;
+    struct lysc_node_notif *notif;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
@@ -658,14 +625,14 @@ lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
         break;
     case LYS_RPC:
     case LYS_ACTION:
-        act = (struct lysc_action *)node;
+        act = (struct lysc_node_action *)node;
         if (prev_priv_p) {
             *prev_priv_p = act->priv;
         }
         act->priv = priv;
         break;
     case LYS_NOTIF:
-        notif = (struct lysc_notif *)node;
+        notif = (struct lysc_node_notif *)node;
         if (prev_priv_p) {
             *prev_priv_p = notif->priv;
         }

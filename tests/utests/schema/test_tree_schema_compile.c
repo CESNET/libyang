@@ -546,13 +546,13 @@ static void
 test_action(void **state)
 {
     const struct lys_module *mod;
-    const struct lysc_action *rpc;
+    const struct lysc_node_action *rpc;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;"
             "rpc a {input {leaf x {type int8;} leaf y {type int8;}} output {leaf result {type int16;}}}}", LYS_IN_YANG, &mod));
     rpc = mod->compiled->rpcs;
     assert_non_null(rpc);
-    assert_int_equal(1, LY_ARRAY_COUNT(rpc));
+    assert_null(rpc->next);
     assert_int_equal(LYS_RPC, rpc->nodetype);
     assert_int_equal(LYS_STATUS_CURR, rpc->flags);
     assert_string_equal("a", rpc->name);
@@ -563,7 +563,7 @@ test_action(void **state)
             "augment /top/b/output {leaf result2 {type string;}}}", LYS_IN_YANG, &mod));
     rpc = lysc_node_actions(mod->compiled->data);
     assert_non_null(rpc);
-    assert_int_equal(1, LY_ARRAY_COUNT(rpc));
+    assert_null(rpc->next);
     assert_int_equal(LYS_ACTION, rpc->nodetype);
     assert_int_equal(LYS_STATUS_CURR, rpc->flags);
     assert_string_equal("b", rpc->name);
@@ -603,38 +603,42 @@ static void
 test_notification(void **state)
 {
     const struct lys_module *mod;
-    const struct lysc_notif *notif;
+    const struct lysc_node_notif *notif;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;"
             "notification a1 {leaf x {type int8;}} notification a2;}", LYS_IN_YANG, &mod));
     notif = mod->compiled->notifs;
     assert_non_null(notif);
-    assert_int_equal(2, LY_ARRAY_COUNT(notif));
+    assert_non_null(notif->next);
+    assert_null(notif->next->next);
     assert_int_equal(LYS_NOTIF, notif->nodetype);
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("a1", notif->name);
     assert_non_null(notif->data);
     assert_string_equal("x", notif->data->name);
-    assert_int_equal(LYS_NOTIF, notif[1].nodetype);
-    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
-    assert_string_equal("a2", notif[1].name);
-    assert_null(notif[1].data);
+    notif = notif->next;
+    assert_int_equal(LYS_NOTIF, notif->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif->flags);
+    assert_string_equal("a2", notif->name);
+    assert_null(notif->data);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
             "notification b1 {leaf x {type int8;}} notification b2 {must \"/top\";}}}", LYS_IN_YANG, &mod));
     notif = lysc_node_notifs(mod->compiled->data);
     assert_non_null(notif);
-    assert_int_equal(2, LY_ARRAY_COUNT(notif));
+    assert_non_null(notif->next);
+    assert_null(notif->next->next);
     assert_int_equal(LYS_NOTIF, notif->nodetype);
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("b1", notif->name);
     assert_non_null(notif->data);
     assert_string_equal("x", notif->data->name);
-    assert_int_equal(LYS_NOTIF, notif[1].nodetype);
-    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
-    assert_string_equal("b2", notif[1].name);
-    assert_null(notif[1].data);
-    assert_int_equal(1, LY_ARRAY_COUNT(notif[1].musts));
+    notif = notif->next;
+    assert_int_equal(LYS_NOTIF, notif->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif->flags);
+    assert_string_equal("b2", notif->name);
+    assert_null(notif->data);
+    assert_int_equal(1, LY_ARRAY_COUNT(notif->musts));
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}",
@@ -2088,20 +2092,22 @@ test_uses(void **state)
     assert_non_null(mod->compiled->data);
     cont = (const struct lysc_node_container *)mod->compiled->data;
     assert_non_null(cont->actions);
-    assert_int_equal(2, LY_ARRAY_COUNT(cont->actions));
-    assert_string_equal("e", cont->actions[1].name);
-    assert_string_equal("g", cont->actions[0].name);
-    assert_string_equal("ultra g", cont->actions[0].dsc);
+    assert_non_null(cont->actions->next);
+    assert_null(cont->actions->next->next);
+    assert_string_equal("e", cont->actions->next->name);
+    assert_string_equal("g", cont->actions->name);
+    assert_string_equal("ultra g", cont->actions->dsc);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {yang-version 1.1;namespace urn:f;prefix f; grouping grp {notification g { description \"super g\";}}"
             "container top {notification f; uses grp {refine g {description \"ultra g\";}}}}", LYS_IN_YANG, &mod));
     assert_non_null(mod->compiled->data);
     cont = (const struct lysc_node_container *)mod->compiled->data;
     assert_non_null(cont->notifs);
-    assert_int_equal(2, LY_ARRAY_COUNT(cont->notifs));
-    assert_string_equal("f", cont->notifs[1].name);
-    assert_string_equal("g", cont->notifs[0].name);
-    assert_string_equal("ultra g", cont->notifs[0].dsc);
+    assert_non_null(cont->notifs->next);
+    assert_null(cont->notifs->next->next);
+    assert_string_equal("f", cont->notifs->next->name);
+    assert_string_equal("g", cont->notifs->name);
+    assert_string_equal("ultra g", cont->notifs->dsc);
 
     /* empty grouping */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module g {namespace urn:g;prefix g; grouping grp; uses grp;}", LYS_IN_YANG, &mod));
@@ -2348,8 +2354,7 @@ test_augment(void **state)
     const struct lysc_node_choice *ch;
     const struct lysc_node_case *c;
     const struct lysc_node_container *cont;
-    const struct lysc_action *rpc;
-    const struct lysc_notif *notif;
+    const struct lysc_node_action *rpc;
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a;prefix a; typedef atype {type string;}"
             "container top {leaf a {type string;}}}");
@@ -2444,7 +2449,7 @@ test_augment(void **state)
             "augment /hi:func/hi:output {leaf y {type string;}}}", LYS_IN_YANG, NULL));
     assert_non_null(mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "himp"));
     assert_non_null(rpc = mod->compiled->rpcs);
-    assert_int_equal(1, LY_ARRAY_COUNT(rpc));
+    assert_null(rpc->next);
     assert_non_null(rpc->input.data);
     assert_string_equal("x", rpc->input.data->name);
     assert_null(rpc->input.data->next);
@@ -2457,8 +2462,8 @@ test_augment(void **state)
             "augment /root {uses grp;}}", LYS_IN_YANG, &mod));
     assert_non_null(cont = (const struct lysc_node_container *)mod->compiled->data);
     assert_null(cont->child);
-    assert_non_null(notif = cont->notifs);
-    assert_int_equal(1, LY_ARRAY_COUNT(notif));
+    assert_non_null(cont->notifs);
+    assert_null(cont->notifs->next);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
             "augment /x/ {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
@@ -2538,9 +2543,10 @@ test_deviation(void **state)
     assert_non_null(((struct lysc_node_choice *)node)->dflt);
     assert_non_null(((struct lysc_node_choice *)node)->cases);
     assert_null(((struct lysc_node_choice *)node)->cases->next);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->rpcs));
-    assert_null(mod->compiled->rpcs[0].input.data);
-    assert_null(mod->compiled->rpcs[0].output.data);
+    assert_non_null(mod->compiled->rpcs);
+    assert_null(mod->compiled->rpcs->next);
+    assert_null(mod->compiled->rpcs->input.data);
+    assert_null(mod->compiled->rpcs->output.data);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c; typedef mytype {type string; units kilometers;}"
             "leaf c1 {type mytype;} leaf c2 {type mytype; units meters;} leaf c3 {type mytype; units meters;}"
