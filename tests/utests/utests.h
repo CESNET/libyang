@@ -220,7 +220,7 @@ struct utest_context {
     assert_non_null(NODE); \
     CHECK_POINTER((NODE)->data, DATA); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    CHECK_ARRAY((NODE)->groupings, GROUPINGS); \
+    CHECK_POINTER((NODE)->groupings, GROUPINGS); \
     CHECK_ARRAY((NODE)->musts, MUSTS); \
     assert_int_equal((NODE)->nodetype, NODETYPE); \
     CHECK_POINTER((NODE)->parent, PARENT); \
@@ -253,7 +253,7 @@ struct utest_context {
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
     assert_int_equal((NODE)->flags, FLAGS); \
-    CHECK_ARRAY((NODE)->groupings, GROUPINGS); \
+    CHECK_POINTER((NODE)->groupings, GROUPINGS); \
     CHECK_ARRAY((NODE)->iffeatures, IFFEATURES); \
     CHECK_LYSP_ACTION_INOUT(&((NODE)->input), INPUT_DATA, INPUT_EXTS, INPUT_GROUPINGS, \
                 INPUT_MUSTS, LYS_INPUT, INPUT_PARENT, INPUT_TYPEDEFS); \
@@ -515,12 +515,12 @@ struct utest_context {
     CHECK_ARRAY((NODE)->exts, EXTS); \
     assert_int_equal((NODE)->flags, FLAGS); \
     CHECK_LYSC_ACTION_INOUT(&(NODE)->input, INPUT_DATA, INPUT_MUST, LYS_INPUT); \
-    CHECK_ARRAY((NODE)->input_exts, INPUT_EXTS); \
+    CHECK_ARRAY((NODE)->input.exts, INPUT_EXTS); \
     CHECK_POINTER((NODE)->module, MODULE); \
     assert_string_equal((NODE)->name, NAME); \
     assert_int_equal((NODE)->nodetype, NODETYPE); \
     CHECK_LYSC_ACTION_INOUT(&(NODE)->output, OUTPUT_DATA, OUTPUT_MUST, LYS_OUTPUT); \
-    CHECK_ARRAY((NODE)->output_exts, OUTPUT_EXTS); \
+    CHECK_ARRAY((NODE)->output.exts, OUTPUT_EXTS); \
     CHECK_POINTER((NODE)->parent, PARENT); \
     CHECK_POINTER((NODE)->priv, PRIV); \
     CHECK_STRING((NODE)->ref, REF); \

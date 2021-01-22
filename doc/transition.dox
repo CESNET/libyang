@@ -184,7 +184,6 @@
  * -                            | ::lysc_is_userordered()         | Added functionality to simplify the examination of generic compiled schema nodes.
  * -                            | ::lysc_is_np_cont()             | ^
  * -                            | ::lysc_node_children()          | ^
- * -                            | ::lysc_node_children_full()     | ^
  * -                            | ::lysc_node_actions()           | ^
  * -                            | ::lysc_node_notifs()            | ^
  * -                            | ::lysc_node_parent_full()       | ^

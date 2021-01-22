@@ -394,97 +394,6 @@ lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
-lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
-        struct lysp_action *actions, struct lysp_notif *notifs)
-{
-    LY_ARRAY_COUNT_TYPE u, v;
-    struct lysp_node *child;
-
-    /* finalize parent pointers to the reallocated items */
-
-    /* gropings */
-    LY_ARRAY_FOR(groupings, u) {
-        LY_LIST_FOR(groupings[u].data, child) {
-            child->parent = (struct lysp_node *)&groupings[u];
-        }
-        LY_ARRAY_FOR(groupings[u].actions, v) {
-            groupings[u].actions[v].parent = (struct lysp_node *)&groupings[u];
-        }
-        LY_ARRAY_FOR(groupings[u].notifs, v) {
-            groupings[u].notifs[v].parent = (struct lysp_node *)&groupings[u];
-        }
-        LY_ARRAY_FOR(groupings[u].groupings, v) {
-            groupings[u].groupings[v].parent = (struct lysp_node *)&groupings[u];
-        }
-        if (groupings[u].typedefs) {
-            LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &groupings[u], 0, NULL));
-        }
-    }
-
-    /* augments */
-    LY_ARRAY_FOR(augments, u) {
-        LY_LIST_FOR(augments[u].child, child) {
-            child->parent = (struct lysp_node *)&augments[u];
-        }
-        LY_ARRAY_FOR(augments[u].actions, v) {
-            augments[u].actions[v].parent = (struct lysp_node *)&augments[u];
-        }
-        LY_ARRAY_FOR(augments[u].notifs, v) {
-            augments[u].notifs[v].parent = (struct lysp_node *)&augments[u];
-        }
-    }
-
-    /* actions */
-    LY_ARRAY_FOR(actions, u) {
-        if (actions[u].input.parent) {
-            actions[u].input.parent = (struct lysp_node *)&actions[u];
-            LY_LIST_FOR(actions[u].input.data, child) {
-                child->parent = (struct lysp_node *)&actions[u].input;
-            }
-            LY_ARRAY_FOR(actions[u].input.groupings, v) {
-                actions[u].input.groupings[v].parent = (struct lysp_node *)&actions[u].input;
-            }
-            if (actions[u].input.typedefs) {
-                LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &actions[u].input, 0, NULL));
-            }
-        }
-        if (actions[u].output.parent) {
-            actions[u].output.parent = (struct lysp_node *)&actions[u];
-            LY_LIST_FOR(actions[u].output.data, child) {
-                child->parent = (struct lysp_node *)&actions[u].output;
-            }
-            LY_ARRAY_FOR(actions[u].output.groupings, v) {
-                actions[u].output.groupings[v].parent = (struct lysp_node *)&actions[u].output;
-            }
-            if (actions[u].output.typedefs) {
-                LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &actions[u].output, 0, NULL));
-            }
-        }
-        LY_ARRAY_FOR(actions[u].groupings, v) {
-            actions[u].groupings[v].parent = (struct lysp_node *)&actions[u];
-        }
-        if (actions[u].typedefs) {
-            LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &actions[u], 0, NULL));
-        }
-    }
-
-    /* notifications */
-    LY_ARRAY_FOR(notifs, u) {
-        LY_LIST_FOR(notifs[u].data, child) {
-            child->parent = (struct lysp_node *)&notifs[u];
-        }
-        LY_ARRAY_FOR(notifs[u].groupings, v) {
-            notifs[u].groupings[v].parent = (struct lysp_node *)&notifs[u];
-        }
-        if (notifs[u].typedefs) {
-            LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &notifs[u], 0, NULL));
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
-LY_ERR
 lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
@@ -1122,13 +1031,13 @@ lysc_has_when(const struct lysc_node *node)
         switch (node->nodetype) {
         case LYS_RPC:
         case LYS_ACTION:
-            if (((struct lysc_action *)node)->when) {
-                return *((struct lysc_action *)node)->when;
+            if (((struct lysc_node_action *)node)->when) {
+                return *((struct lysc_node_action *)node)->when;
             }
             break;
         case LYS_NOTIF:
-            if (((struct lysc_notif *)node)->when) {
-                return *((struct lysc_notif *)node)->when;
+            if (((struct lysc_node_notif *)node)->when) {
+                return *((struct lysc_node_notif *)node)->when;
             }
             break;
         default:
@@ -1233,21 +1142,21 @@ lysp_node_typedefs(const struct lysp_node *node)
     case LYS_LIST:
         return ((struct lysp_node_list *)node)->typedefs;
     case LYS_GROUPING:
-        return ((struct lysp_grp *)node)->typedefs;
+        return ((struct lysp_node_grp *)node)->typedefs;
     case LYS_RPC:
     case LYS_ACTION:
-        return ((struct lysp_action *)node)->typedefs;
+        return ((struct lysp_node_action *)node)->typedefs;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        return ((struct lysp_action_inout *)node)->typedefs;
+        return ((struct lysp_node_action_inout *)node)->typedefs;
     case LYS_NOTIF:
-        return ((struct lysp_notif *)node)->typedefs;
+        return ((struct lysp_node_notif *)node)->typedefs;
     default:
         return NULL;
     }
 }
 
-API const struct lysp_grp *
+API const struct lysp_node_grp *
 lysp_node_groupings(const struct lysp_node *node)
 {
     switch (node->nodetype) {
@@ -1256,21 +1165,21 @@ lysp_node_groupings(const struct lysp_node *node)
     case LYS_LIST:
         return ((struct lysp_node_list *)node)->groupings;
     case LYS_GROUPING:
-        return ((struct lysp_grp *)node)->groupings;
+        return ((struct lysp_node_grp *)node)->groupings;
     case LYS_RPC:
     case LYS_ACTION:
-        return ((struct lysp_action *)node)->groupings;
+        return ((struct lysp_node_action *)node)->groupings;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        return ((struct lysp_action_inout *)node)->groupings;
+        return ((struct lysp_node_action_inout *)node)->groupings;
     case LYS_NOTIF:
-        return ((struct lysp_notif *)node)->groupings;
+        return ((struct lysp_node_notif *)node)->groupings;
     default:
         return NULL;
     }
 }
 
-struct lysp_action **
+struct lysp_node_action **
 lysp_node_actions_p(struct lysp_node *node)
 {
     assert(node);
@@ -1281,18 +1190,18 @@ lysp_node_actions_p(struct lysp_node *node)
     case LYS_LIST:
         return &((struct lysp_node_list *)node)->actions;
     case LYS_GROUPING:
-        return &((struct lysp_grp *)node)->actions;
+        return &((struct lysp_node_grp *)node)->actions;
     case LYS_AUGMENT:
-        return &((struct lysp_augment *)node)->actions;
+        return &((struct lysp_node_augment *)node)->actions;
     default:
         return NULL;
     }
 }
 
-API const struct lysp_action *
+API const struct lysp_node_action *
 lysp_node_actions(const struct lysp_node *node)
 {
-    struct lysp_action **actions;
+    struct lysp_node_action **actions;
 
     actions = lysp_node_actions_p((struct lysp_node *)node);
     if (actions) {
@@ -1302,7 +1211,7 @@ lysp_node_actions(const struct lysp_node *node)
     }
 }
 
-struct lysp_notif **
+struct lysp_node_notif **
 lysp_node_notifs_p(struct lysp_node *node)
 {
     assert(node);
@@ -1312,18 +1221,18 @@ lysp_node_notifs_p(struct lysp_node *node)
     case LYS_LIST:
         return &((struct lysp_node_list *)node)->notifs;
     case LYS_GROUPING:
-        return &((struct lysp_grp *)node)->notifs;
+        return &((struct lysp_node_grp *)node)->notifs;
     case LYS_AUGMENT:
-        return &((struct lysp_augment *)node)->notifs;
+        return &((struct lysp_node_augment *)node)->notifs;
     default:
         return NULL;
     }
 }
 
-API const struct lysp_notif *
+API const struct lysp_node_notif *
 lysp_node_notifs(const struct lysp_node *node)
 {
-    struct lysp_notif **notifs;
+    struct lysp_node_notif **notifs;
 
     notifs = lysp_node_notifs_p((struct lysp_node *)node);
     if (notifs) {
@@ -1347,14 +1256,14 @@ lysp_node_children_p(struct lysp_node *node)
     case LYS_CASE:
         return &((struct lysp_node_case *)node)->child;
     case LYS_GROUPING:
-        return &((struct lysp_grp *)node)->data;
+        return &((struct lysp_node_grp *)node)->data;
     case LYS_AUGMENT:
-        return &((struct lysp_augment *)node)->child;
+        return &((struct lysp_node_augment *)node)->child;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        return &((struct lysp_action_inout *)node)->data;
+        return &((struct lysp_node_action_inout *)node)->data;
     case LYS_NOTIF:
-        return &((struct lysp_notif *)node)->data;
+        return &((struct lysp_node_notif *)node)->data;
     default:
         return NULL;
     }
@@ -1377,7 +1286,7 @@ lysp_node_children(const struct lysp_node *node)
     }
 }
 
-struct lysc_action **
+struct lysc_node_action **
 lysc_node_actions_p(struct lysc_node *node)
 {
     assert(node);
@@ -1391,10 +1300,10 @@ lysc_node_actions_p(struct lysc_node *node)
     }
 }
 
-API const struct lysc_action *
+API const struct lysc_node_action *
 lysc_node_actions(const struct lysc_node *node)
 {
-    struct lysc_action **actions;
+    struct lysc_node_action **actions;
 
     actions = lysc_node_actions_p((struct lysc_node *)node);
     if (actions) {
@@ -1404,7 +1313,7 @@ lysc_node_actions(const struct lysc_node *node)
     }
 }
 
-struct lysc_notif **
+struct lysc_node_notif **
 lysc_node_notifs_p(struct lysc_node *node)
 {
     assert(node);
@@ -1418,10 +1327,10 @@ lysc_node_notifs_p(struct lysc_node *node)
     }
 }
 
-API const struct lysc_notif *
+API const struct lysc_node_notif *
 lysc_node_notifs(const struct lysc_node *node)
 {
-    struct lysc_notif **notifs;
+    struct lysc_node_notif **notifs;
 
     notifs = lysc_node_notifs_p((struct lysc_node *)node);
     if (notifs) {
@@ -1447,16 +1356,16 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
     case LYS_RPC:
     case LYS_ACTION:
         if (flags & LYS_CONFIG_R) {
-            return &((struct lysc_action *)node)->output.data;
+            return &((struct lysc_node_action *)node)->output.data;
         } else {
             /* LYS_CONFIG_W, but also the default case */
-            return &((struct lysc_action *)node)->input.data;
+            return &((struct lysc_node_action *)node)->input.data;
         }
     case LYS_INPUT:
     case LYS_OUTPUT:
-        return &((struct lysc_action_inout *)node)->data;
+        return &((struct lysc_node_action_inout *)node)->data;
     case LYS_NOTIF:
-        return &((struct lysc_notif *)node)->data;
+        return &((struct lysc_node_notif *)node)->data;
     default:
         return NULL;
     }
@@ -1471,30 +1380,20 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
         return NULL;
     }
 
-    children = lysc_node_children_p(node, flags);
-    if (children) {
-        return *children;
-    } else {
-        return NULL;
-    }
-}
-
-API const struct lysc_node *
-lysc_node_children_full(const struct lysc_node *node, uint16_t flags)
-{
-    if (!node) {
-        return NULL;
-    }
-
-    if (node->nodetype == LYS_RPC || node->nodetype == LYS_ACTION) {
+    if ((node->nodetype == LYS_RPC) || (node->nodetype == LYS_ACTION)) {
         if (flags & LYS_CONFIG_R) {
-            return (struct lysc_node *)&((struct lysc_action *)node)->output;
+            return (struct lysc_node *)&((struct lysc_node_action *)node)->output;
         } else {
             /* LYS_CONFIG_W, but also the default case */
-            return (struct lysc_node *)&((struct lysc_action *)node)->input;
+            return (struct lysc_node *)&((struct lysc_node_action *)node)->input;
         }
     } else {
-        return lysc_node_children(node, flags);
+        children = lysc_node_children_p(node, flags);
+        if (children) {
+            return *children;
+        } else {
+            return NULL;
+        }
     }
 }
 
@@ -1504,14 +1403,14 @@ lysc_node_parent_full(const struct lysc_node *node)
     if (!node) {
         return NULL;
     } else if (node->nodetype == LYS_INPUT) {
-        return (struct lysc_node *)(((char *)node) - offsetof(struct lysc_action, input));
+        return (struct lysc_node *)(((char *)node) - offsetof(struct lysc_node_action, input));
     } else if (node->nodetype == LYS_OUTPUT) {
-        return (struct lysc_node *)(((char *)node) - offsetof(struct lysc_action, output));
+        return (struct lysc_node *)(((char *)node) - offsetof(struct lysc_node_action, output));
     } else if (node->parent && (node->parent->nodetype & (LYS_RPC | LYS_ACTION))) {
         if (node->flags & LYS_CONFIG_W) {
-            return (struct lysc_node *)&((struct lysc_action *)node->parent)->input;
+            return (struct lysc_node *)&((struct lysc_node_action *)node->parent)->input;
         } else {
-            return (struct lysc_node *)&((struct lysc_action *)node->parent)->output;
+            return (struct lysc_node *)&((struct lysc_node_action *)node->parent)->output;
         }
     } else {
         return node->parent;

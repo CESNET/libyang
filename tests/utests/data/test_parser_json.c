@@ -441,12 +441,12 @@ test_rpc(void **state)
 
     assert_non_null(op);
 
-    CHECK_LYSC_ACTION((struct lysc_action *)op->schema, dsc, 0, LYS_STATUS_CURR,
+    CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
 
     node = tree;
-    CHECK_LYSC_ACTION((struct lysc_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
+    CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "edit-config", LYS_RPC,
             0, 0, 0, 0, 0, ref, 0);
     node = lyd_child(node)->next;
@@ -483,7 +483,7 @@ test_action(void **state)
     ly_in_free(in, 0);
 
     assert_non_null(op);
-    CHECK_LYSC_ACTION((struct lysc_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
+    CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
 
@@ -507,7 +507,7 @@ test_notification(void **state)
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
-    CHECK_LYSC_NOTIF((struct lysc_notif *)ntf->schema, 1, NULL, 0, 0x4, 1, 0, "n1", 1, 0, NULL, 0);
+    CHECK_LYSC_NOTIF((struct lysc_node_notif *)ntf->schema, 1, NULL, 0, 0x4, 1, 0, "n1", 1, 0, NULL, 0);
 
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
@@ -520,7 +520,7 @@ test_notification(void **state)
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
-    CHECK_LYSC_NOTIF((struct lysc_notif *)ntf->schema, 0, NULL, 0, 0x4, 1, 0, "n2", 0, 0, NULL, 0);
+    CHECK_LYSC_NOTIF((struct lysc_node_notif *)ntf->schema, 0, NULL, 0, 0x4, 1, 0, "n2", 0, 0, NULL, 0);
 
     assert_non_null(tree);
     assert_ptr_equal(ntf, tree);
@@ -546,7 +546,7 @@ test_reply(void **state)
     ly_in_free(in, 0);
 
     assert_non_null(op);
-    CHECK_LYSC_ACTION((struct lysc_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
+    CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, NULL, 0, LYS_STATUS_CURR,
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
     node = lyd_child(op);

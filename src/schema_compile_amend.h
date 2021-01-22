@@ -33,7 +33,7 @@ struct lysc_augment {
     const struct lysp_module *nodeid_pmod;       /**< module where the nodeid is defined, used to resolve prefixes */
     const struct lysc_node *nodeid_ctx_node;     /**< nodeid context node for relative targets */
 
-    struct lysp_augment *aug_p;                  /**< pointer to the parsed augment to apply */
+    struct lysp_node_augment *aug_p;                  /**< pointer to the parsed augment to apply */
 };
 
 /**

@@ -969,14 +969,14 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
         when = ((struct lysc_node_case *)node)->when;
         break;
     case LYS_NOTIF:
-        when = ((struct lysc_notif *)node)->when;
-        musts = ((struct lysc_notif *)node)->musts;
+        when = ((struct lysc_node_notif *)node)->when;
+        musts = ((struct lysc_node_notif *)node)->musts;
         break;
     case LYS_RPC:
     case LYS_ACTION:
         /* first process when and input musts */
-        when = ((struct lysc_action *)node)->when;
-        musts = ((struct lysc_action *)node)->input.musts;
+        when = ((struct lysc_node_action *)node)->when;
+        musts = ((struct lysc_node_action *)node)->input.musts;
         break;
     default:
         /* nothing to check */
@@ -1073,7 +1073,7 @@ check_musts:
         /* now check output musts */
         input_done = 1;
         when = NULL;
-        musts = ((struct lysc_action *)node)->output.musts;
+        musts = ((struct lysc_node_action *)node)->output.musts;
         opts = LYXP_SCNODE_OUTPUT;
         goto check_musts;
     }
@@ -1475,30 +1475,9 @@ static LY_ERR
 lys_compile_unres_mod(struct lysc_ctx *ctx)
 {
     struct lysc_node *node;
-    struct lysc_action **actions;
-    struct lysc_notif **notifs;
     struct lysc_augment *aug;
     struct lysc_deviation *dev;
-    struct ly_set disabled_op = {0};
     uint32_t i;
-
-#define ARRAY_DEL_ITEM(array, item) \
-    { \
-        LY_ARRAY_COUNT_TYPE u__; \
-        LY_ARRAY_FOR(array, u__) { \
-            if ((array) + u__ == item) { \
-                LY_ARRAY_DECREMENT(array); \
-                if (u__ < LY_ARRAY_COUNT(array)) { \
-                    memmove((array) + u__, (array) + u__ + 1, (LY_ARRAY_COUNT(array) - u__) * sizeof *(array)); \
-                } \
-                if (!LY_ARRAY_COUNT(array)) { \
-                    LY_ARRAY_FREE(array); \
-                    (array) = NULL; \
-                } \
-                break; \
-            } \
-        } \
-    }
 
     /* remove all disabled nodes */
     for (i = 0; i < ctx->disabled.count; ++i) {
@@ -1510,46 +1489,8 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
             return LY_EVALID;
         }
 
-        if (node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
-            /* just remember all RPCs/actions/notifs for now */
-            ly_set_add(&disabled_op, node, 1, NULL);
-        } else {
-            lysc_node_free(ctx->ctx, node, 1);
-        }
+        lysc_node_free(ctx->ctx, node, 1);
     }
-
-    /* remove ops also from their arrays, from end so as not to move other items and change these pointer targets */
-    i = disabled_op.count;
-    while (i) {
-        --i;
-        node = disabled_op.snodes[i];
-        if (node->nodetype == LYS_RPC) {
-            actions = &node->module->compiled->rpcs;
-            assert(actions);
-            notifs = NULL;
-        } else if (node->nodetype == LYS_ACTION) {
-            actions = lysc_node_actions_p(node->parent);
-            assert(actions);
-            notifs = NULL;
-        } else if (node->parent) {
-            actions = NULL;
-            notifs = lysc_node_notifs_p(node->parent);
-            assert(notifs);
-        } else {
-            actions = NULL;
-            notifs = &node->module->compiled->notifs;
-            assert(notifs);
-        }
-
-        if (actions) {
-            lysc_action_free(ctx->ctx, (struct lysc_action *)node);
-            ARRAY_DEL_ITEM(*actions, (struct lysc_action *)node);
-        } else {
-            lysc_notif_free(ctx->ctx, (struct lysc_notif *)node);
-            ARRAY_DEL_ITEM(*notifs, (struct lysc_notif *)node);
-        }
-    }
-    ly_set_erase(&disabled_op, NULL);
 
     /* check that all augments were applied */
     for (i = 0; i < ctx->augs.count; ++i) {
@@ -1580,7 +1521,6 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     }
 
     return LY_SUCCESS;
-#undef ARRAY_DEL_ITEM
 }
 
 /**
@@ -1730,8 +1670,8 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     struct lysp_module *sp;
     struct lysp_submodule *submod;
     struct lysp_node *pnode;
-    struct lysp_grp *grps;
-    LY_ARRAY_COUNT_TYPE u, v;
+    struct lysp_node_grp *grp;
+    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
@@ -1778,9 +1718,15 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
         LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), error);
     }
 
-    /* top-level RPCs and notifications */
-    COMPILE_OP_ARRAY_GOTO(&ctx, sp->rpcs, mod_c->rpcs, NULL, lys_compile_action, 0, ret, error);
-    COMPILE_OP_ARRAY_GOTO(&ctx, sp->notifs, mod_c->notifs, NULL, lys_compile_notif, 0, ret, error);
+    /* top-level RPCs */
+    LY_LIST_FOR((struct lysp_node *)sp->rpcs, pnode) {
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), error);
+    }
+
+    /* top-level notifications */
+    LY_LIST_FOR((struct lysp_node *)sp->notifs, pnode) {
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), error);
+    }
 
     /* extension instances */
     COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
@@ -1795,8 +1741,15 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
             LY_CHECK_GOTO(ret, error);
         }
 
-        COMPILE_OP_ARRAY_GOTO(&ctx, submod->rpcs, mod_c->rpcs, NULL, lys_compile_action, 0, ret, error);
-        COMPILE_OP_ARRAY_GOTO(&ctx, submod->notifs, mod_c->notifs, NULL, lys_compile_notif, 0, ret, error);
+        LY_LIST_FOR((struct lysp_node *)submod->rpcs, pnode) {
+            ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL);
+            LY_CHECK_GOTO(ret, error);
+        }
+
+        LY_LIST_FOR((struct lysp_node *)submod->notifs, pnode) {
+            ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL);
+            LY_CHECK_GOTO(ret, error);
+        }
 
         COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
     }
@@ -1805,16 +1758,15 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     /* validate non-instantiated groupings from the parsed schema,
      * without it we would accept even the schemas with invalid grouping specification */
     ctx.options |= LYS_COMPILE_GROUPING;
-    LY_ARRAY_FOR(sp->groupings, u) {
-        if (!(sp->groupings[u].flags & LYS_USED_GRP)) {
-            LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, &sp->groupings[u]), error);
+    LY_LIST_FOR(sp->groupings, grp) {
+        if (!(grp->flags & LYS_USED_GRP)) {
+            LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), error);
         }
     }
     LY_LIST_FOR(sp->data, pnode) {
-        grps = (struct lysp_grp *)lysp_node_groupings(pnode);
-        LY_ARRAY_FOR(grps, u) {
-            if (!(grps[u].flags & LYS_USED_GRP)) {
-                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, &grps[u]), error);
+        LY_LIST_FOR((struct lysp_node_grp *)lysp_node_groupings(pnode), grp) {
+            if (!(grp->flags & LYS_USED_GRP)) {
+                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, grp), error);
             }
         }
     }
@@ -1822,16 +1774,15 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
         submod = sp->includes[u].submodule;
         ctx.pmod = (struct lysp_module *)submod;
 
-        LY_ARRAY_FOR(submod->groupings, v) {
-            if (!(submod->groupings[v].flags & LYS_USED_GRP)) {
-                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, &submod->groupings[v]), error);
+        LY_LIST_FOR(submod->groupings, grp) {
+            if (!(grp->flags & LYS_USED_GRP)) {
+                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), error);
             }
         }
         LY_LIST_FOR(submod->data, pnode) {
-            grps = (struct lysp_grp *)lysp_node_groupings(pnode);
-            LY_ARRAY_FOR(grps, v) {
-                if (!(grps[v].flags & LYS_USED_GRP)) {
-                    LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, &grps[v]), error);
+            LY_LIST_FOR((struct lysp_node_grp *)lysp_node_groupings(pnode), grp) {
+                if (!(grp->flags & LYS_USED_GRP)) {
+                    LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, grp), error);
                 }
             }
         }

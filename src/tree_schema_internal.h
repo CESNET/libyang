@@ -236,18 +236,6 @@ LY_ERR lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *m
 LY_ERR lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
- * @brief Finalize some of the structures in case they are stored in sized array,
- * which can be possibly reallocated and some other data may point to them.
- *
- * Update parent pointers in the nodes inside grouping/augment/RPC/Notification, which could be reallocated.
- *
- * @param[in] mod Parsed module to be updated.
- * @return LY_ERR value (currently only LY_SUCCESS, but it can change in future).
- */
-LY_ERR lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
-        struct lysp_action *actions, struct lysp_notif *notifs);
-
-/**
  * @brief Just move the newest revision into the first position, does not sort the rest
  * @param[in] revs Sized-array of the revisions in a printable schema tree.
  */
@@ -332,37 +320,13 @@ void lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 /**
- * @brief Free a parsed input/output node.
- *
- * @param[in] ctx libyang context.
- * @param[in] inout Input/output to free.
- */
-void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
-
-/**
- * @brief Free a parsed action node.
- *
- * @param[in] ctx libyang context.
- * @param[in] action Action to free.
- */
-void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
-
-/**
- * @brief Free a parsed notification node.
- *
- * @param[in] ctx libyang context.
- * @param[in] notif Notification to free.
- */
-void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
-
-/**
  * @brief Get address of a node's actions list if any.
  *
  * Decides the node's type and in case it has an actions list, returns its address.
  * @param[in] node Node to check.
  * @return Address of the node's actions member if any, NULL otherwise.
  */
-struct lysp_action **lysp_node_actions_p(struct lysp_node *node);
+struct lysp_node_action **lysp_node_actions_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's notifications list if any.
@@ -371,7 +335,7 @@ struct lysp_action **lysp_node_actions_p(struct lysp_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's notifs member if any, NULL otherwise.
  */
-struct lysp_notif **lysp_node_notifs_p(struct lysp_node *node);
+struct lysp_node_notif **lysp_node_notifs_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's child pointer if any.
@@ -399,7 +363,7 @@ struct lysc_node **lysc_node_children_p(const struct lysc_node *node, uint16_t f
  * @param[in] node Node to check.
  * @return Address of the node's notifs member if any, NULL otherwise.
  */
-struct lysc_notif **lysc_node_notifs_p(struct lysc_node *node);
+struct lysc_node_notif **lysc_node_notifs_p(struct lysc_node *node);
 
 /**
  * @brief Get address of a node's actions pointer if any.
@@ -408,7 +372,7 @@ struct lysc_notif **lysc_node_notifs_p(struct lysc_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's actions member if any, NULL otherwise.
  */
-struct lysc_action **lysc_node_actions_p(struct lysc_node *node);
+struct lysc_node_action **lysc_node_actions_p(struct lysc_node *node);
 
 /**
  * @brief Iterate over the specified type of the extension instances
@@ -618,7 +582,7 @@ void lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must);
  * @param[in,out] inout Compiled inout structure to be cleaned.
  * Since the structure is part of the RPC/action structure, it is not freed itself.
  */
-void lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout);
+void lysc_node_action_inout_free(struct ly_ctx *ctx, struct lysc_node_action_inout *inout);
 
 /**
  * @brief Free the data inside compiled RPC/action structure.
@@ -626,7 +590,7 @@ void lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout)
  * @param[in,out] action Compiled action structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
-void lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action);
+void lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action);
 
 /**
  * @brief Free the items inside the compiled Notification structure.
@@ -634,7 +598,7 @@ void lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action);
  * @param[in,out] action Compiled Notification structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
-void lysc_notif_free(struct ly_ctx *ctx, struct lysc_notif *notif);
+void lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif);
 
 /**
  * @brief Free the compiled extension instance structure.

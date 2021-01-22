@@ -1178,14 +1178,14 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
         musts = ((struct lysc_node_anydata *)node->schema)->musts;
         break;
     case LYS_NOTIF:
-        musts = ((struct lysc_notif *)node->schema)->musts;
+        musts = ((struct lysc_node_notif *)node->schema)->musts;
         break;
     case LYS_RPC:
     case LYS_ACTION:
         if (op == LYD_VALIDATE_OP_RPC) {
-            musts = ((struct lysc_action *)node->schema)->input.musts;
+            musts = ((struct lysc_node_action *)node->schema)->input.musts;
         } else if (op == LYD_VALIDATE_OP_REPLY) {
-            musts = ((struct lysc_action *)node->schema)->output.musts;
+            musts = ((struct lysc_node_action *)node->schema)->output.musts;
         } else {
             LOGINT(LYD_CTX(node));
             return LY_EINT;

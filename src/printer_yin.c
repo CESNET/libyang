@@ -504,14 +504,18 @@ yprp_typedef(struct ypr_ctx *ctx, const struct lysp_tpdf *tpdf)
 }
 
 static void yprp_node(struct ypr_ctx *ctx, const struct lysp_node *node);
-static void yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action);
+static void yprp_action(struct ypr_ctx *ctx, const struct lysp_node_action *action);
+static void yprp_notification(struct ypr_ctx *ctx, const struct lysp_node_notif *notif);
 
 static void
-yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
+yprp_grouping(struct ypr_ctx *ctx, const struct lysp_node_grp *grp)
 {
     LY_ARRAY_COUNT_TYPE u;
     int8_t flag = 0;
     struct lysp_node *data;
+    struct lysp_node_action *action;
+    struct lysp_node_notif *notif;
+    struct lysp_node_grp *subgrp;
 
     ypr_open(ctx, "grouping", "name", grp->name, flag);
     LEVEL++;
@@ -526,9 +530,9 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
         yprp_typedef(ctx, &grp->typedefs[u]);
     }
 
-    LY_ARRAY_FOR(grp->groupings, u) {
+    LY_LIST_FOR(grp->groupings, subgrp) {
         ypr_close_parent(ctx, &flag);
-        yprp_grouping(ctx, &grp->groupings[u]);
+        yprp_grouping(ctx, subgrp);
     }
 
     LY_LIST_FOR(grp->data, data) {
@@ -536,9 +540,14 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
         yprp_node(ctx, data);
     }
 
-    LY_ARRAY_FOR(grp->actions, u) {
+    LY_LIST_FOR(grp->actions, action) {
         ypr_close_parent(ctx, &flag);
-        yprp_action(ctx, &grp->actions[u]);
+        yprp_action(ctx, action);
+    }
+
+    LY_LIST_FOR(grp->notifs, notif) {
+        ypr_close_parent(ctx, &flag);
+        yprp_notification(ctx, notif);
     }
 
     LEVEL--;
@@ -546,10 +555,11 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
 }
 
 static void
-yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, int8_t *flag)
+yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, int8_t *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_node *data;
+    struct lysp_node_grp *grp;
 
     if (!inout->data) {
         /* input/output is empty */
@@ -567,8 +577,8 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, int8_t *f
     LY_ARRAY_FOR(inout->typedefs, u) {
         yprp_typedef(ctx, &inout->typedefs[u]);
     }
-    LY_ARRAY_FOR(inout->groupings, u) {
-        yprp_grouping(ctx, &inout->groupings[u]);
+    LY_LIST_FOR(inout->groupings, grp) {
+        yprp_grouping(ctx, grp);
     }
 
     LY_LIST_FOR(inout->data, data) {
@@ -580,11 +590,12 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, int8_t *f
 }
 
 static void
-yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
+yprp_notification(struct ypr_ctx *ctx, const struct lysp_node_notif *notif)
 {
     LY_ARRAY_COUNT_TYPE u;
     int8_t flag = 0;
     struct lysp_node *data;
+    struct lysp_node_grp *grp;
 
     ypr_open(ctx, "notification", "name", notif->name, flag);
 
@@ -605,9 +616,9 @@ yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
         yprp_typedef(ctx, &notif->typedefs[u]);
     }
 
-    LY_ARRAY_FOR(notif->groupings, u) {
+    LY_LIST_FOR(notif->groupings, grp) {
         ypr_close_parent(ctx, &flag);
-        yprp_grouping(ctx, &notif->groupings[u]);
+        yprp_grouping(ctx, grp);
     }
 
     LY_LIST_FOR(notif->data, data) {
@@ -620,10 +631,11 @@ yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
 }
 
 static void
-yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action)
+yprp_action(struct ypr_ctx *ctx, const struct lysp_node_action *action)
 {
     LY_ARRAY_COUNT_TYPE u;
     int8_t flag = 0;
+    struct lysp_node_grp *grp;
 
     ypr_open(ctx, action->parent ? "action" : "rpc", "name", action->name, flag);
 
@@ -639,9 +651,9 @@ yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action)
         yprp_typedef(ctx, &action->typedefs[u]);
     }
 
-    LY_ARRAY_FOR(action->groupings, u) {
+    LY_LIST_FOR(action->groupings, grp) {
         ypr_close_parent(ctx, &flag);
-        yprp_grouping(ctx, &action->groupings[u]);
+        yprp_grouping(ctx, grp);
     }
 
     yprp_inout(ctx, &action->input, &flag);
@@ -680,6 +692,9 @@ yprp_container(struct ypr_ctx *ctx, const struct lysp_node *node)
     LY_ARRAY_COUNT_TYPE u;
     int8_t flag = 0;
     struct lysp_node *child;
+    struct lysp_node_action *action;
+    struct lysp_node_notif *notif;
+    struct lysp_node_grp *grp;
     struct lysp_node_container *cont = (struct lysp_node_container *)node;
 
     yprp_node_common1(ctx, node, &flag);
@@ -700,9 +715,9 @@ yprp_container(struct ypr_ctx *ctx, const struct lysp_node *node)
         yprp_typedef(ctx, &cont->typedefs[u]);
     }
 
-    LY_ARRAY_FOR(cont->groupings, u) {
+    LY_LIST_FOR(cont->groupings, grp) {
         ypr_close_parent(ctx, &flag);
-        yprp_grouping(ctx, &cont->groupings[u]);
+        yprp_grouping(ctx, grp);
     }
 
     LY_LIST_FOR(cont->child, child) {
@@ -710,14 +725,14 @@ yprp_container(struct ypr_ctx *ctx, const struct lysp_node *node)
         yprp_node(ctx, child);
     }
 
-    LY_ARRAY_FOR(cont->actions, u) {
+    LY_LIST_FOR(cont->actions, action) {
         ypr_close_parent(ctx, &flag);
-        yprp_action(ctx, &cont->actions[u]);
+        yprp_action(ctx, action);
     }
 
-    LY_ARRAY_FOR(cont->notifs, u) {
+    LY_LIST_FOR(cont->notifs, notif) {
         ypr_close_parent(ctx, &flag);
-        yprp_notification(ctx, &cont->notifs[u]);
+        yprp_notification(ctx, notif);
     }
 
     LEVEL--;
@@ -840,6 +855,9 @@ yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
     LY_ARRAY_COUNT_TYPE u;
     int8_t flag = 0;
     struct lysp_node *child;
+    struct lysp_node_action *action;
+    struct lysp_node_notif *notif;
+    struct lysp_node_grp *grp;
     struct lysp_node_list *list = (struct lysp_node_list *)node;
 
     yprp_node_common1(ctx, node, &flag);
@@ -884,9 +902,9 @@ yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
         yprp_typedef(ctx, &list->typedefs[u]);
     }
 
-    LY_ARRAY_FOR(list->groupings, u) {
+    LY_LIST_FOR(list->groupings, grp) {
         ypr_close_parent(ctx, &flag);
-        yprp_grouping(ctx, &list->groupings[u]);
+        yprp_grouping(ctx, grp);
     }
 
     LY_LIST_FOR(list->child, child) {
@@ -894,14 +912,14 @@ yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
         yprp_node(ctx, child);
     }
 
-    LY_ARRAY_FOR(list->actions, u) {
+    LY_LIST_FOR(list->actions, action) {
         ypr_close_parent(ctx, &flag);
-        yprp_action(ctx, &list->actions[u]);
+        yprp_action(ctx, action);
     }
 
-    LY_ARRAY_FOR(list->notifs, u) {
+    LY_LIST_FOR(list->notifs, notif) {
         ypr_close_parent(ctx, &flag);
-        yprp_notification(ctx, &list->notifs[u]);
+        yprp_notification(ctx, notif);
     }
 
     LEVEL--;
@@ -959,10 +977,11 @@ yprp_refine(struct ypr_ctx *ctx, struct lysp_refine *refine)
 }
 
 static void
-yprp_augment(struct ypr_ctx *ctx, const struct lysp_augment *aug)
+yprp_augment(struct ypr_ctx *ctx, const struct lysp_node_augment *aug)
 {
-    LY_ARRAY_COUNT_TYPE u;
     struct lysp_node *child;
+    struct lysp_node_action *action;
+    struct lysp_node_notif *notif;
 
     ypr_open(ctx, "augment", "target-node", aug->nodeid, 1);
     LEVEL++;
@@ -978,12 +997,12 @@ yprp_augment(struct ypr_ctx *ctx, const struct lysp_augment *aug)
         yprp_node(ctx, child);
     }
 
-    LY_ARRAY_FOR(aug->actions, u) {
-        yprp_action(ctx, &aug->actions[u]);
+    LY_LIST_FOR(aug->actions, action) {
+        yprp_action(ctx, action);
     }
 
-    LY_ARRAY_FOR(aug->notifs, u) {
-        yprp_notification(ctx, &aug->notifs[u]);
+    LY_LIST_FOR(aug->notifs, notif) {
+        yprp_notification(ctx, notif);
     }
 
     LEVEL--;
@@ -996,6 +1015,7 @@ yprp_uses(struct ypr_ctx *ctx, const struct lysp_node *node)
     LY_ARRAY_COUNT_TYPE u;
     int8_t flag = 0;
     struct lysp_node_uses *uses = (struct lysp_node_uses *)node;
+    struct lysp_node_augment *aug;
 
     yprp_node_common1(ctx, node, &flag);
     yprp_node_common2(ctx, node, &flag);
@@ -1005,9 +1025,9 @@ yprp_uses(struct ypr_ctx *ctx, const struct lysp_node *node)
         yprp_refine(ctx, &uses->refines[u]);
     }
 
-    LY_ARRAY_FOR(uses->augments, u) {
+    LY_LIST_FOR(uses->augments, aug) {
         ypr_close_parent(ctx, &flag);
-        yprp_augment(ctx, &uses->augments[u]);
+        yprp_augment(ctx, aug);
     }
 
     LEVEL--;
@@ -1416,6 +1436,10 @@ yin_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_node *data;
+    struct lysp_node_action *action;
+    struct lysp_node_notif *notif;
+    struct lysp_node_grp *grp;
+    struct lysp_node_augment *aug;
 
     LY_ARRAY_FOR(modp->extensions, u) {
         ly_print_(ctx->out, "\n");
@@ -1438,24 +1462,24 @@ yin_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
         yprp_typedef(ctx, &modp->typedefs[u]);
     }
 
-    LY_ARRAY_FOR(modp->groupings, u) {
-        yprp_grouping(ctx, &modp->groupings[u]);
+    LY_LIST_FOR(modp->groupings, grp) {
+        yprp_grouping(ctx, grp);
     }
 
     LY_LIST_FOR(modp->data, data) {
         yprp_node(ctx, data);
     }
 
-    LY_ARRAY_FOR(modp->augments, u) {
-        yprp_augment(ctx, &modp->augments[u]);
+    LY_LIST_FOR(modp->augments, aug) {
+        yprp_augment(ctx, aug);
     }
 
-    LY_ARRAY_FOR(modp->rpcs, u) {
-        yprp_action(ctx, &modp->rpcs[u]);
+    LY_LIST_FOR(modp->rpcs, action) {
+        yprp_action(ctx, action);
     }
 
-    LY_ARRAY_FOR(modp->notifs, u) {
-        yprp_notification(ctx, &modp->notifs[u]);
+    LY_LIST_FOR(modp->notifs, notif) {
+        yprp_notification(ctx, notif);
     }
 
     LY_ARRAY_FOR(modp->deviations, u) {

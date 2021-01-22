@@ -480,7 +480,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location /h:rp/l2.");
+    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location /h:rp/input/l2.");
 
     /* rpc input -> rpc output must */
     str = "module h {\n"
@@ -501,7 +501,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    CHECK_LOG_CTX("Schema node \"l\" not found (\"../l\") with context node \"/h:rp/l2\".", NULL);
+    CHECK_LOG_CTX("Schema node \"l\" not found (\"../l\") with context node \"/h:rp/input/l2\".", NULL);
 
     /* rpc input -> notif leafref */
     str = "module i {\n"
@@ -523,7 +523,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Not found node \"notif\" in path.", "Schema location /i:rp/l2.");
+    CHECK_LOG_CTX("Not found node \"notif\" in path.", "Schema location /i:rp/input/l2.");
 
     /* rpc input -> notif must */
     str = "module i {\n"
@@ -544,7 +544,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    CHECK_LOG_CTX("Schema node \"l\" not found (\"/notif/l\") with context node \"/i:rp/l2\".", NULL);
+    CHECK_LOG_CTX("Schema node \"l\" not found (\"/notif/l\") with context node \"/i:rp/input/l2\".", NULL);
 
     /* action output -> state */
     str = "module j {\n"
@@ -606,7 +606,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location /k:cont/ll/act/l2.");
+    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location /k:cont/ll/act/output/l2.");
 
     /* action output -> action input must */
     str = "module k {\n"
@@ -636,7 +636,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
-    CHECK_LOG_CTX("Schema node \"l\" not found (\"/cont/ll/act/l\") with context node \"/k:cont/ll/act/l2\".", NULL);
+    CHECK_LOG_CTX("Schema node \"l\" not found (\"/cont/ll/act/l\") with context node \"/k:cont/ll/act/output/l2\".", NULL);
 }
 
 struct module_clb_list {

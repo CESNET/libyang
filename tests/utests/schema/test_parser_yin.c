@@ -70,7 +70,7 @@ struct include_meta {
 
 struct inout_meta {
     struct lysp_node *parent;          /**< Parent node. */
-    struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
+    struct lysp_node_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
 };
 
 struct minmax_dev_meta {
@@ -110,11 +110,8 @@ void lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev);
 void lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include);
 void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
 void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
-void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
-void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
-void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
-void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
-void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
+void lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp);
+void lysp_augment_free(struct ly_ctx *ctx, struct lysp_node_augment *augment);
 void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
 void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
 void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
@@ -2603,7 +2600,7 @@ static void
 test_notification_elem(void **state)
 {
     const char *data;
-    struct lysp_notif *notifs = NULL;
+    struct lysp_node_notif *notifs = NULL;
     struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&notifs};
 
     /* max subelems */
@@ -2657,14 +2654,14 @@ test_notification_elem(void **state)
     assert_string_equal(notifs->ref, "ref");
     assert_string_equal(notifs->typedefs->name, "tpdf");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(notifs->exts[0]),  LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(UTEST_LYCTX, notifs, lysp_notif_free);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)notifs);
     notifs = NULL;
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<notification name=\"notif-name\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &notif_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(notifs->name, "notif-name");
-    FREE_ARRAY(UTEST_LYCTX, notifs, lysp_notif_free);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)notifs);
     notifs = NULL;
 }
 
@@ -2672,7 +2669,7 @@ static void
 test_grouping_elem(void **state)
 {
     const char *data;
-    struct lysp_grp *grps = NULL;
+    struct lysp_node_grp *grps = NULL;
     struct tree_node_meta grp_meta = {NULL, (struct lysp_node **)&grps};
 
     /* max subelems */
@@ -2719,14 +2716,14 @@ test_grouping_elem(void **state)
     assert_string_equal(grps->data->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(grps->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(grps->exts[0]),  LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(UTEST_LYCTX, grps, lysp_grp_free);
+    lysp_node_free(UTEST_LYCTX, &grps->node);
     grps = NULL;
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<grouping name=\"grp-name\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &grp_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(grps->name, "grp-name");
-    FREE_ARRAY(UTEST_LYCTX, grps, lysp_grp_free);
+    lysp_node_free(UTEST_LYCTX, &grps->node);
     grps = NULL;
 }
 
@@ -2954,7 +2951,7 @@ static void
 test_inout_elem(void **state)
 {
     const char *data;
-    struct lysp_action_inout inout = {};
+    struct lysp_node_action_inout inout = {};
     struct inout_meta inout_meta = {NULL, &inout};
 
     /* max subelements */
@@ -2998,7 +2995,7 @@ test_inout_elem(void **state)
     assert_int_equal(inout.data->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(inout.data->next->next->next->next->next->next->next->next);
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]),  LYEXT_SUBSTMT_SELF);
-    lysp_action_inout_free(UTEST_LYCTX, &inout);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     memset(&inout, 0, sizeof inout);
 
     /* max subelements */
@@ -3042,18 +3039,18 @@ test_inout_elem(void **state)
     assert_int_equal(inout.data->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(inout.data->next->next->next->next->next->next->next->next);
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]),  LYEXT_SUBSTMT_SELF);
-    lysp_action_inout_free(UTEST_LYCTX, &inout);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     memset(&inout, 0, sizeof inout);
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<input><leaf name=\"l\"><type name=\"empty\"/></leaf></input>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_SUCCESS);
-    lysp_action_inout_free(UTEST_LYCTX, &inout);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     memset(&inout, 0, sizeof inout);
 
     data = ELEMENT_WRAPPER_START "<output><leaf name=\"l\"><type name=\"empty\"/></leaf></output>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_SUCCESS);
-    lysp_action_inout_free(UTEST_LYCTX, &inout);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     memset(&inout, 0, sizeof inout);
 
     /* invalid combinations */
@@ -3067,7 +3064,7 @@ static void
 test_action_elem(void **state)
 {
     const char *data;
-    struct lysp_action *actions = NULL;
+    struct lysp_node_action *actions = NULL;
     struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&actions};
     uint16_t flags;
 
@@ -3105,7 +3102,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->output.musts->arg.str, "cond");
     assert_string_equal(actions->input.data->name, "uses-name");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]),  LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(UTEST_LYCTX, actions, lysp_action_free)
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
     actions = NULL;
 
     YCTX->parsed_mod->version = LYS_VERSION_1_1;
@@ -3138,14 +3135,14 @@ test_action_elem(void **state)
     assert_string_equal(actions->input.data->name, "uses-name");
     assert_string_equal(actions->output.musts->arg.str, "cond");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]),  LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(UTEST_LYCTX, actions, lysp_action_free)
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
     actions = NULL;
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<action name=\"act\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &act_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(actions->name, "act");
-    FREE_ARRAY(UTEST_LYCTX, actions, lysp_action_free)
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
     actions = NULL;
 }
 
@@ -3153,7 +3150,7 @@ static void
 test_augment_elem(void **state)
 {
     const char *data;
-    struct lysp_augment *augments = NULL;
+    struct lysp_node_augment *augments = NULL;
     struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&augments};
 
     YCTX->parsed_mod->version = LYS_VERSION_1_1;
@@ -3209,13 +3206,13 @@ test_augment_elem(void **state)
     assert_string_equal(augments->actions->name, "action");
     assert_string_equal(augments->notifs->name, "notif");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(augments->exts[0]),  LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(UTEST_LYCTX, augments, lysp_augment_free)
+    lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)augments);
     augments = NULL;
 
     data = ELEMENT_WRAPPER_START "<augment target-node=\"target\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &aug_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(augments->nodeid, "target");
-    FREE_ARRAY(UTEST_LYCTX, augments, lysp_augment_free)
+    lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)augments);
     augments = NULL;
 }
 

@@ -71,38 +71,6 @@ LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, u
         struct lysc_type **type, const char **units, struct lysp_qname **dflt);
 
 /**
- * @brief Compile parsed RPC/action schema node information.
- *
- * @param[in] ctx Compile context
- * @param[in] action_p Parsed RPC/action schema node.
- * @param[in] parent Parent node of the action, NULL in case of RPC (top-level action)
- * @param[in,out] action Prepared (empty) compiled action structure to fill.
- * @param[in] uses_status If the RPC/action is being placed instead of uses, here we have the uses's status value (as node's flags).
- * Zero means no uses, non-zero value with no status bit set mean the default status.
- * @return LY_SUCCESS on success,
- * @return LY_EVALID on validation error,
- * @return LY_EDENIED on not-supported deviation.
- */
-LY_ERR lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, struct lysc_node *parent,
-        struct lysc_action *action, uint16_t uses_status);
-
-/**
- * @brief Compile parsed Notification schema node information.
- *
- * @param[in] ctx Compile context
- * @param[in] notif_p Parsed Notification schema node.
- * @param[in] parent Parent node of the Notification, NULL in case of top-level Notification
- * @param[in,out] notif Prepared (empty) compiled notification structure to fill.
- * @param[in] uses_status If the Notification is being placed instead of uses, here we have the uses's status value (as node's flags).
- * Zero means no uses, non-zero value with no status bit set mean the default status.
- * @return LY_SUCCESS on success,
- * @return LY_EVALID on validation error,
- * @return LY_EDENIED on not-supported deviation.
- */
-LY_ERR lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p, struct lysc_node *parent,
-        struct lysc_notif *notif, uint16_t uses_status);
-
-/**
  * @brief Find the node according to the given descendant/absolute schema nodeid.
  * Used in unique, refine and augment statements.
  *
@@ -159,7 +127,7 @@ void lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add);
  * @param[in] grp Parsed grouping node to check.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_grp *grp);
+LY_ERR lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_node_grp *grp);
 
 /**
  * @brief Compile parsed schema node information.
