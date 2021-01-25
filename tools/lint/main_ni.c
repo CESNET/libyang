@@ -222,6 +222,11 @@ help(int shortout)
             "  -m, --merge   Merge input data files into a single tree and validate at\n"
             "                once.The option has effect only for 'data' and 'config' TYPEs.\n\n"
 
+            "  -y, --yang-library\n"
+            "                Load and implement internal \"ietf-yang-library\" YANG module.\n"
+            "                Note that this module includes definitions of mandatory state\n"
+            "                data that can result in unexpected data validation errors.\n\n"
+
 #if 0
             "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
             "Tree output specific options:\n"
@@ -371,6 +376,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"makeimplemented",  no_argument,       NULL, 'i'},
         {"list",             no_argument,       NULL, 'l'},
         {"merge",            no_argument,       NULL, 'm'},
+        {"yang-library",     no_argument,       NULL, 'y'},
         {"output",           required_argument, NULL, 'o'},
         {"operational",      required_argument, NULL, 'O'},
         {"path",             required_argument, NULL, 'p'},
@@ -383,13 +389,13 @@ fill_context(int argc, char *argv[], struct context *c)
         {NULL,               0,                 NULL, 0}
     };
 
-    uint16_t options_ctx = 0;
+    uint16_t options_ctx = YL_DEFAULT_CTX_OPTIONS;
     uint8_t data_type_set = 0;
 
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmo:p:P:qst:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmyo:p:P:qst:vV", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmo:p:P:qst:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmyo:p:P:qst:vV", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'd': /* --default */
@@ -554,6 +560,10 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'm': /* --merge */
             c->data_merge = 1;
+            break;
+
+        case 'y': /* --yang-library */
+            options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
             break;
 
         case 'h': /* --help */

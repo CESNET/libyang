@@ -23,6 +23,11 @@
 #define PROMPT "> "
 
 /**
+ * @brief Default context creation options.
+ */
+#define YL_DEFAULT_CTX_OPTIONS LY_CTX_NO_YANGLIBRARY
+
+/**
  * @brief log error message
  */
 #define YLMSG_E(MSG, ...) \
