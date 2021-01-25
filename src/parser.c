@@ -299,6 +299,11 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
 int
 lyp_munmap(void *addr, size_t length)
 {
+    if (!addr) {
+        /* nothing to unmap */
+        return 0;
+    }
+
     return munmap(addr, length);
 }
 

@@ -935,7 +935,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lyd_node *rpc_act, const char *data,
     struct lyd_node *result = NULL;
     int xmlopt = LYXML_PARSE_MULTIROOT;
 
-    if (!ctx || !data) {
+    if (!ctx) {
         LOGARG;
         return NULL;
     }
@@ -1068,8 +1068,6 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
 
     if (lyp_mmap(ctx, fd, 0, &length, (void **)&data)) {
         LOGERR(ctx, LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
-        return NULL;
-    } else if (!data) {
         return NULL;
     }
 
