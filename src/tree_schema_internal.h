@@ -284,15 +284,15 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
  * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
- * @param[in] implement Flag if the loaded module is supposed to be marked as implemented. If revision is NULL and implement flag set,
- * the implemented module in the context is returned despite it might not be of the latest revision, because in this case the module
- * of the latest revision can not be made implemented.
+ * @param[in] need_implemented Whether the module should be implemented. If revision is NULL and this flag is set,
+ * the implemented module in the context is returned despite it might not be of the latest revision, because in this
+ * case the module of the latest revision can not be made implemented.
  * @param[in] features All the features to enable if implementing the module.
  * @param[in] unres Global unres structure for all newly implemented modules.
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
+LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
         const char **features, struct lys_glob_unres *unres, struct lys_module **mod);
 
 /**
@@ -458,7 +458,7 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] implement Flag if the schema is supposed to be marked as implemented and compiled.
+ * @param[in] need_implemented Whether module needs to be implemented and compiled.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @param[in] features Array of features to enable ended with NULL. NULL for all features disabled and '*' for all enabled.
@@ -466,7 +466,7 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[out] module Created module.
  * @return LY_ERR value.
  */
-LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
+LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool need_implemented,
         lys_custom_check custom_check, void *check_data, const char **features, struct lys_glob_unres *unres,
         struct lys_module **module);
 
@@ -508,7 +508,7 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * @param[in] name Name of the (sub)module to load.
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
  * @param[in] features Array of enabled features ended with NULL.
- * @param[in] implement Flag if the (sub)module is supposed to be marked as implemented.
+ * @param[in] need_implemented Whether the (sub)module is needed implemented or not.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
  * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
@@ -519,7 +519,7 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
 LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
-        ly_bool implement, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
+        ly_bool need_implemented, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
         struct lys_glob_unres *unres, void **result);
 
 /**

@@ -705,9 +705,9 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features, ly_bool implement,
-        struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, struct lys_glob_unres *unres,
-        void **result)
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
+        ly_bool need_implemented, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
+        struct lys_glob_unres *unres, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -739,7 +739,7 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
         ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
                 (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data, features, unres,
+        ret = lys_create_module(ctx, in, format, need_implemented, lysp_load_module_check, &check_data, features, unres,
                 (struct lys_module **)&mod);
 
     }
@@ -756,8 +756,8 @@ cleanup:
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, const char **features,
-        struct lys_glob_unres *unres, struct lys_module **mod)
+lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
+        const char **features, struct lys_glob_unres *unres, struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -767,11 +767,14 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_
     struct lys_module *ctx_latest = NULL, *m;
     struct ly_in *in;
     LY_ERR ret;
+    ly_bool implement;
 
     assert(mod && unres);
 
     if (ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
         implement = 1;
+    } else {
+        implement = need_implemented;
     }
 
     /*
