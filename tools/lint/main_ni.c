@@ -188,8 +188,9 @@ help(int shortout)
             "                Supplement to the --schema-node option to print information\n"
             "                only about a single node specified as PATH argument.\n\n"
 
-            "  -s, --strict  Strict data parsing (do not skip unknown data), has no effect\n"
-            "                for schemas.\n\n"
+            "  -n, --not-strict\n"
+            "                Do not require strict data parsing (silently skip unknown data),\n"
+            "                has no effect for schemas.\n\n"
 
             "  -e, --present Validate only with the schema modules whose data actually\n"
             "                exist in the provided input data files. Takes effect only\n"
@@ -382,7 +383,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"path",             required_argument, NULL, 'p'},
         {"schema-node",      required_argument, NULL, 'P'},
         {"single-node",      no_argument,       NULL, 'q'},
-        {"strict",           no_argument,       NULL, 's'},
+        {"not-strict",       no_argument,       NULL, 'n'},
         {"type",             required_argument, NULL, 't'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
@@ -392,10 +393,12 @@ fill_context(int argc, char *argv[], struct context *c)
     uint16_t options_ctx = YL_DEFAULT_CTX_OPTIONS;
     uint8_t data_type_set = 0;
 
+    c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
+
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmyo:p:P:qst:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmyo:p:P:qnt:vV", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmyo:p:P:qst:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmyo:p:P:qnt:vV", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'd': /* --default */
@@ -511,8 +514,8 @@ fill_context(int argc, char *argv[], struct context *c)
             c->schema_print_options |= LYS_PRINT_NO_SUBSTMT;
             break;
 
-        case 's': /* --strict */
-            c->data_parse_options |= LYD_PARSE_STRICT;
+        case 'n': /* --not-strict */
+            c->data_parse_options &= ~LYD_PARSE_STRICT;
             break;
 
         case 'e': /* --present */
@@ -670,7 +673,7 @@ fill_context(int argc, char *argv[], struct context *c)
     if (c->data_print_options && !c->data_out_format) {
         YLMSG_W("data printer options specified, but the data output format is missing.\n");
     }
-    if ((c->data_parse_options || c->data_type) && !c->data_inputs.count) {
+    if (((c->data_parse_options != YL_DEFAULT_DATA_PARSE_OPTIONS) || c->data_type) && !c->data_inputs.count) {
         YLMSG_W("Data parser options specified, but no data input file provided.\n");
     }
 
