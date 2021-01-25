@@ -281,7 +281,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
             goto cleanup;
         }
 
-        if (fill_cmdline_file(&inputs, in, argv[optind + i], format)) {
+        if (!fill_cmdline_file(&inputs, in, argv[optind + i], format)) {
             ly_in_free(in, 1);
             goto cleanup;
         }
