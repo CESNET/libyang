@@ -1253,7 +1253,7 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
 
 repeat:
     /* process document */
-    while (1) {
+    while (c) {
         if (!*c) {
             /* eof */
             return first;
@@ -1288,6 +1288,10 @@ repeat:
             LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, c);
             goto error;
         }
+    }
+
+    if (!c) {
+        goto error;
     }
 
     root = lyxml_parse_elem(ctx, c, &len, NULL, options);
