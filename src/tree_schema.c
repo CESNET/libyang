@@ -1045,7 +1045,7 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
 }
 
 LY_ERR
-lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
+lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool need_implemented,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
         void *check_data, const char **features, struct lys_glob_unres *unres, struct lys_module **module)
 {
@@ -1058,12 +1058,19 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     struct lys_parser_ctx *pctx = NULL;
     char *filename, *rev, *dot;
     size_t len;
+    ly_bool implement;
 
-    assert(ctx && in && (!features || implement) && unres);
+    assert(ctx && in && (!features || need_implemented) && unres);
 
     if (module) {
         *module = NULL;
     }
+
+    if (ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
+        implement = 1;
+    } else {
+        implement = need_implemented;
+     }
 
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), LY_EMEM);
