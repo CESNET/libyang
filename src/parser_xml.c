@@ -360,6 +360,7 @@ attr_error:
             if (!dattr->value.string) {
                 /* problem with resolving value as xpath */
                 dattr->value.string = dattr->value_str;
+                lyd_free_attr(ctx, NULL, dattr, 0);
                 goto unlink_node_error;
             }
             lydict_remove(ctx, dattr->value_str);
