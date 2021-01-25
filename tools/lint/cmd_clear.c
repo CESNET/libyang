@@ -28,16 +28,17 @@
 void
 cmd_clear_help(void)
 {
-    printf("Usage: clear [<yang-library-data> | --external]\n"
+    printf("Usage: clear [--yang-library]\n"
             "                  Replace the current context with an empty one, searchpaths\n"
             "                  are not kept.\n"
+            "  -y, --yang-library\n"
+            "                  Load and implement internal \"ietf-yang-library\" YANG module.\n"
+            "                  Note that this module includes definitions of mandatory state\n"
+            "                  data that can result in unexpected data validation errors.\n");
+#if 0
             "                  If <yang-library-data> path specified, load the modules\n"
             "                  according to the provided yang library data.\n"
-            "  -e, --external-yl\n"
-            "                  When creating the new context, do not load the internal\n"
-            "                  ietf-yang-library and let user to load ietf-yang-library from\n"
-            "                  file. Note, that until a compatible ietf-yang-library loaded,\n"
-            "                  the 'list' command does not work.\n");
+#endif
 }
 
 void
@@ -47,21 +48,21 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
     char **argv = NULL;
     int opt, opt_index;
     struct option options[] = {
-        {"external-yl", no_argument, NULL, 'e'},
-        {"help", no_argument, NULL, 'h'},
+        {"yang-library", no_argument, NULL, 'y'},
+        {"help",         no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
-    uint16_t options_ctx = 0;
+    uint16_t options_ctx = LY_CTX_NO_YANGLIBRARY;
     struct ly_ctx *ctx_new;
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "eh", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "yh", options, &opt_index)) != -1) {
         switch (opt) {
-        case 'e':
-            options_ctx |= LY_CTX_NO_YANGLIBRARY;
+        case 'y':
+            options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
             break;
         case 'h':
             cmd_clear_help();
@@ -70,12 +71,6 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
             YLMSG_E("Unknown option.\n");
             goto cleanup;
         }
-    }
-
-    /* TODO ietf-yang-library support */
-    if (argc != optind) {
-        YLMSG_E("Creating context following the ietf-yang-library data is not yet supported.\n");
-        goto cleanup;
     }
 
     if (ly_ctx_new(NULL, options_ctx, &ctx_new)) {
