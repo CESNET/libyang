@@ -28,6 +28,11 @@
 #define YL_DEFAULT_CTX_OPTIONS LY_CTX_NO_YANGLIBRARY
 
 /**
+ * @brief Default data parsing flags.
+ */
+#define YL_DEFAULT_DATA_PARSE_OPTIONS LYD_PARSE_STRICT
+
+/**
  * @brief log error message
  */
 #define YLMSG_E(MSG, ...) \

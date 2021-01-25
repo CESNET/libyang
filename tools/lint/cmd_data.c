@@ -103,22 +103,22 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     char **argv = NULL;
     int opt, opt_index;
     struct option options[] = {
-        {"defaults", required_argument, NULL, 'd'},
-        {"present", no_argument, NULL, 'e'},
-        {"format", required_argument, NULL, 'f'},
-        {"help", no_argument, NULL, 'h'},
-        {"merge", no_argument, NULL, 'm'},
-        {"output", required_argument, NULL, 'o'},
+        {"defaults",    required_argument, NULL, 'd'},
+        {"present",     no_argument,       NULL, 'e'},
+        {"format",      required_argument, NULL, 'f'},
+        {"help",        no_argument,       NULL, 'h'},
+        {"merge",       no_argument,       NULL, 'm'},
+        {"output",      required_argument, NULL, 'o'},
         {"operational", required_argument, NULL, 'O'},
-        {"strict", no_argument, NULL, 's'},
-        {"type", required_argument, NULL, 't'},
-        {"xpath", required_argument, NULL, 'x'},
+        {"not-strict",  no_argument,       NULL, 'n'},
+        {"type",        required_argument, NULL, 't'},
+        {"xpath",       required_argument, NULL, 'x'},
         {NULL, 0, NULL, 0}
     };
 
     uint8_t data_merge = 0;
     uint32_t options_print = 0;
-    uint32_t options_parse = 0;
+    uint32_t options_parse = YL_DEFAULT_DATA_PARSE_OPTIONS;
     uint32_t options_validate = 0;
     uint8_t data_type = 0;
     uint8_t data_type_set = 0;
@@ -132,7 +132,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "d:ef:hmo:O:r:st:x:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:ef:hmo:O:r:nt:x:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd': /* --default */
             if (!strcasecmp(optarg, "all")) {
@@ -194,8 +194,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         case 'm': /* --merge */
             data_merge = 1;
             break;
-        case 's': /* --strict */
-            options_parse |= LYD_PARSE_STRICT;
+        case 'n': /* --not-strict */
+            options_parse &= ~LYD_PARSE_STRICT;
             break;
         case 't': /* --type */
             if (data_type_set) {
