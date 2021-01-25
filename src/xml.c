@@ -1251,6 +1251,11 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
         return NULL;
     }
 
+    if (!data) {
+        /* nothing to parse */
+        return NULL;
+    }
+
 repeat:
     /* process document */
     while (1) {
