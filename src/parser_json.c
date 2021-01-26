@@ -462,6 +462,17 @@ repeat:
     leaf->value_type = stype->base;
 
     if (data[len] == '"') {
+        if ((leaf->value_type == LY_TYPE_INT8) || (leaf->value_type == LY_TYPE_INT16) ||
+                (leaf->value_type == LY_TYPE_INT32) || (leaf->value_type == LY_TYPE_UINT8) ||
+                (leaf->value_type == LY_TYPE_UINT16) || (leaf->value_type == LY_TYPE_UINT32)) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected number, but found string)");
+            return 0;
+        }
+        if (leaf->value_type == LY_TYPE_BOOL) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected boolean, but found string)");
+            return 0;
+        }
+
         /* string representations */
         ++len;
         str = lyjson_parse_text(ctx, &data[len], &r);
@@ -477,6 +488,12 @@ repeat:
         }
         len += r + 1;
     } else if (data[len] == '-' || isdigit(data[len])) {
+        if ((leaf->value_type == LY_TYPE_INT64) || (leaf->value_type == LY_TYPE_UINT64) ||
+                (leaf->value_type == LY_TYPE_STRING)) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected string, but found number)");
+            return 0;
+        }
+
         /* numeric type */
         r = lyjson_parse_number(ctx, &data[len]);
         if (!r) {
@@ -495,6 +512,11 @@ repeat:
         }
         len += r;
     } else if (data[len] == 'f' || data[len] == 't') {
+        if (leaf->value_type == LY_TYPE_STRING) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected string, but found boolean)");
+            return 0;
+        }
+
         /* boolean */
         r = lyjson_parse_boolean(ctx, &data[len]);
         if (!r) {
