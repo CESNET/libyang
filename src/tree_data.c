@@ -5561,7 +5561,7 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
         new_any = calloc(1, sizeof *new_any);
         new_node = (struct lyd_node *)new_any;
         LY_CHECK_ERR_GOTO(!new_node, LOGMEM(ctx), error);
-        new_node->schema = (struct lys_node *)schema;
+        new_any->schema = (struct lys_node *)schema;
 
         if (_lyd_dup_node_common(new_node, node, ctx, options)) {
             goto error;
