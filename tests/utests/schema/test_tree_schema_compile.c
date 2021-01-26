@@ -483,7 +483,7 @@ test_node_choice(void **state)
     cs = (struct lysc_node_case *)cs->next;
     assert_non_null(cs);
     assert_string_equal("b", cs->name);
-    assert_int_equal(LYS_STATUS_CURR | LYS_SET_DFLT, cs->flags);
+    assert_int_equal(LYS_STATUS_CURR | LYS_SET_DFLT | LYS_CONFIG_W, cs->flags);
     assert_ptr_equal(ch, cs->parent);
     assert_non_null(cs->child);
     assert_string_equal("b", cs->child->name);

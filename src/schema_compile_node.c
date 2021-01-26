@@ -3625,17 +3625,8 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
 static LY_ERR
 lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_node *parent)
 {
-    if (node->nodetype == LYS_CASE) {
-        /* case never has any config */
-        assert(!(node->flags & LYS_CONFIG_MASK));
-        return LY_SUCCESS;
-    }
-
-    /* adjust parent to always get the ancestor with config */
-    if (parent && (parent->nodetype == LYS_CASE)) {
-        parent = parent->parent;
-        assert(parent);
-    }
+    /* case never has any explicit config */
+    assert((node->nodetype != LYS_CASE) || !(node->flags & LYS_CONFIG_MASK));
 
     if (ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT)) {
         /* ignore config statements inside RPC/action data */
