@@ -676,7 +676,7 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
 /**
  * @brief Same as ::lysc_data_node() but never returns the node itself.
  */
-#define lysc_data_parent(schema) lysc_data_node(lysc_node_parent_full(schema))
+#define lysc_data_parent(SCHEMA) lysc_data_node((SCHEMA)->parent)
 
 /**
  * @brief Learn whether a node is inside an operation output.

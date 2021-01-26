@@ -1397,26 +1397,6 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
     }
 }
 
-API const struct lysc_node *
-lysc_node_parent_full(const struct lysc_node *node)
-{
-    if (!node) {
-        return NULL;
-    } else if (node->nodetype == LYS_INPUT) {
-        return (struct lysc_node *)(((char *)node) - offsetof(struct lysc_node_action, input));
-    } else if (node->nodetype == LYS_OUTPUT) {
-        return (struct lysc_node *)(((char *)node) - offsetof(struct lysc_node_action, output));
-    } else if (node->parent && (node->parent->nodetype & (LYS_RPC | LYS_ACTION))) {
-        if (node->flags & LYS_CONFIG_W) {
-            return (struct lysc_node *)&((struct lysc_node_action *)node->parent)->input;
-        } else {
-            return (struct lysc_node *)&((struct lysc_node_action *)node->parent)->output;
-        }
-    } else {
-        return node->parent;
-    }
-}
-
 struct lys_module *
 lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 {
@@ -1673,7 +1653,7 @@ lysc_data_node(const struct lysc_node *schema)
     parent = schema;
     while (parent && !(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC |
             LYS_ACTION | LYS_NOTIF))) {
-        parent = lysc_node_parent_full(parent);
+        parent = parent->parent;
     }
 
     return parent;

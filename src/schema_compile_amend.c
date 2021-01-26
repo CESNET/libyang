@@ -1423,16 +1423,10 @@ static ly_bool
 lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_module *mod, const char *name,
         size_t name_len)
 {
-    const struct lys_module *node_mod;
     const char *node_name;
 
     /* compare with the module of the node */
-    if ((*node)->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-        node_mod = lysc_node_parent_full(*node)->module;
-    } else {
-        node_mod = (*node)->module;
-    }
-    if (node_mod != mod) {
+    if ((*node)->module != mod) {
         return 0;
     }
 
@@ -1449,7 +1443,7 @@ lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_mo
     }
 
     /* move to next parent */
-    *node = lysc_node_parent_full(*node);
+    *node = (*node)->parent;
 
     return 1;
 }

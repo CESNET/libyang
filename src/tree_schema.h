@@ -108,7 +108,6 @@ struct lyxp_expr;
  * - ::lysc_has_when()
  *
  * - ::lysc_node_children()
- * - ::lysc_node_parent_full()
  * - ::lysc_node_actions()
  * - ::lysc_node_notifs()
  *
@@ -213,7 +212,7 @@ struct lyxp_expr;
     } \
     while (!(LYSC_TREE_DFS_next)) { \
         /* parent is already processed, go to its sibling */ \
-        (ELEM) = (struct lysc_node *)lysc_node_parent_full(ELEM); \
+        (ELEM) = (ELEM)->parent; \
         _LYSC_TREE_DFS_NEXT(START, ELEM, LYSC_TREE_DFS_next); \
     } }
 
@@ -227,7 +226,7 @@ struct lyxp_expr;
     } \
     if ((ELEM)->nodetype == LYS_INPUT) { \
         /* after input, get output */ \
-        (NEXT) = (struct lysc_node *)lysc_node_children(lysc_node_parent_full(ELEM), LYS_CONFIG_R); \
+        (NEXT) = (struct lysc_node *)lysc_node_children((ELEM)->parent, LYS_CONFIG_R); \
     } else if ((ELEM)->nodetype == LYS_OUTPUT) { \
         /* no sibling of output */ \
         (NEXT) = NULL; \
@@ -1966,17 +1965,6 @@ const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
  * @return NULL otherwise.
  */
 const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
-
-/**
- * @brief Get the parent pointer from any type of (compiled) schema node.
- * Returns input or output for direct descendants of RPC/action nodes.
- * To skip them, use ::lysc_node.parent pointer directly.
- *
- * @param[in] node Node whose parent to get.
- * @return Node parent.
- * @return NULL is there is none.
- */
-const struct lysc_node *lysc_node_parent_full(const struct lysc_node *node);
 
 /**
  * @brief Callback to be called for every schema node in a DFS traversal.
