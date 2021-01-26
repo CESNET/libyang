@@ -248,7 +248,11 @@ ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, 
 static LY_ERR
 ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if ((val1->realtype == val2->realtype) && (val1->canonical == val2->canonical)) {
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    if (val1->canonical == val2->canonical) {
         return LY_SUCCESS;
     }
 
@@ -1366,8 +1370,12 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
  * Implementation of the ly_type_compare_clb.
  */
 static LY_ERR
-ly_type_compare_empty(const struct lyd_value *UNUSED(val1), const struct lyd_value *UNUSED(val2))
+ly_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2)
 {
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
     /* empty has just one value, so empty data must be always the same */
     return LY_SUCCESS;
 }
@@ -1539,6 +1547,10 @@ error:
 static LY_ERR
 ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
 {
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
     if (val1->ident == val2->ident) {
         return LY_SUCCESS;
     }
@@ -1709,6 +1721,10 @@ static LY_ERR
 ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     LY_ARRAY_COUNT_TYPE u, v;
+
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
 
     if (val1 == val2) {
         return LY_SUCCESS;
@@ -2249,6 +2265,10 @@ ly_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
 static LY_ERR
 ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
     if (val1->subvalue->value.realtype != val2->subvalue->value.realtype) {
         return LY_ENOT;
     }

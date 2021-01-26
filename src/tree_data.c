@@ -2473,10 +2473,6 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, u
 
             term1 = (struct lyd_node_term *)node1;
             term2 = (struct lyd_node_term *)node2;
-            if (term1->value.realtype != term2->value.realtype) {
-                return LY_ENOT;
-            }
-
             return term1->value.realtype->plugin->compare(&term1->value, &term2->value);
         case LYS_CONTAINER:
             if (options & LYD_COMPARE_DEFAULTS) {
@@ -2601,10 +2597,6 @@ lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
     }
 
     if ((meta1->annotation->module->ctx != meta2->annotation->module->ctx) || (meta1->annotation != meta2->annotation)) {
-        return LY_ENOT;
-    }
-
-    if (meta1->value.realtype != meta2->value.realtype) {
         return LY_ENOT;
     }
 
