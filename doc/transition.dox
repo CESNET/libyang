@@ -186,7 +186,6 @@
  * -                            | ::lysc_node_children()          | ^
  * -                            | ::lysc_node_actions()           | ^
  * -                            | ::lysc_node_notifs()            | ^
- * -                            | ::lysc_node_parent_full()       | ^
  * -                            | ::lysp_node_children()          | Added functionality to simplify the examination of generic parsed schema nodes.
  * -                            | ::lysp_node_actions()           | ^
  * -                            | ::lysp_node_notifs()            | ^
