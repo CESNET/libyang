@@ -2319,11 +2319,13 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
         cont->flags |= LYS_PRESENCE;
     } else if (cont_p->musts) {
         /* container with a must condition */
-        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"must\" condition.", cont_p->name);
+        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"must\" condition.",
+                cont_p->name);
         cont->flags |= LYS_PRESENCE;
     } else if (cont_p->when) {
         /* container with a when condition */
-        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"when\" condition.", cont_p->name);
+        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"when\" condition.",
+                cont_p->name);
         cont->flags |= LYS_PRESENCE;
     } else if (cont_p->parent) {
         if (cont_p->parent->nodetype == LYS_CHOICE) {
@@ -3644,7 +3646,7 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_nod
         node->flags &= ~LYS_CONFIG_MASK;
         node->flags |= LYS_CONFIG_R;
     } else if (!(node->flags & LYS_CONFIG_MASK)) {
-        /* config not explicitely set, inherit it from parent */
+        /* config not explicitly set, inherit it from parent */
         if (parent) {
             node->flags |= parent->flags & LYS_CONFIG_MASK;
         } else {
@@ -3652,7 +3654,7 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_nod
             node->flags |= LYS_CONFIG_W;
         }
     } else {
-        /* config set explicitely */
+        /* config set explicitly */
         node->flags |= LYS_SET_CONFIG;
     }
 
