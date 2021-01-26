@@ -562,6 +562,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
     LY_CHECK_ARG_RET(NULL, node, NULL);
     if (buffer) {
         LY_CHECK_ARG_RET(node->module->ctx, buflen > 1, NULL);
+        buffer[0] = '\0';
     }
 
     switch (pathtype) {
