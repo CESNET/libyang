@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include <limits.h>
 
 #include "libyang.h"
@@ -49,12 +50,46 @@ struct parsed_pred {
     } *pred;
 };
 
+static int
+check_overflow_mul(int64_t num1, int64_t num2)
+{
+    if (((num1 == -1) && (num2 == INT64_MIN)) || ((num2 == -1) && (num1 == INT64_MIN))) {
+        return 1;
+    }
+
+    if ((num1 > INT64_MAX / num2) || (num1 < INT64_MIN / num2)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static int
+check_overflow_sub(int64_t num1, int64_t num2)
+{
+    if (((num2 < 0) && (num1 > INT64_MAX + num2)) || ((num2 > 0) && (num1 < INT64_MIN + num2))) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static int
+check_overflow_add(int64_t num1, int64_t num2)
+{
+    if (((num2 > 0) && (num1 > INT64_MAX - num2)) || ((num2 < 0) && (num1 < INT64_MIN - num2))) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int
 parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
     const char *ptr;
     int minus = 0;
-    int64_t ret = 0, prev_ret;
+    int64_t ret = 0;
     int8_t str_exp, str_dig = -1, trailing_zeros = 0;
 
     ptr = *str_num;
@@ -83,17 +118,21 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
             }
             ++str_dig;
         } else {
-            prev_ret = ret;
+            if (check_overflow_mul(ret, 10)) {
+                return 1;
+            }
+            ret *= 10;
+
             if (minus) {
-                ret = ret * 10 - (ptr[0] - '0');
-                if (ret > prev_ret) {
+                if (check_overflow_sub(ret, ptr[0] - '0')) {
                     return 1;
                 }
+                ret -= ptr[0] - '0';
             } else {
-                ret = ret * 10 + (ptr[0] - '0');
-                if (ret < prev_ret) {
+                if (check_overflow_add(ret, ptr[0] - '0')) {
                     return 1;
                 }
+                ret += ptr[0] - '0';
             }
             if (str_dig > -1) {
                 ++str_dig;
@@ -126,12 +165,11 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
         if ((str_exp - 1) + (dig - str_dig) > 18) {
             return 1;
         }
-        prev_ret = ret;
-        ret *= dec_pow(dig - str_dig);
-        if ((minus && (ret > prev_ret)) || (!minus && (ret < prev_ret))) {
+
+        if (check_overflow_mul(ret, dec_pow(dig - str_dig))) {
             return 1;
         }
-
+        ret *= dec_pow(dig - str_dig);
     }
     if (str_dig > dig) {
         return 1;
