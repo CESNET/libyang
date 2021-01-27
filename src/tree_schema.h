@@ -1614,15 +1614,13 @@ struct lysc_node_action_inout {
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
             uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
-            struct lysc_node *parent; /**< parent node (NULL in case of top level node) */
-            struct lysc_node *next;  /**< next sibling node (NULL if there is no one) */
-            struct lysc_node *prev;  /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-            const char *name;        /**< Notification name (mandatory) */
-            const char *dsc;         /**< description */
-            const char *ref;         /**< reference */
+            struct lysc_node *parent;/**< parent node (NULL in case of top level node) */
+            struct lysc_node *next;  /**< NULL */
+            struct lysc_node *prev;  /**< pointer to the node itself - compatibility with ::lysc_node, input and output are
+                                          supposed to be a separated subtrees, so they do not link each other as siblings. */
+            const char *name;        /**< "input" or "output" */
+            const char *dsc;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
+            const char *ref;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
             struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /** private arbitrary user data, not used by libyang */
