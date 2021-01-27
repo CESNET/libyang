@@ -7574,7 +7574,7 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
     if ((types & UNRES_EXT)) {
         assert(ext_parents->number == ext_par_types->number);
         for (i = 0; i < ext_parents->number; ++i) {
-            ret = compact_ext_list(ctx, ext_parents->set.g[i], (LYEXT_PAR)ext_parents->set.g[i]);
+            ret = compact_ext_list(ctx, ext_parents->set.g[i], (LYEXT_PAR)(uintptr_t)ext_parents->set.g[i]);
             LY_CHECK_GOTO(ret == -1, finish);
         }
     }
