@@ -1382,14 +1382,14 @@ test_action(void **state)
     assert_non_null(rpcs->input.exts);
     assert_non_null(rpcs->input.musts);
     assert_non_null(rpcs->input.typedefs);
-    assert_non_null(rpcs->input.data);
+    assert_non_null(rpcs->input.child);
     /* output */
     assert_int_equal(rpcs->output.nodetype, LYS_OUTPUT);
     assert_non_null(rpcs->output.groupings);
     assert_non_null(rpcs->output.exts);
     assert_non_null(rpcs->output.musts);
     assert_non_null(rpcs->output.typedefs);
-    assert_non_null(rpcs->output.data);
+    assert_non_null(rpcs->output.child);
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)rpcs); rpcs = NULL;
@@ -1439,7 +1439,7 @@ test_notification(void **state)
     assert_non_null(notifs->groupings);
     assert_non_null(notifs->typedefs);
     assert_non_null(notifs->musts);
-    assert_non_null(notifs->data);
+    assert_non_null(notifs->child);
     assert_int_equal(LYS_STATUS_CURR, notifs->flags);
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);

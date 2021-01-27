@@ -2642,25 +2642,25 @@ parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", ly_stmt2str(inout_kw));
         /* fall through */
         case LY_STMT_ANYXML:
-            LY_CHECK_RET(parse_any(ctx, kw, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_any(ctx, kw, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_CHOICE:
-            LY_CHECK_RET(parse_choice(ctx, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_choice(ctx, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_CONTAINER:
-            LY_CHECK_RET(parse_container(ctx, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_container(ctx, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_LEAF:
-            LY_CHECK_RET(parse_leaf(ctx, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_leaf(ctx, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_LEAF_LIST:
-            LY_CHECK_RET(parse_leaflist(ctx, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_leaflist(ctx, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_LIST:
-            LY_CHECK_RET(parse_list(ctx, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_list(ctx, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_USES:
-            LY_CHECK_RET(parse_uses(ctx, (struct lysp_node *)inout_p, &inout_p->data));
+            LY_CHECK_RET(parse_uses(ctx, (struct lysp_node *)inout_p, &inout_p->child));
             break;
         case LY_STMT_TYPEDEF:
             LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node *)inout_p, &inout_p->typedefs));
@@ -2683,7 +2683,7 @@ parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_
     LY_CHECK_RET(ret);
 
 checks:
-    if (!inout_p->data) {
+    if (!inout_p->child) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
         return LY_EVALID;
     }
@@ -2814,25 +2814,25 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct ly
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "notification");
         /* fall through */
         case LY_STMT_ANYXML:
-            LY_CHECK_RET(parse_any(ctx, kw, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_any(ctx, kw, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_CHOICE:
-            LY_CHECK_RET(parse_case(ctx, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_case(ctx, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_CONTAINER:
-            LY_CHECK_RET(parse_container(ctx, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_container(ctx, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_LEAF:
-            LY_CHECK_RET(parse_leaf(ctx, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_leaf(ctx, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_LEAF_LIST:
-            LY_CHECK_RET(parse_leaflist(ctx, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_leaflist(ctx, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_LIST:
-            LY_CHECK_RET(parse_list(ctx, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_list(ctx, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_USES:
-            LY_CHECK_RET(parse_uses(ctx, (struct lysp_node *)notif, &notif->data));
+            LY_CHECK_RET(parse_uses(ctx, (struct lysp_node *)notif, &notif->child));
             break;
 
         case LY_STMT_MUST:
@@ -2898,25 +2898,25 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "grouping");
         /* fall through */
         case LY_STMT_ANYXML:
-            LY_CHECK_RET(parse_any(ctx, kw, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_any(ctx, kw, &grp->node, &grp->child));
             break;
         case LY_STMT_CHOICE:
-            LY_CHECK_RET(parse_choice(ctx, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_choice(ctx, &grp->node, &grp->child));
             break;
         case LY_STMT_CONTAINER:
-            LY_CHECK_RET(parse_container(ctx, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_container(ctx, &grp->node, &grp->child));
             break;
         case LY_STMT_LEAF:
-            LY_CHECK_RET(parse_leaf(ctx, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_leaf(ctx, &grp->node, &grp->child));
             break;
         case LY_STMT_LEAF_LIST:
-            LY_CHECK_RET(parse_leaflist(ctx, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_leaflist(ctx, &grp->node, &grp->child));
             break;
         case LY_STMT_LIST:
-            LY_CHECK_RET(parse_list(ctx, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_list(ctx, &grp->node, &grp->child));
             break;
         case LY_STMT_USES:
-            LY_CHECK_RET(parse_uses(ctx, &grp->node, &grp->data));
+            LY_CHECK_RET(parse_uses(ctx, &grp->node, &grp->child));
             break;
 
         case LY_STMT_TYPEDEF:

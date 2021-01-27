@@ -535,7 +535,7 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_node_grp *grp)
         yprp_grouping(ctx, subgrp);
     }
 
-    LY_LIST_FOR(grp->data, data) {
+    LY_LIST_FOR(grp->child, data) {
         ypr_close_parent(ctx, &flag);
         yprp_node(ctx, data);
     }
@@ -561,7 +561,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, int8
     struct lysp_node *data;
     struct lysp_node_grp *grp;
 
-    if (!inout->data) {
+    if (!inout->child) {
         /* input/output is empty */
         return;
     }
@@ -581,7 +581,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, int8
         yprp_grouping(ctx, grp);
     }
 
-    LY_LIST_FOR(inout->data, data) {
+    LY_LIST_FOR(inout->child, data) {
         yprp_node(ctx, data);
     }
 
@@ -621,7 +621,7 @@ yprp_notification(struct ypr_ctx *ctx, const struct lysp_node_notif *notif)
         yprp_grouping(ctx, grp);
     }
 
-    LY_LIST_FOR(notif->data, data) {
+    LY_LIST_FOR(notif->child, data) {
         ypr_close_parent(ctx, &flag);
         yprp_node(ctx, data);
     }

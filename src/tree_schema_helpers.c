@@ -1256,14 +1256,14 @@ lysp_node_children_p(struct lysp_node *node)
     case LYS_CASE:
         return &((struct lysp_node_case *)node)->child;
     case LYS_GROUPING:
-        return &((struct lysp_node_grp *)node)->data;
+        return &((struct lysp_node_grp *)node)->child;
     case LYS_AUGMENT:
         return &((struct lysp_node_augment *)node)->child;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        return &((struct lysp_node_action_inout *)node)->data;
+        return &((struct lysp_node_action_inout *)node)->child;
     case LYS_NOTIF:
-        return &((struct lysp_node_notif *)node)->data;
+        return &((struct lysp_node_notif *)node)->child;
     default:
         return NULL;
     }
@@ -1356,16 +1356,16 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
     case LYS_RPC:
     case LYS_ACTION:
         if (flags & LYS_CONFIG_R) {
-            return &((struct lysc_node_action *)node)->output.data;
+            return &((struct lysc_node_action *)node)->output.child;
         } else {
             /* LYS_CONFIG_W, but also the default case */
-            return &((struct lysc_node_action *)node)->input.data;
+            return &((struct lysc_node_action *)node)->input.child;
         }
     case LYS_INPUT:
     case LYS_OUTPUT:
-        return &((struct lysc_node_action_inout *)node)->data;
+        return &((struct lysc_node_action_inout *)node)->child;
     case LYS_NOTIF:
-        return &((struct lysc_node_notif *)node)->data;
+        return &((struct lysc_node_notif *)node)->child;
     default:
         return NULL;
     }

@@ -2381,7 +2381,7 @@ lys_compile_node_action_inout(struct lysc_ctx *ctx, struct lysp_node *pnode, str
             ret, done);
     ctx->options |= inout_p->nodetype == LYS_INPUT ? LYS_COMPILE_RPC_INPUT : LYS_COMPILE_RPC_OUTPUT;
 
-    LY_LIST_FOR(inout_p->data, child_p) {
+    LY_LIST_FOR(inout_p->child, child_p) {
         LY_CHECK_GOTO(ret = lys_compile_node(ctx, child_p, node, 0, NULL), done);
     }
 
@@ -2473,7 +2473,7 @@ lys_compile_node_notif(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lys
         LY_CHECK_GOTO(ret, done);
     }
 
-    LY_LIST_FOR(notif_p->data, child_p) {
+    LY_LIST_FOR(notif_p->child, child_p) {
         ret = lys_compile_node(ctx, child_p, (struct lysc_node *)notif, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
@@ -3479,7 +3479,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     ctx->pmod = grp_mod;
 
     /* compile data nodes */
-    LY_LIST_FOR(grp->data, pnode) {
+    LY_LIST_FOR(grp->child, pnode) {
         /* LYS_STATUS_USES in uses_status is a special bits combination to be able to detect status flags from uses */
         ret = lys_compile_node(ctx, pnode, parent, (uses_p->flags & LYS_STATUS_MASK) | LYS_STATUS_USES, &uses_child_set);
         LY_CHECK_GOTO(ret, cleanup);

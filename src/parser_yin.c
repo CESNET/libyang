@@ -2235,21 +2235,21 @@ yin_parse_notification(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *no
 
     /* parse notification content */
     LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 16, (struct lysp_node *)notif, &subelems,
-            LY_STMT_ANYDATA, &notif->data, 0,
-            LY_STMT_ANYXML, &notif->data, 0,
-            LY_STMT_CHOICE, &notif->data, 0,
-            LY_STMT_CONTAINER, &notif->data, 0,
+            LY_STMT_ANYDATA, &notif->child, 0,
+            LY_STMT_ANYXML, &notif->child, 0,
+            LY_STMT_CHOICE, &notif->child, 0,
+            LY_STMT_CONTAINER, &notif->child, 0,
             LY_STMT_DESCRIPTION, &notif->dsc, YIN_SUBELEM_UNIQUE,
             LY_STMT_GROUPING, &notif->groupings, 0,
             LY_STMT_IF_FEATURE, &notif->iffeatures, 0,
-            LY_STMT_LEAF, &notif->data, 0,
-            LY_STMT_LEAF_LIST, &notif->data, 0,
-            LY_STMT_LIST, &notif->data, 0,
+            LY_STMT_LEAF, &notif->child, 0,
+            LY_STMT_LEAF_LIST, &notif->child, 0,
+            LY_STMT_LIST, &notif->child, 0,
             LY_STMT_MUST, &notif->musts, YIN_SUBELEM_VER2,
             LY_STMT_REFERENCE, &notif->ref, YIN_SUBELEM_UNIQUE,
             LY_STMT_STATUS, &notif->flags, YIN_SUBELEM_UNIQUE,
             LY_STMT_TYPEDEF, &notif->typedefs, 0,
-            LY_STMT_USES, &notif->data, 0,
+            LY_STMT_USES, &notif->child, 0,
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
 
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_NOTIFICATION, NULL, &notif->exts);
@@ -2288,20 +2288,20 @@ yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_met
     /* parse grouping content */
     LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 16, &grp->node, &subelems,
             LY_STMT_ACTION, &grp->actions, 0,
-            LY_STMT_ANYDATA, &grp->data, 0,
-            LY_STMT_ANYXML, &grp->data, 0,
-            LY_STMT_CHOICE, &grp->data, 0,
-            LY_STMT_CONTAINER, &grp->data, 0,
+            LY_STMT_ANYDATA, &grp->child, 0,
+            LY_STMT_ANYXML, &grp->child, 0,
+            LY_STMT_CHOICE, &grp->child, 0,
+            LY_STMT_CONTAINER, &grp->child, 0,
             LY_STMT_DESCRIPTION, &grp->dsc, YIN_SUBELEM_UNIQUE,
             LY_STMT_GROUPING, &grp->groupings, 0,
-            LY_STMT_LEAF, &grp->data, 0,
-            LY_STMT_LEAF_LIST, &grp->data, 0,
-            LY_STMT_LIST, &grp->data, 0,
+            LY_STMT_LEAF, &grp->child, 0,
+            LY_STMT_LEAF_LIST, &grp->child, 0,
+            LY_STMT_LIST, &grp->child, 0,
             LY_STMT_NOTIFICATION, &grp->notifs, 0,
             LY_STMT_REFERENCE, &grp->ref, YIN_SUBELEM_UNIQUE,
             LY_STMT_STATUS, &grp->flags, YIN_SUBELEM_UNIQUE,
             LY_STMT_TYPEDEF, &grp->typedefs, 0,
-            LY_STMT_USES, &grp->data, 0,
+            LY_STMT_USES, &grp->child, 0,
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_GROUPING, NULL, &grp->exts);
     subelems_deallocator(subelems_size, subelems);
@@ -2487,23 +2487,23 @@ yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct in
 
     /* parser input/output content */
     LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 12, (struct lysp_node *)inout_meta->inout_p, &subelems,
-            LY_STMT_ANYDATA, &inout_meta->inout_p->data, YIN_SUBELEM_VER2,
-            LY_STMT_ANYXML, &inout_meta->inout_p->data, 0,
-            LY_STMT_CHOICE, &inout_meta->inout_p->data, 0,
-            LY_STMT_CONTAINER, &inout_meta->inout_p->data, 0,
+            LY_STMT_ANYDATA, &inout_meta->inout_p->child, YIN_SUBELEM_VER2,
+            LY_STMT_ANYXML, &inout_meta->inout_p->child, 0,
+            LY_STMT_CHOICE, &inout_meta->inout_p->child, 0,
+            LY_STMT_CONTAINER, &inout_meta->inout_p->child, 0,
             LY_STMT_GROUPING, &inout_meta->inout_p->groupings, 0,
-            LY_STMT_LEAF, &inout_meta->inout_p->data, 0,
-            LY_STMT_LEAF_LIST, &inout_meta->inout_p->data, 0,
-            LY_STMT_LIST, &inout_meta->inout_p->data, 0,
+            LY_STMT_LEAF, &inout_meta->inout_p->child, 0,
+            LY_STMT_LEAF_LIST, &inout_meta->inout_p->child, 0,
+            LY_STMT_LIST, &inout_meta->inout_p->child, 0,
             LY_STMT_MUST, &inout_meta->inout_p->musts, YIN_SUBELEM_VER2,
             LY_STMT_TYPEDEF, &inout_meta->inout_p->typedefs, 0,
-            LY_STMT_USES, &inout_meta->inout_p->data, 0,
+            LY_STMT_USES, &inout_meta->inout_p->child, 0,
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
     ret = yin_parse_content(ctx, subelems, subelems_size, inout_kw, NULL, &inout_meta->inout_p->exts);
     subelems_deallocator(subelems_size, subelems);
     LY_CHECK_RET(ret);
 
-    if (!inout_meta->inout_p->data) {
+    if (!inout_meta->inout_p->child) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
         return LY_EVALID;
     }

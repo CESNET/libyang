@@ -1152,7 +1152,7 @@ struct lysp_node_action_inout {
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_node_grp *groupings; /**< list of groupings (linked list) */
-    struct lysp_node *data;          /**< list of data nodes (linked list) */
+    struct lysp_node *child;         /**< list of data nodes (linked list) */
 };
 
 /**
@@ -1207,7 +1207,7 @@ struct lysp_node_notif {
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_node_grp *groupings; /**< list of groupings (linked list) */
-    struct lysp_node *data;          /**< list of data nodes (linked list) */
+    struct lysp_node *child;         /**< list of data nodes (linked list) */
 };
 
 /**
@@ -1233,7 +1233,7 @@ struct lysp_node_grp {
     /* grp */
     struct lysp_tpdf *typedefs;       /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_node_grp *groupings;  /**< list of groupings (linked list) */
-    struct lysp_node *data;           /**< list of data nodes (linked list) */
+    struct lysp_node *child;          /**< list of data nodes (linked list) */
     struct lysp_node_action *actions; /**< list of actions (linked list) */
     struct lysp_node_notif *notifs;   /**< list of notifications (linked list) */
 };
@@ -1629,7 +1629,7 @@ struct lysc_node_action_inout {
         };
     };
 
-    struct lysc_node *data;          /**< first child node (linked list) */
+    struct lysc_node *child;          /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
 
@@ -1684,7 +1684,7 @@ struct lysc_node_notif {
         };
     };
 
-    struct lysc_node *data;          /**< first child node (linked list) */
+    struct lysc_node *child;          /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
 
@@ -2025,7 +2025,7 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
  * @return LY_SUCCESS on success,
  * @return LY_ERR value to terminate DFS and return this value.
  */
-typedef LY_ERR (*lysc_dfs_clb)(struct lysc_node *node, void *data, ly_bool *dfs_continue);
+typedef LY_ERR (*lysc_dfs_clb)(struct lysc_node *node, void *child, ly_bool *dfs_continue);
 
 /**
  * @brief DFS traversal of all the schema nodes in a (sub)tree including any actions and nested notifications.
