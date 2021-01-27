@@ -386,18 +386,18 @@ lysp_node_common_dup(const struct ly_ctx *ctx, struct lysp_node *node, const str
     DUP_STRING(ctx, orig->name, node->name, ret);
     DUP_STRING(ctx, orig->dsc, node->dsc, ret);
     DUP_STRING(ctx, orig->ref, node->ref, ret);
-
-    if (orig->when) {
-        node->when = calloc(1, sizeof *node->when);
-        LY_CHECK_ERR_RET(!node->when, LOGMEM(ctx), LY_EMEM);
-        LY_CHECK_RET(lysp_when_dup(ctx, node->when, orig->when));
-    }
-
     DUP_ARRAY(ctx, orig->iffeatures, node->iffeatures, lysp_qname_dup);
     DUP_ARRAY(ctx, orig->exts, node->exts, lysp_ext_dup);
 
     return ret;
 }
+
+#define DUP_PWHEN(CTX, ORIG, NEW) \
+    if (ORIG) { \
+        NEW = calloc(1, sizeof *NEW); \
+        LY_CHECK_ERR_RET(!NEW, LOGMEM(CTX), LY_EMEM); \
+        LY_CHECK_RET(lysp_when_dup(CTX, NEW, ORIG)); \
+    }
 
 static LY_ERR
 lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lysp_node *orig)
@@ -436,6 +436,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         cont = (struct lysp_node_container *)node;
         orig_cont = (const struct lysp_node_container *)orig;
 
+        DUP_PWHEN(ctx, orig_cont->when, cont->when);
         DUP_ARRAY(ctx, orig_cont->musts, cont->musts, lysp_restr_dup);
         DUP_STRING(ctx, orig_cont->presence, cont->presence, ret);
         /* we do not need the rest */
@@ -444,6 +445,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         leaf = (struct lysp_node_leaf *)node;
         orig_leaf = (const struct lysp_node_leaf *)orig;
 
+        DUP_PWHEN(ctx, orig_leaf->when, leaf->when);
         DUP_ARRAY(ctx, orig_leaf->musts, leaf->musts, lysp_restr_dup);
         LY_CHECK_RET(lysp_type_dup(ctx, &leaf->type, &orig_leaf->type));
         DUP_STRING(ctx, orig_leaf->units, leaf->units, ret);
@@ -453,6 +455,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         llist = (struct lysp_node_leaflist *)node;
         orig_llist = (const struct lysp_node_leaflist *)orig;
 
+        DUP_PWHEN(ctx, orig_llist->when, llist->when);
         DUP_ARRAY(ctx, orig_llist->musts, llist->musts, lysp_restr_dup);
         LY_CHECK_RET(lysp_type_dup(ctx, &llist->type, &orig_llist->type));
         DUP_STRING(ctx, orig_llist->units, llist->units, ret);
@@ -464,6 +467,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         list = (struct lysp_node_list *)node;
         orig_list = (const struct lysp_node_list *)orig;
 
+        DUP_PWHEN(ctx, orig_list->when, list->when);
         DUP_ARRAY(ctx, orig_list->musts, list->musts, lysp_restr_dup);
         DUP_STRING(ctx, orig_list->key, list->key, ret);
         /* we do not need these arrays */
@@ -475,6 +479,7 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         choice = (struct lysp_node_choice *)node;
         orig_choice = (const struct lysp_node_choice *)orig;
 
+        DUP_PWHEN(ctx, orig_choice->when, choice->when);
         /* we do not need children */
         LY_CHECK_RET(lysp_qname_dup(ctx, &choice->dflt, &orig_choice->dflt));
         break;
@@ -482,15 +487,15 @@ lysp_node_dup(const struct ly_ctx *ctx, struct lysp_node *node, const struct lys
         cas = (struct lysp_node_case *)node;
         orig_cas = (const struct lysp_node_case *)orig;
 
+        DUP_PWHEN(ctx, orig_cas->when, cas->when);
         /* we do not need children */
-        (void)cas;
-        (void)orig_cas;
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
         any = (struct lysp_node_anydata *)node;
         orig_any = (const struct lysp_node_anydata *)orig;
 
+        DUP_PWHEN(ctx, orig_any->when, any->when);
         DUP_ARRAY(ctx, orig_any->musts, any->musts, lysp_restr_dup);
         break;
     case LYS_RPC:
@@ -855,23 +860,8 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
 
     /* *must-stmt */
     if (d->musts) {
-        switch (target->nodetype) {
-        case LYS_CONTAINER:
-        case LYS_LIST:
-        case LYS_LEAF:
-        case LYS_LEAFLIST:
-        case LYS_ANYDATA:
-        case LYS_ANYXML:
-            musts = &((struct lysp_node_container *)target)->musts;
-            break;
-        case LYS_NOTIF:
-            musts = &((struct lysp_node_notif *)target)->musts;
-            break;
-        case LYS_INPUT:
-        case LYS_OUTPUT:
-            musts = &((struct lysp_node_action_inout *)target)->musts;
-            break;
-        default:
+        musts = lysp_node_musts_p(target);
+        if (!musts) {
             AMEND_WRONG_NODETYPE("deviation", "add", "must");
         }
 
@@ -1098,23 +1088,8 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
 
     /* *must-stmt */
     if (d->musts) {
-        switch (target->nodetype) {
-        case LYS_CONTAINER:
-        case LYS_LIST:
-        case LYS_LEAF:
-        case LYS_LEAFLIST:
-        case LYS_ANYDATA:
-        case LYS_ANYXML:
-            musts = &((struct lysp_node_container *)target)->musts;
-            break;
-        case LYS_NOTIF:
-            musts = &((struct lysp_node_notif *)target)->musts;
-            break;
-        case LYS_INPUT:
-        case LYS_OUTPUT:
-            musts = &((struct lysp_node_action_inout *)target)->musts;
-            break;
-        default:
+        musts = lysp_node_musts_p(target);
+        if (!musts) {
             AMEND_WRONG_NODETYPE("deviation", "delete", "must");
         }
 
@@ -1375,42 +1350,6 @@ lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_
 }
 
 /**
- * @brief Check whether a parsed node matches a single schema nodeid name test.
- *
- * @param[in] pnode Parsed node to consider.
- * @param[in] pnode_mod Compiled @p pnode to-be module.
- * @param[in] mod Expected module.
- * @param[in] name Expected name.
- * @param[in] name_len Length of @p name.
- * @return Whether it is a match or not.
- */
-static ly_bool
-lysp_schema_nodeid_match_pnode(const struct lysp_node *pnode, const struct lys_module *pnode_mod,
-        const struct lys_module *mod, const char *name, size_t name_len)
-{
-    const char *pname;
-
-    /* compare with the module of the node */
-    if (pnode_mod != mod) {
-        return 0;
-    }
-
-    /* compare names */
-    if (pnode->nodetype & (LYS_ACTION | LYS_RPC)) {
-        pname = ((struct lysp_node_action *)pnode)->name;
-    } else if (pnode->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-        pname = (pnode->nodetype & LYS_INPUT) ? "input" : "output";
-    } else {
-        pname = pnode->name;
-    }
-    if (ly_strncmp(pname, name, name_len)) {
-        return 0;
-    }
-
-    return 1;
-}
-
-/**
  * @brief Check whether a compiled node matches a single schema nodeid name test.
  *
  * @param[in,out] node Compiled node to consider. On a match it is moved to its parent.
@@ -1477,7 +1416,7 @@ lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *
 
     if (pnode) {
         /* compare on the last parsed-only node */
-        if (!lysp_schema_nodeid_match_pnode(pnode, pnode_mod, mod, name, name_len)) {
+        if (pnode_mod != mod || ly_strncmp(pnode->name, name, name_len)) {
             return 0;
         }
     } else {

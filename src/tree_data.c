@@ -1534,11 +1534,11 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
             if (!(iter->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create default NP container */
                 LY_CHECK_RET(lyd_create_inner(iter, &node));
-                node->flags = LYD_DEFAULT | (node->schema->when ? LYD_WHEN_TRUE : 0);
+                node->flags = LYD_DEFAULT | (lysc_node_when(node->schema) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node);
 
                 /* cannot be a NP container with when */
-                assert(!iter->when);
+                assert(!lysc_node_when(iter));
 
                 if (diff) {
                     /* add into diff */
@@ -1563,10 +1563,10 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 } else if (ret) {
                     return ret;
                 }
-                node->flags = LYD_DEFAULT | (node->schema->when ? LYD_WHEN_TRUE : 0);
+                node->flags = LYD_DEFAULT | (lysc_node_when(node->schema) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node);
 
-                if (iter->when && node_when) {
+                if (lysc_node_when(iter) && node_when) {
                     /* remember to resolve when */
                     LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
                 }
@@ -1591,10 +1591,10 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                     } else if (ret) {
                         return ret;
                     }
-                    node->flags = LYD_DEFAULT | (node->schema->when ? LYD_WHEN_TRUE : 0);
+                    node->flags = LYD_DEFAULT | (lysc_node_when(node->schema) ? LYD_WHEN_TRUE : 0);
                     lyd_insert_node(parent, first, node);
 
-                    if (iter->when && node_when) {
+                    if (lysc_node_when(iter) && node_when) {
                         /* remember to resolve when */
                         LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
                     }

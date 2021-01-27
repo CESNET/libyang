@@ -670,7 +670,7 @@ yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, int8_t *fla
     LEVEL++;
 
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
-    yprp_when(ctx, node->when, flag);
+    yprp_when(ctx, lysp_node_when(node), flag);
     yprp_iffeatures(ctx, node->iffeatures, node->exts, flag);
 }
 

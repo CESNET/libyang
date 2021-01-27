@@ -443,7 +443,7 @@ struct utest_context {
     assert_int_equal((NODE)->nodetype, NODETYPE); \
     CHECK_POINTER((NODE)->parent, PARENT); \
     CHECK_STRING((NODE)->ref, REF); \
-    CHECK_POINTER((NODE)->when, WHEN);
+    CHECK_POINTER(lysp_node_when((struct lysp_node *)NODE), WHEN);
 
 /**
  * @brief assert that lysc_notif structure members are correct
@@ -473,7 +473,7 @@ struct utest_context {
     CHECK_POINTER((NODE)->parent, PARENT); \
     CHECK_POINTER((NODE)->priv, PRIV); \
     CHECK_STRING((NODE)->ref, REF); \
-    CHECK_ARRAY((NODE)->when, WHEN);
+    CHECK_ARRAY(lysc_node_when((struct lysc_node *)NODE), WHEN);
 
 /**
  * @brief assert that lysc_action_inout structure members are correct
@@ -524,7 +524,7 @@ struct utest_context {
     CHECK_POINTER((NODE)->parent, PARENT); \
     CHECK_POINTER((NODE)->priv, PRIV); \
     CHECK_STRING((NODE)->ref, REF); \
-    CHECK_ARRAY((NODE)->when, WHEN);
+    CHECK_ARRAY(lysc_node_when((struct lysc_node *)NODE), WHEN);
 
 /**
  * @brief assert that lysc_node structure members are correct
@@ -557,7 +557,7 @@ struct utest_context {
     assert_non_null((NODE)->prev); \
     CHECK_POINTER((NODE)->priv, PRIV); \
     CHECK_STRING((NODE)->ref, REF); \
-    CHECK_ARRAY((NODE)->when, WHEN);
+    CHECK_ARRAY(lysc_node_when(NODE), WHEN);
 
 /**
  * @brief assert that lyd_meta structure members are correct

@@ -1236,7 +1236,7 @@ yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, ly_bool *fl
     LEVEL++;
 
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
-    yprp_when(ctx, node->when, flag);
+    yprp_when(ctx, lysp_node_when(node), flag);
     yprp_iffeatures(ctx, node->iffeatures, node->exts, flag);
 }
 
@@ -1244,13 +1244,16 @@ static void
 yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
+    struct lysc_when **when;
 
     ly_print_(ctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
-    LY_ARRAY_FOR(node->when, u) {
-        yprc_when(ctx, node->when[u], flag);
+
+    when = lysc_node_when(node);
+    LY_ARRAY_FOR(when, u) {
+        yprc_when(ctx, when[u], flag);
     }
 }
 

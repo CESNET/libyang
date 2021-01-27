@@ -2028,6 +2028,7 @@ test_uses(void **state)
     const struct lys_module *mod;
     const struct lysc_node *parent, *child;
     const struct lysc_node_container *cont;
+    const struct lysc_node_leaf *leaf;
     const struct lysc_node_choice *choice;
     const struct lysc_node_case *cs;
 
@@ -2052,20 +2053,23 @@ test_uses(void **state)
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;} leaf c {type string;}}}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;include bsub;uses grp {when 2;}}", LYS_IN_YANG, &mod));
     assert_non_null(mod->compiled->data);
-    assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
-    assert_string_equal("b", mod->compiled->data->name);
-    assert_int_equal(2, LY_ARRAY_COUNT(mod->compiled->data->when));
-    assert_int_equal(1, mod->compiled->data->when[0]->refcount);
-    assert_non_null(mod->compiled->data->when[0]->context);
-    assert_string_equal("b", mod->compiled->data->when[0]->context->name);
-    assert_int_equal(2, mod->compiled->data->when[1]->refcount);
-    assert_null(mod->compiled->data->when[1]->context);
 
-    assert_int_equal(LYS_LEAF, mod->compiled->data->next->nodetype);
-    assert_string_equal("c", mod->compiled->data->next->name);
-    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->data->next->when));
-    assert_int_equal(2, mod->compiled->data->next->when[0]->refcount);
-    assert_null(mod->compiled->data->next->when[0]->context);
+    leaf = (struct lysc_node_leaf *)mod->compiled->data;
+    assert_int_equal(LYS_LEAF, leaf->nodetype);
+    assert_string_equal("b", leaf->name);
+    assert_int_equal(2, LY_ARRAY_COUNT(leaf->when));
+    assert_int_equal(1, leaf->when[0]->refcount);
+    assert_non_null(leaf->when[0]->context);
+    assert_string_equal("b", leaf->when[0]->context->name);
+    assert_int_equal(2, leaf->when[1]->refcount);
+    assert_null(leaf->when[1]->context);
+
+    leaf = (struct lysc_node_leaf *)leaf->next;
+    assert_int_equal(LYS_LEAF, leaf->nodetype);
+    assert_string_equal("c", leaf->name);
+    assert_int_equal(1, LY_ARRAY_COUNT(leaf->when));
+    assert_int_equal(2, leaf->when[0]->refcount);
+    assert_null(leaf->when[0]->context);
 
     UTEST_LOG_CLEAN;
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:ii;prefix ii;"
@@ -2397,9 +2401,9 @@ test_augment(void **state)
     assert_string_equal("c", c->name);
     assert_non_null(c->when);
     assert_string_equal("lc2", ((const struct lysc_node_case *)c)->child->name);
-    assert_non_null(((const struct lysc_node_case *)c)->child->when);
+    assert_non_null(lysc_node_when(((const struct lysc_node_case *)c)->child));
     assert_string_equal("lc1", ((const struct lysc_node_case *)c)->child->next->name);
-    assert_null(((const struct lysc_node_case *)c)->child->next->when);
+    assert_null(lysc_node_when(((const struct lysc_node_case *)c)->child->next));
 
     assert_non_null(c = (const struct lysc_node_case *)c->next);
     assert_string_equal("a", c->name);

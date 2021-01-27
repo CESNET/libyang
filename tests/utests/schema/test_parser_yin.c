@@ -3056,6 +3056,7 @@ test_inout_elem(void **state)
     /* invalid combinations */
     data = ELEMENT_WRAPPER_START "<input name=\"test\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &inout_meta, NULL, NULL), LY_EVALID);
+    lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     CHECK_LOG_CTX("Unexpected attribute \"name\" of \"input\" element.", "Line number 1.");
     memset(&inout, 0, sizeof inout);
 }
