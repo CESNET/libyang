@@ -1038,7 +1038,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         implement = 1;
     } else {
         implement = need_implemented;
-     }
+    }
 
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), LY_EMEM);

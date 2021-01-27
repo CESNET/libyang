@@ -36,8 +36,8 @@ cmd_clear_help(void)
             "                  Note that this module includes definitions of mandatory state\n"
             "                  data that can result in unexpected data validation errors.\n");
 #if 0
-            "                  If <yang-library-data> path specified, load the modules\n"
-            "                  according to the provided yang library data.\n"
+    "                  If <yang-library-data> path specified, load the modules\n"
+    "                  according to the provided yang library data.\n"
 #endif
 }
 
