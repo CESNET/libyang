@@ -5494,7 +5494,7 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
         new_leaf = calloc(1, sizeof *new_leaf);
         new_node = (struct lyd_node *)new_leaf;
         LY_CHECK_ERR_GOTO(!new_node, LOGMEM(ctx), error);
-        new_node->schema = (struct lys_node *)schema;
+        new_leaf->schema = (struct lys_node *)schema;
 
         new_leaf->value_str = lydict_insert(ctx, ((struct lyd_node_leaf_list *)node)->value_str, 0);
         new_leaf->value_type = ((struct lyd_node_leaf_list *)node)->value_type;
