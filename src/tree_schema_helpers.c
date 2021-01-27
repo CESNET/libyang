@@ -1023,30 +1023,17 @@ search_file:
 API const struct lysc_when *
 lysc_has_when(const struct lysc_node *node)
 {
+    struct lysc_when **when;
+
     if (!node) {
         return NULL;
     }
 
     do {
-        switch (node->nodetype) {
-        case LYS_RPC:
-        case LYS_ACTION:
-            if (((struct lysc_node_action *)node)->when) {
-                return *((struct lysc_node_action *)node)->when;
-            }
-            break;
-        case LYS_NOTIF:
-            if (((struct lysc_node_notif *)node)->when) {
-                return *((struct lysc_node_notif *)node)->when;
-            }
-            break;
-        default:
-            if (node->when) {
-                return *node->when;
-            }
-            break;
+        when = lysc_node_when(node);
+        if (when) {
+            return when[0];
         }
-
         node = node->parent;
     } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
@@ -1286,6 +1273,93 @@ lysp_node_children(const struct lysp_node *node)
     }
 }
 
+struct lysp_restr **
+lysp_node_musts_p(const struct lysp_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    switch(node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysp_node_container *)node)->musts;
+    case LYS_LEAF:
+        return &((struct lysp_node_leaf *)node)->musts;
+    case LYS_LEAFLIST:
+        return &((struct lysp_node_leaflist *)node)->musts;
+    case LYS_LIST:
+        return &((struct lysp_node_list *)node)->musts;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        return &((struct lysp_node_anydata *)node)->musts;
+    case LYS_NOTIF:
+        return &((struct lysp_node_notif *)node)->musts;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        return &((struct lysp_node_action_inout *)node)->musts;
+    default:
+        return NULL;
+    }
+}
+
+struct lysp_restr *
+lysp_node_musts(const struct lysp_node *node)
+{
+    struct lysp_restr **musts;
+
+    musts = lysp_node_musts_p(node);
+    if (musts) {
+        return *musts;
+    } else {
+        return NULL;
+    }
+}
+
+struct lysp_when **
+lysp_node_when_p(const struct lysp_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    switch(node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysp_node_container *)node)->when;
+    case LYS_CHOICE:
+        return &((struct lysp_node_choice *)node)->when;
+    case LYS_LEAF:
+        return &((struct lysp_node_leaf *)node)->when;
+    case LYS_LEAFLIST:
+        return &((struct lysp_node_leaflist *)node)->when;
+    case LYS_LIST:
+        return &((struct lysp_node_list *)node)->when;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        return &((struct lysp_node_anydata *)node)->when;
+    case LYS_CASE:
+        return &((struct lysp_node_case *)node)->when;
+    case LYS_USES:
+        return &((struct lysp_node_uses *)node)->when;
+    case LYS_AUGMENT:
+        return &((struct lysp_node_augment *)node)->when;
+    default:
+        return NULL;
+    }
+}
+
+struct lysp_when *
+lysp_node_when(const struct lysp_node *node)
+{
+    struct lysp_when **when;
+
+    when = lysp_node_when_p(node);
+    if (when) {
+        return *when;
+    } else {
+        return NULL;
+    }
+}
+
 struct lysc_node_action **
 lysc_node_actions_p(struct lysc_node *node)
 {
@@ -1394,6 +1468,94 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
         } else {
             return NULL;
         }
+    }
+}
+
+struct lysc_must **
+lysc_node_musts_p(const struct lysc_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    switch(node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysc_node_container *)node)->musts;
+    case LYS_LEAF:
+        return &((struct lysc_node_leaf *)node)->musts;
+    case LYS_LEAFLIST:
+        return &((struct lysc_node_leaflist *)node)->musts;
+    case LYS_LIST:
+        return &((struct lysc_node_list *)node)->musts;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        return &((struct lysc_node_anydata *)node)->musts;
+    case LYS_NOTIF:
+        return &((struct lysc_node_notif *)node)->musts;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        return &((struct lysc_node_action_inout *)node)->musts;
+    default:
+        return NULL;
+    }
+}
+
+API struct lysc_must *
+lysc_node_musts(const struct lysc_node *node)
+{
+    struct lysc_must **must_p;
+
+    must_p = lysc_node_musts_p(node);
+    if (must_p) {
+        return *must_p;
+    } else {
+        return NULL;
+    }
+}
+
+struct lysc_when ***
+lysc_node_when_p(const struct lysc_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    switch(node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysc_node_container *)node)->when;
+    case LYS_CHOICE:
+        return &((struct lysc_node_choice *)node)->when;
+    case LYS_LEAF:
+        return &((struct lysc_node_leaf *)node)->when;
+    case LYS_LEAFLIST:
+        return &((struct lysc_node_leaflist *)node)->when;
+    case LYS_LIST:
+        return &((struct lysc_node_list *)node)->when;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        return &((struct lysc_node_anydata *)node)->when;
+    case LYS_CASE:
+        return &((struct lysc_node_case *)node)->when;
+    case LYS_NOTIF:
+        return &((struct lysc_node_notif *)node)->when;
+    case LYS_RPC:
+    case LYS_ACTION:
+        return &((struct lysc_node_action *)node)->when;
+    default:
+        return NULL;
+    }
+}
+
+API struct lysc_when **
+lysc_node_when(const struct lysc_node *node)
+{
+    struct lysc_when ***when_p;
+
+    when_p = lysc_node_when_p(node);
+    if (when_p) {
+        return *when_p;
+    } else {
+        return NULL;
     }
 }
 

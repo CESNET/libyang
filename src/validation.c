@@ -106,7 +106,6 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
 {
     LY_ERR ret;
     const struct lyd_node *ctx_node;
-    const struct lysc_when *when;
     struct lyxp_set xp_set;
     LY_ARRAY_COUNT_TYPE u;
 
@@ -115,8 +114,10 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
     *disabled = NULL;
 
     do {
-        LY_ARRAY_FOR(schema->when, u) {
-            when = schema->when[u];
+        const struct lysc_when *when;
+        struct lysc_when **when_list = lysc_node_when(schema);
+        LY_ARRAY_FOR(when_list, u) {
+            when = when_list[u];
 
             /* get context node */
             if (when->context == schema) {
@@ -1158,44 +1159,22 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
     struct lyxp_set xp_set;
     struct lysc_must *musts;
     const struct lyd_node *tree;
+    const struct lysc_node *schema;
     LY_ARRAY_COUNT_TYPE u;
 
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-        musts = ((struct lysc_node_container *)node->schema)->musts;
-        break;
-    case LYS_LEAF:
-        musts = ((struct lysc_node_leaf *)node->schema)->musts;
-        break;
-    case LYS_LEAFLIST:
-        musts = ((struct lysc_node_leaflist *)node->schema)->musts;
-        break;
-    case LYS_LIST:
-        musts = ((struct lysc_node_list *)node->schema)->musts;
-        break;
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        musts = ((struct lysc_node_anydata *)node->schema)->musts;
-        break;
-    case LYS_NOTIF:
-        musts = ((struct lysc_node_notif *)node->schema)->musts;
-        break;
-    case LYS_RPC:
-    case LYS_ACTION:
+    if (node->schema->nodetype & (LYS_ACTION | LYS_RPC)) {
         if (op == LYD_VALIDATE_OP_RPC) {
-            musts = ((struct lysc_node_action *)node->schema)->input.musts;
+            schema = &((struct lysc_node_action *)node->schema)->input.node;
         } else if (op == LYD_VALIDATE_OP_REPLY) {
-            musts = ((struct lysc_node_action *)node->schema)->output.musts;
+            schema = &((struct lysc_node_action *)node->schema)->output.node;
         } else {
             LOGINT(LYD_CTX(node));
             return LY_EINT;
         }
-        break;
-    default:
-        LOGINT(LYD_CTX(node));
-        return LY_EINT;
+    } else {
+        schema = node->schema;
     }
-
+    musts = lysc_node_musts(schema);
     if (!musts) {
         /* no must to evaluate */
         return LY_SUCCESS;
@@ -1337,7 +1316,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_types, struct ly
                     NULL, impl_opts, diff));
         }
 
-        if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
+        if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && lysc_node_when(node->schema)) {
             /* when evaluation */
             LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
         }

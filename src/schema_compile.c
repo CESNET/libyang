@@ -764,7 +764,6 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
     struct lyxp_set_scnode *xp_scnode;
     uint32_t i, j;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_when *when;
     LY_ERR ret = LY_SUCCESS;
 
     memset(&tmp_set, 0, sizeof tmp_set);
@@ -787,7 +786,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
         }
 
         if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) ||
-                !xp_scnode->scnode->when) {
+                !lysc_node_when(xp_scnode->scnode)) {
             /* no when to check */
             xp_scnode->in_ctx = LYXP_SET_SCNODE_ATOM;
             continue;
@@ -795,9 +794,12 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
 
         node = xp_scnode->scnode;
         do {
+            struct lysc_when **when_list, *when;
+
             LOG_LOCSET(node, NULL, NULL, NULL);
-            LY_ARRAY_FOR(node->when, u) {
-                when = node->when[u];
+            when_list = lysc_node_when(node);
+            LY_ARRAY_FOR(when_list, u) {
+                when = when_list[u];
                 ret = lyxp_atomize(set->ctx, when->cond, node->module, LY_PREF_SCHEMA_RESOLVED, when->prefixes,
                         when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
@@ -922,7 +924,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
     uint32_t i, opts;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool input_done = 0;
-    struct lysc_when **when = NULL;
+    struct lysc_when **whens = NULL;
     struct lysc_must *musts = NULL;
     LY_ERR ret = LY_SUCCESS;
     const struct lysc_node *op;
@@ -940,67 +942,27 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
         }
     }
 
-    switch (node->nodetype) {
-    case LYS_CONTAINER:
-        when = ((struct lysc_node_container *)node)->when;
-        musts = ((struct lysc_node_container *)node)->musts;
-        break;
-    case LYS_CHOICE:
-        when = ((struct lysc_node_choice *)node)->when;
-        break;
-    case LYS_LEAF:
-        when = ((struct lysc_node_leaf *)node)->when;
-        musts = ((struct lysc_node_leaf *)node)->musts;
-        break;
-    case LYS_LEAFLIST:
-        when = ((struct lysc_node_leaflist *)node)->when;
-        musts = ((struct lysc_node_leaflist *)node)->musts;
-        break;
-    case LYS_LIST:
-        when = ((struct lysc_node_list *)node)->when;
-        musts = ((struct lysc_node_list *)node)->musts;
-        break;
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        when = ((struct lysc_node_anydata *)node)->when;
-        musts = ((struct lysc_node_anydata *)node)->musts;
-        break;
-    case LYS_CASE:
-        when = ((struct lysc_node_case *)node)->when;
-        break;
-    case LYS_NOTIF:
-        when = ((struct lysc_node_notif *)node)->when;
-        musts = ((struct lysc_node_notif *)node)->musts;
-        break;
-    case LYS_RPC:
-    case LYS_ACTION:
-        /* first process when and input musts */
-        when = ((struct lysc_node_action *)node)->when;
-        musts = ((struct lysc_node_action *)node)->input.musts;
-        break;
-    default:
-        /* nothing to check */
-        break;
-    }
+    whens = lysc_node_when(node);
+    musts = lysc_node_musts(node);
 
-    LY_ARRAY_FOR(when, u) {
+    LY_ARRAY_FOR(whens, u) {
         /* first check whether all the referenced modules are implemented */
         mod = NULL;
-        ret = lys_compile_expr_implement(ctx->ctx, when[u]->cond, LY_PREF_SCHEMA_RESOLVED, when[u]->prefixes,
+        ret = lys_compile_expr_implement(ctx->ctx, whens[u]->cond, LY_PREF_SCHEMA_RESOLVED, whens[u]->prefixes,
                 ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
         if (ret) {
             goto cleanup;
         } else if (mod) {
             LOGWRN(ctx->ctx, "When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.",
-                    when[u]->cond->expr, mod->name);
+                    whens[u]->cond->expr, mod->name);
             continue;
         }
 
         /* check "when" */
-        ret = lyxp_atomize(ctx->ctx, when[u]->cond, node->module, LY_PREF_SCHEMA_RESOLVED, when[u]->prefixes,
-                when[u]->context, &tmp_set, opts);
+        ret = lyxp_atomize(ctx->ctx, whens[u]->cond, node->module, LY_PREF_SCHEMA_RESOLVED, whens[u]->prefixes,
+                whens[u]->context, &tmp_set, opts);
         if (ret) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[u]->cond->expr);
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", whens[u]->cond->expr);
             goto cleanup;
         }
 
@@ -1012,7 +974,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
                 struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
 
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
-                ret = lysc_check_status(ctx, when[u]->flags, node->module, node->name, schema->flags, schema->module,
+                ret = lysc_check_status(ctx, whens[u]->flags, node->module, node->name, schema->flags, schema->module,
                         schema->name);
                 LY_CHECK_GOTO(ret, cleanup);
 
@@ -1072,7 +1034,7 @@ check_musts:
     if ((node->nodetype & (LYS_RPC | LYS_ACTION)) && !input_done) {
         /* now check output musts */
         input_done = 1;
-        when = NULL;
+        whens = NULL;
         musts = ((struct lysc_node_action *)node)->output.musts;
         opts = LYXP_SCNODE_OUTPUT;
         goto check_musts;

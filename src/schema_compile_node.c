@@ -257,13 +257,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
     assert(when_p);
 
     /* get the when array */
-    if (node->nodetype & LYS_ACTION) {
-        node_when = &((struct lysc_node_action *)node)->when;
-    } else if (node->nodetype == LYS_NOTIF) {
-        node_when = &((struct lysc_node_notif *)node)->when;
-    } else {
-        node_when = &node->when;
-    }
+    node_when = lysc_node_when_p(node);
 
     /* create new when pointer */
     LY_ARRAY_NEW_RET(ctx->ctx, *node_when, new_when, LY_EMEM);
@@ -2271,6 +2265,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     LY_ERR ret = LY_SUCCESS;
     ly_bool not_supported, enabled;
     struct lysp_node *dev_pnode = NULL;
+    struct lysp_when *pwhen = NULL;
 
     node->nodetype = pnode->nodetype;
     node->module = ctx->cur_mod;
@@ -2322,9 +2317,9 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     /* insert into parent's children/compiled module (we can no longer free the node separately on error) */
     LY_CHECK_GOTO(ret = lys_compile_node_connect(ctx, parent, node), cleanup);
 
-    if (pnode->when) {
+    if ((pwhen = lysp_node_when(pnode))) {
         /* compile when */
-        ret = lys_compile_when(ctx, pnode->when, pnode->flags, lysc_data_node(node), node, NULL);
+        ret = lys_compile_when(ctx, pwhen, pnode->flags, lysc_data_node(node), node, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 

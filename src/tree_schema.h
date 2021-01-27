@@ -925,7 +925,6 @@ struct lysp_node {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    struct lysp_when *when;          /**< when statement */
     struct lysp_qname *iffeatures;   /**< list of if-feature expressions ([sized array](@ref sizedarrays)),
                                           must be qname because of refines */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -945,7 +944,6 @@ struct lysp_node_container {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -953,6 +951,7 @@ struct lysp_node_container {
 
     /* container */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysp_when *when;          /**< when statement */
     const char *presence;            /**< presence description */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_node_grp *groupings; /**< list of groupings (linked list) */
@@ -972,7 +971,6 @@ struct lysp_node_leaf {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -980,6 +978,7 @@ struct lysp_node_leaf {
 
     /* leaf */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysp_when *when;          /**< when statement */
     struct lysp_type type;           /**< type of the leaf node (mandatory) */
     const char *units;               /**< units of the leaf's type */
     struct lysp_qname dflt;          /**< default value, it may or may not be a qualified name */
@@ -996,7 +995,6 @@ struct lysp_node_leaflist {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1004,6 +1002,7 @@ struct lysp_node_leaflist {
 
     /* leaf-list */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysp_when *when;          /**< when statement */
     struct lysp_type type;           /**< type of the leaf node (mandatory) */
     const char *units;               /**< units of the leaf's type */
     struct lysp_qname *dflts;        /**< list of default values ([sized array](@ref sizedarrays)), they may or
@@ -1023,7 +1022,6 @@ struct lysp_node_list {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1031,6 +1029,7 @@ struct lysp_node_list {
 
     /* list */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysp_when *when;          /**< when statement */
     const char *key;                 /**< keys specification */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_node_grp *groupings; /**< list of groupings (linked list) */
@@ -1053,7 +1052,6 @@ struct lysp_node_choice {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1061,6 +1059,7 @@ struct lysp_node_choice {
 
     /* choice */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
+    struct lysp_when *when;          /**< when statement */
     struct lysp_qname dflt;          /**< default case */
 };
 
@@ -1075,7 +1074,6 @@ struct lysp_node_case {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1083,6 +1081,7 @@ struct lysp_node_case {
 
     /* case */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
+    struct lysp_when *when;          /**< when statement */
 };
 
 struct lysp_node_anydata {
@@ -1096,7 +1095,6 @@ struct lysp_node_anydata {
             const char *name;        /**< node name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1104,6 +1102,7 @@ struct lysp_node_anydata {
 
     /* anyxml/anydata */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysp_when *when;          /**< when statement */
 };
 
 struct lysp_node_uses {
@@ -1117,7 +1116,6 @@ struct lysp_node_uses {
             const char *name;        /**< grouping name reference (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1126,6 +1124,7 @@ struct lysp_node_uses {
     /* uses */
     struct lysp_refine *refines;     /**< list of uses's refines ([sized array](@ref sizedarrays)) */
     struct lysp_node_augment *augments; /**< list of augments (linked list) */
+    struct lysp_when *when;          /**< when statement */
 };
 
 /**
@@ -1142,7 +1141,6 @@ struct lysp_node_action_inout {
             const char *name;        /**< empty string */
             const char *dsc;         /**< ALWAYS NULL, compatibility member with ::lysp_node */
             const char *ref;         /**< ALWAYS NULL, compatibility member with ::lysp_node */
-            struct lysp_when *when;  /**< ALWAYS NULL, compatibility member with ::lysp_node */
             struct lysp_qname *iffeatures; /**< ALWAYS NULL, compatibility member with ::lysp_node */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1169,7 +1167,6 @@ struct lysp_node_action {
             const char *name;        /**< grouping name reference (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< ALWAYS NULL, compatibility member with ::lysp_node */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1197,7 +1194,6 @@ struct lysp_node_notif {
             const char *name;        /**< grouping name reference (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< ALWAYS NULL, compatibility member with ::lysp_node */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1224,7 +1220,6 @@ struct lysp_node_grp {
             const char *name;        /**< grouping name (mandatory) */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< ALWAYS NULL, compatibility member with ::lysp_node */
             struct lysp_qname *iffeatures; /**< ALWAYS NULL, compatibility member with ::lysp_node */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
@@ -1252,13 +1247,13 @@ struct lysp_node_augment {
             const char *nodeid;      /**< target schema nodeid (mandatory) - absolute for global augments, descendant for uses's augments */
             const char *dsc;         /**< description statement */
             const char *ref;         /**< reference statement */
-            struct lysp_when *when;  /**< when statement */
             struct lysp_qname *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
             struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         };
     };                                /**< common part corresponding to ::lysp_node */
 
     struct lysp_node *child;         /**< list of data nodes (linked list) */
+    struct lysp_when *when;          /**< when statement */
     struct lysp_node_action *actions;/**< list of actions (linked list) */
     struct lysp_node_notif *notifs;  /**< list of notifications (linked list) */
 };
@@ -1602,7 +1597,6 @@ struct lysc_node {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     void *priv;                      /**< private arbitrary user data, not used by libyang */
 };
 
@@ -1622,12 +1616,11 @@ struct lysc_node_action_inout {
             const char *dsc;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
             const char *ref;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /** private arbitrary user data, not used by libyang */
         };
     };
 
-    struct lysc_node *child;          /**< first child node (linked list) */
+    struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
 
@@ -1649,11 +1642,13 @@ struct lysc_node_action {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< ALWAYS NULL, compatibility member with ::lysc_node */
             void *priv;              /** private arbitrary user data, not used by libyang */
         };
     };
 
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)),
+                                          the action/RPC nodes do not contain the when statement on their own, but they can
+                                          inherit it from the parent's uses. */
     struct lysc_node_action_inout input;  /**< RPC's/action's input */
     struct lysc_node_action_inout output; /**< RPC's/action's output */
 
@@ -1677,13 +1672,15 @@ struct lysc_node_notif {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /** private arbitrary user data, not used by libyang */
         };
     };
 
-    struct lysc_node *child;          /**< first child node (linked list) */
+    struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)),
+                                          the notification nodes do not contain the when statement on their own, but they can
+                                          inherit it from the parent's uses. */
 };
 
 struct lysc_node_container {
@@ -1704,13 +1701,13 @@ struct lysc_node_container {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_node_action *actions;/**< first of actions nodes (linked list) */
     struct lysc_node_notif *notifs;  /**< first of notifications nodes (linked list) */
 };
@@ -1733,13 +1730,13 @@ struct lysc_node_case {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
                                           each other as siblings with the parent pointer pointing to appropriate case node. */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 };
 
 struct lysc_node_choice {
@@ -1760,7 +1757,6 @@ struct lysc_node_choice {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
@@ -1768,6 +1764,7 @@ struct lysc_node_choice {
     struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
                                           as siblings. Their parent pointers points to the specific case they belongs to, so distinguish the
                                           case is simple. */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_node_case *dflt;     /**< default case of the choice, only a pointer into the cases array. */
 };
 
@@ -1789,12 +1786,12 @@ struct lysc_node_leaf {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
@@ -1819,12 +1816,12 @@ struct lysc_node_leaflist {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
@@ -1853,13 +1850,13 @@ struct lysc_node_list {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_node_action *actions;/**< first of actions nodes (linked list) */
     struct lysc_node_notif *notifs;  /**< first of notifications nodes (linked list) */
 
@@ -1886,12 +1883,12 @@ struct lysc_node_anydata {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
             void *priv;              /**< private arbitrary user data, not used by libyang */
         };
     };
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when; /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -2013,6 +2010,24 @@ const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
  * @return NULL otherwise.
  */
 const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
+
+/**
+ * @brief Get the must statements list if present in the @p node
+ *
+ * @param[in] node Node to examine.
+ * @return Pointer to the list of must restrictions ([sized array](@ref sizedarrays))
+ * @return NULL if there is no must statement in the node, no matter if it is not even allowed or just present
+ */
+struct lysc_must *lysc_node_musts(const struct lysc_node *node);
+
+/**
+ * @brief Get the when statements list if present in the @p node
+ *
+ * @param[in] node Node to examine.
+ * @return Pointer to the list of pointers to when statements ([sized array](@ref sizedarrays))
+ * @return NULL if there is no when statement in the node, no matter if it is not even allowed or just present
+ */
+struct lysc_when **lysc_node_when(const struct lysc_node *node);
 
 /**
  * @brief Callback to be called for every schema node in a DFS traversal.
