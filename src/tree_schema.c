@@ -3285,7 +3285,9 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             }
         }
     } else {
-        memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
+        if (node->iffeature_size) {
+            memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
+        }
     }
 
     /*
