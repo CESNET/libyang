@@ -3805,13 +3805,27 @@ copyutf8(struct ly_ctx *ctx, char *dst, const char *src)
 
         dst[0] = src[0];
         return 1;
-    } else if (!(src[0] & 0x20)) {
+    } else if ((src[0] & 0xe0) == 0xc0) {
         /* two bytes character */
+        if ((src[1] & 0xc0) != 0x80) {
+            LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x 0x%02x",
+                    (unsigned char)src[0], (unsigned char)src[1])
+            return 0;
+        }
+
         dst[0] = src[0];
         dst[1] = src[1];
         return 2;
-    } else if (!(src[0] & 0x10)) {
+    } else if ((src[0] & 0xf0) == 0xe0) {
         /* three bytes character */
+        if ((src[1] & 0xc0) != 0x80 || (src[2] & 0xc0) != 0x80) {
+            LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x 0x%02x 0x%02x",
+                    (unsigned char)src[0], (unsigned char)src[1], (src[1] ? (unsigned char)src[2] : 0))
+            return 0;
+        }
+
         value = ((uint32_t)(src[0] & 0xf) << 12) | ((uint32_t)(src[1] & 0x3f) << 6) | (src[2] & 0x3f);
         if (((value & 0xf800) == 0xd800) ||
                 (value >= 0xfdd0 && value <= 0xfdef) ||
@@ -3828,8 +3842,16 @@ copyutf8(struct ly_ctx *ctx, char *dst, const char *src)
         dst[1] = src[1];
         dst[2] = src[2];
         return 3;
-    } else if (!(src[0] & 0x08)) {
+    } else if ((src[0] & 0xf8) == 0xf0) {
         /* four bytes character */
+        if ((src[1] & 0xc0) != 0x80 || (src[2] & 0xc0) != 0x80 || (src[3] & 0xc0) != 0x80) {
+            LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x 0x%02x 0x%02x 0x%02x",
+                    (unsigned char)src[0], (unsigned char)src[1],
+                    (src[1] ? (unsigned char)src[2] : 0), ((src[1] && src[2]) ? (unsigned char)src[3] : 0));
+            return 0;
+        }
+
         value = ((uint32_t)(src[0] & 0x7) << 18) | ((uint32_t)(src[1] & 0x3f) << 12) | ((uint32_t)(src[2] & 0x3f) << 6) | (src[3] & 0x3f);
         if ((value & 0xffe) == 0xffe) {
             /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
