@@ -7054,13 +7054,18 @@ ly_set_dup(const struct ly_set *set)
         return NULL;
     }
 
-    new = malloc(sizeof *new);
+    new = calloc(1, sizeof *new);
     LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), NULL);
     new->number = set->number;
     new->size = set->size;
-    new->set.g = malloc(new->size * sizeof *(new->set.g));
-    LY_CHECK_ERR_RETURN(!new->set.g, LOGMEM(NULL); free(new), NULL);
-    memcpy(new->set.g, set->set.g, new->size * sizeof *(new->set.g));
+
+    /* is there anything to copy? */
+    if (set->size) {
+        new->set.g = malloc(new->size * sizeof *(new->set.g));
+        LY_CHECK_ERR_RETURN(!new->set.g, LOGMEM(NULL); free(new), NULL);
+        assert(set->set.g);
+        memcpy(new->set.g, set->set.g, new->size * sizeof *(new->set.g));
+    }
 
     return new;
 }
