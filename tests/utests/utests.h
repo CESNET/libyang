@@ -218,7 +218,7 @@ struct utest_context {
  */
 #define CHECK_LYSP_ACTION_INOUT(NODE, DATA, EXTS, GROUPINGS, MUSTS, NODETYPE, PARENT, TYPEDEFS) \
     assert_non_null(NODE); \
-    CHECK_POINTER((NODE)->data, DATA); \
+    CHECK_POINTER((NODE)->child, DATA); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
     CHECK_POINTER((NODE)->groupings, GROUPINGS); \
     CHECK_ARRAY((NODE)->musts, MUSTS); \
@@ -462,7 +462,7 @@ struct utest_context {
  */
 #define CHECK_LYSC_NOTIF(NODE, DATA, DSC, EXTS, FLAGS, MODULE, MUSTS, NAME, PARENT, PRIV, REF, WHEN) \
     assert_non_null(NODE); \
-    CHECK_POINTER((NODE)->data, DATA); \
+    CHECK_POINTER((NODE)->child, DATA); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
     assert_int_equal((NODE)->flags, FLAGS); \
@@ -484,7 +484,7 @@ struct utest_context {
  */
 #define CHECK_LYSC_ACTION_INOUT(NODE, DATA, MUST, NODETYPE) \
     assert_non_null(NODE); \
-    CHECK_POINTER((NODE)->data, DATA); \
+    CHECK_POINTER((NODE)->child, DATA); \
     CHECK_ARRAY((NODE)->musts, MUST); \
     assert_int_equal((NODE)->nodetype, NODETYPE);
 

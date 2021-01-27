@@ -614,13 +614,13 @@ test_notification(void **state)
     assert_int_equal(LYS_NOTIF, notif->nodetype);
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("a1", notif->name);
-    assert_non_null(notif->data);
-    assert_string_equal("x", notif->data->name);
+    assert_non_null(notif->child);
+    assert_string_equal("x", notif->child->name);
     notif = notif->next;
     assert_int_equal(LYS_NOTIF, notif->nodetype);
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("a2", notif->name);
-    assert_null(notif->data);
+    assert_null(notif->child);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
             "notification b1 {leaf x {type int8;}} notification b2 {must \"/top\";}}}", LYS_IN_YANG, &mod));
@@ -631,13 +631,13 @@ test_notification(void **state)
     assert_int_equal(LYS_NOTIF, notif->nodetype);
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("b1", notif->name);
-    assert_non_null(notif->data);
-    assert_string_equal("x", notif->data->name);
+    assert_non_null(notif->child);
+    assert_string_equal("x", notif->child->name);
     notif = notif->next;
     assert_int_equal(LYS_NOTIF, notif->nodetype);
     assert_int_equal(LYS_STATUS_CURR, notif->flags);
     assert_string_equal("b2", notif->name);
-    assert_null(notif->data);
+    assert_null(notif->child);
     assert_int_equal(1, LY_ARRAY_COUNT(notif->musts));
 
     /* invalid */
@@ -2450,12 +2450,12 @@ test_augment(void **state)
     assert_non_null(mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "himp"));
     assert_non_null(rpc = mod->compiled->rpcs);
     assert_null(rpc->next);
-    assert_non_null(rpc->input.data);
-    assert_string_equal("x", rpc->input.data->name);
-    assert_null(rpc->input.data->next);
-    assert_non_null(rpc->output.data);
-    assert_string_equal("y", rpc->output.data->name);
-    assert_null(rpc->output.data->next);
+    assert_non_null(rpc->input.child);
+    assert_string_equal("x", rpc->input.child->name);
+    assert_null(rpc->input.child->next);
+    assert_non_null(rpc->output.child);
+    assert_string_equal("y", rpc->output.child->name);
+    assert_null(rpc->output.child->next);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module j {namespace urn:j;prefix j;yang-version 1.1; container root;"
             "grouping grp {notification grp-notif;}"
@@ -2545,8 +2545,8 @@ test_deviation(void **state)
     assert_null(((struct lysc_node_choice *)node)->cases->next);
     assert_non_null(mod->compiled->rpcs);
     assert_null(mod->compiled->rpcs->next);
-    assert_null(mod->compiled->rpcs->input.data);
-    assert_null(mod->compiled->rpcs->output.data);
+    assert_null(mod->compiled->rpcs->input.child);
+    assert_null(mod->compiled->rpcs->output.child);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c; typedef mytype {type string; units kilometers;}"
             "leaf c1 {type mytype;} leaf c2 {type mytype; units meters;} leaf c3 {type mytype; units meters;}"

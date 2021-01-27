@@ -1579,16 +1579,16 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
         /* no children */
         break;
     case LYS_NOTIF:
-        ((struct lysp_node_notif *)dev_pnode)->data = NULL;
+        ((struct lysp_node_notif *)dev_pnode)->child = NULL;
         break;
     case LYS_RPC:
     case LYS_ACTION:
-        ((struct lysp_node_action *)dev_pnode)->input.data = NULL;
-        ((struct lysp_node_action *)dev_pnode)->output.data = NULL;
+        ((struct lysp_node_action *)dev_pnode)->input.child = NULL;
+        ((struct lysp_node_action *)dev_pnode)->output.child = NULL;
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        ((struct lysp_node_action_inout *)dev_pnode)->data = NULL;
+        ((struct lysp_node_action_inout *)dev_pnode)->child = NULL;
         lysp_node_free((struct ly_ctx *)ctx, dev_pnode);
         free(dev_pnode);
         return;

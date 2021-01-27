@@ -213,7 +213,7 @@ lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp)
     LY_LIST_FOR_SAFE((struct lysp_node *)grp->groupings, next, node) {
         lysp_node_free(ctx, node);
     }
-    LY_LIST_FOR_SAFE(grp->data, next, node) {
+    LY_LIST_FOR_SAFE(grp->child, next, node) {
         lysp_node_free(ctx, node);
     }
     LY_LIST_FOR_SAFE((struct lysp_node *)grp->actions, next, node) {
@@ -415,7 +415,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
         LY_LIST_FOR_SAFE((struct lysp_node *)((struct lysp_node_action_inout *)node)->groupings, next, child) {
             lysp_node_free(ctx, child);
         }
-        LY_LIST_FOR_SAFE(((struct lysp_node_action_inout *)node)->data, next, child) {
+        LY_LIST_FOR_SAFE(((struct lysp_node_action_inout *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
         /* do not free the node, it is never standalone but part of the action node */
@@ -426,7 +426,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
         LY_LIST_FOR_SAFE((struct lysp_node *)((struct lysp_node_notif *)node)->groupings, next, child) {
             lysp_node_free(ctx, child);
         }
-        LY_LIST_FOR_SAFE(((struct lysp_node_notif *)node)->data, next, child) {
+        LY_LIST_FOR_SAFE(((struct lysp_node_notif *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
         break;
@@ -667,7 +667,7 @@ lysc_node_action_inout_free(struct ly_ctx *ctx, struct lysc_node_action_inout *i
     struct lysc_node *child, *child_next;
 
     FREE_ARRAY(ctx, inout->musts, lysc_must_free);
-    LY_LIST_FOR_SAFE(inout->data, child_next, child) {
+    LY_LIST_FOR_SAFE(inout->child, child_next, child) {
         lysc_node_free_(ctx, child);
     }
 }
@@ -689,7 +689,7 @@ lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif)
     struct lysc_node *child, *child_next;
 
     FREE_ARRAY(ctx, notif->musts, lysc_must_free);
-    LY_LIST_FOR_SAFE(notif->data, child_next, child) {
+    LY_LIST_FOR_SAFE(notif->child, child_next, child) {
         lysc_node_free_(ctx, child);
     }
 }
