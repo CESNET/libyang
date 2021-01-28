@@ -140,7 +140,7 @@ next:
         /* get know where to start */
         if (parent) {
             /* schema subtree */
-            next = last = lysc_node_children(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_IS_OUTPUT : LYS_IS_INPUT);
+            next = last = lysc_node_child(parent);
         } else {
             /* top level data */
             next = last = module->data;
@@ -200,9 +200,9 @@ check:
         goto repeat;
     case LYS_CONTAINER:
         if (!(next->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
-            if (lysc_node_children(next, 0)) {
+            if (lysc_node_child(next)) {
                 /* go into */
-                next = lysc_node_children(next, 0);
+                next = lysc_node_child(next);
             } else {
                 last = next;
                 next = next->next;
@@ -213,15 +213,33 @@ check:
     case LYS_CHOICE:
         if (options & LYS_GETNEXT_WITHCHOICE) {
             break;
-        } else if ((options & LYS_GETNEXT_NOCHOICE) || !lysc_node_children(next, 0)) {
+        } else if ((options & LYS_GETNEXT_NOCHOICE) || !lysc_node_child(next)) {
             next = next->next;
         } else {
             if (options & LYS_GETNEXT_WITHCASE) {
-                next = lysc_node_children(next, 0);
+                next = lysc_node_child(next);
             } else {
                 /* go into */
                 lys_getnext_into_case(((struct lysc_node_choice *)next)->cases, &last, &next);
             }
+        }
+        goto repeat;
+    case LYS_INPUT:
+        if (options & LYS_GETNEXT_OUTPUT) {
+            /* skip */
+            next = next->next;
+        } else {
+            /* go into */
+            next = lysc_node_child(next);
+        }
+        goto repeat;
+    case LYS_OUTPUT:
+        if (!(options & LYS_GETNEXT_OUTPUT)) {
+            /* skip */
+            next = next->next;
+        } else {
+            /* go into */
+            next = lysc_node_child(next);
         }
         goto repeat;
     default:

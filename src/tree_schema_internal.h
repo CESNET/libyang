@@ -321,8 +321,8 @@ void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 /**
  * @brief Get address of a node's actions list if any.
- *
  * Decides the node's type and in case it has an actions list, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's actions member if any, NULL otherwise.
  */
@@ -330,8 +330,8 @@ struct lysp_node_action **lysp_node_actions_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's notifications list if any.
- *
  * Decides the node's type and in case it has a notifications list, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's notifs member if any, NULL otherwise.
  */
@@ -339,16 +339,17 @@ struct lysp_node_notif **lysp_node_notifs_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's child pointer if any.
- *
  * Decides the node's type and in case it has a children list, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's child member if any, NULL otherwise.
  */
-struct lysp_node **lysp_node_children_p(struct lysp_node *node);
+struct lysp_node **lysp_node_child_p(struct lysp_node *node);
 
 /**
  * @brief Get the address of the node's musts member, if any.
  * Decides the node's type and in case it has a musts member, returns its address.
+ *
  * @param[in] node Node to examine.
  * @return The address of the node's musts member if any, NULL otherwise.
  */
@@ -357,6 +358,7 @@ struct lysp_restr **lysp_node_musts_p(const struct lysp_node *node);
 /**
  * @brief Get the node's musts member, if any.
  * Decides the node's type and in case it has a musts member, returns its address.
+ *
  * @param[in] node Node to examine.
  * @return The node's musts member if any, NULL otherwise.
  */
@@ -365,6 +367,7 @@ struct lysp_restr *lysp_node_musts(const struct lysp_node *node);
 /**
  * @brief Get the address of the node's when member, if any.
  * Decides the node's type and in case it has a when, returns it.
+ *
  * @param[in] node Node to examine.
  * @return The address of the node's when member if any, NULL otherwise.
  */
@@ -373,6 +376,7 @@ struct lysp_when **lysp_node_when_p(const struct lysp_node *node);
 /**
  * @brief Get the node's when member, if any.
  * Decides the node's type and in case it has a when, returns it.
+ *
  * @param[in] node Node to examine.
  * @return The node's when member if any, NULL otherwise.
  */
@@ -380,18 +384,19 @@ struct lysp_when *lysp_node_when(const struct lysp_node *node);
 
 /**
  * @brief Get address of a node's child pointer if any.
- *
  * Decides the node's type and in case it has a children list, returns its address.
+ *
+ * Do not use for RPC and action nodes.
+ *
  * @param[in] node Node to check.
- * @param[in] flags Flag to distinguish input (LYS_IN_INPUT) and output (LYS_IN_OUTPUT) data in case of RPC/action node.
  * @return Address of the node's child member if any, NULL otherwise.
  */
-struct lysc_node **lysc_node_children_p(const struct lysc_node *node, uint16_t flags);
+struct lysc_node **lysc_node_child_p(const struct lysc_node *node);
 
 /**
  * @brief Get address of a node's notifs pointer if any.
- *
  * Decides the node's type and in case it has a notifs array, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's notifs member if any, NULL otherwise.
  */
@@ -399,8 +404,8 @@ struct lysc_node_notif **lysc_node_notifs_p(struct lysc_node *node);
 
 /**
  * @brief Get address of a node's actions pointer if any.
- *
  * Decides the node's type and in case it has a actions array, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's actions member if any, NULL otherwise.
  */
@@ -408,8 +413,8 @@ struct lysc_node_action **lysc_node_actions_p(struct lysc_node *node);
 
 /**
  * @brief Get address of a node's when member if any.
- *
  * Decides the node's type and in case it has a when member, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's when member if any, NULL otherwise.
  */
@@ -417,8 +422,8 @@ struct lysc_when ***lysc_node_when_p(const struct lysc_node *node);
 
 /**
  * @brief Get address of a node's musts member if any.
- *
  * Decides the node's type and in case it has a musts member, returns its address.
+ *
  * @param[in] node Node to check.
  * @return Address of the node's musts member if any, NULL otherwise.
  */
@@ -438,6 +443,7 @@ LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARR
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.
+ *
  * @param[in] ctx libyang context to search.
  * @param[in] mod Parsed schema structure.
  * @return Corresponding lys_module structure for the given parsed schema structure.

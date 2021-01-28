@@ -558,7 +558,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         /* check that all keys were set */
         key_count = 0;
-        for (key = lysc_node_children(ctx_node, 0); key && (key->flags & LYS_KEY); key = key->next) {
+        for (key = lysc_node_child(ctx_node); key && (key->flags & LYS_KEY); key = key->next) {
             ++key_count;
         }
         if (LY_ARRAY_COUNT(*predicates) != key_count) {

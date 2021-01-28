@@ -1362,22 +1362,13 @@ static ly_bool
 lysp_schema_nodeid_match_node(const struct lysc_node **node, const struct lys_module *mod, const char *name,
         size_t name_len)
 {
-    const char *node_name;
-
     /* compare with the module of the node */
     if ((*node)->module != mod) {
         return 0;
     }
 
     /* compare names */
-    if ((*node)->nodetype == LYS_INPUT) {
-        node_name = "input";
-    } else if ((*node)->nodetype == LYS_OUTPUT) {
-        node_name = "output";
-    } else {
-        node_name = (*node)->name;
-    }
-    if (ly_strncmp(node_name, name, name_len)) {
+    if (ly_strncmp((*node)->name, name, name_len)) {
         return 0;
     }
 

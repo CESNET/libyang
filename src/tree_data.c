@@ -803,7 +803,7 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
     va_start(ap, node);
 
     /* create and insert all the keys */
-    for (key_s = lysc_node_children(schema, 0); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
+    for (key_s = lysc_node_child(schema); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
         key_val = va_arg(ap, const char *);
 
         rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA,
@@ -2500,7 +2500,7 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, u
 
             if (!(node1->schema->flags & LYS_KEYLESS) && !(options & LYD_COMPARE_FULL_RECURSION)) {
                 /* lists with keys, their equivalence is based on their keys */
-                for (const struct lysc_node *key = lysc_node_children(node1->schema, 0);
+                for (const struct lysc_node *key = lysc_node_child(node1->schema);
                         key && (key->flags & LYS_KEY);
                         key = key->next) {
                     if (lyd_compare_single(iter1, iter2, options)) {
@@ -2704,7 +2704,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
         } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
             child = orig->child;
-            for (const struct lysc_node *key = lysc_node_children(dup->schema, 0);
+            for (const struct lysc_node *key = lysc_node_child(dup->schema);
                     key && (key->flags & LYS_KEY);
                     key = key->next) {
                 if (!child) {

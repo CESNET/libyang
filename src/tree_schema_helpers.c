@@ -1230,7 +1230,7 @@ lysp_node_notifs(const struct lysp_node *node)
 }
 
 struct lysp_node **
-lysp_node_children_p(struct lysp_node *node)
+lysp_node_child_p(struct lysp_node *node)
 {
     assert(node);
     switch (node->nodetype) {
@@ -1257,17 +1257,17 @@ lysp_node_children_p(struct lysp_node *node)
 }
 
 API const struct lysp_node *
-lysp_node_children(const struct lysp_node *node)
+lysp_node_child(const struct lysp_node *node)
 {
-    struct lysp_node **children;
+    struct lysp_node **child;
 
     if (!node) {
         return NULL;
     }
 
-    children = lysp_node_children_p((struct lysp_node *)node);
-    if (children) {
-        return *children;
+    child = lysp_node_child_p((struct lysp_node *)node);
+    if (child) {
+        return *child;
     } else {
         return NULL;
     }
@@ -1415,9 +1415,10 @@ lysc_node_notifs(const struct lysc_node *node)
 }
 
 struct lysc_node **
-lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
+lysc_node_child_p(const struct lysc_node *node)
 {
-    assert(node);
+    assert(node && !(node->nodetype & (LYS_RPC | LYS_ACTION)));
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysc_node_container *)node)->child;
@@ -1427,14 +1428,6 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
         return &((struct lysc_node_case *)node)->child;
     case LYS_LIST:
         return &((struct lysc_node_list *)node)->child;
-    case LYS_RPC:
-    case LYS_ACTION:
-        if (flags & LYS_IS_OUTPUT) {
-            return &((struct lysc_node_action *)node)->output.child;
-        } else {
-            /* LYS_IS_INPUT, but also the default case */
-            return &((struct lysc_node_action *)node)->input.child;
-        }
     case LYS_INPUT:
     case LYS_OUTPUT:
         return &((struct lysc_node_action_inout *)node)->child;
@@ -1446,29 +1439,24 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
 }
 
 API const struct lysc_node *
-lysc_node_children(const struct lysc_node *node, uint16_t flags)
+lysc_node_child(const struct lysc_node *node)
 {
-    struct lysc_node **children;
+    struct lysc_node **child;
 
     if (!node) {
         return NULL;
     }
 
-    if ((node->nodetype == LYS_RPC) || (node->nodetype == LYS_ACTION)) {
-        if (flags & LYS_IN_OUTPUT) {
-            return (struct lysc_node *)&((struct lysc_node_action *)node)->output;
-        } else {
-            /* LYS_IN_INPUT, but also the default case */
-            return (struct lysc_node *)&((struct lysc_node_action *)node)->input;
-        }
+    if (node->nodetype & (LYS_RPC | LYS_ACTION)) {
+        return &((struct lysc_node_action *)node)->input.node;
     } else {
-        children = lysc_node_children_p(node, flags);
-        if (children) {
-            return *children;
-        } else {
-            return NULL;
+        child = lysc_node_child_p(node);
+        if (child) {
+            return *child;
         }
     }
+
+    return NULL;
 }
 
 struct lysc_must **
