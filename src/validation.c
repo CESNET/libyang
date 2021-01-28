@@ -248,7 +248,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
         do {
             --i;
 
-            struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[i];
+            struct lyd_node_term *node = node_types->objs[i];
             struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
             /* resolve the value of the node */
@@ -268,7 +268,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
         do {
             --i;
 
-            struct lyd_meta *meta = (struct lyd_meta *)meta_types->objs[i];
+            struct lyd_meta *meta = meta_types->objs[i];
             struct lysc_type *type = ((struct lyext_metadata *)meta->annotation->data)->type;
 
             /* validate and store the value of the metadata */
@@ -350,7 +350,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
     struct lyd_node *match, *to_del;
     ly_bool found;
 
-    LOG_LOCSET((const struct lysc_node *)choic, NULL, NULL, NULL);
+    LOG_LOCSET(&choic->node, NULL, NULL, NULL);
 
     LY_LIST_FOR((struct lysc_node *)choic->cases, scase) {
         found = 0;
@@ -799,14 +799,14 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
     size_t depth = 0, i;
 
     /* get leaf depth */
-    for (iter = (struct lysc_node *)uniq_leaf; iter && (iter != list->schema); iter = lysc_data_parent(iter)) {
+    for (iter = &uniq_leaf->node; iter && (iter != list->schema); iter = lysc_data_parent(iter)) {
         ++depth;
     }
 
     node = (struct lyd_node *)list;
     while (node && depth) {
         /* find schema node with this depth */
-        for (i = depth - 1, iter = (struct lysc_node *)uniq_leaf; i; iter = lysc_data_parent(iter)) {
+        for (i = depth - 1, iter = &uniq_leaf->node; i; iter = lysc_data_parent(iter)) {
             --i;
         }
 
@@ -897,7 +897,7 @@ uniquecheck:
                     strcpy(ptr, " ");
                     ++ptr;
                 }
-                ptr = lysc_path_until((struct lysc_node *)slist->uniques[u][v], (struct lysc_node *)slist, LYSC_PATH_LOG,
+                ptr = lysc_path_until((struct lysc_node *)slist->uniques[u][v], &slist->node, LYSC_PATH_LOG,
                         ptr, UNIQ_BUF_SIZE - (ptr - uniq_str));
                 if (!ptr) {
                     /* path will be incomplete, whatever */

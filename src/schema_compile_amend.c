@@ -1777,20 +1777,8 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
         ctx->options = opt_prev;
     }
 
-    switch (target->nodetype) {
-    case LYS_CONTAINER:
-        actions = &((struct lysc_node_container *)target)->actions;
-        notifs = &((struct lysc_node_container *)target)->notifs;
-        break;
-    case LYS_LIST:
-        actions = &((struct lysc_node_list *)target)->actions;
-        notifs = &((struct lysc_node_list *)target)->notifs;
-        break;
-    default:
-        actions = NULL;
-        notifs = NULL;
-        break;
-    }
+    actions = lysc_node_actions_p(target);
+    notifs = lysc_node_notifs_p(target);
 
     if (aug_p->actions) {
         if (!actions) {

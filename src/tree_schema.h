@@ -71,8 +71,8 @@ struct lyxp_expr;
  * is not allowed to create the data (including instantiating identities) defined in the model via data parsers,
  * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees.
  *
- * The compiled schema tree nodes are able to hold private objects (::lysc_node.priv as a pointer to a structure, function, variable, ...) used by
- * a caller application. Such an object can be assigned to a specific node using ::lysc_set_private() function.
+ * The compiled schema tree nodes are able to hold private objects (::lysc_node.priv as a pointer to a structure,
+ * function, variable, ...) used by a caller application.
  * Note that the object is not freed by libyang when the context is being destroyed. So the caller is responsible
  * for freeing the provided structure after the context is destroyed or the private pointer is set to NULL in
  * appropriate schema nodes where the object was previously set. This can be automated via destructor function
@@ -102,8 +102,6 @@ struct lyxp_expr;
  * - ::lys_nodetype2str()
  * - ::lys_set_implemented()
  * - ::lys_value_validate()
- *
- * - ::lysc_set_private()
  *
  * - ::lysc_has_when()
  *
@@ -182,7 +180,7 @@ struct lyxp_expr;
  */
 #define LYSC_TREE_DFS_BEGIN(START, ELEM) \
     { ly_bool LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
-    for ((ELEM) = (LYSC_TREE_DFS_next) = (struct lysc_node*)(START); \
+    for ((ELEM) = (LYSC_TREE_DFS_next) = (struct lysc_node *)(START); \
          (ELEM); \
          (ELEM) = (LYSC_TREE_DFS_next), LYSC_TREE_DFS_continue = 0)
 
@@ -2082,17 +2080,6 @@ LY_ERR lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, vo
  * @return LY_ERR value returned by @p dfs_clb.
  */
 LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data);
-
-/**
- * @brief Set a schema private pointer to a user pointer.
- *
- * @param[in] node Node, whose private field will be assigned. Works also for RPCs, actions, and notifications.
- * @param[in] priv Arbitrary user-specified pointer.
- * @param[out] prev_priv_p Optional previous private object of the \p node. Note, that
- * the caller is in this case responsible (if it is necessary) for freeing the replaced private object.
- * @return LY_ERR value.
- */
-LY_ERR lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.

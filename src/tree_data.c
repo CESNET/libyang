@@ -1514,7 +1514,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
             node = lys_getnext_data(NULL, *first, NULL, iter, NULL);
             if (!node && ((struct lysc_node_choice *)iter)->dflt) {
                 /* create default case data */
-                LY_CHECK_RET(lyd_new_implicit_r(parent, first, (struct lysc_node *)((struct lysc_node_choice *)iter)->dflt,
+                LY_CHECK_RET(lyd_new_implicit_r(parent, first, &((struct lysc_node_choice *)iter)->dflt->node,
                         NULL, node_types, node_when, impl_opts, diff));
             } else if (node) {
                 /* create any default data in the existing case */
@@ -2500,7 +2500,7 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, u
 
             if (!(node1->schema->flags & LYS_KEYLESS) && !(options & LYD_COMPARE_FULL_RECURSION)) {
                 /* lists with keys, their equivalence is based on their keys */
-                for (struct lysc_node *key = ((struct lysc_node_list *)node1->schema)->child;
+                for (const struct lysc_node *key = lysc_node_children(node1->schema, 0);
                         key && (key->flags & LYS_KEY);
                         key = key->next) {
                     if (lyd_compare_single(iter1, iter2, options)) {
@@ -2704,7 +2704,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
         } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
             child = orig->child;
-            for (struct lysc_node *key = ((struct lysc_node_list *)dup->schema)->child;
+            for (const struct lysc_node *key = lysc_node_children(dup->schema, 0);
                     key && (key->flags & LYS_KEY);
                     key = key->next) {
                 if (!child) {
