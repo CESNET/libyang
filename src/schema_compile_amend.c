@@ -1416,7 +1416,7 @@ lysp_schema_nodeid_match(const struct lyxp_expr *exp, const struct lysp_module *
 
     if (pnode) {
         /* compare on the last parsed-only node */
-        if (pnode_mod != mod || ly_strncmp(pnode->name, name, name_len)) {
+        if ((pnode_mod != mod) || ly_strncmp(pnode->name, name, name_len)) {
             return 0;
         }
     } else {

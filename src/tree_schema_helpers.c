@@ -1280,7 +1280,7 @@ lysp_node_musts_p(const struct lysp_node *node)
         return NULL;
     }
 
-    switch(node->nodetype) {
+    switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysp_node_container *)node)->musts;
     case LYS_LEAF:
@@ -1322,7 +1322,7 @@ lysp_node_when_p(const struct lysp_node *node)
         return NULL;
     }
 
-    switch(node->nodetype) {
+    switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysp_node_container *)node)->when;
     case LYS_CHOICE:
@@ -1478,7 +1478,7 @@ lysc_node_musts_p(const struct lysc_node *node)
         return NULL;
     }
 
-    switch(node->nodetype) {
+    switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysc_node_container *)node)->musts;
     case LYS_LEAF:
@@ -1520,7 +1520,7 @@ lysc_node_when_p(const struct lysc_node *node)
         return NULL;
     }
 
-    switch(node->nodetype) {
+    switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysc_node_container *)node)->when;
     case LYS_CHOICE:
