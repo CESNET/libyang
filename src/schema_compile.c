@@ -927,20 +927,12 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
     struct lysc_when **whens = NULL;
     struct lysc_must *musts = NULL;
     LY_ERR ret = LY_SUCCESS;
-    const struct lysc_node *op;
     const struct lys_module *mod;
 
     LOG_LOCSET(node, NULL, NULL, NULL);
 
     memset(&tmp_set, 0, sizeof tmp_set);
-    opts = LYXP_SCNODE_SCHEMA;
-    if (node->flags & LYS_CONFIG_R) {
-        for (op = node->parent; op && !(op->nodetype & (LYS_RPC | LYS_ACTION)); op = op->parent) {}
-        if (op) {
-            /* we are actually in output */
-            opts = LYXP_SCNODE_OUTPUT;
-        }
-    }
+    opts = LYXP_SCNODE_SCHEMA | ((node->flags & LYS_IS_OUTPUT) ? LYXP_SCNODE_OUTPUT : 0);
 
     whens = lysc_node_when(node);
     musts = lysc_node_musts(node);
@@ -1059,16 +1051,16 @@ static LY_ERR
 lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, struct lysc_type_leafref *lref,
         struct lys_glob_unres *unres)
 {
-    const struct lysc_node *target = NULL, *siter;
+    const struct lysc_node *target = NULL;
     struct ly_path *p;
     struct lysc_type *type;
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
     /* try to find the target */
-    LY_CHECK_RET(ly_path_compile(ctx->ctx, lref->cur_mod, node, lref->path, LY_PATH_LREF_TRUE, lysc_is_output(node) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, LY_PREF_SCHEMA_RESOLVED, lref->prefixes,
-            unres, &p));
+    LY_CHECK_RET(ly_path_compile(ctx->ctx, lref->cur_mod, node, lref->path, LY_PATH_LREF_TRUE,
+            (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
+            LY_PREF_SCHEMA_RESOLVED, lref->prefixes, unres, &p));
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;
@@ -1092,8 +1084,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     /* check config */
     if (lref->require_instance) {
-        for (siter = node->parent; siter && !(siter->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); siter = siter->parent) {}
-        if (!siter && (node->flags & LYS_CONFIG_W) && (target->flags & LYS_CONFIG_R)) {
+        if ((node->flags & LYS_CONFIG_W) && (target->flags & LYS_CONFIG_R)) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid leafref path \"%s\" - target is supposed"
                     " to represent configuration data (as the leafref does), but it does not.", lref->path->expr);
             return LY_EVALID;
