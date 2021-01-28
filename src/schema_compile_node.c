@@ -2010,7 +2010,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     if (exclude->nodetype == LYS_CASE) {
         /* check restricted only to all the cases */
         assert(parent->nodetype == LYS_CHOICE);
-        LY_LIST_FOR(lysc_node_children(parent, 0), iter) {
+        LY_LIST_FOR(lysc_node_child(parent), iter) {
             if (CHECK_NODE(iter, exclude, name)) {
                 LOGVAL(ctx->ctx, LY_VCODE_DUPIDENT, name, "case");
                 return LY_EEXIST;
@@ -2092,16 +2092,23 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
     node->parent = parent;
 
     if (parent) {
-        if (parent->nodetype & (LYS_ACTION | LYS_RPC)) {
-            assert(node->nodetype & (LYS_INPUT | LYS_OUTPUT));
-            /* inout nodes are part of the action and nothing more than setting the parent pointer is necessary */
+        if (node->nodetype == LYS_INPUT) {
+            assert(parent->nodetype & (LYS_ACTION | LYS_RPC));
+            /* input node is part of the action but link it with output */
+            node->next = &((struct lysc_node_action *)parent)->output.node;
+            node->prev = node->next;
+            return LY_SUCCESS;
+        } else if (node->nodetype == LYS_OUTPUT) {
+            /* output node is part of the action but link it with input */
+            node->next = NULL;
+            node->prev = &((struct lysc_node_action *)parent)->input.node;
             return LY_SUCCESS;
         } else if (node->nodetype == LYS_ACTION) {
             children = (struct lysc_node **)lysc_node_actions_p(parent);
         } else if (node->nodetype == LYS_NOTIF) {
             children = (struct lysc_node **)lysc_node_notifs_p(parent);
         } else {
-            children = lysc_node_children_p(parent, ctx->options);
+            children = lysc_node_child_p(parent);
         }
         assert(children);
 
@@ -3310,7 +3317,7 @@ lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add)
         }
     } else { /* unset flag */
         for ( ; parent && parent->nodetype == LYS_CONTAINER && (parent->flags & LYS_MAND_TRUE); parent = parent->parent) {
-            for (iter = lysc_node_children(parent, 0); iter; iter = iter->next) {
+            for (iter = lysc_node_child(parent); iter; iter = iter->next) {
                 if (iter->flags & LYS_MAND_TRUE) {
                     /* there is another mandatory node */
                     return;

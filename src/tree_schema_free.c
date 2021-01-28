@@ -881,7 +881,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
                 } else if (node->nodetype == LYS_NOTIF) {
                     iter = (struct lysc_node *)lysc_node_notifs(node->parent);
                 } else {
-                    iter = (struct lysc_node *)lysc_node_children(node->parent, node->flags & LYS_IS_OUTPUT);
+                    iter = (struct lysc_node *)lysc_node_child(node->parent);
                 }
                 LY_CHECK_ERR_RET(!iter, LOGINT(ctx), );
             } else if (node->nodetype == LYS_RPC) {
@@ -902,7 +902,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
             } else if (node->nodetype == LYS_NOTIF) {
                 child_p = (struct lysc_node **)lysc_node_notifs_p(node->parent);
             } else {
-                child_p = lysc_node_children_p(node->parent, node->flags & LYS_IS_OUTPUT);
+                child_p = lysc_node_child_p(node->parent);
             }
         } else if (node->nodetype == LYS_RPC) {
             child_p = (struct lysc_node **)&node->module->compiled->rpcs;

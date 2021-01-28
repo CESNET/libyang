@@ -105,11 +105,11 @@ struct lyxp_expr;
  *
  * - ::lysc_has_when()
  *
- * - ::lysc_node_children()
+ * - ::lysc_node_child()
  * - ::lysc_node_actions()
  * - ::lysc_node_notifs()
  *
- * - ::lysp_node_children()
+ * - ::lysp_node_child()
  * - ::lysp_node_actions()
  * - ::lysp_node_notifs()
  * - ::lysp_node_groupings()
@@ -202,7 +202,7 @@ struct lyxp_expr;
     if (LYSC_TREE_DFS_continue) { \
         (LYSC_TREE_DFS_next) = NULL; \
     } else { \
-        (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_children(ELEM, 0); \
+        (LYSC_TREE_DFS_next) = (struct lysc_node *)lysc_node_child(ELEM); \
     } \
     if (!(LYSC_TREE_DFS_next)) { \
         /* no children, try siblings */ \
@@ -222,15 +222,7 @@ struct lyxp_expr;
         /* we are done, no next element to process */ \
         break; \
     } \
-    if ((ELEM)->nodetype == LYS_INPUT) { \
-        /* after input, get output */ \
-        (NEXT) = (struct lysc_node *)lysc_node_children((ELEM)->parent, LYS_IS_OUTPUT); \
-    } else if ((ELEM)->nodetype == LYS_OUTPUT) { \
-        /* no sibling of output */ \
-        (NEXT) = NULL; \
-    } else { \
-        (NEXT) = (ELEM)->next; \
-    }
+    (NEXT) = (ELEM)->next;
 
 /* *INDENT-ON* */
 
@@ -1619,9 +1611,8 @@ struct lysc_node_action_inout {
             uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
             struct lys_module *module; /**< module structure */
             struct lysc_node *parent;/**< parent node (NULL in case of top level node) */
-            struct lysc_node *next;  /**< NULL */
-            struct lysc_node *prev;  /**< pointer to the node itself - compatibility with ::lysc_node, input and output are
-                                          supposed to be a separated subtrees, so they do not link each other as siblings. */
+            struct lysc_node *next;  /**< next sibling node (output node for input, NULL for output) */
+            struct lysc_node *prev;  /**< pointer to the previous sibling node (input and output node pointing to each other) */
             const char *name;        /**< "input" or "output" */
             const char *dsc;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
             const char *ref;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
@@ -1993,7 +1984,7 @@ const struct lysp_node_notif *lysp_node_notifs(const struct lysp_node *node);
  * @param[in] node Node to examine.
  * @return The node's children linked list if any, NULL otherwise.
  */
-const struct lysp_node *lysp_node_children(const struct lysp_node *node);
+const struct lysp_node *lysp_node_child(const struct lysp_node *node);
 
 /**
  * @brief Get the actions/RPCs linked list of the given (compiled) schema node.
@@ -2014,12 +2005,14 @@ const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
 /**
  * @brief Get the children linked list of the given (compiled) schema node.
  *
+ * Note that ::LYS_CHOICE has only ::LYS_CASE children.
+ * Also, ::LYS_RPC and ::LYS_ACTION have the first child ::LYS_INPUT, its sibling is ::LYS_OUTPUT.
+ *
  * @param[in] node Node to examine.
- * @param[in] flags Flag to distinguish input (LYS_IS_INPUT) and output (LYS_IS_OUTPUT) child in case of RPC/action node.
  * @return Children linked list if any,
  * @return NULL otherwise.
  */
-const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
+const struct lysc_node *lysc_node_child(const struct lysc_node *node);
 
 /**
  * @brief Get the must statements list if present in the @p node

@@ -1054,7 +1054,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, ly_b
     }
     ypr_open(ctx->out, flag);
 
-    ly_print_(ctx->out, "\n%*s%s {\n", INDENT, (inout->nodetype == LYS_INPUT ? "input" : "output"));
+    ly_print_(ctx->out, "\n%*s%s {\n", INDENT, inout->name);
     LEVEL++;
 
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, inout->exts, NULL, 0);
@@ -1077,7 +1077,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, ly_b
 }
 
 static void
-yprc_inout(struct ypr_ctx *ctx, const struct lysc_node_action *action, const struct lysc_node_action_inout *inout, ly_bool *flag)
+yprc_inout(struct ypr_ctx *ctx, const struct lysc_node_action_inout *inout, ly_bool *flag)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_node *data;
@@ -1088,10 +1088,10 @@ yprc_inout(struct ypr_ctx *ctx, const struct lysc_node_action *action, const str
     }
     ypr_open(ctx->out, flag);
 
-    ly_print_(ctx->out, "\n%*s%s {\n", INDENT, (&action->input == inout) ? "input" : "output");
+    ly_print_(ctx->out, "\n%*s%s {\n", INDENT, inout->name);
     LEVEL++;
 
-    yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, (&action->input == inout) ? action->input.exts : action->output.exts, NULL, 0);
+    yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, inout->exts, NULL, 0);
     LY_ARRAY_FOR(inout->musts, u) {
         yprc_must(ctx, &inout->musts[u], NULL);
     }
@@ -1222,8 +1222,8 @@ yprc_action(struct ypr_ctx *ctx, const struct lysc_node_action *action)
     ypr_description(ctx, action->dsc, action->exts, &flag);
     ypr_reference(ctx, action->ref, action->exts, &flag);
 
-    yprc_inout(ctx, action, &action->input, &flag);
-    yprc_inout(ctx, action, &action->output, &flag);
+    yprc_inout(ctx, &action->input, &flag);
+    yprc_inout(ctx, &action->output, &flag);
 
     LEVEL--;
     ypr_close(ctx, flag);

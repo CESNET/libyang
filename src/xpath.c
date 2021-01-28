@@ -5858,7 +5858,12 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod,
 next_iter:
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
-            next = lysc_node_children(elem, options & LYXP_SCNODE_OUTPUT ? LYS_IS_OUTPUT : LYS_IS_INPUT);
+            next = lysc_node_child(elem);
+            if (next && (next->nodetype == LYS_INPUT) && (options & LYXP_SCNODE_OUTPUT)) {
+                next = next->next;
+            } else if (next && (next->nodetype == LYS_OUTPUT) && !(options & LYXP_SCNODE_OUTPUT)) {
+                next = next->next;
+            }
             if (!next) {
 skip_children:
                 /* no children, so try siblings, but only if it's not the start,
@@ -6900,7 +6905,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok
         if (ctx_node->flags & LYS_KEYLESS) {
             return LY_EINVAL;
         }
-        for (key_count = 0, key = lysc_node_children(ctx_node, 0); key && (key->flags & LYS_KEY); key = key->next, ++key_count) {}
+        for (key_count = 0, key = lysc_node_child(ctx_node); key && (key->flags & LYS_KEY); key = key->next, ++key_count) {}
         assert(key_count);
 
         /* learn where the predicates end */

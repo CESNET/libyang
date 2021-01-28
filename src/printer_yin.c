@@ -567,7 +567,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, int8
     }
     ypr_close_parent(ctx, flag);
 
-    ypr_open(ctx, (inout->nodetype == LYS_INPUT ? "input" : "output"), NULL, NULL, *flag);
+    ypr_open(ctx, inout->name, NULL, NULL, *flag);
     LEVEL++;
 
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, inout->exts, NULL, 0);
@@ -586,7 +586,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_node_action_inout *inout, int8
     }
 
     LEVEL--;
-    ypr_close(ctx, (inout->nodetype == LYS_INPUT ? "input" : "output"), 1);
+    ypr_close(ctx, inout->name, 1);
 }
 
 static void
