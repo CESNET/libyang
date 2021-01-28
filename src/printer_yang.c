@@ -1401,8 +1401,8 @@ yprc_case(struct ypr_ctx *ctx, const struct lysc_node_case *cs)
     ly_bool flag = 0;
     struct lysc_node *child;
 
-    yprc_node_common1(ctx, (struct lysc_node *)cs, &flag);
-    yprc_node_common2(ctx, (struct lysc_node *)cs, &flag);
+    yprc_node_common1(ctx, &cs->node, &flag);
+    yprc_node_common2(ctx, &cs->node, &flag);
 
     if (!(ctx->options & LYS_PRINT_NO_SUBSTMT)) {
         for (child = cs->child; child && child->parent == (struct lysc_node *)cs; child = child->next) {

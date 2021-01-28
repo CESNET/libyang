@@ -161,7 +161,7 @@
  *
  * libyang 1.x                  | libyang 2.0                     | Notes
  * :----------------------------|:--------------------------------|:---------------------------------------------------------
- * lys_set_private()            | ::lysc_set_private()            | Moving the private pointer only to the compiled tree.
+ * lys_set_private()            | -                               | Not needed, all ::lysc_node compatible structures have this pointer so it can be accessed directly.
  * lys_is_disabled()            | -                               | Make no sense since the nodes disabled by if-feature are not present in the compiled tree.
  * lys_features_list()          | -                               | Not needed, the list of features is available in the parsed tree of the module and submodule.
  * lys_features_enable(), lys_features_enable_force() | ::lys_set_implemented()         | Set of enabled features can be changed but it causes the whole context (all the modules) to recompile.

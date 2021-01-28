@@ -129,7 +129,6 @@ API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
     const struct lysc_node *next = NULL;
-    struct lysc_node **snode;
     ly_bool action_flag = 0, notif_flag = 0;
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
@@ -200,10 +199,10 @@ check:
         }
         goto repeat;
     case LYS_CONTAINER:
-        if (!(((struct lysc_node_container *)next)->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
-            if (((struct lysc_node_container *)next)->child) {
+        if (!(next->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
+            if (lysc_node_children(next, 0)) {
                 /* go into */
-                next = ((struct lysc_node_container *)next)->child;
+                next = lysc_node_children(next, 0);
             } else {
                 last = next;
                 next = next->next;
@@ -214,11 +213,11 @@ check:
     case LYS_CHOICE:
         if (options & LYS_GETNEXT_WITHCHOICE) {
             break;
-        } else if ((options & LYS_GETNEXT_NOCHOICE) || !((struct lysc_node_choice *)next)->cases) {
+        } else if ((options & LYS_GETNEXT_NOCHOICE) || !lysc_node_children(next, 0)) {
             next = next->next;
         } else {
             if (options & LYS_GETNEXT_WITHCASE) {
-                next = (struct lysc_node *)((struct lysc_node_choice *)next)->cases;
+                next = lysc_node_children(next, 0);
             } else {
                 /* go into */
                 lys_getnext_into_case(((struct lysc_node_choice *)next)->cases, &last, &next);
@@ -589,50 +588,6 @@ API char *
 lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
     return lysc_path_until(node, NULL, pathtype, buffer, buflen);
-}
-
-API LY_ERR
-lysc_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
-{
-    struct lysc_node_action *act;
-    struct lysc_node_notif *notif;
-
-    LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-
-    switch (node->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_CHOICE:
-    case LYS_CASE:
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
-    case LYS_LIST:
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        if (prev_priv_p) {
-            *prev_priv_p = node->priv;
-        }
-        ((struct lysc_node *)node)->priv = priv;
-        break;
-    case LYS_RPC:
-    case LYS_ACTION:
-        act = (struct lysc_node_action *)node;
-        if (prev_priv_p) {
-            *prev_priv_p = act->priv;
-        }
-        act->priv = priv;
-        break;
-    case LYS_NOTIF:
-        notif = (struct lysc_node_notif *)node;
-        if (prev_priv_p) {
-            *prev_priv_p = notif->priv;
-        }
-        notif->priv = priv;
-        break;
-    default:
-        return LY_EINVAL;
-    }
-
-    return LY_SUCCESS;
 }
 
 LY_ERR

@@ -674,10 +674,10 @@ void
 lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action)
 {
     if (action->input.nodetype) {
-        lysc_node_free_(ctx, (struct lysc_node *)&action->input);
+        lysc_node_free_(ctx, &action->input.node);
     }
     if (action->output.nodetype) {
-        lysc_node_free_(ctx, (struct lysc_node *)&action->output);
+        lysc_node_free_(ctx, &action->output.node);
     }
 }
 

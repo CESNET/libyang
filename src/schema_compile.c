@@ -959,7 +959,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
         }
 
         ctx->path[0] = '\0';
-        lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+        lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (i = 0; i < tmp_set.used; ++i) {
             /* skip roots'n'stuff */
             if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
@@ -1009,7 +1009,7 @@ check_musts:
         }
 
         ctx->path[0] = '\0';
-        lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+        lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (i = 0; i < tmp_set.used; ++i) {
             /* skip roots'n'stuff */
             if (tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) {
@@ -1178,7 +1178,7 @@ lys_compile_unres_leaf_dlft(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, s
     LY_CHECK_ERR_RET(!leaf->dflt, LOGMEM(ctx->ctx), LY_EMEM);
 
     /* store the default value */
-    ret = lys_compile_unres_dflt(ctx, (struct lysc_node *)leaf, leaf->type, dflt->str, dflt->mod, leaf->dflt, unres);
+    ret = lys_compile_unres_dflt(ctx, &leaf->node, leaf->type, dflt->str, dflt->mod, leaf->dflt, unres);
     if (ret) {
         free(leaf->dflt);
         leaf->dflt = NULL;
@@ -1216,14 +1216,14 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
     if (dflts) {
         LY_ARRAY_FOR(dflts, u) {
             llist->dflts[orig_count + u] = calloc(1, sizeof **llist->dflts);
-            ret = lys_compile_unres_dflt(ctx, (struct lysc_node *)llist, llist->type, dflts[u].str, dflts[u].mod,
+            ret = lys_compile_unres_dflt(ctx, &llist->node, llist->type, dflts[u].str, dflts[u].mod,
                     llist->dflts[orig_count + u], unres);
             LY_CHECK_ERR_RET(ret, free(llist->dflts[orig_count + u]), ret);
             LY_ARRAY_INCREMENT(llist->dflts);
         }
     } else {
         llist->dflts[orig_count] = calloc(1, sizeof **llist->dflts);
-        ret = lys_compile_unres_dflt(ctx, (struct lysc_node *)llist, llist->type, dflt->str, dflt->mod,
+        ret = lys_compile_unres_dflt(ctx, &llist->node, llist->type, dflt->str, dflt->mod,
                 llist->dflts[orig_count], unres);
         LY_CHECK_ERR_RET(ret, free(llist->dflts[orig_count]), ret);
         LY_ARRAY_INCREMENT(llist->dflts);
@@ -1352,7 +1352,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         cctx.cur_mod = r->leaf->module;
         cctx.pmod = r->leaf->module->parsed;
 
-        LOG_LOCSET((struct lysc_node *)r->leaf, NULL, NULL, NULL);
+        LOG_LOCSET(&r->leaf->node, NULL, NULL, NULL);
 
         if (r->leaf->nodetype == LYS_LEAF) {
             ret = lys_compile_unres_leaf_dlft(&cctx, r->leaf, r->dflt, unres);
