@@ -383,7 +383,7 @@ struct lysp_when *lysp_node_when(const struct lysp_node *node);
  *
  * Decides the node's type and in case it has a children list, returns its address.
  * @param[in] node Node to check.
- * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) data in case of RPC/action node.
+ * @param[in] flags Flag to distinguish input (LYS_IN_INPUT) and output (LYS_IN_OUTPUT) data in case of RPC/action node.
  * @return Address of the node's child member if any, NULL otherwise.
  */
 struct lysc_node **lysc_node_children_p(const struct lysc_node *node, uint16_t flags);
@@ -727,14 +727,6 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
  * @brief Same as ::lysc_data_node() but never returns the node itself.
  */
 #define lysc_data_parent(SCHEMA) lysc_data_node((SCHEMA)->parent)
-
-/**
- * @brief Learn whether a node is inside an operation output.
- *
- * @param[in] schema Schema node to examine.
- * @return Boolean value whether the node is under an operation output or not.
- */
-ly_bool lysc_is_output(const struct lysc_node *schema);
 
 /**
  * @brief Get format-specific prefix for a module.

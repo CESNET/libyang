@@ -226,7 +226,7 @@ struct lyxp_expr;
     } \
     if ((ELEM)->nodetype == LYS_INPUT) { \
         /* after input, get output */ \
-        (NEXT) = (struct lysc_node *)lysc_node_children((ELEM)->parent, LYS_CONFIG_R); \
+        (NEXT) = (struct lysc_node *)lysc_node_children((ELEM)->parent, LYS_IS_OUTPUT); \
     } else if ((ELEM)->nodetype == LYS_OUTPUT) { \
         /* no sibling of output */ \
         (NEXT) = NULL; \
@@ -829,12 +829,18 @@ struct lysp_deviation {
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | |
- *         LYS_ISENUM       | | | | | | | | | | | | |x| |
+ *         LYS_IS_ENUM      | | | | | | | | | | | | |x| |
  *         LYS_KEYLESS      | | | | |x| | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      12 LYS_SET_CONFIG   |x|x|x|x|x|x| | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      13 LYS_IS_INPUT     |x|x|x|x|x|x|x| | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      14 LYS_IS_OUTPUT    |x|x|x|x|x|x|x| | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      15 LYS_IS_NOTIF     |x|x|x|x|x|x|x| | | | | | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -846,8 +852,8 @@ struct lysp_deviation {
  *
  * @{
  */
-#define LYS_CONFIG_W     0x01        /**< config true; also set for input children nodes */
-#define LYS_CONFIG_R     0x02        /**< config false; also set for output and notification children nodes */
+#define LYS_CONFIG_W     0x01        /**< config true; */
+#define LYS_CONFIG_R     0x02        /**< config false; */
 #define LYS_CONFIG_MASK  0x03        /**< mask for config value */
 #define LYS_STATUS_CURR  0x04        /**< status current; */
 #define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
@@ -866,8 +872,8 @@ struct lysp_deviation {
                                           containers, but also for NP containers with some meaning, applicable only to
                                           ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
-#define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
-#define LYS_KEYLESS      0x200       /**< flag for list without any key, applicable only to ::lysc_node_list */
+#define LYS_KEY          0x0100      /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
+#define LYS_KEYLESS      0x0200      /**< flag for list without any key, applicable only to ::lysc_node_list */
 #define LYS_FENABLED     0x20        /**< feature enabled flag, applicable only to ::lysp_feature. */
 #define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
@@ -875,13 +881,13 @@ struct lysp_deviation {
                                           ::lysc_node_list/::lysp_node_list */
 #define LYS_ORDBY_MASK   0x60        /**< mask for ordered-by values */
 #define LYS_YINELEM_TRUE 0x80        /**< yin-element true for extension's argument */
-#define LYS_YINELEM_FALSE 0x100      /**< yin-element false for extension's argument */
-#define LYS_YINELEM_MASK 0x180       /**< mask for yin-element value */
-#define LYS_USED_GRP     0x400       /**< internal flag for validating not-instantiated groupings
+#define LYS_YINELEM_FALSE 0x0100     /**< yin-element false for extension's argument */
+#define LYS_YINELEM_MASK 0x0180      /**< mask for yin-element value */
+#define LYS_USED_GRP     0x0400      /**< internal flag for validating not-instantiated groupings
                                           (resp. do not validate again the instantiated groupings). */
-#define LYS_SET_VALUE    0x200       /**< value attribute is set */
-#define LYS_SET_MIN      0x200       /**< min attribute is set */
-#define LYS_SET_MAX      0x400       /**< max attribute is set */
+#define LYS_SET_VALUE    0x0200      /**< value attribute is set */
+#define LYS_SET_MIN      0x0200      /**< min attribute is set */
+#define LYS_SET_MAX      0x0400      /**< max attribute is set */
 
 #define LYS_SET_BASE     0x0001      /**< type's flag for present base substatement */
 #define LYS_SET_BIT      0x0002      /**< type's flag for present bit substatement */
@@ -901,15 +907,21 @@ struct lysp_deviation {
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
-#define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement, only when the source is YANG */
-#define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement, only when the source is YANG */
+#define LYS_SINGLEQUOTED 0x0100      /**< flag for single-quoted argument of an extension instance's substatement, only when the source is YANG */
+#define LYS_DOUBLEQUOTED 0x0200      /**< flag for double-quoted argument of an extension instance's substatement, only when the source is YANG */
 
-#define LYS_YIN_ATTR     0x400       /**< flag to identify YIN attribute parsed as extension's substatement, only when the source is YIN */
-#define LYS_YIN_ARGUMENT 0x800       /**< flag to identify statement representing extension's argument, only when the source is YIN */
+#define LYS_YIN_ATTR     0x0400      /**< flag to identify YIN attribute parsed as extension's substatement, only when the source is YIN */
+#define LYS_YIN_ARGUMENT 0x0800      /**< flag to identify statement representing extension's argument, only when the source is YIN */
 
 #define LYS_INTERNAL     0x1000      /**< flag to identify internal parsed statements that should not be printed */
 
-#define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
+#define LYS_IS_ENUM      0x0200      /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
+
+#define LYS_IS_INPUT     0x1000      /**< flag for nodes that are in the subtree of an input statement */
+
+#define LYS_IS_OUTPUT    0x2000      /**< flag for nodes that are in the subtree of an output statement */
+
+#define LYS_IS_NOTIF     0x4000      /**< flag for nodes that are in the subtree of a notification statement */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} snodeflags */
@@ -2005,7 +2017,7 @@ const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
  * @brief Get the children linked list of the given (compiled) schema node.
  *
  * @param[in] node Node to examine.
- * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) child in case of RPC/action node.
+ * @param[in] flags Flag to distinguish input (LYS_IS_INPUT) and output (LYS_IS_OUTPUT) child in case of RPC/action node.
  * @return Children linked list if any,
  * @return NULL otherwise.
  */

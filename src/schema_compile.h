@@ -37,10 +37,9 @@ struct lyxp_expr;
  *
  * @{
  */
-#define LYS_COMPILE_RPC_INPUT       LYS_CONFIG_W    /**< Internal option when compiling schema tree of RPC/action input */
-#define LYS_COMPILE_RPC_OUTPUT      LYS_CONFIG_R    /**< Internal option when compiling schema tree of RPC/action output */
-#define LYS_COMPILE_RPC_MASK        LYS_CONFIG_MASK /**< mask for the internal RPC options */
-#define LYS_COMPILE_NOTIFICATION    0x04            /**< Internal option when compiling schema tree of Notification */
+#define LYS_COMPILE_RPC_INPUT       LYS_IS_INPUT    /**< Internal option when compiling schema tree of RPC/action input */
+#define LYS_COMPILE_RPC_OUTPUT      LYS_IS_OUTPUT   /**< Internal option when compiling schema tree of RPC/action output */
+#define LYS_COMPILE_NOTIFICATION    LYS_IS_NOTIF    /**< Internal option when compiling schema tree of Notification */
 
 #define LYS_COMPILE_GROUPING        0x08            /**< Compiling (validation) of a non-instantiated grouping.
                                                       In this case not all the restrictions are checked since they can

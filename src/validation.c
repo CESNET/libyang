@@ -1231,10 +1231,10 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         if ((val_opts & LYD_VALIDATE_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
             innode = "state";
             goto invalid_node;
-        } else if ((op == LYD_VALIDATE_OP_RPC) && (node->schema->flags & LYS_CONFIG_R)) {
+        } else if ((op == LYD_VALIDATE_OP_RPC) && (node->schema->flags & LYS_IS_OUTPUT)) {
             innode = "output";
             goto invalid_node;
-        } else if ((op == LYD_VALIDATE_OP_REPLY) && (node->schema->flags & LYS_CONFIG_W)) {
+        } else if ((op == LYD_VALIDATE_OP_REPLY) && (node->schema->flags & LYS_IS_INPUT)) {
             innode = "input";
             goto invalid_node;
         }
@@ -1316,7 +1316,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_types, struct ly
                     NULL, impl_opts, diff));
         }
 
-        if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && lysc_node_when(node->schema)) {
+        if (lysc_node_when(node->schema)) {
             /* when evaluation */
             LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
         }

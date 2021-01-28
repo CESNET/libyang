@@ -1485,7 +1485,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
         struct lyd_node **diff)
 {
     LY_ERR ret;
-    const struct lysc_node *iter = NULL, *sp;
+    const struct lysc_node *iter = NULL;
     struct lyd_node *node = NULL;
     struct lyd_value **dflts;
     LY_ARRAY_COUNT_TYPE u;
@@ -1495,13 +1495,6 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 
     if (!sparent && parent) {
         sparent = parent->schema;
-    }
-
-    for (sp = sparent; sp && !(sp->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); sp = sp->parent) {}
-    if (sp) {
-        /* these options lose meaning in operations and could cause skipping some nodes
-         * (because LYS_CONFIG* flags are set in the schema nodes with a different meaning) */
-        impl_opts &= ~(LYD_IMPLICIT_NO_STATE | LYD_IMPLICIT_NO_CONFIG);
     }
 
     getnext_opts = LYS_GETNEXT_WITHCHOICE;
@@ -1746,7 +1739,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
     }
 
     getnext_opts = 0;
-    if (new_node->schema->flags & LYS_CONFIG_R) {
+    if (new_node->schema->flags & LYS_IS_OUTPUT) {
         getnext_opts = LYS_GETNEXT_OUTPUT;
     }
 

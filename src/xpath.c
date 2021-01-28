@@ -3700,7 +3700,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
         set_scnode_clear_ctx(set);
         if (sleaf && (sleaf->type->basetype == LY_TYPE_LEAFREF)) {
             lref = (struct lysc_type_leafref *)sleaf->type;
-            oper = lysc_is_output((struct lysc_node *)sleaf) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
+            oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
             rc = ly_path_compile(set->ctx, lref->cur_mod, (struct lysc_node *)sleaf, lref->path,
@@ -5858,7 +5858,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod,
 next_iter:
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
-            next = lysc_node_children(elem, options & LYXP_SCNODE_OUTPUT ? LYS_CONFIG_R : LYS_CONFIG_W);
+            next = lysc_node_children(elem, options & LYXP_SCNODE_OUTPUT ? LYS_IS_OUTPUT : LYS_IS_INPUT);
             if (!next) {
 skip_children:
                 /* no children, so try siblings, but only if it's not the start,

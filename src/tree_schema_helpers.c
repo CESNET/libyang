@@ -1429,10 +1429,10 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
         return &((struct lysc_node_list *)node)->child;
     case LYS_RPC:
     case LYS_ACTION:
-        if (flags & LYS_CONFIG_R) {
+        if (flags & LYS_IS_OUTPUT) {
             return &((struct lysc_node_action *)node)->output.child;
         } else {
-            /* LYS_CONFIG_W, but also the default case */
+            /* LYS_IS_INPUT, but also the default case */
             return &((struct lysc_node_action *)node)->input.child;
         }
     case LYS_INPUT:
@@ -1455,10 +1455,10 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
     }
 
     if ((node->nodetype == LYS_RPC) || (node->nodetype == LYS_ACTION)) {
-        if (flags & LYS_CONFIG_R) {
+        if (flags & LYS_IN_OUTPUT) {
             return (struct lysc_node *)&((struct lysc_node_action *)node)->output;
         } else {
-            /* LYS_CONFIG_W, but also the default case */
+            /* LYS_IN_INPUT, but also the default case */
             return (struct lysc_node *)&((struct lysc_node_action *)node)->input;
         }
     } else {
@@ -1819,18 +1819,4 @@ lysc_data_node(const struct lysc_node *schema)
     }
 
     return parent;
-}
-
-ly_bool
-lysc_is_output(const struct lysc_node *schema)
-{
-    const struct lysc_node *parent;
-
-    assert(schema);
-
-    for (parent = schema->parent; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION)); parent = parent->parent) {}
-    if (parent && (schema->flags & LYS_CONFIG_R)) {
-        return 1;
-    }
-    return 0;
 }

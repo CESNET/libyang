@@ -1274,7 +1274,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].name, e->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].dsc, e->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].ref, e->ref, ret, done);
-        e->flags = (enums_p[u].flags & LYS_FLAGS_COMPILED_MASK) | (basetype == LY_TYPE_ENUM ? LYS_ISENUM : 0);
+        e->flags = (enums_p[u].flags & LYS_FLAGS_COMPILED_MASK) | (basetype == LY_TYPE_ENUM ? LYS_IS_ENUM : 0);
         if (basetype == LY_TYPE_ENUM) {
             e->value = cur_val;
         } else {
@@ -2029,7 +2029,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     }
 
     getnext_flags = LYS_GETNEXT_WITHCHOICE;
-    if (parent && (parent->nodetype & (LYS_RPC | LYS_ACTION)) && (exclude->flags & LYS_CONFIG_R)) {
+    if (parent && (parent->nodetype & (LYS_RPC | LYS_ACTION)) && (exclude->flags & LYS_IS_OUTPUT)) {
         getnext_flags |= LYS_GETNEXT_OUTPUT;
     }
 
@@ -2211,10 +2211,10 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
 }
 
 /**
- * @brief Set config flags for a node.
+ * @brief Set config and operation flags for a node.
  *
  * @param[in] ctx Compile context.
- * @param[in] node Compiled node config to set.
+ * @param[in] node Compiled node flags to set.
  * @param[in] parent Parent of @p node.
  * @return LY_ERR value.
  */
@@ -2230,11 +2230,11 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_nod
     } else if (ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT)) {
         /* ignore config statements inside RPC/action data */
         node->flags &= ~LYS_CONFIG_MASK;
-        node->flags |= (ctx->options & LYS_COMPILE_RPC_INPUT) ? LYS_CONFIG_W : LYS_CONFIG_R;
+        node->flags |= (ctx->options & LYS_COMPILE_RPC_INPUT) ? LYS_IS_INPUT : LYS_IS_OUTPUT;
     } else if (ctx->options & LYS_COMPILE_NOTIFICATION) {
         /* ignore config statements inside Notification data */
         node->flags &= ~LYS_CONFIG_MASK;
-        node->flags |= LYS_CONFIG_R;
+        node->flags |= LYS_IS_NOTIF;
     } else if (!(node->flags & LYS_CONFIG_MASK)) {
         /* config not explicitly set, inherit it from parent */
         if (parent) {
@@ -2249,8 +2249,7 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_nod
     }
 
     if (parent && (parent->flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                "Configuration node cannot be child of any state data node.");
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Configuration node cannot be child of any state data node.");
         return LY_EVALID;
     }
 
@@ -2294,7 +2293,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
 
     /* list ordering */
     if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        if ((node->flags & LYS_CONFIG_R) && (node->flags & LYS_ORDBY_MASK)) {
+        if ((node->flags & (LYS_CONFIG_R | LYS_IS_OUTPUT | LYS_IS_NOTIF)) && (node->flags & LYS_ORDBY_MASK)) {
             LOGWRN(ctx->ctx, "The ordered-by statement is ignored in lists representing %s (%s).",
                     (ctx->options & LYS_COMPILE_RPC_OUTPUT) ? "RPC/action output parameters" :
                     (ctx->options & LYS_COMPILE_NOTIFICATION) ? "notification content" : "state data", ctx->path);
@@ -3261,7 +3260,8 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
         LY_CHECK_GOTO(ret, done);
     }
 
-    if (!(ctx->options & (LYS_COMPILE_RPC_MASK | LYS_COMPILE_NOTIFICATION)) && (any->flags & LYS_CONFIG_W)) {
+    if (!(ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT | LYS_COMPILE_NOTIFICATION)) &&
+            (any->flags & LYS_CONFIG_W)) {
         LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended. %s",
                 ly_stmt2str(any->nodetype == LYS_ANYDATA ? LY_STMT_ANYDATA : LY_STMT_ANYXML), ctx->path);
     }
@@ -3736,20 +3736,20 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
         break;
     case LYS_RPC:
     case LYS_ACTION:
-        if (ctx->options & (LYS_COMPILE_RPC_MASK | LYS_COMPILE_NOTIFICATION)) {
+        if (ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT | LYS_COMPILE_NOTIFICATION)) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                     "Action \"%s\" is placed inside %s.", pnode->name,
-                    ctx->options & LYS_COMPILE_RPC_MASK ? "another RPC/action" : "notification");
+                    ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT) ? "another RPC/action" : "notification");
             return LY_EVALID;
         }
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_action));
         node_compile_spec = lys_compile_node_action;
         break;
     case LYS_NOTIF:
-        if (ctx->options & (LYS_COMPILE_RPC_MASK | LYS_COMPILE_NOTIFICATION)) {
+        if (ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT | LYS_COMPILE_NOTIFICATION)) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                     "Notification \"%s\" is placed inside %s.", pnode->name,
-                    ctx->options & LYS_COMPILE_RPC_MASK ? "RPC/action" : "another notification");
+                    ctx->options & (LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT) ? "RPC/action" : "another notification");
             return LY_EVALID;
         }
         node = (struct lysc_node *)calloc(1, sizeof(struct lysc_node_notif));

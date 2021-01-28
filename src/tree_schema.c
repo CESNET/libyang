@@ -141,17 +141,7 @@ next:
         /* get know where to start */
         if (parent) {
             /* schema subtree */
-            if ((parent->nodetype == LYS_CHOICE) && (options & LYS_GETNEXT_WITHCASE)) {
-                if (((struct lysc_node_choice *)parent)->cases) {
-                    next = last = (const struct lysc_node *)((struct lysc_node_choice *)parent)->cases;
-                }
-            } else {
-                snode = lysc_node_children_p(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_CONFIG_R : LYS_CONFIG_W);
-                /* do not return anything if the node does not have any children */
-                if (snode && *snode) {
-                    next = last = *snode;
-                }
-            }
+            next = last = lysc_node_children(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_IS_OUTPUT : LYS_IS_INPUT);
         } else {
             /* top level data */
             next = last = module->data;

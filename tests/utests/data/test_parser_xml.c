@@ -338,7 +338,7 @@ test_rpc(void **state)
             0, 0, 0, 0, 0, ref, 0);
     node = lyd_child(node)->next;
     dsc = "Inline Config content.";
-    CHECK_LYSC_NODE(node->schema, dsc, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "config", 0, LYS_ANYXML, 1, 0, NULL, 0);
+    CHECK_LYSC_NODE(node->schema, dsc, 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
     node = ((struct lyd_node_any *)node)->value.tree;
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
@@ -474,8 +474,7 @@ test_reply(void **state)
             1, 0, 0, 1, "act", LYS_ACTION,
             1, 0, 0, 1, 0, NULL, 0);
     node = lyd_child(op);
-    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "al", 0, LYS_LEAF, 1, 0, NULL, 0);
-    assert_true(node->schema->flags & LYS_CONFIG_R);
+    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_STATUS_CURR | LYS_IS_OUTPUT, 1, "al", 0, LYS_LEAF, 1, 0, NULL, 0);
 
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "c", 1, LYS_CONTAINER, 0, 0, NULL, 0);
 
