@@ -2029,8 +2029,14 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     }
 
     getnext_flags = LYS_GETNEXT_WITHCHOICE;
-    if (parent && (parent->nodetype & (LYS_RPC | LYS_ACTION)) && (exclude->flags & LYS_IS_OUTPUT)) {
-        getnext_flags |= LYS_GETNEXT_OUTPUT;
+    if (parent && (parent->nodetype & (LYS_RPC | LYS_ACTION))) {
+        /* move to the inout to avoid traversing a not-filled-yet (the other) node */
+        if (exclude->flags & LYS_IS_OUTPUT) {
+            getnext_flags |= LYS_GETNEXT_OUTPUT;
+            parent = lysc_node_child(parent)->next;
+        } else {
+            parent = lysc_node_child(parent);
+        }
     }
 
     iter = NULL;
