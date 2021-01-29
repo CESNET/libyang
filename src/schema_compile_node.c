@@ -2427,7 +2427,7 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
 
     /* output */
     lysc_update_path(ctx, &action->node, "output");
-    if (action_p->input.nodetype == LYS_UNKNOWN) {
+    if (action_p->output.nodetype == LYS_UNKNOWN) {
         output = &implicit_output;
     } else {
         output = &action_p->output;
