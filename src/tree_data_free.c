@@ -214,7 +214,7 @@ lyd_free_(struct lyd_node *node, ly_bool top)
 
     /* get the first (top-level) sibling */
     if (top) {
-        for ( ; node->parent; node = (struct lyd_node *)node->parent) {}
+        for ( ; node->parent; node = lyd_parent(node)) {}
     }
     while (node->prev->next) {
         node = node->prev;

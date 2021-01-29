@@ -323,7 +323,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     ly_bool dynamic;
     const char *value;
 
-    xml_print_node_open(ctx, (struct lyd_node *)node);
+    xml_print_node_open(ctx, &node->node);
     value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LY_PREF_XML, &ns_list, &dynamic);
 
     /* print namespaces connected with the values's prefixes */
@@ -358,7 +358,7 @@ xml_print_inner(struct xmlpr_ctx *ctx, const struct lyd_node_inner *node)
     LY_ERR ret;
     struct lyd_node *child;
 
-    xml_print_node_open(ctx, (struct lyd_node *)node);
+    xml_print_node_open(ctx, &node->node);
 
     LY_LIST_FOR(node->child, child) {
         if (ly_should_print(child, ctx->options)) {
@@ -394,7 +394,7 @@ xml_print_anydata(struct xmlpr_ctx *ctx, const struct lyd_node_any *node)
     uint32_t prev_opts, prev_lo;
     LY_ERR ret;
 
-    xml_print_node_open(ctx, (struct lyd_node *)node);
+    xml_print_node_open(ctx, &node->node);
 
     if (!any->value.tree) {
         /* no content */

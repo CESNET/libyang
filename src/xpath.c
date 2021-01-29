@@ -193,11 +193,10 @@ print_set_debug(struct lyxp_set *set)
                 LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ROOT CONFIG", i + 1, item->pos);
                 break;
             case LYXP_NODE_ELEM:
-                if ((item->node->schema->nodetype == LYS_LIST) &&
-                        (((struct lyd_node_inner *)item->node)->child->schema->nodetype == LYS_LEAF)) {
+                if ((item->node->schema->nodetype == LYS_LIST) && (lyd_child(item->node)->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
                             item->node->schema->name, LYD_CANON_VALUE(lyd_child(item->node)));
-                } else if (((struct lyd_node_inner *)item->node)->schema->nodetype == LYS_LEAFLIST) {
+                } else if (item->node->schema->nodetype == LYS_LEAFLIST) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
                             item->node->schema->name, LYD_CANON_VALUE(item->node));
                 } else {
@@ -1611,7 +1610,7 @@ set_sort(struct lyxp_set *set)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = set->cur_node; root->parent; root = (const struct lyd_node *)root->parent) {}
+    for (root = set->cur_node; root->parent; root = lyd_parent(root)) {}
     for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
@@ -1731,7 +1730,7 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = trg->cur_node; root->parent; root = (const struct lyd_node *)root->parent) {}
+    for (root = trg->cur_node; root->parent; root = lyd_parent(root)) {}
     for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
@@ -3729,8 +3728,8 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
         if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 /* find leafref target */
-                if (ly_type_find_leafref((struct lysc_type_leafref *)sleaf->type, (struct lyd_node *)leaf,
-                        &leaf->value, set->tree, &node, &errmsg)) {
+                if (ly_type_find_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
+                        &node, &errmsg)) {
                     LOGERR(set->ctx, LY_EVALID, errmsg);
                     free(errmsg);
                     return LY_EVALID;
@@ -4040,7 +4039,7 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
     }
 
     /* find lang metadata */
-    for ( ; node; node = (struct lyd_node *)node->parent) {
+    for ( ; node; node = lyd_parent(node)) {
         for (meta = node->meta; meta; meta = meta->next) {
             /* annotations */
             if (meta->name && !strcmp(meta->name, "lang") && !strcmp(meta->annotation->module->name, "xml")) {
@@ -5772,12 +5771,12 @@ skip_children:
             }
             while (!next) {
                 /* no siblings, go back through the parents */
-                if ((struct lyd_node *)elem->parent == start) {
+                if (lyd_parent(elem) == start) {
                     /* we are done, no next element to process */
                     break;
                 }
                 /* parent is already processed, go to its sibling */
-                elem = (struct lyd_node *)elem->parent;
+                elem = lyd_parent(elem);
                 next = elem->next;
             }
         }
@@ -6321,7 +6320,7 @@ moveto_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
         node = set->val.nodes[i].node;
 
         if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
-            new_node = (struct lyd_node *)node->parent;
+            new_node = lyd_parent(node);
         } else if (set->val.nodes[i].type == LYXP_NODE_TEXT) {
             new_node = node;
         } else if (set->val.nodes[i].type == LYXP_NODE_META) {
@@ -6748,8 +6747,8 @@ only_parse:
             /* remember the node context position for position() and context size for last(),
              * predicates should always be evaluated with respect to the child axis (since we do
              * not support explicit axes) so we assign positions based on their parents */
-            if (parent_pos_pred && ((struct lyd_node *)set->val.nodes[i].node->parent != orig_parent)) {
-                orig_parent = (struct lyd_node *)set->val.nodes[i].node->parent;
+            if (parent_pos_pred && (lyd_parent(set->val.nodes[i].node) != orig_parent)) {
+                orig_parent = lyd_parent(set->val.nodes[i].node);
                 orig_pos = 1;
             } else {
                 ++orig_pos;

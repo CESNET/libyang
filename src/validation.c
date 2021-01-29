@@ -124,7 +124,7 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
                 ctx_node = node;
             } else {
                 assert((!when->context && !node->parent) || (when->context == node->parent->schema));
-                ctx_node = (struct lyd_node *)node->parent;
+                ctx_node = lyd_parent(node);
             }
 
             /* evaluate when */
@@ -252,8 +252,8 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
             struct lysc_type *type = ((struct lysc_node_leaf *)node->schema)->type;
 
             /* resolve the value of the node */
-            LOG_LOCSET(node->schema, (struct lyd_node *)node, NULL, NULL);
-            ret = lyd_value_validate_incomplete(LYD_CTX(node), type, &node->value, (struct lyd_node *)node, *tree);
+            LOG_LOCSET(node->schema, &node->node, NULL, NULL);
+            ret = lyd_value_validate_incomplete(LYD_CTX(node), type, &node->value, &node->node, *tree);
             LOG_LOCBACK(node->schema ? 1 : 0, 1, 0, 0);
             LY_CHECK_RET(ret);
 
@@ -1181,7 +1181,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
     }
 
     /* find first top-level node */
-    for (tree = node; tree->parent; tree = (struct lyd_node *)tree->parent) {}
+    for (tree = node; tree->parent; tree = lyd_parent(tree)) {}
     while (tree->prev->next) {
         tree = tree->prev;
     }
@@ -1309,11 +1309,10 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_types, struct ly
             LY_CHECK_RET(ly_set_add(node_types, (void *)node, 1, NULL));
         } else if (node->schema->nodetype & LYD_NODE_INNER) {
             /* new node validation, autodelete */
-            LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
+            LY_CHECK_RET(lyd_validate_new(lyd_node_children_p(node), node->schema, NULL, diff));
 
             /* add nested defaults */
-            LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, NULL,
-                    NULL, impl_opts, diff));
+            LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, NULL, NULL, impl_opts, diff));
         }
 
         if (lysc_node_when(node->schema)) {
@@ -1446,7 +1445,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
 
     /* learn op depth (top-level being depth 0) */
     op_depth = 0;
-    for (op_iter = op_node; op_iter != op_tree; op_iter = (struct lyd_node *)op_iter->parent) {
+    for (op_iter = op_node; op_iter != op_tree; op_iter = lyd_parent(op_iter)) {
         ++op_depth;
     }
 
@@ -1469,7 +1468,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
         /* find next op parent */
         op_iter = op_node;
         for (i = 0; i < cur_depth; ++i) {
-            op_iter = (struct lyd_node *)op_iter->parent;
+            op_iter = lyd_parent(op_iter);
         }
     }
 
@@ -1521,7 +1520,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
 
     /* move op_tree to top-level node */
     while (op_tree->parent) {
-        op_tree = (struct lyd_node *)op_tree->parent;
+        op_tree = lyd_parent(op_tree);
     }
 
     /* merge op_tree into tree */

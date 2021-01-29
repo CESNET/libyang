@@ -165,7 +165,7 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
             *prefix_p = onode->name.prefix;
             break;
         }
-        node = (struct lyd_node *)node->parent;
+        node = lyd_parent(node);
     }
     *prefix_len_p = ly_strlen(module_name);
 
@@ -198,7 +198,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     /* init return value */
     *snode_p = NULL;
 
-    LOG_LOCSET(NULL, (const struct lyd_node *)parent, NULL, NULL);
+    LOG_LOCSET(NULL, &parent->node, NULL, NULL);
 
     /* get the element module */
     if (prefix_len) {
@@ -831,7 +831,7 @@ lydjson_maintain_children(struct lyd_node_inner *parent, struct lyd_node **first
 {
     if (*node_p) {
         /* insert, keep first pointer correct */
-        lyd_insert_node((struct lyd_node *)parent, first_p, *node_p);
+        lyd_insert_node(&parent->node, first_p, *node_p);
         if (first_p) {
             if (parent) {
                 *first_p = parent->child;
@@ -889,7 +889,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     }
 
     /* create node */
-    lydjson_get_node_prefix((struct lyd_node *)parent, prefix, prefix_len, &module_name, &module_name_len);
+    lydjson_get_node_prefix(&parent->node, prefix, prefix_len, &module_name, &module_name_len);
     ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name, module_name_len, value,
             value_len, &dynamic, LY_PREF_JSON, NULL, type_hint, node_p);
     if (dynamic) {
@@ -1188,7 +1188,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
                 ret = LY_EVALID;
                 goto cleanup;
             }
-            attr_node = (struct lyd_node *)parent;
+            attr_node = &parent->node;
             snode = attr_node->schema;
         }
         ret = lydjson_parse_attribute(lydctx, attr_node, snode, name, name_len, prefix, prefix_len, parent, &status,
@@ -1296,7 +1296,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
     goto cleanup;
 
 representation_error:
-    LOG_LOCSET(NULL, (const struct lyd_node *)parent, NULL, NULL);
+    LOG_LOCSET(NULL, &parent->node, NULL, NULL);
     LOGVAL(ctx, LYVE_SYNTAX_JSON, "The %s \"%s\" is expected to be represented as JSON %s, but input data contains name/%s.",
             lys_nodetype2str(snode->nodetype), snode->name, expected, lyjson_token2str(status));
     LOG_LOCBACK(0, parent ? 1 : 0, 0, 0);

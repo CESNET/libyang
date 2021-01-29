@@ -34,7 +34,7 @@ lyd_hash_keyless_list_dfs(struct lyd_node *child, uint32_t *hash)
         switch (iter->schema->nodetype) {
         case LYS_CONTAINER:
         case LYS_LIST:
-            lyd_hash_keyless_list_dfs(((struct lyd_node_inner *)iter)->child, hash);
+            lyd_hash_keyless_list_dfs(lyd_child(iter), hash);
             break;
         case LYS_LEAFLIST:
         case LYS_ANYXML:
