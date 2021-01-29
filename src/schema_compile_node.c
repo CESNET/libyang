@@ -2420,7 +2420,7 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
         .parent = pnode,
     };
 
-    /* output */
+    /* input */
     lysc_update_path(ctx, &action->node, "input");
     if (action_p->input.nodetype == LYS_UNKNOWN) {
         input = &implicit_input;
