@@ -923,7 +923,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
     } else {
         /* absolute path, start from the first top-level sibling */
         while (start->parent) {
-            start = (struct lyd_node *)start->parent;
+            start = lyd_parent(start);
         }
         while (start->prev->next) {
             start = start->prev;

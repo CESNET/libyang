@@ -326,7 +326,7 @@ struct lysc_type;
     }\
     if (!(LYD_TREE_DFS_next)) { \
         /* no children */ \
-        if ((ELEM) == (struct lyd_node*)(START)) { \
+        if ((ELEM) == (struct lyd_node *)(START)) { \
             /* we are done, (START) has no children */ \
             break; \
         } \
@@ -335,7 +335,7 @@ struct lysc_type;
     } \
     while (!(LYD_TREE_DFS_next)) { \
         /* parent is already processed, go to its sibling */ \
-        (ELEM) = (struct lyd_node*)(ELEM)->parent; \
+        (ELEM) = (struct lyd_node *)(ELEM)->parent; \
         /* no siblings, go back through parents */ \
         if ((ELEM)->parent == (START)->parent) { \
             /* we are done, no next element to process */ \
@@ -498,7 +498,6 @@ struct lyd_attr {
     LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
-
 };
 
 #define LYD_NODE_INNER (LYS_CONTAINER|LYS_LIST|LYS_RPC|LYS_ACTION|LYS_NOTIF) /**< Schema nodetype mask for lyd_node_inner */
@@ -558,20 +557,26 @@ struct lyd_node {
  * @brief Data node structure for the inner data tree nodes - containers, lists, RPCs, actions and Notifications.
  */
 struct lyd_node_inner {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
-                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
-                                          used to get know that nodes are not equal, it cannot be used to decide that the
-                                          nodes are equal due to possible collisions. */
-    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
-    const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
-    struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-    void *priv;                      /**< private user data, not used by libyang */
+    union {
+        struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+        struct {
+            uint32_t hash;                  /**< hash of this particular node (module name + schema name + key string
+                                                 values if list or hashes of all nodes of subtree in case of keyless
+                                                 list). Note that while hash can be used to get know that nodes are
+                                                 not equal, it cannot be used to decide that the nodes are equal due
+                                                 to possible collisions. */
+            uint32_t flags;                 /**< [data node flags](@ref dnodeflags) */
+            const struct lysc_node *schema; /**< pointer to the schema definition of this node */
+            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+            struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                                 never NULL. If there is no sibling node, pointer points to the node
+                                                 itself. In case of the first node, this pointer points to the last
+                                                 node in the list. */
+            struct lyd_meta *meta;          /**< pointer to the list of metadata of this node */
+            void *priv;                     /**< private user data, not used by libyang */
+        };
+    };                                      /**< common part corresponding to ::lyd_node */
 
     struct lyd_node *child;          /**< pointer to the first child node. */
     struct hash_table *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
@@ -582,51 +587,63 @@ struct lyd_node_inner {
  * @brief Data node structure for the terminal data tree nodes - leaves and leaf-lists.
  */
 struct lyd_node_term {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
-                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
-                                          used to get know that nodes are not equal, it cannot be used to decide that the
-                                          nodes are equal due to possible collisions. */
-    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
-    const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
-    struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-    void *priv;                      /**< private user data, not used by libyang */
+    union {
+        struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+        struct {
+            uint32_t hash;                  /**< hash of this particular node (module name + schema name + key string
+                                                 values if list or hashes of all nodes of subtree in case of keyless
+                                                 list). Note that while hash can be used to get know that nodes are
+                                                 not equal, it cannot be used to decide that the nodes are equal due
+                                                 to possible collisions. */
+            uint32_t flags;                 /**< [data node flags](@ref dnodeflags) */
+            const struct lysc_node *schema; /**< pointer to the schema definition of this node */
+            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+            struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                                 never NULL. If there is no sibling node, pointer points to the node
+                                                 itself. In case of the first node, this pointer points to the last
+                                                 node in the list. */
+            struct lyd_meta *meta;          /**< pointer to the list of metadata of this node */
+            void *priv;                     /**< private user data, not used by libyang */
+        };
+    };                                      /**< common part corresponding to ::lyd_node */
 
     struct lyd_value value;          /**< node's value representation */
 };
 
 /**
- * @brief Data node structure for the anydata data tree nodes - anydatas and anyxmls.
+ * @brief Data node structure for the anydata data tree nodes - anydata or anyxml.
  */
 struct lyd_node_any {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
-                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
-                                          used to get know that nodes are not equal, it cannot be used to decide that the
-                                          nodes are equal due to possible collisions. */
-    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
-    const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
-    struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
-    void *priv;                      /**< private user data, not used by libyang */
+    union {
+        struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+        struct {
+            uint32_t hash;                  /**< hash of this particular node (module name + schema name + key string
+                                                 values if list or hashes of all nodes of subtree in case of keyless
+                                                 list). Note that while hash can be used to get know that nodes are
+                                                 not equal, it cannot be used to decide that the nodes are equal due
+                                                 to possible collisions. */
+            uint32_t flags;                 /**< [data node flags](@ref dnodeflags) */
+            const struct lysc_node *schema; /**< pointer to the schema definition of this node */
+            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+            struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                                 never NULL. If there is no sibling node, pointer points to the node
+                                                 itself. In case of the first node, this pointer points to the last
+                                                 node in the list. */
+            struct lyd_meta *meta;          /**< pointer to the list of metadata of this node */
+            void *priv;                     /**< private user data, not used by libyang */
+        };
+    };                                      /**< common part corresponding to ::lyd_node */
 
     union lyd_any_value {
-        struct lyd_node *tree;       /**< data tree */
-        const char *str;             /**< Generic string data */
-        const char *xml;             /**< Serialized XML data */
-        const char *json;            /**< I-JSON encoded string */
-        char *mem;                   /**< LYD_ANYDATA_LYB memory chunk */
-    } value;                         /**< pointer to the stored value representation of the anydata/anyxml node */
-    LYD_ANYDATA_VALUETYPE value_type;/**< type of the data stored as ::lyd_node_any.value */
+        struct lyd_node *tree;          /**< data tree */
+        const char *str;                /**< Generic string data */
+        const char *xml;                /**< Serialized XML data */
+        const char *json;               /**< I-JSON encoded string */
+        char *mem;                      /**< LYD_ANYDATA_LYB memory chunk */
+    } value;                            /**< pointer to the stored value representation of the anydata/anyxml node */
+    LYD_ANYDATA_VALUETYPE value_type;   /**< type of the data stored as ::lyd_node_any.value */
 };
 
 /**
@@ -690,14 +707,22 @@ struct lyd_node_any {
  * @brief Data node structure for unparsed (opaque) nodes.
  */
 struct lyd_node_opaq {
-    uint32_t hash;                  /**< always 0 */
-    uint32_t flags;                 /**< always 0 */
-    const struct lysc_node *schema; /**< always NULL */
-    struct lyd_node *parent;        /**< pointer to the parent node (NULL in case of root node) */
-    struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;          /**< pointer to the previous sibling node (last sibling if there is none) */
-    struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
-    void *priv;                     /**< private user data, not used by libyang */
+    union {
+        struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+        struct {
+            uint32_t hash;                  /**< always 0 */
+            uint32_t flags;                 /**< always 0 */
+            const struct lysc_node *schema; /**< always NULL */
+            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+            struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                                 never NULL. If there is no sibling node, pointer points to the node
+                                                 itself. In case of the first node, this pointer points to the last
+                                                 node in the list. */
+            struct lyd_meta *meta;          /**< always NULL */
+            void *priv;                     /**< private user data, not used by libyang */
+        };
+    };                                      /**< common part corresponding to ::lyd_node */
 
     struct lyd_node *child;         /**< pointer to the child node (compatible with ::lyd_node_inner) */
 
@@ -707,6 +732,7 @@ struct lyd_node_opaq {
     void *val_prefix_data;          /**< format-specific prefix data */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 
+    struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
     const struct ly_ctx *ctx;       /**< libyang context */
 };
 

@@ -92,7 +92,7 @@ lyd_parent(const struct lyd_node *node)
         return NULL;
     }
 
-    return (struct lyd_node *)(node)->parent;
+    return &node->parent->node;
 }
 
 API struct lyd_node *
@@ -106,7 +106,7 @@ lyd_child(const struct lyd_node *node)
 
     if (!node->schema) {
         /* opaq node */
-        return ((struct lyd_node_opaq *)(node))->child;
+        return ((struct lyd_node_opaq *)node)->child;
     }
 
     children = lyd_node_children_p((struct lyd_node *)node);
@@ -128,7 +128,7 @@ lyd_child_no_keys(const struct lyd_node *node)
 
     if (!node->schema) {
         /* opaq node */
-        return ((struct lyd_node_opaq *)(node))->child;
+        return ((struct lyd_node_opaq *)node)->child;
     }
 
     children = lyd_node_children_p((struct lyd_node *)node);

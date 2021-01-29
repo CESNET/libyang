@@ -919,7 +919,7 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
 
     /* write model info first */
-    if (!node->schema && !((struct lyd_node_opaq *)node)->parent) {
+    if (!node->schema && !lyd_parent(node)) {
         LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
     } else if (node->schema && !lysc_data_parent(node->schema)) {
         LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));

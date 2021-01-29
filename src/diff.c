@@ -102,7 +102,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         /* find next node parent */
         parent = node;
         while (parent->parent && (!diff_parent || (parent->parent->schema != diff_parent->schema))) {
-            parent = (struct lyd_node *)parent->parent;
+            parent = lyd_parent(parent);
         }
         if (parent == node) {
             /* no more parents to find */
@@ -127,14 +127,14 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     /* find the first duplicated parent */
     if (!diff_parent) {
-        diff_parent = (struct lyd_node *)dup->parent;
+        diff_parent = lyd_parent(dup);
         while (diff_parent && diff_parent->parent) {
-            diff_parent = (struct lyd_node *)diff_parent->parent;
+            diff_parent = lyd_parent(diff_parent);
         }
     } else {
-        diff_parent = (struct lyd_node *)dup;
+        diff_parent = dup;
         while (diff_parent->parent && (diff_parent->parent->schema == parent->schema)) {
-            diff_parent = (struct lyd_node *)diff_parent->parent;
+            diff_parent = lyd_parent(diff_parent);
         }
     }
 
@@ -754,7 +754,7 @@ lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
     const struct lyd_node *diff_parent;
     const char *str;
 
-    for (diff_parent = diff_node; diff_parent; diff_parent = (struct lyd_node *)diff_parent->parent) {
+    for (diff_parent = diff_node; diff_parent; diff_parent = lyd_parent(diff_parent)) {
         LY_LIST_FOR(diff_parent->meta, meta) {
             if (!strcmp(meta->name, "operation") && !strcmp(meta->annotation->module->name, "yang")) {
                 str = meta->value.canonical;
@@ -810,7 +810,7 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
         return lyd_insert_child(parent_node, new_node);
     }
 
-    assert(!(*first_node)->parent || ((struct lyd_node *)(*first_node)->parent == parent_node));
+    assert(!(*first_node)->parent || (lyd_parent(*first_node) == parent_node));
 
     if (!lysc_is_userordered(new_node->schema)) {
         /* simple insert */

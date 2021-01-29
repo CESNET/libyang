@@ -59,7 +59,7 @@ lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format
     if (root) {
         /* get first top-level sibling */
         while (root->parent) {
-            root = (struct lyd_node *)root->parent;
+            root = lyd_parent(root);
         }
         while (root->prev->next) {
             root = root->prev;

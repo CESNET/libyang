@@ -403,7 +403,7 @@ json_print_attribute(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node, c
 
     for (attr = node->attr; attr; attr = attr->next) {
         PRINT_COMMA;
-        json_print_member2(ctx, (struct lyd_node *)node, attr->format, &attr->name, 0);
+        json_print_member2(ctx, &node->node, attr->format, &attr->name, 0);
 
         if (attr->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
             ly_print_(ctx->out, "%s", attr->value[0] ? attr->value : "null");
@@ -763,26 +763,24 @@ json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
     ly_bool first = 1, last = 1;
 
     if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
-        const struct lyd_node_opaq *prev = (const struct lyd_node_opaq *)node->prev;
-        const struct lyd_node_opaq *next = (const struct lyd_node_opaq *)node->next;
-        if (prev->next && matching_node((const struct lyd_node *)prev, (const struct lyd_node *)node)) {
+        if (node->prev->next && matching_node(node->prev, &node->node)) {
             first = 0;
         }
-        if (next && matching_node((const struct lyd_node *)node, (const struct lyd_node *)next)) {
+        if (node->next && matching_node(&node->node, node->next)) {
             last = 0;
         }
     }
 
     if (first) {
-        LY_CHECK_RET(json_print_member2(ctx, node->parent, node->format, &node->name, 0));
+        LY_CHECK_RET(json_print_member2(ctx, lyd_parent(&node->node), node->format, &node->name, 0));
 
         if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
-            LY_CHECK_RET(json_print_array_open(ctx, (struct lyd_node *)node));
+            LY_CHECK_RET(json_print_array_open(ctx, &node->node));
             LEVEL_INC;
         }
     }
     if (node->child || (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
-        LY_CHECK_RET(json_print_inner(ctx, (struct lyd_node *)node));
+        LY_CHECK_RET(json_print_inner(ctx, &node->node));
         LEVEL_PRINTED;
     } else {
         if (node->hints & LYD_VALHINT_EMPTY) {

@@ -603,7 +603,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     }
 
     /* insert, keep first pointer correct */
-    lyd_insert_node((struct lyd_node *)parent, first_p, node);
+    lyd_insert_node(&parent->node, first_p, node);
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
     }
