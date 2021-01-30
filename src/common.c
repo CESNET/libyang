@@ -384,8 +384,7 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
             (*out)[*out_used] = cur_expr[exp->tok_len[i] - 1];
             ++(*out_used);
         } else {
-            strncpy(&(*out)[*out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
-            *out_used += exp->tok_len[i];
+            goto error;
         }
     }
 
@@ -561,8 +560,7 @@ transform_xml2json_subexp(struct ly_ctx *ctx, const char *expr, char **out, size
             (*out)[*out_used] = cur_expr[exp->tok_len[i] - 1];
             ++(*out_used);
         } else {
-            strncpy(&(*out)[*out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
-            *out_used += exp->tok_len[i];
+            goto error;
         }
     }
 
