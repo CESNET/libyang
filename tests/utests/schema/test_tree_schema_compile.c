@@ -678,6 +678,8 @@ test_type_range(void **state)
     const struct lys_module *mod;
     struct lysc_type *type;
 
+#if 0
+    /*test about int8 should be in tests/utests/types/int8.c*/
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;leaf l {type int8 {range min..10|max;}}}", LYS_IN_YANG, &mod));
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
     assert_non_null(type);
@@ -689,6 +691,7 @@ test_type_range(void **state)
     assert_int_equal(10, ((struct lysc_type_num *)type)->range->parts[0].max_64);
     assert_int_equal(127, ((struct lysc_type_num *)type)->range->parts[1].min_64);
     assert_int_equal(127, ((struct lysc_type_num *)type)->range->parts[1].max_64);
+#endif
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;leaf l {type int16 {range min..10|max;}}}", LYS_IN_YANG, &mod));
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
