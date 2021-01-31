@@ -142,6 +142,8 @@ test_int(void **state)
     const char *data;
     char *error_msg;
 
+#if 0
+    /* type int8 is tested in file ./tests/utests/types/int8.c */
     /* valid data */
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     CHECK_PARSE_LYD(data, tree);
@@ -153,6 +155,8 @@ test_int(void **state)
     /* invalid range */
     error_msg = "Value \"1\" does not satisfy the range constraint.";
     TEST_TYPE_ERROR("int8", "1", error_msg, "1");
+#endif
+
     error_msg = "Value \"100\" does not satisfy the range constraint.";
     TEST_TYPE_ERROR("int16", "100", error_msg, "1");
 

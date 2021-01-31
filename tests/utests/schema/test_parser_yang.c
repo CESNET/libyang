@@ -899,11 +899,17 @@ test_deviate(void **state)
                      &d, "1", lysp_deviate_free(YCTX->parsed_mod->mod->ctx, d); free(d); d = NULL)
 
     TEST_DUP("add", "config", "true", "false");
+#if 0
+    /*test on int8 now is in file tests/utest/types/int8.c */
     TEST_DUP("replace", "default", "int8", "uint8");
+#endif
     TEST_DUP("add", "mandatory", "true", "false");
     TEST_DUP("add", "max-elements", "1", "2");
     TEST_DUP("add", "min-elements", "1", "2");
+#if 0
+    /*test on int8 now is in file tests/utest/types/int8.c*/
     TEST_DUP("replace", "type", "int8", "uint8");
+#endif
     TEST_DUP("add", "units", "kilometers", "miles");
 
     /* full contents */

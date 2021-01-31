@@ -108,11 +108,14 @@ test_leaf(void **state)
     struct lyd_node *tree;
     const char *data, *result;
 
+    #if 0
+    /* test on print int8 is in file ./tests/utests/types/int8.c */
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     result = "<int8 xmlns=\"urn:tests:types\">15</int8>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, result);
     lyd_free_all(tree);
+    #endif
 }
 
 static void
