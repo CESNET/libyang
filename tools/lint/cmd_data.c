@@ -205,6 +205,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
 
             if (!strcasecmp(optarg, "config")) {
                 options_parse |= LYD_PARSE_NO_STATE;
+                options_validate |= LYD_VALIDATE_NO_STATE;
             } else if (!strcasecmp(optarg, "get")) {
                 options_parse |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config")) {

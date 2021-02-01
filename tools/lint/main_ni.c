@@ -530,6 +530,7 @@ fill_context(int argc, char *argv[], struct context *c)
 
             if (!strcasecmp(optarg, "config")) {
                 c->data_parse_options |= LYD_PARSE_NO_STATE;
+                c->data_validate_options |= LYD_VALIDATE_NO_STATE;
             } else if (!strcasecmp(optarg, "get")) {
                 c->data_parse_options |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "getconfig") || !strcasecmp(optarg, "get-config")) {
