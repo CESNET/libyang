@@ -250,10 +250,9 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  * @param[out] type Built-in type identifier of the id. If #LY_TYPE_UNKNOWN, tpdf is expected to contain found YANG schema typedef statement.
  * @param[out] tpdf Found type definition.
  * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
- * @param[out] module Module where the found typedef is being defined, NULL in case of built-in YANG types.
  */
-LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
-        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
+LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
+        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node);
 
 /**
  * @brief Validate enum name.

@@ -211,29 +211,29 @@ lysp_type_str2builtin(const char *name, size_t len)
 }
 
 LY_ERR
-lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
-        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module)
+lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
+        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node)
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
     const struct lys_module *mod;
+    const struct lysp_module *local_module;
     LY_ARRAY_COUNT_TYPE u, v;
 
     assert(id);
     assert(start_module);
     assert(tpdf);
     assert(node);
-    assert(module);
 
     *node = NULL;
     str = strchr(id, ':');
     if (str) {
         mod = ly_resolve_prefix(start_module->mod->ctx, id, str - id, LY_PREF_SCHEMA, (void *)start_module);
-        *module = mod ? mod->parsed : NULL;
+        local_module = mod ? mod->parsed : NULL;
         name = str + 1;
         *type = LY_TYPE_UNKNOWN;
     } else {
-        *module = start_module;
+        local_module = start_module;
         name = id;
 
         /* check for built-in types */
@@ -243,9 +243,9 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
             return LY_SUCCESS;
         }
     }
-    LY_CHECK_RET(!(*module), LY_ENOTFOUND);
+    LY_CHECK_RET(!local_module, LY_ENOTFOUND);
 
-    if (start_node && (*module == start_module)) {
+    if (start_node && (local_module == start_module)) {
         /* search typedefs in parent's nodes */
         *node = start_node;
         while (*node) {
@@ -259,19 +259,19 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     }
 
     /* search in top-level typedefs */
-    if ((*module)->typedefs) {
-        LY_ARRAY_FOR((*module)->typedefs, u) {
-            if (!strcmp(name, (*module)->typedefs[u].name)) {
+    if (local_module->typedefs) {
+        LY_ARRAY_FOR(local_module->typedefs, u) {
+            if (!strcmp(name, local_module->typedefs[u].name)) {
                 /* match */
-                *tpdf = &(*module)->typedefs[u];
+                *tpdf = &local_module->typedefs[u];
                 return LY_SUCCESS;
             }
         }
     }
 
     /* search in submodules' typedefs */
-    LY_ARRAY_FOR((*module)->includes, u) {
-        typedefs = (*module)->includes[u].submodule->typedefs;
+    LY_ARRAY_FOR(local_module->includes, u) {
+        typedefs = local_module->includes[u].submodule->typedefs;
         LY_ARRAY_FOR(typedefs, v) {
             if (!strcmp(name, typedefs[v].name)) {
                 /* match */
