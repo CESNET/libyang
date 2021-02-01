@@ -804,7 +804,9 @@ set_copy(struct lyxp_set *set)
         ret->used = ret->size = set->used;
         ret->ctx_pos = set->ctx_pos;
         ret->ctx_size = set->ctx_size;
-        ret->ht = lyht_dup(set->ht);
+        if (set->ht) {
+            ret->ht = lyht_dup(set->ht);
+        }
     } else {
         memcpy(ret, set, sizeof *ret);
         if (set->type == LYXP_SET_STRING) {
