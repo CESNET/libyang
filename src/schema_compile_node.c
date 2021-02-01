@@ -1726,7 +1726,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
-    for (ret = lysp_type_find(type_p->name, context_pnode, ctx->pmod, &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
+    for (ret = lysp_type_find(type_p->name, context_pnode, context_mod, &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
             ret == LY_SUCCESS;
             ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->mod,
                     &basetype, &tctx->tpdf, &tctx->node, &tctx->mod)) {
