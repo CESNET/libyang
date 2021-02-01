@@ -26,9 +26,9 @@
 #include "tree_schema.h"
 
 static void
-lyd_hash_keyless_list_dfs(struct lyd_node *child, uint32_t *hash)
+lyd_hash_keyless_list_dfs(const struct lyd_node *child, uint32_t *hash)
 {
-    struct lyd_node *iter;
+    const struct lyd_node *iter;
 
     LY_LIST_FOR(child, iter) {
         switch (iter->schema->nodetype) {

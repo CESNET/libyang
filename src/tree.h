@@ -17,8 +17,6 @@
 
 #include <inttypes.h>
 
-#include "tree_data.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -196,31 +194,6 @@ extern "C" {
 #define LY_LIST_FOR_SAFE(START, NEXT, ELEM) \
     for ((ELEM) = (START); \
          (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
-         (ELEM) = (NEXT))
-
-/**
- * @brief Macro to iterate via all schema node data instances in data siblings.
- *
- * @param START Pointer to the starting sibling. Even if it is not first, all the siblings are searched.
- * @param SCHEMA Schema node of the searched instances.
- * @param ELEM Iterator.
- */
-#define LYD_LIST_FOR_INST(START, SCHEMA, ELEM) \
-    for (lyd_find_sibling_val(START, SCHEMA, NULL, 0, &(ELEM)); \
-         (ELEM) && ((ELEM)->schema == (SCHEMA)); \
-         (ELEM) = (ELEM)->next)
-
-/**
- * @brief Macro to iterate via all schema node data instances in data siblings allowing to modify the list itself.
- *
- * @param START Pointer to the starting sibling. Even if it is not first, all the siblings are searched.
- * @param SCHEMA Schema node of the searched instances.
- * @param NEXT Temporary storage to allow removing of the current iterator content.
- * @param ELEM Iterator.
- */
-#define LYD_LIST_FOR_INST_SAFE(START, SCHEMA, NEXT, ELEM) \
-    for (lyd_find_sibling_val(START, SCHEMA, NULL, 0, &(ELEM)); \
-         (ELEM) && ((ELEM)->schema == (SCHEMA)) ? ((NEXT) = (ELEM)->next, 1) : 0; \
          (ELEM) = (NEXT))
 
 /**

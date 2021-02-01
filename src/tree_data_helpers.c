@@ -86,38 +86,6 @@ lyd_node_children_p(struct lyd_node *node)
 }
 
 API struct lyd_node *
-lyd_parent(const struct lyd_node *node)
-{
-    if (!node) {
-        return NULL;
-    }
-
-    return &node->parent->node;
-}
-
-API struct lyd_node *
-lyd_child(const struct lyd_node *node)
-{
-    struct lyd_node **children;
-
-    if (!node) {
-        return NULL;
-    }
-
-    if (!node->schema) {
-        /* opaq node */
-        return ((struct lyd_node_opaq *)node)->child;
-    }
-
-    children = lyd_node_children_p((struct lyd_node *)node);
-    if (children) {
-        return *children;
-    } else {
-        return NULL;
-    }
-}
-
-API struct lyd_node *
 lyd_child_no_keys(const struct lyd_node *node)
 {
     struct lyd_node **children;

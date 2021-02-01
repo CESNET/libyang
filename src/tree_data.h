@@ -19,6 +19,8 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "tree.h"
+#include "tree_schema.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -342,7 +344,32 @@ struct lysc_type;
             break; \
         } \
         (LYD_TREE_DFS_next) = (ELEM)->next; \
-    } } \
+    } }
+
+/**
+ * @brief Macro to iterate via all schema node data instances in data siblings.
+ *
+ * @param START Pointer to the starting sibling. Even if it is not first, all the siblings are searched.
+ * @param SCHEMA Schema node of the searched instances.
+ * @param ELEM Iterator.
+ */
+#define LYD_LIST_FOR_INST(START, SCHEMA, ELEM) \
+    for (lyd_find_sibling_val(START, SCHEMA, NULL, 0, &(ELEM)); \
+         (ELEM) && ((ELEM)->schema == (SCHEMA)); \
+         (ELEM) = (ELEM)->next)
+
+/**
+ * @brief Macro to iterate via all schema node data instances in data siblings allowing to modify the list itself.
+ *
+ * @param START Pointer to the starting sibling. Even if it is not first, all the siblings are searched.
+ * @param SCHEMA Schema node of the searched instances.
+ * @param NEXT Temporary storage to allow removing of the current iterator content.
+ * @param ELEM Iterator.
+ */
+#define LYD_LIST_FOR_INST_SAFE(START, SCHEMA, NEXT, ELEM) \
+    for (lyd_find_sibling_val(START, SCHEMA, NULL, 0, &(ELEM)); \
+         (ELEM) && ((ELEM)->schema == (SCHEMA)) ? ((NEXT) = (ELEM)->next, 1) : 0; \
+         (ELEM) = (NEXT))
 
 /* *INDENT-ON* */
 
@@ -743,7 +770,15 @@ struct lyd_node_opaq {
  * @return Pointer to the parent node of the @p node.
  * @return NULL in case of the top-level node or if the @p node is NULL itself.
  */
-struct lyd_node *lyd_parent(const struct lyd_node *node);
+static inline struct lyd_node *
+lyd_parent(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    return &node->parent->node;
+}
 
 /**
  * @brief Get the child pointer of a generic data node.
@@ -755,7 +790,29 @@ struct lyd_node *lyd_parent(const struct lyd_node *node);
  * @param[in] node Node to use.
  * @return Pointer to the first child node (if any) of the @p node.
  */
-struct lyd_node *lyd_child(const struct lyd_node *node);
+static inline struct lyd_node *
+lyd_child(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        /* opaq node */
+        return ((struct lyd_node_opaq *)node)->child;
+    }
+
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
+        return ((struct lyd_node_inner *)node)->child;
+    default:
+        return NULL;
+    }
+}
 
 /**
  * @brief Get the child pointer of a generic data node but skip its keys in case it is ::LYS_LIST.
