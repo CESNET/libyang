@@ -1300,7 +1300,7 @@ done:
 
 static LY_ERR
 lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct lysp_node *context_pnode, uint16_t context_flags,
-        struct lysp_module *context_mod, const char *context_name, struct lysc_type ***utypes_p)
+        const char *context_name, struct lysc_type ***utypes_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type **utypes = *utypes_p;
@@ -1308,7 +1308,8 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
 
     LY_ARRAY_CREATE_GOTO(ctx->ctx, utypes, LY_ARRAY_COUNT(ptypes), ret, error);
     for (LY_ARRAY_COUNT_TYPE u = 0, additional = 0; u < LY_ARRAY_COUNT(ptypes); ++u) {
-        ret = lys_compile_type(ctx, context_pnode, context_flags, context_mod, context_name, &ptypes[u], &utypes[u + additional], NULL, NULL);
+        ret = lys_compile_type(ctx, context_pnode, context_flags, context_name, &ptypes[u], &utypes[u + additional],
+                NULL, NULL);
         LY_CHECK_GOTO(ret, error);
         if (utypes[u + additional]->basetype == LY_TYPE_UNION) {
             /* add space for additional types from the union subtype */
@@ -1370,7 +1371,6 @@ error:
  * @param[in] ctx Compile context.
  * @param[in] context_pnode Schema node where the type/typedef is placed to correctly find the base types.
  * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
- * @param[in] context_mod Module of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
  * @param[in] type_p Parsed type to compile.
  * @param[in] basetype Base YANG built-in type of the type to compile.
@@ -1380,9 +1380,8 @@ error:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags,
-        struct lysp_module *context_mod, const char *context_name, struct lysp_type *type_p, LY_DATA_TYPE basetype,
-        const char *tpdfname, struct lysc_type *base, struct lysc_type **type)
+lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
+        struct lysp_type *type_p, LY_DATA_TYPE basetype, const char *tpdfname, struct lysc_type *base, struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_bin *bin;
@@ -1561,7 +1560,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
 
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
-            if (context_mod->version < LYS_VERSION_1_1) {
+            if (type_p->pmod->version < LYS_VERSION_1_1) {
                 if (tpdfname) {
                     LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                             "Leafref type \"%s\" can be restricted by require-instance statement only in YANG 1.1 modules.", tpdfname);
@@ -1622,8 +1621,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 return LY_EVALID;
             }
             /* compile the type */
-            LY_CHECK_RET(lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_mod, context_name,
-                    &un->types));
+            LY_CHECK_RET(lys_compile_type_union(ctx, type_p->types, context_pnode, context_flags, context_name, &un->types));
         }
 
         if (!base && !type_p->flags) {
@@ -1704,16 +1702,14 @@ cleanup:
 }
 
 LY_ERR
-lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags,
-        struct lysp_module *context_mod, const char *context_name, struct lysp_type *type_p,
-        struct lysc_type **type, const char **units, struct lysp_qname **dflt)
+lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
+        struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
 {
     LY_ERR ret = LY_SUCCESS;
     ly_bool dummyloops = 0;
     struct type_context {
         const struct lysp_tpdf *tpdf;
         struct lysp_node *node;
-        struct lysp_module *mod;
     } *tctx, *tctx_prev = NULL, *tctx_iter;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL, *prev_type;
@@ -1726,17 +1722,17 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
-    for (ret = lysp_type_find(type_p->name, context_pnode, context_mod, &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
+    for (ret = lysp_type_find(type_p->name, context_pnode, type_p->pmod, &basetype, &tctx->tpdf, &tctx->node);
             ret == LY_SUCCESS;
-            ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->mod,
-                    &basetype, &tctx->tpdf, &tctx->node, &tctx->mod)) {
+            ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->tpdf->type.pmod,
+                    &basetype, &tctx->tpdf, &tctx->node)) {
         if (basetype) {
             break;
         }
 
         /* check status */
-        ret = lysc_check_status(ctx, context_flags, context_mod, context_name,
-                tctx->tpdf->flags, tctx->mod, tctx->node ? tctx->node->name : tctx->tpdf->name);
+        ret = lysc_check_status(ctx, context_flags, (void *)type_p->pmod, context_name, tctx->tpdf->flags,
+                (void *)tctx->tpdf->type.pmod, tctx->node ? tctx->node->name : tctx->tpdf->name);
         LY_CHECK_ERR_GOTO(ret, free(tctx), cleanup);
 
         if (units && !*units) {
@@ -1773,7 +1769,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         for (uint32_t u = 0; u < tpdf_chain.count; u++) {
             /* local part */
             tctx_iter = (struct type_context *)tpdf_chain.objs[u];
-            if ((tctx_iter->mod == tctx->mod) && (tctx_iter->node == tctx->node) && (tctx_iter->tpdf == tctx->tpdf)) {
+            if (tctx_iter->tpdf == tctx->tpdf) {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
                 free(tctx);
@@ -1784,7 +1780,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         for (uint32_t u = 0; u < ctx->tpdf_chain.count; u++) {
             /* global part for unions corner case */
             tctx_iter = (struct type_context *)ctx->tpdf_chain.objs[u];
-            if ((tctx_iter->mod == tctx->mod) && (tctx_iter->node == tctx->node) && (tctx_iter->tpdf == tctx->tpdf)) {
+            if (tctx_iter->tpdf == tctx->tpdf) {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
                 free(tctx);
@@ -1900,7 +1896,7 @@ preparenext:
         /* TODO user type plugins */
         (*type)->plugin = &ly_builtin_type_plugins[basetype];
         prev_type = *type;
-        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->mod, tctx->tpdf->name,
+        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name,
                 &((struct lysp_tpdf *)tctx->tpdf)->type, basetype, tctx->tpdf->name, base, type);
         LY_CHECK_GOTO(ret, cleanup);
         base = prev_type;
@@ -1915,8 +1911,7 @@ preparenext:
         /* TODO user type plugins */
         (*type)->plugin = &ly_builtin_type_plugins[basetype];
         ++(*type)->refcount;
-        ret = lys_compile_type_(ctx, context_pnode, context_flags, context_mod, context_name, type_p, basetype, NULL,
-                base, type);
+        ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, type_p, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else if ((basetype != LY_TYPE_BOOL) && (basetype != LY_TYPE_EMPTY)) {
         /* no specific restriction in leaf's type definition, copy from the base */
@@ -2572,7 +2567,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
 {
     struct lysp_qname *dflt;
 
-    LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, ctx->pmod, leaf->name, type_p, &leaf->type,
+    LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
 
     /* store default value, if any */
@@ -2593,8 +2588,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         }
     } else if (leaf->type->basetype == LY_TYPE_EMPTY) {
         if ((leaf->nodetype == LYS_LEAFLIST) && (ctx->pmod->version < LYS_VERSION_1_1)) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                    "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
             return LY_EVALID;
         }
     }
