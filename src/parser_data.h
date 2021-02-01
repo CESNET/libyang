@@ -143,10 +143,10 @@ struct ly_in;
                                                  statements are not checked, and default values are not added (only the ones
                                                  parsed are present). */
 #define LYD_PARSE_STRICT    0x020000        /**< Instead of silently ignoring data without schema definition raise an error.
-                                                 Do not combine with #LYD_PARSE_OPAQ (except for ::LYD_LYB). */
+                                                 Do not combine with ::LYD_PARSE_OPAQ (except for ::LYD_LYB). */
 #define LYD_PARSE_OPAQ      0x040000        /**< Instead of silently ignoring data without definition, parse them into
-                                                 an opaq node. Do not combine with #LYD_PARSE_STRICT (except for ::LYD_LYB). */
-#define LYD_PARSE_NO_STATE  0x080000        /**< Forbid state data in the parsed data. */
+                                                 an opaq node. Do not combine with ::LYD_PARSE_STRICT (except for ::LYD_LYB). */
+#define LYD_PARSE_NO_STATE  0x080000        /**< Forbid state data in the parsed data. Usually used with ::LYD_VALIDATE_NO_STATE. */
 
 #define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Only for LYB format, allow parsing data printed using a specific module
                                                  revision to be loaded even with a module with the same name but newer
@@ -179,7 +179,8 @@ struct ly_in;
  *
  * @{
  */
-#define LYD_VALIDATE_NO_STATE   0x0001      /**< Consider state data not allowed and raise an error if they are found. */
+#define LYD_VALIDATE_NO_STATE   0x0001      /**< Consider state data not allowed and raise an error if they are found.
+                                                 Also, no implicit state data are added. */
 #define LYD_VALIDATE_PRESENT    0x0002      /**< Validate only modules whose data actually exist. */
 
 #define LYD_VALIDATE_OPTS_MASK  0x0000FFFF  /**< Mask for all the LYD_VALIDATE_* options. */
