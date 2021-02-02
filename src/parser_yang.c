@@ -2253,6 +2253,9 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flag
         }
 
         *max = num;
+    } else {
+        /* unbounded */
+        *max = 0;
     }
     free(buf);
 
