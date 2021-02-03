@@ -196,7 +196,7 @@ lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses
 
         aug->nodeid = exp;
         exp = NULL;
-        aug->nodeid_pmod = ctx->pmod;
+        aug->nodeid_pmod = ctx->cur_mod->parsed;
         aug->nodeid_ctx_node = ctx_node;
         aug->aug_p = aug_p;
 
@@ -229,7 +229,7 @@ lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses
 
             rfn->nodeid = exp;
             exp = NULL;
-            rfn->nodeid_pmod = ctx->pmod;
+            rfn->nodeid_pmod = ctx->cur_mod->parsed;
             rfn->nodeid_ctx_node = ctx_node;
             rfn->uses_p = uses_p;
         } else {
