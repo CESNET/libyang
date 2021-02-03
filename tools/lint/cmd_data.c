@@ -31,11 +31,11 @@
 void
 cmd_data_help(void)
 {
-    printf("Usage: data [-ems] [-t TYPE]\n"
-            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
-            "       data [-s] -t (rpc | notif | reply) [-O FILE]\n"
-            "            [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
-            "       data [-es] [-t TYPE] -x XPATH [-o OUTFILE] <data1> ...\n"
+    printf("Usage: data [-emn] [-t TYPE]\n"
+            "            [-F FORMAT] [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
+            "       data [-n] -t (rpc | notif | reply) [-O FILE]\n"
+            "            [-F FORMAT] [-f FORMAT] [-d DEFAULTS] [-o OUTFILE] <data1> ...\n"
+            "       data [-en] [-t TYPE] [-F FORMAT] -x XPATH [-o OUTFILE] <data1> ...\n"
             "                  Parse, validate and optionally print data instances\n\n"
 
             "  -t TYPE, --type=TYPE\n"
@@ -75,6 +75,10 @@ cmd_data_help(void)
             "                Print the data in one of the following formats:\n"
             "                xml, json, lyb\n"
             "                Note that the LYB format requires the -o option specified.\n"
+            "  -F FORMAT, --in-format=FORMAT\n"
+            "                Load the data in one of the following formats:\n"
+            "                xml, json, lyb\n"
+            "                If input format not specified, it is detected from the file extension.\n"
             "  -d MODE, --default=MODE\n"
             "                Print data with default values, according to the MODE\n"
             "                (to print attributes, ietf-netconf-with-defaults model\n"
@@ -106,6 +110,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         {"defaults",    required_argument, NULL, 'd'},
         {"present",     no_argument,       NULL, 'e'},
         {"format",      required_argument, NULL, 'f'},
+        {"in-format",   required_argument, NULL, 'F'},
         {"help",        no_argument,       NULL, 'h'},
         {"merge",       no_argument,       NULL, 'm'},
         {"output",      required_argument, NULL, 'o'},
@@ -122,7 +127,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     uint32_t options_validate = 0;
     uint8_t data_type = 0;
     uint8_t data_type_set = 0;
-    LYD_FORMAT format = LYD_UNKNOWN;
+    LYD_FORMAT outformat = LYD_UNKNOWN;
+    LYD_FORMAT informat = LYD_UNKNOWN;
     struct ly_out *out = NULL;
     struct cmdline_file *operational = NULL;
     struct ly_set inputs = {0};
@@ -132,7 +138,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "d:ef:hmo:O:r:nt:x:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:ef:F:hmo:O:r:nt:x:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd': /* --default */
             if (!strcasecmp(optarg, "all")) {
@@ -151,13 +157,26 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
             break;
         case 'f': /* --format */
             if (!strcasecmp(optarg, "xml")) {
-                format = LYD_XML;
+                outformat = LYD_XML;
             } else if (!strcasecmp(optarg, "json")) {
-                format = LYD_JSON;
+                outformat = LYD_JSON;
             } else if (!strcasecmp(optarg, "lyb")) {
-                format = LYD_LYB;
+                outformat = LYD_LYB;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
+                cmd_data_help();
+                goto cleanup;
+            }
+            break;
+        case 'F': /* --in-format */
+            if (!strcasecmp(optarg, "xml")) {
+                informat = LYD_XML;
+            } else if (!strcasecmp(optarg, "json")) {
+                informat = LYD_JSON;
+            } else if (!strcasecmp(optarg, "lyb")) {
+                informat = LYD_LYB;
+            } else {
+                YLMSG_E("Unknown input format %s\n", optarg);
                 cmd_data_help();
                 goto cleanup;
             }
@@ -262,7 +281,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
         data_merge = 1;
     }
 
-    if (xpaths.count && format) {
+    if (xpaths.count && outformat) {
         YLMSG_E("The --format option cannot be combined with --xpath option.\n");
         cmd_data_help();
         goto cleanup;
@@ -277,13 +296,12 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     /* process input data files provided as standalone command line arguments */
     for (int i = 0; i < argc - optind; i++) {
         struct ly_in *in;
-        LYD_FORMAT format = LYD_UNKNOWN;
 
-        if (get_input(argv[optind + i], NULL, &format, &in)) {
+        if (get_input(argv[optind + i], NULL, &informat, &in)) {
             goto cleanup;
         }
 
-        if (!fill_cmdline_file(&inputs, in, argv[optind + i], format)) {
+        if (!fill_cmdline_file(&inputs, in, argv[optind + i], informat)) {
             ly_in_free(in, 1);
             goto cleanup;
         }
@@ -298,7 +316,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     }
 
     /* parse, validate and print data */
-    if (process_data(*ctx, data_type, data_merge, format, out,
+    if (process_data(*ctx, data_type, data_merge, outformat, out,
             options_parse, options_validate, options_print,
             operational, &inputs, &xpaths)) {
         goto cleanup;

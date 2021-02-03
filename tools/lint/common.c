@@ -73,9 +73,11 @@ get_input(const char *filepath, LYS_INFORMAT *format_schema, LYD_FORMAT *format_
         return -1;
     }
 
-    /* get the file format */
-    if (get_format(filepath, format_schema, format_data)) {
-        return -1;
+    if ((format_schema && !*format_schema) || (format_data && !*format_data)) {
+        /* get the file format */
+        if (get_format(filepath, format_schema, format_data)) {
+            return -1;
+        }
     }
 
     if (ly_in_new_filepath(filepath, 0, in)) {
@@ -310,6 +312,9 @@ get_format(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data)
         } else if (!strcmp(ptr, "json")) {
             informat_s = 0;
             informat_d = LYD_JSON;
+        } else if (!strcmp(ptr, "lyb")) {
+            informat_s = 0;
+            informat_d = LYD_LYB;
         } else {
             YLMSG_E("Input file \"%s\" in an unknown format \"%s\".\n", filename, ptr);
             return 0;
