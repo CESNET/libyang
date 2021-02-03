@@ -1782,17 +1782,28 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
 
         /* compile actions into the target */
         LY_LIST_FOR((struct lysp_node *)aug_p->actions, pnode) {
-            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, NULL), cleanup);
-        }
+            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
 
-        if (aug_p->when) {
-            /* inherit when */
-            struct lysc_node *iter;
-
-            LY_LIST_FOR((struct lysc_node *)*actions, iter) {
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), iter, &when_shared);
-                LY_CHECK_GOTO(ret, cleanup);
+            /* eval if-features again for the rest of this node processing */
+            LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
+            if (!enabled) {
+                ctx->options |= LYS_COMPILE_DISABLED;
             }
+
+            /* since the augment node is not present in the compiled tree, we need to pass some of its
+             * statements to all its children */
+            for (i = 0; i < child_set.count; ++i) {
+                node = child_set.snodes[i];
+                if (aug_p->when) {
+                    /* pass augment's when to all the actions */
+                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+            }
+            ly_set_erase(&child_set, NULL);
+
+            /* restore options */
+            ctx->options = opt_prev;
         }
     }
     if (aug_p->notifs) {
@@ -1806,17 +1817,28 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
 
         /* compile notifications into the target */
         LY_LIST_FOR((struct lysp_node *)aug_p->notifs, pnode) {
-            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, NULL), cleanup);
-        }
+            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
 
-        if (aug_p->when) {
-            /* inherit when */
-            struct lysc_node *iter;
-
-            LY_LIST_FOR((struct lysc_node *)*notifs, iter) {
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), iter, &when_shared);
-                LY_CHECK_GOTO(ret, cleanup);
+            /* eval if-features again for the rest of this node processing */
+            LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
+            if (!enabled) {
+                ctx->options |= LYS_COMPILE_DISABLED;
             }
+
+            /* since the augment node is not present in the compiled tree, we need to pass some of its
+             * statements to all its children */
+            for (i = 0; i < child_set.count; ++i) {
+                node = child_set.snodes[i];
+                if (aug_p->when) {
+                    /* pass augment's when to all the actions */
+                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+            }
+            ly_set_erase(&child_set, NULL);
+
+            /* restore options */
+            ctx->options = opt_prev;
         }
     }
 
