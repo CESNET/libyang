@@ -673,6 +673,7 @@ lysc_node_action_inout_free(struct ly_ctx *ctx, struct lysc_node_action_inout *i
 void
 lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action)
 {
+    FREE_ARRAY(ctx, action->when, lysc_when_free);
     if (action->input.nodetype) {
         lysc_node_free_(ctx, &action->input.node);
     }
@@ -686,6 +687,7 @@ lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif)
 {
     struct lysc_node *child, *child_next;
 
+    FREE_ARRAY(ctx, notif->when, lysc_when_free);
     FREE_ARRAY(ctx, notif->musts, lysc_must_free);
     LY_LIST_FOR_SAFE(notif->child, child_next, child) {
         lysc_node_free_(ctx, child);
