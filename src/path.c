@@ -402,7 +402,6 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
     size_t len;
 
     assert(expr->tokens[tok_idx] == LYXP_TOKEN_NAMETEST);
-    assert((lref != LY_PATH_LREF_TRUE) || unres);
 
     /* get prefix */
     if ((pref = strnstr(expr->expr + expr->tok_pos[tok_idx], ":", expr->tok_len[tok_idx]))) {
@@ -428,6 +427,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
                 LOGVAL(ctx, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
                 goto error;
             }
+            assert(unres);
             LY_CHECK_GOTO(ret = lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
         }
 
