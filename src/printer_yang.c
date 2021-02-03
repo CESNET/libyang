@@ -1602,7 +1602,7 @@ yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
     yprp_node_common1(ctx, node, &flag);
 
     LY_ARRAY_FOR(list->musts, u) {
-        yprp_restr(ctx, &list->musts[u], "must", NULL);
+        yprp_restr(ctx, &list->musts[u], "must", &flag);
     }
     if (list->key) {
         ypr_open(ctx->out, &flag);
