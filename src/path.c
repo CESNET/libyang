@@ -912,7 +912,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
         struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_node *prev_node = NULL, *node, *target;
+    struct lyd_node *prev_node = NULL, *node = NULL, *target;
     uint64_t pos;
 
     assert(path && start);
