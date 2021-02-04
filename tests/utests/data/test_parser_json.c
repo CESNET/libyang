@@ -326,7 +326,7 @@ test_list(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
     tree = tree->next;
-    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE | LYS_SET_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
     CHECK_LYD_META(tree->meta, 1, "hint", 0, 1,  INT8, "1", 1);
     assert_null(tree->meta->next);
@@ -355,7 +355,7 @@ test_container(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
     tree = tree->next;
-    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE | LYS_SET_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
     cont = (struct lyd_node_inner *)tree;
     assert_false(cont->flags & LYD_DEFAULT);
@@ -454,7 +454,7 @@ test_rpc(void **state)
             0, LYS_ANYXML, 1, 0, NULL, 0);
 
     node = ((struct lyd_node_any *)node)->value.tree;
-    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
+    CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE | LYS_SET_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
     node = lyd_child(node);
     /* z has no value */

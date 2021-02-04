@@ -2497,7 +2497,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
 
     if (cont_p->presence) {
         /* explicit presence */
-        cont->flags |= LYS_PRESENCE;
+        cont->flags |= LYS_PRESENCE | LYS_SET_PRESENCE;
     } else if (cont_p->musts) {
         /* container with a must condition */
         LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"must\" condition.",
