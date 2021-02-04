@@ -152,7 +152,9 @@ test_minmax(void **state)
 
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
-    CHECK_PARSE_LYD_PARAM("<d xmlns=\"urn:tests:c\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_PARSE_LYD_PARAM("<l xmlns=\"urn:tests:c\">mate</l>"
+            "<d xmlns=\"urn:tests:c\"/>",
+            LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Too few \"l\" instances.", "Schema location /c:choic/b/l.");
 
     CHECK_PARSE_LYD_PARAM("<l xmlns=\"urn:tests:c\">val1</l>"

@@ -1065,12 +1065,12 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
         const struct lysc_node *sparent, const struct lysc_module *mod, uint32_t val_opts, LYD_VALIDATE_OP op)
 {
     LY_ERR ret = LY_SUCCESS;
-    const struct lysc_node *snode = NULL;
+    const struct lysc_node *snode = NULL, *scase;
     struct lysc_node_list *slist;
     struct lysc_node_leaflist *sllist;
     uint32_t getnext_opts;
 
-    getnext_opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | (op == LYD_VALIDATE_OP_REPLY ? LYS_GETNEXT_OUTPUT : 0);
+    getnext_opts = LYS_GETNEXT_WITHCHOICE | (op == LYD_VALIDATE_OP_REPLY ? LYS_GETNEXT_OUTPUT : 0);
 
     /* disabled nodes are skipped by lys_getnext */
     while ((snode = lys_getnext(snode, sparent, mod, getnext_opts))) {
@@ -1109,10 +1109,16 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
             }
         }
 
-        if (snode->nodetype & (LYS_CHOICE | LYS_CASE)) {
-            /* go recursively for schema-only nodes */
-            ret = lyd_validate_siblings_schema_r(first, parent, snode, mod, val_opts, op);
-            LY_CHECK_GOTO(ret, error);
+        if (snode->nodetype == LYS_CHOICE) {
+            /* find the existing case, if any */
+            LY_LIST_FOR(lysc_node_child(snode), scase) {
+                if (lys_getnext_data(NULL, first, NULL, scase, NULL)) {
+                    /* validate only this case */
+                    ret = lyd_validate_siblings_schema_r(first, parent, scase, mod, val_opts, op);
+                    LY_CHECK_GOTO(ret, error);
+                    break;
+                }
+            }
         }
 
         LOG_LOCBACK(1, 0, 0, 0);
