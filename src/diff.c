@@ -1427,6 +1427,11 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
             ret = lyd_diff_merge_replace(diff_node, cur_op, src_diff);
             break;
         case LYD_DIFF_OP_CREATE:
+            if ((cur_op == LYD_DIFF_OP_CREATE) && lysc_is_dup_inst_list(diff_node->schema)) {
+                /* special case of creating duplicate state (leaf-)list instances */
+                goto add_diff;
+            }
+
             ret = lyd_diff_merge_create(diff_node, cur_op, src_diff, options);
             break;
         case LYD_DIFF_OP_DELETE:
@@ -1456,6 +1461,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
             LY_CHECK_RET(lyd_diff_merge_r(child, diff_parent, diff_cb, cb_data, options, diff));
         }
     } else {
+add_diff:
         /* add new diff node with all descendants */
         LY_CHECK_RET(lyd_dup_single(src_diff, (struct lyd_node_inner *)diff_parent, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS,
                 &diff_node));
