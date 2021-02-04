@@ -1188,9 +1188,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
 
     /* find first top-level node */
     for (tree = node; tree->parent; tree = lyd_parent(tree)) {}
-    while (tree->prev->next) {
-        tree = tree->prev;
-    }
+    tree = lyd_first_sibling(tree);
 
     LY_ARRAY_FOR(musts, u) {
         memset(&xp_set, 0, sizeof xp_set);
