@@ -108,7 +108,7 @@ LY_ERR ly_set_add(struct ly_set *set, void *object, ly_bool list, uint32_t *inde
  * @return LY_EINVAL in case of invalid input parameters.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR ly_set_merge(struct ly_set *trg, struct ly_set *src, ly_bool list, void *(*duplicator)(void *obj));
+LY_ERR ly_set_merge(struct ly_set *trg, const struct ly_set *src, ly_bool list, void *(*duplicator)(void *obj));
 
 /**
  * @brief Learn whether the set contains the specified object.
