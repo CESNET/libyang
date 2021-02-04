@@ -1281,14 +1281,14 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
     LY_ERR ret = LY_SUCCESS, r;
     const struct lysc_node *schema;
     struct ly_path_predicate *pred;
-    LY_ARRAY_COUNT_TYPE u, last_u;
+    LY_ARRAY_COUNT_TYPE u, new_count;
 
     assert(path);
 
     /* go through all the compiled nodes */
     LY_ARRAY_FOR(path, u) {
         schema = path[u].node;
-        last_u = u;
+        new_count = u + 1;
         if ((schema->nodetype == LYS_LIST) && (path[u].pred_type == LY_PATH_PREDTYPE_NONE)) {
             if (schema->flags & LYS_KEYLESS) {
                 /* creating a new keyless list instance */
@@ -1303,7 +1303,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
         }
     }
 
-    if ((schema->nodetype == LYS_LEAFLIST) && (path[last_u].pred_type == LY_PATH_PREDTYPE_NONE)) {
+    if ((schema->nodetype == LYS_LEAFLIST) && (path[new_count - 1].pred_type == LY_PATH_PREDTYPE_NONE)) {
         /* parse leafref value into a predicate, if not defined in the path */
         if (!value) {
             value = "";
@@ -1315,8 +1315,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
         }
         if (!r) {
             /* store the new predicate */
-            path[last_u].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
-            LY_ARRAY_NEW_GOTO(schema->module->ctx, path[last_u].predicates, pred, ret, cleanup);
+            path[new_count - 1].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
+            LY_ARRAY_NEW_GOTO(schema->module->ctx, path[new_count - 1].predicates, pred, ret, cleanup);
 
             ret = lyd_value_store(schema->module->ctx, &pred->value, ((struct lysc_node_leaflist *)schema)->type, value,
                     strlen(value), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, schema, NULL);
@@ -1325,13 +1325,13 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 
             if (schema->flags & LYS_CONFIG_R) {
                 /* creating a new state leaf-list instance */
-                --last_u;
+                --new_count;
             }
         } /* else we have opaq flag and the value is not valid, leave no predicate and then create an opaque node */
     }
 
     /* hide the nodes that should always be created so they are not found */
-    while (last_u + 1 < LY_ARRAY_COUNT(path)) {
+    while (new_count < LY_ARRAY_COUNT(path)) {
         LY_ARRAY_DECREMENT(path);
     }
 
