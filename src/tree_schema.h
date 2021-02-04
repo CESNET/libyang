@@ -1923,7 +1923,7 @@ struct lysc_module {
  * @return Boolean value whether the @p node is a key or not.
  */
 #define lysc_is_key(lysc_node) \
-    ((!lysc_node || !(lysc_node->nodetype & (LYS_LEAF)) || !(lysc_node->flags & LYS_KEY)) ? 0 : 1)
+    ((!lysc_node || (lysc_node->nodetype != LYS_LEAF) || !(lysc_node->flags & LYS_KEY)) ? 0 : 1)
 
 /**
  * @brief Examine whether a node is a non-presence container.
@@ -1932,7 +1932,17 @@ struct lysc_module {
  * @return Boolean value whether the @p node is a NP container or not.
  */
 #define lysc_is_np_cont(lysc_node) \
-    ((!lysc_node || !(lysc_node->nodetype & (LYS_CONTAINER)) || (lysc_node->flags & LYS_PRESENCE)) ? 0 : 1)
+    ((!lysc_node || (lysc_node->nodetype != LYS_CONTAINER) || (lysc_node->flags & LYS_PRESENCE)) ? 0 : 1)
+
+/**
+ * @brief Examine whether a node is a key-less list or a state leaf-list.
+ *
+ * @param[in] lysc_node Schema node to examine.
+ * @return Boolean value whether the @p node is a list with duplicate instances allowed.
+ */
+#define lysc_is_dup_inst_list(lysc_node) \
+    ((lysc_node && (((lysc_node->nodetype == LYS_LIST) && (lysc_node->flags & LYS_KEYLESS)) || \
+            ((lysc_node->nodetype == LYS_LEAFLIST) && (lysc_node->flags & LYS_CONFIG_R)))) ? 1 : 0)
 
 /**
  * @brief Check whether the schema node data instance existence depends on any when conditions.
