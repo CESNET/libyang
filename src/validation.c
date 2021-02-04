@@ -1492,7 +1492,7 @@ API LY_ERR
 lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALIDATE_OP op, struct lyd_node **diff)
 {
     LY_ERR ret;
-    struct lyd_node *tree_sibling, *tree_parent, *op_subtree, *op_node, *op_parent;
+    struct lyd_node *tree_sibling, *tree_parent, *op_subtree, *op_node, *op_parent, *child;
     struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
 
     LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !tree || !tree->parent,
@@ -1538,9 +1538,18 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
 
     LOG_LOCSET(NULL, op_node, NULL, NULL);
 
-    /* prevalidate whole operation subtree */
-    LY_CHECK_GOTO(ret = lyd_validate_subtree(op_node, &type_check, &type_meta_check, &when_check,
-            op == LYD_VALIDATE_OP_REPLY ? LYD_IMPLICIT_OUTPUT : 0, diff), cleanup);
+    if (op == LYD_VALIDATE_OP_REPLY) {
+        /* add output children defaults */
+        LY_CHECK_RET(lyd_new_implicit_r(op_node, lyd_node_children_p(op_node), NULL, NULL, NULL, NULL, LYD_IMPLICIT_OUTPUT, diff));
+
+        /* skip validating the operation itself, go to children directly */
+        LY_LIST_FOR(lyd_child(op_node), child) {
+            LY_CHECK_GOTO(ret = lyd_validate_subtree(child, &type_check, &type_meta_check, &when_check, 0, diff), cleanup);
+        }
+    } else {
+        /* prevalidate whole operation subtree */
+        LY_CHECK_GOTO(ret = lyd_validate_subtree(op_node, &type_check, &type_meta_check, &when_check, 0, diff), cleanup);
+    }
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree */
     LY_CHECK_GOTO(ret = lyd_validate_unres((struct lyd_node **)&tree, NULL, &when_check, &type_check, &type_meta_check,
