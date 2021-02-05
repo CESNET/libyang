@@ -156,18 +156,20 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *cb_data)
     return 0;
 }
 
-API void
+API LY_ERR
 lydict_remove(const struct ly_ctx *ctx, const char *value)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     size_t len;
     uint32_t hash;
     struct dict_rec rec, *match = NULL;
     char *val_p;
 
     if (!value) {
-        return;
+        return LY_SUCCESS;
     }
+
+    LOGDBG(LY_LDGDICT, "removing \"%s\"", value);
 
     len = strlen(value);
     hash = dict_hash(value, len);
@@ -198,10 +200,15 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
             free(val_p);
             LY_CHECK_ERR_GOTO(ret, LOGINT(ctx), finish);
         }
+    } else if (ret == LY_ENOTFOUND) {
+        LOGERR(ctx, LY_ENOTFOUND, "Value \"%s\" was not found in the dictionary.", value);
+    } else {
+        LOGINT(ctx);
     }
 
 finish:
     pthread_mutex_unlock((pthread_mutex_t *)&ctx->dict.lock);
+    return ret;
 }
 
 LY_ERR
@@ -211,6 +218,8 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
     struct dict_rec *match = NULL, rec;
     uint32_t hash;
 
+    LOGDBG(LY_LDGDICT, "inserting \"%.*s\"", len, value);
+
     hash = dict_hash(value, len);
     /* set len as data for compare callback */
     lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
@@ -218,7 +227,6 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
     rec.value = value;
     rec.refcount = 1;
 
-    LOGDBG(LY_LDGDICT, "inserting \"%s\"", rec.value);
     ret = lyht_insert_with_resize_cb(ctx->dict.hash_tab, (void *)&rec, hash, lydict_resize_val_eq, (void **)&match);
     if (ret == LY_EEXIST) {
         match->refcount++;

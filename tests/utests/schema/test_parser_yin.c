@@ -577,16 +577,16 @@ test_yin_parse_content(void **state)
     lysp_ext_instance_free(UTEST_LYCTX, exts);
     lysp_when_free(UTEST_LYCTX, when_p);
     lysp_ext_free(UTEST_LYCTX, ext_def);
-    FREE_STRING(UTEST_LYCTX, *if_features);
-    FREE_STRING(UTEST_LYCTX, error_message);
-    FREE_STRING(UTEST_LYCTX, app_tag);
-    FREE_STRING(UTEST_LYCTX, units);
-    FREE_STRING(UTEST_LYCTX, patter_type.patterns->arg.str);
-    FREE_STRING(UTEST_LYCTX, def.str);
-    FREE_STRING(UTEST_LYCTX, range_type.range->arg.str);
-    FREE_STRING(UTEST_LYCTX, len_type.length->arg.str);
-    FREE_STRING(UTEST_LYCTX, enum_type.enums->name);
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, *if_features);
+    lydict_remove(UTEST_LYCTX, error_message);
+    lydict_remove(UTEST_LYCTX, app_tag);
+    lydict_remove(UTEST_LYCTX, units);
+    lydict_remove(UTEST_LYCTX, patter_type.patterns->arg.str);
+    lydict_remove(UTEST_LYCTX, def.str);
+    lydict_remove(UTEST_LYCTX, range_type.range->arg.str);
+    lydict_remove(UTEST_LYCTX, len_type.length->arg.str);
+    lydict_remove(UTEST_LYCTX, enum_type.enums->name);
+    lydict_remove(UTEST_LYCTX, value);
     LY_ARRAY_FREE(if_features);
     LY_ARRAY_FREE(exts);
     LY_ARRAY_FREE(ext_def);
@@ -865,7 +865,7 @@ test_meta_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[1]), LYEXT_SUBSTMT_ORGANIZATION);
 
     assert_string_equal(value, "organization...");
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     value = NULL;
     exts = NULL;
@@ -877,7 +877,7 @@ test_meta_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &value, NULL, &exts), LY_SUCCESS);
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_CONTACT);
     assert_string_equal(value, "contact...");
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
     value = NULL;
@@ -889,7 +889,7 @@ test_meta_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &value, NULL, &exts), LY_SUCCESS);
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_DESCRIPTION);
     assert_string_equal(value, "description...");
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
     value = NULL;
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
@@ -901,7 +901,7 @@ test_meta_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &value, NULL, &exts), LY_SUCCESS);
     assert_string_equal(value, "reference...");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_REFERENCE);
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
     value = NULL;
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
@@ -912,7 +912,7 @@ test_meta_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &value, NULL, &exts), LY_EVALID);
     CHECK_LOG_CTX("Unexpected attribute \"invalid\" of \"reference\" element.", "Line number 1.");
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
     value = NULL;
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
@@ -930,7 +930,7 @@ test_meta_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &value, NULL, &exts), LY_EVALID);
     CHECK_LOG_CTX("Sub-element \"text\" of \"reference\" element must be defined as it's first sub-element.", "Line number 1.");
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
     value = NULL;
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
@@ -1163,7 +1163,7 @@ test_argument_elem(void **state)
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
     flags = 0;
-    FREE_STRING(UTEST_LYCTX, arg);
+    lydict_remove(UTEST_LYCTX, arg);
     arg = NULL;
 
     /* min subelems */
@@ -1174,7 +1174,7 @@ test_argument_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &arg_meta, NULL, NULL), LY_SUCCESS);
     assert_string_equal(arg, "arg");
     assert_true(flags == 0);
-    FREE_STRING(UTEST_LYCTX, arg);
+    lydict_remove(UTEST_LYCTX, arg);
 }
 
 static void
@@ -1196,7 +1196,7 @@ test_base_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_BASE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, *bases);
+    lydict_remove(UTEST_LYCTX, *bases);
     LY_ARRAY_FREE(bases);
 
     /* as type subelement */
@@ -1211,7 +1211,7 @@ test_base_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_BASE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, *type.bases);
+    lydict_remove(UTEST_LYCTX, *type.bases);
     LY_ARRAY_FREE(type.bases);
 }
 
@@ -1232,7 +1232,7 @@ test_belongsto_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_BELONGSTO);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, submod.prefix);
+    lydict_remove(UTEST_LYCTX, submod.prefix);
 
     data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &submod, NULL, NULL), LY_EVALID);
@@ -1278,7 +1278,7 @@ test_default_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_DEFAULT);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, val.str);
+    lydict_remove(UTEST_LYCTX, val.str);
     val.str = NULL;
 
     data = ELEMENT_WRAPPER_START "<default/>" ELEMENT_WRAPPER_END;
@@ -1299,7 +1299,7 @@ test_err_app_tag_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ERRTAG);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
     val = NULL;
 
     data = ELEMENT_WRAPPER_START "<error-app-tag/>" ELEMENT_WRAPPER_END;
@@ -1320,7 +1320,7 @@ test_err_msg_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ERRMSG);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<error-message></error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
@@ -1380,7 +1380,7 @@ test_iffeature_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_IFFEATURE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, *iffeatures);
+    lydict_remove(UTEST_LYCTX, *iffeatures);
     LY_ARRAY_FREE(iffeatures);
     iffeatures = NULL;
 
@@ -1448,14 +1448,14 @@ test_modifier_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_MODIFIER);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, pat);
+    lydict_remove(UTEST_LYCTX, pat);
 
     assert_int_equal(LY_SUCCESS, lydict_insert(UTEST_LYCTX, "\006pattern", 8, &pat));
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &pat, NULL, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. "
             "Only valid value is \"invert-match\".", "Line number 1.");
-    FREE_STRING(UTEST_LYCTX, pat);
+    lydict_remove(UTEST_LYCTX, pat);
 }
 
 static void
@@ -1471,7 +1471,7 @@ test_namespace_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_NAMESPACE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, ns);
+    lydict_remove(UTEST_LYCTX, ns);
 
     data = ELEMENT_WRAPPER_START "<namespace/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &ns, NULL, NULL), LY_EVALID);
@@ -1597,12 +1597,12 @@ test_prefix_elem(void **state)
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_PREFIX);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
 
     data = ELEMENT_WRAPPER_START "<prefix value=\"pref\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &value, NULL, NULL), LY_SUCCESS);
     assert_string_equal(value, "pref");
-    FREE_STRING(UTEST_LYCTX, value);
+    lydict_remove(UTEST_LYCTX, value);
 }
 
 static void
@@ -1699,14 +1699,14 @@ test_unique_elem(void **state)
     assert_string_equal(*values, "tag");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_UNIQUE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
-    FREE_STRING(UTEST_LYCTX, *values);
+    lydict_remove(UTEST_LYCTX, *values);
     LY_ARRAY_FREE(values);
     values = NULL;
 
     data = ELEMENT_WRAPPER_START "<unique tag=\"tag\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &values, NULL, NULL), LY_SUCCESS);
     assert_string_equal(*values, "tag");
-    FREE_STRING(UTEST_LYCTX, *values);
+    lydict_remove(UTEST_LYCTX, *values);
     LY_ARRAY_FREE(values);
     values = NULL;
 }
@@ -1723,13 +1723,13 @@ test_units_elem(void **state)
     assert_string_equal(values, "name");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_UNITS);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
-    FREE_STRING(UTEST_LYCTX, values);
+    lydict_remove(UTEST_LYCTX, values);
     values = NULL;
 
     data = ELEMENT_WRAPPER_START "<units name=\"name\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &values, NULL, NULL), LY_SUCCESS);
     assert_string_equal(values, "name");
-    FREE_STRING(UTEST_LYCTX, values);
+    lydict_remove(UTEST_LYCTX, values);
     values = NULL;
 }
 
@@ -1770,17 +1770,17 @@ test_yin_text_value_elem(void **state)
     data = ELEMENT_WRAPPER_START "<text>text</text>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "text");
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = "<error-message xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <value>text</value> </error-message>";
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "text");
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<text></text>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal("", val);
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 }
 
 static void
@@ -2247,12 +2247,12 @@ test_presence_elem(void **state)
     assert_string_equal(val, "presence-val");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_PRESENCE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "presence-val");
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<presence/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);
@@ -2271,12 +2271,12 @@ test_key_elem(void **state)
     assert_string_equal(val, "key-value");
     TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_KEY);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<key value=\"key-value\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_SUCCESS);
     assert_string_equal(val, "key-value");
-    FREE_STRING(UTEST_LYCTX, val);
+    lydict_remove(UTEST_LYCTX, val);
 
     data = ELEMENT_WRAPPER_START "<key/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, NULL), LY_EVALID);

@@ -60,7 +60,7 @@ lyd_free_meta(struct lyd_meta *meta, ly_bool siblings)
         meta = iter;
         iter = iter->next;
 
-        FREE_STRING(meta->annotation->module->ctx, meta->name);
+        lydict_remove(meta->annotation->module->ctx, meta->name);
         meta->value.realtype->plugin->free(meta->annotation->module->ctx, &meta->value);
         free(meta);
     }
@@ -116,10 +116,10 @@ lyd_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
         iter = iter->next;
 
         ly_free_prefix_data(attr->format, attr->val_prefix_data);
-        FREE_STRING(ctx, attr->name.name);
-        FREE_STRING(ctx, attr->name.prefix);
-        FREE_STRING(ctx, attr->name.module_ns);
-        FREE_STRING(ctx, attr->value);
+        lydict_remove(ctx, attr->name.name);
+        lydict_remove(ctx, attr->name.prefix);
+        lydict_remove(ctx, attr->name.module_ns);
+        lydict_remove(ctx, attr->value);
         free(attr);
     }
 }
@@ -157,10 +157,10 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
             lyd_free_subtree(iter, 0);
         }
 
-        FREE_STRING(LYD_CTX(opaq), opaq->name.name);
-        FREE_STRING(LYD_CTX(opaq), opaq->name.prefix);
-        FREE_STRING(LYD_CTX(opaq), opaq->name.module_ns);
-        FREE_STRING(LYD_CTX(opaq), opaq->value);
+        lydict_remove(LYD_CTX(opaq), opaq->name.name);
+        lydict_remove(LYD_CTX(opaq), opaq->name.prefix);
+        lydict_remove(LYD_CTX(opaq), opaq->name.module_ns);
+        lydict_remove(LYD_CTX(opaq), opaq->value);
         ly_free_prefix_data(opaq->format, opaq->val_prefix_data);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */

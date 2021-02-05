@@ -558,7 +558,7 @@ xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 
     /* remove all added namespaces */
     while (ns_count < ctx->ns.count) {
-        FREE_STRING(ctx->ctx, ctx->prefix.objs[ctx->prefix.count - 1]);
+        lydict_remove(ctx->ctx, ctx->prefix.objs[ctx->prefix.count - 1]);
         ly_set_rm_index(&ctx->prefix, ctx->prefix.count - 1, NULL);
         ly_set_rm_index(&ctx->ns, ctx->ns.count - 1, NULL);
     }

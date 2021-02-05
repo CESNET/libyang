@@ -107,8 +107,11 @@ LY_ERR lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_
  * @param[in] value String to be freed. Note, that not only the string itself
  * must match the stored value, but also the address is being compared and the
  * counter is decremented only if it matches. If NULL, function does nothing.
+ * @return LY_SUCCESS if the value was found and removed (or refcount decreased).
+ * @return LY_ENOTFOUND if the value was not found.
+ * @return LY_ERR on other errors.
  */
-void lydict_remove(const struct ly_ctx *ctx, const char *value);
+LY_ERR lydict_remove(const struct ly_ctx *ctx, const char *value);
 
 /** @} dict */
 

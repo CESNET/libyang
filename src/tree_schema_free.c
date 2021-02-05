@@ -35,8 +35,8 @@ lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
 {
     struct lysp_stmt *child, *next;
 
-    FREE_STRING(ctx, stmt->stmt);
-    FREE_STRING(ctx, stmt->arg);
+    lydict_remove(ctx, stmt->stmt);
+    lydict_remove(ctx, stmt->arg);
 
     LY_LIST_FOR_SAFE(stmt->child, next, child) {
         lysp_stmt_free(ctx, child);
@@ -50,8 +50,8 @@ lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
 
-    FREE_STRING(ctx, ext->name);
-    FREE_STRING(ctx, ext->argument);
+    lydict_remove(ctx, ext->name);
+    lydict_remove(ctx, ext->argument);
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
         lysp_stmt_free(ctx, stmt);
@@ -62,10 +62,10 @@ void
 lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
 {
     /* imported module is freed directly from the context's list */
-    FREE_STRING(ctx, import->name);
-    FREE_STRING(ctx, import->prefix);
-    FREE_STRING(ctx, import->dsc);
-    FREE_STRING(ctx, import->ref);
+    lydict_remove(ctx, import->name);
+    lydict_remove(ctx, import->prefix);
+    lydict_remove(ctx, import->dsc);
+    lydict_remove(ctx, import->ref);
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
 }
 
@@ -87,9 +87,9 @@ lysp_include_free_(struct ly_ctx *ctx, struct lysp_include *include, ly_bool mai
     if (main_module && include->submodule) {
         lysp_module_free((struct lysp_module *)include->submodule);
     }
-    FREE_STRING(ctx, include->name);
-    FREE_STRING(ctx, include->dsc);
-    FREE_STRING(ctx, include->ref);
+    lydict_remove(ctx, include->name);
+    lydict_remove(ctx, include->dsc);
+    lydict_remove(ctx, include->ref);
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
 }
 
@@ -108,18 +108,18 @@ lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 void
 lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
 {
-    FREE_STRING(ctx, rev->dsc);
-    FREE_STRING(ctx, rev->ref);
+    lydict_remove(ctx, rev->dsc);
+    lydict_remove(ctx, rev->ref);
     FREE_ARRAY(ctx, rev->exts, lysp_ext_instance_free);
 }
 
 void
 lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
 {
-    FREE_STRING(ctx, ext->name);
-    FREE_STRING(ctx, ext->argument);
-    FREE_STRING(ctx, ext->dsc);
-    FREE_STRING(ctx, ext->ref);
+    lydict_remove(ctx, ext->name);
+    lydict_remove(ctx, ext->argument);
+    lydict_remove(ctx, ext->dsc);
+    lydict_remove(ctx, ext->ref);
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
     if (ext->compiled) {
         lysc_extension_free(ctx, &ext->compiled);
@@ -129,43 +129,43 @@ lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
 void
 lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
 {
-    FREE_STRING(ctx, feat->name);
+    lydict_remove(ctx, feat->name);
     FREE_ARRAY(ctx, feat->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, feat->iffeatures_c, lysc_iffeature_free);
     LY_ARRAY_FREE(feat->depfeatures);
-    FREE_STRING(ctx, feat->dsc);
-    FREE_STRING(ctx, feat->ref);
+    lydict_remove(ctx, feat->dsc);
+    lydict_remove(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
 }
 
 void
 lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident)
 {
-    FREE_STRING(ctx, ident->name);
+    lydict_remove(ctx, ident->name);
     FREE_ARRAY(ctx, ident->iffeatures, lysp_qname_free);
     FREE_STRINGS(ctx, ident->bases);
-    FREE_STRING(ctx, ident->dsc);
-    FREE_STRING(ctx, ident->ref);
+    lydict_remove(ctx, ident->dsc);
+    lydict_remove(ctx, ident->ref);
     FREE_ARRAY(ctx, ident->exts, lysp_ext_instance_free);
 }
 
 void
 lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr)
 {
-    FREE_STRING(ctx, restr->arg.str);
-    FREE_STRING(ctx, restr->emsg);
-    FREE_STRING(ctx, restr->eapptag);
-    FREE_STRING(ctx, restr->dsc);
-    FREE_STRING(ctx, restr->ref);
+    lydict_remove(ctx, restr->arg.str);
+    lydict_remove(ctx, restr->emsg);
+    lydict_remove(ctx, restr->eapptag);
+    lydict_remove(ctx, restr->dsc);
+    lydict_remove(ctx, restr->ref);
     FREE_ARRAY(ctx, restr->exts, lysp_ext_instance_free);
 }
 
 static void
 lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
 {
-    FREE_STRING(ctx, item->name);
-    FREE_STRING(ctx, item->dsc);
-    FREE_STRING(ctx, item->ref);
+    lydict_remove(ctx, item->name);
+    lydict_remove(ctx, item->dsc);
+    lydict_remove(ctx, item->ref);
     FREE_ARRAY(ctx, item->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
@@ -175,7 +175,7 @@ void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
-    FREE_STRING(ctx, type->name);
+    lydict_remove(ctx, type->name);
     FREE_MEMBER(ctx, type->range, lysp_restr_free);
     FREE_MEMBER(ctx, type->length, lysp_restr_free);
     FREE_ARRAY(ctx, type->patterns, lysp_restr_free);
@@ -193,11 +193,11 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 void
 lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
-    FREE_STRING(ctx, tpdf->name);
-    FREE_STRING(ctx, tpdf->units);
-    FREE_STRING(ctx, tpdf->dflt.str);
-    FREE_STRING(ctx, tpdf->dsc);
-    FREE_STRING(ctx, tpdf->ref);
+    lydict_remove(ctx, tpdf->name);
+    lydict_remove(ctx, tpdf->units);
+    lydict_remove(ctx, tpdf->dflt.str);
+    lydict_remove(ctx, tpdf->dsc);
+    lydict_remove(ctx, tpdf->ref);
     FREE_ARRAY(ctx, tpdf->exts, lysp_ext_instance_free);
 
     lysp_type_free(ctx, &tpdf->type);
@@ -227,9 +227,9 @@ lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp)
 void
 lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when)
 {
-    FREE_STRING(ctx, when->cond);
-    FREE_STRING(ctx, when->dsc);
-    FREE_STRING(ctx, when->ref);
+    lydict_remove(ctx, when->cond);
+    lydict_remove(ctx, when->dsc);
+    lydict_remove(ctx, when->ref);
     FREE_ARRAY(ctx, when->exts, lysp_ext_instance_free);
 }
 
@@ -253,7 +253,7 @@ void
 lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname)
 {
     if (qname) {
-        FREE_STRING(ctx, qname->str);
+        lydict_remove(ctx, qname->str);
     }
 }
 
@@ -270,14 +270,14 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
         break;
     case LYS_DEV_ADD:
     case LYS_DEV_DELETE: /* compatible for dynamically allocated data */
-        FREE_STRING(ctx, add->units);
+        lydict_remove(ctx, add->units);
         FREE_ARRAY(ctx, add->musts, lysp_restr_free);
         FREE_ARRAY(ctx, add->uniques, lysp_qname_free);
         FREE_ARRAY(ctx, add->dflts, lysp_qname_free);
         break;
     case LYS_DEV_REPLACE:
         FREE_MEMBER(ctx, rpl->type, lysp_type_free);
-        FREE_STRING(ctx, rpl->units);
+        lydict_remove(ctx, rpl->units);
         lysp_qname_free(ctx, &rpl->dflt);
         break;
     default:
@@ -291,9 +291,9 @@ lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
 {
     struct lysp_deviate *next, *iter;
 
-    FREE_STRING(ctx, dev->nodeid);
-    FREE_STRING(ctx, dev->dsc);
-    FREE_STRING(ctx, dev->ref);
+    lydict_remove(ctx, dev->nodeid);
+    lydict_remove(ctx, dev->dsc);
+    lydict_remove(ctx, dev->ref);
     LY_LIST_FOR_SAFE(dev->deviates, next, iter) {
         lysp_deviate_free(ctx, iter);
         free(iter);
@@ -304,12 +304,12 @@ lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
 void
 lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
 {
-    FREE_STRING(ctx, ref->nodeid);
-    FREE_STRING(ctx, ref->dsc);
-    FREE_STRING(ctx, ref->ref);
+    lydict_remove(ctx, ref->nodeid);
+    lydict_remove(ctx, ref->dsc);
+    lydict_remove(ctx, ref->ref);
     FREE_ARRAY(ctx, ref->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, ref->musts, lysp_restr_free);
-    FREE_STRING(ctx, ref->presence);
+    lydict_remove(ctx, ref->presence);
     FREE_ARRAY(ctx, ref->dflts, lysp_qname_free);
     FREE_ARRAY(ctx, ref->exts, lysp_ext_instance_free);
 }
@@ -321,9 +321,9 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
     struct lysp_restr *musts = lysp_node_musts(node);
     struct lysp_when *when = lysp_node_when(node);
 
-    FREE_STRING(ctx, node->name);
-    FREE_STRING(ctx, node->dsc);
-    FREE_STRING(ctx, node->ref);
+    lydict_remove(ctx, node->name);
+    lydict_remove(ctx, node->dsc);
+    lydict_remove(ctx, node->ref);
     FREE_ARRAY(ctx, node->iffeatures, lysp_qname_free);
     FREE_ARRAY(ctx, node->exts, lysp_ext_instance_free);
 
@@ -332,7 +332,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
 
     switch (node->nodetype) {
     case LYS_CONTAINER:
-        FREE_STRING(ctx, ((struct lysp_node_container *)node)->presence);
+        lydict_remove(ctx, ((struct lysp_node_container *)node)->presence);
         FREE_ARRAY(ctx, ((struct lysp_node_container *)node)->typedefs, lysp_tpdf_free);
         LY_LIST_FOR_SAFE(&((struct lysp_node_container *)node)->groupings->node, next, child) {
             lysp_node_free(ctx, child);
@@ -349,16 +349,16 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
         break;
     case LYS_LEAF:
         lysp_type_free(ctx, &((struct lysp_node_leaf *)node)->type);
-        FREE_STRING(ctx, ((struct lysp_node_leaf *)node)->units);
-        FREE_STRING(ctx, ((struct lysp_node_leaf *)node)->dflt.str);
+        lydict_remove(ctx, ((struct lysp_node_leaf *)node)->units);
+        lydict_remove(ctx, ((struct lysp_node_leaf *)node)->dflt.str);
         break;
     case LYS_LEAFLIST:
         lysp_type_free(ctx, &((struct lysp_node_leaflist *)node)->type);
-        FREE_STRING(ctx, ((struct lysp_node_leaflist *)node)->units);
+        lydict_remove(ctx, ((struct lysp_node_leaflist *)node)->units);
         FREE_ARRAY(ctx, ((struct lysp_node_leaflist *)node)->dflts, lysp_qname_free);
         break;
     case LYS_LIST:
-        FREE_STRING(ctx, ((struct lysp_node_list *)node)->key);
+        lydict_remove(ctx, ((struct lysp_node_list *)node)->key);
         FREE_ARRAY(ctx, ((struct lysp_node_list *)node)->typedefs, lysp_tpdf_free);
         LY_LIST_FOR_SAFE(&((struct lysp_node_list *)node)->groupings->node, next, child) {
             lysp_node_free(ctx, child);
@@ -378,7 +378,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
         LY_LIST_FOR_SAFE(((struct lysp_node_choice *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
-        FREE_STRING(ctx, ((struct lysp_node_choice *)node)->dflt.str);
+        lydict_remove(ctx, ((struct lysp_node_choice *)node)->dflt.str);
         break;
     case LYS_CASE:
         LY_LIST_FOR_SAFE(((struct lysp_node_case *)node)->child, next, child) {
@@ -481,13 +481,13 @@ lysp_module_free(struct lysp_module *module)
     if (module->is_submod) {
         struct lysp_submodule *submod = (struct lysp_submodule *)module;
 
-        FREE_STRING(ctx, submod->name);
-        FREE_STRING(ctx, submod->filepath);
-        FREE_STRING(ctx, submod->prefix);
-        FREE_STRING(ctx, submod->org);
-        FREE_STRING(ctx, submod->contact);
-        FREE_STRING(ctx, submod->dsc);
-        FREE_STRING(ctx, submod->ref);
+        lydict_remove(ctx, submod->name);
+        lydict_remove(ctx, submod->filepath);
+        lydict_remove(ctx, submod->prefix);
+        lydict_remove(ctx, submod->org);
+        lydict_remove(ctx, submod->contact);
+        lydict_remove(ctx, submod->dsc);
+        lydict_remove(ctx, submod->ref);
     }
 
     free(module);
@@ -499,8 +499,8 @@ lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext)
     if (--(*ext)->refcount) {
         return;
     }
-    FREE_STRING(ctx, (*ext)->name);
-    FREE_STRING(ctx, (*ext)->argument);
+    lydict_remove(ctx, (*ext)->name);
+    lydict_remove(ctx, (*ext)->argument);
     FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
     free(*ext);
 }
@@ -514,7 +514,7 @@ lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     if (ext->def) {
         lysc_extension_free(ctx, &ext->def);
     }
-    FREE_STRING(ctx, ext->argument);
+    lydict_remove(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
 
@@ -533,8 +533,8 @@ lysc_when_free(struct ly_ctx *ctx, struct lysc_when **w)
     }
     lyxp_expr_free(ctx, (*w)->cond);
     lysc_prefixes_free((*w)->prefixes);
-    FREE_STRING(ctx, (*w)->dsc);
-    FREE_STRING(ctx, (*w)->ref);
+    lydict_remove(ctx, (*w)->dsc);
+    lydict_remove(ctx, (*w)->ref);
     FREE_ARRAY(ctx, (*w)->exts, lysc_ext_instance_free);
     free(*w);
 }
@@ -544,19 +544,19 @@ lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
 {
     lyxp_expr_free(ctx, must->cond);
     lysc_prefixes_free(must->prefixes);
-    FREE_STRING(ctx, must->emsg);
-    FREE_STRING(ctx, must->eapptag);
-    FREE_STRING(ctx, must->dsc);
-    FREE_STRING(ctx, must->ref);
+    lydict_remove(ctx, must->emsg);
+    lydict_remove(ctx, must->eapptag);
+    lydict_remove(ctx, must->dsc);
+    lydict_remove(ctx, must->ref);
     FREE_ARRAY(ctx, must->exts, lysc_ext_instance_free);
 }
 
 void
 lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
-    FREE_STRING(ctx, ident->name);
-    FREE_STRING(ctx, ident->dsc);
-    FREE_STRING(ctx, ident->ref);
+    lydict_remove(ctx, ident->name);
+    lydict_remove(ctx, ident->dsc);
+    lydict_remove(ctx, ident->ref);
     LY_ARRAY_FREE(ident->derived);
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
@@ -565,10 +565,10 @@ static void
 lysc_range_free(struct ly_ctx *ctx, struct lysc_range *range)
 {
     LY_ARRAY_FREE(range->parts);
-    FREE_STRING(ctx, range->eapptag);
-    FREE_STRING(ctx, range->emsg);
-    FREE_STRING(ctx, range->dsc);
-    FREE_STRING(ctx, range->ref);
+    lydict_remove(ctx, range->eapptag);
+    lydict_remove(ctx, range->emsg);
+    lydict_remove(ctx, range->dsc);
+    lydict_remove(ctx, range->ref);
     FREE_ARRAY(ctx, range->exts, lysc_ext_instance_free);
 }
 
@@ -579,11 +579,11 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
         return;
     }
     pcre2_code_free((*pattern)->code);
-    FREE_STRING(ctx, (*pattern)->expr);
-    FREE_STRING(ctx, (*pattern)->eapptag);
-    FREE_STRING(ctx, (*pattern)->emsg);
-    FREE_STRING(ctx, (*pattern)->dsc);
-    FREE_STRING(ctx, (*pattern)->ref);
+    lydict_remove(ctx, (*pattern)->expr);
+    lydict_remove(ctx, (*pattern)->eapptag);
+    lydict_remove(ctx, (*pattern)->emsg);
+    lydict_remove(ctx, (*pattern)->dsc);
+    lydict_remove(ctx, (*pattern)->ref);
     FREE_ARRAY(ctx, (*pattern)->exts, lysc_ext_instance_free);
     free(*pattern);
 }
@@ -591,9 +591,9 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
 static void
 lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_bitenum_item *item)
 {
-    FREE_STRING(ctx, item->name);
-    FREE_STRING(ctx, item->dsc);
-    FREE_STRING(ctx, item->ref);
+    lydict_remove(ctx, item->name);
+    lydict_remove(ctx, item->dsc);
+    lydict_remove(ctx, item->ref);
     FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
 }
 
@@ -720,7 +720,7 @@ lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
     if (node->type) {
         lysc_type_free(ctx, node->type);
     }
-    FREE_STRING(ctx, node->units);
+    lydict_remove(ctx, node->units);
     if (node->dflt) {
         node->dflt->realtype->plugin->free(ctx, node->dflt);
         lysc_type_free(ctx, (struct lysc_type *)node->dflt->realtype);
@@ -738,7 +738,7 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
     if (node->type) {
         lysc_type_free(ctx, node->type);
     }
-    FREE_STRING(ctx, node->units);
+    lydict_remove(ctx, node->units);
     LY_ARRAY_FOR(node->dflts, u) {
         node->dflts[u]->realtype->plugin->free(ctx, node->dflts[u]);
         lysc_type_free(ctx, (struct lysc_type *)node->dflts[u]->realtype);
@@ -807,9 +807,9 @@ lysc_node_free_(struct ly_ctx *ctx, struct lysc_node *node)
     ly_bool inout = 0;
 
     /* common part */
-    FREE_STRING(ctx, node->name);
-    FREE_STRING(ctx, node->dsc);
-    FREE_STRING(ctx, node->ref);
+    lydict_remove(ctx, node->name);
+    lydict_remove(ctx, node->dsc);
+    lydict_remove(ctx, node->ref);
 
     /* nodetype-specific part */
     switch (node->nodetype) {
@@ -970,15 +970,15 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     LY_ARRAY_FREE(module->augmented_by);
     LY_ARRAY_FREE(module->deviated_by);
 
-    FREE_STRING(module->ctx, module->name);
-    FREE_STRING(module->ctx, module->revision);
-    FREE_STRING(module->ctx, module->ns);
-    FREE_STRING(module->ctx, module->prefix);
-    FREE_STRING(module->ctx, module->filepath);
-    FREE_STRING(module->ctx, module->org);
-    FREE_STRING(module->ctx, module->contact);
-    FREE_STRING(module->ctx, module->dsc);
-    FREE_STRING(module->ctx, module->ref);
+    lydict_remove(module->ctx, module->name);
+    lydict_remove(module->ctx, module->revision);
+    lydict_remove(module->ctx, module->ns);
+    lydict_remove(module->ctx, module->prefix);
+    lydict_remove(module->ctx, module->filepath);
+    lydict_remove(module->ctx, module->org);
+    lydict_remove(module->ctx, module->contact);
+    lydict_remove(module->ctx, module->dsc);
+    lydict_remove(module->ctx, module->ref);
 
     free(module);
 }
@@ -1016,7 +1016,7 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
                 if (!str) {
                     break;
                 }
-                FREE_STRING(ctx, str);
+                lydict_remove(ctx, str);
             } else {
                 /* multiple items */
                 const char **strs = *((const char ***)substmts[u].storage);

@@ -638,7 +638,7 @@ yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     saved_value = malloc(len + 2);
     LY_CHECK_ERR_RET(!saved_value, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
     memmove(saved_value + 1, real_value, len);
-    FREE_STRING(ctx->xmlctx->ctx, real_value);
+    lydict_remove(ctx->xmlctx->ctx, real_value);
     saved_value[0] = LYSP_RESTR_PATTERN_ACK;
     saved_value[len + 1] = '\0';
     LY_CHECK_RET(lydict_insert_zc(ctx->xmlctx->ctx, saved_value, &restr->arg.str));
@@ -676,7 +676,7 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
 
     if ((temp_val[0] == '\0') || (temp_val[0] == '0') || !isdigit(temp_val[0])) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
 
@@ -684,15 +684,15 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     num = strtoul(temp_val, &ptr, LY_BASE_DEC);
     if (*ptr != '\0') {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
     if ((errno == ERANGE) || (num > LY_TYPE_DEC64_FD_MAX)) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
     type->fraction_digits = num;
     type->flags |= LYS_SET_FRDIGITS;
     struct yin_subelement subelems[] = {
@@ -873,10 +873,10 @@ yin_pasrse_reqinstance(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     } else if (strcmp(temp_val, "false") != 0) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "require-instance", "true", "false");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_REQUIRE_INSTANCE, NULL, &type->exts);
 }
@@ -905,7 +905,7 @@ yin_parse_modifier(struct lys_yin_parser_ctx *ctx, const char **pat, struct lysp
     if (strcmp(temp_val, "invert-match") != 0) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS1, temp_val, "value",
                 "modifier", "invert-match");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
     lydict_remove(ctx->xmlctx->ctx, temp_val);
@@ -1106,7 +1106,7 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     } else {
         enm->value = unum;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     /* parse subelements */
     struct yin_subelement subelems[] = {
@@ -1116,7 +1116,7 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), kw, NULL, &enm->exts);
 
 error:
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
     return LY_EVALID;
 }
 
@@ -1280,7 +1280,7 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_MAX_ELEMENTS));
     if (!temp_val || (temp_val[0] == '\0') || (temp_val[0] == '0') || ((temp_val[0] != 'u') && !isdigit(temp_val[0]))) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
 
@@ -1289,17 +1289,17 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
         num = strtoul(temp_val, &ptr, LY_BASE_DEC);
         if (*ptr != '\0') {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
-            FREE_STRING(ctx->xmlctx->ctx, temp_val);
+            lydict_remove(ctx->xmlctx->ctx, temp_val);
             return LY_EVALID;
         }
         if ((errno == ERANGE) || (num > UINT32_MAX)) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", "max-elements");
-            FREE_STRING(ctx->xmlctx->ctx, temp_val);
+            lydict_remove(ctx->xmlctx->ctx, temp_val);
             return LY_EVALID;
         }
         *max = num;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_MAX_ELEMENTS, NULL, exts);
 }
 
@@ -1329,7 +1329,7 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
 
     if (!temp_val || (temp_val[0] == '\0') || ((temp_val[0] == '0') && (temp_val[1] != '\0'))) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
 
@@ -1337,16 +1337,16 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
     num = strtoul(temp_val, &ptr, LY_BASE_DEC);
     if (ptr[0] != 0) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
     if ((errno == ERANGE) || (num > UINT32_MAX)) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", "min-elements");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
     *min = num;
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_MIN_ELEMENTS, NULL, exts);
 }
 
@@ -1422,10 +1422,10 @@ yin_parse_orderedby(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "ordered-by", "system", "user");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_ORDERED_BY, NULL, exts);
 }
@@ -1707,11 +1707,11 @@ yin_parse_revision(struct lys_yin_parser_ctx *ctx, struct lysp_revision **revs)
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_date, Y_STR_ARG, LY_STMT_REVISION));
     /* check value */
     if (lysp_check_date((struct lys_parser_ctx *)ctx, temp_date, strlen(temp_date), "revision")) {
-        FREE_STRING(ctx->xmlctx->ctx, temp_date);
+        lydict_remove(ctx->xmlctx->ctx, temp_date);
         return LY_EVALID;
     }
     memcpy(rev->date, temp_date, LY_REV_SIZE);
-    FREE_STRING(ctx->xmlctx->ctx, temp_date);
+    lydict_remove(ctx->xmlctx->ctx, temp_date);
 
     /* parse content */
     struct yin_subelement subelems[] = {
@@ -1781,10 +1781,10 @@ yin_parse_revision_date(struct lys_yin_parser_ctx *ctx, char *rev, struct lysp_e
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_rev, Y_STR_ARG, LY_STMT_REVISION_DATE));
     LY_CHECK_ERR_RET(lysp_check_date((struct lys_parser_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
-            FREE_STRING(ctx->xmlctx->ctx, temp_rev), LY_EVALID);
+            lydict_remove(ctx->xmlctx->ctx, temp_rev), LY_EVALID);
 
     strcpy(rev, temp_rev);
-    FREE_STRING(ctx->xmlctx->ctx, temp_rev);
+    lydict_remove(ctx->xmlctx->ctx, temp_rev);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_REVISION_DATE, NULL, exts);
 }
@@ -1815,10 +1815,10 @@ yin_parse_config(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value", "config",
                 "true", "false");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_CONFIG, NULL, exts);
 }
@@ -1849,10 +1849,10 @@ yin_parse_yangversion(struct lys_yin_parser_ctx *ctx, uint8_t *version, struct l
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_version, "value",
                 "yang-version", "1", "1.1");
-        FREE_STRING(ctx->xmlctx->ctx, temp_version);
+        lydict_remove(ctx->xmlctx->ctx, temp_version);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_version);
+    lydict_remove(ctx->xmlctx->ctx, temp_version);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_YANG_VERSION, NULL, exts);
 }
@@ -1917,10 +1917,10 @@ yin_parse_mandatory(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "mandatory", "true", "false");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_MANDATORY, NULL, exts);
 }
@@ -1953,10 +1953,10 @@ yin_parse_status(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS3, value, "value",
                 "status", "current", "deprecated", "obsolete");
-        FREE_STRING(ctx->xmlctx->ctx, value);
+        lydict_remove(ctx->xmlctx->ctx, value);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, value);
+    lydict_remove(ctx->xmlctx->ctx, value);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_STATUS, NULL, exts);
 }
@@ -2019,10 +2019,10 @@ yin_parse_yin_element(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct ly
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "yin-element", "true", "false");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_YIN_ELEMENT, NULL, exts);
 }
@@ -2652,10 +2652,10 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
     } else {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS4, temp_val, "value", "deviate",
                 "not-supported", "add", "replace", "delete");
-        FREE_STRING(ctx->xmlctx->ctx, temp_val);
+        lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
-    FREE_STRING(ctx->xmlctx->ctx, temp_val);
+    lydict_remove(ctx->xmlctx->ctx, temp_val);
 
     if (dev_mod == LYS_DEV_NOT_SUPPORTED) {
         d = calloc(1, sizeof *d);

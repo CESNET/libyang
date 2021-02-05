@@ -349,8 +349,6 @@ extern const char * const ly_devmod_list[];
     } \
     DYNAMIC = 0
 
-#define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
-
 /**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to
  * allocate the requested memory, the original memory is freed as well.

@@ -266,7 +266,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
-        FREE_STRING(LYD_CTX(trg), t->value.str);
+        lydict_remove(LYD_CTX(trg), t->value.str);
         break;
     case LYD_ANYDATA_LYB:
         free(t->value.mem);
