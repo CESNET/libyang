@@ -1092,7 +1092,7 @@ test_data_xml(void **state)
     const char *schema;
     struct lyd_node *tree;
     const char *data;
-     /* variable for default value test */
+    /* variable for default value test */
     struct lysc_node_container *lysc_root;
     struct lyd_node_inner *lyd_root;
 
@@ -1145,9 +1145,9 @@ test_data_xml(void **state)
     CHECK_LOG_CTX("Value is out of int8's min/max bounds.",
             "Schema location /T0:port, line number 1.");
 
-     /*
-      * default value
-      */
+    /*
+     * default value
+     */
     schema = MODULE_CREATE_YANG("T1",
             "container cont {\n"
             "    leaf port {type int8 {range \"0 .. 50 | 105\";} default \"20\";}"
@@ -1358,6 +1358,7 @@ test_print(void **state)
 
     struct lyd_node *model_1;
     const char *data_1 = "<port xmlns=\"urn:tests:defs\"> 50 </port>";
+
     LYD_TREE_CREATE(data_1, model_1);
 
     /* XML */
@@ -1622,6 +1623,7 @@ test_plugin_print(void **state)
 
     /* print value */
     ly_bool dynamic = 0;
+
     assert_string_equal("32", type->print(&(values[0]), LY_PREF_XML, NULL, &dynamic));
     assert_string_equal("74", type->print(&(values[1]), LY_PREF_XML, NULL, &dynamic));
     assert_string_equal("-15", type->print(&(values[2]), LY_PREF_XML, NULL, &dynamic));
@@ -1669,6 +1671,7 @@ test_plugin_dup(void **state)
 
     /* print duplicate value */
     struct lyd_value dup_value;
+
     assert_int_equal(LY_SUCCESS, type->duplicate(UTEST_LYCTX, &(values[0]), &dup_value));
     CHECK_LYD_VALUE(dup_value, INT8, "32", 0x20);
     assert_ptr_equal(dup_value.realtype, values[0].realtype);
