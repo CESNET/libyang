@@ -1080,7 +1080,7 @@ test_yin_element_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yin-element value=\"false\">" EXT_SUBELEM "</yin-element>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &flags, NULL, &exts), LY_SUCCESS);
     assert_true(flags & LYS_YINELEM_TRUE);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_YINELEM);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_YIN_ELEMENT);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
 
     data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
@@ -1105,7 +1105,7 @@ test_yangversion_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yang-version value=\"1.1\">" EXT_SUBELEM "</yang-version>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &version, NULL, &exts), LY_SUCCESS);
     assert_true(version & LYS_VERSION_1_1);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_VERSION);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_YANG_VERSION);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
 
     /* invalid value */
@@ -1229,7 +1229,7 @@ test_belongsto_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &submod, NULL, &exts), LY_SUCCESS);
     assert_string_equal(submod.prefix, "pref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_BELONGSTO);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]), LYEXT_SUBSTMT_BELONGS_TO);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
     lydict_remove(UTEST_LYCTX, submod.prefix);
@@ -1296,7 +1296,7 @@ test_err_app_tag_elem(void **state)
     data = ELEMENT_WRAPPER_START "<error-app-tag value=\"val\">"EXT_SUBELEM "</error-app-tag>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val, "val");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ERRTAG);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ERROR_APP_TAG);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
     lydict_remove(UTEST_LYCTX, val);
@@ -1317,7 +1317,7 @@ test_err_msg_elem(void **state)
     data = ELEMENT_WRAPPER_START "<error-message><value>val</value>"EXT_SUBELEM "</error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &val, NULL, &exts), LY_SUCCESS);
     assert_string_equal(val, "val");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ERRMSG);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ERROR_MESSAGE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
     lydict_remove(UTEST_LYCTX, val);
@@ -1340,7 +1340,7 @@ test_fracdigits_elem(void **state)
     /* valid value */
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\">"EXT_SUBELEM "</fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]),  LYEXT_SUBSTMT_FRACDIGITS);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]),  LYEXT_SUBSTMT_FRACTION_DIGITS);
     assert_int_equal(type.fraction_digits, 10);
     assert_true(type.flags & LYS_SET_FRDIGITS);
     FREE_ARRAY(UTEST_LYCTX, type.exts, lysp_ext_instance_free);
@@ -1377,7 +1377,7 @@ test_iffeature_elem(void **state)
     data = ELEMENT_WRAPPER_START "<if-feature name=\"local-storage\">"EXT_SUBELEM "</if-feature>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &iffeatures, NULL, &exts), LY_SUCCESS);
     assert_string_equal(*iffeatures, "local-storage");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_IFFEATURE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_IF_FEATURE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
     exts = NULL;
     lydict_remove(UTEST_LYCTX, *iffeatures);
@@ -1648,7 +1648,7 @@ test_reqinstance_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
     assert_int_equal(type.require_instance, 1);
     assert_true(type.flags & LYS_SET_REQINST);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]),  LYEXT_SUBSTMT_REQINSTANCE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]),  LYEXT_SUBSTMT_REQUIRE_INSTANCE);
     lysp_type_free(UTEST_LYCTX, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1675,7 +1675,7 @@ test_revision_date_elem(void **state)
     data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\">"EXT_SUBELEM "</revision-date>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, rev, NULL, &exts), LY_SUCCESS);
     assert_string_equal(rev, "2000-01-01");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_REVISIONDATE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_REVISION_DATE);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
 
     data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\"/>" ELEMENT_WRAPPER_END;
@@ -1853,21 +1853,21 @@ test_max_elems_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &refine, NULL, NULL), LY_SUCCESS);
     assert_int_equal(refine.max, 0);
     assert_true(refine.flags & LYS_SET_MAX);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(refine.exts[0]),  LYEXT_SUBSTMT_MAX);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(refine.exts[0]),  LYEXT_SUBSTMT_MAX_ELEMENTS);
     FREE_ARRAY(UTEST_LYCTX, refine.exts, lysp_ext_instance_free);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"5\">"EXT_SUBELEM "</max-elements> </list>";
     assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_SUCCESS);
     assert_int_equal(list.max, 5);
     CHECK_LYSP_NODE(&list, NULL, 1, LYS_SET_MAX, 0, NULL, 0, LYS_UNKNOWN, NULL, NULL, 0);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(list.exts[0]),  LYEXT_SUBSTMT_MAX);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(list.exts[0]),  LYEXT_SUBSTMT_MAX_ELEMENTS);
     FREE_ARRAY(UTEST_LYCTX, list.exts, lysp_ext_instance_free);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"85\">"EXT_SUBELEM "</max-elements> </leaf-list>";
     assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_SUCCESS);
     assert_int_equal(llist.max, 85);
     CHECK_LYSP_NODE(&llist, NULL, 1, LYS_SET_MAX, 0, NULL, 0, LYS_UNKNOWN, NULL, NULL, 0);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(llist.exts[0]),  LYEXT_SUBSTMT_MAX);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(llist.exts[0]),  LYEXT_SUBSTMT_MAX_ELEMENTS);
     FREE_ARRAY(UTEST_LYCTX, llist.exts, lysp_ext_instance_free);
 
     data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"10\"/> </refine>";
@@ -1904,21 +1904,21 @@ test_min_elems_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &refine, NULL, NULL), LY_SUCCESS);
     assert_int_equal(refine.min, 0);
     assert_true(refine.flags & LYS_SET_MIN);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(refine.exts[0]),  LYEXT_SUBSTMT_MIN);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(refine.exts[0]),  LYEXT_SUBSTMT_MIN_ELEMENTS);
     FREE_ARRAY(UTEST_LYCTX, refine.exts, lysp_ext_instance_free);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"41\">"EXT_SUBELEM "</min-elements> </list>";
     assert_int_equal(test_element_helper(state, data, &list, NULL, NULL), LY_SUCCESS);
     assert_int_equal(list.min, 41);
     assert_true(list.flags & LYS_SET_MIN);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(list.exts[0]),  LYEXT_SUBSTMT_MIN);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(list.exts[0]),  LYEXT_SUBSTMT_MIN_ELEMENTS);
     FREE_ARRAY(UTEST_LYCTX, list.exts, lysp_ext_instance_free);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"50\">"EXT_SUBELEM "</min-elements> </leaf-list>";
     assert_int_equal(test_element_helper(state, data, &llist, NULL, NULL), LY_SUCCESS);
     assert_int_equal(llist.min, 50);
     assert_true(llist.flags & LYS_SET_MIN);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(llist.exts[0]),  LYEXT_SUBSTMT_MIN);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(llist.exts[0]),  LYEXT_SUBSTMT_MIN_ELEMENTS);
     FREE_ARRAY(UTEST_LYCTX, llist.exts, lysp_ext_instance_free);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"-5\"/> </leaf-list>";
@@ -1948,7 +1948,7 @@ test_ordby_elem(void **state)
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"system\">"EXT_SUBELEM "</ordered-by>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &flags, NULL, &exts), LY_SUCCESS);
     assert_true(flags & LYS_ORDBY_SYSTEM);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ORDEREDBY);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(exts[0]),  LYEXT_SUBSTMT_ORDERED_BY);
     FREE_ARRAY(UTEST_LYCTX, exts, lysp_ext_instance_free);
 
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"user\"/>" ELEMENT_WRAPPER_END;

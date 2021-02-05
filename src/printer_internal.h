@@ -23,20 +23,6 @@ struct lysp_module;
 struct lysp_submodule;
 
 /**
- * @brief Informational structure for YANG statements
- */
-struct ext_substmt_info_s {
-    const char *name;      /**< name of the statement */
-    const char *arg;       /**< name of YIN's attribute to present the statement */
-    uint8_t flags;         /**< various flags to clarify printing of the statement */
-#define SUBST_FLAG_YIN 0x1 /**< has YIN element */
-#define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
-};
-
-/* filled in out.c */
-extern struct ext_substmt_info_s ext_substmt_info[];
-
-/**
  * @brief YANG printer of the parsed module. Full YANG printer.
  *
  * @param[in] out Output specification.

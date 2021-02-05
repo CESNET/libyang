@@ -2774,7 +2774,7 @@ kw2lyext_substmt(enum ly_stmt kw)
     case LY_STMT_BASE:
         return LYEXT_SUBSTMT_BASE;
     case LY_STMT_BELONGS_TO:
-        return LYEXT_SUBSTMT_BELONGSTO;
+        return LYEXT_SUBSTMT_BELONGS_TO;
     case LY_STMT_CONTACT:
         return LYEXT_SUBSTMT_CONTACT;
     case LY_STMT_DEFAULT:
@@ -2782,9 +2782,9 @@ kw2lyext_substmt(enum ly_stmt kw)
     case LY_STMT_DESCRIPTION:
         return LYEXT_SUBSTMT_DESCRIPTION;
     case LY_STMT_ERROR_APP_TAG:
-        return LYEXT_SUBSTMT_ERRTAG;
+        return LYEXT_SUBSTMT_ERROR_APP_TAG;
     case LY_STMT_ERROR_MESSAGE:
-        return LYEXT_SUBSTMT_ERRMSG;
+        return LYEXT_SUBSTMT_ERROR_MESSAGE;
     case LY_STMT_KEY:
         return LYEXT_SUBSTMT_KEY;
     case LY_STMT_NAMESPACE:
@@ -2800,39 +2800,39 @@ kw2lyext_substmt(enum ly_stmt kw)
     case LY_STMT_REFERENCE:
         return LYEXT_SUBSTMT_REFERENCE;
     case LY_STMT_REVISION_DATE:
-        return LYEXT_SUBSTMT_REVISIONDATE;
+        return LYEXT_SUBSTMT_REVISION_DATE;
     case LY_STMT_UNITS:
         return LYEXT_SUBSTMT_UNITS;
     case LY_STMT_VALUE:
         return LYEXT_SUBSTMT_VALUE;
     case LY_STMT_YANG_VERSION:
-        return LYEXT_SUBSTMT_VERSION;
+        return LYEXT_SUBSTMT_YANG_VERSION;
     case LY_STMT_MODIFIER:
         return LYEXT_SUBSTMT_MODIFIER;
     case LY_STMT_REQUIRE_INSTANCE:
-        return LYEXT_SUBSTMT_REQINSTANCE;
+        return LYEXT_SUBSTMT_REQUIRE_INSTANCE;
     case LY_STMT_YIN_ELEMENT:
-        return LYEXT_SUBSTMT_YINELEM;
+        return LYEXT_SUBSTMT_YIN_ELEMENT;
     case LY_STMT_CONFIG:
         return LYEXT_SUBSTMT_CONFIG;
     case LY_STMT_MANDATORY:
         return LYEXT_SUBSTMT_MANDATORY;
     case LY_STMT_ORDERED_BY:
-        return LYEXT_SUBSTMT_ORDEREDBY;
+        return LYEXT_SUBSTMT_ORDERED_BY;
     case LY_STMT_STATUS:
         return LYEXT_SUBSTMT_STATUS;
     case LY_STMT_FRACTION_DIGITS:
-        return LYEXT_SUBSTMT_FRACDIGITS;
+        return LYEXT_SUBSTMT_FRACTION_DIGITS;
     case LY_STMT_MAX_ELEMENTS:
-        return LYEXT_SUBSTMT_MAX;
+        return LYEXT_SUBSTMT_MAX_ELEMENTS;
     case LY_STMT_MIN_ELEMENTS:
-        return LYEXT_SUBSTMT_MIN;
+        return LYEXT_SUBSTMT_MIN_ELEMENTS;
     case LY_STMT_POSITION:
         return LYEXT_SUBSTMT_POSITION;
     case LY_STMT_UNIQUE:
         return LYEXT_SUBSTMT_UNIQUE;
     case LY_STMT_IF_FEATURE:
-        return LYEXT_SUBSTMT_IFFEATURE;
+        return LYEXT_SUBSTMT_IF_FEATURE;
     default:
         return LYEXT_SUBSTMT_SELF;
     }
