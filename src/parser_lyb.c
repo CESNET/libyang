@@ -703,6 +703,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
     struct lyd_attr *attr = NULL, *a;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
+    const char *val_dict;
     ly_bool dynamic = 0;
     LY_PREFIX_FORMAT format = 0;
     void *val_prefix_data = NULL;
@@ -851,12 +852,34 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
             ly_log_options(prev_lo);
         }
 
-        /* create node */
-        ret = lyd_create_any(snode, value, value_type, 1, &node);
-        LY_CHECK_GOTO(ret, cleanup);
+        /* create the node */
+        switch (value_type) {
+        case LYD_ANYDATA_LYB:
+        case LYD_ANYDATA_DATATREE:
+            /* use the value directly */
+            ret = lyd_create_any(snode, value, value_type, 1, &node);
+            LY_CHECK_GOTO(ret, cleanup);
 
-        dynamic = 0;
-        value = NULL;
+            dynamic = 0;
+            value = NULL;
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_XML:
+        case LYD_ANYDATA_JSON:
+            /* value is expected to be in the dictionary */
+            ret = lydict_insert_zc(ctx, value, &val_dict);
+            LY_CHECK_GOTO(ret, cleanup);
+            dynamic = 0;
+            value = NULL;
+
+            /* use the value in the dictionary */
+            ret = lyd_create_any(snode, val_dict, value_type, 1, &node);
+            if (ret) {
+                lydict_remove(ctx, val_dict);
+                goto cleanup;
+            }
+            break;
+        }
     }
     assert(node);
 
