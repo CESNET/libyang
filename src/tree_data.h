@@ -902,7 +902,8 @@ LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node);
+LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node);
 
 /**
  * @brief Create a new list node in the data tree.
