@@ -208,6 +208,7 @@ struct lysc_type;
  * - ::lyd_free_attr_single()
  * - ::lyd_free_attr_siblings()
  *
+ * - ::lyd_any_value_str()
  * - ::lyd_any_copy_value()
  */
 
@@ -870,6 +871,15 @@ struct lyd_node *lyd_first_sibling(const struct lyd_node *node);
  * @return -1 on error.
  */
 int lyd_lyb_data_length(const char *data);
+
+/**
+ * @brief Get anydata string value.
+ *
+ * @param[in] any Anyxml/anydata node to read from.
+ * @param[out] value_str String representation of the value.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_any_value_str(const struct lyd_node *any, char **value_str);
 
 /**
  * @brief Copy anydata value from one node to another. Target value is freed first.

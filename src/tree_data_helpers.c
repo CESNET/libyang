@@ -26,6 +26,7 @@
 #include "log.h"
 #include "lyb.h"
 #include "parser_data.h"
+#include "printer_data.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -250,11 +251,67 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
 }
 
 API LY_ERR
+lyd_any_value_str(const struct lyd_node *any, char **value_str)
+{
+    const struct lyd_node_any *a;
+    struct lyd_node *tree = NULL;
+    const char *str = NULL;
+    ly_bool dynamic = 0;
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, any, value_str, LY_EINVAL);
+
+    a = (struct lyd_node_any *)any;
+    *value_str = NULL;
+
+    if (!a->value.str) {
+        /* there is no value in the union */
+        return LY_SUCCESS;
+    }
+
+    switch (a->value_type) {
+    case LYD_ANYDATA_LYB:
+        /* parse into a data tree */
+        ret = lyd_parse_data_mem(LYD_CTX(any), a->value.mem, LYD_LYB, LYD_PARSE_ONLY, 0, &tree);
+        LY_CHECK_GOTO(ret, cleanup);
+        dynamic = 1;
+        break;
+    case LYD_ANYDATA_DATATREE:
+        tree = a->value.tree;
+        break;
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+    case LYD_ANYDATA_JSON:
+        /* simply use the string */
+        str = a->value.str;
+        break;
+    }
+
+    if (tree) {
+        /* print into a string */
+        ret = lyd_print_mem(value_str, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        assert(str);
+        *value_str = strdup(str);
+        LY_CHECK_ERR_GOTO(!*value_str, LOGMEM(LYD_CTX(any)), cleanup);
+    }
+
+    /* success */
+
+cleanup:
+    if (dynamic) {
+        lyd_free_all(tree);
+    }
+    return ret;
+}
+
+API LY_ERR
 lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type)
 {
     struct lyd_node_any *t;
 
-    assert(trg->schema->nodetype & LYS_ANYDATA);
+    LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
 
     t = (struct lyd_node_any *)trg;
 
