@@ -301,7 +301,7 @@ test_yin_parse_element_generic(void **state)
     assert_int_equal(YCTX->xmlctx->status, LYXML_ELEM_CLOSE);
     stmt = "urn:example:extensions:elem";
     arg = "text_value";
-    CHECK_LYSP_STMT(exts.child, arg, 1, 0, 0x45, 0, stmt);
+    CHECK_LYSP_STMT(exts.child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     stmt = "attr";
     arg = "value";
     CHECK_LYSP_STMT(exts.child->child, arg, 0, 0x400, 0, 0, stmt);
@@ -316,7 +316,7 @@ test_yin_parse_element_generic(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(YCTX->xmlctx->status, LYXML_ELEM_CLOSE);
     stmt = "urn:example:extensions:elem";
-    CHECK_LYSP_STMT(exts.child, NULL, 0, 0x0, 0x45, 0, stmt);
+    CHECK_LYSP_STMT(exts.child, NULL, 0, 0x0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     lysp_ext_instance_free(UTEST_LYCTX, &exts);
 }
 
@@ -338,7 +338,7 @@ test_yin_parse_extension_instance(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     exts_name = "urn:example:extensions:ext";
     CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, NULL,
-            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, 0x2, LYS_YIN);
+            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, LYS_CHOICE, LYS_YIN);
 
     CHECK_LYSP_STMT(exts->child, arg, 0, LYS_YIN_ATTR, 0, 1, stmt);
     stmt = "value";
@@ -346,7 +346,7 @@ test_yin_parse_extension_instance(void **state)
     CHECK_LYSP_STMT(exts->child->next, arg, 0, LYS_YIN_ATTR, 0, 1, stmt);
     stmt = "urn:example:extensions:subelem";
     arg = "text";
-    CHECK_LYSP_STMT(exts->child->next->next, arg, 0, 0, 0x45, 0, stmt);
+    CHECK_LYSP_STMT(exts->child->next->next, arg, 0, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     lysp_ext_instance_free(UTEST_LYCTX, exts);
     LY_ARRAY_FREE(exts);
     exts = NULL;
@@ -360,7 +360,7 @@ test_yin_parse_extension_instance(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     exts_name = "urn:example:extensions:extension-elem";
     CHECK_LYSP_EXT_INSTANCE(exts, NULL, 0, NULL,
-            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, 0x2, LYS_YIN);
+            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, LYS_CHOICE, LYS_YIN);
     lysp_ext_instance_free(UTEST_LYCTX, exts);
     LY_ARRAY_FREE(exts);
     exts = NULL;
@@ -384,7 +384,7 @@ test_yin_parse_extension_instance(void **state)
 
     exts_name = "urn:example:extensions:ext";
     CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, NULL,
-            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, 0x2, LYS_YIN);
+            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, LYS_CHOICE, LYS_YIN);
 
     stmt = "attr1";
     arg = "text1";
@@ -397,11 +397,11 @@ test_yin_parse_extension_instance(void **state)
     stmt = "urn:example:extensions:ext-sub1";
     arg = NULL;
     act_child = act_child->next;
-    CHECK_LYSP_STMT(act_child, arg, NULL, 0, 0x45, 1, stmt);
+    CHECK_LYSP_STMT(act_child, arg, NULL, 0, LY_STMT_EXTENSION_INSTANCE, 1, stmt);
     stmt = "urn:example:extensions:ext-sub2";
     arg = NULL;
     act_child = act_child->next;
-    CHECK_LYSP_STMT(act_child, arg, 1, 0, 0x45, 1, stmt);
+    CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 1, stmt);
 
     stmt = "sattr1";
     arg = "stext2";
@@ -410,12 +410,12 @@ test_yin_parse_extension_instance(void **state)
     stmt = "urn:example:extensions:ext-sub21";
     arg = NULL;
     act_child = act_child->next;
-    CHECK_LYSP_STMT(act_child, arg, 1, 0, 0x45, 0, stmt);
+    CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
 
     stmt = "urn:example:extensions:ext-sub211";
     arg = NULL;
     act_child = act_child->child;
-    CHECK_LYSP_STMT(act_child, arg, 1, 0, 0x45, 0, stmt);
+    CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
 
     stmt = "sattr21";
     arg = "text21";
@@ -425,7 +425,7 @@ test_yin_parse_extension_instance(void **state)
     stmt = "urn:example:extensions:ext-sub3";
     arg = NULL;
     act_child = exts->child->next->next->next->next;
-    CHECK_LYSP_STMT(act_child, arg, 1, 0, 0x45, 0, stmt);
+    CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     stmt = "attr3";
     arg = "text3";
     act_child = act_child->child;
