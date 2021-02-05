@@ -255,27 +255,32 @@ struct lyxp_expr;
  */
 enum ly_stmt {
     LY_STMT_NONE = 0,
-    LY_STMT_STATUS,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
-    LY_STMT_CONFIG,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
-    LY_STMT_MANDATORY,
-    LY_STMT_UNITS,              /**< in ::lysc_ext_substmt.storage stored as a pointer to `const char *` (cardinality < #LY_STMT_CARD_SOME)
-                                     or as a pointer to a [sized array](@ref sizedarrays) `const char **` */
-    LY_STMT_DEFAULT,
-    LY_STMT_TYPE,               /**< in ::lysc_ext_substmt.storage stored as a pointer to `struct lysc_type *` (cardinality < #LY_STMT_CARD_SOME)
-                                     or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_type **` */
-
-    LY_STMT_ACTION,
-    LY_STMT_ANYDATA,
-    LY_STMT_ANYXML,
+    LY_STMT_ACTION,             /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node_action *`.
+                                     Note that due to compatibility with `struct lysc_node *`, the compiled actions can be actually
+                                     mixed in the linked list with other ::lysc_node based nodes if the storage is shared. */
+    LY_STMT_ANYDATA,            /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
+                                     Note that due to ::lysc_node compatibility the anydata can be actually mixed in
+                                     the linked list with other ::lysc_node based nodes if the storage is shared. */
+    LY_STMT_ANYXML,             /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
+                                     Note that due to ::lysc_node compatibility the anyxml can be actually mixed in
+                                     the linked list with other ::lysc_node based nodes if the storage is shared. */
     LY_STMT_ARGUMENT,
+    LY_STMT_ARG_TEXT,
+    LY_STMT_ARG_VALUE,
     LY_STMT_AUGMENT,
     LY_STMT_BASE,
     LY_STMT_BELONGS_TO,
     LY_STMT_BIT,
-    LY_STMT_CASE,
-    LY_STMT_CHOICE,
+    LY_STMT_CASE,               /**< TODO is it possible to compile cases without the parent choice? */
+    LY_STMT_CHOICE,             /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
+                                     Note that due to ::lysc_node compatibility the choice can be actually mixed in
+                                     the linked list with other ::lysc_node based nodes if the storage is shared. */
+    LY_STMT_CONFIG,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
     LY_STMT_CONTACT,
-    LY_STMT_CONTAINER,
+    LY_STMT_CONTAINER,          /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
+                                     Note that due to ::lysc_node compatibility the container can be actually mixed in
+                                     the linked list with other ::lysc_node based nodes if the storage is shared. */
+    LY_STMT_DEFAULT,
     LY_STMT_DESCRIPTION,
     LY_STMT_DEVIATE,
     LY_STMT_DEVIATION,
@@ -283,6 +288,7 @@ enum ly_stmt {
     LY_STMT_ERROR_APP_TAG,
     LY_STMT_ERROR_MESSAGE,
     LY_STMT_EXTENSION,
+    LY_STMT_EXTENSION_INSTANCE,
     LY_STMT_FEATURE,
     LY_STMT_FRACTION_DIGITS,
     LY_STMT_GROUPING,
@@ -296,7 +302,10 @@ enum ly_stmt {
     LY_STMT_LEAF,
     LY_STMT_LEAF_LIST,
     LY_STMT_LENGTH,
-    LY_STMT_LIST,
+    LY_STMT_LIST,               /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
+                                     Note that due to ::lysc_node compatibility the list can be actually mixed in
+                                     the linked list with other ::lysc_node based nodes if the storage is shared. */
+    LY_STMT_MANDATORY,          /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
     LY_STMT_MAX_ELEMENTS,
     LY_STMT_MIN_ELEMENTS,
     LY_STMT_MODIFIER,
@@ -318,23 +327,25 @@ enum ly_stmt {
     LY_STMT_REQUIRE_INSTANCE,
     LY_STMT_REVISION,
     LY_STMT_REVISION_DATE,
-    LY_STMT_RPC,
+    LY_STMT_RPC,                /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node_action *`.
+                                     Note that due to compatibility with `struct lysc_node *`, the compiled RPCs can be actually
+                                     mixed in the linked list with other ::lysc_node based nodes if the storage is shared. */
+    LY_STMT_STATUS,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
     LY_STMT_SUBMODULE,
+    LY_STMT_SYNTAX_SEMICOLON,
+    LY_STMT_SYNTAX_LEFT_BRACE,
+    LY_STMT_SYNTAX_RIGHT_BRACE,
+    LY_STMT_TYPE,               /**< in ::lysc_ext_substmt.storage stored as a pointer to `struct lysc_type *` (cardinality < #LY_STMT_CARD_SOME)
+                                     or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_type **` */
     LY_STMT_TYPEDEF,
     LY_STMT_UNIQUE,
+    LY_STMT_UNITS,              /**< in ::lysc_ext_substmt.storage stored as a pointer to `const char *` (cardinality < #LY_STMT_CARD_SOME)
+                                     or as a pointer to a [sized array](@ref sizedarrays) `const char **` */
     LY_STMT_USES,
     LY_STMT_VALUE,
     LY_STMT_WHEN,
     LY_STMT_YANG_VERSION,
-    LY_STMT_YIN_ELEMENT,
-    LY_STMT_EXTENSION_INSTANCE,
-
-    LY_STMT_SYNTAX_SEMICOLON,
-    LY_STMT_SYNTAX_LEFT_BRACE,
-    LY_STMT_SYNTAX_RIGHT_BRACE,
-
-    LY_STMT_ARG_TEXT,
-    LY_STMT_ARG_VALUE
+    LY_STMT_YIN_ELEMENT
 };
 
 /**
@@ -378,50 +389,50 @@ const char *lyext_parent2str(LYEXT_PARENT type);
  * @brief Enum of substatements in which extension instances can appear.
  */
 typedef enum {
-    LYEXT_SUBSTMT_SELF = 0,      /**< extension of the structure itself, not substatement's */
-    LYEXT_SUBSTMT_ARGUMENT,      /**< extension of the argument statement, can appear in lys_ext */
-    LYEXT_SUBSTMT_BASE,          /**< extension of the base statement, can appear (repeatedly) in lys_type and lys_ident */
-    LYEXT_SUBSTMT_BELONGSTO,     /**< extension of the belongs-to statement, can appear in lys_submodule */
-    LYEXT_SUBSTMT_CONTACT,       /**< extension of the contact statement, can appear in lys_module */
-    LYEXT_SUBSTMT_DEFAULT,       /**< extension of the default statement, can appear in lys_node_leaf, lys_node_leaflist,
-                                      lys_node_choice and lys_deviate */
-    LYEXT_SUBSTMT_DESCRIPTION,   /**< extension of the description statement, can appear in lys_module, lys_submodule,
-                                      lys_node, lys_import, lys_include, lys_ext, lys_feature, lys_tpdf, lys_restr,
-                                      lys_ident, lys_deviation, lys_type_enum, lys_type_bit, lys_when and lys_revision */
-    LYEXT_SUBSTMT_ERRTAG,        /**< extension of the error-app-tag statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_ERRMSG,        /**< extension of the error-message statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_KEY,           /**< extension of the key statement, can appear in lys_node_list */
-    LYEXT_SUBSTMT_NAMESPACE,     /**< extension of the namespace statement, can appear in lys_module */
-    LYEXT_SUBSTMT_ORGANIZATION,  /**< extension of the organization statement, can appear in lys_module and lys_submodule */
-    LYEXT_SUBSTMT_PATH,          /**< extension of the path statement, can appear in lys_type */
-    LYEXT_SUBSTMT_PREFIX,        /**< extension of the prefix statement, can appear in lys_module, lys_submodule (for
-                                      belongs-to's prefix) and lys_import */
-    LYEXT_SUBSTMT_PRESENCE,      /**< extension of the presence statement, can appear in lys_node_container */
-    LYEXT_SUBSTMT_REFERENCE,     /**< extension of the reference statement, can appear in lys_module, lys_submodule,
-                                      lys_node, lys_import, lys_include, lys_revision, lys_tpdf, lys_restr, lys_ident,
-                                      lys_ext, lys_feature, lys_deviation, lys_type_enum, lys_type_bit and lys_when */
-    LYEXT_SUBSTMT_REVISIONDATE,  /**< extension of the revision-date statement, can appear in lys_import and lys_include */
-    LYEXT_SUBSTMT_UNITS,         /**< extension of the units statement, can appear in lys_tpdf, lys_node_leaf,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_VALUE,         /**< extension of the value statement, can appear in lys_type_enum */
-    LYEXT_SUBSTMT_VERSION,       /**< extension of the yang-version statement, can appear in lys_module and lys_submodule */
-    LYEXT_SUBSTMT_MODIFIER,      /**< extension of the modifier statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_REQINSTANCE,   /**< extension of the require-instance statement, can appear in lys_type */
-    LYEXT_SUBSTMT_YINELEM,       /**< extension of the yin-element statement, can appear in lys_ext */
-    LYEXT_SUBSTMT_CONFIG,        /**< extension of the config statement, can appear in lys_node and lys_deviate */
-    LYEXT_SUBSTMT_MANDATORY,     /**< extension of the mandatory statement, can appear in lys_node_leaf, lys_node_choice,
-                                      lys_node_anydata and lys_deviate */
-    LYEXT_SUBSTMT_ORDEREDBY,     /**< extension of the ordered-by statement, can appear in lys_node_list and lys_node_leaflist */
-    LYEXT_SUBSTMT_STATUS,        /**< extension of the status statement, can appear in lys_tpdf, lys_node, lys_ident,
-                                      lys_ext, lys_feature, lys_type_enum and lys_type_bit */
-    LYEXT_SUBSTMT_FRACDIGITS,    /**< extension of the fraction-digits statement, can appear in lys_type */
-    LYEXT_SUBSTMT_MAX,           /**< extension of the max-elements statement, can appear in lys_node_list,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_MIN,           /**< extension of the min-elements statement, can appear in lys_node_list,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_POSITION,      /**< extension of the position statement, can appear in lys_type_bit */
-    LYEXT_SUBSTMT_UNIQUE,        /**< extension of the unique statement, can appear in lys_node_list and lys_deviate */
-    LYEXT_SUBSTMT_IFFEATURE      /**< extension of the if-feature statement */
+    LYEXT_SUBSTMT_SELF = 0,                              /**< extension of the structure itself, not substatement's */
+    LYEXT_SUBSTMT_ARGUMENT = LY_STMT_ARGUMENT,           /**< extension of the argument statement, can appear in lys_ext */
+    LYEXT_SUBSTMT_BASE = LY_STMT_BASE,                   /**< extension of the base statement, can appear (repeatedly) in lys_type and lys_ident */
+    LYEXT_SUBSTMT_BELONGS_TO = LY_STMT_BELONGS_TO,       /**< extension of the belongs-to statement, can appear in lys_submodule */
+    LYEXT_SUBSTMT_CONFIG = LY_STMT_CONFIG,               /**< extension of the config statement, can appear in lys_node and lys_deviate */
+    LYEXT_SUBSTMT_CONTACT = LY_STMT_CONTACT,             /**< extension of the contact statement, can appear in lys_module */
+    LYEXT_SUBSTMT_DEFAULT = LY_STMT_DEFAULT,             /**< extension of the default statement, can appear in lys_node_leaf, lys_node_leaflist,
+                                                              lys_node_choice and lys_deviate */
+    LYEXT_SUBSTMT_DESCRIPTION = LY_STMT_DESCRIPTION,     /**< extension of the description statement, can appear in lys_module, lys_submodule,
+                                                              lys_node, lys_import, lys_include, lys_ext, lys_feature, lys_tpdf, lys_restr,
+                                                              lys_ident, lys_deviation, lys_type_enum, lys_type_bit, lys_when and lys_revision */
+    LYEXT_SUBSTMT_ERROR_APP_TAG = LY_STMT_ERROR_APP_TAG, /**< extension of the error-app-tag statement, can appear in lys_restr */
+    LYEXT_SUBSTMT_ERROR_MESSAGE = LY_STMT_ERROR_MESSAGE, /**< extension of the error-message statement, can appear in lys_restr */
+    LYEXT_SUBSTMT_FRACTION_DIGITS = LY_STMT_FRACTION_DIGITS, /**< extension of the fraction-digits statement, can appear in lys_type */
+    LYEXT_SUBSTMT_IF_FEATURE = LY_STMT_IF_FEATURE,       /**< extension of the if-feature statement */
+    LYEXT_SUBSTMT_KEY = LY_STMT_KEY,                     /**< extension of the key statement, can appear in lys_node_list */
+    LYEXT_SUBSTMT_MANDATORY = LY_STMT_MANDATORY,         /**< extension of the mandatory statement, can appear in lys_node_leaf, lys_node_choice,
+                                                              lys_node_anydata and lys_deviate */
+    LYEXT_SUBSTMT_MAX_ELEMENTS = LY_STMT_MAX_ELEMENTS,   /**< extension of the max-elements statement, can appear in lys_node_list,
+                                                              lys_node_leaflist and lys_deviate */
+    LYEXT_SUBSTMT_MIN_ELEMENTS = LY_STMT_MIN_ELEMENTS,   /**< extension of the min-elements statement, can appear in lys_node_list,
+                                                              lys_node_leaflist and lys_deviate */
+    LYEXT_SUBSTMT_MODIFIER = LY_STMT_MODIFIER,           /**< extension of the modifier statement, can appear in lys_restr */
+    LYEXT_SUBSTMT_NAMESPACE = LY_STMT_NAMESPACE,         /**< extension of the namespace statement, can appear in lys_module */
+    LYEXT_SUBSTMT_ORDERED_BY = LY_STMT_ORDERED_BY,       /**< extension of the ordered-by statement, can appear in lys_node_list and lys_node_leaflist */
+    LYEXT_SUBSTMT_ORGANIZATION = LY_STMT_ORGANIZATION,   /**< extension of the organization statement, can appear in lys_module and lys_submodule */
+    LYEXT_SUBSTMT_PATH = LY_STMT_PATH,                   /**< extension of the path statement, can appear in lys_type */
+    LYEXT_SUBSTMT_POSITION = LY_STMT_POSITION,           /**< extension of the position statement, can appear in lys_type_bit */
+    LYEXT_SUBSTMT_PREFIX = LY_STMT_PREFIX,               /**< extension of the prefix statement, can appear in lys_module, lys_submodule (for
+                                                              belongs-to's prefix) and lys_import */
+    LYEXT_SUBSTMT_PRESENCE = LY_STMT_PRESENCE,           /**< extension of the presence statement, can appear in lys_node_container */
+    LYEXT_SUBSTMT_REFERENCE = LY_STMT_REFERENCE,         /**< extension of the reference statement, can appear in lys_module, lys_submodule,
+                                                              lys_node, lys_import, lys_include, lys_revision, lys_tpdf, lys_restr, lys_ident,
+                                                              lys_ext, lys_feature, lys_deviation, lys_type_enum, lys_type_bit and lys_when */
+    LYEXT_SUBSTMT_REQUIRE_INSTANCE = LY_STMT_REQUIRE_INSTANCE, /**< extension of the require-instance statement, can appear in lys_type */
+    LYEXT_SUBSTMT_REVISION_DATE = LY_STMT_REVISION_DATE, /**< extension of the revision-date statement, can appear in lys_import and lys_include */
+    LYEXT_SUBSTMT_STATUS = LY_STMT_STATUS,               /**< extension of the status statement, can appear in lys_tpdf, lys_node, lys_ident,
+                                                              lys_ext, lys_feature, lys_type_enum and lys_type_bit */
+    LYEXT_SUBSTMT_UNIQUE = LY_STMT_UNIQUE,               /**< extension of the unique statement, can appear in lys_node_list and lys_deviate */
+    LYEXT_SUBSTMT_UNITS = LY_STMT_UNITS,                 /**< extension of the units statement, can appear in lys_tpdf, lys_node_leaf,
+                                                              lys_node_leaflist and lys_deviate */
+    LYEXT_SUBSTMT_VALUE = LY_STMT_VALUE,                 /**< extension of the value statement, can appear in lys_type_enum */
+    LYEXT_SUBSTMT_YANG_VERSION = LY_STMT_YANG_VERSION,   /**< extension of the yang-version statement, can appear in lys_module and lys_submodule */
+    LYEXT_SUBSTMT_YIN_ELEMENT = LY_STMT_YIN_ELEMENT      /**< extension of the yin-element statement, can appear in lys_ext */
 } LYEXT_SUBSTMT;
 
 /**

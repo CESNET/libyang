@@ -35,6 +35,30 @@ struct lys_glob_unres;
 #define LY_PCRE2_MSG_LIMIT 256
 
 /**
+ * @brief Informational structure for YANG statements
+ */
+struct stmt_info_s {
+    const char *name;      /**< name of the statement */
+    const char *arg;       /**< name of YIN's attribute to present the statement */
+    uint8_t flags;         /**< various flags to clarify printing of the statement */
+#define STMT_FLAG_YIN 0x1 /**< has YIN element */
+#define STMT_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
+};
+
+/* statements informations filled in tree_schema.c */
+extern struct stmt_info_s stmt_attr_info[];
+
+/* list of the YANG statements strings */
+#define ly_stmt2str(STMT) stmt_attr_info[STMT].name
+
+/* extensions' substatements (LYEXT_SUBSTMT) strings */
+#define lyext_substmt2str(STMT) stmt_attr_info[STMT].name
+
+/* list of the deviate modifications strings */
+extern const char * const ly_devmod_list[];
+#define ly_devmod2str(TYPE) ly_devmod_list[TYPE]
+
+/**
  * @brief Check module version is at least 2 (YANG 1.1) because of the keyword presence.
  * Logs error message and returns LY_EVALID in case of module in YANG version 1.0.
  * @param[in] CTX yang parser context to get current module and for logging.

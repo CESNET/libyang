@@ -314,10 +314,10 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum l
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_REFERENCE, 0, &restr->ref, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_ERROR_APP_TAG:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERRTAG, 0, &restr->eapptag, Y_STR_ARG, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERROR_APP_TAG, 0, &restr->eapptag, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_ERROR_MESSAGE:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERRMSG, 0, &restr->emsg, Y_STR_ARG, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERROR_MESSAGE, 0, &restr->emsg, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, LYEXT_SUBSTMT_SELF, 0, &restr->exts));
@@ -474,7 +474,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
             break;
         case LY_STMT_IF_FEATURE:
             PARSER_CHECK_STMTVER2_RET(ctx, "if-feature", ly_stmt2str(enum_kw));
-            LY_CHECK_RET(lysp_stmt_qnames(ctx, child, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
+            LY_CHECK_RET(lysp_stmt_qnames(ctx, child, LYEXT_SUBSTMT_IF_FEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
             break;
         case LY_STMT_REFERENCE:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_REFERENCE, 0, &enm->ref, Y_STR_ARG, &enm->exts));
@@ -554,7 +554,7 @@ lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *st
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LYEXT_SUBSTMT_FRACDIGITS, 0, exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LYEXT_SUBSTMT_FRACTION_DIGITS, 0, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "fraction-digits");
@@ -605,7 +605,7 @@ lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *s
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LYEXT_SUBSTMT_REQINSTANCE, 0, exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LYEXT_SUBSTMT_REQUIRE_INSTANCE, 0, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "require-instance");
@@ -716,10 +716,10 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_REFERENCE, 0, &restr->ref, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_ERROR_APP_TAG:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERRTAG, 0, &restr->eapptag, Y_STR_ARG, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERROR_APP_TAG, 0, &restr->eapptag, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_ERROR_MESSAGE:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERRMSG, 0, &restr->emsg, Y_STR_ARG, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_ERROR_MESSAGE, 0, &restr->emsg, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_MODIFIER:
             PARSER_CHECK_STMTVER2_RET(ctx, "modifier", "pattern");
