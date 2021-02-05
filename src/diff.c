@@ -480,10 +480,13 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
     }
 
     /* orig-value */
-    if ((schema->nodetype == LYS_LEAF) && (*op == LYD_DIFF_OP_REPLACE)) {
-        /* leaf */
-        *orig_value = strdup(LYD_CANON_VALUE(first));
-        LY_CHECK_ERR_RET(!*orig_value, LOGMEM(schema->module->ctx), LY_EMEM);
+    if ((schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) && (*op == LYD_DIFF_OP_REPLACE)) {
+        if (schema->nodetype == LYS_LEAF) {
+            *orig_value = strdup(LYD_CANON_VALUE(first));
+            LY_CHECK_ERR_RET(!*orig_value, LOGMEM(schema->module->ctx), LY_EMEM);
+        } else {
+            LY_CHECK_RET(lyd_any_value_str(first, orig_value));
+        }
     }
 
     return LY_SUCCESS;
@@ -965,16 +968,22 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
         /* we are not going recursively in this case, the whole subtree was already deleted */
         return LY_SUCCESS;
     case LYD_DIFF_OP_REPLACE:
-        LY_CHECK_ERR_RET(diff_node->schema->nodetype != LYS_LEAF, LOGINT(ctx), LY_EINT);
+        LY_CHECK_ERR_RET(!(diff_node->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)), LOGINT(ctx), LY_EINT);
 
         /* find the node */
         lyd_diff_find_node(*first_node, diff_node, &match);
         LY_CHECK_ERR_RET(!match, LOGINT(LYD_CTX(diff_node)), LY_EINT);
 
-        /* update its value */
-        ret = lyd_change_term(match, LYD_CANON_VALUE(diff_node));
-        if (ret && (ret != LY_EEXIST)) {
-            LOGINT_RET(ctx);
+        /* update the value */
+        if (diff_node->schema->nodetype == LYS_LEAF) {
+            ret = lyd_change_term(match, LYD_CANON_VALUE(diff_node));
+            if (ret && (ret != LY_EEXIST)) {
+                LOGINT_RET(ctx);
+            }
+        } else {
+            struct lyd_node_any *any = (struct lyd_node_any *)diff_node;
+            ret = lyd_any_copy_value(match, &any->value, any->value_type);
+            LY_CHECK_RET(ret);
         }
 
         /* with flags */
@@ -1531,7 +1540,7 @@ lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint
 }
 
 static LY_ERR
-lyd_diff_reverse_value(struct lyd_node *leaf, const struct lys_module *mod)
+lyd_diff_reverse_value(struct lyd_node *node, const struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_meta *meta;
@@ -1539,19 +1548,30 @@ lyd_diff_reverse_value(struct lyd_node *leaf, const struct lys_module *mod)
     char *val2;
     uint32_t flags;
 
-    meta = lyd_find_meta(leaf->meta, mod, "orig-value");
-    LY_CHECK_ERR_RET(!meta, LOGINT(LYD_CTX(leaf)), LY_EINT);
+    assert(node->schema->nodetype & (LYS_LEAF | LYS_ANYDATA));
+
+    meta = lyd_find_meta(node->meta, mod, "orig-value");
+    LY_CHECK_ERR_RET(!meta, LOGINT(LYD_CTX(node)), LY_EINT);
 
     /* orig-value */
     val1 = meta->value.canonical;
 
     /* current value */
-    val2 = strdup(LYD_CANON_VALUE(leaf));
+    if (node->schema->nodetype == LYS_LEAF) {
+        val2 = strdup(LYD_CANON_VALUE(node));
+    } else {
+        LY_CHECK_RET(lyd_any_value_str(node, &val2));
+    }
 
     /* switch values, keep default flag */
-    flags = leaf->flags;
-    LY_CHECK_GOTO(ret = lyd_change_term(leaf, val1), cleanup);
-    leaf->flags = flags;
+    flags = node->flags;
+    if (node->schema->nodetype == LYS_LEAF) {
+        LY_CHECK_GOTO(ret = lyd_change_term(node, val1), cleanup);
+    } else {
+        union lyd_any_value anyval = {.str = val1};
+        LY_CHECK_GOTO(ret = lyd_any_copy_value(node, &anyval, LYD_ANYDATA_STRING), cleanup);
+    }
+    node->flags = flags;
     LY_CHECK_GOTO(ret = lyd_change_meta(meta, val2), cleanup);
 
 cleanup:
@@ -1664,6 +1684,11 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
                         /* leaf value change */
                         LY_CHECK_GOTO(ret = lyd_diff_reverse_value(elem, mod), cleanup);
                         LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                        break;
+                    case LYS_ANYXML:
+                    case LYS_ANYDATA:
+                        /* any value change */
+                        LY_CHECK_GOTO(ret = lyd_diff_reverse_value(elem, mod), cleanup);
                         break;
                     case LYS_LEAFLIST:
                         /* leaf-list move */
