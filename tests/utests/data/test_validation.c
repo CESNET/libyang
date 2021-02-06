@@ -73,6 +73,55 @@ test_when(void **state)
 }
 
 static void
+test_mandatory_when(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container cont {\n"
+            "        leaf a {\n"
+            "            type string;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            when \"../a = 'val_a'\";\n"
+            "            mandatory true;\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf c {\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf d {\n"
+            "        when \"../c = 'val_c'\";\n"
+            "        mandatory true;\n"
+            "        type string;\n"
+            "    }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM("<d xmlns=\"urn:tests:a\">hey</d>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"../c = 'val_c'\" not satisfied.", "Schema location /a:d, data location /a:d.");
+
+    CHECK_PARSE_LYD_PARAM("<cont xmlns=\"urn:tests:a\"><b>hey</b></cont>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("When condition \"../a = 'val_a'\" not satisfied.", "Schema location /a:cont/b, data location /a:cont/b.");
+
+    LYD_TREE_CREATE("<c xmlns=\"urn:tests:a\">val_c</c><d xmlns=\"urn:tests:a\">hey</d>", tree);
+    CHECK_LYSC_NODE(tree->next->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "d", 0, LYS_LEAF, 0, 0, NULL, 1);
+    assert_int_equal(LYD_WHEN_TRUE, tree->next->next->flags);
+    lyd_free_all(tree);
+
+    LYD_TREE_CREATE("<cont xmlns=\"urn:tests:a\"><a>val_a</a><b>hey</b></cont>", tree);
+    CHECK_LYSC_NODE(lyd_child(tree)->next->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, 1, "b", 0, LYS_LEAF, tree->schema, 0, NULL, 1);
+    assert_int_equal(LYD_WHEN_TRUE, lyd_child(tree)->next->flags);
+    lyd_free_all(tree);
+}
+
+static void
 test_mandatory(void **state)
 {
     struct lyd_node *tree;
@@ -1173,6 +1222,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_when),
         UTEST(test_mandatory),
+        UTEST(test_mandatory_when),
         UTEST(test_minmax),
         UTEST(test_unique),
         UTEST(test_unique_nested),
