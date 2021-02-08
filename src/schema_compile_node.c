@@ -2044,33 +2044,51 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     }
 
     iter = NULL;
-    while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {
-        if (!ly_set_contains(&parent_choices, (void*)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
-            goto error;
-        }
+    if (!parent && ctx->ext) {
+        while ((iter = lys_getnext_ext(iter, parent, ctx->ext, getnext_flags))) {
+            if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
+                goto error;
+            }
 
-        /* we must compare with both the choice and all its nested data-definiition nodes (but not recursively) */
-        if (iter->nodetype == LYS_CHOICE) {
-            iter2 = NULL;
-            while ((iter2 = lys_getnext(iter2, iter, NULL, 0))) {
-                if (CHECK_NODE(iter2, exclude, name)) {
-                    goto error;
+            /* we must compare with both the choice and all its nested data-definiition nodes (but not recursively) */
+            if (iter->nodetype == LYS_CHOICE) {
+                iter2 = NULL;
+                while ((iter2 = lys_getnext_ext(iter2, iter, NULL, 0))) {
+                    if (CHECK_NODE(iter2, exclude, name)) {
+                        goto error;
+                    }
                 }
             }
         }
-    }
+    } else {
+        while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {
+            if (!ly_set_contains(&parent_choices, (void *)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
+                goto error;
+            }
 
-    actions = parent ? lysc_node_actions(parent) : ctx->cur_mod->compiled->rpcs;
-    LY_LIST_FOR((struct lysc_node *)actions, iter) {
-        if (CHECK_NODE(iter, exclude, name)) {
-            goto error;
+            /* we must compare with both the choice and all its nested data-definiition nodes (but not recursively) */
+            if (iter->nodetype == LYS_CHOICE) {
+                iter2 = NULL;
+                while ((iter2 = lys_getnext(iter2, iter, NULL, 0))) {
+                    if (CHECK_NODE(iter2, exclude, name)) {
+                        goto error;
+                    }
+                }
+            }
         }
-    }
 
-    notifs = parent ? lysc_node_notifs(parent) : ctx->cur_mod->compiled->notifs;
-    LY_LIST_FOR((struct lysc_node *)notifs, iter) {
-        if (CHECK_NODE(iter, exclude, name)) {
-            goto error;
+        actions = parent ? lysc_node_actions(parent) : ctx->cur_mod->compiled->rpcs;
+        LY_LIST_FOR((struct lysc_node *)actions, iter) {
+            if (CHECK_NODE(iter, exclude, name)) {
+                goto error;
+            }
+        }
+
+        notifs = parent ? lysc_node_notifs(parent) : ctx->cur_mod->compiled->notifs;
+        LY_LIST_FOR((struct lysc_node *)notifs, iter) {
+            if (CHECK_NODE(iter, exclude, name)) {
+                goto error;
+            }
         }
     }
     ly_set_erase(&parent_choices, NULL);

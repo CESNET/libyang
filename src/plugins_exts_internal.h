@@ -31,6 +31,11 @@ extern struct lyext_plugins_list lyext_plugins_internal[];
 #define LYEXT_PLUGIN_INTERNAL_ANNOTATION 4
 
 /**
+ * @brief Index of yang-data extension plugin in lyext_plugins_internal
+ */
+#define LYEXT_PLUGIN_INTERNAL_YANGDATA 5
+
+/**
  * @brief Find the extension plugin for the specified extension instance.
  *
  * @param[in] mod YANG module where the
