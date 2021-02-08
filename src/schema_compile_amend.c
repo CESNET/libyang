@@ -699,9 +699,10 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
 
     /* config */
     if (rfn->flags & LYS_CONFIG_MASK) {
-        if (ctx->options & (LYS_COMPILE_NOTIFICATION | LYS_COMPILE_RPC_INPUT | LYS_COMPILE_RPC_OUTPUT)) {
+        if (ctx->options & LYS_COMPILE_NO_CONFIG) {
             LOGWRN(ctx->ctx, "Refining config inside %s has no effect (%s).",
-                    ctx->options & LYS_COMPILE_NOTIFICATION ? "notification" : "RPC/action", ctx->path);
+                    (ctx->options & (LYS_IS_INPUT | LYS_IS_OUTPUT)) ? "RPC/action" :
+                    ctx->options & LYS_IS_NOTIF ? "notification" : "a subtree ignoring config", ctx->path);
         } else {
             target->flags &= ~LYS_CONFIG_MASK;
             target->flags |= rfn->flags & LYS_CONFIG_MASK;

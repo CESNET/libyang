@@ -37,17 +37,19 @@ struct lyxp_expr;
  *
  * @{
  */
-#define LYS_COMPILE_RPC_INPUT       LYS_IS_INPUT    /**< Internal option when compiling schema tree of RPC/action input */
-#define LYS_COMPILE_RPC_OUTPUT      LYS_IS_OUTPUT   /**< Internal option when compiling schema tree of RPC/action output */
-#define LYS_COMPILE_NOTIFICATION    LYS_IS_NOTIF    /**< Internal option when compiling schema tree of Notification */
-
-#define LYS_COMPILE_GROUPING        0x08            /**< Compiling (validation) of a non-instantiated grouping.
+#define LYS_COMPILE_GROUPING        0x01            /**< Compiling (validation) of a non-instantiated grouping.
                                                       In this case not all the restrictions are checked since they can
                                                       be valid only in the real placement of the grouping.
                                                       TODO - what specifically is not done */
-#define LYS_COMPILE_DISABLED        0x10            /**< Compiling a disabled subtree (by its if-features). Meaning
+#define LYS_COMPILE_DISABLED        0x02            /**< Compiling a disabled subtree (by its if-features). Meaning
                                                       it will be removed at the end of compilation and should not be
                                                       added to any unres sets. */
+#define LYS_COMPILE_NO_CONFIG       0x04            /**< ignore config statements, neither inherit config value */
+
+#define LYS_COMPILE_RPC_INPUT       (LYS_IS_INPUT | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of RPC/action input */
+#define LYS_COMPILE_RPC_OUTPUT      (LYS_IS_OUTPUT | LYS_COMPILE_NO_CONFIG) /**< Internal option when compiling schema tree of RPC/action output */
+#define LYS_COMPILE_NOTIFICATION    (LYS_IS_NOTIF | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of Notification */
+
 /** @} scflags */
 
 /**
