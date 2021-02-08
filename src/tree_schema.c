@@ -545,7 +545,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
             char *s, *id;
             const char *slash;
 
-            if ((pathtype == LYSC_PATH_DATA) && (iter->nodetype & (LYS_CHOICE | LYS_CASE))) {
+            if ((pathtype == LYSC_PATH_DATA) && (iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT))) {
                 /* schema-only node */
                 continue;
             }
