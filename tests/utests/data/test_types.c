@@ -52,6 +52,7 @@ const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-ve
         "leaf dec64 {type decimal64 {fraction-digits 1; range 1.5..10;}}"
         "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}"
         "leaf str {type string {length 8..10; pattern '[a-z ]*';}}"
+        "leaf str-invert {type string {pattern '[a-z ]*' {modifier invert-match;}}}"
         "leaf str-norestr {type string;}"
         "leaf str-utf8 {type string{length 2..5; pattern '€*';}}"
         "leaf bool {type boolean;}"
@@ -252,6 +253,16 @@ test_string(void **state)
     tree = tree->next;
     TEST_PATTERN_1(tree, "str", 1, STRING, "teststring");
     lyd_free_all(tree);
+
+    /* inverted match */
+    CHECK_PARSE_LYD("<str-invert xmlns=\"urn:tests:types\">TESTSTRING</str-invert>", tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    TEST_PATTERN_1(tree, "str-invert", 1, STRING, "TESTSTRING");
+    lyd_free_all(tree);
+
+    TEST_TYPE_ERROR("str-invert", "teststring",
+            "String \"teststring\" does not conform to the inverted pattern \"[a-z ]*\".", "1");
 
     /* multibyte characters (€ encodes as 3-byte UTF8 character, length restriction is 2-5) */
     CHECK_PARSE_LYD("<str-utf8 xmlns=\"urn:tests:types\">€€</str-utf8>", tree);

@@ -489,7 +489,6 @@ error:
 API LY_ERR
 ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
     int rc;
     LY_ARRAY_COUNT_TYPE u;
     char *errmsg;
@@ -506,33 +505,30 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
         }
 
         rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
-        if (rc == PCRE2_ERROR_NOMATCH) {
-            if (asprintf(&errmsg, "String \"%.*s\" does not conform to the pattern \"%s\".", (int)str_len, str, patterns[u]->expr) == -1) {
+        pcre2_match_data_free(match_data);
+
+        if ((rc != PCRE2_ERROR_NOMATCH) && (rc < 0)) {
+            PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
+            pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
+
+            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
+            return LY_ESYS;
+        } else if (((rc == PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 0)) ||
+                  ((rc != PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 1))) {
+            LY_ERR ret = 0;
+            const char *inverted = patterns[u]->inverted == 0 ? " " : " inverted ";
+            if (asprintf(&errmsg, "String \"%.*s\" does not conform to the%spattern \"%s\".",
+                    (int)str_len, str, inverted, patterns[u]->expr) == -1) {
                 *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
                 ret = LY_EMEM;
             } else {
                 *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
                 ret = LY_EVALID;
             }
-            goto cleanup;
-        } else if (rc < 0) {
-            /* error */
-            PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
-            pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
-
-            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
-            ret = LY_ESYS;
-            goto cleanup;
-        }
-
-cleanup:
-        pcre2_match_data_free(match_data);
-        if (ret) {
-            break;
+            return ret;
         }
     }
-
-    return ret;
+    return LY_SUCCESS;
 }
 
 API LY_ERR
