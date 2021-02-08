@@ -1656,7 +1656,8 @@ lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_s
     node_leaf_list->value_str = lydict_insert(schema->module->ctx, val_str ? val_str : "", val_str_len);
     node_leaf_list->dflt = 0;
 
-    if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &node_leaf_list->value_str, NULL, node_leaf_list, NULL, NULL, 0, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &node_leaf_list->value_str, NULL, node_leaf_list,
+            NULL, NULL, 1, 0)) {
         lyd_free((struct lyd_node *)node_leaf_list);
         return NULL;
     }
