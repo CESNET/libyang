@@ -2820,7 +2820,7 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct ly
             LY_CHECK_RET(parse_any(ctx, kw, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_CHOICE:
-            LY_CHECK_RET(parse_case(ctx, (struct lysp_node *)notif, &notif->child));
+            LY_CHECK_RET(parse_choice(ctx, (struct lysp_node *)notif, &notif->child));
             break;
         case LY_STMT_CONTAINER:
             LY_CHECK_RET(parse_container(ctx, (struct lysp_node *)notif, &notif->child));
