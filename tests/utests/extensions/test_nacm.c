@@ -51,15 +51,16 @@ test_deny_all(void **state)
     assert_int_equal(1, *((uint8_t *)e->data)); /* plugin's value for default-deny-all */
     assert_null(cont->next->exts);
 
-    /* invalid */
-    data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
+    /* ignored - valid with warning */
+    data = "module b {yang-version 1.1; namespace urn:tests:extensions:nacm:b; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "nacm:default-deny-all;}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - NACM, version 1\": "
             "Extension nacm:default-deny-all is allowed only in a data nodes, but it is placed in \"module\" statement.)",
-            "/aa:{extension='nacm:default-deny-all'}");
+            "/b:{extension='nacm:default-deny-all'}");
 
+    /* invalid */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-all; nacm:default-deny-write;}}";
@@ -91,17 +92,17 @@ test_deny_write(void **state)
     assert_int_equal(LY_ARRAY_COUNT(leaf->exts), 1); /* NACM extensions inherit */
     assert_ptr_equal(e->def, leaf->exts[0].def);
     assert_int_equal(2, *((uint8_t *)e->data)); /* plugin's value for default-deny-write */
-    assert_null(cont->next->exts);
 
-    /* invalid */
-    data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
+    /* ignored - valid with warning */
+    data = "module b {yang-version 1.1; namespace urn:tests:extensions:nacm:b; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "notification notif {nacm:default-deny-write;}}";
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - NACM, version 1\": "
             "Extension nacm:default-deny-write is not allowed in notification statement.)",
-            "/aa:notif/{extension='nacm:default-deny-write'}");
+            "/b:notif/{extension='nacm:default-deny-write'}");
 
+    /* invalid */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-write; nacm:default-deny-write;}}";
