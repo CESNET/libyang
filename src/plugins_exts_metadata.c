@@ -121,9 +121,22 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 }
 
 /**
+ * @brief INFO printer
+ *
+ * Implementation of lyext_clb_schema_printer set as ::lyext_plugin::sprinter
+ */
+LY_ERR
+annotation_schema_printer(struct lys_ypr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
+{
+    lysc_print_extension_instance(ctx, ext, flag);
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Free annotation extension instances' data.
  *
- * Implementation of lyext_clb_free callback set as lyext_plugin::free.
+ * Implementation of lyext_clb_free callback set as ::lyext_plugin::free.
  */
 void
 annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
@@ -143,5 +156,6 @@ struct lyext_plugin metadata_plugin = {
     .id = "libyang 2 - metadata, version 1",
     .compile = &annotation_compile,
     .validate = NULL,
+    .sprinter = &annotation_schema_printer,
     .free = annotation_free
 };

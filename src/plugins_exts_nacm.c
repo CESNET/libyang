@@ -142,5 +142,6 @@ struct lyext_plugin nacm_plugin = {
     .id = "libyang 2 - NACM, version 1",
     .compile = &nacm_compile,
     .validate = NULL,
+    .sprinter = NULL,
     .free = NULL
 };

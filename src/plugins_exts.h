@@ -82,11 +82,42 @@ struct lysc_ext_substmt {
 };
 
 /**
+ * @brief Types of the YANG printers
+ */
+enum lys_ypr_schema_type {
+    LYS_YPR_PARSED,   /**< YANG printer of the parsed schema */
+    LYS_YPR_COMPILED  /**< YANG printer of the compiled schema */
+};
+
+/**
+ * @brief YANG printer context.
+ */
+struct lys_ypr_ctx {
+    struct ly_out *out;              /**< output specification */
+    uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
+    const struct lys_module *module; /**< schema to print */
+    enum lys_ypr_schema_type schema; /**< type of the schema to print */
+};
+
+/**
  * @brief Compile substatements of an extension instance.
  * TODO
  * @return LY_ENOT if the extension is disabled and should be ignored.
  */
 LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext);
+
+/**
+ * @brief Print substatements of an extension instance
+ *
+ * Generic function to access YANG printer functions from the extension plugins (::lyext_clb_schema_printer).
+ *
+ * @param[in] ctx YANG printer context to provide output handler and other information for printing.
+ * @param[in] ext The compiled extension instance to access the extensions and substatements data.
+ * @param[in, out] flag Flag to be shared with the caller regarding the opening brackets - 0 if the '{' not yet printed,
+ * 1 otherwise.
+ */
+void lysc_print_extension_instance(struct lys_ypr_ctx *ctx, const struct lysc_ext_instance *ext, ly_bool *flag);
 
 /**
  * @brief Free the extension instance's data compiled with ::lys_compile_extension_instance().
@@ -142,6 +173,9 @@ void lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char
  * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
  * and only the extension specific data are supposed to be added (if any).
  *
+ * The parsed generic statements can be processed by the callback on its own or the ::lys_compile_extension_instance
+ * function can be used to let the compilation to libyang following the standard rules for processing the YANG statements.
+ *
  * @param[in] cctx Current compile context.
  * @param[in] p_ext Parsed extension instance data.
  * @param[in,out] c_ext Prepared compiled extension instance structure where an addition, extension-specific, data are supposed to be placed
@@ -153,7 +187,7 @@ void lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char
 typedef LY_ERR (*lyext_clb_compile)(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext);
 
 /**
- * @brief Callback to free the extension specific data created by the lyext_clb_compile callback of the same extension plugin.
+ * @brief Callback to free the extension specific data created by the ::lyext_clb_compile callback of the same extension plugin.
  *
  * @param[in] ctx libyang context.
  * @param[in,out] ext Compiled extension structure where the data to free are placed.
@@ -180,13 +214,26 @@ typedef void (*lyext_clb_free)(struct ly_ctx *ctx, struct lysc_ext_instance *ext
 typedef LY_ERR (*lyext_clb_data_validation)(struct lysc_ext_instance *ext, struct lyd_node *node);
 
 /**
+ * @brief Callback to print the compiled extension instance's private data in the INFO format.
+ *
+ * @param[in] ctx YANG printer context to provide output handler and other information for printing.
+ * @param[in] ext The compiled extension instance, mainly to access the extensions.
+ * @param[in, out] flag Flag to be shared with the caller regarding the opening brackets - 0 if the '{' not yet printed,
+ * 1 otherwise.
+ *
+ * @return LY_SUCCESS when everything was fine, other LY_ERR values in case of failure
+ */
+typedef LY_ERR (*lyext_clb_schema_printer)(struct lys_ypr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
+
+/**
  * @brief Extension plugin implementing various aspects of a YANG extension
  */
 struct lyext_plugin {
     const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions of the plugins for external tools) */
     lyext_clb_compile compile;          /**< Callback to compile extension instance from the parsed data */
     lyext_clb_data_validation validate; /**< Callback to decide if data instance is valid according to the schema. */
-    /* TODO printers? (schema/data) */
+    lyext_clb_schema_printer sprinter;  /**< Callback to print the compiled content (info format) of the extension instance */
+    /* lyext_clb_data_printer dprinter; ? */
     lyext_clb_free free;                /**< Free the extension instance specific data created by ::lyext_plugin.compile callback */
 };
 
