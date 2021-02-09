@@ -4592,7 +4592,7 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
     LY_CHECK_RET(rc);
 
     LY_ARRAY_NEW_RET(set->ctx, patterns, pattern, LY_EMEM);
-    *pattern = malloc(sizeof **pattern);
+    *pattern = calloc(1, sizeof **pattern);
     LOG_LOCSET(NULL, set->cur_node, NULL, NULL);
     rc = lys_compile_type_pattern_check(set->ctx, args[1]->val.str, &(*pattern)->code);
     LOG_LOCBACK(0, 1, 0, 0);
