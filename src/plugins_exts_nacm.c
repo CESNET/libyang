@@ -93,9 +93,9 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
 
     /* check that the extension is instantiated at an allowed place - data node */
     if (c_ext->parent_type != LYEXT_PAR_NODE) {
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
+        lyext_log(c_ext, LY_LLWRN, 0, cctx->path, "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
                 p_ext->name, lyext_parent2str(c_ext->parent_type));
-        return LY_EVALID;
+        return LY_ENOT;
     } else {
         parent = (struct lysc_node *)c_ext->parent;
         if (!(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA |
@@ -103,9 +103,9 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
             /* note LYS_AUGMENT and LYS_USES is not in the list since they are not present in the compiled tree. Instead, libyang
              * passes all their extensions to their children nodes */
 invalid_parent:
-            lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
+            lyext_log(c_ext, LY_LLWRN, 0, cctx->path,
                     "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
-            return LY_EVALID;
+            return LY_ENOT;
         }
         if ((c_ext->data == (void *)&nacm_deny_write) && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             goto invalid_parent;
