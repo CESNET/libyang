@@ -567,7 +567,7 @@ lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no
     if (ly_ll < level) {
         return;
     }
-    ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s)", ext->def->plugin->id, format);
+    ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s", ext->def->plugin->id, format);
     if (ret == -1) {
         LOGMEM(ext->module->ctx);
         return;

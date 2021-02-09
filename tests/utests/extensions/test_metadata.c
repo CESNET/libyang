@@ -85,7 +85,7 @@ test_yang(void **state)
             "md:annotation aa {type string;} md:annotation aa {type uint8;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - metadata, version 1\": "
-            "Extension md:annotation is instantiated multiple times.)", "/aa:{extension='md:annotation'}/aa");
+            "Extension md:annotation is instantiated multiple times.", "/aa:{extension='md:annotation'}/aa");
 }
 
 static void
@@ -182,7 +182,7 @@ test_yin(void **state)
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - metadata, version 1\": "
-            "Extension md:annotation is instantiated multiple times.)", "/aa:{extension='md:annotation'}/aa");
+            "Extension md:annotation is instantiated multiple times.", "/aa:{extension='md:annotation'}/aa");
 }
 
 int
