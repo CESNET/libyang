@@ -46,6 +46,7 @@ struct lys_module;
 #define GETMACRO3(_1, _2, _3, NAME, ...) NAME
 #define GETMACRO4(_1, _2, _3, _4, NAME, ...) NAME
 #define GETMACRO5(_1, _2, _3, _4, _5, NAME, ...) NAME
+#define GETMACRO6(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
 
 /*
  * If the compiler supports attribute to mark objects as hidden, mark all
@@ -196,8 +197,10 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LY_CHECK_ARG_RET3(CTX, ARG1, ARG2, ARG3, RETVAL) LY_CHECK_ARG_RET2(CTX, ARG1, ARG2, RETVAL);LY_CHECK_ARG_RET1(CTX, ARG3, RETVAL)
 #define LY_CHECK_ARG_RET4(CTX, ARG1, ARG2, ARG3, ARG4, RETVAL) LY_CHECK_ARG_RET3(CTX, ARG1, ARG2, ARG3, RETVAL);\
     LY_CHECK_ARG_RET1(CTX, ARG4, RETVAL)
-#define LY_CHECK_ARG_RET(CTX, ...) GETMACRO5(__VA_ARGS__, LY_CHECK_ARG_RET4, LY_CHECK_ARG_RET3, LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1)\
-    (CTX, __VA_ARGS__)
+#define LY_CHECK_ARG_RET5(CTX, ARG1, ARG2, ARG3, ARG4, ARG5, RETVAL) LY_CHECK_ARG_RET4(CTX, ARG1, ARG2, ARG3, ARG4, RETVAL);\
+    LY_CHECK_ARG_RET1(CTX, ARG5, RETVAL)
+#define LY_CHECK_ARG_RET(CTX, ...) GETMACRO6(__VA_ARGS__, LY_CHECK_ARG_RET5, LY_CHECK_ARG_RET4, LY_CHECK_ARG_RET3, \
+    LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1) (CTX, __VA_ARGS__)
 
 /* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
 size_t LY_VCODE_INSTREXP_len(const char *str);

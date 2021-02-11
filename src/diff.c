@@ -1001,7 +1001,7 @@ next_iter_r:
 
     /* apply diff recursively */
     LY_LIST_FOR(lyd_child_no_keys(diff_node), diff_child) {
-        LY_CHECK_RET(lyd_diff_apply_r(lyd_node_children_p(match), match, diff_child, diff_cb, cb_data));
+        LY_CHECK_RET(lyd_diff_apply_r(lyd_node_child_p(match), match, diff_child, diff_cb, cb_data));
     }
 
     return LY_SUCCESS;

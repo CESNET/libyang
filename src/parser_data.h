@@ -58,10 +58,8 @@ struct ly_in;
  *     example the *:operational* datastore is not necessarily valid and results of the NETCONF's \<get\> or \<get-config\>
  *     oprations used with filters will be incomplete (and thus invalid). This can be allowed using ::LYD_PARSE_ONLY,
  *     the ::LYD_PARSE_NO_STATE should be used for the data returned by \<get-config\> operation.
- * - ::lyd_parse_rpc() is used for parsing RPCs/Actions, optionally including the RPC envelopes known from the NETCONF
- *   protocol.
- * - ::lyd_parse_reply() processes reply to a previous RPC/Action, which must be provided.
- * - ::lyd_parse_notif() is able to process complete Notification message.
+ * - ::lyd_parse_op() is used for parsing RPCs/actions, replies, and notifications. Even NETCONF rpc, rpc-reply, and
+ *     notification messages are supported.
  *
  * Further information regarding the processing input instance data can be found on the following pages.
  * - @subpage howtoDataValidation
@@ -73,9 +71,7 @@ struct ly_in;
  * - ::lyd_parse_data_mem()
  * - ::lyd_parse_data_fd()
  * - ::lyd_parse_data_path()
- * - ::lyd_parse_rpc()
- * - ::lyd_parse_reply()
- * - ::lyd_parse_notif()
+ * - ::lyd_parse_op()
  */
 
 /**
@@ -188,52 +184,32 @@ struct ly_in;
 /** @} datavalidationoptions */
 
 /**
- * @ingroup datatree
- * @defgroup datavalidateop Operation to validate
- *
- * Operation provided to ::lyd_validate_op() to validate.
- *
- * The operation cannot be determined automatically since RPC/action and a reply to it share the common top level node
- * referencing the RPC/action schema node and may not have any input/output children to use for distinction.
- *
- * @{
- */
-typedef enum {
-    LYD_VALIDATE_OP_RPC = 1,   /**< Validate RPC/action request (input parameters). */
-    LYD_VALIDATE_OP_REPLY,     /**< Validate RPC/action reply (output parameters). */
-    LYD_VALIDATE_OP_NOTIF      /**< Validate Notification operation. */
-} LYD_VALIDATE_OP;
-
-/** @} datavalidateop */
-
-/**
  * @brief Parse (and validate) data from the input handler as a YANG data tree.
  *
  * @param[in] ctx Context to connect with the tree being built here.
+ * @param[in] parent Optional parent to connect the parsed nodes to.
  * @param[in] in The input handle to provide the dumped data in the specified @p format to parse (and validate).
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
- * The returned data are expected to be freed using ::lyd_free_all().
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, set to NULL.
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
-LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, uint32_t parse_options,
-        uint32_t validate_options, struct lyd_node **tree);
+LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
  *
- * Wrapper around ::lyd_parse_data() hiding work with the input handler.
+ * Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] data The input data in the specified @p format to parse (and validate).
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
- * The returned data are expected to be freed using ::lyd_free_all().
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
@@ -243,33 +219,32 @@ LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
  *
- * Wrapper around ::lyd_parse_data() hiding work with the input handler.
+ * Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.
  *
  * @param[in] ctx Context to connect with the tree being built here.
- * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the input data in the specified @p format to parse (and validate).
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the input data in the
+ * specified @p format to parse.
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
- * The returned data are expected to be freed using ::lyd_free_all().
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
-LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, uint32_t parse_options, uint32_t validate_options,
-        struct lyd_node **tree);
+LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, uint32_t parse_options,
+        uint32_t validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
  *
- * Wrapper around ::lyd_parse_data() hiding work with the input handler.
+ * Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] path Path to the file with the input data in the specified @p format to parse (and validate).
  * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
- * The returned data are expected to be freed using ::lyd_free_all().
+ * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
@@ -277,51 +252,66 @@ LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMA
         uint32_t validate_options, struct lyd_node **tree);
 
 /**
- * @brief Parse (no validation) data from the input handler as a YANG RPC/action request.
+ * @ingroup datatree
+ * @defgroup datatype Data operation type
  *
- * @param[in] ctx Context to connect with the tree being parsed.
- * @param[in] in Input handle to provide the dumped data in the specified @p format to parse.
- * @param[in] format Format of the input data to be parsed.
- * @param[out] tree Resulting full RPC/action request tree built from the input data. The returned data are expected to be freed using ::lyd_free_all().
- * In contrast to YANG data tree, result of parsing RPC/action cannot be NULL until an error occurs.
- * @param[out] op Optional pointer to the actual operation node inside the full action @p tree, useful only for action.
- * @return LY_SUCCESS in case of successful parsing.
- * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * Operation provided to ::lyd_validate_op() to validate.
+ *
+ * The operation cannot be determined automatically since RPC/action and a reply to it share the common top level node
+ * referencing the RPC/action schema node and may not have any input/output children to use for distinction.
+ *
+ * @{
  */
-LY_ERR lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
-        struct lyd_node **op);
+enum lyd_type {
+    LYD_TYPE_YANG_DATA = 0,         /* generic YANG instance data */
+    LYD_TYPE_YANG_RPC,              /* instance of a YANG RPC/action request with only "input" data children,
+                                       including all parents in case of an action */
+    LYD_TYPE_YANG_NOTIF,            /* instance of a YANG notification , including all parents in case of a nested one */
+    LYD_TYPE_YANG_REPLY,            /* instance of a YANG RPC/action reply with only "output" data children,
+                                       including all parents in case of an action */
+    LYD_TYPE_NETCONF_RPC,           /* complete NETCONF RPC invocation as defined for
+                                       [RPC](https://tools.ietf.org/html/rfc7950#section-7.14.4) and
+                                       [action](https://tools.ietf.org/html/rfc7950#section-7.15.2) */
+    LYD_TYPE_NETCONF_REPLY_OR_NOTIF /* complete NETCONF RPC reply as defined for
+                                       [RPC](https://tools.ietf.org/html/rfc7950#section-7.14.4) and
+                                       [action](https://tools.ietf.org/html/rfc7950#section-7.15.2) or
+                                       [notification](https://tools.ietf.org/html/rfc7950#section-7.16.2), which
+                                       of these is parsed is decided based on the first element name */
+};
+/** @} datatype */
 
 /**
- * @brief Parse (no validation) data from the input handler as a YANG RPC/action reply.
+ * @brief Parse YANG data into an operation data tree.
  *
- * @param[in] ctx Context to connect with the tree being parsed.
- * @param[in] in Input handle to provide the dumped data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed.
- * @param[out] tree Resulting full RPC/action reply tree built from the input data. The returned data are expected to be freed using ::lyd_free_all().
- * In contrast to YANG data tree, result of parsing RPC/action cannot be NULL until an error occurs.
- * At least one of the @p tree and @p op output variables must be provided.
- * @param[out] op Pointer to the actual operation node inside the full action reply @p tree, useful only for action. At least one of the @p op
- * and @p tree output variables must be provided.
- * @return LY_SUCCESS in case of successful parsing.
- * @return LY_ERR value in case of error. Additional error information can be obtained from the request's context using ly_err* functions.
- */
-LY_ERR lyd_parse_reply(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
-        struct lyd_node **op);
-
-/**
- * @brief Parse (no validation) data from the input handler as a YANG notification.
+ * At least one of @p parent, @p tree, or @p op must always be set.
  *
- * @param[in] ctx Context to connect with the tree being parsed.
- * @param[in] in Input handle to provide the dumped data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed.
- * @param[out] tree Resulting full notification tree built from the input data. The returned data are expected to be freed using ::lyd_free_all().
- * In contrast to YANG data tree, result of parsing notification cannot be NULL until an error occurs.
- * @param[out] ntf Optional pointer to the actual notification node inside the full notification @p tree, useful for nested notifications.
- * @return LY_SUCCESS in case of successful parsing.
- * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * Specific @p data_type values have different parameter meaning as follows:
+ * - ::LYD_TYPE_NETCONF_RPC:
+ *   - @p parent - must be NULL, the whole RPC is expected;
+ *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
+ *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
+ *               a separate opaque data tree;
+ *   - @p op - must be provided, the RPC/action data tree itself will be returned here, pointing to the operation;
+ *
+ * - ::LYD_TYPE_NETCONF_REPLY_OR_NOTIF:
+ *   - @p parent - must be set, pointing to the invoked RPC operation (RPC or action) node;
+ *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
+ *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
+ *               a separate opaque data tree;
+ *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation,
+ *             it will be set to NULL if no data nodes were parsed in the reply (ok or rpc-error);
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] parent Optional parent to connect the parsed nodes to.
+ * @param[in] in Input handle to read the input from.
+ * @param[in] format Expected format of the data in @p in.
+ * @param[in] data_type Expected operation to parse (@ref datatype).
+ * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
+ * @param[out] op Optional parsed operation node.
+ * @return LY_ERR value.
  */
-LY_ERR lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
-        struct lyd_node **ntf);
+LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
+        enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @brief Fully validate a data tree.
@@ -348,20 +338,18 @@ LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32
 LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff);
 
 /**
- * @brief Validate an RPC/action, notification, or RPC/action reply.
+ * @brief Validate an RPC/action request, reply, or notification.
  *
  * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
  * its parents, only the operation subtree is actually validated.
- * @param[in] tree Tree to be used for validating references from the operation subtree.
- * @param[in] op Operation to validate (@ref datavalidateop), the given @p op_tree must correspond to this value. Note that
- * it isn't possible to detect the operation simply from the @p op_tree since RPC/action and their reply share the same
- * RPC/action data node and in case one of the input and output do not define any data node children, it is not possible
- * to get know what is here given for validation and if it is really valid.
+ * @param[in] dep_tree Tree to be used for validating references from the operation subtree.
+ * @param[in] data_type Operation type to validate (only YANG operations are accepted, @ref datatype).
  * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALIDATE_OP op, struct lyd_node **diff);
+LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type,
+        struct lyd_node **diff);
 
 /** @} datatree */
 

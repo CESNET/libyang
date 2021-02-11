@@ -70,17 +70,21 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
         struct lyd_node **diff);
 
 /**
- * @brief Perform all remaining validation tasks, the data tree must be final when calling this function.
+ * @brief Validate a data tree.
  *
- * @param[in] first First sibling.
- * @param[in] parent Data parent.
- * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
- * @param[in] mod Module of the siblings, NULL for nested siblings.
- * @param[in] val_opts Validation options (@ref datavalidationoptions).
- * @param[in] op Operation to validate (@ref datavalidateop) or 0 for data tree
+ * @param[in,out] tree Data tree to validate, nodes may be autodeleted.
+ * @param[in] module Module whose data (and schema restrictions) to validate, NULL for all modules.
+ * @param[in] ctx libyang context.
+ * @param[in] val_opts Validation options, see @ref datavalidationoptions.
+ * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
+ * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
+ * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
+ * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
+ * @param[out] diff Generated validation diff, not generated if NULL.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *sparent,
-        const struct lys_module *mod, uint32_t val_opts, LYD_VALIDATE_OP op);
+LY_ERR lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t val_opts,
+        ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
+        struct lyd_node **diff);
 
 #endif /* LY_VALIDATION_H_ */

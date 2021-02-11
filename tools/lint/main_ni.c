@@ -67,7 +67,7 @@ struct context {
      * data
      */
     /* various options based on --type option */
-    uint8_t data_type; /* values taken from LYD_VALIDATE_OP and extended by 0 for standard data tree */
+    enum lyd_type data_type;
     uint32_t data_parse_options;
     uint32_t data_validate_options;
     uint32_t data_print_options;
@@ -538,11 +538,11 @@ fill_context(int argc, char *argv[], struct context *c)
             } else if (!strcasecmp(optarg, "edit")) {
                 c->data_parse_options |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
-                c->data_type = LYD_VALIDATE_OP_RPC;
+                c->data_type = LYD_TYPE_YANG_RPC;
             } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
-                c->data_type = LYD_VALIDATE_OP_REPLY;
+                c->data_type = LYD_TYPE_YANG_REPLY;
             } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
-                c->data_type = LYD_VALIDATE_OP_NOTIF;
+                c->data_type = LYD_TYPE_YANG_NOTIF;
             } else if (!strcasecmp(optarg, "data")) {
                 /* default option */
             } else {

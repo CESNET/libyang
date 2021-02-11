@@ -34,13 +34,6 @@ struct lysc_module;
 #define LY_LYB_SUFFIX_LEN 4
 
 /**
- * @brief Internal data parser flags.
- */
-#define LYD_INTOPT_RPC      0x01    /**< RPC/action invocation is being parsed */
-#define LYD_INTOPT_NOTIF    0x02    /**< notification is being parsed */
-#define LYD_INTOPT_REPLY    0x04    /**< RPC/action reply is being parsed */
-
-/**
  * @brief Hash schema sibling to be used for LYB data.
  *
  * @param[in] sibling Sibling to hash.
@@ -76,7 +69,7 @@ void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, co
  * @return Address of the node's child member,
  * @return NULL if there is no child pointer.
  */
-struct lyd_node **lyd_node_children_p(struct lyd_node *node);
+struct lyd_node **lyd_node_child_p(struct lyd_node *node);
 
 /**
  * @brief Just like ::lys_getnext() but iterates over all data instances of the schema nodes.

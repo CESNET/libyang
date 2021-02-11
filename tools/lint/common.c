@@ -437,7 +437,7 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
 }
 
 LY_ERR
-process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
+process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
         uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
         struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths)
 {
@@ -447,7 +447,7 @@ process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT fo
 
     /* additional operational datastore */
     if (operational_f && operational_f->in) {
-        ret = lyd_parse_data(ctx, operational_f->in, operational_f->format, LYD_PARSE_ONLY, 0, &operational);
+        ret = lyd_parse_data(ctx, NULL, operational_f->in, operational_f->format, LYD_PARSE_ONLY, 0, &operational);
         if (ret) {
             YLMSG_E("Failed to parse operational datastore file \"%s\".\n", operational_f->path);
             goto cleanup;
@@ -457,17 +457,13 @@ process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT fo
     for (uint32_t u = 0; u < inputs->count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)inputs->objs[u];
         switch (data_type) {
-        case 0:
-            ret = lyd_parse_data(ctx, input_f->in, input_f->format, options_parse, options_validate, &tree);
+        case LYD_TYPE_YANG_DATA:
+            ret = lyd_parse_data(ctx, NULL, input_f->in, input_f->format, options_parse, options_validate, &tree);
             break;
-        case LYD_VALIDATE_OP_RPC:
-            ret = lyd_parse_rpc(ctx, input_f->in, input_f->format, &tree, NULL);
-            break;
-        case LYD_VALIDATE_OP_REPLY:
-            ret = lyd_parse_reply(ctx, input_f->in, input_f->format, &tree, NULL);
-            break;
-        case LYD_VALIDATE_OP_NOTIF:
-            ret = lyd_parse_notif(ctx, input_f->in, input_f->format, &tree, NULL);
+        case LYD_TYPE_YANG_RPC:
+        case LYD_TYPE_YANG_REPLY:
+        case LYD_TYPE_YANG_NOTIF:
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &tree, NULL);
             break;
         default:
             YLMSG_E("Internal error (%s:%d).\n", __FILE__, __LINE__);

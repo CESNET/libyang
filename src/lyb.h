@@ -56,17 +56,17 @@ struct lylyb_ctx {
 struct lyd_lyb_ctx {
     union {
         struct {
-            uint32_t parse_options;        /**< various @ref dataparseroptions. */
-            uint32_t validate_options;     /**< various @ref datavalidationoptions. */
+            uint32_t parse_opts;   /**< various @ref dataparseroptions. */
+            uint32_t val_opts;     /**< various @ref datavalidationoptions. */
         };
         uint32_t print_options;
     };
     uint32_t int_opts;             /**< internal data parser options */
     uint32_t path_len;             /**< used bytes in the path buffer */
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
-    struct ly_set unres_node_type; /**< set of nodes validated with LY_EINCOMPLETE result */
-    struct ly_set unres_meta_type; /**< set of metadata validated with LY_EINCOMPLETE result */
-    struct ly_set when_check;      /**< set of nodes with "when" conditions */
+    struct ly_set node_when;       /**< set of nodes with "when" conditions */
+    struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
+    struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
 
     /* callbacks */
