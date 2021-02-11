@@ -125,7 +125,7 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     uint32_t options_print = 0;
     uint32_t options_parse = YL_DEFAULT_DATA_PARSE_OPTIONS;
     uint32_t options_validate = 0;
-    uint8_t data_type = 0;
+    enum lyd_type data_type = 0;
     uint8_t data_type_set = 0;
     LYD_FORMAT outformat = LYD_UNKNOWN;
     LYD_FORMAT informat = LYD_UNKNOWN;
@@ -232,11 +232,11 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
             } else if (!strcasecmp(optarg, "edit")) {
                 options_parse |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
-                data_type = LYD_VALIDATE_OP_RPC;
+                data_type = LYD_TYPE_YANG_RPC;
             } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
-                data_type = LYD_VALIDATE_OP_REPLY;
+                data_type = LYD_TYPE_YANG_REPLY;
             } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
-                data_type = LYD_VALIDATE_OP_NOTIF;
+                data_type = LYD_TYPE_YANG_NOTIF;
             } else if (!strcasecmp(optarg, "data")) {
                 /* default option */
             } else {

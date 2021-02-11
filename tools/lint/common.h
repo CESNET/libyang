@@ -177,8 +177,7 @@ int print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
  * @brief Process the input data files - parse, validate and print according to provided options.
  *
  * @param[in] ctx libyang context with schema.
- * @param[in] data_type The type of data in the input files, can be 0 for standard data tree and ::LYD_VALIDATE_OP values for
- * the operations.
+ * @param[in] data_type The type of data in the input files.
  * @param[in] merge Flag if the data should be merged before validation.
  * @param[in] format Data format for printing.
  * @param[in] out The output handler for printing.
@@ -192,7 +191,7 @@ int print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
  * is printed. Alternative to data printing.
  * return LY_ERR value.
  */
-LY_ERR process_data(struct ly_ctx *ctx, uint8_t data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
+LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
         uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
         struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths);
 

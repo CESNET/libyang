@@ -66,7 +66,7 @@ lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, co
 }
 
 struct lyd_node **
-lyd_node_children_p(struct lyd_node *node)
+lyd_node_child_p(struct lyd_node *node)
 {
     assert(node);
 
@@ -100,7 +100,7 @@ lyd_child_no_keys(const struct lyd_node *node)
         return ((struct lyd_node_opaq *)node)->child;
     }
 
-    children = lyd_node_children_p((struct lyd_node *)node);
+    children = lyd_node_child_p((struct lyd_node *)node);
     if (children) {
         struct lyd_node *child = *children;
         while (child && child->schema && (child->schema->flags & LYS_KEY)) {

@@ -15,6 +15,7 @@
 #ifndef LY_PARSER_INTERNAL_H_
 #define LY_PARSER_INTERNAL_H_
 
+#include "parser_data.h"
 #include "plugins_types.h"
 #include "tree_schema_internal.h"
 
@@ -29,12 +30,22 @@ struct ly_in;
 typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 
 /**
+ * @brief Internal data parser flags.
+ */
+#define LYD_INTOPT_RPC              0x01    /**< RPC request is being parsed. */
+#define LYD_INTOPT_ACTION           0x02    /**< Action request is being parsed. */
+#define LYD_INTOPT_REPLY            0x04    /**< RPC/action reply is being parsed. */
+#define LYD_INTOPT_NOTIF            0x08    /**< Notification is being parsed. */
+#define LYD_INTOPT_WITH_SIBLINGS    0x10    /**< Parse the whole input with any siblings. */
+#define LYD_INTOPT_NO_SIBLINGS      0x20    /**< If there are any siblings, return an error. */
+
+/**
  * @brief Internal (common) context for YANG data parsers.
  */
 struct lyd_ctx {
-    uint32_t parse_options;        /**< various @ref dataparseroptions. */
-    uint32_t validate_options;     /**< various @ref datavalidationoptions. */
-    uint32_t int_opts;             /**< internal data parser options */
+    uint32_t parse_opts;           /**< various @ref dataparseroptions. */
+    uint32_t val_opts;             /**< various @ref datavalidationoptions. */
+    uint32_t int_opts;             /**< internal parser options */
     uint32_t path_len;             /**< used bytes in the path buffer */
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
@@ -109,145 +120,67 @@ LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *c
         struct ly_in *in, struct lysp_submodule **submod);
 
 /**
- * @brief Parse XML string as YANG data tree.
+ * @brief Parse XML string as a YANG data tree.
  *
- * @param[in] ctx libyang context
+ * @param[in] ctx libyang context.
+ * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
- * @param[in] parse_options Options for parser, see @ref dataparseroptions.
- * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree_p Parsed data tree. Note that NULL can be a valid result.
+ * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
+ * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[in] data_type Expected data type of the data.
+ * @param[out] envp Individual parsed envelopes tree, returned only by specific @p data_type.
+ * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
-        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct lyd_node **envp, struct ly_set *parsed,
+        struct lyd_ctx **lydctx_p);
 
 /**
- * @brief Parse XML string as YANG RPC/action invocation.
+ * @brief Parse JSON string as a YANG data tree.
  *
  * @param[in] ctx libyang context.
+ * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
- * @param[out] tree_p Parsed full RPC/action tree.
- * @param[out] op_p Optional pointer to the actual operation. Useful mainly for action.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
-
-/**
- * @brief Parse XML string as YANG notification.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full notification tree.
- * @param[out] op_p Optional pointer to the actual notification. Useful mainly for nested notifications.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p);
-
-/**
- * @brief Parse XML string as YANG RPC/action reply.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full RPC/action reply tree.
- * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_xml_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
-
-/**
- * @brief Parse JSON string as YANG data tree.
- *
- * @param[in] ctx libyang context
- * @param[in] in Input structure.
- * @param[in] parse_options Options for parser, see @ref dataparseroptions.
- * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree_p Parsed data tree. Note that NULL can be a valid result.
+ * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
+ * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[in] data_type Expected data type of the data.
+ * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
-        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+LY_ERR lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
 /**
- * @brief Parse JSON string as YANG notification.
+ * @brief Parse binary LYB data as a YANG data tree.
  *
  * @param[in] ctx libyang context.
+ * @param[in] parent Parent to connect the parsed nodes to, if any.
+ * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
- * @param[out] tree_p Parsed full notification tree.
- * @param[out] ntf_p Optional pointer to the actual notification. Useful mainly for nested notifications.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p);
-
-/**
- * @brief Parse JSON string as YANG RPC/action invocation.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full RPC/action tree.
- * @param[out] op_p Optional pointer to the actual operation. Useful mainly for action.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_json_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
-
-/**
- * @brief Parse JSON string as YANG RPC/action reply.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full RPC/action reply tree.
- * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_json_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
-
-/**
- * @brief Parse binary data as YANG data tree.
- *
- * @param[in] ctx libyang context
- * @param[in] in Input structure.
- * @param[in] parse_options Options for parser, see @ref dataparseroptions.
- * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree_p Parsed data tree. Note that NULL can be a valid result.
+ * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
+ * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[in] data_type Expected data type of the data.
+ * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
-        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
 /**
- * @brief Parse binary data as YANG RPC/action invocation.
+ * @brief Search all the parents for an operation node, check validity based on internal parser flags.
  *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full RPC/action tree.
- * @param[out] op_p Optional pointer to the actual operation. Useful mainly for action.
+ * @param[in] parent Parent to connect the parsed nodes to.
+ * @param[in] int_opt Internal parser options.
+ * @param[out] op Found operation, if any.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
-
-/**
- * @brief Parse binary data as YANG notification.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full notification tree.
- * @param[out] ntf_p Optional pointer to the actual notification. Useful mainly for nested notifications.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_lyb_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **ntf_p);
-
-/**
- * @brief Parse binary data as YANG RPC/action reply.
- *
- * @param[in] ctx libyang context.
- * @param[in] in Input structure.
- * @param[out] tree_p Parsed full RPC/action reply tree.
- * @param[out] op_p Optional pointer to the reply operation. Useful mainly for action.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_lyb_reply(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree_p, struct lyd_node **op_p);
+LY_ERR lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op);
 
 /**
  * @brief Check that a data node representing the @p snode is suitable based on options.

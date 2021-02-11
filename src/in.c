@@ -381,50 +381,108 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
 }
 
 LY_ERR
+lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op)
+{
+    const struct lyd_node *iter;
+
+    *op = NULL;
+
+    if (!parent) {
+        /* no parent, nothing to look for */
+        return LY_SUCCESS;
+    }
+
+    /* we need to find the operation node if it already exists */
+    for (iter = parent; iter; iter = lyd_parent(iter)) {
+        if (iter->schema && (iter->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+            break;
+        }
+    }
+
+    if (!iter) {
+        /* no operation found */
+        return LY_SUCCESS;
+    }
+
+    if (!(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY))) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent %s \"%s\" node when not parsing any operation.",
+                lys_nodetype2str(iter->schema->nodetype), iter->schema->name);
+        return LY_EINVAL;
+    } else if ((iter->schema->nodetype == LYS_RPC) && !(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY))) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent RPC \"%s\" node when not parsing RPC nor rpc-reply.",
+                iter->schema->name);
+        return LY_EINVAL;
+    } else if ((iter->schema->nodetype == LYS_ACTION) && !(int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY))) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent action \"%s\" node when not parsing action nor rpc-reply.",
+                iter->schema->name);
+        return LY_EINVAL;
+    } else if ((iter->schema->nodetype == LYS_NOTIF) && !(int_opts & LYD_INTOPT_NOTIF)) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent notification \"%s\" node when not parsing a notification.",
+                iter->schema->name);
+        return LY_EINVAL;
+    }
+
+    *op = (struct lyd_node *)iter;
+    return LY_SUCCESS;
+}
+
+LY_ERR
 lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {
-    LY_ERR ret = LY_EVALID;
+    LY_ERR rc = LY_SUCCESS;
 
     LOG_LOCSET(snode, NULL, NULL, NULL);
 
-    if ((lydctx->parse_options & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
+    if ((lydctx->parse_opts & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
         LOGVAL(lydctx->data_ctx->ctx, LY_VCODE_INNODE, "state", snode->name);
+        rc = LY_EVALID;
         goto cleanup;
     }
 
-    if (snode->nodetype & (LYS_RPC | LYS_ACTION)) {
+    if (snode->nodetype == LYS_RPC) {
         if (lydctx->int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) {
             if (lydctx->op_node) {
-                LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
-                        lys_nodetype2str(snode->nodetype), snode->name,
-                        lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
-                goto cleanup;
+                goto error_node_dup;
             }
         } else {
-            LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".",
-                    lys_nodetype2str(snode->nodetype), snode->name);
-            goto cleanup;
+            goto error_node_inval;
+        }
+    } else if (snode->nodetype == LYS_ACTION) {
+        if (lydctx->int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) {
+            if (lydctx->op_node) {
+                goto error_node_dup;
+            }
+        } else {
+            goto error_node_inval;
         }
     } else if (snode->nodetype == LYS_NOTIF) {
         if (lydctx->int_opts & LYD_INTOPT_NOTIF) {
             if (lydctx->op_node) {
-                LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
-                        lys_nodetype2str(snode->nodetype), snode->name,
-                        lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
-                goto cleanup;
+                goto error_node_dup;
             }
         } else {
-            LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".",
-                    lys_nodetype2str(snode->nodetype), snode->name);
-            goto cleanup;
+            goto error_node_inval;
         }
     }
 
-    ret = LY_SUCCESS;
+    /* success */
+    goto cleanup;
+
+error_node_dup:
+    LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+            lys_nodetype2str(snode->nodetype), snode->name, lys_nodetype2str(lydctx->op_node->schema->nodetype),
+            lydctx->op_node->schema->name);
+    rc = LY_EVALID;
+    goto cleanup;
+
+error_node_inval:
+    LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".", lys_nodetype2str(snode->nodetype),
+            snode->name);
+    rc = LY_EVALID;
 
 cleanup:
     LOG_LOCBACK(1, 0, 0, 0);
-    return ret;
+    return rc;
 }
 
 LY_ERR
@@ -435,7 +493,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 
     LY_CHECK_RET(lyd_create_term(schema, value, value_len, dynamic, format, prefix_data, hints, &incomplete, node));
 
-    if (incomplete && !(lydctx->parse_options & LYD_PARSE_ONLY)) {
+    if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->node_types, *node, 1, NULL));
     }
     return LY_SUCCESS;
@@ -457,7 +515,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
             hints, 0, &incomplete));
 
-    if (incomplete && !(lydctx->parse_options & LYD_PARSE_ONLY)) {
+    if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->meta_types, *meta, 1, NULL));
     }
 

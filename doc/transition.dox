@@ -275,9 +275,7 @@
  * lyd_parse_fd()               | ::lyd_parse_data_fd()           | Renamed and limited to data trees only.
  * lyd_parse_mem()              | ::lyd_parse_data_mem()          | ^
  * lyd_parse_path()             | ::lyd_parse_data_path()         | ^
- * -                            | ::lyd_parse_notif()             | Separated function to parse Notifications.
- * -                            | ::lyd_parse_rpc()               | Separated function to parse RPCs.
- * -                            | ::lyd_parse_reply()             | Separated function to parse replies to RPCs
+ * -                            | ::lyd_parse_op()                | Separated function for parsing RPCs, actions, replies, and notifications.
  * -                            | ::lyd_print_all()               | New API accepting ::ly_out.
  * -                            | ::lyd_print_tree()              | ^
  *

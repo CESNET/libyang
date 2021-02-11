@@ -436,7 +436,7 @@ test_rpc(void **state)
             "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
             "}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_JSON, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_YANG_RPC, &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -479,7 +479,7 @@ test_action(void **state)
 
     data = "{\"a:c\":{\"act\":{\"al\":\"value\"}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_rpc(UTEST_LYCTX, in, LYD_JSON, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_YANG_RPC, &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
@@ -503,7 +503,7 @@ test_notification(void **state)
 
     data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_notif(UTEST_LYCTX, in, LYD_JSON, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_YANG_NOTIF, &tree, &ntf));
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
@@ -516,7 +516,7 @@ test_notification(void **state)
 
     data = "{\"a:n2\":{}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_notif(UTEST_LYCTX, in, LYD_JSON, &tree, &ntf));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_YANG_NOTIF, &tree, &ntf));
     ly_in_free(in, 0);
 
     assert_non_null(ntf);
@@ -542,7 +542,7 @@ test_reply(void **state)
 
     data = "{\"a:c\":{\"act\":{\"al\":25}}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_reply(UTEST_LYCTX, in, LYD_JSON, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_YANG_REPLY, &tree, &op));
     ly_in_free(in, 0);
 
     assert_non_null(op);
