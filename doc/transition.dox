@@ -178,6 +178,7 @@
  * lys_set_enabled()            | -                               | It is not possible to change context this way (remove or disable modules).
  * lys_set_disabled()           | -                               | ^
  * -                            | ::lys_find_child()              | Helpers wrapper around ::lys_getnext().
+ * -                            | ::lys_getnext_ext()             | Alternative to ::lys_getnext() allowing processing schema trees inside extension instances.
  * -                            | ::lys_nodetype2str()            | New functionality.
  * -                            | ::lys_value_validate()          | Supplement functionality to ::lyd_value_validate().
  * lys_is_key()                 | ::lysc_is_key()                 | Renamed to connect with the compiled schema tree.

@@ -214,13 +214,41 @@ lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc
     (*next) = (*next)->next;
 }
 
-API const struct lysc_node *
-lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
+/**
+ * @brief Generic getnext function for ::lys_getnext() and ::lys_getnext_ext().
+ *
+ * Gets next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
+ * be from an augment. If the @p ext is provided, the function is locked inside the schema tree defined in the
+ * extension instance.
+ *
+ * ::lys_getnext_() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * and function starts returning i) the first \p parent's child or ii) the first top level element specified in the
+ * given extension (if provided) or iii) the first top level element of the \p module.
+ * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
+ * \p parent and \p module parameters.
+ *
+ * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
+ * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
+ * all the schema nodes are iteratively returned.
+ *
+ * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
+ * @param[in] parent Parent of the subtree where the function starts processing.
+ * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
+ * module must be specified.
+ * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
+ * the \p parent must be NULL. Anyway, at least one of @p parent, @p module and @p ext parameters must be specified.
+ * @param[in] options [ORed options](@ref sgetnextflags).
+ * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
+ */
+static const struct lysc_node *
+lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module,
+        const struct lysc_ext_instance *ext, uint32_t options)
 {
     const struct lysc_node *next = NULL;
     ly_bool action_flag = 0, notif_flag = 0;
+    struct lysc_node **data_p = NULL;
 
-    LY_CHECK_ARG_RET(NULL, parent || module, NULL);
+    LY_CHECK_ARG_RET(NULL, parent || module || ext, NULL);
 
 next:
     if (!last) {
@@ -232,7 +260,12 @@ next:
             next = last = lysc_node_child(parent);
         } else {
             /* top level data */
-            next = last = module->data;
+            if (ext) {
+                lysc_ext_substmt(ext, LY_STMT_CONTAINER /* matches all nodes */, (void **)&data_p, NULL);
+                next = last = data_p ? *data_p : NULL;
+            } else {
+                next = last = module->data;
+            }
         }
         if (!next) {
             /* try to get action or notification */
@@ -254,15 +287,30 @@ next:
 repeat:
     if (!next) {
         /* possibly go back to parent */
+        data_p = NULL;
         if (last && (last->parent != parent)) {
             last = last->parent;
             goto next;
         } else if (!action_flag) {
             action_flag = 1;
-            next = parent ? (struct lysc_node *)lysc_node_actions(parent) : (struct lysc_node *)module->rpcs;
+            if (ext) {
+                lysc_ext_substmt(ext, LY_STMT_RPC /* matches also actions */, (void **)&data_p, NULL);
+                next = data_p ? *data_p : NULL;
+            } else if (parent) {
+                next = (struct lysc_node *)lysc_node_actions(parent);
+            } else {
+                next = (struct lysc_node *)module->rpcs;
+            }
         } else if (!notif_flag) {
             notif_flag = 1;
-            next = parent ? (struct lysc_node *)lysc_node_notifs(parent) : (struct lysc_node *)module->notifs;
+            if (ext) {
+                lysc_ext_substmt(ext, LY_STMT_NOTIFICATION, (void **)&data_p, NULL);
+                next = data_p ? *data_p : NULL;
+            } else if (parent) {
+                next = (struct lysc_node *)lysc_node_notifs(parent);
+            } else {
+                next = (struct lysc_node *)module->notifs;
+            }
         } else {
             return NULL;
         }
@@ -333,11 +381,23 @@ check:
         goto repeat;
     default:
         /* we should not be here */
-        LOGINT(module ? module->mod->ctx : parent->module->ctx);
+        LOGINT(module ? module->mod->ctx : parent ? parent->module->ctx : ext->module->ctx);
         return NULL;
     }
 
     return next;
+}
+
+API const struct lysc_node *
+lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
+{
+    return lys_getnext_(last, parent, module, NULL, options);
+}
+
+API const struct lysc_node *
+lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_ext_instance *ext, uint32_t options)
+{
+    return lys_getnext_(last, parent, NULL, ext, options);
 }
 
 API const struct lysc_node *

@@ -2352,9 +2352,35 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
         const struct lysc_module *module, uint32_t options);
 
 /**
- * @defgroup sgetnextflags Options for ::lys_getnext().
+ * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree.
  *
- * Various options setting behavior of ::lys_getnext().
+ * In contrast to ::lys_getnext(), ::lys_getnext_ext() is limited by the given @p ext instance as a schema tree root.
+ * If the extension does not contain any schema node, NULL is returned. If the @p parent is provided, the functionality
+ * is completely the same as ::lys_getnext().
+ *
+ * ::lys_getnext_ext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * and function starts returning i) the first \p parent's child or ii) the first top level element of the given  @p ext
+ * instance. Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
+ * \p parent and \p ext parameters.
+ *
+ * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
+ * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
+ * all the schema nodes are iteratively returned.
+ *
+ * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
+ * @param[in] parent Parent of the subtree where the function starts processing.
+ * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
+ * the \p parent must be NULL. anyway, at least one of @p parent and @p ext parameters must be specified.
+ * @param[in] options [ORed options](@ref sgetnextflags).
+ * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
+ */
+const struct lysc_node *lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent,
+        const struct lysc_ext_instance *ext, uint32_t options);
+
+/**
+ * @defgroup sgetnextflags Options for ::lys_getnext() and ::lys_getnext_ext().
+ *
+ * Various options setting behavior of ::lys_getnext() and ::lys_getnext_ext().
  *
  * @{
  */
