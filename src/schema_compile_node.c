@@ -1999,6 +1999,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
     const struct lysc_node_action *actions;
     const struct lysc_node_notif *notifs;
     uint32_t getnext_flags;
+    struct ly_set parent_choices = {0};
 
 #define CHECK_NODE(iter, exclude, name) (iter != (void *)exclude && (iter)->module == exclude->module && !strcmp(name, (iter)->name))
 
@@ -2020,7 +2021,15 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
 
     if (parent && (parent->nodetype == LYS_CASE)) {
         /* move to the first data definition parent */
-        parent = lysc_data_parent(parent);
+
+        /* but remember the choice nodes on the parents path to avoid believe they collide with our node */
+        iter = lysc_data_parent(parent);
+        do {
+            parent = parent->parent;
+            if (parent && (parent->nodetype == LYS_CHOICE)) {
+                ly_set_add(&parent_choices, (void *)parent, 1, NULL);
+            }
+        } while (parent != iter);
     }
 
     getnext_flags = LYS_GETNEXT_WITHCHOICE;
@@ -2036,7 +2045,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
 
     iter = NULL;
     while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {
-        if (CHECK_NODE(iter, exclude, name)) {
+        if (!ly_set_contains(&parent_choices, (void*)iter, NULL) && CHECK_NODE(iter, exclude, name)) {
             goto error;
         }
 
@@ -2064,9 +2073,11 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             goto error;
         }
     }
+    ly_set_erase(&parent_choices, NULL);
     return LY_SUCCESS;
 
 error:
+    ly_set_erase(&parent_choices, NULL);
     LOGVAL(ctx->ctx, LY_VCODE_DUPIDENT, name, "data definition/RPC/action/notification");
     return LY_EEXIST;
 
