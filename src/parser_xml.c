@@ -505,7 +505,7 @@ attr_error:
 #endif
 
     /* first part of validation checks */
-    if (lyv_data_context(*result, options, unres)) {
+    if (lyv_data_context(*result, options, 1, unres)) {
         goto error;
     }
 

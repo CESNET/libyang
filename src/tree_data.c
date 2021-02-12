@@ -4998,7 +4998,7 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
                 act_notif = iter;
             }
 
-            if (lyv_data_context(iter, options, unres) || lyv_data_content(iter, options, unres)) {
+            if (lyv_data_context(iter, options, 1, unres) || lyv_data_content(iter, options, unres)) {
                 goto cleanup;
             }
 

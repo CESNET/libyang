@@ -31,10 +31,11 @@
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] check_node_order Whether to check node order in operations if the format supports it.
  * @param[out] unres Structure to store unresolved items into. Cannot be NULL.
  * @return 0 on success, non-zero on error.
  */
-int lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres);
+int lyv_data_context(struct lyd_node *node, int options, int check_node_order, struct unres_data *unres);
 
 /**
  * @brief Validate if the node's content is valid in the context it is placed.

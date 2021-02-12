@@ -561,7 +561,7 @@ inval:
         len += skip_ws(&data[len]);
         if (data[len] == ',') {
             /* various validation checks */
-            if (lyv_data_context((struct lyd_node*)leaf, options | LYD_OPT_TRUSTED, unres) ||
+            if (lyv_data_context((struct lyd_node*)leaf, options, 0, unres) ||
                     lyv_data_content((struct lyd_node*)leaf, options, unres) ||
                     lyv_multicases((struct lyd_node*)leaf, NULL, first_sibling, 0, NULL)) {
                 return 0;
@@ -1142,14 +1142,7 @@ attr_repeat:
     result->schema = schema;
     result->parent = *parent;
     diter = NULL;
-    if (schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)schema, &pos)) {
-        /* check key duplicity */
-        lyd_find_sibling((*parent)->child, result, &diter);
-        if (diter) {
-            LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_LYD, diter, result->schema->name, (*parent)->schema->name);
-            goto error;
-        }
-
+    if (lys_is_key((struct lys_node_leaf *)schema, &pos)) {
         /* it is key and we need to insert it into a correct place (we must have parent then, a key cannot be top-level) */
         assert(*parent);
         for (i = 0, diter = (*parent)->child;
@@ -1354,7 +1347,7 @@ attr_repeat:
 
             if (data[len] == ',') {
                 /* various validation checks */
-                if (lyv_data_context(list, options | LYD_OPT_TRUSTED, unres) ||
+                if (lyv_data_context(list, options, 0, unres) ||
                         lyv_data_content(list, options, unres) ||
                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     goto error;
@@ -1392,8 +1385,8 @@ attr_repeat:
         goto error;
     }
 
-    /* various validation checks (LYD_OPT_TRUSTED is used just so that the order of elements is not checked) */
-    if (lyv_data_context(result, options | LYD_OPT_TRUSTED, unres) ||
+    /* various validation checks */
+    if (lyv_data_context(result, options, 0, unres) ||
             lyv_data_content(result, options, unres) ||
             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         goto error;
