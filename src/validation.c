@@ -298,7 +298,9 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
 
     assert(node->flags & LYD_NEW);
 
-    if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (node->schema->flags & LYS_CONFIG_R)) {
+    /* key-less list or non-configuration leaf-list */
+    if (((node->schema->nodetype == LYS_LIST) && (node->schema->flags & LYS_KEYLESS)) ||
+            ((node->schema->nodetype == LYS_LEAFLIST) && !(node->schema->flags & LYS_CONFIG_W))) {
         /* duplicate instances allowed */
         return LY_SUCCESS;
     }
