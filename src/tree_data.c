@@ -321,7 +321,6 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     assert(ctx && (parent || first_p));
 
     format = lyd_parse_get_format(in, format);
-    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
     if (first_p) {
         *first_p = NULL;
     }
@@ -341,8 +340,8 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
         rc = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_YANG_DATA, &parsed, &lydctx);
         break;
     case LYD_UNKNOWN:
-        LOGINT(ctx);
-        rc = LY_EINT;
+        LOGARG(ctx, format);
+        rc = LY_EINVAL;
         break;
     }
     LY_CHECK_GOTO(rc, cleanup);
@@ -458,7 +457,6 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     }
 
     format = lyd_parse_get_format(in, format);
-    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
 
     /* remember input position */
     in->func_start = in->current;
@@ -484,8 +482,8 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
         rc = lyd_parse_lyb(ctx, parent, &first, in, parse_opts, val_opts, data_type, &parsed, &lydctx);
         break;
     case LYD_UNKNOWN:
-        LOGINT(ctx);
-        rc = LY_EINT;
+        LOGARG(ctx, format);
+        rc = LY_EINVAL;
         break;
     }
     LY_CHECK_GOTO(rc, cleanup);
