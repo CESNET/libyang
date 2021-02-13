@@ -598,6 +598,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
     struct lys_node *start, *stop, *iter;
     struct lys_node_grp *grp;
     int down, up;
+    struct ly_set excluded_parents = {0};
 
     assert(node);
 
@@ -677,6 +678,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
                     /* augment is not resolved, this is the final parent */
                     break;
                 }
+                ly_set_add(&excluded_parents, (void *)iter, LY_SET_OPT_USEASLIST);
                 iter = iter->parent;
             }
 
@@ -698,7 +700,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             iter = module->data;
         }
         while (iter) {
-            if (iter->nodetype & (LYS_USES | LYS_CASE)) {
+            if ((ly_set_contains(&excluded_parents, (void *)iter) != -1) || iter->nodetype & (LYS_USES | LYS_CASE)) {
                 iter = iter->child;
                 continue;
             }
@@ -706,6 +708,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_RPC | LYS_NOTIF | LYS_ACTION | LYS_ANYDATA)) {
                 if (lys_node_module(iter) == lys_node_module(node) && ly_strequal(iter->name, node->name, 1)) {
                     LOGVAL(module->ctx, LYE_DUPID, LY_VLOG_LYS, node, strnodetype(node->nodetype), node->name);
+                    ly_set_clean(&excluded_parents);
                     return EXIT_FAILURE;
                 }
             }
@@ -739,6 +742,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             }
             iter = iter->next;
         }
+        ly_set_clean(&excluded_parents);
         break;
     case LYS_CASE:
         /* 6.2.1, rule 8 */

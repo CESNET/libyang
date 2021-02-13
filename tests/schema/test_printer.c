@@ -57,6 +57,9 @@ test_tree(void **state)
    mod2=ly_ctx_load_module(ctx, "tree2", NULL);
    assert_ptr_not_equal(mod2, NULL);
    const char temp1[] = "module: tree1\n"
+   "  +--rw (x)?\n"
+   "  |  +--:(x)\n"
+   "  |     +--rw x?   string\n"
    "  +--rw cont\n"
    "  |  +--rw leaf4?         uint8\n"
    "  |  +--rw leaf3?         string\n"
@@ -84,6 +87,9 @@ test_tree(void **state)
    free(str);
 
    const char temp2[] = "module: tree1\n"
+   "  +--rw (x)?\n"
+   "  |  +--:(x)\n"
+   "  |     +--rw x?   string\n"
    "  +--rw cont\n"
    "  |  +--rw leaf4?         uint8\n"
    "  |  +---u group2\n"
@@ -116,6 +122,9 @@ test_tree(void **state)
    free(str); 
    
    const char temp3[] = "module: tree1\n"
+   "  +--rw (x)?\n"
+   "  |  +--:(x)\n"
+   "  |     +--rw x?   string\n"
    "  +--rw cont\n"
    "  |  +--rw leaf4?         uint8\n"
    "  |  +--rw leaf3?         string\n"
