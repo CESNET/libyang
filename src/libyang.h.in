@@ -1840,6 +1840,11 @@ void ly_set_free(struct ly_set *set);
                                      - for action output - skip all the parents of and the action node itself,
                                      - for action input - enclose the data in an action element in the base YANG namespace,
                                      - for all other data - print the whole data tree normally. */
+#define LYP_FRAGMENT 0x200 /**< Print the data tree as a fragment. For
+                                JSON this means that apparent
+                                top-level nodes do not have their
+                                namespace added. */
+#define LYP_BARETOPLEAF 0x400 /**< Print top-level leaf node as a bare value (JSON-only). */
 
 /**
  * @}

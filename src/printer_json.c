@@ -158,8 +158,9 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
         wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
     }
 
-    if (!onlyvalue) {
-        if (toplevel || !node->parent || nscmp(node, node->parent)) {
+    if (!onlyvalue && !(toplevel && options & LYP_BARETOPLEAF)) {
+      if ((toplevel || !node->parent || nscmp(node, node->parent)) &&
+            !(options & LYP_FRAGMENT)) {
             /* print "namespace" */
             schema = lys_node_module(node->schema)->name;
             ly_print(out, "%*s\"%s:%s\":%s", LEVEL, INDENT, schema, node->schema->name, (level ? " " : ""));
@@ -267,7 +268,8 @@ json_print_container(struct lyout *out, int level, const struct lyd_node *node, 
 
     LY_PRINT_SET;
 
-    if (toplevel || !node->parent || nscmp(node, node->parent)) {
+    if ((toplevel || !node->parent || nscmp(node, node->parent)) &&
+        !(options & LYP_FRAGMENT)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\":%s{%s", LEVEL, INDENT, schema, node->schema->name, (level ? " " : ""), (level ? "\n" : ""));
@@ -310,7 +312,8 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
         flag_empty = 1;
     }
 
-    if (toplevel || !node->parent || nscmp(node, node->parent)) {
+    if ((toplevel || !node->parent || nscmp(node, node->parent)) &&
+        !(options & LYP_FRAGMENT)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, schema, node->schema->name);
@@ -434,7 +437,8 @@ json_print_anydataxml(struct lyout *out, int level, const struct lyd_node *node,
 
     LY_PRINT_SET;
 
-    if (toplevel || !node->parent || nscmp(node, node->parent)) {
+    if ((toplevel || !node->parent || nscmp(node, node->parent)) &&
+        !(options & LYP_FRAGMENT)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, schema, node->schema->name);
@@ -632,7 +636,7 @@ int
 json_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     const struct lyd_node *node, *next;
-    int level = 0, action_input = 0;
+    int level = 0, action_input = 0, is_obj = 1;
 
     LY_PRINT_SET;
 
@@ -663,8 +667,13 @@ json_print_data(struct lyout *out, const struct lyd_node *root, int options)
         }
     }
 
+    if (!(options & LYP_WITHSIBLINGS) && options & LYP_BARETOPLEAF &&
+        root->schema->nodetype == LYS_LEAF)
+        is_obj = 0;
+
     /* start */
-    ly_print(out, "{%s", (level ? "\n" : ""));
+    if (is_obj)
+        ly_print(out, "{%s", (level ? "\n" : ""));
 
     if (action_input) {
         ly_print(out, "%*s\"yang:action\":%s{%s", LEVEL, INDENT, (level ? " " : ""), (level ? "\n" : ""));
@@ -686,7 +695,8 @@ json_print_data(struct lyout *out, const struct lyd_node *root, int options)
     }
 
     /* end */
-    ly_print(out, "}%s", (level ? "\n" : ""));
+    if (is_obj)
+        ly_print(out, "}%s", (level ? "\n" : ""));
 
     ly_print_flush(out);
     LY_PRINT_RET(NULL);
