@@ -172,6 +172,9 @@ struct ly_in;
                                                  when parsing validated data to skip some validation tasks and modify
                                                  some validation behavior (auto-deletion of cases). */
 
+#define LYD_PARSE_BARETOPLEAF 0x2000000     /**< Fragments for top-level leaf values are expected to be bare and not
+                                                 have a top-level object or node name. */
+
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
 /** @} dataparseroptions */

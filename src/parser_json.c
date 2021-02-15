@@ -1817,7 +1817,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
+lyd_parse_json_init(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
         struct lyd_json_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1837,7 +1837,14 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_o
     status = lyjson_ctx_status(lydctx->jsonctx);
 
     /* parse_opts & LYD_PARSE_SUBTREE not implemented */
-    if (status != LYJSON_OBJECT) {
+    if (parse_opts & LYD_PARSE_BARETOPLEAF && parent && (parent->schema->nodetype == LYS_LEAF)) {
+        if ((status != LYJSON_STRING) && (status != LYJSON_OBJECT)) {
+            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expected top-level JSON object or bare value, but %s found.", lyjson_token2str(status));
+            *lydctx_p = NULL;
+            lyd_json_ctx_free((struct lyd_ctx *)lydctx);
+            return LY_EVALID;
+        }
+    } else if (status != LYJSON_OBJECT) {
         /* expecting top-level object */
         LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expected top-level JSON object, but %s found.", lyjson_token2str(status));
         *lydctx_p = NULL;
@@ -1857,8 +1864,9 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
     enum LYJSON_PARSER_STATUS status;
+    uint32_t log_location_items = 0;
 
-    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    rc = lyd_parse_json_init(ctx, parent, in, parse_opts, val_opts, &lydctx);
     LY_CHECK_GOTO(rc, cleanup);
 
     lydctx->int_opts = int_opts;
@@ -1867,17 +1875,46 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
 
-    /* read subtree(s) */
-    do {
-        r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
+    if (lyjson_ctx_status(lydctx->jsonctx) == LYJSON_OBJECT) {
+        /* read subtree(s) */
+        do {
+            r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+            status = lyjson_ctx_status(lydctx->jsonctx);
+
+            if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+                break;
+            }
+        } while (status == LYJSON_OBJECT_NEXT);
+        assert((status == LYJSON_END) || (status == LYJSON_OBJECT_CLOSED));
+    } else {
+        struct lyd_node_term *t;
+        struct lysc_type *type;
+        struct lyd_value val;
+
+        t = (struct lyd_node_term *)parent;
+        type = ((struct lysc_node_leaf *)parent->schema)->type;
+
+        LOG_LOCSET(parent->schema, parent, NULL, NULL);
+        log_location_items++;
+
+        r = lyd_value_store(LYD_CTX(parent), &val, type, lydctx->jsonctx->value, lydctx->jsonctx->value_len, 0, NULL,
+                LY_VALUE_JSON, NULL, LYD_HINT_DATA, parent->schema, NULL);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
-        status = lyjson_ctx_status(lydctx->jsonctx);
+        type->plugin->free(LYD_CTX(parent), &t->value);
+        t->value = val;
 
-        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
-            break;
+        r = lyjson_ctx_next(lydctx->jsonctx, &status);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
+        if (status != LYJSON_END) {
+            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Expected end-of-input, but %s found.", lyjson_token2str(status));
+            rc = LY_EVALID;
+            goto cleanup;
         }
-    } while (status == LYJSON_OBJECT_NEXT);
+    }
 
     if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lydctx->jsonctx->in->current[0] && (status != LYJSON_OBJECT_CLOSED)) {
         LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
@@ -1891,7 +1928,7 @@ lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     }
 
     /* finish linking metadata */
-    r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p);
+    r = lydjson_metadata_finish(lydctx, parent ? &parent : first_p);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     if (parse_opts & LYD_PARSE_SUBTREE) {
@@ -1921,6 +1958,8 @@ cleanup:
         lyjson_ctx_free(lydctx->jsonctx);
         lydctx->jsonctx = NULL;
     }
+
+    LOG_LOCBACK(log_location_items, log_location_items, 0, 0);
     return rc;
 }
 
@@ -2008,7 +2047,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, const struct lysc_ext_instance
     assert(!(parse_opts & LYD_PARSE_SUBTREE));
 
     /* init context */
-    rc = lyd_parse_json_init(ctx, in, parse_opts, val_opts, &lydctx);
+    rc = lyd_parse_json_init(ctx, parent, in, parse_opts, val_opts, &lydctx);
     LY_CHECK_GOTO(rc, cleanup);
     lydctx->ext = ext;
 

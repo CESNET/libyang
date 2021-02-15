@@ -914,6 +914,38 @@ test_metadata(void **state)
     CHECK_LOG_CTX("Invalid non-number-encoded int8 value \"value\".", "Path \"/a:c/x/@a:hint\", line number 1.");
 }
 
+static void
+test_baretopleaf(void **state)
+{
+    struct lyd_node *root;
+    struct lyd_node *node;
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+    const char *data;
+    struct ly_in *in = NULL;
+    int ret;
+
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:foo", NULL, 0, 0, 0, &root, &node);
+    if (ret) {
+        fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+    }
+
+    data = "\"foo value\"";
+    if ((ret = ly_in_new_memory(data, &in))) {
+        fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+    }
+
+    if ((ret = lyd_parse_data(UTEST_LYCTX, node, in, LYD_JSON, LYD_PARSE_BARETOPLEAF | LYD_PARSE_ONLY, 0, &tree))) {
+        fail_msg("Print err 0x%d; MSG: %s", ret, ly_err_last(UTEST_LYCTX)->msg);
+    }
+    leaf = (struct lyd_node_term *)node;
+    CHECK_LYD_VALUE(leaf->value, STRING, "foo value");
+
+    CHECK_LYD_STRING(node, LYD_PRINT_SHRINK | LYD_PRINT_BARETOPLEAF, data);
+    lyd_free_all(root);
+    ly_in_free(in, 0);
+}
+
 int
 main(void)
 {
@@ -933,6 +965,7 @@ main(void)
         UTEST(test_restconf_notification, setup),
         UTEST(test_restconf_reply, setup),
         UTEST(test_metadata, setup),
+        UTEST(test_baretopleaf, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
