@@ -1434,7 +1434,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct lyd_node *result = NULL, *next, *iter, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
-    int act_cont = 0;
+    int act_cont = 0, top_obj = 1;
     struct attr_cont *attrs = NULL;
 
     if (!ctx || !data) {
@@ -1442,32 +1442,46 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         return NULL;
     }
 
+    if (rpc_act && options & LYD_OPT_FRAGMENT) {
+        reply_parent = (struct lyd_node *)rpc_act;
+        if (options & LYD_OPT_BARETOPLEAF &&
+            reply_parent->schema->nodetype == LYS_LEAF)
+            top_obj = 0;
+    }
+
     /* skip leading whitespaces */
     len += skip_ws(&data[len]);
 
     /* expect top-level { */
-    if (data[len] != '{') {
-        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level begin-object)");
-        return NULL;
-    }
-
-    /* check for empty object */
-    r = len + 1;
-    r += skip_ws(&data[r]);
-    if (data[r] == '}') {
-        if (options & LYD_OPT_DATA_ADD_YANGLIB) {
-            result = ly_ctx_info(ctx);
+    if (top_obj) {
+        if (data[len] != '{') {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level begin-object)");
+            return NULL;
         }
-        lyd_validate(&result, options, ctx);
-        return result;
+        r = len + 1;
+        r += skip_ws(&data[r]);
+
+        /* check for empty object */
+        if (data[r] == '}') {
+            if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+                result = ly_ctx_info(ctx);
+            }
+            lyd_validate(&result, options, ctx);
+            return result;
+        }
+    } else if (!top_obj && data[len] == '{') {
+        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL,
+               "JSON data (bare leaf value - expected no top level begin-object)");
+        return NULL;
     }
 
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(ctx), NULL);
 
     /* create RPC/action reply part that is not in the parsed data */
-    if (rpc_act) {
+    if (rpc_act && !(options & LYD_OPT_FRAGMENT)) {
         assert(options & LYD_OPT_RPCREPLY);
+
         if (rpc_act->schema->nodetype == LYS_RPC) {
             /* RPC request */
             reply_top = reply_parent = _lyd_new(NULL, rpc_act->schema, 0);
@@ -1488,9 +1502,41 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         }
     }
 
-    iter = NULL;
+    if (reply_parent) {
+      switch (reply_parent->schema->nodetype) {
+      case LYS_LEAF:
+      case LYS_LEAFLIST:
+      case LYS_ANYDATA:
+      case LYS_ANYXML:
+        /* child field is overloaded for other fields */
+        break;
+      default:
+        result = reply_parent->child;
+        break;
+      }
+    }
+    for (iter = result; iter && iter->next; iter = iter->next)
+        ;
     next = reply_parent;
     do {
+        if (options & LYD_OPT_BARETOPLEAF &&
+            reply_parent->schema->nodetype == LYS_LEAF) {
+            r = json_get_value((struct lyd_node_leaf_list *)reply_parent, &reply_parent->child, &data[len], options, unres);
+            if (!r) {
+                goto error;
+            }
+            len += r;
+
+            /* various validation checks (LYD_OPT_TRUSTED is used just so that the order of elements is not checked) */
+            if (lyv_data_context(reply_parent, options | LYD_OPT_TRUSTED, 0, unres) ||
+                lyv_data_content(reply_parent, options, unres) ||
+                lyv_multicases(reply_parent, NULL, NULL, 0, NULL)) {
+              goto error;
+            }
+            result = reply_parent;
+            break;
+        }
+
         len++;
         len += skip_ws(&data[len]);
 
@@ -1544,13 +1590,18 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         }
     } while (data[len] == ',');
 
-    if (data[len] != '}') {
-        /* expecting end-object */
-        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top-level end-object)");
-        goto error;
+    if (top_obj) {
+        if (data[len] != '}') {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level end-object)");
+            return NULL;
+	}
+        len++;
+        len += skip_ws(&data[len]);
+    } else if (!top_obj && data[len] == '}') {
+        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL,
+               "JSON data (bare leaf value - expected no top level end-object)");
+        return NULL;
     }
-    len++;
-    len += skip_ws(&data[len]);
 
     if (act_cont == 1) {
         if (data[len] != '}') {

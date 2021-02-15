@@ -1035,6 +1035,14 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
     if (options & LYD_OPT_DATA_TEMPLATE) {
         yang_data_name = va_arg(ap, const char *);
     }
+    if (options & LYD_OPT_FRAGMENT) {
+        /* reuse rpc_act to avoid more disruptive changes */
+        rpc_act = va_arg(ap, const struct lyd_node *);
+        if (!rpc_act) {
+            LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *fragment_root).", __func__);
+            return NULL;
+        }
+    }
 
     return lyd_parse_(ctx, rpc_act, data, format, options, data_tree, yang_data_name);
 }

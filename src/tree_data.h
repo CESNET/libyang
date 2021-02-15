@@ -543,6 +543,9 @@ char *lyd_path(const struct lyd_node *node);
                                              And, the @ref logopts need support storing multiple error messages.
                                              NOTE: Only some kinds of validation error are supported:
                                                    must, unique, unresolved union and unresolved instance-identifier.  */
+#define LYD_OPT_FRAGMENT 0x4000000 /**< Data represents a fragment. */
+#define LYD_OPT_BARETOPLEAF 0x8000000 /**< Fragments for top-level leaf values are expected to be bare and not have
+                                           a top-level object or node name. */
 
 /**@} parseroptions */
 
@@ -578,6 +581,8 @@ char *lyd_path(const struct lyd_node *node);
  *                  - const struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
  *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
  *                    that require some nodes outside their subtree.
+ *                - #LYD_OPT_FRAGMENT:
+ *                  - struct ::lyd_node *fragment_root - root node that the fragment will be parsed into.
  * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
