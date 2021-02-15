@@ -270,8 +270,13 @@ json_print_string(struct ly_out *out, const char *text)
 static LY_ERR
 json_print_member(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_bool is_attr)
 {
+    if ((LEVEL == 1) && pctx->options & LYD_PRINT_BARETOPLEAF) {
+        return LY_SUCCESS;
+    }
+
     PRINT_COMMA;
-    if ((LEVEL == 1) || json_nscmp(node, pctx->parent)) {
+    if (((LEVEL == 1) || json_nscmp(node, pctx->parent)) &&
+            !(pctx->options & LYD_PRINT_FRAGMENT)) {
         /* print "namespace" */
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
                 node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
@@ -297,6 +302,10 @@ json_print_member2(struct jsonpr_ctx *pctx, const struct lyd_node *parent, LY_VA
         const struct ly_opaq_name *name, ly_bool is_attr)
 {
     const char *module_name = NULL, *name_str;
+
+    if ((LEVEL == 1) && pctx->options & LYD_PRINT_BARETOPLEAF) {
+        return LY_SUCCESS;
+    }
 
     PRINT_COMMA;
 
@@ -999,11 +1008,18 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     const struct lyd_node *node;
     struct jsonpr_ctx pctx = {0};
     const char *delimiter = (options & LYD_PRINT_SHRINK) ? "" : "\n";
+    int is_obj = 1;
 
     if (!root) {
         ly_print_(out, "{}%s", delimiter);
         ly_print_flush(out);
         return LY_SUCCESS;
+    }
+
+    if (!(options & LYD_PRINT_WITHSIBLINGS) &&
+            options & LYD_PRINT_BARETOPLEAF &&
+            (root->schema->nodetype == LYS_LEAF)) {
+        is_obj = 0;
     }
 
     pctx.out = out;
@@ -1014,7 +1030,9 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     pctx.ctx = LYD_CTX(root);
 
     /* start */
-    ly_print_(pctx.out, "{%s", delimiter);
+    if (is_obj) {
+        ly_print_(pctx.out, "{%s", delimiter);
+    }
 
     /* content */
     LY_LIST_FOR(root, node) {
@@ -1026,7 +1044,9 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     }
 
     /* end */
-    ly_print_(out, "%s}%s", delimiter, delimiter);
+    if (is_obj) {
+        ly_print_(pctx.out, "%s}%s", delimiter, delimiter);
+    }
 
     assert(!pctx.open.count);
     ly_set_erase(&pctx.open, NULL);
