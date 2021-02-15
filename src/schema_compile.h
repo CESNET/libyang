@@ -45,6 +45,7 @@ struct lyxp_expr;
                                                       it will be removed at the end of compilation and should not be
                                                       added to any unres sets. */
 #define LYS_COMPILE_NO_CONFIG       0x04            /**< ignore config statements, neither inherit config value */
+#define LYS_COMPILE_NO_DISABLED     0x08            /**< ignore if-feature statements */
 
 #define LYS_COMPILE_RPC_INPUT       (LYS_IS_INPUT | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of RPC/action input */
 #define LYS_COMPILE_RPC_OUTPUT      (LYS_IS_OUTPUT | LYS_COMPILE_NO_CONFIG) /**< Internal option when compiling schema tree of RPC/action output */
