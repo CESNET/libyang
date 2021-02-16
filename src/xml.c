@@ -615,9 +615,10 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
 
         /* store every namespace */
         if ((prefix && !ly_strncmp("xmlns", prefix, prefix_len)) || (!prefix && !ly_strncmp("xmlns", name, name_len))) {
-            LY_CHECK_GOTO(ret = lyxml_ns_add(xmlctx, prefix ? name : NULL, prefix ? name_len : 0,
-                    dynamic ? value : strndup(value, value_len)), cleanup);
+            ret = lyxml_ns_add(xmlctx, prefix ? name : NULL, prefix ? name_len : 0,
+                    dynamic ? value : strndup(value, value_len));
             dynamic = 0;
+            LY_CHECK_GOTO(ret, cleanup);
         } else {
             /* not a namespace */
             is_ns = 0;
@@ -918,9 +919,13 @@ lyxml_ctx_next(struct lyxml_ctx *xmlctx)
             LY_CHECK_GOTO(ret, cleanup);
 
             if (!xmlctx->value_len) {
+                /* empty value should by alocated staticaly, but check for in any case */
+                if (xmlctx->dynamic) {
+                    free((char *) xmlctx->value);
+                }
                 /* use empty value, easier to work with */
                 xmlctx->value = "";
-                assert(!xmlctx->dynamic);
+                xmlctx->dynamic = 0;
             }
 
             /* update status */
