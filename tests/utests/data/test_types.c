@@ -367,7 +367,7 @@ test_binary(void **state)
     CHECK_PARSE_LYD("<binary-norestr xmlns=\"urn:tests:types\">\n    \t\n  </binary-norestr>", tree);
     assert_non_null(tree);
     tree = tree->next;
-    TEST_PATTERN_1(tree, "binary-norestr", 1, BINARY, "</binary-norestr>");
+    TEST_PATTERN_1(tree, "binary-norestr", 1, BINARY, "");
     lyd_free_all(tree);
 
     CHECK_PARSE_LYD("<binary-norestr xmlns=\"urn:tests:types\"></binary-norestr>", tree);

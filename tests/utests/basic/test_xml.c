@@ -333,7 +333,7 @@ test_attribute(void **state)
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTR_CONTENT, xmlctx->status);
-    assert_true(!strncmp("val", xmlctx->name, xmlctx->name_len));
+    assert_true(!strncmp("val", xmlctx->value, xmlctx->value_len));
     assert_int_equal(xmlctx->ws_only, 0);
     assert_int_equal(xmlctx->dynamic, 0);
     lyxml_ctx_free(xmlctx);
