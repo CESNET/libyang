@@ -290,7 +290,7 @@ enum lyd_type {
  *   - @p parent - must be NULL, the whole RPC is expected;
  *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
  *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree;
+ *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be provided, the RPC/action data tree itself will be returned here, pointing to the operation;
  *
  * - ::LYD_TYPE_NETCONF_REPLY_OR_NOTIF:

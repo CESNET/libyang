@@ -129,7 +129,8 @@ LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *c
  * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] data_type Expected data type of the data.
- * @param[out] envp Individual parsed envelopes tree, returned only by specific @p data_type.
+ * @param[out] envp Individual parsed envelopes tree, returned only by specific @p data_type and possibly even if
+ * an error occurs later.
  * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.

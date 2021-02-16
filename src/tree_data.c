@@ -474,6 +474,14 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     switch (format) {
     case LYD_XML:
         rc = lyd_parse_xml(ctx, parent, &first, in, parse_opts, val_opts, data_type, &envp, &parsed, &lydctx);
+        if (rc && envp) {
+            /* special situation when the envelopes were parsed successfully */
+            if (tree) {
+                *tree = envp;
+            }
+            ly_set_erase(&parsed, NULL);
+            return rc;
+        }
         break;
     case LYD_JSON:
         rc = lyd_parse_json(ctx, parent, &first, in, parse_opts, val_opts, data_type, &parsed, &lydctx);
