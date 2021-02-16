@@ -485,6 +485,11 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
 
         if (xmlctx->ws_only) {
             /* ignore WS-only value */
+            if (xmlctx->dynamic) {
+                free((char *) xmlctx->value);
+            }
+            xmlctx->dynamic = 0;
+            xmlctx->value = "";
             xmlctx->value_len = 0;
             format = LY_PREF_XML;
         } else {
