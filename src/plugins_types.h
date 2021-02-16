@@ -181,6 +181,8 @@ void lysc_prefixes_free(struct lysc_prefix *prefixes);
  * must function as expected.
  *
  * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
+ * All store function have to free dynamically allocated value in case they dont used it.
+ * Also, in case of any error store function have to call free on dynamically allocated value.
  *
  * @param[in] ctx libyang Context
  * @param[in] type Type of the value being stored.

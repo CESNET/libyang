@@ -67,6 +67,10 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
     }
 
     ret = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
+    if (dynamic) {
+        *dynamic = 0;
+    }
+
     if (ret == LY_EINCOMPLETE) {
         if (incomplete) {
             *incomplete = 1;
@@ -81,9 +85,6 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         return ret;
     }
 
-    if (dynamic) {
-        *dynamic = 0;
-    }
     return LY_SUCCESS;
 }
 
