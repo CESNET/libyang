@@ -170,6 +170,135 @@ static const char *num_data =
 "}"
 ;
 
+/* syntax error (for iface2), but within a wider set of data testing cleanup */
+static const char *if_error_data =
+"{"
+  "\"ietf-anydata:anydata-con\" : {"
+    "\"anyvalue\" : \"value\""
+  "},"
+  "\"ietf-interfaces:interfaces\": {"
+    "\"interface\": ["
+      "{"
+        "\"name\": \"iface1\","
+        "\"description\": \"iface1 dsc\","
+        "\"type\": \"iana-if-type:ethernetCsmacd\","
+        "\"@type\": {"
+          "\"yang:type_attr\":\"1\""
+        "},"
+        "\"enabled\": true,"
+        "\"link-up-down-trap-enable\": \"disabled\","
+        "\"ietf-ip:ipv4\": {"
+          "\"@\": {"
+            "\"yang:ip_attr\":\"14\""
+          "},"
+          "\"enabled\": true,"
+          "\"forwarding\": true,"
+          "\"mtu\": 68,"
+          "\"address\": ["
+            "{"
+              "\"ip\": \"10.0.0.1\","
+              "\"netmask\": \"255.0.0.0\""
+            "},"
+            "{"
+              "\"ip\": \"172.0.0.1\","
+              "\"prefix-length\": 16"
+            "}"
+          "],"
+          "\"neighbor\": ["
+            "{"
+              "\"ip\": \"10.0.0.2\","
+              "\"link-layer-address\": \"01:34:56:78:9a:bc:de:f0\""
+            "}"
+          "]"
+        "},"
+        "\"ietf-ip:ipv6\": {"
+          "\"@\": {"
+            "\"yang:ip_attr\":\"16\""
+          "},"
+          "\"enabled\": true,"
+          "\"forwarding\": false,"
+          "\"mtu\": 1280,"
+          "\"address\": ["
+            "{"
+              "\"ip\": \"2001:abcd:ef01:2345:6789:0:1:1\","
+              "\"prefix-length\": 64"
+            "}"
+          "],"
+          "\"neighbor\": ["
+            "{"
+              "\"ip\": \"2001:abcd:ef01:2345:6789:0:1:2\","
+              "\"link-layer-address\": \"01:34:56:78:9a:bc:de:f0\""
+            "}"
+          "],"
+          "\"dup-addr-detect-transmits\": 52,"
+          "\"autoconf\": {"
+            "\"create-global-addresses\": true,"
+            "\"create-temporary-addresses\": false,"
+            "\"temporary-valid-lifetime\": 600,"
+            "\"temporary-preferred-lifetime\": 300"
+          "}"
+        "}"
+      "},"
+      "{"
+        "\"name\": \"iface2\","
+        "\"description\": \"iface2 dsc\","
+        "\"type\": \"iana-if-type:softwareLoopback\","
+        "\"@type\": {"
+          "\"yang:type_attr\":\"2\""
+        "},"
+        "\"enabled\": false,"
+        "\"link-up-down-trap-enable\": \"disabled\","
+        "\"ietf-ip:ipv4\": {"
+          "\"@\": {"
+            "\"yang:ip_attr\":\"24\""
+          "},"
+          "\"address\": ["
+            "{"
+              "\"ip\": \"10.0.0.5\","
+              "\"netmask\": \"255.0.0.0\""
+            "},"
+            "{"
+              "\"ip\": 172.0.0.5\","
+              "\"prefix-length\": 16"
+            "}"
+          "],"
+          "\"neighbor\": ["
+            "{"
+              "\"ip\": \"10.0.0.1\","
+              "\"link-layer-address\": \"01:34:56:78:9a:bc:de:fa\""
+            "}"
+          "]"
+        "},"
+        "\"ietf-ip:ipv6\": {"
+          "\"@\": {"
+            "\"yang:ip_attr\":\"26\""
+          "},"
+          "\"address\": ["
+            "{"
+              "\"ip\": \"2001:abcd:ef01:2345:6789:0:1:5\","
+              "\"prefix-length\": 64"
+            "}"
+          "],"
+          "\"neighbor\": ["
+            "{"
+              "\"ip\": \"2001:abcd:ef01:2345:6789:0:1:1\","
+              "\"link-layer-address\": \"01:34:56:78:9a:bc:de:fa\""
+            "}"
+          "],"
+          "\"dup-addr-detect-transmits\": 100,"
+          "\"autoconf\": {"
+            "\"create-global-addresses\": true,"
+            "\"create-temporary-addresses\": false,"
+            "\"temporary-valid-lifetime\": 600,"
+            "\"temporary-preferred-lifetime\": 300"
+          "}"
+        "}"
+      "}"
+    "]"
+  "}"
+"}"
+;
+
 static const char *text_schema =
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 "<module name=\"ietf-anydata\""
@@ -507,6 +636,7 @@ test_parse_if(void **state)
     struct state *st;
     const char *modules[] = {"ietf-interfaces", "ietf-ip", "iana-if-type"};
     int module_count = 3;
+    const struct lys_module *mod;
 
     if (setup_f(&st, TESTS_DIR "/schema/yin/ietf", modules, module_count)) {
         fail();
@@ -514,8 +644,15 @@ test_parse_if(void **state)
 
     (*state) = st;
 
+    mod = lys_parse_mem(st->ctx, text_schema, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
     st->dt = lyd_parse_mem(st->ctx, if_data, LYD_JSON, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
+    lyd_free_withsiblings(st->dt);
+
+    st->dt = lyd_parse_mem(st->ctx, if_error_data, LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_equal(st->dt, NULL);
 }
 
 static void

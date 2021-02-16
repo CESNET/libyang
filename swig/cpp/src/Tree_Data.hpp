@@ -207,6 +207,9 @@ public:
     /** wrapper for macro [LY_TREE_DFS_BEGIN](@ref LY_TREE_DFS_BEGIN) and [LY_TREE_DFS_END](@ref LY_TREE_DFS_END) */
     std::vector<S_Data_Node> tree_dfs();
 
+    /** wrapper for [lyd_parse_mem](@ref lyd_parse_mem) */
+    S_Data_Node parse_data_mem(const char *data, LYD_FORMAT format, int options);
+
     /** SWIG related wrappers, for internal use only */
     struct lyd_node *swig_node() {return node;};
     /** SWIG related wrappers, for internal use only */

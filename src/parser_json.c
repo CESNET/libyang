@@ -888,7 +888,7 @@ json_skip_unknown(struct ly_ctx *ctx, struct lyd_node *parent, const char *data,
 
 static unsigned int
 json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *schema_parent, struct lyd_node **parent,
-                struct lyd_node *first_sibling, struct lyd_node *prev, struct attr_cont **attrs, int options,
+                struct lyd_node *orig_first_sibling, struct lyd_node *prev, struct attr_cont **attrs, int options,
                 struct unres_data *unres, struct lyd_node **act_notif, const char *yang_data_name)
 {
     unsigned int len = 0;
@@ -903,6 +903,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     struct lyd_node *result = NULL, *new, *list, *diter = NULL;
     struct lyd_attr *attr;
     struct attr_cont *attrs_aux;
+    struct lyd_node *first_sibling = orig_first_sibling;
 
     /* each YANG data node representation starts with string (node identifier) */
     if (data[len] != '"') {
@@ -1421,7 +1422,15 @@ error:
         free(attrs_aux);
     }
 
-    lyd_free(result);
+    /*
+     * Does the caller have a pointer into this chain of nodes? If so,
+     * let them free the chain of nodes to avoid freeing the one they
+     * are hanging on to. Otherwise, free the lot (we may have created
+     * siblings here too).
+     */
+    if (!orig_first_sibling) {
+        lyd_free_withsiblings(result);
+    }
     free(str);
 
     return 0;
@@ -1593,14 +1602,14 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     if (top_obj) {
         if (data[len] != '}') {
             LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level end-object)");
-            return NULL;
-	}
+            goto error;
+        }
         len++;
         len += skip_ws(&data[len]);
     } else if (!top_obj && data[len] == '}') {
         LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL,
                "JSON data (bare leaf value - expected no top level end-object)");
-        return NULL;
+        goto error;
     }
 
     if (act_cont == 1) {

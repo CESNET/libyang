@@ -543,6 +543,20 @@ std::vector<S_Data_Node> Data_Node::tree_dfs() {
 
     return s_vector;
 }
+S_Data_Node Data_Node::parse_data_mem(const char *data, LYD_FORMAT format, int options) {
+    struct lyd_node *new_node = nullptr;
+
+    if (!(options & LYD_OPT_FRAGMENT))
+        throw std::invalid_argument("Options must include LYD_OPT_FRAGMENT");
+
+    new_node = lyd_parse_mem(node->schema->module->ctx, data, format, options, node);
+    if (!new_node) {
+        check_libyang_error(node->schema->module->ctx);
+        return nullptr;
+    }
+
+    return std::make_shared<Data_Node>(new_node, deleter);
+}
 
 Data_Node_Leaf_List::Data_Node_Leaf_List(S_Data_Node derived):
     Data_Node(derived->node, derived->deleter),
