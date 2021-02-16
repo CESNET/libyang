@@ -967,82 +967,85 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    size_t start = 0, stop = 0, count = 0, u, termination = 0;
+    size_t base64_start, base64_end, base64_count, base64_terminated, value_end;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
 
     LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
-
-    /* initiate */
-    *err = NULL;
 
     /* check hints */
     ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* validate characters and remember the number of octets for length validation */
-    if (value_len) {
-        /* silently skip leading/trailing whitespaces */
-        for (start = 0; (start < value_len) && isspace(value[start]); start++) {}
-        for (stop = value_len - 1; stop > start && isspace(value[stop]); stop--) {}
-        if (start == stop) {
-            /* empty string */
-            goto finish;
-        }
-
-
-        for (count = 0, u = start; u <= stop; u++) {
-            if (value[u] == '\n') {
-                /* newline formatting */
-                continue;
-            }
-            count++;
-
-            if (((value[u] < '/') && (value[u] != '+')) ||
-                    ((value[u] > '9') && (value[u] < 'A')) ||
-                    ((value[u] > 'Z') && (value[u] < 'a')) || (value[u] > 'z')) {
-                /* non-encoding characters */
-                if (value[u] == '=') {
-                    /* padding */
-                    if ((u == stop - 1) && (value[stop] == '=')) {
-                        termination = 2;
-                        count++;
-                        u++;
-                    } else if (u == stop) {
-                        termination = 1;
-                    }
-                }
-                if (!termination) {
-                    /* error */
-                    ret = LY_EVALID;
-                    *err = ly_err_msg_create(&ret, LYVE_DATA, "Invalid Base64 character (%c).", value[u]);
-                    goto cleanup;
-                }
-            }
-        }
+    /* silently skip leading whitespaces */
+    base64_start = 0;
+    while (base64_start < value_len && isspace(value[base64_start])) {
+        base64_start++;
+    }
+    /* silently skip trailing whitespace */
+    value_end = value_len;
+    while (base64_start < value_end && isspace(value[value_end - 1])) {
+        value_end--;
     }
 
-finish:
-    if (count & 3) {
+    /* find end of base64 value */
+    base64_end = base64_start;
+    base64_count = 0;
+    while ((base64_end < value_len) &&
+            /* check correct character in base64 */
+            ((('A' <= value[base64_end]) && (value[base64_end] <= 'Z')) ||
+            (('a' <= value[base64_end]) && (value[base64_end] <= 'z')) ||
+            (('0' <= value[base64_end]) && (value[base64_end] <= '9')) ||
+            ('+' == value[base64_end]) ||
+            ('/' == value[base64_end]) ||
+            ('\n' == value[base64_end]))) {
+
+        if ('\n' != value[base64_end]) {
+            base64_count++;
+        }
+        base64_end++;
+    }
+
+    /* find end of padding */
+    base64_terminated = 0;
+    while (((base64_end < value_len) && (base64_terminated < 2)) &&
+            /* check padding on end of string */
+            (('=' == value[base64_end]) ||
+            ('\n' == value[base64_end]))) {
+
+        if ('\n' != value[base64_end]) {
+            base64_terminated++;
+        }
+        base64_end++;
+    }
+
+    /* check if value is valid base64 value */
+    if (value_end != base64_end) {
+        ret = LY_EVALID;
+        *err = ly_err_msg_create(&ret, LYVE_DATA, "Invalid Base64 character (%c).", value[base64_end]);
+        goto cleanup;
+    }
+
+    if ((base64_count + base64_terminated) & 3) {
         /* base64 length must be multiple of 4 chars */
         ret = LY_EVALID;
         *err = ly_err_msg_create(&ret, LYVE_DATA, "Base64 encoded value length must be divisible by 4.");
         goto cleanup;
     }
 
-    /* length of the encoded string */
+    /* check if value meets the type requirments */
     if (type_bin->length) {
-        char buf[LY_NUMBER_MAXLEN];
-        /* get correct length based on base64 encoding rules */
-        uint64_t len = ((count / 4) * 3) - termination;
-        snprintf(buf, LY_NUMBER_MAXLEN, "%" PRIu64, len);
-        ret = ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, buf, err);
+        const uint32_t value_length = ((base64_count + base64_terminated) / 4) * 3 - base64_terminated;
+        ret = ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
-    if ((start != 0) || (value_len && (stop != value_len - 1))) {
-        ret = lydict_insert(ctx, &value[start], stop + 1 - start, &storage->canonical);
+    if (base64_count != 0) {
+        ret = lydict_insert(ctx, &value[base64_start], base64_end - base64_start, &storage->canonical);
+        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
-        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical);
+        ret = lydict_insert(ctx, "", 0, &storage->canonical);
+        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
     storage->ptr = NULL;
     storage->realtype = type;
