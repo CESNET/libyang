@@ -970,7 +970,7 @@ lydxml_env_netconf_rpc_reply_error_info(struct lyxml_ctx *xmlctx, struct lyd_nod
                 goto error;
             } else if (!strcmp(ns->uri, "urn:ietf:params:xml:ns:netconf:base:1.0")) {
                 LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"error-info\".",
-                    xmlctx->name_len, xmlctx->name);
+                        xmlctx->name_len, xmlctx->name);
                 r = LY_EVALID;
                 goto error;
             }

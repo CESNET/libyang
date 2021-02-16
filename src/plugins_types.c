@@ -514,7 +514,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
             *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
             return LY_ESYS;
         } else if (((rc == PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 0)) ||
-                  ((rc != PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 1))) {
+                ((rc != PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 1))) {
             LY_ERR ret = 0;
             const char *inverted = patterns[u]->inverted == 0 ? " " : " inverted ";
             if (asprintf(&errmsg, "String \"%.*s\" does not conform to the%spattern \"%s\".",
