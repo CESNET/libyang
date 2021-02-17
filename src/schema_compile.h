@@ -67,6 +67,8 @@ struct lysc_ctx {
                                      - augment - module where the augment is defined
                                      - deviation - module where the deviation is defined
                                      - uses - module where the grouping is defined */
+    struct lysc_ext_instance *ext; /**< extension instance being processed and serving as a source for its substatements
+                                     instead of the module itself */
     struct ly_set groupings;    /**< stack for groupings circular check */
     struct ly_set tpdf_chain;
     struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisifed */
