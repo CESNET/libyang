@@ -23,6 +23,7 @@
 #include "log.h"
 #include "parser_data.h"
 #include "parser_internal.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
@@ -36,6 +37,7 @@
  * Note that the structure maps to the lyd_ctx which is common for all the data parsers
  */
 struct lyd_xml_ctx {
+    const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context of the data being parsed */
     uint32_t parse_opts;           /**< various @ref dataparseroptions. */
     uint32_t val_opts;             /**< various @ref datavalidationoptions. */
     uint32_t int_opts;             /**< internal data parser options */
@@ -429,12 +431,24 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     /* get the schema node */
     snode = NULL;
     if (mod && (!parent || parent->schema)) {
-        snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
+        if (!parent && lydctx->ext) {
+            snode = lys_find_ext_instance_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
+        } else {
+            snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
+        }
         if (!snode) {
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 if (parent) {
                     LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.", name_len, name,
                             parent->schema->name);
+                } else if (lydctx->ext) {
+                    if (lydctx->ext->argument) {
+                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.", name_len, name,
+                                lydctx->ext->argument, lydctx->ext->def->name);
+                    } else {
+                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.", name_len, name,
+                                lydctx->ext->def->name);
+                    }
                 } else {
                     LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.", name_len, name,
                             mod->name);
@@ -1284,9 +1298,9 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
-        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct lyd_node **envp, struct ly_set *parsed,
-        struct lyd_ctx **lydctx_p)
+lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
+        struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
@@ -1304,6 +1318,7 @@ lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     lydctx->parse_opts = parse_opts;
     lydctx->val_opts = val_opts;
     lydctx->free = lyd_xml_ctx_free;
+    lydctx->ext = ext;
 
     switch (data_type) {
     case LYD_TYPE_DATA_YANG:

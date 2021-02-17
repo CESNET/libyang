@@ -234,12 +234,40 @@ test_schema_invalid(void **state)
             "/a:{extension='rc:yang-data'}/template");
 }
 
+static void
+test_data(void **state)
+{
+    const struct lys_module *mod;
+    struct lysc_ext_instance *e;
+    struct lyd_node *tree = NULL;
+    const char *schema = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"
+            "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
+            "rc:yang-data template { container x { leaf x { type string;}}}}";
+    const char *xml = "<x xmlns=\"urn:tests:extensions:yangdata:a\"><x>test</x></x>";
+    const char *json = "{\"a:x\":{\"x\":\"test\"}}";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
+    assert_non_null(e = mod->compiled->exts);
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
+    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+    lyd_free_all(tree);
+
+    ly_in_memory(UTEST_IN, json);
+    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_schema, setup),
         UTEST(test_schema_invalid, setup),
+        UTEST(test_data, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

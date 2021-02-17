@@ -276,7 +276,9 @@
  * lyd_parse_fd()               | ::lyd_parse_data_fd()           | Renamed and limited to data trees only.
  * lyd_parse_mem()              | ::lyd_parse_data_mem()          | ^
  * lyd_parse_path()             | ::lyd_parse_data_path()         | ^
+ * -                            | ::lyd_parse_ext_data()          | Separated function for parsing data trees matching a schema tree of the given extension instance.
  * -                            | ::lyd_parse_op()                | Separated function for parsing RPCs, actions, replies, and notifications.
+ * -                            | ::lyd_parse_ext_op()            | Separated function for parsing RPCs, actions, replies, and notifications of the given extension instance.
  * -                            | ::lyd_print_all()               | New API accepting ::ly_out.
  * -                            | ::lyd_print_tree()              | ^
  *

@@ -400,6 +400,39 @@ lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent, co
     return lys_getnext_(last, parent, NULL, ext, options);
 }
 
+const struct lysc_node *
+lys_find_ext_instance_node(const struct lysc_ext_instance *ext, const struct lys_module *module, const char *name, size_t name_len,
+        uint16_t nodetype, uint32_t options)
+{
+    const struct lysc_node *node = NULL;
+
+    LY_CHECK_ARG_RET(NULL, ext, name, NULL);
+    if (!nodetype) {
+        nodetype = LYS_NODETYPE_MASK;
+    }
+
+    if (module && (module != ext->module)) {
+        return NULL;
+    }
+
+    while ((node = lys_getnext_ext(node, NULL, ext, options))) {
+        if (!(node->nodetype & nodetype)) {
+            continue;
+        }
+
+        if (name_len) {
+            if (!ly_strncmp(node->name, name, name_len)) {
+                return node;
+            }
+        } else {
+            if (!strcmp(node->name, name)) {
+                return node;
+            }
+        }
+    }
+    return NULL;
+}
+
 API const struct lysc_node *
 lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
         uint16_t nodetype, uint32_t options)
