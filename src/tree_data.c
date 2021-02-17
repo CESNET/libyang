@@ -1130,7 +1130,7 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
     /* parse the name */
     tmp = name;
     if (ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len) || tmp[0]) {
-        LOGERR(ctx, LY_EINVAL, "Metadata name \"%s\" is not valid.", name);
+        LOGERR(ctx, LY_EINVAL, "Attribute name \"%s\" is not valid.", name);
         return LY_EVALID;
     }
 
