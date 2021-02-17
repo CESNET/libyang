@@ -2070,7 +2070,8 @@ ly_type_print_leafref(const struct lyd_value *value, LY_PREFIX_FORMAT format, vo
     return value->realtype->plugin->print(value, format, prefix_data, dynamic);
 }
 
-/* @brief Duplication callback of the leafref values.
+/**
+ * @brief Duplication callback of the leafref values.
  *
  * Implementation of the ly_type_dup_clb.
  */
