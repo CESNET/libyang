@@ -713,7 +713,11 @@ lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *pare
 
     if (!disabled) {
         /* node instance not found */
-        LOGVAL(snode->module->ctx, LY_VCODE_NOMAND, snode->name);
+        if (snode->nodetype == LYS_CHOICE) {
+            LOGVAL(snode->module->ctx, LY_VCODE_NOMAND_CHOIC, snode->name);
+        } else {
+            LOGVAL(snode->module->ctx, LY_VCODE_NOMAND, snode->name);
+        }
         return LY_EVALID;
     }
 
