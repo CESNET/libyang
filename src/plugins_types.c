@@ -1696,7 +1696,7 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     /* find the target in data */
     ret = ly_path_eval(storage->target, tree, NULL);
     if (ret) {
-        if (asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", storage->canonical) == -1) {
+        if (asprintf(&errmsg, LY_ERRMSG_NOINST, storage->canonical) == -1) {
             *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
             ret = LY_EMEM;
         } else {
@@ -1960,11 +1960,9 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
         ret = LY_ENOTFOUND;
         val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
         if (set.used) {
-            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.",
-                    val_str, lref->path->expr);
+            rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
         } else {
-            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - no existing target instance \"%s\".",
-                    val_str, lref->path->expr);
+            rc = asprintf(errmsg, LY_ERRMSG_NOLREF_INST, val_str, lref->path->expr);
         }
         if (rc == -1) {
             *errmsg = NULL;

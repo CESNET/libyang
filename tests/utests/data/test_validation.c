@@ -154,7 +154,7 @@ test_mandatory(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     CHECK_PARSE_LYD_PARAM("<d xmlns=\"urn:tests:b\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Mandatory node \"choic\" instance does not exist.", "Schema location /b:choic.");
+    CHECK_LOG_CTX("Mandatory choice \"choic\" data do not exist.", "Schema location /b:choic.");
 
     CHECK_PARSE_LYD_PARAM("<l xmlns=\"urn:tests:b\">string</l><d xmlns=\"urn:tests:b\"/>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     CHECK_LOG_CTX("Mandatory node \"c\" instance does not exist.", "Schema location /b:c.");
