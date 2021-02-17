@@ -157,6 +157,9 @@ struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
 LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt,
         void **instance_p, enum ly_stmt_cardinality *cardinality_p);
 
+const struct lysc_node *lys_find_ext_instance_node(const struct lysc_ext_instance *ext, const struct lys_module *module,
+        const char *name, size_t name_len, uint16_t nodetype, uint32_t options);
+
 /**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
  *

@@ -641,7 +641,15 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 
     /* find our node with matching hashes */
     sibling = NULL;
-    while ((sibling = lys_getnext(sibling, sparent, mod ? mod->compiled : NULL, getnext_opts))) {
+    while (1) {
+        if (!sparent && lybctx->ext) {
+            sibling = lys_getnext_ext(sibling, sparent, lybctx->ext, getnext_opts);
+        } else {
+            sibling = lys_getnext(sibling, sparent, mod ? mod->compiled : NULL, getnext_opts);
+        }
+        if (!sibling) {
+            break;
+        }
         /* skip schema nodes from models not present during printing */
         if (lyb_has_schema_model(sibling, lybctx->lybctx->models) &&
                 lyb_is_schema_hash_match((struct lysc_node *)sibling, hash, i + 1)) {
@@ -651,7 +659,10 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     }
 
     if (!sibling && (lybctx->parse_opts & LYD_PARSE_STRICT)) {
-        if (mod) {
+        if (lybctx->ext) {
+            LOGVAL(lybctx->lybctx->ctx, LYVE_REFERENCE, "Failed to find matching hash for a node from \"%s\" extension instance node.",
+                    lybctx->ext->def->name);
+        } else if (mod) {
             LOGVAL(lybctx->lybctx->ctx, LYVE_REFERENCE, "Failed to find matching hash for a top-level node"
                     " from \"%s\".", mod->name);
         } else {
@@ -1018,8 +1029,9 @@ lyb_parse_header(struct lylyb_ctx *lybctx)
 }
 
 LY_ERR
-lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
-        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
+        struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_lyb_ctx *lybctx;
@@ -1058,6 +1070,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
         goto cleanup;
     }
     lybctx->int_opts = int_opts;
+    lybctx->ext = ext;
 
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lybctx->op_node), cleanup);

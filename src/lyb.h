@@ -54,6 +54,7 @@ struct lylyb_ctx {
  * Note that the structure maps to the lyd_ctx which is common for all the data parsers
  */
 struct lyd_lyb_ctx {
+    const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context of the data being parsed */
     union {
         struct {
             uint32_t parse_opts;   /**< various @ref dataparseroptions. */
