@@ -997,22 +997,27 @@ lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_s
         }
 
         switch (substmts[u].stmt) {
-        case LY_STMT_TYPE:
-            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                /* single item */
-                struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
-                if (!type) {
-                    break;
-                }
-                lysc_type_free(ctx, type);
-            } else {
-                /* multiple items */
-                struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
-                if (!types) {
-                    break;
-                }
-                FREE_ARRAY(ctx, types, lysc_type2_free);
+        case LY_STMT_ACTION:
+        case LY_STMT_ANYDATA:
+        case LY_STMT_ANYXML:
+        case LY_STMT_CONTAINER:
+        case LY_STMT_CHOICE:
+        case LY_STMT_LEAF:
+        case LY_STMT_LEAF_LIST:
+        case LY_STMT_LIST:
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_RPC:
+        case LY_STMT_USES: {
+            struct lysc_node *child, *child_next;
+
+            LY_LIST_FOR_SAFE(*((struct lysc_node **)substmts[u].storage), child_next, child) {
+                lysc_node_free_(ctx, child);
             }
+            break;
+        }
+        case LY_STMT_CONFIG:
+        case LY_STMT_STATUS:
+            /* nothing to do */
             break;
         case LY_STMT_DESCRIPTION:
         case LY_STMT_REFERENCE:
@@ -1033,10 +1038,6 @@ lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_s
                 FREE_STRINGS(ctx, strs);
             }
             break;
-        case LY_STMT_STATUS:
-        case LY_STMT_CONFIG:
-            /* nothing to do */
-            break;
         case LY_STMT_IF_FEATURE: {
             struct lysc_iffeature *iff = *((struct lysc_iffeature **)substmts[u].storage);
             if (!iff) {
@@ -1049,6 +1050,23 @@ lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_s
             } else {
                 /* multiple items */
                 FREE_ARRAY(ctx, iff, lysc_iffeature_free);
+            }
+            break;
+        case LY_STMT_TYPE:
+            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                /* single item */
+                struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
+                if (!type) {
+                    break;
+                }
+                lysc_type_free(ctx, type);
+            } else {
+                /* multiple items */
+                struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
+                if (!types) {
+                    break;
+                }
+                FREE_ARRAY(ctx, types, lysc_type2_free);
             }
             break;
         }

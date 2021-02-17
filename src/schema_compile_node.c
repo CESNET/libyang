@@ -2201,7 +2201,9 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
         /* top-level element */
         struct lysc_node **list;
 
-        if (node->nodetype == LYS_RPC) {
+        if (ctx->ext) {
+            lysc_ext_substmt(ctx->ext, LY_STMT_CONTAINER /* matches all data nodes */, (void **)&list, NULL);
+        } else if (node->nodetype == LYS_RPC) {
             list = (struct lysc_node **)&ctx->cur_mod->compiled->rpcs;
         } else if (node->nodetype == LYS_NOTIF) {
             list = (struct lysc_node **)&ctx->cur_mod->compiled->notifs;

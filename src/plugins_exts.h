@@ -86,7 +86,7 @@ struct lysc_ext_substmt {
  * TODO
  * @return LY_ENOT if the extension is disabled and should be ignored.
  */
-LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts);
+LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext);
 
 /**
  * @brief Free the extension instance's data compiled with ::lys_compile_extension_instance().

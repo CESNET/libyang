@@ -38,6 +38,7 @@
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"
+#include "plugins_exts.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
 #include "schema_features.h"
@@ -51,81 +52,81 @@
  * @brief information about YANG statements
  */
 struct stmt_info_s stmt_attr_info[] = {
-    {NULL,               NULL,          0},            /**< LY_STMT_NONE */
-    {"action",           "name",        STMT_FLAG_ID}, /**< LY_STMT_ACTION */
-    {"anydata",          "name",        STMT_FLAG_ID}, /**< LY_STMT_ANYDATA */
-    {"anyxml",           "name",        STMT_FLAG_ID}, /**< LY_STMT_ANYXML */
-    {"argument",         "name",        STMT_FLAG_ID}, /**< LY_STMT_ARGUMENT */
-    {"text",             NULL,          0},            /**< LY_STMT_ARG_TEXT */
-    {"value",            NULL,          0},            /**< LY_STMT_ARG_VALUE */
-    {"augment",          "target-node", STMT_FLAG_ID}, /**< LY_STMT_AUGMENT */
-    {"base",             "name",        STMT_FLAG_ID}, /**< LY_STMT_BASE */
-    {"belongs-to",       "module",      STMT_FLAG_ID}, /**< LY_STMT_BELONGS_TO */
-    {"bit",              "name",        STMT_FLAG_ID}, /**< LY_STMT_BIT */
-    {"case",             "name",        STMT_FLAG_ID}, /**< LY_STMT_CASE */
-    {"choice",           "name",        STMT_FLAG_ID}, /**< LY_STMT_CHOICE */
-    {"config",           "value",       STMT_FLAG_ID}, /**< LY_STMT_CONFIG */
-    {"contact",          "text",        STMT_FLAG_YIN},/**< LY_STMT_CONTACT */
-    {"container",        "name",        STMT_FLAG_ID}, /**< LY_STMT_CONTAINER */
-    {"default",          "value",       0},            /**< LY_STMT_DEFAULT */
-    {"description",      "text",        STMT_FLAG_YIN},/**< LY_STMT_DESCRIPTION */
-    {"deviate",          "value",       STMT_FLAG_ID}, /**< LY_STMT_DEVIATE */
-    {"deviation",        "target-node", STMT_FLAG_ID}, /**< LY_STMT_DEVIATION */
-    {"enum",             "name",        STMT_FLAG_ID}, /**< LY_STMT_ENUM */
-    {"error-app-tag",    "value",       0},            /**< LY_STMT_ERRTAG */
-    {"error-message",    "value",       STMT_FLAG_YIN},/**< LY_STMT_ERRMSG */
-    {"extension",        "name",        STMT_FLAG_ID}, /**< LY_STMT_EXTENSION */
-    {NULL,               NULL,          0},            /**< LY_STMT_EXTENSION_INSTANCE */
-    {"feature",          "name",        STMT_FLAG_ID}, /**< LY_STMT_FEATURE */
-    {"fraction-digits",  "value",       STMT_FLAG_ID}, /**< LY_STMT_FRACTION_DIGITS */
-    {"grouping",         "name",        STMT_FLAG_ID}, /**< LY_STMT_GROUPING */
-    {"identity",         "name",        STMT_FLAG_ID}, /**< LY_STMT_IDENTITY */
-    {"if-feature",       "name",        0},            /**< LY_STMT_IF_FEATURE */
-    {"import",           "module",      STMT_FLAG_ID}, /**< LY_STMT_IMPORT */
-    {"include",          "module",      STMT_FLAG_ID}, /**< LY_STMT_INCLUDE */
-    {"input",            NULL,          0},            /**< LY_STMT_INPUT */
-    {"key",              "value",       0},            /**< LY_STMT_KEY */
-    {"leaf",             "name",        STMT_FLAG_ID}, /**< LY_STMT_LEAF */
-    {"leaf-list",        "name",        STMT_FLAG_ID}, /**< LY_STMT_LEAF_LIST */
-    {"length",           "value",       0},            /**< LY_STMT_LENGTH */
-    {"list",             "name",        STMT_FLAG_ID}, /**< LY_STMT_LIST */
-    {"mandatory",        "value",       STMT_FLAG_ID}, /**< LY_STMT_MANDATORY */
-    {"max-elements",     "value",       STMT_FLAG_ID}, /**< LY_STMT_MAX_ELEMENTS */
-    {"min-elements",     "value",       STMT_FLAG_ID}, /**< LY_STMT_MIN_ELEMENTS */
-    {"modifier",         "value",       STMT_FLAG_ID}, /**< LY_STMT_MODIFIER */
-    {"module",           "name",        STMT_FLAG_ID}, /**< LY_STMT_MODULE */
-    {"must",             "condition",   0},            /**< LY_STMT_MUST */
-    {"namespace",        "uri",         0},            /**< LY_STMT_NAMESPACE */
-    {"notification",     "name",        STMT_FLAG_ID}, /**< LY_STMT_NOTIFICATION */
-    {"ordered-by",       "value",       STMT_FLAG_ID}, /**< LY_STMT_ORDERED_BY */
-    {"organization",     "text",        STMT_FLAG_YIN},/**< LY_STMT_ORGANIZATION */
-    {"output",           NULL,          0},            /**< LY_STMT_OUTPUT */
-    {"path",             "value",       0},            /**< LY_STMT_PATH */
-    {"pattern",          "value",       0},            /**< LY_STMT_PATTERN */
-    {"position",         "value",       STMT_FLAG_ID}, /**< LY_STMT_POSITION */
-    {"prefix",           "value",       STMT_FLAG_ID}, /**< LY_STMT_PREFIX */
-    {"presence",         "value",       0},            /**< LY_STMT_PRESENCE */
-    {"range",            "value",       0},            /**< LY_STMT_RANGE */
-    {"reference",        "text",        STMT_FLAG_YIN},/**< LY_STMT_REFERENCE */
-    {"refine",           "target-node", STMT_FLAG_ID}, /**< LY_STMT_REFINE */
-    {"require-instance", "value",       STMT_FLAG_ID}, /**< LY_STMT_REQUIRE_INSTANCE */
-    {"revision",         "date",        STMT_FLAG_ID}, /**< LY_STMT_REVISION */
-    {"revision-date",    "date",        STMT_FLAG_ID}, /**< LY_STMT_REVISION_DATE */
-    {"rpc",              "name",        STMT_FLAG_ID}, /**< LY_STMT_RPC */
-    {"status",           "value",       STMT_FLAG_ID}, /**< LY_STMT_STATUS */
-    {"submodule",        "name",        STMT_FLAG_ID}, /**< LY_STMT_SUBMODULE */
-    {"{",                NULL,          0},            /**< LY_STMT_SYNTAX_LEFT_BRACE */
-    {"}",                NULL,          0},            /**< LY_STMT_SYNTAX_RIGHT_BRACE */
-    {";",                NULL,          0},            /**< LY_STMT_SYNTAX_SEMICOLON */
-    {"type",             "name",        STMT_FLAG_ID}, /**< LY_STMT_TYPE */
-    {"typedef",          "name",        STMT_FLAG_ID}, /**< LY_STMT_TYPEDEF */
-    {"unique",           "tag",         0},            /**< LY_STMT_UNIQUE */
-    {"units",            "name",        0},            /**< LY_STMT_UNITS */
-    {"uses",             "name",        STMT_FLAG_ID}, /**< LY_STMT_USES */
-    {"value",            "value",       STMT_FLAG_ID}, /**< LY_STMT_VALUE */
-    {"when",             "condition",   0},            /**< LY_STMT_WHEN */
-    {"yang-version",     "value",       STMT_FLAG_ID}, /**< LY_STMT_YANG_VERSION */
-    {"yin-element",      "value",       STMT_FLAG_ID}, /**< LY_STMT_YIN_ELEMENT */
+    [LY_STMT_NONE] = {NULL, NULL, 0},
+    [LY_STMT_ACTION] = {"action", "name", STMT_FLAG_ID},
+    [LY_STMT_ANYDATA] = {"anydata", "name", STMT_FLAG_ID},
+    [LY_STMT_ANYXML] = {"anyxml", "name", STMT_FLAG_ID},
+    [LY_STMT_ARGUMENT] = {"argument", "name", STMT_FLAG_ID},
+    [LY_STMT_ARG_TEXT] = {"text", NULL, 0},
+    [LY_STMT_ARG_VALUE] = {"value", NULL, 0},
+    [LY_STMT_AUGMENT] = {"augment", "target-node", STMT_FLAG_ID},
+    [LY_STMT_BASE] = {"base", "name", STMT_FLAG_ID},
+    [LY_STMT_BELONGS_TO] = {"belongs-to", "module", STMT_FLAG_ID},
+    [LY_STMT_BIT] = {"bit", "name", STMT_FLAG_ID},
+    [LY_STMT_CASE] = {"case", "name", STMT_FLAG_ID},
+    [LY_STMT_CHOICE] = {"choice", "name", STMT_FLAG_ID},
+    [LY_STMT_CONFIG] = {"config", "value", STMT_FLAG_ID},
+    [LY_STMT_CONTACT] = {"contact", "text", STMT_FLAG_YIN},
+    [LY_STMT_CONTAINER] = {"container", "name", STMT_FLAG_ID},
+    [LY_STMT_DEFAULT] = {"default", "value", 0},
+    [LY_STMT_DESCRIPTION] = {"description", "text", STMT_FLAG_YIN},
+    [LY_STMT_DEVIATE] = {"deviate", "value", STMT_FLAG_ID},
+    [LY_STMT_DEVIATION] = {"deviation", "target-node", STMT_FLAG_ID},
+    [LY_STMT_ENUM] = {"enum", "name", STMT_FLAG_ID},
+    [LY_STMT_ERROR_APP_TAG] = {"error-app-tag", "value", 0},
+    [LY_STMT_ERROR_MESSAGE] = {"error-message", "value", STMT_FLAG_YIN},
+    [LY_STMT_EXTENSION] = {"extension", "name", STMT_FLAG_ID},
+    [LY_STMT_EXTENSION_INSTANCE] = {NULL, NULL, 0},
+    [LY_STMT_FEATURE] = {"feature", "name", STMT_FLAG_ID},
+    [LY_STMT_FRACTION_DIGITS] = {"fraction-digits", "value", STMT_FLAG_ID},
+    [LY_STMT_GROUPING] = {"grouping", "name", STMT_FLAG_ID},
+    [LY_STMT_IDENTITY] = {"identity", "name", STMT_FLAG_ID},
+    [LY_STMT_IF_FEATURE] = {"if-feature", "name", 0},
+    [LY_STMT_IMPORT] = {"import", "module", STMT_FLAG_ID},
+    [LY_STMT_INCLUDE] = {"include", "module", STMT_FLAG_ID},
+    [LY_STMT_INPUT] = {"input", NULL, 0},
+    [LY_STMT_KEY] = {"key", "value", 0},
+    [LY_STMT_LEAF] = {"leaf", "name", STMT_FLAG_ID},
+    [LY_STMT_LEAF_LIST] = {"leaf-list", "name", STMT_FLAG_ID},
+    [LY_STMT_LENGTH] = {"length", "value", 0},
+    [LY_STMT_LIST] = {"list", "name", STMT_FLAG_ID},
+    [LY_STMT_MANDATORY] = {"mandatory", "value", STMT_FLAG_ID},
+    [LY_STMT_MAX_ELEMENTS] = {"max-elements", "value", STMT_FLAG_ID},
+    [LY_STMT_MIN_ELEMENTS] = {"min-elements", "value", STMT_FLAG_ID},
+    [LY_STMT_MODIFIER] = {"modifier", "value", STMT_FLAG_ID},
+    [LY_STMT_MODULE] = {"module", "name", STMT_FLAG_ID},
+    [LY_STMT_MUST] = {"must", "condition", 0},
+    [LY_STMT_NAMESPACE] = {"namespace", "uri", 0},
+    [LY_STMT_NOTIFICATION] = {"notification", "name", STMT_FLAG_ID},
+    [LY_STMT_ORDERED_BY] = {"ordered-by", "value", STMT_FLAG_ID},
+    [LY_STMT_ORGANIZATION] = {"organization", "text", STMT_FLAG_YIN},
+    [LY_STMT_OUTPUT] = {"output", NULL, 0},
+    [LY_STMT_PATH] = {"path", "value", 0},
+    [LY_STMT_PATTERN] = {"pattern", "value", 0},
+    [LY_STMT_POSITION] = {"position", "value", STMT_FLAG_ID},
+    [LY_STMT_PREFIX] = {"prefix", "value", STMT_FLAG_ID},
+    [LY_STMT_PRESENCE] = {"presence", "value", 0},
+    [LY_STMT_RANGE] = {"range", "value", 0},
+    [LY_STMT_REFERENCE] = {"reference", "text", STMT_FLAG_YIN},
+    [LY_STMT_REFINE] = {"refine", "target-node", STMT_FLAG_ID},
+    [LY_STMT_REQUIRE_INSTANCE] = {"require-instance", "value", STMT_FLAG_ID},
+    [LY_STMT_REVISION] = {"revision", "date", STMT_FLAG_ID},
+    [LY_STMT_REVISION_DATE] = {"revision-date", "date", STMT_FLAG_ID},
+    [LY_STMT_RPC] = {"rpc", "name", STMT_FLAG_ID},
+    [LY_STMT_STATUS] = {"status", "value", STMT_FLAG_ID},
+    [LY_STMT_SUBMODULE] = {"submodule", "name", STMT_FLAG_ID},
+    [LY_STMT_SYNTAX_LEFT_BRACE] = {"{", NULL, 0},
+    [LY_STMT_SYNTAX_RIGHT_BRACE] = {"}", NULL, 0},
+    [LY_STMT_SYNTAX_SEMICOLON] = {";", NULL, 0},
+    [LY_STMT_TYPE] = {"type", "name", STMT_FLAG_ID},
+    [LY_STMT_TYPEDEF] = {"typedef", "name", STMT_FLAG_ID},
+    [LY_STMT_UNIQUE] = {"unique", "tag", 0},
+    [LY_STMT_UNITS] = {"units", "name", 0},
+    [LY_STMT_USES] = {"uses", "name", STMT_FLAG_ID},
+    [LY_STMT_VALUE] = {"value", "value", STMT_FLAG_ID},
+    [LY_STMT_WHEN] = {"when", "condition", 0},
+    [LY_STMT_YANG_VERSION] = {"yang-version", "value", STMT_FLAG_ID},
+    [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
 };
 
 const char * const ly_devmod_list[] = {
