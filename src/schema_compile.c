@@ -205,6 +205,37 @@ lysc_ext_dup(struct lysc_ext *orig)
     return orig;
 }
 
+LY_ERR
+lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p, enum ly_stmt_cardinality *cardinality_p)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(ext->substmts, u) {
+        if (LY_STMT_IS_NODE(substmt)) {
+            if (!LY_STMT_IS_NODE(ext->substmts[u].stmt)) {
+                continue;
+            }
+        } else if (LY_STMT_IS_OP(substmt)) {
+            if (!LY_STMT_IS_OP(ext->substmts[u].stmt)) {
+                continue;
+            }
+        } else if (ext->substmts[u].stmt != substmt) {
+            continue;
+        }
+
+        /* match */
+        if (cardinality_p) {
+            *cardinality_p = ext->substmts[u].cardinality;
+        }
+        if (instance_p) {
+            *instance_p = ext->substmts[u].storage;
+        }
+        return LY_SUCCESS;
+    }
+
+    return LY_ENOT;
+}
+
 static void
 lysc_unres_dflt_free(const struct ly_ctx *ctx, struct lysc_unres_dflt *r)
 {
@@ -602,12 +633,12 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
         if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
             continue;
         }
-        for (u = 0; substmts[u].stmt; ++u) {
+        LY_ARRAY_FOR(substmts, u) {
             if (substmts[u].stmt == stmt->kw) {
                 break;
             }
         }
-        if (!substmts[u].stmt) {
+        if (u == LY_ARRAY_COUNT(substmts)) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
                     stmt->stmt, ext->name, ext->argument ? " " : "", ext->argument ? ext->argument : "");
             goto cleanup;
@@ -618,7 +649,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
 
     /* keep order of the processing the same as the order in the defined substmts,
      * the order is important for some of the statements depending on others (e.g. type needs status and units) */
-    for (u = 0; substmts[u].stmt; ++u) {
+    LY_ARRAY_FOR(substmts, u) {
         ly_bool stmt_present = 0;
 
         for (stmt = ext->child; stmt; stmt = stmt->next) {
@@ -633,6 +664,8 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                     assert(substmts[u].cardinality < LY_STMT_CARD_SOME);
                     LY_CHECK_ERR_GOTO(r = lysp_stmt_parse(ctx, stmt, &substmts[u].storage, /* TODO */ NULL), ret = r, cleanup);
                     break;
+                case LY_STMT_DESCRIPTION:
+                case LY_STMT_REFERENCE:
                 case LY_STMT_UNITS: {
                     const char **units;
 

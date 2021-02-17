@@ -15,6 +15,7 @@
 #include "utests.h"
 
 #include "libyang.h"
+#include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
 
 static void
@@ -22,7 +23,6 @@ test_yang(void **state)
 {
     const struct lys_module *mod;
     struct lysc_ext_instance *e;
-    struct lyext_metadata *ant;
 
     const char *data = "module a {yang-version 1.1; namespace urn:tests:extensions:metadata:a; prefix a;"
             "import ietf-yang-metadata {prefix md;}"
@@ -40,8 +40,9 @@ test_yang(void **state)
     UTEST_ADD_MODULE(data, LYS_IN_YANG, feats, &mod);
     assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
-    assert_non_null(ant = (struct lyext_metadata *)e->data);
-    assert_string_equal("meters", ant->units);
+    assert_non_null(e->data);
+    assert_non_null(e->substmts);
+    assert_string_equal("meters", *(const char **)e->substmts[ANNOTATION_SUBSTMT_UNITS].storage);
 
     /* invalid */
     /* missing mandatory type substatement */
@@ -93,7 +94,6 @@ test_yin(void **state)
 {
     const struct lys_module *mod;
     struct lysc_ext_instance *e;
-    struct lyext_metadata *ant;
     const char *data;
 
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\">\n"
@@ -113,8 +113,9 @@ test_yin(void **state)
     UTEST_ADD_MODULE(data, LYS_IN_YIN, feats, &mod);
     assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
-    assert_non_null(ant = (struct lyext_metadata*)e->data);
-    assert_string_equal("meters", ant->units);
+    assert_non_null(e->data);
+    assert_non_null(e->substmts);
+    assert_string_equal("meters", *(const char **)e->substmts[ANNOTATION_SUBSTMT_UNITS].storage);
 
     /* invalid */
     /* missing mandatory type substatement */

@@ -1395,6 +1395,8 @@ struct lysc_ext_instance {
     LYEXT_SUBSTMT insubstmt;         /**< value identifying placement of the extension instance */
     LYEXT_PARENT parent_type;        /**< type of the parent structure */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_ext_substmt *substmts; /**< list of allowed substatements with the storage to access the present substatements */
     void *data;                      /**< private plugins's data, not used by libyang */
 };
 

@@ -2412,8 +2412,8 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LY_CHECK_ERR_GOTO(!mt, LOGMEM(mod->ctx); ret = LY_EMEM, cleanup);
     mt->parent = parent;
     mt->annotation = ant;
-    ret = lyd_value_store(mod->ctx, &mt->value, ((struct lyext_metadata *)ant->data)->type, value, value_len, dynamic,
-            format, prefix_data, hints, parent ? parent->schema : NULL, incomplete);
+    ret = lyd_value_store(mod->ctx, &mt->value,  *(const struct lysc_type **)ant->substmts[ANNOTATION_SUBSTMT_TYPE].storage,
+            value, value_len, dynamic, format, prefix_data, hints, parent ? parent->schema : NULL, incomplete);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);
     ret = lydict_insert(mod->ctx, name, name_len, &mt->name);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);
