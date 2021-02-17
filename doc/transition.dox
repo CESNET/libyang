@@ -351,9 +351,11 @@
  * lyd_new(), lyd_new_output()  | ::lyd_new_inner(), ::lyd_new_list(), ::lyd_new_list2() | Redesigned functionality to better fit new lyd_node structures, creating RPC's output data is now done via a flag parameter of the functions.
  * lyd_new_leaf(), lyd_new_output_leaf() | ::lyd_new_term()       | ^
  * lyd_new_anydata(), lyd_new_output_anydata() | ::lyd_new_any()  | ^
- * lyd_insert_attr()            | ::lyd_new_attr()                | Unify naming used in other functions with the similar functionality.
- * -                            | ::lyd_new_meta()                | Added functionality to store the data (temporarily) not connected with schema definitions.
+ * lyd_insert_attr()            | ::lyd_new_meta()                | Unify naming used in other functions with the similar functionality.
+ * -                            | ::lyd_new_attr()                | Added functionality to store the data (temporarily) not connected with schema definitions.
+ * -                            | ::lyd_new_attr2()               | ^
  * -                            | ::lyd_new_opaq()                | ^
+ * -                            | ::lyd_new_opaq2()               | ^
  * -                            | ::lyd_new_path2()               | Supplement functionality to ::lyd_new_path().
  * lyd_insert()                 | ::lyd_insert_child()            | Renamed to better distinguish from ::lyd_insert_sibling().
  * lyd_new_yangdata()           | TBD                             | Not yet implemented feature.
