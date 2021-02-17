@@ -27,6 +27,7 @@
 #include "hash_table.h"
 #include "log.h"
 #include "parser_data.h"
+#include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
 #include "plugins_types.h"
 #include "set.h"
@@ -269,7 +270,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
             --i;
 
             struct lyd_meta *meta = meta_types->objs[i];
-            struct lysc_type *type = ((struct lyext_metadata *)meta->annotation->data)->type;
+            struct lysc_type *type = *(struct lysc_type **)meta->annotation->substmts[ANNOTATION_SUBSTMT_TYPE].storage;
 
             /* validate and store the value of the metadata */
             ret = lyd_value_validate_incomplete(LYD_CTX(meta->parent), type, &meta->value, meta->parent, *tree);
@@ -1322,7 +1323,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
 
     LYD_TREE_DFS_BEGIN(root, node) {
         LY_LIST_FOR(node->meta, meta) {
-            if (((struct lyext_metadata *)meta->annotation->data)->type->plugin->validate) {
+            if ((*(const struct lysc_type **)meta->annotation->substmts[ANNOTATION_SUBSTMT_TYPE].storage)->plugin->validate) {
                 /* metadata type resolution */
                 LY_CHECK_RET(ly_set_add(meta_types, (void *)meta, 1, NULL));
             }

@@ -90,9 +90,12 @@ LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ex
 
 /**
  * @brief Free the extension instance's data compiled with ::lys_compile_extension_instance().
- * TODO
+ *
+ * @param[in] libyang context
+ * @param[in] substmts The sized array of extension instance's substatements. The whole array is freed except the storage
+ * places which are expected to be covered by the extension plugin.
  */
-void lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
+void lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
  * @brief Duplicate the compiled extension (definition) structure.
@@ -103,6 +106,25 @@ void lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *s
  * @return The duplicated structure to use.
  */
 struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
+
+/**
+ * @brief Get pointer to the storage of the specified substatement in the given extension instance.
+ *
+ * The function simplifies access into the ::lysc_ext_instance.substmts sized array.
+ *
+ * @param[in] ext Compiled extension instance to process.
+ * @param[in] substmt Extension substatement to search for.
+ * @param[out] instance_p Pointer where the storage of the @p substmt will be provided. The specific type returned depends
+ * on the @p substmt and can be found in the documentation of each ::ly_stmt value. Also note that some of the substatements
+ * (::lysc_node based or flags) can share the storage with other substatements. In case the pointer is NULL, still the return
+ * code can be used to at least know if the substatement is allowed for the extension.
+ * @param[out] cardinality_p Pointer to provide allowed cardinality of the substatements in the extension. Note that in some
+ * cases, the type of the storage depends also on the cardinality of the substatement.
+ * @return LY_SUCCESS if the @p substmt found.
+ * @return LY_ENOT in case the @p ext is not able to store (does not allow) the specified @p substmt.
+ */
+LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt,
+        void **instance_p, enum ly_stmt_cardinality *cardinality_p);
 
 /**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.

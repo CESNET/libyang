@@ -21,15 +21,12 @@
 extern "C" {
 #endif
 
-/**
- * @brief Representation of the compiled metadata substatements as provided by libyang 2 metadata extension plugin.
- */
-struct lyext_metadata {
-    struct lysc_type *type;            /**< type of the metadata (mandatory) */
-    const char *units;                 /**< units of the leaf's type */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                    /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
-};
+#define ANNOTATION_SUBSTMT_IFF     0 /**< index for the LY_STMT_IF_FEATURE substatement in annotation's ::lysc_ext_instance.substmts */
+#define ANNOTATION_SUBSTMT_UNITS   1 /**< index for the LY_STMT_UNITS substatement in annotation's ::lysc_ext_instance.substmts */
+#define ANNOTATION_SUBSTMT_STATUS  2 /**< index for the LY_STMT_STATUS substatement in annotation's ::lysc_ext_instance.substmts */
+#define ANNOTATION_SUBSTMT_TYPE    3 /**< index for the LY_STMT_TYPE substatement in annotation's ::lysc_ext_instance.substmts */
+#define ANNOTATION_SUBSTMT_DSC     4 /**< index for the LY_STMT_DSC substatement in annotation's ::lysc_ext_instance.substmts */
+#define ANNOTATION_SUBSTMT_REF     5 /**< index for the LY_STMT_REF substatement in annotation's ::lysc_ext_instance.substmts */
 
 #ifdef __cplusplus
 }
