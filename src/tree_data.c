@@ -1115,7 +1115,34 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
 }
 
 API LY_ERR
-lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *val_str,
+lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
+        const char *module_ns, struct lyd_node **node)
+{
+    struct lyd_node *ret = NULL;
+
+    LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_ns, LY_EINVAL);
+
+    if (!ctx) {
+        ctx = LYD_CTX(parent);
+    }
+    if (!value) {
+        value = "";
+    }
+
+    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), NULL, 0, module_ns, strlen(module_ns), value,
+            strlen(value), NULL, LY_PREF_XML, NULL, 0, &ret));
+    if (parent) {
+        lyd_insert_node(parent, NULL, ret);
+    }
+
+    if (node) {
+        *node = ret;
+    }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *value,
         struct lyd_attr **attr)
 {
     struct lyd_attr *ret = NULL;
@@ -1143,12 +1170,46 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
     }
 
     /* set value if none */
-    if (!val_str) {
-        val_str = "";
+    if (!value) {
+        value = "";
     }
 
-    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, prefix, pref_len, module_name, mod_len, val_str,
-            strlen(val_str), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA));
+    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, prefix, pref_len, module_name, mod_len, value,
+            strlen(value), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA));
+
+    if (attr) {
+        *attr = ret;
+    }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, const char *value,
+        struct lyd_attr **attr)
+{
+    struct lyd_attr *ret = NULL;
+    const struct ly_ctx *ctx;
+    const char *prefix, *tmp;
+    size_t pref_len, name_len;
+
+    LY_CHECK_ARG_RET(NULL, parent, !parent->schema, name, LY_EINVAL);
+
+    ctx = LYD_CTX(parent);
+
+    /* parse the name */
+    tmp = name;
+    if (ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len) || tmp[0]) {
+        LOGERR(ctx, LY_EINVAL, "Attribute name \"%s\" is not valid.", name);
+        return LY_EVALID;
+    }
+
+    /* set value if none */
+    if (!value) {
+        value = "";
+    }
+
+    LY_CHECK_RET(lyd_create_attr(parent, &ret, ctx, name, name_len, prefix, pref_len, module_ns,
+            module_ns ? strlen(module_ns) : 0, value, strlen(value), NULL, LY_PREF_XML, NULL, LYD_HINT_DATA));
 
     if (attr) {
         *attr = ret;
