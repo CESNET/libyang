@@ -614,7 +614,7 @@ void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 /**
  * @param[in,out] exts [sized array](@ref sizedarrays) For extension instances in case of statements that do not store extension instances in their own list.
  */
-LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt kw, void **result, struct lysp_ext_instance **exts);
+LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **result, struct lysp_ext_instance **exts);
 
 /**
  * @brief Free a parsed node.

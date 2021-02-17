@@ -631,7 +631,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                 switch (stmt->kw) {
                 case LY_STMT_STATUS:
                     assert(substmts[u].cardinality < LY_STMT_CARD_SOME);
-                    LY_CHECK_ERR_GOTO(r = lysp_stmt_parse(ctx, stmt, stmt->kw, &substmts[u].storage, /* TODO */ NULL), ret = r, cleanup);
+                    LY_CHECK_ERR_GOTO(r = lysp_stmt_parse(ctx, stmt, &substmts[u].storage, /* TODO */ NULL), ret = r, cleanup);
                     break;
                 case LY_STMT_UNITS: {
                     const char **units;
@@ -670,7 +670,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                         compiled = (void *)type;
                     }
 
-                    r = lysp_stmt_parse(ctx, stmt, stmt->kw, &parsed, NULL);
+                    r = lysp_stmt_parse(ctx, stmt, &parsed, NULL);
                     LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
                     r = lys_compile_type(ctx, NULL, flags ? *flags : 0, ext->name, parsed, (struct lysc_type **)compiled,
                             units && !*units ? units : NULL, NULL);
