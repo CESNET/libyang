@@ -538,11 +538,11 @@ fill_context(int argc, char *argv[], struct context *c)
             } else if (!strcasecmp(optarg, "edit")) {
                 c->data_parse_options |= LYD_PARSE_ONLY;
             } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
-                c->data_type = LYD_TYPE_YANG_RPC;
+                c->data_type = LYD_TYPE_RPC_YANG;
             } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
-                c->data_type = LYD_TYPE_YANG_REPLY;
+                c->data_type = LYD_TYPE_REPLY_YANG;
             } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
-                c->data_type = LYD_TYPE_YANG_NOTIF;
+                c->data_type = LYD_TYPE_NOTIF_YANG;
             } else if (!strcasecmp(optarg, "data")) {
                 /* default option */
             } else {

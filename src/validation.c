@@ -1608,14 +1608,14 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
     struct lyd_node *op_node;
     uint32_t int_opts;
 
-    LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_YANG_RPC) ||
-            (data_type == LYD_TYPE_YANG_NOTIF) || (data_type == LYD_TYPE_YANG_REPLY), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_RPC_YANG) ||
+            (data_type == LYD_TYPE_NOTIF_YANG) || (data_type == LYD_TYPE_REPLY_YANG), LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
-    if (data_type == LYD_TYPE_YANG_RPC) {
+    if (data_type == LYD_TYPE_RPC_YANG) {
         int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION;
-    } else if (data_type == LYD_TYPE_YANG_NOTIF) {
+    } else if (data_type == LYD_TYPE_NOTIF_YANG) {
         int_opts = LYD_INTOPT_NOTIF;
     } else {
         int_opts = LYD_INTOPT_REPLY;

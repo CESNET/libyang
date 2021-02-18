@@ -1383,16 +1383,16 @@ lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_nod
     assert(status == LYJSON_OBJECT);
 
     switch (data_type) {
-    case LYD_TYPE_YANG_DATA:
+    case LYD_TYPE_DATA_YANG:
         int_opts = LYD_INTOPT_WITH_SIBLINGS;
         break;
-    case LYD_TYPE_YANG_RPC:
+    case LYD_TYPE_RPC_YANG:
         int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
         break;
-    case LYD_TYPE_YANG_NOTIF:
+    case LYD_TYPE_NOTIF_YANG:
         int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
         break;
-    case LYD_TYPE_YANG_REPLY:
+    case LYD_TYPE_REPLY_YANG:
         int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
         break;
     default:

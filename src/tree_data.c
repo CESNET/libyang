@@ -331,13 +331,13 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     /* parse the data */
     switch (format) {
     case LYD_XML:
-        rc = lyd_parse_xml(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_YANG_DATA, NULL, &parsed, &lydctx);
+        rc = lyd_parse_xml(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_DATA_YANG, NULL, &parsed, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_YANG_DATA, &parsed, &lydctx);
+        rc = lyd_parse_json(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_DATA_YANG, &parsed, &lydctx);
         break;
     case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_YANG_DATA, &parsed, &lydctx);
+        rc = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, LYD_TYPE_DATA_YANG, &parsed, &lydctx);
         break;
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
@@ -462,10 +462,11 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     in->func_start = in->current;
 
     /* check params based on the data type */
-    if (data_type == LYD_TYPE_NETCONF_RPC) {
+    if ((data_type == LYD_TYPE_RPC_NETCONF) || (data_type == LYD_TYPE_NOTIF_NETCONF)) {
         LY_CHECK_ARG_RET(ctx, format == LYD_XML, !parent, tree, op, LY_EINVAL);
-    } else if (data_type == LYD_TYPE_NETCONF_REPLY_OR_NOTIF) {
-        LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, op, LY_EINVAL);
+    } else if (data_type == LYD_TYPE_REPLY_NETCONF) {
+        LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op,
+                LY_EINVAL);
     }
     parse_opts = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     val_opts = 0;

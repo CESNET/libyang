@@ -457,12 +457,12 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
     for (uint32_t u = 0; u < inputs->count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)inputs->objs[u];
         switch (data_type) {
-        case LYD_TYPE_YANG_DATA:
+        case LYD_TYPE_DATA_YANG:
             ret = lyd_parse_data(ctx, NULL, input_f->in, input_f->format, options_parse, options_validate, &tree);
             break;
-        case LYD_TYPE_YANG_RPC:
-        case LYD_TYPE_YANG_REPLY:
-        case LYD_TYPE_YANG_NOTIF:
+        case LYD_TYPE_RPC_YANG:
+        case LYD_TYPE_REPLY_YANG:
+        case LYD_TYPE_NOTIF_YANG:
             ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &tree, NULL);
             break;
         default:

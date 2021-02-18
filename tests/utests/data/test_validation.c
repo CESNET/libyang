@@ -1132,11 +1132,11 @@ test_action(void **state)
             "    </act>\n"
             "  </l1>\n"
             "</cont>\n", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_YANG_RPC, &op_tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &op_tree, NULL));
     assert_non_null(op_tree);
 
     /* missing leafref */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_TYPE_YANG_RPC, NULL));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_TYPE_RPC_YANG, NULL));
     CHECK_LOG_CTX("Invalid leafref value \"target\" - no existing target instance \"/lf3\".",
             "Schema location /j:cont/l1/act/input/lf2, data location /j:cont/l1[k='val1']/act/lf2.");
     ly_in_free(in, 0);
@@ -1148,7 +1148,7 @@ test_action(void **state)
             LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
 
     /* input must false */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_TYPE_YANG_RPC, NULL));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_TYPE_RPC_YANG, NULL));
     CHECK_LOG_CTX("Must condition \"../../lf1 = 'true'\" not satisfied.",
             "Data location /j:cont/l1[k='val1']/act.");
 
@@ -1160,7 +1160,7 @@ test_action(void **state)
             LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
 
     /* success */
-    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_TYPE_YANG_RPC, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_TYPE_RPC_YANG, NULL));
 
     lyd_free_tree(op_tree);
     lyd_free_siblings(tree);
@@ -1183,12 +1183,12 @@ test_reply(void **state)
             "    </act>\n"
             "  </l1>\n"
             "</cont>\n", &in));
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_YANG_REPLY, &op_tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_REPLY_YANG, &op_tree, NULL));
     assert_non_null(op_tree);
     ly_in_free(in, 0);
 
     /* missing leafref */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_TYPE_YANG_REPLY, NULL));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_TYPE_REPLY_YANG, NULL));
     CHECK_LOG_CTX("Invalid leafref value \"target\" - no existing target instance \"/lf4\".",
             "Schema location /j:cont/l1/act/output/lf2, data location /j:cont/l1[k='val1']/act/lf2.");
 
@@ -1199,7 +1199,7 @@ test_reply(void **state)
             LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
 
     /* input must false */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_TYPE_YANG_REPLY, NULL));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_TYPE_REPLY_YANG, NULL));
     CHECK_LOG_CTX("Must condition \"../../lf1 = 'true2'\" not satisfied.", "Data location /j:cont/l1[k='val1']/act.");
 
     lyd_free_all(tree);
@@ -1210,7 +1210,7 @@ test_reply(void **state)
             LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
 
     /* success */
-    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_TYPE_YANG_REPLY, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_TYPE_REPLY_YANG, NULL));
 
     lyd_free_tree(op_tree);
     lyd_free_all(tree);

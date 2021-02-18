@@ -1298,39 +1298,6 @@ cleanup:
     return rc;
 }
 
-/**
- * @brief Parse all expected non-data XML elements of a NETCONF rpc-reply or notification message.
- *
- * @param[in] xmlctx XML parser context.
- * @param[out] evnp Parsed envelope(s) (opaque node).
- * @param[out] int_opts Internal options for parsing the rest of YANG data.
- * @param[out] close_elem Number of parsed opened elements that need to be closed.
- * @param[out] parent_p Parent to append to the rest of YANG data, may be unset.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value on error.
- */
-static LY_ERR
-lydxml_env_netconf_reply_or_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_t *int_opts,
-        uint32_t *close_elem, struct lyd_node **parent_p)
-{
-    /* is it a "rpc-reply" or a "notification"? */
-    assert(xmlctx->status == LYXML_ELEMENT);
-    if (!ly_strncmp("rpc-reply", xmlctx->name, xmlctx->name_len)) {
-        LY_CHECK_RET(lydxml_env_netconf_reply(xmlctx, envp, int_opts, close_elem));
-    } else if (!ly_strncmp("notification", xmlctx->name, xmlctx->name_len)) {
-        LY_CHECK_RET(lydxml_env_netconf_notif(xmlctx, envp, int_opts, close_elem));
-
-        /* unset parent, the notification starts from top-level */
-        *parent_p = NULL;
-    } else {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"rpc-reply\" or \"notification\".",
-                xmlctx->name_len, xmlctx->name);
-        return LY_EVALID;
-    }
-
-    return LY_SUCCESS;
-}
-
 LY_ERR
 lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
         uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct lyd_node **envp, struct ly_set *parsed,
@@ -1354,26 +1321,29 @@ lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     lydctx->free = lyd_xml_ctx_free;
 
     switch (data_type) {
-    case LYD_TYPE_YANG_DATA:
+    case LYD_TYPE_DATA_YANG:
         int_opts = LYD_INTOPT_WITH_SIBLINGS;
         break;
-    case LYD_TYPE_YANG_RPC:
+    case LYD_TYPE_RPC_YANG:
         int_opts = LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NO_SIBLINGS;
         break;
-    case LYD_TYPE_YANG_NOTIF:
+    case LYD_TYPE_NOTIF_YANG:
         int_opts = LYD_INTOPT_NOTIF | LYD_INTOPT_NO_SIBLINGS;
         break;
-    case LYD_TYPE_YANG_REPLY:
+    case LYD_TYPE_REPLY_YANG:
         int_opts = LYD_INTOPT_REPLY | LYD_INTOPT_NO_SIBLINGS;
         break;
-    case LYD_TYPE_NETCONF_RPC:
+    case LYD_TYPE_RPC_NETCONF:
         assert(!parent);
         LY_CHECK_GOTO(rc = lydxml_env_netconf_rpc(lydctx->xmlctx, envp, &int_opts, &close_elem), cleanup);
         break;
-    case LYD_TYPE_NETCONF_REPLY_OR_NOTIF:
+    case LYD_TYPE_NOTIF_NETCONF:
+        assert(!parent);
+        LY_CHECK_GOTO(rc = lydxml_env_netconf_notif(lydctx->xmlctx, envp, &int_opts, &close_elem), cleanup);
+        break;
+    case LYD_TYPE_REPLY_NETCONF:
         assert(parent);
-        LY_CHECK_GOTO(rc = lydxml_env_netconf_reply_or_notif(lydctx->xmlctx, envp, &int_opts, &close_elem, &parent),
-                cleanup);
+        LY_CHECK_GOTO(rc = lydxml_env_netconf_reply(lydctx->xmlctx, envp, &int_opts, &close_elem), cleanup);
         break;
     }
     lydctx->int_opts = int_opts;
