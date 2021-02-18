@@ -262,22 +262,28 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
-/* RFC 7950 section 15 errors (errmsg is used in type plugin validation callbacks) */
-#define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
-#define LY_VCODE_NOMAX          LYVE_DATA, "Too many \"%s\" instances."
-#define LY_VCODE_NOMIN          LYVE_DATA, "Too few \"%s\" instances."
-#define LY_VCODE_NOMUST         LYVE_DATA, "Must condition \"%s\" not satisfied."
-#define LY_ERRMSG_NOLREF_VAL    /* LYVE_DATA */ "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value."
-#define LY_ERRMSG_NOLREF_INST   /* LYVE_DATA */ "Invalid leafref value \"%s\" - no existing target instance \"%s\"."
-#define LY_ERRMSG_NOINST        /* LYVE_DATA */ "Invalid instance-identifier \"%s\" value - required instance not found."
-#define LY_VCODE_NOMAND_CHOIC   LYVE_DATA, "Mandatory choice \"%s\" data do not exist."
-
 #define LY_VCODE_NOWHEN         LYVE_DATA, "When condition \"%s\" not satisfied."
 #define LY_VCODE_NOMAND         LYVE_DATA, "Mandatory node \"%s\" instance does not exist."
 #define LY_VCODE_DUP            LYVE_DATA, "Duplicate instance of \"%s\"."
 #define LY_VCODE_DUPCASE        LYVE_DATA, "Data for both cases \"%s\" and \"%s\" exist."
-#define LY_VCODE_INNODE         LYVE_DATA, "Invalid %s data node \"%s\" found."
+#define LY_VCODE_UNEXPNODE      LYVE_DATA, "Unexpected data %s node \"%s\" found."
 #define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
+
+#define LY_ERRMSG_NOPATTERN     /* LYVE_DATA */ "Unsatisfied pattern - \"%.*s\" does not conform to %s\"%s\"."
+#define LY_ERRMSG_NOLENGTH      /* LYVE_DATA */ "Unsatisfied length - string length \"%s\" is not allowed."
+#define LY_ERRMSG_NORANGE       /* LYVE_DATA */ "Unsatisfied range - value \"%s\" is out of the allowed range."
+
+/* RFC 7950 section 15 errors */
+#define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
+#define LY_VCODE_NOMAX          LYVE_DATA, "Too many \"%s\" instances."
+#define LY_VCODE_NOMIN          LYVE_DATA, "Too few \"%s\" instances."
+#define LY_VCODE_NOMUST         LYVE_DATA, "Must condition \"%s\" not satisfied."
+#define LY_VCODE_NOMAND_CHOIC   LYVE_DATA, "Mandatory choice \"%s\" data do not exist."
+
+/* RFC 7950 section 15 error messages used in type plugin validation callbacks */
+#define LY_ERRMSG_NOLREF_VAL    /* LYVE_DATA */ "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value."
+#define LY_ERRMSG_NOLREF_INST   /* LYVE_DATA */ "Invalid leafref value \"%s\" - no existing target instance \"%s\"."
+#define LY_ERRMSG_NOINST        /* LYVE_DATA */ "Invalid instance-identifier \"%s\" value - required instance not found."
 
 /******************************************************************************
  * Context

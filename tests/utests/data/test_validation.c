@@ -1017,12 +1017,12 @@ test_state(void **state)
             "  </cont2>\n"
             "</cont>\n";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_NO_STATE, 0, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid state data node \"cont2\" found.",
+    CHECK_LOG_CTX("Unexpected data state node \"cont2\" found.",
             "Schema location /h:cont/cont2, data location /h:cont, line number 3.");
 
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, tree);
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE, NULL));
-    CHECK_LOG_CTX("Invalid state data node \"cont2\" found.",
+    CHECK_LOG_CTX("Unexpected data state node \"cont2\" found.",
             "Schema location /h:cont/cont2, data location /h:cont/cont2.");
     lyd_free_all(tree);
 }

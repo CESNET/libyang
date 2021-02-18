@@ -457,7 +457,7 @@ test_schema_yang(void **state)
             "    default \"-1\";"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"-1\" does not satisfy the range constraint.).",
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"-1\" is out of the allowed range.).",
             "Schema location /TD_ERR1:port.");
 
     /* TEST DEFAULT VALUE ERROR */
@@ -467,7 +467,7 @@ test_schema_yang(void **state)
             "    default \"60\";"
             "}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"60\" does not satisfy the range constraint.).",
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"60\" is out of the allowed range.).",
             "Schema location /TD_ERR2:port.");
 
     /* TEST DEFAULT VALUE ERROR */
@@ -475,7 +475,7 @@ test_schema_yang(void **state)
             "typedef my_int_type { type int8 {range \"60 .. 127\";} default \"127\";}"
             "leaf my_leaf {type my_int_type {range \"70 .. 80\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"127\" does not satisfy the range constraint.).",
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"127\" is out of the allowed range.).",
             "Schema location /TD_ERR3:my_leaf.");
 
     /* TEST DEFAULT HEXADECIMAL */
@@ -861,7 +861,7 @@ test_schema_yin(void **state)
             "     <type name=\"int8\"> <range value = \"min .. 0 | 1 .. 12\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"13\" does not satisfy the range constraint.).",
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"13\" is out of the allowed range.).",
             "Schema location /TD_ERR1:port.");
 
     /* TEST ERROR TD1 */
@@ -875,7 +875,7 @@ test_schema_yin(void **state)
             "     <range value = \"-127 .. -80\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Value \"10\" does not satisfy the range constraint.).",
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied range - value \"10\" is out of the allowed range.).",
             "Schema location /TD_ERR3:my_leaf.");
 
     /* TEST DEFAULT VALUE HEXADECIMAL */
@@ -1106,19 +1106,19 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("defs", "0", INT8, "0", 0);
     TEST_SUCCESS_XML("defs", "-0", INT8, "0", 0);
     TEST_ERROR_XML("defs", "-1");
-    CHECK_LOG_CTX("Value \"-1\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"-1\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_XML("defs", "51");
-    CHECK_LOG_CTX("Value \"51\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"51\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_XML("defs", "106");
-    CHECK_LOG_CTX("Value \"106\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"106\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_XML("defs", "104");
-    CHECK_LOG_CTX("Value \"104\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"104\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_XML("defs", "60");
-    CHECK_LOG_CTX("Value \"60\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"60\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
 
     schema = MODULE_CREATE_YANG("T0", "leaf port {type int8; }");
@@ -1195,19 +1195,19 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("defs", "0", INT8, "0", 0);
     TEST_SUCCESS_JSON("defs", "-0", INT8, "0", 0);
     TEST_ERROR_JSON("defs", "-1");
-    CHECK_LOG_CTX("Value \"-1\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"-1\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_JSON("defs", "51");
-    CHECK_LOG_CTX("Value \"51\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"51\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_JSON("defs", "106");
-    CHECK_LOG_CTX("Value \"106\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"106\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_JSON("defs", "104");
-    CHECK_LOG_CTX("Value \"104\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"104\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
     TEST_ERROR_JSON("defs", "60");
-    CHECK_LOG_CTX("Value \"60\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"60\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
 
     schema = MODULE_CREATE_YANG("T0", "leaf port {type int8; }");
@@ -1318,7 +1318,7 @@ test_diff(void **state)
             "yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"5\">"
             "121</port>";
     CHECK_PARSE_LYD_PARAM(diff_expected, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, model_1);
-    CHECK_LOG_CTX("Value \"121\" does not satisfy the range constraint.",
+    CHECK_LOG_CTX("Unsatisfied range - value \"121\" is out of the allowed range.",
             "Schema location /defs:port, line number 1.");
 
     /*

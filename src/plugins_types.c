@@ -513,16 +513,15 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
             *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
             return LY_ESYS;
-        } else if (((rc == PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 0)) ||
-                ((rc != PCRE2_ERROR_NOMATCH) && (patterns[u]->inverted == 1))) {
+        } else if (((rc == PCRE2_ERROR_NOMATCH) && !patterns[u]->inverted) ||
+                ((rc != PCRE2_ERROR_NOMATCH) && patterns[u]->inverted)) {
             LY_ERR ret = 0;
-            const char *inverted = patterns[u]->inverted == 0 ? " " : " inverted ";
-            if (asprintf(&errmsg, "String \"%.*s\" does not conform to the%spattern \"%s\".",
-                    (int)str_len, str, inverted, patterns[u]->expr) == -1) {
+            const char *inverted = patterns[u]->inverted ? "inverted " : "";
+            if (asprintf(&errmsg, LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr) == -1) {
                 *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
                 ret = LY_EMEM;
             } else {
-                *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
+                *err = ly_err_new(LY_LLERR, LY_EVALID, 0, errmsg, NULL, NULL);
                 ret = LY_EVALID;
             }
             return ret;
@@ -538,6 +537,9 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
     LY_ARRAY_COUNT_TYPE u;
     char *errmsg = NULL;
     int rc = 0;
+    ly_bool is_length; /* length or range */
+
+    is_length = (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? 1 : 0;
 
     LY_ARRAY_FOR(range->parts, u) {
         if (basetype < LY_TYPE_DEC64) {
@@ -546,9 +548,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                    rc = asprintf(&errmsg, is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, strval);
                 }
                 goto error;
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
@@ -559,9 +559,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                    rc = asprintf(&errmsg, is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, strval);
                 }
                 goto error;
             }
@@ -571,7 +569,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    rc = asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
+                    rc = asprintf(&errmsg, LY_ERRMSG_NORANGE, strval);
                 }
                 goto error;
             } else if (value <= range->parts[u].max_64) {
@@ -582,7 +580,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    rc = asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
+                    rc = asprintf(&errmsg, LY_ERRMSG_NORANGE, strval);
                 }
                 goto error;
             }

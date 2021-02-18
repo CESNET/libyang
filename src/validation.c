@@ -1254,13 +1254,13 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         /* no state/input/output data */
         if ((val_opts & LYD_VALIDATE_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
             innode = "state";
-            goto invalid_node;
+            goto unexpected_node;
         } else if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION)) && (node->schema->flags & LYS_IS_OUTPUT)) {
             innode = "output";
-            goto invalid_node;
+            goto unexpected_node;
         } else if ((int_opts & LYD_INTOPT_REPLY) && (node->schema->flags & LYS_IS_INPUT)) {
             innode = "input";
-            goto invalid_node;
+            goto unexpected_node;
         }
 
         /* obsolete data */
@@ -1296,8 +1296,8 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
     return LY_SUCCESS;
 
-invalid_node:
-    LOGVAL(LYD_CTX(node), LY_VCODE_INNODE, innode, node->schema->name);
+unexpected_node:
+    LOGVAL(LYD_CTX(node), LY_VCODE_UNEXPNODE, innode, node->schema->name);
     LOG_LOCBACK(1, 1, 0, 0);
     return LY_EVALID;
 }

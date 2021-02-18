@@ -158,7 +158,7 @@ test_int(void **state)
     TEST_TYPE_ERROR("int8", "1", error_msg, "1");
 #endif
 
-    error_msg = "Value \"100\" does not satisfy the range constraint.";
+    error_msg = "Unsatisfied range - value \"100\" is out of the allowed range.";
     TEST_TYPE_ERROR("int16", "100", error_msg, "1");
 
     /* invalid value */
@@ -186,9 +186,9 @@ test_uint(void **state)
 
     /* invalid range */
     TEST_TYPE_ERROR("uint8", "\n 15 \t\n  ",
-            "Value \"15\" does not satisfy the range constraint.", "3");
+            "Unsatisfied range - value \"15\" is out of the allowed range.", "3");
     TEST_TYPE_ERROR("uint16", "\n 1500 \t\n  ",
-            "Value \"1500\" does not satisfy the range constraint.", "3");
+            "Unsatisfied range - value \"1500\" is out of the allowed range.", "3");
 
     /* invalid value */
     TEST_TYPE_ERROR("uint32", "-10",
@@ -230,8 +230,8 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     /* invalid range */
-    TEST_TYPE_ERROR("dec64", "\n 15 \t\n  ", "Value \"15.0\" does not satisfy the range constraint.", "3");
-    TEST_TYPE_ERROR("dec64", "\n 0 \t\n  ", "Value \"0.0\" does not satisfy the range constraint.", "3");
+    TEST_TYPE_ERROR("dec64", "\n 15 \t\n  ", "Unsatisfied range - value \"15.0\" is out of the allowed range.", "3");
+    TEST_TYPE_ERROR("dec64", "\n 0 \t\n  ", "Unsatisfied range - value \"0.0\" is out of the allowed range.", "3");
 
     /* invalid value */
     TEST_TYPE_ERROR("dec64", "xxx", "Invalid 1. character of decimal64 value \"xxx\".", "1");
@@ -262,7 +262,7 @@ test_string(void **state)
     lyd_free_all(tree);
 
     TEST_TYPE_ERROR("str-invert", "teststring",
-            "String \"teststring\" does not conform to the inverted pattern \"[a-z ]*\".", "1");
+            "Unsatisfied pattern - \"teststring\" does not conform to inverted \"[a-z ]*\".", "1");
 
     /* multibyte characters (€ encodes as 3-byte UTF8 character, length restriction is 2-5) */
     CHECK_PARSE_LYD("<str-utf8 xmlns=\"urn:tests:types\">€€</str-utf8>", tree);
@@ -273,20 +273,20 @@ test_string(void **state)
 
     /*error */
     TEST_TYPE_ERROR("str-utf8", "€",
-            "Length \"1\" does not satisfy the length constraint.", "1");
+            "Unsatisfied length - string length \"1\" is not allowed.", "1");
     TEST_TYPE_ERROR("str-utf8", "€€€€€€",
-            "Length \"6\" does not satisfy the length constraint.", "1");
+            "Unsatisfied length - string length \"6\" is not allowed.", "1");
     TEST_TYPE_ERROR("str-utf8", "€€x",
-            "String \"€€x\" does not conform to the pattern \"€*\".", "1");
+            "Unsatisfied pattern - \"€€x\" does not conform to \"€*\".", "1");
 
     /* invalid length */
     TEST_TYPE_ERROR("str", "short",
-            "Length \"5\" does not satisfy the length constraint.", "1");
+            "Unsatisfied length - string length \"5\" is not allowed.", "1");
     TEST_TYPE_ERROR("str", "tooooo long",
-            "Length \"11\" does not satisfy the length constraint.", "1");
+            "Unsatisfied length - string length \"11\" is not allowed.", "1");
 
     /* invalid pattern */
-    TEST_TYPE_ERROR("str", "string15", "String \"string15\" does not conform to the pattern \"[a-z ]*\".", "1");
+    TEST_TYPE_ERROR("str", "string15", "Unsatisfied pattern - \"string15\" does not conform to \"[a-z ]*\".", "1");
 }
 
 static void
