@@ -728,11 +728,6 @@ lydxml_env_netconf_rpc(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_
 
     /* parse "rpc" */
     r = lydxml_envelope(xmlctx, "rpc", "urn:ietf:params:xml:ns:netconf:base:1.0", 0, envp);
-    if (r == LY_ENOT) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"rpc\".", xmlctx->name_len,
-                xmlctx->name);
-        r = LY_EVALID;
-    }
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* parse "action", if any */
@@ -781,11 +776,6 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
 
     /* parse "notification" */
     r = lydxml_envelope(xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0", 0, envp);
-    if (r == LY_ENOT) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"notification\".", xmlctx->name_len,
-                xmlctx->name);
-        r = LY_EVALID;
-    }
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* parse "eventTime" */
@@ -1213,11 +1203,6 @@ lydxml_env_netconf_reply(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
 
     /* parse "rpc-reply" */
     r = lydxml_envelope(xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", 0, envp);
-    if (r == LY_ENOT) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"rpc-reply\".", xmlctx->name_len,
-                xmlctx->name);
-        r = LY_EVALID;
-    }
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* there must be some child */

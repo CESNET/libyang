@@ -317,6 +317,7 @@ enum lyd_type {
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
  * @param[out] op Optional parsed operation node.
  * @return LY_ERR value.
+ * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */
 LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
