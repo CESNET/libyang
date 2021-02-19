@@ -298,14 +298,14 @@ enum lyd_type {
  *   - @p parent - must be NULL, the whole notification is expected;
  *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
  *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree;
+ *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
  *
  * - ::LYD_TYPE_REPLY_NETCONF:
  *   - @p parent - must be set, pointing to the invoked RPC operation (RPC or action) node;
  *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
  *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree;
+ *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be NULL, the reply is appended to the RPC;
  *   Note that there are 3 kinds of NETCONF replies - ok, error, and data. Only data reply appends any nodes to the RPC.
  *
