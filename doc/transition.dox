@@ -117,12 +117,12 @@
  * ly_ctx_new_ylpath()       | TBD                                  | ^
  * -                         | ::ly_ctx_unset_searchdir_last()      | Extend the functionality of the ::ly_ctx_unset_searchdir() to make its use easier.
  * ly_ctx_get_module_older() | -                                    | Removed functionality.
- * ly_ctx_get_submodule()    | -                                    | Removed functionality since the submodules are only in the parsed tree.
- * ly_ctx_get_submodule2()   | -                                    | ^
  * -                         | ::ly_ctx_get_module_implemented()    | Supplement for ::ly_ctx_get_module()
  * -                         | ::ly_ctx_get_module_latest()         | ^
  * -                         | ::ly_ctx_get_module_implemented_ns() | Supplement for ::ly_ctx_get_module_ns()
  * -                         | ::ly_ctx_get_module_latest_ns()      | ^
+ * -                         | ::ly_ctx_get_submodule_latest()      | Supplement for ::ly_ctx_get_submodule()
+ * -                         | ::ly_ctx_get_submodule2_latest()     | Supplement for ::ly_ctx_get_submodule2()
  * ly_ctx_get_module_by_ns() | ::ly_ctx_get_module_ns ()            | Redesign the API - replace some of the parameters with standalone supplement functions.
  * -                         | ::ly_ctx_reset_latests()             | The new functionality of maintaining the latest module revision flag.
  * ly_ctx_unset_searchdirs() | ::ly_ctx_unset_searchdir()           | Simplify API and instead of index numbers, work with the values themselves.

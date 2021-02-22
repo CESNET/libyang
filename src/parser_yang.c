@@ -4021,7 +4021,7 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod)
     size_t word_len;
     enum ly_stmt kw, prev_kw = 0;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
-    struct lysp_submodule *dup;
+    const struct lysp_submodule *dup;
 
     mod->is_submod = 0;
 
@@ -4203,7 +4203,7 @@ checks:
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
-    dup = ly_ctx_get_submodule(PARSER_CTX(ctx), NULL, mod->mod->name, NULL);
+    dup = ly_ctx_get_submodule_latest(PARSER_CTX(ctx), mod->mod->name);
     if (dup) {
         LOGVAL_PARSER(ctx, LY_VCODE_NAME2_COL, "module", "submodule", mod->mod->name);
         return LY_EVALID;
@@ -4228,7 +4228,7 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
     size_t word_len;
     enum ly_stmt kw, prev_kw = 0;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
-    struct lysp_submodule *dup;
+    const struct lysp_submodule *dup;
 
     submod->is_submod = 1;
 
@@ -4407,7 +4407,7 @@ checks:
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
-    dup = ly_ctx_get_submodule(PARSER_CTX(ctx), NULL, submod->name, NULL);
+    dup = ly_ctx_get_submodule_latest(PARSER_CTX(ctx), submod->name);
     /* main modules may have different revisions */
     if (dup && strcmp(dup->mod->name, submod->mod->name)) {
         LOGVAL_PARSER(ctx, LY_VCODE_NAME_COL, "submodules", dup->name);

@@ -304,20 +304,6 @@ struct ly_ctx {
 };
 
 /**
- * @brief Try to find submodule in the context. Submodules are present only in the parsed (lysp_) schema trees, if only
- * the compiled versions of the schemas are present, the submodule cannot be returned even if it was used to compile
- * some of the currently present schemas.
- *
- * @param[in] ctx Context where to search in case @p module is NULL.
- * @param[in] module Submodule parent (belongs-to) module in case @p ctx is NULL.
- * @param[in] submodule Name of the submodule to find.
- * @param[in] revision Optional revision of the submodule to find. If not specified, the latest revision is returned.
- * @return Pointer to the specified submodule if it is present in the context.
- */
-struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const struct lys_module *module,
-        const char *submodule, const char *revision);
-
-/**
  * @brief Get the (only) implemented YANG module specified by its name.
  *
  * @param[in] ctx Context where to search.
