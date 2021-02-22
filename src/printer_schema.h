@@ -123,21 +123,21 @@ typedef enum {
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LY_ERR lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, size_t line_length, uint32_t options);
+LY_ERR lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, size_t line_length,
+        uint32_t options);
 
 /**
  * @brief Schema submodule printer.
  *
  * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
- * @param[in] module Main module of the submodule to print.
  * @param[in] submodule Parsed submodule to print.
  * @param[in] format Output format (LYS_OUT_YANG_COMPILED is not supported).
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LY_ERR lys_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodule,
-        LYS_OUTFORMAT format, size_t line_length, uint32_t options);
+LY_ERR lys_print_submodule(struct ly_out *out, const struct lysp_submodule *submodule, LYS_OUTFORMAT format,
+        size_t line_length, uint32_t options);
 
 /**
  * @brief Print schema tree in the specified format into a memory block.

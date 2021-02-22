@@ -42,7 +42,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
             break;
         }
 
-        ret = yang_print_parsed_module(out, module, module->parsed, options);
+        ret = yang_print_parsed_module(out, module->parsed, options);
         break;
     case LYS_OUT_YANG_COMPILED:
         if (!module->compiled) {
@@ -60,7 +60,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
             break;
         }
 
-        ret = yin_print_parsed_module(out, module, module->parsed, options);
+        ret = yin_print_parsed_module(out, module->parsed, options);
         break;
     case LYS_OUT_TREE:
         if (!module->parsed) {
@@ -85,33 +85,33 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
 }
 
 API LY_ERR
-lys_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodule,
-        LYS_OUTFORMAT format, size_t UNUSED(line_length), uint32_t options)
+lys_print_submodule(struct ly_out *out, const struct lysp_submodule *submodule, LYS_OUTFORMAT format,
+        size_t UNUSED(line_length), uint32_t options)
 {
     LY_ERR ret;
 
-    LY_CHECK_ARG_RET(NULL, out, module, submodule, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, submodule, LY_EINVAL);
 
     /* reset number of printed bytes */
     out->func_printed = 0;
 
     switch (format) {
     case LYS_OUT_YANG:
-        ret = yang_print_parsed_submodule(out, module, submodule, options);
+        ret = yang_print_parsed_submodule(out, submodule, options);
         break;
     case LYS_OUT_YIN:
-        ret = yin_print_parsed_submodule(out, module, submodule, options);
+        ret = yin_print_parsed_submodule(out, submodule, options);
         break;
     /* TODO not yet implemented
     case LYS_OUT_TREE:
-        ret = tree_print_submodule(out, module, submodule, options, line_length);
+        ret = tree_print_submodule(out, submodule, options, line_length);
         break;
     case LYS_OUT_INFO:
         ret = info_print_model(out, module, target_node);
         break;
     */
     default:
-        LOGERR(module->ctx, LY_EINVAL, "Unsupported output format.");
+        LOGERR(submodule->mod->ctx, LY_EINVAL, "Unsupported output format.");
         ret = LY_EINVAL;
         break;
     }
