@@ -3603,6 +3603,23 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
 }
 
 API LY_ERR
+lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struct lyd_node **match)
+{
+    LY_CHECK_ARG_RET(NULL, name, LY_EINVAL);
+
+    for ( ; first; first = first->next) {
+        if (!first->schema && !strcmp(LYD_NAME(first), name)) {
+            break;
+        }
+    }
+
+    if (match) {
+        *match = (struct lyd_node *)first;
+    }
+    return first ? LY_SUCCESS : LY_ENOTFOUND;
+}
+
+API LY_ERR
 lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;

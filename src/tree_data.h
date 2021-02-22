@@ -94,6 +94,7 @@ struct lysc_type;
  * - ::lyd_find_path()
  * - ::lyd_find_sibling_val()
  * - ::lyd_find_sibling_first()
+ * - ::lyd_find_sibling_opaq_next()
  * - ::lyd_find_meta()
  *
  * - ::lyd_path()
@@ -675,6 +676,14 @@ struct lyd_node_any {
     } value;                            /**< pointer to the stored value representation of the anydata/anyxml node */
     LYD_ANYDATA_VALUETYPE value_type;   /**< type of the data stored as ::lyd_node_any.value */
 };
+
+/**
+ * @brief Get the name (associated with) of a data node. Works for opaque nodes as well.
+ *
+ * @param[in] node Node to examine.
+ * @return Data node name.
+ */
+#define LYD_NAME(node) ((node)->schema ? (node)->schema->name : ((struct lyd_node_opaq *)node)->name.name)
 
 /**
  * @ingroup datatree
@@ -1788,6 +1797,18 @@ LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_
  */
 LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
         size_t val_len, struct lyd_node **match);
+
+/**
+ * @brief Search the given siblings for an opaque node with a specific name.
+ *
+ * @param[in] first First sibling to consider.
+ * @param[in] name Opaque node name to find.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_ERR value is an error occurred.
+ */
+LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struct lyd_node **match);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
