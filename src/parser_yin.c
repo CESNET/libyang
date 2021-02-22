@@ -3637,7 +3637,7 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
-    struct lysp_submodule *dup;
+    const struct lysp_submodule *dup;
     size_t subelems_size;
 
     mod->is_submod = 0;
@@ -3680,7 +3680,7 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
-    dup = ly_ctx_get_submodule(ctx->xmlctx->ctx, NULL, mod->mod->name, NULL);
+    dup = ly_ctx_get_submodule_latest(ctx->xmlctx->ctx, mod->mod->name);
     if (dup) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_NAME2_COL, "module", "submodule", mod->mod->name);
         return LY_EVALID;
@@ -3703,7 +3703,7 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
-    struct lysp_submodule *dup;
+    const struct lysp_submodule *dup;
     size_t subelems_size;
 
     submod->is_submod = 1;
@@ -3745,7 +3745,7 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
-    dup = ly_ctx_get_submodule(ctx->xmlctx->ctx, NULL, submod->name, NULL);
+    dup = ly_ctx_get_submodule_latest(ctx->xmlctx->ctx, submod->name);
     if (dup && strcmp(dup->mod->name, submod->mod->name)) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_NAME_COL, "submodules", dup->name);
         return LY_EVALID;

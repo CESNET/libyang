@@ -516,25 +516,60 @@ ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
     return ly_ctx_get_module_implemented_by(ctx, ns, 0, offsetof(struct lys_module, ns));
 }
 
-struct lysp_submodule *
-ly_ctx_get_submodule(const struct ly_ctx *ctx, const struct lys_module *module, const char *submodule, const char *revision)
+/**
+ * @brief Try to find a submodule in a module.
+ *
+ * @param[in] module Module where to search in.
+ * @param[in] submodule Name of the submodule to find.
+ * @param[in] revision Revision of the submodule to find. NULL for submodule with no revision.
+ * @param[in] latest Ignore @p revision and look for the latest revision.
+ * @return Pointer to the specified submodule if it is present in the context.
+ */
+static const struct lysp_submodule *
+_ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule, const char *revision, ly_bool latest)
 {
-    const struct lys_module *mod;
     struct lysp_include *inc;
-    uint32_t v;
     LY_ARRAY_COUNT_TYPE u;
 
-    assert((ctx || module) && submodule);
+    LY_CHECK_ARG_RET(NULL, module, module->parsed, submodule, NULL);
 
-    if (module) {
-        if (!module->parsed) {
-            return NULL;
+    LY_ARRAY_FOR(module->parsed->includes, u) {
+        if (module->parsed->includes[u].submodule && !strcmp(submodule, module->parsed->includes[u].submodule->name)) {
+            inc = &module->parsed->includes[u];
+
+            if (latest && inc->submodule->latest_revision) {
+                /* latest revision */
+                return inc->submodule;
+            } else if (!revision && !inc->submodule->revs) {
+                /* no revision */
+                return inc->submodule;
+            } else if (revision && inc->submodule->revs && !strcmp(revision, inc->submodule->revs[0].date)) {
+                /* specific revision */
+                return inc->submodule;
+            }
         }
-
-        /* check only this module */
-        mod = module;
-        goto check_mod;
     }
+
+    return NULL;
+}
+
+/**
+ * @brief Try to find a submodule in the context.
+ *
+ * @param[in] ctx Context where to search in.
+ * @param[in] submodule Name of the submodule to find.
+ * @param[in] revision Revision of the submodule to find. NULL for submodule with no revision.
+ * @param[in] latest Ignore @p revision and look for the latest revision.
+ * @return Pointer to the specified submodule if it is present in the context.
+ */
+static const struct lysp_submodule *
+_ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision, ly_bool latest)
+{
+    const struct lys_module *mod;
+    const struct lysp_submodule *submod = NULL;
+    uint32_t v;
+
+    LY_CHECK_ARG_RET(ctx, ctx, submodule, NULL);
 
     for (v = 0; v < ctx->list.count; ++v) {
         mod = ctx->list.objs[v];
@@ -542,27 +577,37 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const struct lys_module *module, 
             continue;
         }
 
-check_mod:
-        LY_ARRAY_FOR(mod->parsed->includes, u) {
-            if (mod->parsed->includes[u].submodule && !strcmp(submodule, mod->parsed->includes[u].submodule->name)) {
-                inc = &mod->parsed->includes[u];
-                if (!revision) {
-                    if (inc->submodule->latest_revision) {
-                        return inc->submodule;
-                    }
-                } else if (inc->submodule->revs && !strcmp(revision, inc->submodule->revs[0].date)) {
-                    return inc->submodule;
-                }
-            }
-        }
-
-        if (module) {
-            /* do not check other modules */
+        submod = _ly_ctx_get_submodule2(mod, submodule, revision, latest);
+        if (submod) {
             break;
         }
     }
 
-    return NULL;
+    return submod;
+}
+
+API const struct lysp_submodule *
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision)
+{
+    return _ly_ctx_get_submodule(ctx, submodule, revision, 0);
+}
+
+API const struct lysp_submodule *
+ly_ctx_get_submodule_latest(const struct ly_ctx *ctx, const char *submodule)
+{
+    return _ly_ctx_get_submodule(ctx, submodule, NULL, 1);
+}
+
+API const struct lysp_submodule *
+ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule, const char *revision)
+{
+    return _ly_ctx_get_submodule2(module, submodule, revision, 0);
+}
+
+API const struct lysp_submodule *
+ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule)
+{
+    return _ly_ctx_get_submodule2(module, submodule, NULL, 1);
 }
 
 API void

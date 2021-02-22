@@ -117,6 +117,10 @@ struct lysc_node;
  * - ::ly_ctx_get_module_implemented_ns()
  * - ::ly_ctx_get_module_latest()
  * - ::ly_ctx_get_module_latest_ns()
+ * - ::ly_ctx_get_submodule()
+ * - ::ly_ctx_get_submodule_latest()
+ * - ::ly_ctx_get_submodule2()
+ * - ::ly_ctx_get_submodule2_latest()
  * - ::ly_ctx_reset_latests()
  *
  * - ::ly_ctx_get_yanglib_data()
@@ -415,6 +419,47 @@ struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const c
  * implemented module of the given namespace.
  */
 struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
+
+/**
+ * @brief Get a specific submodule from context. If its belongs-to module is known, use ::ly_ctx_get_submodule2().
+ *
+ * @param[in] ctx libyang context to search in.
+ * @param[in] submodule Submodule name to find.
+ * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
+ * @return Found submodule, NULL if there is none.
+ */
+const struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision);
+
+/**
+ * @brief Get the latests revision of a submodule from context. If its belongs-to module is known,
+ * use ::ly_ctx_get_submodule2_latest().
+ *
+ * @param[in] ctx libyang context to search in.
+ * @param[in] submodule Submodule name to find.
+ * @return Found submodule, NULL if there is none.
+ */
+const struct lysp_submodule *ly_ctx_get_submodule_latest(const struct ly_ctx *ctx, const char *submodule);
+
+/**
+ * @brief Get a specific submodule from a module. If the belongs-to module is not known, use ::ly_ctx_get_submodule().
+ *
+ * @param[in] module Belongs-to module to search in.
+ * @param[in] submodule Submodule name to find.
+ * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
+ * @return Found submodule, NULL if there is none.
+ */
+const struct lysp_submodule *ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule,
+        const char *revision);
+
+/**
+ * @brief Get the latest revision of a submodule from a module. If the belongs-to module is not known,
+ * use ::ly_ctx_get_submodule_latest().
+ *
+ * @param[in] module Belongs-to module to search in.
+ * @param[in] submodule Submodule name to find.
+ * @return Found submodule, NULL if there is none.
+ */
+const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.
