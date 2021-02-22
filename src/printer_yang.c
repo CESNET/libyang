@@ -2144,9 +2144,10 @@ yang_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
 }
 
 LY_ERR
-yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options)
+yang_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
+    const struct lys_module *module = modp->mod;
     struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED, .options = options}, *ctx = &ctx_;
 
     ly_print_(ctx->out, "%*smodule %s {\n", INDENT, module->name);
@@ -2201,10 +2202,11 @@ yprp_belongsto(struct ypr_ctx *ctx, const struct lysp_submodule *submodp)
 }
 
 LY_ERR
-yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options)
+yang_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED, .options = options}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = submodp->mod, .schema = YPR_PARSED,
+            .options = options}, *ctx = &ctx_;
 
     ly_print_(ctx->out, "%*ssubmodule %s {\n", INDENT, submodp->name);
     LEVEL++;

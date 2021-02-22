@@ -1410,9 +1410,10 @@ yin_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
 }
 
 LY_ERR
-yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options)
+yin_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
+    const struct lys_module *module = modp->mod;
     struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options}, *ctx = &ctx_;
 
     ly_print_(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -1472,14 +1473,14 @@ yprp_belongsto(struct ypr_ctx *ctx, const struct lysp_submodule *submodp)
 }
 
 LY_ERR
-yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options)
+yin_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = submodp->mod, .options = options}, *ctx = &ctx_;
 
     ly_print_(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print_(ctx->out, "%*s<submodule name=\"%s\"\n", INDENT, submodp->name);
-    ypr_xmlns(ctx, module, XML_NS_INDENT);
+    ypr_xmlns(ctx, submodp->mod, XML_NS_INDENT);
     ypr_import_xmlns(ctx, (struct lysp_module *)submodp, XML_NS_INDENT);
     ly_print_(ctx->out, ">\n");
 

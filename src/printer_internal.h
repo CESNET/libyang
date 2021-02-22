@@ -26,12 +26,11 @@ struct lysp_submodule;
  * @brief YANG printer of the parsed module. Full YANG printer.
  *
  * @param[in] out Output specification.
- * @param[in] module Main module.
  * @param[in] modp Parsed module to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
-LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options);
+LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uint32_t options);
 
 /**
  * @brief Helper macros for data printers
@@ -48,13 +47,11 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *mod
  * @brief YANG printer of the parsed submodule. Full YANG printer.
  *
  * @param[in] out Output specification.
- * @param[in] module Main module.
  * @param[in] submodp Parsed submodule to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
-LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module,
-        const struct lysp_submodule *submodp, uint32_t options);
+LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t options);
 
 /**
  * @brief YANG printer of the compiled schemas.
@@ -88,25 +85,21 @@ LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node
  * @brief YIN printer of the parsed module. Full YIN printer.
  *
  * @param[in] out Output specification.
- * @param[in] module Main module.
  * @param[in] modp Parsed module to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
-LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp,
-        uint32_t options);
+LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uint32_t options);
 
 /**
  * @brief YIN printer of the parsed submodule. Full YIN printer.
  *
  * @param[in] out Output specification.
- * @param[in] module Main module.
  * @param[in] submodp Parsed submodule to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
-LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module,
-        const struct lysp_submodule *submodp, uint32_t options);
+LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t options);
 
 /**
  * @brief YANG Tree Diagram printer of the parsed submodule. Full YANG Tree printer.

@@ -194,7 +194,7 @@ test_submodule(void **state)
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod_yang);
     UTEST_ADD_MODULE(mod_yang, LYS_IN_YANG, NULL, &mod);
-    assert_int_equal(LY_SUCCESS, lys_print_submodule(out, mod, mod->parsed->includes[0].submodule, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_submodule(out, mod->parsed->includes[0].submodule, LYS_OUT_YANG, 0, 0));
     assert_int_equal(strlen(submod_yang), ly_out_printed(out));
     assert_string_equal(printed, submod_yang);
 
