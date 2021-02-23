@@ -4284,11 +4284,12 @@ lyd_replace(struct lyd_node *orig, struct lyd_node *repl)
         }
     }
 
-finish:
     /* the node is already unlinked, remove it from parent's hash table. */
 #ifdef LY_ENABLED_CACHE
     lyd_unlink_hash(orig, repl->parent);
 #endif
+
+finish:
     lyd_free(orig);
 }
 
