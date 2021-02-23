@@ -449,6 +449,9 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     uint32_t i, parse_opts, val_opts;
 
     LY_CHECK_ARG_RET(ctx, ctx || parent, in, data_type, parent || tree || op, LY_EINVAL);
+    if (!ctx) {
+        ctx = LYD_CTX(parent);
+    }
     if (tree) {
         *tree = NULL;
     }
