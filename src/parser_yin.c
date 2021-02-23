@@ -1226,8 +1226,6 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
         type = (struct lysp_type *)subinfo->dest;
     }
 
-    type->pmod = ctx->parsed_mod;
-
     /* type as child of another type */
     if (parent == LY_STMT_TYPE) {
         struct lysp_type *nested_type = NULL;
@@ -1235,6 +1233,8 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
         type->flags |= LYS_SET_TYPE;
         type = nested_type;
     }
+
+    type->pmod = ctx->parsed_mod;
 
     struct yin_subelement subelems[] = {
         {LY_STMT_BASE, type, 0},
