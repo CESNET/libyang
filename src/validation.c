@@ -648,7 +648,7 @@ lyd_validate_dummy_when(const struct lyd_node *first, const struct lyd_node *par
     }
 
     /* create dummy opaque node */
-    ret = lyd_new_opaq((struct lyd_node *)parent, snode->module->ctx, snode->name, NULL, snode->module->name, &dummy);
+    ret = lyd_new_opaq((struct lyd_node *)parent, snode->module->ctx, snode->name, NULL, NULL, snode->module->name, &dummy);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* connect it if needed */

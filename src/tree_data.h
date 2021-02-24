@@ -1009,13 +1009,14 @@ LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool 
  * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
  * @param[in] ctx libyang context. If NULL, @p parent context will be used.
  * @param[in] name Node name.
- * @param[in] value Node value, may be NULL.
+ * @param[in] value Optional node value.
+ * @param[in] prefix Optional node prefix, must be equal to @p module_name if set.
  * @param[in] module_name Node module name.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
-        const char *module_name, struct lyd_node **node);
+        const char *prefix, const char *module_name, struct lyd_node **node);
 
 /**
  * @brief Create a new XML opaque node in the data tree. To create a JSON opaque node, use ::lyd_new_opaq().
@@ -1023,13 +1024,14 @@ LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
  * @param[in] ctx libyang context. If NULL, @p parent context will be used.
  * @param[in] name Node name.
- * @param[in] value Node value, may be NULL.
+ * @param[in] value Optional node value.
+ * @param[in] prefix Optional node prefix.
  * @param[in] module_ns Node module namespace.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
-        const char *module_ns, struct lyd_node **node);
+        const char *prefix, const char *module_ns, struct lyd_node **node);
 
 /**
  * @brief Create new JSON attribute for an opaque data node. To create an XML attribute, use ::lyd_new_attr2().
