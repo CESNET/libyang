@@ -265,7 +265,12 @@ lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const cha
 {
     LY_ERR result;
 
-    LY_CHECK_ARG_RET(ctx, ctx, value, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
+
+    if (!value) {
+        *str_p = NULL;
+        return LY_SUCCESS;
+    }
 
     if (!len) {
         len = strlen(value);
@@ -283,7 +288,12 @@ lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 {
     LY_ERR result;
 
-    LY_CHECK_ARG_RET(ctx, ctx, value, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, ctx, str_p, LY_EINVAL);
+
+    if (!value) {
+        *str_p = NULL;
+        return LY_SUCCESS;
+    }
 
     pthread_mutex_lock((pthread_mutex_t *)&ctx->dict.lock);
     result = dict_insert(ctx, value, strlen(value), 1, str_p);

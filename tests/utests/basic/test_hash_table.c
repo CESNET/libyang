@@ -30,7 +30,7 @@ test_invalid_arguments(void **state)
     assert_int_equal(LY_EINVAL, lydict_insert_zc(NULL, NULL, NULL));
     CHECK_LOG("Invalid argument ctx (lydict_insert_zc()).", NULL);
     assert_int_equal(LY_EINVAL, lydict_insert_zc(UTEST_LYCTX, NULL, NULL));
-    CHECK_LOG_CTX("Invalid argument value (lydict_insert_zc()).", NULL);
+    CHECK_LOG_CTX("Invalid argument str_p (lydict_insert_zc()).", NULL);
 }
 
 static void
