@@ -1247,7 +1247,6 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
         struct lysp_ext_instance *ext, int8_t *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
-    char *str;
     struct lysp_stmt *stmt;
     const char *argument;
     const char *ext_argument;
@@ -1266,11 +1265,6 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
             continue;
         }
 
-        if (!ext->compiled && ext->yin) {
-            ly_print_(ctx->out, "%*s<%s/> <!-- Model comes from different input format, extensions must be resolved first. -->\n", INDENT, ext[u].name);
-            continue;
-        }
-
         ypr_close_parent(ctx, flag);
         inner_flag = 0;
         argument = NULL;
@@ -1283,22 +1277,7 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
             argument = ext[u].argument;
         }
 
-        if (ext->yin) {
-            ypr_open(ctx, ext[u].name, NULL, NULL, 1);
-            if (asprintf(&str, "%s:%s", ext[u].compiled->def->module->prefix, ext_argument) == -1) {
-                LOGMEM(ctx->module->ctx);
-                return;
-            }
-            LEVEL++;
-            inner_flag = 1;
-            ypr_yin_arg(ctx, str, argument);
-            free(str);
-            str = NULL;
-            LEVEL--;
-        } else {
-            ypr_open(ctx, ext[u].name, ext_argument, argument, inner_flag);
-        }
-
+        ypr_open(ctx, ext[u].name, ext_argument, argument, inner_flag);
         LEVEL++;
         LY_LIST_FOR(ext[u].child, stmt) {
             ypr_close_parent(ctx, &inner_flag);

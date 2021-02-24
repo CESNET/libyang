@@ -177,6 +177,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
         assert(xmlctx->status == LYXML_ATTR_CONTENT);
 
         /* get value prefixes */
+        val_prefix_data = NULL;
         LY_CHECK_GOTO(ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_PREF_XML,
                 &xmlctx->ns, &format, &val_prefix_data), cleanup);
 
@@ -383,7 +384,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     struct lys_module *mod;
     uint32_t prev_opts;
     struct lyd_node *node = NULL, *anchor;
-    void *val_prefix_data;
+    void *val_prefix_data = NULL;
     LY_PREFIX_FORMAT format;
     uint32_t getnext_opts;
 
@@ -471,7 +472,6 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         if (xmlctx->ws_only) {
             /* ignore WS-only value */
             xmlctx->value_len = 0;
-            val_prefix_data = NULL;
             format = LY_PREF_XML;
         } else {
             /* get value prefixes */

@@ -486,6 +486,9 @@ struct lysp_ext {
 struct lysp_stmt {
     const char *stmt;                /**< identifier of the statement */
     const char *arg;                 /**< statement's argument */
+    LY_PREFIX_FORMAT format;         /**< prefix format of the identifier/argument (::LY_PREF_XML is YIN format) */
+    void *prefix_data;               /**< Format-specific data for prefix resolution (see ::ly_type_store_resolve_prefix()) */
+
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
     uint16_t flags;                  /**< statement flags, can be set to LYS_YIN_ATTR */
@@ -500,6 +503,10 @@ struct lysp_stmt {
 struct lysp_ext_instance {
     const char *name;                       /**< extension identifier, including possible prefix */
     const char *argument;                   /**< optional value of the extension's argument */
+    LY_PREFIX_FORMAT format;                /**< prefix format of the extension name/argument (::LY_PREF_XML is YIN format) */
+    void *prefix_data;                      /**< Format-specific data for prefix resolution
+                                                 (see ::ly_type_store_resolve_prefix()) */
+
     void *parent;                           /**< pointer to the parent element holding the extension instance(s), use
                                                  ::lysp_ext_instance#parent_type to access the schema element */
     struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
@@ -509,7 +516,6 @@ struct lysp_ext_instance {
     LY_ARRAY_COUNT_TYPE insubstmt_index;    /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement */
     uint16_t flags;                         /**< LYS_INTERNAL value (@ref snodeflags) */
-    uint8_t yin;                            /**< flag for YIN source format, can be set to LYS_YIN */
     LYEXT_PARENT parent_type;               /**< type of the parent structure */
 };
 

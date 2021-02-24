@@ -394,16 +394,6 @@ typedef enum {
 } LYD_FORMAT;
 
 /**
- * @brief All kinds of supported prefix mappings to modules.
- */
-typedef enum {
-    LY_PREF_SCHEMA,          /**< value prefixes map to YANG import prefixes */
-    LY_PREF_SCHEMA_RESOLVED, /**< value prefixes map to module structures directly */
-    LY_PREF_XML,             /**< value prefixes map to XML namespace prefixes */
-    LY_PREF_JSON             /**< value prefixes map to module names */
-} LY_PREFIX_FORMAT;
-
-/**
  * @brief List of possible value types stored in ::lyd_node_any.
  */
 typedef enum {

@@ -241,11 +241,6 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
             continue;
         }
 
-        if (!ext->compiled && ext->yin) {
-            ly_print_(ctx->out, "%*s%s; // Model comes from different input format, extensions must be resolved first.\n", INDENT, ext[u].name);
-            continue;
-        }
-
         ypr_open(ctx->out, flag);
         argument = NULL;
         if (ext[u].compiled) {

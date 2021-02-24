@@ -902,6 +902,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "operation", 0, &ext_p->argument));
+    ext_p->format = LY_PREF_SCHEMA;
+    ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
     ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
     ext_p->insubstmt_index = 0;
@@ -910,6 +912,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
     stmt->child = calloc(1, sizeof *stmt->child);
@@ -917,6 +921,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "merge", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     stmt->next = calloc(1, sizeof *stmt->child);
@@ -924,6 +930,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "replace", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     stmt->next = calloc(1, sizeof *stmt->child);
@@ -931,6 +939,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "create", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     stmt->next = calloc(1, sizeof *stmt->child);
@@ -938,6 +948,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "delete", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     stmt->next = calloc(1, sizeof *stmt->child);
@@ -945,6 +957,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "remove", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     /*
@@ -954,6 +968,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &ext_p->argument));
+    ext_p->format = LY_PREF_SCHEMA;
+    ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
     ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
     ext_p->insubstmt_index = 0;
@@ -962,6 +978,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enumeration", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
     stmt->child = calloc(1, sizeof *stmt->child);
@@ -969,6 +987,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "subtree", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     stmt->next = calloc(1, sizeof *stmt->child);
@@ -976,6 +996,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "enum", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "xpath", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_ENUM;
 
     /* if-feature for enum allowed only for YANG 1.1 modules */
@@ -985,6 +1007,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
         LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
         LY_CHECK_RET(lydict_insert(mod->mod->ctx, "if-feature", 0, &stmt->stmt));
         LY_CHECK_RET(lydict_insert(mod->mod->ctx, "xpath", 0, &stmt->arg));
+        stmt->format = LY_PREF_SCHEMA;
+        stmt->prefix_data = mod;
         stmt->kw = LY_STMT_IF_FEATURE;
     }
 
@@ -995,6 +1019,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "select", 0, &ext_p->argument));
+    ext_p->format = LY_PREF_SCHEMA;
+    ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
     ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
     ext_p->insubstmt_index = 0;
@@ -1003,6 +1029,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "yang_:xpath1.0", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
     /* create new imports for the used prefixes */
@@ -1042,6 +1070,8 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!ext_p, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "md_:annotation", 0, &ext_p->name));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "default", 0, &ext_p->argument));
+    ext_p->format = LY_PREF_SCHEMA;
+    ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
     ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
     ext_p->insubstmt_index = 0;
@@ -1050,6 +1080,8 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "type", 0, &stmt->stmt));
     LY_CHECK_RET(lydict_insert(mod->mod->ctx, "boolean", 0, &stmt->arg));
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = mod;
     stmt->kw = LY_STMT_TYPE;
 
     /* create new import for the used prefix */

@@ -445,15 +445,18 @@ void ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data);
 LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *prefix_data, void **prefix_data_p);
 
 /**
- * @brief Store used prefixes in a value.
+ * @brief Store used prefixes in a string.
+ *
+ * If @p prefix_data_p are non-NULL, they are treated as valid according to the @p format_p and new possible
+ * prefixes are simply added. This way it is possible to store prefix data for several strings together.
  *
  * @param[in] ctx libyang context.
  * @param[in] value Value string to be parsed.
  * @param[in] value_len Length of the @p value string.
  * @param[in] format Format of the prefixes in the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
- * @param[out] format_p Resulting format of the prefixes.
- * @param[out] prefix_data_p Resulting prefix data for the value in format @p format_p.
+ * @param[in,out] format_p Resulting format of the prefixes.
+ * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
 LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
