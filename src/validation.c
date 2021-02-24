@@ -1391,9 +1391,10 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         ret = lyd_validate_new(first2, NULL, mod, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* add all top-level defaults for this module, do not add into unres sets, will occur in the next step */
-        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, NULL, NULL, (val_opts & LYD_VALIDATE_NO_STATE) ?
-                LYD_IMPLICIT_NO_STATE : 0, diff);
+        /* add all top-level defaults for this module, if going to validate subtree, do not add into unres sets
+         * (lyd_validate_subtree() adds all the nodes in that case) */
+        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, validate_subtree ? NULL : node_types_p,
+                validate_subtree ? NULL : node_when_p, (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* our first module node pointer may no longer be the first */

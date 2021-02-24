@@ -767,6 +767,11 @@ test_defaults(void **state)
             "        type uint32;\n"
             "        default 15;\n"
             "    }\n"
+            "    leaf dd {\n"
+            "        type uint32;\n"
+            "        when '../d = 666';\n"
+            "        default 15;\n"
+            "    }\n"
             "    leaf-list ll2 {\n"
             "        type string;\n"
             "        default \"dflt1\";\n"
@@ -794,6 +799,11 @@ test_defaults(void **state)
             "        }\n"
             "        leaf d {\n"
             "            type uint32;\n"
+            "            default 15;\n"
+            "        }\n"
+            "        leaf dd {\n"
+            "            type uint32;\n"
+            "            when '../d = 666';\n"
             "            default 15;\n"
             "        }\n"
             "        leaf-list ll2 {\n"
@@ -985,6 +995,29 @@ test_defaults(void **state)
             "</cont>\n",
             LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
     lyd_free_all(diff);
+    lyd_free_all(tree);
+
+    /* check data tree - when enabled node */
+    CHECK_PARSE_LYD_PARAM("<d xmlns=\"urn:tests:f\">666</d><cont xmlns=\"urn:tests:f\"><d>666</d></cont>",
+            LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_STRING_PARAM(tree,
+            "<ll1 xmlns=\"urn:tests:f\">def1</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\">def2</ll1>\n"
+            "<ll1 xmlns=\"urn:tests:f\">def3</ll1>\n"
+            "<d xmlns=\"urn:tests:f\">666</d>\n"
+            "<dd xmlns=\"urn:tests:f\">15</dd>\n"
+            "<ll2 xmlns=\"urn:tests:f\">dflt1</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n"
+            "<cont xmlns=\"urn:tests:f\">\n"
+            "  <ll1>def1</ll1>\n"
+            "  <ll1>def2</ll1>\n"
+            "  <ll1>def3</ll1>\n"
+            "  <d>666</d>\n"
+            "  <dd>15</dd>\n"
+            "  <ll2>dflt1</ll2>\n"
+            "  <ll2>dflt2</ll2>\n"
+            "</cont>\n",
+            LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
     lyd_free_all(tree);
 }
 
