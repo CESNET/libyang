@@ -287,7 +287,7 @@ check:
         }
         goto repeat;
     case LYS_CONTAINER:
-        if (!(next->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
+        if (lysc_is_np_default_cont(next) && (options & LYS_GETNEXT_INTONPCONT)) {
             if (lysc_node_child(next)) {
                 /* go into */
                 next = lysc_node_child(next);

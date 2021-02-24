@@ -2358,6 +2358,11 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
         lys_compile_mandatory_parents(parent, 1);
     }
 
+    if (node->flags & LYS_NP_DEFAULT || node->flags & LYS_SET_DFLT) {
+        /* Mark non-explicit presence parent containers as np default */
+        lys_compile_default_np_parents(parent, 1);
+    }
+
     if (child_set) {
         /* add the new node into set */
         LY_CHECK_GOTO(ret = ly_set_add(child_set, node, 1, NULL), cleanup);
@@ -3342,6 +3347,31 @@ lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add)
             }
             /* unset mandatory flag - there is no mandatory children in the non-presence container */
             parent->flags &= ~LYS_MAND_TRUE;
+        }
+    }
+}
+
+void
+lys_compile_default_np_parents(struct lysc_node *parent, ly_bool add)
+{
+    const struct lysc_node *iter;
+
+    if (add) { /* set flag */
+        for ( ; parent && parent->nodetype == LYS_CONTAINER &&
+                 !(parent->flags & LYS_SET_PRESENCE) &&
+                 !(parent->flags & LYS_NP_DEFAULT); parent = parent->parent) {
+            parent->flags |= LYS_NP_DEFAULT;
+        }
+    } else { /* unset flag */
+        for ( ; parent && parent->nodetype == LYS_CONTAINER && (parent->flags & LYS_NP_DEFAULT); parent = parent->parent) {
+            for (iter = lysc_node_child(parent); iter; iter = iter->next) {
+                if (iter->flags & LYS_NP_DEFAULT || iter->flags & LYS_SET_DFLT) {
+                    /* there is another default sub-node */
+                    return;
+                }
+            }
+            /* unset np default flag - there are no default contained in the container */
+            parent->flags &= ~LYS_NP_DEFAULT;
         }
     }
 }

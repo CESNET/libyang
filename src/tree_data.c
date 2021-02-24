@@ -608,7 +608,7 @@ lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node)
     in->schema = schema;
     in->prev = &in->node;
     in->flags = LYD_NEW;
-    if ((schema->nodetype == LYS_CONTAINER) && !(schema->flags & LYS_PRESENCE)) {
+    if (lysc_is_np_default_cont(schema)) {
         in->flags |= LYD_DEFAULT;
     }
 
@@ -1647,14 +1647,11 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
             }
             break;
         case LYS_CONTAINER:
-            if (!(iter->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+            if (lysc_is_np_default_cont(iter) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create default NP container */
                 LY_CHECK_RET(lyd_create_inner(iter, &node));
                 node->flags = LYD_DEFAULT | (lysc_node_when(node->schema) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node);
-
-                /* cannot be a NP container with when */
-                assert(!lysc_node_when(iter));
 
                 if (diff) {
                     /* add into diff */
@@ -2316,8 +2313,7 @@ lyd_unlink_tree(struct lyd_node *node)
         }
 
         /* check for NP container whether its last non-default node is not being unlinked */
-        if (node->parent->schema && (node->parent->schema->nodetype == LYS_CONTAINER) &&
-                !(node->parent->flags & LYD_DEFAULT) && !(node->parent->schema->flags & LYS_PRESENCE)) {
+        if (lysc_is_np_default_cont(node->parent->schema) && !(node->parent->flags & LYD_DEFAULT)) {
             LY_LIST_FOR(node->parent->child, iter) {
                 if ((iter != node) && !(iter->flags & LYD_DEFAULT)) {
                     break;

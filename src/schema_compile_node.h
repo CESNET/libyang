@@ -116,6 +116,19 @@ LY_ERR lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *chi
 void lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add);
 
 /**
+ * @brief Set LYS_NP_DEFAULT flag for the non-explicit-presence container parents.
+ *
+ * A non-explicit-presence container should still create default children. This function propagates
+ * the a flag to such parents so that the children get created even though the
+ * container is marked as LYS_PRESENCE
+ *
+ * @param[in] parent A schema node to be examined if the default child make it * also default (or NP default).
+ * @param[in] add Flag to distinguish adding the NP default flag (new default children appeared) or removing the flag
+ * (default children were removed).
+ */
+void lys_compile_default_np_parents(struct lysc_node *parent, ly_bool add);
+
+/**
  * @brief Validate grouping that was defined but not used in the schema itself.
  *
  * The grouping does not need to be compiled (and it is compiled here, but the result is forgotten immediately),

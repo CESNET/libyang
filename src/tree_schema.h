@@ -841,6 +841,7 @@ struct lysp_deviation {
  *         LYS_SET_PRESENCE |x| | | | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | |
+ *         LYS_NP_DEFAULT   |x| | | | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      12 LYS_SET_CONFIG   |x|x|x|x|x|x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -914,6 +915,7 @@ struct lysp_deviation {
                                           between own default or the default values taken from the type. */
 #define LYS_SET_PRESENCE 0x0200      /**< flag to know if container presence property was set explicitly */
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
+#define LYS_NP_DEFAULT   0x0400      /**< flag to know if an implicit presence container contains default leafs */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
 #define LYS_SINGLEQUOTED 0x0100      /**< flag for single-quoted argument of an extension instance's substatement, only when the source is YANG */
@@ -1952,6 +1954,26 @@ struct lysc_module {
  */
 #define lysc_is_np_cont(lysc_node) \
     ((!lysc_node || (lysc_node->nodetype != LYS_CONTAINER) || (lysc_node->flags & LYS_PRESENCE)) ? 0 : 1)
+
+/**
+ * @brief Examine whether a node is a default creating container (i.e., either an
+ * NP container, or an non-explicit presence container).
+ *
+ * @param[in] lysc_node Schema node to examine.
+ * @return Boolean value whether the @p node is a default creating container.
+ */
+#define lysc_is_np_default_cont(lysc_node)                   \
+    ((lysc_node && (lysc_node->nodetype == LYS_CONTAINER) && \
+      (!(lysc_node->flags & LYS_PRESENCE) || (lysc_node->flags & LYS_NP_DEFAULT))) ? 1 : 0)
+
+/**
+ * @brief Examine whether a node is an explicit presence container.
+ *
+ * @param[in] lysc_node Schema node to examine.
+ * @return Boolean value whether the @p node is an explicity P container or not.
+ */
+#define lysc_is_explicit_p_cont(lysc_node) \
+    ((lysc_node && (lysc_node->nodetype == LYS_CONTAINER) && (lysc_node->flags & LYS_SET_PRESENCE)) ? 1 : 0)
 
 /**
  * @brief Examine whether a node is a key-less list or a state leaf-list.

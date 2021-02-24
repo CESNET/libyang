@@ -442,7 +442,7 @@ lyd_val_has_default(const struct lysc_node *schema)
         }
         break;
     case LYS_CONTAINER:
-        if (!(schema->flags & LYS_PRESENCE)) {
+        if (lysc_is_np_default_cont(schema)) {
             return 1;
         }
         break;
@@ -474,7 +474,7 @@ lyd_validate_autodel_node_del(struct lyd_node **first, struct lyd_node *node, co
     }
     if (diff) {
         /* add into diff */
-        if ((node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
+        if ((node->schema->nodetype == LYS_CONTAINER) && lysc_is_np_default_cont(node->schema)) {
             /* we do not want to track NP container changes, but remember any removed children */
             LY_LIST_FOR(lyd_child(node), iter) {
                 lyd_val_diff_add(iter, LYD_DIFF_OP_DELETE, diff);
@@ -1282,7 +1282,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, val_opts, int_opts));
 
         /* set default for containers */
-        if ((node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
+        if ((node->schema->nodetype == LYS_CONTAINER) && lysc_is_np_default_cont(node->schema)) {
             LY_LIST_FOR(lyd_child(node), next) {
                 if (!(next->flags & LYD_DEFAULT)) {
                     break;

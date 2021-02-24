@@ -1022,6 +1022,140 @@ test_defaults(void **state)
 }
 
 static void
+test_special_defaults(void **state)
+{
+    struct lyd_node *tree, *node, *diff;
+    const struct lys_module *mod;
+    const char *schema =
+        "module f {\n"
+        "    namespace urn:tests:f;\n"
+        "    prefix f;\n"
+        "    yang-version 1.1;\n"
+        "\n"
+        "    leaf a {\n"
+        "        type uint32;\n"
+        "        default 1;\n"
+        "    }\n"
+        "    leaf b {\n"
+        "        type uint32;\n"
+        "    }\n"
+        "    container wconta {\n"
+        "        when \"../a\";\n"
+        "        leaf d {\n"
+        "            type uint32;\n"
+        "            default 3;\n"
+        "        }\n"
+        "    }\n"
+        "    container wcontb {\n"
+        "        when \"../b\";\n"
+        "        leaf d {\n"
+        "            type uint32;\n"
+        "            default 4;\n"
+        "        }\n"
+        "    }\n"
+        "    container mcont {\n"
+        "        must \"d > 1\";\n"
+        "        leaf d {\n"
+        "            type uint32;\n"
+        "            default 5;\n"
+        "        }\n"
+        "    }\n"
+        "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf-with-defaults", "2011-06-01", NULL));\
+
+    /* get defaults */
+    tree = NULL;
+    assert_int_equal(lyd_validate_module(&tree, mod, 0, &diff), LY_SUCCESS);
+    assert_non_null(tree);
+    assert_non_null(diff);
+
+    /* check data tree */
+    CHECK_LYD_STRING_PARAM(
+        tree,
+        "<a xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">1</a>\n"
+        "<wconta xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">3</d>\n"
+        "</wconta>\n"
+        "<mcont xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">5</d>\n"
+        "</mcont>\n",
+        LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+
+    /* check diff */
+    CHECK_LYD_STRING_PARAM(
+        diff,
+        "<a xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">1</a>\n"
+        "<wconta xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
+        "  <d yang:operation=\"create\">3</d>\n"
+        "</wconta>\n"
+        "<mcont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
+        "  <d yang:operation=\"create\">5</d>\n"
+        "</mcont>\n",
+        LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+    lyd_free_all(diff);
+
+    /* create an explicit value and validate */
+    assert_int_equal(lyd_new_term(NULL, mod, "b", "2", 0, &node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(tree, node, &tree), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&tree, UTEST_LYCTX, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
+
+    /* check data tree */
+    CHECK_LYD_STRING_PARAM(
+        tree,
+        "<a xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">1</a>\n"
+        "<b xmlns=\"urn:tests:f\">2</b>\n"
+        "<wconta xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">3</d>\n"
+        "</wconta>\n"
+        "<wcontb xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">4</d>\n"
+        "</wcontb>\n"
+        "<mcont xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">5</d>\n"
+        "</mcont>\n",
+        LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+
+    /* check diff */
+    CHECK_LYD_STRING_PARAM(
+        diff,
+        "<wcontb xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
+        "  <d yang:operation=\"create\">4</d>\n"
+        "</wcontb>\n",
+        LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+    lyd_free_all(diff);
+
+    /* remove 'b' node, whenb should be deleted */
+    lyd_free_tree(tree->next);
+    assert_int_equal(lyd_validate_all(&tree, UTEST_LYCTX, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
+
+    /* check data tree */
+    CHECK_LYD_STRING_PARAM(
+        tree,
+        "<a xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">1</a>\n"
+        "<wconta xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">3</d>\n"
+        "</wconta>\n"
+        "<mcont xmlns=\"urn:tests:f\">\n"
+        "  <d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">5</d>\n"
+        "</mcont>\n",
+        LYD_XML, LYD_PRINT_WD_IMPL_TAG | LYD_PRINT_WITHSIBLINGS);
+
+    /* check diff */
+    CHECK_LYD_STRING_PARAM(
+        diff,
+        "<wcontb xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">\n"
+        "  <d>4</d>\n"
+        "</wcontb>\n",
+        LYD_XML, LYD_PRINT_WD_ALL | LYD_PRINT_WITHSIBLINGS);
+    lyd_free_all(diff);
+
+    lyd_free_all(tree);
+}
+static void
 test_state(void **state)
 {
     const char *data;
@@ -1077,6 +1211,12 @@ test_must(void **state)
             "        leaf l2 {\n"
             "            must \"../l = 'right'\";\n"
             "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    container mcont {\n"
+            "        must \"l > 5\";\n"
+            "        leaf l {\n"
+            "            type uint32;\n"
             "        }\n"
             "    }\n"
             "}";
@@ -1261,6 +1401,7 @@ main(void)
         UTEST(test_unique_nested),
         UTEST(test_dup),
         UTEST(test_defaults),
+        UTEST(test_special_defaults),
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_action),
