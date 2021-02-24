@@ -758,7 +758,7 @@ search_file:
         /* update the latest_revision flag - here we have selected the latest available schema,
          * consider that even the callback provides correct latest revision */
         if (!*mod && ctx_latest) {
-            LOGVRB("Newer revision than %s-%s not found, using this as the latest revision.", ctx_latest->name,
+            LOGVRB("Newer revision than \"%s@%s\" not found, using this as the latest revision.", ctx_latest->name,
                     ctx_latest->revision);
             ctx_latest->latest_revision = 2;
             *mod = ctx_latest;
