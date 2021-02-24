@@ -1093,11 +1093,10 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_d
 
 API LY_ERR
 lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
-        const char *module_name, struct lyd_node **node)
+        const char *prefix, const char *module_name, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
-
-    LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, !prefix || !strcmp(prefix, module_name), LY_EINVAL);
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -1106,8 +1105,8 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
         value = "";
     }
 
-    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), NULL, 0, module_name, strlen(module_name), value,
-            strlen(value), NULL, LY_PREF_JSON, NULL, 0, &ret));
+    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), prefix, prefix ? strlen(prefix) : 0, module_name,
+            strlen(module_name), value, strlen(value), NULL, LY_PREF_JSON, NULL, 0, &ret));
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
     }
@@ -1120,7 +1119,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
 
 API LY_ERR
 lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
-        const char *module_ns, struct lyd_node **node)
+        const char *prefix, const char *module_ns, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
 
@@ -1133,8 +1132,8 @@ lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *nam
         value = "";
     }
 
-    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), NULL, 0, module_ns, strlen(module_ns), value,
-            strlen(value), NULL, LY_PREF_XML, NULL, 0, &ret));
+    LY_CHECK_RET(lyd_create_opaq(ctx, name, strlen(name), prefix, prefix ? strlen(prefix) : 0, module_ns,
+            strlen(module_ns), value, strlen(value), NULL, LY_PREF_XML, NULL, 0, &ret));
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
     }
@@ -2174,11 +2173,11 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lyd_node *iter;
 
-    LY_CHECK_ARG_RET(NULL, parent, node, parent->schema->nodetype & LYD_NODE_INNER, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
 
-    if (node->schema->flags & LYS_KEY) {
+    if (node->schema && (node->schema->flags & LYS_KEY)) {
         LOGERR(parent->schema->module->ctx, LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
         return LY_EINVAL;
     }
