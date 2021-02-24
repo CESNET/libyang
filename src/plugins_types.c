@@ -93,6 +93,7 @@ ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *
 static const struct lys_module *
 ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *prefix_data)
 {
+    const struct lys_module *mod;
     const struct lyxml_ns *ns;
     const struct ly_set *ns_set = prefix_data;
 
@@ -101,7 +102,12 @@ ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefi
         return NULL;
     }
 
-    return ly_ctx_get_module_implemented_ns(ctx, ns->uri);
+    mod = ly_ctx_get_module_implemented_ns(ctx, ns->uri);
+    if (!mod) {
+        /* for YIN extension prefix resolution */
+        mod = ly_ctx_get_module_latest_ns(ctx, ns->uri);
+    }
+    return mod;
 }
 
 /**
@@ -607,6 +613,7 @@ lysc_prefixes_compile(const char *str, size_t str_len, const struct lysp_module 
 
     LY_CHECK_ARG_RET(NULL, prefix_mod, prefixes, LY_EINVAL);
 
+    *prefixes = NULL;
     ret = ly_store_prefix_data(prefix_mod->mod->ctx, str, str_len, LY_PREF_SCHEMA, (void *)prefix_mod, &format,
             (void **)prefixes);
     assert(format == LY_PREF_SCHEMA_RESOLVED);

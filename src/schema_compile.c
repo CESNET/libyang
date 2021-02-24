@@ -85,11 +85,10 @@ LY_ERR
 lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
         LYEXT_PARENT parent_type, const struct lys_module *ext_mod)
 {
-    LY_ERR ret = LY_SUCCESS;
-    const char *name;
-    size_t u;
+    LY_ERR r, ret = LY_SUCCESS;
+    const char *tmp, *name, *prefix;
+    size_t pref_len, name_len;
     LY_ARRAY_COUNT_TYPE v;
-    const char *prefixed_name = NULL;
 
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument, ret);
     LY_CHECK_RET(ret);
@@ -101,55 +100,30 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     ext->parent_type = parent_type;
 
     lysc_update_path(ctx, ext->parent_type == LYEXT_PAR_NODE ? (struct lysc_node *)ext->parent : NULL, "{extension}");
+    lysc_update_path(ctx, NULL, ext_p->name);
+
+    /* parse the prefix */
+    tmp = ext_p->name;
+    r = ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
+    /* it was parsed already */
+    assert(!r && !tmp[0]);
 
     /* get module where the extension definition should be placed */
-    for (u = strlen(ext_p->name); u && ext_p->name[u - 1] != ':'; --u) {}
-    if (ext_p->yin) {
-        /* YIN parser has to replace prefixes by the namespace - XML namespace/prefix pairs may differs form the YANG schema's
-         * namespace/prefix pair. YIN parser does not have the imports available, so mapping from XML namespace to the
-         * YANG (import) prefix must be done here. */
-        if (!ly_strncmp(ctx->pmod->mod->ns, ext_p->name, u - 1)) {
-            LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, &ext_p->name[u], 0, &prefixed_name), cleanup);
-            u = 0;
-        } else {
-            LY_ARRAY_FOR(ctx->pmod->imports, v) {
-                if (!ly_strncmp(ctx->pmod->imports[v].module->ns, ext_p->name, u - 1)) {
-                    char *s;
-                    LY_CHECK_ERR_GOTO(asprintf(&s, "%s:%s", ctx->pmod->imports[v].prefix, &ext_p->name[u]) == -1,
-                            ret = LY_EMEM, cleanup);
-                    LY_CHECK_GOTO(ret = lydict_insert_zc(ctx->ctx, s, &prefixed_name), cleanup);
-                    u = strlen(ctx->pmod->imports[v].prefix) + 1; /* add semicolon */
-                    break;
-                }
-            }
-        }
-        if (!prefixed_name) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid XML prefix of \"%.*s\" namespace used for extension instance identifier.", u, ext_p->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-    } else {
-        prefixed_name = ext_p->name;
-    }
-    lysc_update_path(ctx, NULL, prefixed_name);
-
     if (!ext_mod) {
-        ext_mod = u ? ly_resolve_prefix(ctx->ctx, prefixed_name, u - 1, LY_PREF_SCHEMA, ctx->pmod) : ctx->pmod->mod;
+        ext_mod = ly_resolve_prefix(ctx->ctx, prefix, pref_len, ext_p->format, ext_p->prefix_data);
         if (!ext_mod) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid prefix \"%.*s\" used for extension instance identifier.", u, prefixed_name);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.",
+                    pref_len, prefix);
             ret = LY_EVALID;
             goto cleanup;
         } else if (!ext_mod->parsed->extensions) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                    prefixed_name, ext_mod->name);
+                    ext_p->name, ext_mod->name);
             ret = LY_EVALID;
             goto cleanup;
         }
     }
-    name = &prefixed_name[u];
 
     /* find the parsed extension definition there */
     LY_ARRAY_FOR(ext_mod->parsed->extensions, v) {
@@ -160,8 +134,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         }
     }
     if (!ext->def) {
-        LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                "Extension definition of extension instance \"%s\" not found.", prefixed_name);
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext_p->name);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -169,7 +142,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     /* unify the parsed extension from YIN and YANG sources. Without extension definition, it is not possible
      * to get extension's argument from YIN source, so it is stored as one of the substatements. Here we have
      * to find it, mark it with LYS_YIN_ARGUMENT and store it in the compiled structure. */
-    if (ext_p->yin && ext->def->argument && !ext->argument) {
+    if ((ext_p->format == LY_PREF_XML) && ext->def->argument && !ext->argument) {
         /* Schema was parsed from YIN and an argument is expected, ... */
         struct lysp_stmt *stmt = NULL;
 
@@ -193,8 +166,8 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         }
         if (!stmt) {
             /* missing extension's argument */
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Extension instance \"%s\" misses argument \"%s\".", prefixed_name, ext->def->argument);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Extension instance \"%s\" misses argument \"%s\".",
+                    ext_p->name, ext->def->argument);
             ret = LY_EVALID;
             goto cleanup;
 
@@ -202,33 +175,22 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, stmt->arg, 0, &ext->argument), cleanup);
         stmt->flags |= LYS_YIN_ARGUMENT;
     }
-    if (prefixed_name != ext_p->name) {
-        lydict_remove(ctx->ctx, ext_p->name);
-        ext_p->name = prefixed_name;
-        if (!ext_p->argument && ext->argument) {
-            LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, ext->argument, 0, &ext_p->argument), cleanup);
-        }
-    }
 
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, (struct lysc_node *)ext, ext->argument);
         }
-        LY_CHECK_GOTO(ret = ext->def->plugin->compile(ctx, ext_p, ext), cleanup);
+        ret = ext->def->plugin->compile(ctx, ext_p, ext);
         if (ext->argument) {
             lysc_update_path(ctx, NULL, NULL);
         }
+        LY_CHECK_GOTO(ret, cleanup);
     }
     ext_p->compiled = ext;
 
 cleanup:
     lysc_update_path(ctx, NULL, NULL);
-    if (prefixed_name) {
-        lysc_update_path(ctx, NULL, NULL);
-        if (prefixed_name != ext_p->name) {
-            lydict_remove(ctx->ctx, prefixed_name);
-        }
-    }
+    lysc_update_path(ctx, NULL, NULL);
 
     return ret;
 }

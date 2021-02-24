@@ -21,6 +21,7 @@
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
@@ -37,6 +38,7 @@ lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
 
     lydict_remove(ctx, stmt->stmt);
     lydict_remove(ctx, stmt->arg);
+    ly_free_prefix_data(stmt->format, stmt->prefix_data);
 
     LY_LIST_FOR_SAFE(stmt->child, next, child) {
         lysp_stmt_free(ctx, child);
@@ -52,6 +54,7 @@ lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 
     lydict_remove(ctx, ext->name);
     lydict_remove(ctx, ext->argument);
+    ly_free_prefix_data(ext->format, ext->prefix_data);
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
         lysp_stmt_free(ctx, stmt);

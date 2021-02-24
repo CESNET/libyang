@@ -11,6 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -22,6 +24,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in.h"
@@ -32,6 +35,7 @@
 #include "path.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
@@ -2933,50 +2937,6 @@ yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum l
 }
 
 /**
- * @brief Get element name prefixed by full URI of xml namespace.
- *
- * @param[in] ctx YIN parser context used for logging and to get inormation about xml namespaces.
- * @param[in] name Name of element.
- * @param[in] name_len Length of element name.
- * @param[in] prefix Prefix of element.
- * @param[in] prefix_len Length of element prefix.
- *
- * @return Element name prefixed by URI on success, NULL on failure.
- */
-static const char *
-name2nsname(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
-{
-    const char *ename = NULL;
-    const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xmlctx->ns, prefix, prefix_len);
-
-    LY_CHECK_ERR_RET(!ns, LOGINT(ctx->xmlctx->ctx), NULL);
-
-    if (!strcmp(ns->uri, YIN_NS_URI)) {
-        /* standard YANG statement in YIN namespace - keep it unprefixed as in case of YANG */
-        lydict_insert(ctx->xmlctx->ctx, name, name_len, &ename);
-        return ename;
-    }
-    /* some statement in special namespace (extension instance) */
-    size_t ns_len = strlen(ns->uri);
-    size_t len = ns_len + name_len + 1; /* +1 because of ':' delimiter between ns and actual name */
-
-    char *result;
-    char *temp;
-
-    temp = result = malloc(sizeof(*temp) * (len + 1)); /* +1 for '\0' terminator */
-    LY_CHECK_ERR_RET(!temp, LOGMEM(ctx->xmlctx->ctx), NULL);
-
-    strcpy(result, ns->uri);
-    result[ns_len] = ':';
-    temp = &result[ns_len + 1];
-    strncpy(temp, name, name_len);
-    result[len] = '\0';
-
-    lydict_insert_zc(ctx->xmlctx->ctx, result, &ename);
-    return ename;
-}
-
-/**
  * @brief Parse argument of extension subelement that is classic yang keyword and not another instance of extension.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
@@ -3144,14 +3104,30 @@ yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, s
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_stmt *last = NULL, *new = NULL;
+    char *id;
 
     assert(ctx->xmlctx->status == LYXML_ELEMENT);
 
     /* allocate new structure for element */
     *element = calloc(1, sizeof(**element));
     LY_CHECK_ERR_GOTO(!(*element), LOGMEM(ctx->xmlctx->ctx); ret = LY_EMEM, cleanup);
-    (*element)->stmt = name2nsname(ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, ctx->xmlctx->prefix, ctx->xmlctx->prefix_len);
-    LY_CHECK_ERR_GOTO(!(*element)->stmt, ret = LY_EMEM, cleanup);
+
+    /* store identifier */
+    if (ctx->xmlctx->prefix_len) {
+        if (asprintf(&id, "%.*s:%.*s", (int)ctx->xmlctx->prefix_len, ctx->xmlctx->prefix, (int)ctx->xmlctx->name_len,
+                ctx->xmlctx->name) == -1) {
+            LOGMEM(ctx->xmlctx->ctx);
+            ret = LY_EMEM;
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx->xmlctx->ctx, id, &(*element)->stmt), cleanup);
+
+        /* store prefix data for the statement */
+        LY_CHECK_GOTO(ret = ly_store_prefix_data(ctx->xmlctx->ctx, (*element)->stmt, strlen((*element)->stmt), LY_PREF_XML,
+                &ctx->xmlctx->ns, &(*element)->format, &(*element)->prefix_data), cleanup);
+    } else {
+        LY_CHECK_GOTO(ret = lydict_insert(ctx->xmlctx->ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, &(*element)->stmt), cleanup);
+    }
 
     (*element)->kw = yin_match_keyword(ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, ctx->xmlctx->prefix,
             ctx->xmlctx->prefix_len, parent);
@@ -3220,6 +3196,10 @@ yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, s
         if (ctx->xmlctx->value_len) {
             INSERT_STRING_RET(ctx->xmlctx->ctx, ctx->xmlctx->value, ctx->xmlctx->value_len, ctx->xmlctx->dynamic, (*element)->arg);
             LY_CHECK_ERR_GOTO(!(*element)->arg, ret = LY_EMEM, cleanup);
+
+            /* store prefix data for the argument as well */
+            LY_CHECK_GOTO(ret = ly_store_prefix_data(ctx->xmlctx->ctx, (*element)->arg, strlen((*element)->arg), LY_PREF_XML,
+                    &ctx->xmlctx->ns, &(*element)->format, &(*element)->prefix_data), cleanup);
         }
 
         /* read closing tag */
@@ -3246,19 +3226,34 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subel
 {
     struct lysp_ext_instance *e;
     struct lysp_stmt *last_subelem = NULL, *new_subelem = NULL;
+    char *ext_name;
 
     assert(ctx->xmlctx->status == LYXML_ELEMENT);
     assert(exts);
 
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *exts, e, LY_EMEM);
 
-    e->yin = 0;
-    /* store name and insubstmt info */
-    e->name = name2nsname(ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, ctx->xmlctx->prefix, ctx->xmlctx->prefix_len);
-    LY_CHECK_RET(!e->name, LY_EMEM);
+    if (!ctx->xmlctx->prefix_len) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%*.s\" without the mandatory prefix.",
+                (int)ctx->xmlctx->name_len, ctx->xmlctx->name);
+        return LY_EVALID;
+    }
+
+    /* store prefixed name */
+    if (asprintf(&ext_name, "%.*s:%.*s", (int)ctx->xmlctx->prefix_len, ctx->xmlctx->prefix, (int)ctx->xmlctx->name_len,
+            ctx->xmlctx->name) == -1) {
+        LOGMEM(ctx->xmlctx->ctx);
+        return LY_EMEM;
+    }
+    LY_CHECK_RET(lydict_insert_zc(ctx->xmlctx->ctx, ext_name, &e->name));
+
+    /* store prefix data for the name */
+    LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->name, strlen(e->name), LY_PREF_XML, &ctx->xmlctx->ns,
+            &e->format, &e->prefix_data));
+
     e->insubstmt = subelem;
     e->insubstmt_index = subelem_index;
-    e->yin |= LYS_YIN;
+
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
 
     /* store attributes as subelements */
@@ -3277,7 +3272,8 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subel
             LY_CHECK_RET(!last_subelem->stmt, LY_EMEM);
             LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
 
-            INSERT_STRING_RET(ctx->xmlctx->ctx, ctx->xmlctx->value, ctx->xmlctx->value_len, ctx->xmlctx->dynamic, last_subelem->arg);
+            INSERT_STRING_RET(ctx->xmlctx->ctx, ctx->xmlctx->value, ctx->xmlctx->value_len, ctx->xmlctx->dynamic,
+                    last_subelem->arg);
             LY_CHECK_RET(!last_subelem->arg, LY_EMEM);
         } else {
             LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -3306,6 +3302,10 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subel
         /* save text content */
         INSERT_STRING_RET(ctx->xmlctx->ctx, ctx->xmlctx->value, ctx->xmlctx->value_len, ctx->xmlctx->dynamic, e->argument);
         LY_CHECK_RET(!e->argument, LY_EMEM);
+
+        /* store prefix data for the argument as well */
+        LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->argument, strlen(e->argument), LY_PREF_XML,
+            &ctx->xmlctx->ns, &e->format, &e->prefix_data));
 
         /* parser next */
         LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));

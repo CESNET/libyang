@@ -30,6 +30,7 @@
 #include "path.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
@@ -797,12 +798,11 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, enum ly_stmt kw, char *word, 
         par_child->next = stmt;
     }
 
+    /* statement */
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), word, word_len, &stmt->stmt));
-    stmt->kw = kw;
 
     /* get optional argument */
     LY_CHECK_RET(get_argument(ctx, Y_MAYBE_STR_ARG, &stmt->flags, &word, &buf, &word_len));
-
     if (word) {
         if (buf) {
             LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), word, &stmt->arg));
@@ -810,6 +810,10 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, enum ly_stmt kw, char *word, 
             LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), word, word_len, &stmt->arg));
         }
     }
+
+    stmt->format = LY_PREF_SCHEMA;
+    stmt->prefix_data = ctx->parsed_mod;
+    stmt->kw = kw;
 
     YANG_READ_SUBSTMT_FOR(ctx, child_kw, word, word_len, ret, ) {
         LY_CHECK_RET(parse_ext_substmt(ctx, child_kw, word, word_len, &stmt->child));
@@ -841,17 +845,25 @@ parse_ext(struct lys_yang_parser_ctx *ctx, const char *ext_name, size_t ext_name
 
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *exts, e, LY_EMEM);
 
-    /* store name and insubstmt info */
+    if (!ly_strnchr(ext_name, ':', ext_name_len)) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Extension instance \"%*.s\" without the mandatory prefix.", ext_name_len, ext_name);
+        return LY_EVALID;
+    }
+
+    /* store name */
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), ext_name, ext_name_len, &e->name));
-    e->insubstmt = insubstmt;
-    e->insubstmt_index = insubstmt_index;
 
     /* get optional argument */
     LY_CHECK_RET(get_argument(ctx, Y_MAYBE_STR_ARG, NULL, &word, &buf, &word_len));
-
     if (word) {
         INSERT_WORD_RET(ctx, buf, e->argument, word, word_len);
     }
+
+    /* store the rest of information */
+    e->format = LY_PREF_SCHEMA;
+    e->prefix_data = ctx->parsed_mod;
+    e->insubstmt = insubstmt;
+    e->insubstmt_index = insubstmt_index;
 
     YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         LY_CHECK_RET(parse_ext_substmt(ctx, kw, word, word_len, &e->child));

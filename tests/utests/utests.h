@@ -432,9 +432,9 @@ struct utest_context {
  * @param[in] INSUBSTMS_INDEX expected indentifi index
  * @param[in] PARENT    0-> check if node is root, 1-> check if node is not root
  * @param[in] PARENT_TYPE expected parent type ::LYEXT_PARENT. not relevat if PARENT == 0
- * @param[in] YIN       expected flag for YIN source format, can be set to LYS_YIN
+ * @param[in] FORMAT    expected format
  */
-#define CHECK_LYSP_EXT_INSTANCE(NODE, ARGUMENT, CHILD, COMPILED, INSUBSTMT, INSUBSTMT_INDEX, NAME, HAS_PARENT, PARENT_TYPE, YIN) \
+#define CHECK_LYSP_EXT_INSTANCE(NODE, ARGUMENT, CHILD, COMPILED, INSUBSTMT, INSUBSTMT_INDEX, NAME, HAS_PARENT, PARENT_TYPE, FORMAT) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->argument, ARGUMENT); \
     CHECK_POINTER((NODE)->child, CHILD); \
@@ -449,7 +449,7 @@ struct utest_context {
     } else { \
         assert_null((NODE)->parent); \
     } \
-    assert_int_equal((NODE)->yin, YIN);
+    assert_int_equal((NODE)->format, FORMAT);
 
 /**
  * @brief assert that lysp_stmt structure members are correct

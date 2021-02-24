@@ -546,25 +546,23 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
     LY_ERR ret = LY_SUCCESS;
     const char *start, *stop;
     const struct lys_module *mod;
-    struct lyxml_ns *ns;
+    const struct lyxml_ns *ns;
+    struct lyxml_ns *new_ns;
     struct ly_set *ns_list;
     struct lysc_prefix *prefixes = NULL, *val_pref;
 
     switch (format) {
     case LY_PREF_SCHEMA:
-    case LY_PREF_XML:
-        /* copy all referenced modules... */
-        if (format == LY_PREF_XML) {
-            /* ...as prefix - namespace pairs */
-            LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
-            *format_p = LY_PREF_XML;
-            *prefix_data_p = ns_list;
-        } else {
-            /* ...as prefix - module pairs */
-            assert(format == LY_PREF_SCHEMA);
+        /* copy all referenced modules as prefix - module pairs */
+        if (!*prefix_data_p) {
+            /* new prefix data */
             LY_ARRAY_CREATE_GOTO(ctx, prefixes, 0, ret, cleanup);
             *format_p = LY_PREF_SCHEMA_RESOLVED;
             *prefix_data_p = prefixes;
+        } else {
+            /* reuse prefix data */
+            assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
+            prefixes = *prefix_data_p;
         }
 
         /* add all used prefixes */
@@ -587,26 +585,63 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
                     if (!mod) {
                         mod = ly_type_store_resolve_prefix(ctx, start, len, format, prefix_data);
                         if (mod) {
-                            if (*format_p == LY_PREF_XML) {
-                                /* store a new prefix - namespace pair */
-                                ns = calloc(1, sizeof *ns);
-                                LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                                LY_CHECK_GOTO(ret = ly_set_add(ns_list, ns, 1, NULL), cleanup);
+                            assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
+                            /* store a new prefix - module pair */
+                            LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
+                            *prefix_data_p = prefixes;
 
-                                ns->prefix = strndup(start, len);
-                                LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                                ns->uri = strdup(mod->ns);
-                                LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                            } else {
-                                assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
-                                /* store a new prefix - module pair */
-                                LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
-                                *prefix_data_p = prefixes;
+                            val_pref->prefix = strndup(start, len);
+                            LY_CHECK_ERR_GOTO(!val_pref->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                            val_pref->mod = mod;
+                        } /* else it is not even defined */
+                    } /* else the prefix is already present */
+                }
+                stop = stop + bytes;
+            }
+        }
+        break;
+    case LY_PREF_XML:
+        /* copy all referenced namespaces as prefix - namespace pairs */
+        if (!*prefix_data_p) {
+            /* new prefix data */
+            LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
+            *format_p = LY_PREF_XML;
+            *prefix_data_p = ns_list;
+        } else {
+            /* reuse prefix data */
+            assert(*format_p == LY_PREF_XML);
+            ns_list = *prefix_data_p;
+        }
 
-                                val_pref->prefix = strndup(start, len);
-                                LY_CHECK_ERR_GOTO(!val_pref->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                                val_pref->mod = mod;
-                            }
+        /* add all used prefixes */
+        for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
+            size_t bytes;
+            uint32_t c;
+
+            ly_getutf8(&stop, &c, &bytes);
+            if (is_xmlqnamestartchar(c)) {
+                for (ly_getutf8(&stop, &c, &bytes);
+                        is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
+                        ly_getutf8(&stop, &c, &bytes)) {}
+                stop = stop - bytes;
+                if (*stop == ':') {
+                    /* we have a possible prefix */
+                    size_t len = stop - start;
+
+                    /* do we already have the prefix? */
+                    ns = lyxml_ns_get(ns_list, start, len);
+                    if (!ns) {
+                        ns = lyxml_ns_get(prefix_data, start, len);
+                        if (ns) {
+                            /* store a new prefix - namespace pair */
+                            new_ns = calloc(1, sizeof *new_ns);
+                            LY_CHECK_ERR_GOTO(!new_ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                            LY_CHECK_GOTO(ret = ly_set_add(ns_list, new_ns, 1, NULL), cleanup);
+
+                            new_ns->prefix = strndup(start, len);
+                            LY_CHECK_ERR_GOTO(!new_ns->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                            new_ns->uri = strdup(ns->uri);
+                            LY_CHECK_ERR_GOTO(!new_ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
                         } /* else it is not even defined */
                     } /* else the prefix is already present */
                 }
@@ -616,9 +651,11 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
         break;
     case LY_PREF_SCHEMA_RESOLVED:
     case LY_PREF_JSON:
-        /* simply copy all the prefix data */
-        *format_p = format;
-        LY_CHECK_GOTO(ret = ly_dup_prefix_data(ctx, format, prefix_data, prefix_data_p), cleanup);
+        if (!*prefix_data_p) {
+            /* new prefix data - simply copy all the prefix data */
+            *format_p = format;
+            LY_CHECK_GOTO(ret = ly_dup_prefix_data(ctx, format, prefix_data, prefix_data_p), cleanup);
+        } /* else reuse prefix data - the prefix data are always the same, nothing to do */
         break;
     }
 

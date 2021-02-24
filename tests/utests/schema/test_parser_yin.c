@@ -121,7 +121,7 @@ void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 #define ELEMENT_WRAPPER_END "</status>"
 
 #define TEST_1_CHECK_LYSP_EXT_INSTANCE(NODE, INSUBSTMT)\
-    CHECK_LYSP_EXT_INSTANCE((NODE), NULL, 1, NULL, INSUBSTMT, 0, "urn:example:extensions:c-define", 0, 0x2, 0x1)
+    CHECK_LYSP_EXT_INSTANCE((NODE), NULL, 1, NULL, INSUBSTMT, 0, "myext:c-define", 0, 0x2, LY_PREF_XML)
 
 struct lys_yin_parser_ctx *YCTX;
 
@@ -299,7 +299,7 @@ test_yin_parse_element_generic(void **state)
     ret = yin_parse_element_generic(YCTX, LY_STMT_EXTENSION_INSTANCE, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(YCTX->xmlctx->status, LYXML_ELEM_CLOSE);
-    stmt = "urn:example:extensions:elem";
+    stmt = "myext:elem";
     arg = "text_value";
     CHECK_LYSP_STMT(exts.child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     stmt = "attr";
@@ -315,7 +315,7 @@ test_yin_parse_element_generic(void **state)
     ret = yin_parse_element_generic(YCTX, LY_STMT_EXTENSION_INSTANCE, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(YCTX->xmlctx->status, LYXML_ELEM_CLOSE);
-    stmt = "urn:example:extensions:elem";
+    stmt = "myext:elem";
     CHECK_LYSP_STMT(exts.child, NULL, 0, 0x0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     lysp_ext_instance_free(UTEST_LYCTX, &exts);
 }
@@ -327,7 +327,6 @@ test_yin_parse_extension_instance(void **state)
     struct lysp_ext_instance *exts = NULL;
     struct lysp_stmt *act_child;
     const char *data = "<myext:ext value1=\"test\" value=\"test2\" xmlns:myext=\"urn:example:extensions\"><myext:subelem>text</myext:subelem></myext:ext>";
-    const char *exts_name;
     const char *stmt = "value1";
     const char *arg = "test";
 
@@ -336,15 +335,14 @@ test_yin_parse_extension_instance(void **state)
 
     ret = yin_parse_extension_instance(YCTX, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
-    exts_name = "urn:example:extensions:ext";
     CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, NULL,
-            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, LYS_CHOICE, LYS_YIN);
+            LYEXT_SUBSTMT_CONTACT, 0, "myext:ext", 0, LYS_CHOICE, LY_PREF_XML);
 
     CHECK_LYSP_STMT(exts->child, arg, 0, LYS_YIN_ATTR, 0, 1, stmt);
     stmt = "value";
     arg = "test2";
     CHECK_LYSP_STMT(exts->child->next, arg, 0, LYS_YIN_ATTR, 0, 1, stmt);
-    stmt = "urn:example:extensions:subelem";
+    stmt = "myext:subelem";
     arg = "text";
     CHECK_LYSP_STMT(exts->child->next->next, arg, 0, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
     lysp_ext_instance_free(UTEST_LYCTX, exts);
@@ -358,9 +356,8 @@ test_yin_parse_extension_instance(void **state)
 
     ret = yin_parse_extension_instance(YCTX, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
-    exts_name = "urn:example:extensions:extension-elem";
     CHECK_LYSP_EXT_INSTANCE(exts, NULL, 0, NULL,
-            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, LYS_CHOICE, LYS_YIN);
+            LYEXT_SUBSTMT_CONTACT, 0, "myext:extension-elem", 0, LYS_CHOICE, LY_PREF_XML);
     lysp_ext_instance_free(UTEST_LYCTX, exts);
     LY_ARRAY_FREE(exts);
     exts = NULL;
@@ -382,9 +379,8 @@ test_yin_parse_extension_instance(void **state)
     ret = yin_parse_extension_instance(YCTX, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
 
-    exts_name = "urn:example:extensions:ext";
     CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, NULL,
-            LYEXT_SUBSTMT_CONTACT, 0, exts_name, 0, LYS_CHOICE, LYS_YIN);
+            LYEXT_SUBSTMT_CONTACT, 0, "myext:ext", 0, LYS_CHOICE, LY_PREF_XML);
 
     stmt = "attr1";
     arg = "text1";
@@ -394,11 +390,11 @@ test_yin_parse_extension_instance(void **state)
     arg = "text2";
     act_child = act_child->next;
     CHECK_LYSP_STMT(act_child, arg, NULL, LYS_YIN_ATTR, 0x0, 1, stmt);
-    stmt = "urn:example:extensions:ext-sub1";
+    stmt = "myext:ext-sub1";
     arg = NULL;
     act_child = act_child->next;
     CHECK_LYSP_STMT(act_child, arg, NULL, 0, LY_STMT_EXTENSION_INSTANCE, 1, stmt);
-    stmt = "urn:example:extensions:ext-sub2";
+    stmt = "myext:ext-sub2";
     arg = NULL;
     act_child = act_child->next;
     CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 1, stmt);
@@ -407,12 +403,12 @@ test_yin_parse_extension_instance(void **state)
     arg = "stext2";
     act_child = act_child->child;
     CHECK_LYSP_STMT(act_child, arg, NULL, LYS_YIN_ATTR, 0, 1, stmt);
-    stmt = "urn:example:extensions:ext-sub21";
+    stmt = "myext:ext-sub21";
     arg = NULL;
     act_child = act_child->next;
     CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
 
-    stmt = "urn:example:extensions:ext-sub211";
+    stmt = "myext:ext-sub211";
     arg = NULL;
     act_child = act_child->child;
     CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
@@ -422,7 +418,7 @@ test_yin_parse_extension_instance(void **state)
     act_child = act_child->child;
     CHECK_LYSP_STMT(act_child, arg, 0, LYS_YIN_ATTR, 0, 0, stmt);
 
-    stmt = "urn:example:extensions:ext-sub3";
+    stmt = "myext:ext-sub3";
     arg = NULL;
     act_child = exts->child->next->next->next->next;
     CHECK_LYSP_STMT(act_child, arg, 1, 0, LY_STMT_EXTENSION_INSTANCE, 0, stmt);
@@ -548,11 +544,11 @@ test_yin_parse_content(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     /* check parsed values */
     assert_string_equal(def.str, "default-value");
-    const char *exts_name = "urn:example:extensions:custom";
+    const char *exts_name = "myext:custom";
     const char *exts_arg = "totally amazing extension";
 
     CHECK_LYSP_EXT_INSTANCE(exts, exts_arg, 0, NULL,
-            LYEXT_SUBSTMT_PREFIX, 0, exts_name, 0, 0x1, 0x1);
+            LYEXT_SUBSTMT_PREFIX, 0, exts_name, 0, 0x1, LY_PREF_XML);
     assert_string_equal(value, "wsefsdf");
     assert_string_equal(units, "radians");
     assert_string_equal(when_p->cond, "condition...");

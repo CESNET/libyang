@@ -229,6 +229,16 @@ typedef enum
  */
 extern const char *ly_data_type2str[LY_DATA_TYPE_COUNT];
 
+/**
+ * @brief All kinds of supported prefix mappings to modules.
+ */
+typedef enum {
+    LY_PREF_SCHEMA,          /**< value prefixes map to YANG import prefixes */
+    LY_PREF_SCHEMA_RESOLVED, /**< value prefixes map to module structures directly */
+    LY_PREF_XML,             /**< value prefixes map to XML namespace prefixes */
+    LY_PREF_JSON             /**< value prefixes map to module names */
+} LY_PREFIX_FORMAT;
+
 /** @} trees */
 
 #ifdef __cplusplus
