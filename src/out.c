@@ -51,7 +51,7 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
                 return 0;
             }
         }
-    } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK)) {
+    } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK) && !(node->schema->flags & LYS_CONFIG_R)) {
         /* LYD_PRINT_WD_EXPLICIT, find out if this is some input/output */
         if (!(node->schema->flags & (LYS_IS_INPUT | LYS_IS_OUTPUT | LYS_IS_NOTIF)) && (node->schema->flags & LYS_CONFIG_W)) {
             /* print only if it contains status data in its subtree */
