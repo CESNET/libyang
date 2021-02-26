@@ -116,6 +116,17 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(c
 }
 
 /**
+ * @brief Comparison callback for hash table that never considers 2 values equal.
+ *
+ * Implementation of ::lyht_value_equal_cb.
+ */
+static ly_bool
+lyd_not_equal_value_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), ly_bool UNUSED(mod), void *UNUSED(cb_data))
+{
+    return 0;
+}
+
+/**
  * @brief Add single node into children hash table.
  *
  * @param[in] ht Children hash table.
@@ -126,6 +137,8 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(c
 static LY_ERR
 lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_ht)
 {
+    LY_ERR rc = LY_SUCCESS;
+    lyht_value_equal_cb orig_cb = NULL;
     uint32_t hash;
 
     assert(ht && node && node->schema);
@@ -133,7 +146,8 @@ lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_
     /* add node itself */
     if (lyht_insert(ht, &node, node->hash, NULL)) {
         LOGINT(LYD_CTX(node));
-        return LY_EINT;
+        rc = LY_EINT;
+        goto cleanup;
     }
 
     /* add first instance of a (leaf-)list */
@@ -148,18 +162,32 @@ lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_
         if (!empty_ht && node->next && (node->next->schema == node->schema)) {
             if (lyht_remove(ht, &node->next, hash)) {
                 LOGINT(LYD_CTX(node));
-                return LY_EINT;
+                rc = LY_EINT;
+                goto cleanup;
             }
+        }
+
+        if (hash == node->hash) {
+            /* special case, key-less list with no children hash is equal to the first instance list hash */
+            assert((node->schema->nodetype == LYS_LIST) && (node->schema->flags & LYS_KEYLESS) && !lyd_child(node));
+
+            /* we must allow exact duplicates in the hash table */
+            orig_cb = lyht_set_cb(ht, lyd_not_equal_value_cb);
         }
 
         /* insert this instance as the first (leaf-)list instance */
         if (lyht_insert(ht, &node, hash, NULL)) {
             LOGINT(LYD_CTX(node));
-            return LY_EINT;
+            rc = LY_EINT;
+            goto cleanup;
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    if (orig_cb) {
+        lyht_set_cb(ht, orig_cb);
+    }
+    return rc;
 }
 
 LY_ERR
