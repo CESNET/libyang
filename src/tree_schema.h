@@ -838,7 +838,6 @@ struct lysp_deviation {
  *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | |
  *         LYS_IS_ENUM      | | | | | | | | | | | | |x| |
  *         LYS_KEYLESS      | | | | |x| | | | | | | | | |
- *         LYS_SET_PRESENCE |x| | | | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -912,7 +911,6 @@ struct lysp_deviation {
                                           with default statement mandatory. In case the default leaf value is taken from type, it is thrown
                                           away when it is refined to be mandatory node. Similarly it is used for deviations to distinguish
                                           between own default or the default values taken from the type. */
-#define LYS_SET_PRESENCE 0x0200      /**< flag to know if container presence property was set explicitly */
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
