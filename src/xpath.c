@@ -546,7 +546,7 @@ cast_string_to_number(const char *str)
 /**
  * @brief Callback for checking value equality.
  *
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  *
  * @param[in] val1_p First value.
  * @param[in] val2_p Second value.

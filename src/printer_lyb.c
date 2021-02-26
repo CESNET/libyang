@@ -40,7 +40,7 @@
 /**
  * @brief Hash table equal callback for checking hash equality only.
  *
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  */
 static ly_bool
 lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), ly_bool UNUSED(mod), void *UNUSED(cb_data))
@@ -52,7 +52,7 @@ lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), ly_bool UNUSED(mod
 /**
  * @brief Hash table equal callback for checking value pointer equality only.
  *
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  */
 static ly_bool
 lyb_ptr_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))

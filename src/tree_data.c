@@ -3469,7 +3469,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
  *
  * @param[in] val1_p Pointer to the schema node
  * @param[in] val2_p Pointer to the data node
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  */
 static ly_bool
 lyd_hash_table_schema_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
@@ -3505,7 +3505,7 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     struct lyd_node **match_p;
     struct lyd_node_inner *parent;
     uint32_t hash;
-    values_equal_cb ht_cb;
+    lyht_value_equal_cb ht_cb;
 
     assert(siblings && schema);
 

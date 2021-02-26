@@ -385,7 +385,7 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
 
 /**
  * @brief Compare identifiers.
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  */
 static ly_bool
 lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
