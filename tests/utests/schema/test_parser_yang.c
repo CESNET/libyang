@@ -784,7 +784,7 @@ test_module(void **state)
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,
             assert_string_equal("prefix:test", mod->exts[0].name);
-            assert_int_equal(LYEXT_SUBSTMT_SELF, mod->exts[0].insubstmt));
+            assert_int_equal(LY_STMT_NONE, mod->exts[0].insubstmt));
     mod = mod_renew(YCTX);
 
     /* invalid substatement */

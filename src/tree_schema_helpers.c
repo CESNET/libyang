@@ -1782,7 +1782,7 @@ lysp_match_kw(struct ly_in *in, uint64_t *indent)
 }
 
 LY_ARRAY_COUNT_TYPE
-lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, LYEXT_SUBSTMT substmt)
+lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt)
 {
     LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
 
