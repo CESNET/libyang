@@ -442,6 +442,13 @@ typedef enum {
 const char *lyext_parent2str(LYEXT_PARENT type);
 
 /**
+ * @brief Convert nodetype to statement identifier
+ * @param[in] nodetype Nodetype to convert.
+ * @return Statement identifier representing the given @p nodetype.
+ */
+enum ly_stmt lys_nodetype2stmt(uint16_t nodetype);
+
+/**
  * @brief YANG import-stmt
  */
 struct lysp_import {

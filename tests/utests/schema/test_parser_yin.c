@@ -798,7 +798,7 @@ test_enum_elem(void **state)
 
     CHECK_LYSP_TYPE_ENUM(type.enums, "desc...", 1, flags, 1, "enum-name", "ref...", 55);
     assert_string_equal(type.enums->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(type.enums->exts, LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(type.enums->exts, LY_STMT_ENUM);
     lysp_type_free(UTEST_LYCTX, &type);
     memset(&type, 0, sizeof type);
 
@@ -832,7 +832,7 @@ test_bit_elem(void **state)
 
     CHECK_LYSP_TYPE_ENUM(type.bits, "desc...", 1, flags, 1, "bit-name", "ref...", 55);
     assert_string_equal(type.bits->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(type.bits->exts, LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(type.bits->exts, LY_STMT_BIT);
     lysp_type_free(UTEST_LYCTX, &type);
     memset(&type, 0, sizeof type);
 
@@ -952,7 +952,7 @@ test_import_elem(void **state)
     assert_int_equal(test_element_helper(state, data, &imp_meta, NULL, NULL), LY_SUCCESS);
     CHECK_LYSP_IMPORT(imports, "import description", 1, "a",
             "a_mod", "import reference", "2015-01-01");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(imports->exts, LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(imports->exts, LY_STMT_IMPORT);
     FREE_ARRAY(UTEST_LYCTX, imports, lysp_import_free);
     imports = NULL;
 
@@ -1048,7 +1048,7 @@ test_ext_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &ext, NULL, NULL), LY_SUCCESS);
     CHECK_LYSP_EXT(ext, "arg", 0, "ext_desc", 1, LYS_STATUS_CURR, "ext_name", "ext_ref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(ext->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(ext->exts[0]), LY_STMT_EXTENSION);
     lysp_ext_free(UTEST_LYCTX, ext);
     LY_ARRAY_FREE(ext);
     ext = NULL;
@@ -1407,7 +1407,7 @@ test_length_elem(void **state)
     CHECK_LYSP_RESTR(type.length, "length-str", "desc",
             "err-app-tag", "err-msg", 1, "ref");
     assert_true(type.flags & LYS_SET_LENGTH);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.length->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.length->exts[0]), LY_STMT_LENGTH);
     lysp_type_free(UTEST_LYCTX, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1495,7 +1495,7 @@ test_pattern_elem(void **state)
     assert_true(type.flags & LYS_SET_PATTERN);
     CHECK_LYSP_RESTR(type.patterns, "\x015super_pattern", "\"pattern-desc\"",
             "err-app-tag-value", "err-msg-value", 1, "pattern-ref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.patterns->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.patterns->exts[0]), LY_STMT_PATTERN);
     lysp_type_free(UTEST_LYCTX, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1621,7 +1621,7 @@ test_range_elem(void **state)
     CHECK_LYSP_RESTR(type.range, "range-str", "desc",
             "err-app-tag", "err-msg", 1, "ref");
     assert_true(type.flags & LYS_SET_RANGE);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.range->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.range->exts[0]), LY_STMT_RANGE);
     lysp_type_free(UTEST_LYCTX, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1744,7 +1744,7 @@ test_when_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &when, NULL, NULL), LY_SUCCESS);
     CHECK_LYSP_WHEN(when, "cond", "desc", 1, "ref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(when->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(when->exts[0]), LY_STMT_WHEN);
     lysp_when_free(UTEST_LYCTX, when);
     free(when);
     when = NULL;
@@ -1816,7 +1816,7 @@ test_type_elem(void **state)
             NULL, NULL, 0, NULL);
     assert_int_equal(type.require_instance, 1);
     assert_string_equal(type.types->name, "sub-type-name");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(type.exts[0]), LY_STMT_TYPE);
     assert_true(type.flags & LYS_SET_BASE);
     assert_true(type.flags & LYS_SET_BIT);
     assert_true(type.flags & LYS_SET_ENUM);
@@ -1987,7 +1987,7 @@ test_any_elem(void **state)
             "any-name", 0, LYS_ANYXML, 0, "ref", 1);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_ANYXML);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2012,7 +2012,7 @@ test_any_elem(void **state)
             "any-name", 0, LYS_ANYDATA, 0, "ref", 1);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_ANYDATA);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2060,7 +2060,7 @@ test_leaf_elem(void **state)
             "leaf", 0, LYS_LEAF, 0, "ref", 1);
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
     assert_string_equal(parsed->iffeatures[0].str, "feature");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF);
     assert_string_equal(parsed->musts->arg.str, "must-cond");
     assert_string_equal(parsed->type.name, "type");
     assert_string_equal(parsed->units, "uni");
@@ -2118,7 +2118,7 @@ test_leaf_list_elem(void **state)
     assert_string_equal(parsed->type.name, "type");
     assert_string_equal(parsed->units, "uni");
     CHECK_LYSP_WHEN(parsed->when, "when-cond", NULL, 0, NULL);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF_LIST);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2149,7 +2149,7 @@ test_leaf_list_elem(void **state)
     assert_int_equal(parsed->min, 5);
     assert_string_equal(parsed->type.name, "type");
     assert_string_equal(parsed->units, "uni");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LEAF_LIST);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2305,7 +2305,7 @@ test_typedef_elem(void **state)
     assert_string_equal(tpdfs[0].type.name, "type");
     assert_string_equal(tpdfs[0].units, "uni");
     assert_true(tpdfs[0].flags & LYS_STATUS_CURR);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(tpdfs[0].exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(tpdfs[0].exts[0]), LY_STMT_TYPEDEF);
     FREE_ARRAY(UTEST_LYCTX, tpdfs, lysp_tpdf_free);
     tpdfs = NULL;
 
@@ -2355,7 +2355,7 @@ test_refine_elem(void **state)
     assert_string_equal(refines->musts->arg.str, "cond");
     assert_string_equal(refines->presence, "presence");
     assert_string_equal(refines->ref, "ref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(refines->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(refines->exts[0]), LY_STMT_REFINE);
     FREE_ARRAY(UTEST_LYCTX, refines, lysp_refine_free);
     refines = NULL;
 
@@ -2396,7 +2396,7 @@ test_uses_elem(void **state)
     assert_string_equal(parsed->iffeatures[0].str, "feature");
     assert_string_equal(parsed->refines->nodeid, "target");
     assert_string_equal(parsed->augments->nodeid, "target");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_USES);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2426,7 +2426,7 @@ test_revision_elem(void **state)
     assert_string_equal(revs->date, "2018-12-25");
     assert_string_equal(revs->dsc, "desc");
     assert_string_equal(revs->ref, "ref");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(revs->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(revs->exts[0]), LY_STMT_REVISION);
     FREE_ARRAY(UTEST_LYCTX, revs, lysp_revision_free);
     revs = NULL;
 
@@ -2467,7 +2467,7 @@ test_include_elem(void **state)
     assert_string_equal(includes->dsc, "desc");
     assert_string_equal(includes->ref, "ref");
     assert_string_equal(includes->rev, "1999-09-09");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(includes->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(includes->exts[0]), LY_STMT_INCLUDE);
     FREE_ARRAY(UTEST_LYCTX, includes, lysp_include_free);
     includes = NULL;
 
@@ -2577,7 +2577,7 @@ test_list_elem(void **state)
     assert_int_equal(parsed->min, 10);
     assert_string_equal(parsed->typedefs->name, "tpdf");
     assert_string_equal(parsed->uniques->str, "utag");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_LIST);
     lysp_node_free(UTEST_LYCTX, siblings);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     siblings = NULL;
@@ -2649,7 +2649,7 @@ test_notification_elem(void **state)
     assert_null(notifs->parent);
     assert_string_equal(notifs->ref, "ref");
     assert_string_equal(notifs->typedefs->name, "tpdf");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(notifs->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(notifs->exts[0]), LY_STMT_NOTIFICATION);
     lysp_node_free(UTEST_LYCTX, (struct lysp_node *)notifs);
     notifs = NULL;
 
@@ -2711,7 +2711,7 @@ test_grouping_elem(void **state)
     assert_int_equal(grps->child->next->next->next->next->next->next->nodetype, LYS_CONTAINER);
     assert_string_equal(grps->child->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(grps->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(grps->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(grps->exts[0]), LY_STMT_GROUPING);
     lysp_node_free(UTEST_LYCTX, &grps->node);
     grps = NULL;
 
@@ -2790,7 +2790,7 @@ test_container_elem(void **state)
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
     assert_string_equal(parsed->notifs->name, "notf");
     assert_string_equal(parsed->actions->name, "act");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CONTAINER);
     lysp_node_free(UTEST_LYCTX, siblings);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
     siblings = NULL;
@@ -2858,7 +2858,7 @@ test_case_elem(void **state)
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CASE);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2928,7 +2928,7 @@ test_choice_elem(void **state)
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "list");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_LIST);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(parsed->exts[0]), LY_STMT_CHOICE);
     lysp_node_free(UTEST_LYCTX, siblings);
     siblings = NULL;
 
@@ -2990,7 +2990,7 @@ test_inout_elem(void **state)
     assert_string_equal(inout.child->next->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(inout.child->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(inout.child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]), LY_STMT_INPUT);
     lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     memset(&inout, 0, sizeof inout);
 
@@ -3034,7 +3034,7 @@ test_inout_elem(void **state)
     assert_string_equal(inout.child->next->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(inout.child->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(inout.child->next->next->next->next->next->next->next->next);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(inout.exts[0]), LY_STMT_OUTPUT);
     lysp_node_free(UTEST_LYCTX, (struct lysp_node *)&inout);
     memset(&inout, 0, sizeof inout);
 
@@ -3098,7 +3098,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->output.musts->arg.str, "cond");
     assert_string_equal(actions->input.child->name, "uses-name");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_ACTION);
     lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
     actions = NULL;
 
@@ -3131,7 +3131,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.child->name, "uses-name");
     assert_string_equal(actions->output.musts->arg.str, "cond");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(actions->exts[0]), LY_STMT_RPC);
     lysp_node_free(UTEST_LYCTX, (struct lysp_node *)actions);
     actions = NULL;
 
@@ -3202,7 +3202,7 @@ test_augment_elem(void **state)
     assert_null(augments->child->next->next->next->next->next->next->next->next->next);
     assert_string_equal(augments->actions->name, "action");
     assert_string_equal(augments->notifs->name, "notif");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(augments->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(augments->exts[0]), LY_STMT_AUGMENT);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)augments);
     augments = NULL;
 
@@ -3259,7 +3259,7 @@ test_deviate_elem(void **state)
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &deviates, NULL, NULL), LY_SUCCESS);
     assert_int_equal(deviates->mod, LYS_DEV_NOT_SUPPORTED);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_DEVIATE);
     lysp_deviate_free(UTEST_LYCTX, deviates);
     free(deviates);
     deviates = NULL;
@@ -3288,7 +3288,7 @@ test_deviate_elem(void **state)
     assert_true((d_add->flags & LYS_MAND_TRUE) && (d_add->flags & LYS_CONFIG_W));
     assert_int_equal(d_add->min, 5);
     assert_int_equal(d_add->max, 15);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_DEVIATE);
     lysp_deviate_free(UTEST_LYCTX, deviates);
     free(deviates);
     deviates = NULL;
@@ -3315,7 +3315,7 @@ test_deviate_elem(void **state)
     assert_true((d_rpl->flags & LYS_MAND_TRUE) && (d_rpl->flags & LYS_CONFIG_W));
     assert_int_equal(d_rpl->min, 5);
     assert_int_equal(d_rpl->max, 15);
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_DEVIATE);
     lysp_deviate_free(UTEST_LYCTX, deviates);
     free(deviates);
     deviates = NULL;
@@ -3337,7 +3337,7 @@ test_deviate_elem(void **state)
     assert_string_equal(d_del->musts->arg.str, "c");
     assert_string_equal(d_del->uniques[0].str, "tag");
     assert_string_equal(d_del->dflts[0].str, "default");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviates->exts[0]), LY_STMT_DEVIATE);
     lysp_deviate_free(UTEST_LYCTX, deviates);
     free(deviates);
     deviates = NULL;
@@ -3408,7 +3408,7 @@ test_deviation_elem(void **state)
     assert_int_equal(deviations->deviates->mod, LYS_DEV_ADD);
     assert_string_equal(deviations->ref, "ref");
     assert_string_equal(deviations->dsc, "desc");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviations->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(deviations->exts[0]), LY_STMT_DEVIATION);
     FREE_ARRAY(UTEST_LYCTX, deviations, lysp_deviation_free);
     deviations = NULL;
 
@@ -3516,7 +3516,7 @@ test_module_elem(void **state)
     assert_string_equal(lysp_mod->rpcs->name, "rpc-name");
     assert_string_equal(lysp_mod->notifs->name, "notf");
     assert_string_equal(lysp_mod->deviations->nodeid, "target");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_mod->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_mod->exts[0]), LY_STMT_MODULE);
 
     /* min subelems */
     ly_in_free(UTEST_IN, 0);
@@ -3645,7 +3645,7 @@ test_submodule_elem(void **state)
     assert_string_equal(lysp_submod->rpcs->name, "rpc-name");
     assert_string_equal(lysp_submod->notifs->name, "notf");
     assert_string_equal(lysp_submod->deviations->nodeid, "target");
-    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_submod->exts[0]), LY_STMT_NONE);
+    TEST_1_CHECK_LYSP_EXT_INSTANCE(&(lysp_submod->exts[0]), LY_STMT_SUBMODULE);
 
     /* min subelemnts */
     ly_in_free(UTEST_IN, 0);

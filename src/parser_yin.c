@@ -2530,6 +2530,7 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
     size_t subelems_size;
+    enum ly_stmt kw = act_meta->parent ? LY_STMT_ACTION : LY_STMT_RPC;
 
     /* create new action */
     LY_LIST_NEW_RET(ctx->xmlctx->ctx, acts, act, next, LY_EMEM);
@@ -2538,7 +2539,7 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
 
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
-    LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &act->name, Y_IDENTIF_ARG, LY_STMT_ACTION));
+    LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &act->name, Y_IDENTIF_ARG, kw));
 
     /* parse content */
     LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 9, (struct lysp_node *)act, &subelems,
@@ -2551,7 +2552,7 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
             LY_STMT_STATUS, &act->flags, YIN_SUBELEM_UNIQUE,
             LY_STMT_TYPEDEF, &act->typedefs, 0,
             LY_STMT_EXTENSION_INSTANCE, NULL, 0));
-    ret = (yin_parse_content(ctx, subelems, subelems_size, LY_STMT_ACTION, NULL, &act->exts));
+    ret = (yin_parse_content(ctx, subelems, subelems_size, kw, NULL, &act->exts));
     subelems_deallocator(subelems_size, subelems);
     LY_CHECK_RET(ret);
 
@@ -2760,86 +2761,6 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
     };
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_DEVIATION, NULL, &dev->exts);
-}
-
-/**
- * @brief Map keyword type to substatement info.
- *
- * @param[in] kw Keyword type.
- *
- * @return correct LYEXT_SUBSTMT information.
- */
-static enum ly_stmt
-kw2lyext_substmt(enum ly_stmt kw)
-{
-    switch (kw) {
-    case LY_STMT_ARGUMENT:
-        return LY_STMT_ARGUMENT;
-    case LY_STMT_BASE:
-        return LY_STMT_BASE;
-    case LY_STMT_BELONGS_TO:
-        return LY_STMT_BELONGS_TO;
-    case LY_STMT_CONTACT:
-        return LY_STMT_CONTACT;
-    case LY_STMT_DEFAULT:
-        return LY_STMT_DEFAULT;
-    case LY_STMT_DESCRIPTION:
-        return LY_STMT_DESCRIPTION;
-    case LY_STMT_ERROR_APP_TAG:
-        return LY_STMT_ERROR_APP_TAG;
-    case LY_STMT_ERROR_MESSAGE:
-        return LY_STMT_ERROR_MESSAGE;
-    case LY_STMT_KEY:
-        return LY_STMT_KEY;
-    case LY_STMT_NAMESPACE:
-        return LY_STMT_NAMESPACE;
-    case LY_STMT_ORGANIZATION:
-        return LY_STMT_ORGANIZATION;
-    case LY_STMT_PATH:
-        return LY_STMT_PATH;
-    case LY_STMT_PREFIX:
-        return LY_STMT_PREFIX;
-    case LY_STMT_PRESENCE:
-        return LY_STMT_PRESENCE;
-    case LY_STMT_REFERENCE:
-        return LY_STMT_REFERENCE;
-    case LY_STMT_REVISION_DATE:
-        return LY_STMT_REVISION_DATE;
-    case LY_STMT_UNITS:
-        return LY_STMT_UNITS;
-    case LY_STMT_VALUE:
-        return LY_STMT_VALUE;
-    case LY_STMT_YANG_VERSION:
-        return LY_STMT_YANG_VERSION;
-    case LY_STMT_MODIFIER:
-        return LY_STMT_MODIFIER;
-    case LY_STMT_REQUIRE_INSTANCE:
-        return LY_STMT_REQUIRE_INSTANCE;
-    case LY_STMT_YIN_ELEMENT:
-        return LY_STMT_YIN_ELEMENT;
-    case LY_STMT_CONFIG:
-        return LY_STMT_CONFIG;
-    case LY_STMT_MANDATORY:
-        return LY_STMT_MANDATORY;
-    case LY_STMT_ORDERED_BY:
-        return LY_STMT_ORDERED_BY;
-    case LY_STMT_STATUS:
-        return LY_STMT_STATUS;
-    case LY_STMT_FRACTION_DIGITS:
-        return LY_STMT_FRACTION_DIGITS;
-    case LY_STMT_MAX_ELEMENTS:
-        return LY_STMT_MAX_ELEMENTS;
-    case LY_STMT_MIN_ELEMENTS:
-        return LY_STMT_MIN_ELEMENTS;
-    case LY_STMT_POSITION:
-        return LY_STMT_POSITION;
-    case LY_STMT_UNIQUE:
-        return LY_STMT_UNIQUE;
-    case LY_STMT_IF_FEATURE:
-        return LY_STMT_IF_FEATURE;
-    default:
-        return LY_STMT_NONE;
-    }
 }
 
 /**
@@ -3399,7 +3320,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             switch (kw) {
             /* call responsible function */
             case LY_STMT_EXTENSION_INSTANCE:
-                ret = yin_parse_extension_instance(ctx, kw2lyext_substmt(current_element),
+                ret = yin_parse_extension_instance(ctx, current_element,
                         (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE *)subelem->dest) : 0, exts);
                 break;
             case LY_STMT_ACTION:
