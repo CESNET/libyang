@@ -40,7 +40,7 @@ struct lys_ypr_ctx {
     const struct lys_module *module; /**< schema to print */
 };
 
-static void yprp_extension_instances(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+static void yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index,
         struct lysp_ext_instance *ext, int8_t *flag, LY_ARRAY_COUNT_TYPE count);
 
 static void
@@ -90,7 +90,7 @@ ypr_yin_arg(struct lys_ypr_ctx *ctx, const char *arg, const char *text)
 }
 
 static void
-ypr_substmt(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, const char *text, void *ext)
+ypr_substmt(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index, const char *text, void *ext)
 {
     LY_ARRAY_COUNT_TYPE u;
     int8_t extflag = 0;
@@ -125,7 +125,7 @@ ypr_substmt(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_inde
 }
 
 static void
-ypr_unsigned(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value)
+ypr_unsigned(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value)
 {
     char *str;
 
@@ -138,7 +138,7 @@ ypr_unsigned(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_ind
 }
 
 static void
-ypr_signed(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, void *exts, signed long int attr_value)
+ypr_signed(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, signed long int attr_value)
 {
     char *str;
 
@@ -156,9 +156,9 @@ yprp_revision(struct lys_ypr_ctx *ctx, const struct lysp_revision *rev)
     if (rev->dsc || rev->ref || rev->exts) {
         ypr_open(ctx, "revision", "date", rev->date, 1);
         LEVEL++;
-        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, rev->exts, NULL, 0);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, rev->dsc, rev->exts);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, rev->ref, rev->exts);
+        yprp_extension_instances(ctx, LY_STMT_NONE, 0, rev->exts, NULL, 0);
+        ypr_substmt(ctx, LY_STMT_DESCRIPTION, 0, rev->dsc, rev->exts);
+        ypr_substmt(ctx, LY_STMT_REFERENCE, 0, rev->ref, rev->exts);
         LEVEL--;
         ypr_close(ctx, "revision", 1);
     } else {
@@ -171,7 +171,7 @@ ypr_mandatory(struct lys_ypr_ctx *ctx, uint16_t flags, void *exts, int8_t *flag)
 {
     if (flags & LYS_MAND_MASK) {
         ypr_close_parent(ctx, flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_MANDATORY, 0, (flags & LYS_MAND_TRUE) ? "true" : "false", exts);
+        ypr_substmt(ctx, LY_STMT_MANDATORY, 0, (flags & LYS_MAND_TRUE) ? "true" : "false", exts);
     }
 }
 
@@ -180,7 +180,7 @@ ypr_config(struct lys_ypr_ctx *ctx, uint16_t flags, void *exts, int8_t *flag)
 {
     if (flags & LYS_CONFIG_MASK) {
         ypr_close_parent(ctx, flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_CONFIG, 0, (flags & LYS_CONFIG_W) ? "true" : "false", exts);
+        ypr_substmt(ctx, LY_STMT_CONFIG, 0, (flags & LYS_CONFIG_W) ? "true" : "false", exts);
     }
 }
 
@@ -200,7 +200,7 @@ ypr_status(struct lys_ypr_ctx *ctx, uint16_t flags, void *exts, int8_t *flag)
         status = "obsolete";
     }
 
-    ypr_substmt(ctx, LYEXT_SUBSTMT_STATUS, 0, status, exts);
+    ypr_substmt(ctx, LY_STMT_STATUS, 0, status, exts);
 }
 
 static void
@@ -208,7 +208,7 @@ ypr_description(struct lys_ypr_ctx *ctx, const char *dsc, void *exts, int8_t *fl
 {
     if (dsc) {
         ypr_close_parent(ctx, flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, dsc, exts);
+        ypr_substmt(ctx, LY_STMT_DESCRIPTION, 0, dsc, exts);
     }
 }
 
@@ -217,7 +217,7 @@ ypr_reference(struct lys_ypr_ctx *ctx, const char *ref, void *exts, int8_t *flag
 {
     if (ref) {
         ypr_close_parent(ctx, flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, ref, exts);
+        ypr_substmt(ctx, LY_STMT_REFERENCE, 0, ref, exts);
     }
 }
 
@@ -236,7 +236,7 @@ yprp_iffeatures(struct lys_ypr_ctx *ctx, struct lysp_qname *iffs, struct lysp_ex
         /* extensions */
         LEVEL++;
         LY_ARRAY_FOR(exts, v) {
-            yprp_extension_instances(ctx, LYEXT_SUBSTMT_IF_FEATURE, u, &exts[v], &extflag, 1);
+            yprp_extension_instances(ctx, LY_STMT_IF_FEATURE, u, &exts[v], &extflag, 1);
         }
         LEVEL--;
         ly_print_(ctx->out, "\"/>\n");
@@ -254,7 +254,7 @@ yprp_extension(struct lys_ypr_ctx *ctx, const struct lysp_ext *ext)
 
     if (ext->exts) {
         ypr_close_parent(ctx, &flag);
-        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, ext->exts, &flag, 0);
+        yprp_extension_instances(ctx, LY_STMT_NONE, 0, ext->exts, &flag, 0);
     }
 
     if (ext->argument) {
@@ -264,15 +264,15 @@ yprp_extension(struct lys_ypr_ctx *ctx, const struct lysp_ext *ext)
         LEVEL++;
         if (ext->exts) {
             u = -1;
-            while ((u = lysp_ext_instance_iter(ext->exts, u + 1, LYEXT_SUBSTMT_ARGUMENT)) != LY_ARRAY_COUNT(ext->exts)) {
+            while ((u = lysp_ext_instance_iter(ext->exts, u + 1, LY_STMT_ARGUMENT)) != LY_ARRAY_COUNT(ext->exts)) {
                 ypr_close_parent(ctx, &flag2);
-                yprp_extension_instances(ctx, LYEXT_SUBSTMT_ARGUMENT, 0, &ext->exts[u], &flag2, 1);
+                yprp_extension_instances(ctx, LY_STMT_ARGUMENT, 0, &ext->exts[u], &flag2, 1);
             }
         }
         if ((ext->flags & LYS_YINELEM_MASK) ||
-                (ext->exts && (lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YIN_ELEMENT) != LY_ARRAY_COUNT(ext->exts)))) {
+                (ext->exts && (lysp_ext_instance_iter(ext->exts, 0, LY_STMT_YIN_ELEMENT) != LY_ARRAY_COUNT(ext->exts)))) {
             ypr_close_parent(ctx, &flag2);
-            ypr_substmt(ctx, LYEXT_SUBSTMT_YIN_ELEMENT, 0, (ext->flags & LYS_YINELEM_TRUE) ? "true" : "false", ext->exts);
+            ypr_substmt(ctx, LY_STMT_YIN_ELEMENT, 0, (ext->flags & LYS_YINELEM_TRUE) ? "true" : "false", ext->exts);
         }
         LEVEL--;
         ypr_close(ctx, "argument", flag2);
@@ -293,7 +293,7 @@ yprp_feature(struct lys_ypr_ctx *ctx, const struct lysp_feature *feat)
 
     ypr_open(ctx, "feature", "name", feat->name, flag);
     LEVEL++;
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, feat->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, feat->exts, &flag, 0);
     yprp_iffeatures(ctx, feat->iffeatures, feat->exts, &flag);
     ypr_status(ctx, feat->flags, feat->exts, &flag);
     ypr_description(ctx, feat->dsc, feat->exts, &flag);
@@ -311,12 +311,12 @@ yprp_identity(struct lys_ypr_ctx *ctx, const struct lysp_ident *ident)
     ypr_open(ctx, "identity", "name", ident->name, flag);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, ident->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, ident->exts, &flag, 0);
     yprp_iffeatures(ctx, ident->iffeatures, ident->exts, &flag);
 
     LY_ARRAY_FOR(ident->bases, u) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_BASE, u, ident->bases[u], ident->exts);
+        ypr_substmt(ctx, LY_STMT_BASE, u, ident->bases[u], ident->exts);
     }
 
     ypr_status(ctx, ident->flags, ident->exts, &flag);
@@ -344,19 +344,19 @@ yprp_restr(struct lys_ypr_ctx *ctx, const struct lysp_restr *restr, const char *
     ly_print_(ctx->out, "\"");
 
     LEVEL++;
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, restr->exts, &inner_flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, restr->exts, &inner_flag, 0);
     if (restr->arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
         ypr_close_parent(ctx, &inner_flag);
         /* special byte value in pattern's expression: 0x15 - invert-match, 0x06 - match */
-        ypr_substmt(ctx, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match", restr->exts);
+        ypr_substmt(ctx, LY_STMT_MODIFIER, 0, "invert-match", restr->exts);
     }
     if (restr->emsg) {
         ypr_close_parent(ctx, &inner_flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_ERROR_MESSAGE, 0, restr->emsg, restr->exts);
+        ypr_substmt(ctx, LY_STMT_ERROR_MESSAGE, 0, restr->emsg, restr->exts);
     }
     if (restr->eapptag) {
         ypr_close_parent(ctx, &inner_flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_ERROR_APP_TAG, 0, restr->eapptag, restr->exts);
+        ypr_substmt(ctx, LY_STMT_ERROR_APP_TAG, 0, restr->eapptag, restr->exts);
     }
     ypr_description(ctx, restr->dsc, restr->exts, &inner_flag);
     ypr_reference(ctx, restr->ref, restr->exts, &inner_flag);
@@ -381,7 +381,7 @@ yprp_when(struct lys_ypr_ctx *ctx, struct lysp_when *when, int8_t *flag)
     ly_print_(ctx->out, "\"");
 
     LEVEL++;
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, when->exts, &inner_flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, when->exts, &inner_flag, 0);
     ypr_description(ctx, when->dsc, when->exts, &inner_flag);
     ypr_reference(ctx, when->ref, when->exts, &inner_flag);
     LEVEL--;
@@ -408,15 +408,15 @@ yprp_enum(struct lys_ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_T
         }
         inner_flag = 0;
         LEVEL++;
-        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, items[u].exts, &inner_flag, 0);
+        yprp_extension_instances(ctx, LY_STMT_NONE, 0, items[u].exts, &inner_flag, 0);
         yprp_iffeatures(ctx, items[u].iffeatures, items[u].exts, &inner_flag);
         if (items[u].flags & LYS_SET_VALUE) {
             if (type == LY_TYPE_BITS) {
                 ypr_close_parent(ctx, &inner_flag);
-                ypr_unsigned(ctx, LYEXT_SUBSTMT_POSITION, 0, items[u].exts, items[u].value);
+                ypr_unsigned(ctx, LY_STMT_POSITION, 0, items[u].exts, items[u].value);
             } else { /* LY_TYPE_ENUM */
                 ypr_close_parent(ctx, &inner_flag);
-                ypr_signed(ctx, LYEXT_SUBSTMT_VALUE, 0, items[u].exts, items[u].value);
+                ypr_signed(ctx, LY_STMT_VALUE, 0, items[u].exts, items[u].value);
             }
         }
         ypr_status(ctx, items[u].flags, items[u].exts, &inner_flag);
@@ -440,7 +440,7 @@ yprp_type(struct lys_ypr_ctx *ctx, const struct lysp_type *type)
     ypr_open(ctx, "type", "name", type->name, flag);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, type->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, type->exts, &flag, 0);
 
     if (type->range || type->length || type->patterns || type->bits || type->enums) {
         ypr_close_parent(ctx, &flag);
@@ -455,19 +455,19 @@ yprp_type(struct lys_ypr_ctx *ctx, const struct lysp_type *type)
 
     if (type->path) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, type->path->expr, type->exts);
+        ypr_substmt(ctx, LY_STMT_PATH, 0, type->path->expr, type->exts);
     }
     if (type->flags & LYS_SET_REQINST) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_REQUIRE_INSTANCE, 0, type->require_instance ? "true" : "false", type->exts);
+        ypr_substmt(ctx, LY_STMT_REQUIRE_INSTANCE, 0, type->require_instance ? "true" : "false", type->exts);
     }
     if (type->flags & LYS_SET_FRDIGITS) {
         ypr_close_parent(ctx, &flag);
-        ypr_unsigned(ctx, LYEXT_SUBSTMT_FRACTION_DIGITS, 0, type->exts, type->fraction_digits);
+        ypr_unsigned(ctx, LY_STMT_FRACTION_DIGITS, 0, type->exts, type->fraction_digits);
     }
     LY_ARRAY_FOR(type->bases, u) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_BASE, u, type->bases[u], type->exts);
+        ypr_substmt(ctx, LY_STMT_BASE, u, type->bases[u], type->exts);
     }
     LY_ARRAY_FOR(type->types, u) {
         ypr_close_parent(ctx, &flag);
@@ -484,15 +484,15 @@ yprp_typedef(struct lys_ypr_ctx *ctx, const struct lysp_tpdf *tpdf)
     ypr_open(ctx, "typedef", "name", tpdf->name, 1);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, tpdf->exts, NULL, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, tpdf->exts, NULL, 0);
 
     yprp_type(ctx, &tpdf->type);
 
     if (tpdf->units) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, tpdf->units, tpdf->exts);
+        ypr_substmt(ctx, LY_STMT_UNITS, 0, tpdf->units, tpdf->exts);
     }
     if (tpdf->dflt.str) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, tpdf->dflt.str, tpdf->exts);
+        ypr_substmt(ctx, LY_STMT_DEFAULT, 0, tpdf->dflt.str, tpdf->exts);
     }
 
     ypr_status(ctx, tpdf->flags, tpdf->exts, NULL);
@@ -520,7 +520,7 @@ yprp_grouping(struct lys_ypr_ctx *ctx, const struct lysp_node_grp *grp)
     ypr_open(ctx, "grouping", "name", grp->name, flag);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, grp->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, grp->exts, &flag, 0);
     ypr_status(ctx, grp->flags, grp->exts, &flag);
     ypr_description(ctx, grp->dsc, grp->exts, &flag);
     ypr_reference(ctx, grp->ref, grp->exts, &flag);
@@ -570,7 +570,7 @@ yprp_inout(struct lys_ypr_ctx *ctx, const struct lysp_node_action_inout *inout, 
     ypr_open(ctx, inout->name, NULL, NULL, *flag);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, inout->exts, NULL, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, inout->exts, NULL, 0);
     LY_ARRAY_FOR(inout->musts, u) {
         yprp_restr(ctx, &inout->musts[u], "must", "condition", NULL);
     }
@@ -600,7 +600,7 @@ yprp_notification(struct lys_ypr_ctx *ctx, const struct lysp_node_notif *notif)
     ypr_open(ctx, "notification", "name", notif->name, flag);
 
     LEVEL++;
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, notif->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, notif->exts, &flag, 0);
     yprp_iffeatures(ctx, notif->iffeatures, notif->exts, &flag);
 
     LY_ARRAY_FOR(notif->musts, u) {
@@ -640,7 +640,7 @@ yprp_action(struct lys_ypr_ctx *ctx, const struct lysp_node_action *action)
     ypr_open(ctx, action->parent ? "action" : "rpc", "name", action->name, flag);
 
     LEVEL++;
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, action->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, action->exts, &flag, 0);
     yprp_iffeatures(ctx, action->iffeatures, action->exts, &flag);
     ypr_status(ctx, action->flags, action->exts, &flag);
     ypr_description(ctx, action->dsc, action->exts, &flag);
@@ -669,7 +669,7 @@ yprp_node_common1(struct lys_ypr_ctx *ctx, const struct lysp_node *node, int8_t 
     ypr_open(ctx, lys_nodetype2str(node->nodetype), "name", node->name, *flag);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, node->exts, flag, 0);
     yprp_when(ctx, lysp_node_when(node), flag);
     yprp_iffeatures(ctx, node->iffeatures, node->exts, flag);
 }
@@ -705,7 +705,7 @@ yprp_container(struct lys_ypr_ctx *ctx, const struct lysp_node *node)
     }
     if (cont->presence) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PRESENCE, 0, cont->presence, cont->exts);
+        ypr_substmt(ctx, LY_STMT_PRESENCE, 0, cont->presence, cont->exts);
     }
 
     yprp_node_common2(ctx, node, &flag);
@@ -769,7 +769,7 @@ yprp_choice(struct lys_ypr_ctx *ctx, const struct lysp_node *node)
 
     if (choice->dflt.str) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, choice->dflt.str, choice->exts);
+        ypr_substmt(ctx, LY_STMT_DEFAULT, 0, choice->dflt.str, choice->exts);
     }
 
     yprp_node_common2(ctx, node, &flag);
@@ -794,11 +794,11 @@ yprp_leaf(struct lys_ypr_ctx *ctx, const struct lysp_node *node)
     yprp_node_common1(ctx, node, &flag);
 
     yprp_type(ctx, &leaf->type);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, leaf->units, leaf->exts);
+    ypr_substmt(ctx, LY_STMT_UNITS, 0, leaf->units, leaf->exts);
     LY_ARRAY_FOR(leaf->musts, u) {
         yprp_restr(ctx, &leaf->musts[u], "must", "condition", &flag);
     }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, leaf->dflt.str, leaf->exts);
+    ypr_substmt(ctx, LY_STMT_DEFAULT, 0, leaf->dflt.str, leaf->exts);
 
     yprp_node_common2(ctx, node, &flag);
 
@@ -816,29 +816,29 @@ yprp_leaflist(struct lys_ypr_ctx *ctx, const struct lysp_node *node)
     yprp_node_common1(ctx, node, &flag);
 
     yprp_type(ctx, &llist->type);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, llist->units, llist->exts);
+    ypr_substmt(ctx, LY_STMT_UNITS, 0, llist->units, llist->exts);
     LY_ARRAY_FOR(llist->musts, u) {
         yprp_restr(ctx, &llist->musts[u], "must", "condition", NULL);
     }
     LY_ARRAY_FOR(llist->dflts, u) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, u, llist->dflts[u].str, llist->exts);
+        ypr_substmt(ctx, LY_STMT_DEFAULT, u, llist->dflts[u].str, llist->exts);
     }
 
     ypr_config(ctx, node->flags, node->exts, NULL);
 
     if (llist->flags & LYS_SET_MIN) {
-        ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN_ELEMENTS, 0, llist->exts, llist->min);
+        ypr_unsigned(ctx, LY_STMT_MIN_ELEMENTS, 0, llist->exts, llist->min);
     }
     if (llist->flags & LYS_SET_MAX) {
         if (llist->max) {
-            ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, llist->exts, llist->max);
+            ypr_unsigned(ctx, LY_STMT_MAX_ELEMENTS, 0, llist->exts, llist->max);
         } else {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, "unbounded", llist->exts);
+            ypr_substmt(ctx, LY_STMT_MAX_ELEMENTS, 0, "unbounded", llist->exts);
         }
     }
 
     if (llist->flags & LYS_ORDBY_MASK) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_ORDERED_BY, 0, (llist->flags & LYS_ORDBY_USER) ? "user" : "system", llist->exts);
+        ypr_substmt(ctx, LY_STMT_ORDERED_BY, 0, (llist->flags & LYS_ORDBY_USER) ? "user" : "system", llist->exts);
     }
 
     ypr_status(ctx, node->flags, node->exts, &flag);
@@ -868,29 +868,29 @@ yprp_list(struct lys_ypr_ctx *ctx, const struct lysp_node *node)
     }
     if (list->key) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_KEY, 0, list->key, list->exts);
+        ypr_substmt(ctx, LY_STMT_KEY, 0, list->key, list->exts);
     }
     LY_ARRAY_FOR(list->uniques, u) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_UNIQUE, u, list->uniques[u].str, list->exts);
+        ypr_substmt(ctx, LY_STMT_UNIQUE, u, list->uniques[u].str, list->exts);
     }
 
     ypr_config(ctx, node->flags, node->exts, NULL);
 
     if (list->flags & LYS_SET_MIN) {
-        ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN_ELEMENTS, 0, list->exts, list->min);
+        ypr_unsigned(ctx, LY_STMT_MIN_ELEMENTS, 0, list->exts, list->min);
     }
     if (list->flags & LYS_SET_MAX) {
         if (list->max) {
-            ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, list->exts, list->max);
+            ypr_unsigned(ctx, LY_STMT_MAX_ELEMENTS, 0, list->exts, list->max);
         } else {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, "unbounded", list->exts);
+            ypr_substmt(ctx, LY_STMT_MAX_ELEMENTS, 0, "unbounded", list->exts);
         }
     }
 
     if (list->flags & LYS_ORDBY_MASK) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_ORDERED_BY, 0, (list->flags & LYS_ORDBY_USER) ? "user" : "system", list->exts);
+        ypr_substmt(ctx, LY_STMT_ORDERED_BY, 0, (list->flags & LYS_ORDBY_USER) ? "user" : "system", list->exts);
     }
 
     ypr_status(ctx, node->flags, node->exts, &flag);
@@ -935,7 +935,7 @@ yprp_refine(struct lys_ypr_ctx *ctx, struct lysp_refine *refine)
     ypr_open(ctx, "refine", "target-node", refine->nodeid, flag);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, refine->exts, &flag, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, refine->exts, &flag, 0);
     yprp_iffeatures(ctx, refine->iffeatures, refine->exts, &flag);
 
     LY_ARRAY_FOR(refine->musts, u) {
@@ -945,12 +945,12 @@ yprp_refine(struct lys_ypr_ctx *ctx, struct lysp_refine *refine)
 
     if (refine->presence) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PRESENCE, 0, refine->presence, refine->exts);
+        ypr_substmt(ctx, LY_STMT_PRESENCE, 0, refine->presence, refine->exts);
     }
 
     LY_ARRAY_FOR(refine->dflts, u) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, u, refine->dflts[u].str, refine->exts);
+        ypr_substmt(ctx, LY_STMT_DEFAULT, u, refine->dflts[u].str, refine->exts);
     }
 
     ypr_config(ctx, refine->flags, refine->exts, &flag);
@@ -958,14 +958,14 @@ yprp_refine(struct lys_ypr_ctx *ctx, struct lysp_refine *refine)
 
     if (refine->flags & LYS_SET_MIN) {
         ypr_close_parent(ctx, &flag);
-        ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN_ELEMENTS, 0, refine->exts, refine->min);
+        ypr_unsigned(ctx, LY_STMT_MIN_ELEMENTS, 0, refine->exts, refine->min);
     }
     if (refine->flags & LYS_SET_MAX) {
         ypr_close_parent(ctx, &flag);
         if (refine->max) {
-            ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, refine->exts, refine->max);
+            ypr_unsigned(ctx, LY_STMT_MAX_ELEMENTS, 0, refine->exts, refine->max);
         } else {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, "unbounded", refine->exts);
+            ypr_substmt(ctx, LY_STMT_MAX_ELEMENTS, 0, "unbounded", refine->exts);
         }
     }
 
@@ -986,7 +986,7 @@ yprp_augment(struct lys_ypr_ctx *ctx, const struct lysp_node_augment *aug)
     ypr_open(ctx, "augment", "target-node", aug->nodeid, 1);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, aug->exts, NULL, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, aug->exts, NULL, 0);
     yprp_when(ctx, aug->when, NULL);
     yprp_iffeatures(ctx, aug->iffeatures, aug->exts, NULL);
     ypr_status(ctx, aug->flags, aug->exts, NULL);
@@ -1100,7 +1100,7 @@ yprp_deviation(struct lys_ypr_ctx *ctx, const struct lysp_deviation *deviation)
     ypr_open(ctx, "deviation", "target-node", deviation->nodeid, 1);
     LEVEL++;
 
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, deviation->exts, NULL, 0);
+    yprp_extension_instances(ctx, LY_STMT_NONE, 0, deviation->exts, NULL, 0);
     ypr_description(ctx, deviation->dsc, deviation->exts, NULL);
     ypr_reference(ctx, deviation->ref, deviation->exts, NULL);
 
@@ -1111,7 +1111,7 @@ yprp_deviation(struct lys_ypr_ctx *ctx, const struct lysp_deviation *deviation)
                 ly_print_(ctx->out, "not-supported\"/>\n");
                 LEVEL++;
 
-                yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, elem->exts, NULL, 0);
+                yprp_extension_instances(ctx, LY_STMT_NONE, 0, elem->exts, NULL, 0);
             } else {
                 ly_print_(ctx->out, "not-supported\"/>\n");
                 continue;
@@ -1121,27 +1121,27 @@ yprp_deviation(struct lys_ypr_ctx *ctx, const struct lysp_deviation *deviation)
             ly_print_(ctx->out, "add\">\n");
             LEVEL++;
 
-            yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, add->exts, NULL, 0);
-            ypr_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, add->units, add->exts);
+            yprp_extension_instances(ctx, LY_STMT_NONE, 0, add->exts, NULL, 0);
+            ypr_substmt(ctx, LY_STMT_UNITS, 0, add->units, add->exts);
             LY_ARRAY_FOR(add->musts, u) {
                 yprp_restr(ctx, &add->musts[u], "must", "condition", NULL);
             }
             LY_ARRAY_FOR(add->uniques, u) {
-                ypr_substmt(ctx, LYEXT_SUBSTMT_UNIQUE, u, add->uniques[u].str, add->exts);
+                ypr_substmt(ctx, LY_STMT_UNIQUE, u, add->uniques[u].str, add->exts);
             }
             LY_ARRAY_FOR(add->dflts, u) {
-                ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, u, add->dflts[u].str, add->exts);
+                ypr_substmt(ctx, LY_STMT_DEFAULT, u, add->dflts[u].str, add->exts);
             }
             ypr_config(ctx, add->flags, add->exts, NULL);
             ypr_mandatory(ctx, add->flags, add->exts, NULL);
             if (add->flags & LYS_SET_MIN) {
-                ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN_ELEMENTS, 0, add->exts, add->min);
+                ypr_unsigned(ctx, LY_STMT_MIN_ELEMENTS, 0, add->exts, add->min);
             }
             if (add->flags & LYS_SET_MAX) {
                 if (add->max) {
-                    ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, add->exts, add->max);
+                    ypr_unsigned(ctx, LY_STMT_MAX_ELEMENTS, 0, add->exts, add->max);
                 } else {
-                    ypr_substmt(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, "unbounded", add->exts);
+                    ypr_substmt(ctx, LY_STMT_MAX_ELEMENTS, 0, "unbounded", add->exts);
                 }
             }
         } else if (elem->mod == LYS_DEV_REPLACE) {
@@ -1149,22 +1149,22 @@ yprp_deviation(struct lys_ypr_ctx *ctx, const struct lysp_deviation *deviation)
             ly_print_(ctx->out, "replace\">\n");
             LEVEL++;
 
-            yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, rpl->exts, NULL, 0);
+            yprp_extension_instances(ctx, LY_STMT_NONE, 0, rpl->exts, NULL, 0);
             if (rpl->type) {
                 yprp_type(ctx, rpl->type);
             }
-            ypr_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, rpl->units, rpl->exts);
-            ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, rpl->dflt.str, rpl->exts);
+            ypr_substmt(ctx, LY_STMT_UNITS, 0, rpl->units, rpl->exts);
+            ypr_substmt(ctx, LY_STMT_DEFAULT, 0, rpl->dflt.str, rpl->exts);
             ypr_config(ctx, rpl->flags, rpl->exts, NULL);
             ypr_mandatory(ctx, rpl->flags, rpl->exts, NULL);
             if (rpl->flags & LYS_SET_MIN) {
-                ypr_unsigned(ctx, LYEXT_SUBSTMT_MIN_ELEMENTS, 0, rpl->exts, rpl->min);
+                ypr_unsigned(ctx, LY_STMT_MIN_ELEMENTS, 0, rpl->exts, rpl->min);
             }
             if (rpl->flags & LYS_SET_MAX) {
                 if (rpl->max) {
-                    ypr_unsigned(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, rpl->exts, rpl->max);
+                    ypr_unsigned(ctx, LY_STMT_MAX_ELEMENTS, 0, rpl->exts, rpl->max);
                 } else {
-                    ypr_substmt(ctx, LYEXT_SUBSTMT_MAX_ELEMENTS, 0, "unbounded", rpl->exts);
+                    ypr_substmt(ctx, LY_STMT_MAX_ELEMENTS, 0, "unbounded", rpl->exts);
                 }
             }
         } else if (elem->mod == LYS_DEV_DELETE) {
@@ -1172,16 +1172,16 @@ yprp_deviation(struct lys_ypr_ctx *ctx, const struct lysp_deviation *deviation)
             ly_print_(ctx->out, "delete\">\n");
             LEVEL++;
 
-            yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, del->exts, NULL, 0);
-            ypr_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, del->units, del->exts);
+            yprp_extension_instances(ctx, LY_STMT_NONE, 0, del->exts, NULL, 0);
+            ypr_substmt(ctx, LY_STMT_UNITS, 0, del->units, del->exts);
             LY_ARRAY_FOR(del->musts, u) {
                 yprp_restr(ctx, &del->musts[u], "must", "condition", NULL);
             }
             LY_ARRAY_FOR(del->uniques, u) {
-                ypr_substmt(ctx, LYEXT_SUBSTMT_UNIQUE, u, del->uniques[u].str, del->exts);
+                ypr_substmt(ctx, LY_STMT_UNIQUE, u, del->uniques[u].str, del->exts);
             }
             LY_ARRAY_FOR(del->dflts, u) {
-                ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, u, del->dflts[u].str, del->exts);
+                ypr_substmt(ctx, LY_STMT_DEFAULT, u, del->dflts[u].str, del->exts);
             }
         }
 
@@ -1243,7 +1243,7 @@ yprp_stmt(struct lys_ypr_ctx *ctx, struct lysp_stmt *stmt)
  * @param[in] count Number of extensions to print, 0 to print them all.
  */
 static void
-yprp_extension_instances(struct lys_ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index,
         struct lysp_ext_instance *ext, int8_t *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
@@ -1300,13 +1300,13 @@ yin_print_parsed_linkage(struct lys_ypr_ctx *ctx, const struct lysp_module *modp
 
         ypr_open(ctx, "import", "module", modp->imports[u].name, 1);
         LEVEL++;
-        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->imports[u].exts, NULL, 0);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, modp->imports[u].prefix, modp->imports[u].exts);
+        yprp_extension_instances(ctx, LY_STMT_NONE, 0, modp->imports[u].exts, NULL, 0);
+        ypr_substmt(ctx, LY_STMT_PREFIX, 0, modp->imports[u].prefix, modp->imports[u].exts);
         if (modp->imports[u].rev[0]) {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_REVISION_DATE, 0, modp->imports[u].rev, modp->imports[u].exts);
+            ypr_substmt(ctx, LY_STMT_REVISION_DATE, 0, modp->imports[u].rev, modp->imports[u].exts);
         }
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, modp->imports[u].dsc, modp->imports[u].exts);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, modp->imports[u].ref, modp->imports[u].exts);
+        ypr_substmt(ctx, LY_STMT_DESCRIPTION, 0, modp->imports[u].dsc, modp->imports[u].exts);
+        ypr_substmt(ctx, LY_STMT_REFERENCE, 0, modp->imports[u].ref, modp->imports[u].exts);
         LEVEL--;
         ypr_close(ctx, "import", 1);
     }
@@ -1318,12 +1318,12 @@ yin_print_parsed_linkage(struct lys_ypr_ctx *ctx, const struct lysp_module *modp
         if (modp->includes[u].rev[0] || modp->includes[u].dsc || modp->includes[u].ref || modp->includes[u].exts) {
             ypr_open(ctx, "include", "module", modp->includes[u].name, 1);
             LEVEL++;
-            yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->includes[u].exts, NULL, 0);
+            yprp_extension_instances(ctx, LY_STMT_NONE, 0, modp->includes[u].exts, NULL, 0);
             if (modp->includes[u].rev[0]) {
-                ypr_substmt(ctx, LYEXT_SUBSTMT_REVISION_DATE, 0, modp->includes[u].rev, modp->includes[u].exts);
+                ypr_substmt(ctx, LY_STMT_REVISION_DATE, 0, modp->includes[u].rev, modp->includes[u].exts);
             }
-            ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, modp->includes[u].dsc, modp->includes[u].exts);
-            ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, modp->includes[u].ref, modp->includes[u].exts);
+            ypr_substmt(ctx, LY_STMT_DESCRIPTION, 0, modp->includes[u].dsc, modp->includes[u].exts);
+            ypr_substmt(ctx, LY_STMT_REFERENCE, 0, modp->includes[u].ref, modp->includes[u].exts);
             LEVEL--;
             ly_print_(ctx->out, "%*s}\n", INDENT);
         } else {
@@ -1348,7 +1348,7 @@ yin_print_parsed_body(struct lys_ypr_ctx *ctx, const struct lysp_module *modp)
     }
     if (modp->exts) {
         ly_print_(ctx->out, "\n");
-        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->exts, NULL, 0);
+        yprp_extension_instances(ctx, LY_STMT_NONE, 0, modp->exts, NULL, 0);
     }
 
     LY_ARRAY_FOR(modp->features, u) {
@@ -1405,10 +1405,10 @@ yin_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uint
 
     /* module-header-stmts */
     if (modp->version) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_YANG_VERSION, 0, modp->version == LYS_VERSION_1_1 ? "1.1" : "1", modp->exts);
+        ypr_substmt(ctx, LY_STMT_YANG_VERSION, 0, modp->version == LYS_VERSION_1_1 ? "1.1" : "1", modp->exts);
     }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_NAMESPACE, 0, module->ns, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, module->prefix, modp->exts);
+    ypr_substmt(ctx, LY_STMT_NAMESPACE, 0, module->ns, modp->exts);
+    ypr_substmt(ctx, LY_STMT_PREFIX, 0, module->prefix, modp->exts);
 
     /* linkage-stmts (import/include) */
     yin_print_parsed_linkage(ctx, modp);
@@ -1417,10 +1417,10 @@ yin_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uint
     if (module->org || module->contact || module->dsc || module->ref) {
         ly_print_(out, "\n");
     }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_ORGANIZATION, 0, module->org, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_CONTACT, 0, module->contact, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, module->dsc, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, module->ref, modp->exts);
+    ypr_substmt(ctx, LY_STMT_ORGANIZATION, 0, module->org, modp->exts);
+    ypr_substmt(ctx, LY_STMT_CONTACT, 0, module->contact, modp->exts);
+    ypr_substmt(ctx, LY_STMT_DESCRIPTION, 0, module->dsc, modp->exts);
+    ypr_substmt(ctx, LY_STMT_REFERENCE, 0, module->ref, modp->exts);
 
     /* revision-stmts */
     if (modp->revs) {
@@ -1445,8 +1445,8 @@ yprp_belongsto(struct lys_ypr_ctx *ctx, const struct lysp_submodule *submodp)
 {
     ypr_open(ctx, "belongs-to", "module", submodp->mod->name, 1);
     LEVEL++;
-    yprp_extension_instances(ctx, LYEXT_SUBSTMT_BELONGS_TO, 0, submodp->exts, NULL, 0);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, submodp->prefix, submodp->exts);
+    yprp_extension_instances(ctx, LY_STMT_BELONGS_TO, 0, submodp->exts, NULL, 0);
+    ypr_substmt(ctx, LY_STMT_PREFIX, 0, submodp->prefix, submodp->exts);
     LEVEL--;
     ypr_close(ctx, "belongs-to", 1);
 }
@@ -1467,7 +1467,7 @@ yin_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *subm
 
     /* submodule-header-stmts */
     if (submodp->version) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_YANG_VERSION, 0, submodp->version == LYS_VERSION_1_1 ? "1.1" : "1", submodp->exts);
+        ypr_substmt(ctx, LY_STMT_YANG_VERSION, 0, submodp->version == LYS_VERSION_1_1 ? "1.1" : "1", submodp->exts);
     }
     yprp_belongsto(ctx, submodp);
 
@@ -1478,10 +1478,10 @@ yin_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *subm
     if (submodp->org || submodp->contact || submodp->dsc || submodp->ref) {
         ly_print_(out, "\n");
     }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_ORGANIZATION, 0, submodp->org, submodp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_CONTACT, 0, submodp->contact, submodp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, submodp->dsc, submodp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, submodp->ref, submodp->exts);
+    ypr_substmt(ctx, LY_STMT_ORGANIZATION, 0, submodp->org, submodp->exts);
+    ypr_substmt(ctx, LY_STMT_CONTACT, 0, submodp->contact, submodp->exts);
+    ypr_substmt(ctx, LY_STMT_DESCRIPTION, 0, submodp->dsc, submodp->exts);
+    ypr_substmt(ctx, LY_STMT_REFERENCE, 0, submodp->ref, submodp->exts);
 
     /* revision-stmts */
     if (submodp->revs) {

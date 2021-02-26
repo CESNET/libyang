@@ -458,11 +458,10 @@ struct lysc_must **lysc_node_musts_p(const struct lysc_node *node);
  * @param[in] ext ([Sized array](@ref sizedarrays)) of extensions to explore
  * @param[in] index Index in the \p ext array where to start searching (first call with 0, the consequent calls with
  *            the returned index increased by 1 (until the iteration is not terminated by returning LY_ARRAY_COUNT(ext).
- * @param[in] substmt Type of the extension (its belongins to the specific substatement) to iterate, use
- *            #LYEXT_SUBSTMT_ALL to go through all the extensions in the array
+ * @param[in] substmt The statement the extension is supposed to belong to.
  * @result index in the ext array, LY_ARRAY_COUNT(ext) value if not present.
  */
-LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, LYEXT_SUBSTMT substmt);
+LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt);
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.

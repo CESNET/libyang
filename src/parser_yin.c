@@ -2769,76 +2769,76 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
  *
  * @return correct LYEXT_SUBSTMT information.
  */
-static LYEXT_SUBSTMT
+static enum ly_stmt
 kw2lyext_substmt(enum ly_stmt kw)
 {
     switch (kw) {
     case LY_STMT_ARGUMENT:
-        return LYEXT_SUBSTMT_ARGUMENT;
+        return LY_STMT_ARGUMENT;
     case LY_STMT_BASE:
-        return LYEXT_SUBSTMT_BASE;
+        return LY_STMT_BASE;
     case LY_STMT_BELONGS_TO:
-        return LYEXT_SUBSTMT_BELONGS_TO;
+        return LY_STMT_BELONGS_TO;
     case LY_STMT_CONTACT:
-        return LYEXT_SUBSTMT_CONTACT;
+        return LY_STMT_CONTACT;
     case LY_STMT_DEFAULT:
-        return LYEXT_SUBSTMT_DEFAULT;
+        return LY_STMT_DEFAULT;
     case LY_STMT_DESCRIPTION:
-        return LYEXT_SUBSTMT_DESCRIPTION;
+        return LY_STMT_DESCRIPTION;
     case LY_STMT_ERROR_APP_TAG:
-        return LYEXT_SUBSTMT_ERROR_APP_TAG;
+        return LY_STMT_ERROR_APP_TAG;
     case LY_STMT_ERROR_MESSAGE:
-        return LYEXT_SUBSTMT_ERROR_MESSAGE;
+        return LY_STMT_ERROR_MESSAGE;
     case LY_STMT_KEY:
-        return LYEXT_SUBSTMT_KEY;
+        return LY_STMT_KEY;
     case LY_STMT_NAMESPACE:
-        return LYEXT_SUBSTMT_NAMESPACE;
+        return LY_STMT_NAMESPACE;
     case LY_STMT_ORGANIZATION:
-        return LYEXT_SUBSTMT_ORGANIZATION;
+        return LY_STMT_ORGANIZATION;
     case LY_STMT_PATH:
-        return LYEXT_SUBSTMT_PATH;
+        return LY_STMT_PATH;
     case LY_STMT_PREFIX:
-        return LYEXT_SUBSTMT_PREFIX;
+        return LY_STMT_PREFIX;
     case LY_STMT_PRESENCE:
-        return LYEXT_SUBSTMT_PRESENCE;
+        return LY_STMT_PRESENCE;
     case LY_STMT_REFERENCE:
-        return LYEXT_SUBSTMT_REFERENCE;
+        return LY_STMT_REFERENCE;
     case LY_STMT_REVISION_DATE:
-        return LYEXT_SUBSTMT_REVISION_DATE;
+        return LY_STMT_REVISION_DATE;
     case LY_STMT_UNITS:
-        return LYEXT_SUBSTMT_UNITS;
+        return LY_STMT_UNITS;
     case LY_STMT_VALUE:
-        return LYEXT_SUBSTMT_VALUE;
+        return LY_STMT_VALUE;
     case LY_STMT_YANG_VERSION:
-        return LYEXT_SUBSTMT_YANG_VERSION;
+        return LY_STMT_YANG_VERSION;
     case LY_STMT_MODIFIER:
-        return LYEXT_SUBSTMT_MODIFIER;
+        return LY_STMT_MODIFIER;
     case LY_STMT_REQUIRE_INSTANCE:
-        return LYEXT_SUBSTMT_REQUIRE_INSTANCE;
+        return LY_STMT_REQUIRE_INSTANCE;
     case LY_STMT_YIN_ELEMENT:
-        return LYEXT_SUBSTMT_YIN_ELEMENT;
+        return LY_STMT_YIN_ELEMENT;
     case LY_STMT_CONFIG:
-        return LYEXT_SUBSTMT_CONFIG;
+        return LY_STMT_CONFIG;
     case LY_STMT_MANDATORY:
-        return LYEXT_SUBSTMT_MANDATORY;
+        return LY_STMT_MANDATORY;
     case LY_STMT_ORDERED_BY:
-        return LYEXT_SUBSTMT_ORDERED_BY;
+        return LY_STMT_ORDERED_BY;
     case LY_STMT_STATUS:
-        return LYEXT_SUBSTMT_STATUS;
+        return LY_STMT_STATUS;
     case LY_STMT_FRACTION_DIGITS:
-        return LYEXT_SUBSTMT_FRACTION_DIGITS;
+        return LY_STMT_FRACTION_DIGITS;
     case LY_STMT_MAX_ELEMENTS:
-        return LYEXT_SUBSTMT_MAX_ELEMENTS;
+        return LY_STMT_MAX_ELEMENTS;
     case LY_STMT_MIN_ELEMENTS:
-        return LYEXT_SUBSTMT_MIN_ELEMENTS;
+        return LY_STMT_MIN_ELEMENTS;
     case LY_STMT_POSITION:
-        return LYEXT_SUBSTMT_POSITION;
+        return LY_STMT_POSITION;
     case LY_STMT_UNIQUE:
-        return LYEXT_SUBSTMT_UNIQUE;
+        return LY_STMT_UNIQUE;
     case LY_STMT_IF_FEATURE:
-        return LYEXT_SUBSTMT_IF_FEATURE;
+        return LY_STMT_IF_FEATURE;
     default:
-        return LYEXT_SUBSTMT_SELF;
+        return LY_STMT_NONE;
     }
 }
 
@@ -3214,14 +3214,14 @@ cleanup:
  * @brief Parse instance of extension.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] subelem Type of the keyword this extension instance is a subelement of.
+ * @param[in] subelem The statement this extension instance is a subelement of.
  * @param[in] subelem_index Index of the keyword instance this extension instance is a subelement of
  * @param[in,out] exts Extension instance to add to.
  *
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_COUNT_TYPE subelem_index,
+yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subelem, LY_ARRAY_COUNT_TYPE subelem_index,
         struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;
