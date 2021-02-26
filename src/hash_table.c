@@ -30,7 +30,7 @@
 /**
  * @brief Comparison callback for dictionary's hash table
  *
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  */
 static ly_bool
 lydict_val_eq(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
@@ -309,7 +309,7 @@ lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
 }
 
 struct hash_table *
-lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, uint16_t resize)
+lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *cb_data, uint16_t resize)
 {
     struct hash_table *ht;
 
@@ -339,10 +339,10 @@ lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_d
     return ht;
 }
 
-values_equal_cb
-lyht_set_cb(struct hash_table *ht, values_equal_cb new_val_equal)
+lyht_value_equal_cb
+lyht_set_cb(struct hash_table *ht, lyht_value_equal_cb new_val_equal)
 {
-    values_equal_cb prev;
+    lyht_value_equal_cb prev;
 
     prev = ht->val_equal;
     ht->val_equal = new_val_equal;
@@ -642,13 +642,13 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 }
 
 LY_ERR
-lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
-        values_equal_cb resize_val_equal, void **match_p)
+lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
+        void **match_p)
 {
     LY_ERR r, ret = LY_SUCCESS;
     struct ht_rec *rec, *crec = NULL;
     int32_t i;
-    values_equal_cb old_val_equal = NULL;
+    lyht_value_equal_cb old_val_equal = NULL;
 
     if (!lyht_find_first(ht, hash, &rec)) {
         /* we found matching shortened hash */
@@ -732,13 +732,13 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 }
 
 LY_ERR
-lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal)
+lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal)
 {
     struct ht_rec *rec, *crec;
     int32_t i;
     ly_bool first_matched = 0;
     LY_ERR r, ret = LY_SUCCESS;
-    values_equal_cb old_val_equal;
+    lyht_value_equal_cb old_val_equal;
 
     LY_CHECK_ERR_RET(lyht_find_first(ht, hash, &rec), LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */
 

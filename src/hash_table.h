@@ -47,7 +47,7 @@ uint32_t dict_hash(const char *key, size_t len);
  * @param[in] cb_data User callback data.
  * @return false (non-equal) or true (equal).
  */
-typedef ly_bool (*values_equal_cb)(void *val1_p, void *val2_p, ly_bool mod, void *cb_data);
+typedef ly_bool (*lyht_value_equal_cb)(void *val1_p, void *val2_p, ly_bool mod, void *cb_data);
 
 /** reference value for 100% */
 #define LYHT_HUNDRED_PERCENTAGE 100
@@ -85,7 +85,7 @@ struct ht_rec {
 struct hash_table {
     uint32_t used;        /* number of values stored in the hash table (filled records) */
     uint32_t size;        /* always holds 2^x == size (is power of 2), actually number of records allocated */
-    values_equal_cb val_equal; /* callback for testing value equivalence */
+    lyht_value_equal_cb val_equal; /* callback for testing value equivalence */
     void *cb_data;        /* user data callback arbitrary value */
     uint16_t resize;      /* 0 - resizing is disabled, *
                            * 1 - enlarging is enabled, *
@@ -131,7 +131,7 @@ void lydict_clean(struct dict_table *dict);
  * @param[in] resize Whether to resize the table on too few/too many records taken.
  * @return Empty hash table, NULL on error.
  */
-struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, uint16_t resize);
+struct hash_table *lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *cb_data, uint16_t resize);
 
 /**
  * @brief Set hash table value equal callback.
@@ -140,7 +140,7 @@ struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb va
  * @param[in] new_val_equal New callback for checking value equivalence.
  * @return Previous callback for checking value equivalence.
  */
-values_equal_cb lyht_set_cb(struct hash_table *ht, values_equal_cb new_val_equal);
+lyht_value_equal_cb lyht_set_cb(struct hash_table *ht, lyht_value_equal_cb new_val_equal);
 
 /**
  * @brief Set hash table value equal callback user data.
@@ -219,7 +219,7 @@ LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @return LY_EEXIST in case the value is already present.
  * @return LY_EMEM in case of memory allocation failure.
  */
-LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal,
+LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal,
         void **match_p);
 
 /**
@@ -247,6 +247,6 @@ LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
  * @return LY_SUCCESS on success,
  * @return LY_ENOTFOUND if value was not found.
  */
-LY_ERR lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal);
+LY_ERR lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal);
 
 #endif /* LY_HASH_TABLE_H_ */

@@ -828,7 +828,7 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
 /**
  * @brief Callback for comparing 2 list unique leaf values.
  *
- * Implementation of ::values_equal_cb.
+ * Implementation of ::lyht_value_equal_cb.
  *
  * @param[in] cb_data 0 to compare all uniques, n to compare only n-th unique.
  */
