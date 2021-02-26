@@ -38,7 +38,7 @@
 ly_bool
 ly_should_print(const struct lyd_node *node, uint32_t options)
 {
-    const struct lyd_node *elem, *op;
+    const struct lyd_node *elem;
 
     if (options & LYD_PRINT_WD_TRIM) {
         /* do not print default nodes */
@@ -53,9 +53,7 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
         }
     } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK)) {
         /* LYD_PRINT_WD_EXPLICIT, find out if this is some input/output */
-        for (op = node; op && (op->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = lyd_parent(op)) {}
-
-        if (!op && (node->schema->flags & LYS_CONFIG_W)) {
+        if (!(node->schema->flags & (LYS_IS_INPUT | LYS_IS_OUTPUT | LYS_IS_NOTIF)) && (node->schema->flags & LYS_CONFIG_W)) {
             /* print only if it contains status data in its subtree */
             LYD_TREE_DFS_BEGIN(node, elem) {
                 if ((elem->schema->nodetype != LYS_CONTAINER) || (elem->schema->flags & LYS_PRESENCE)) {
