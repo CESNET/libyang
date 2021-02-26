@@ -1389,7 +1389,13 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
 free_mod_cleanup:
     lys_module_free(mod, NULL);
-    mod = NULL;
+    if (ret) {
+        mod = NULL;
+    } else {
+        /* return the existing module */
+        assert(mod_dup);
+        mod = mod_dup;
+    }
 
 cleanup:
     if (pctx) {
