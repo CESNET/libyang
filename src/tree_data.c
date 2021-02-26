@@ -1656,9 +1656,10 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 node->flags = LYD_DEFAULT | (lysc_node_when(node->schema) ? LYD_WHEN_TRUE : 0);
                 lyd_insert_node(parent, first, node);
 
-                /* cannot be a NP container with when */
-                assert(!lysc_node_when(iter));
-
+                if (lysc_node_when(iter) && node_when) {
+                    /* remember to resolve when */
+                    LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL));
+                }
                 if (diff) {
                     /* add into diff */
                     LY_CHECK_RET(lyd_val_diff_add(node, LYD_DIFF_OP_CREATE, diff));
