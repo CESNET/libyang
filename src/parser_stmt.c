@@ -301,7 +301,7 @@ lysp_stmt_when(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &when->ref, Y_STR_ARG, &when->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &when->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_WHEN, 0, &when->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "when");
@@ -432,7 +432,7 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &restr->emsg, Y_STR_ARG, &restr->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &restr->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), ly_stmt2str(stmt->kw));
@@ -512,7 +512,7 @@ lysp_stmt_any(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct l
             LY_CHECK_RET(lysp_stmt_when(ctx, child, &any->when));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &any->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &any->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw),
@@ -655,7 +655,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, st
             LY_CHECK_RET(lysp_stmt_type_enum_value_pos(ctx, child, &enm->value, &enm->flags, &enm->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &enm->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &enm->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), ly_stmt2str(stmt->kw));
@@ -864,7 +864,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
             LY_CHECK_RET(lysp_stmt_type_pattern_modifier(ctx, child, &restr->arg.str, &restr->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &restr->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_PATTERN, 0, &restr->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "pattern");
@@ -961,7 +961,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             type->flags |= LYS_SET_TYPE;
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &type->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_TYPE, 0, &type->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "type");
@@ -1034,7 +1034,7 @@ lysp_stmt_leaf(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             LY_CHECK_RET(lysp_stmt_when(ctx, child, &leaf->when));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &leaf->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_LEAF, 0, &leaf->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "leaf");
@@ -1294,7 +1294,7 @@ lysp_stmt_leaflist(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, str
             LY_CHECK_RET(lysp_stmt_when(ctx, child, &llist->when));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &llist->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_LEAF_LIST, 0, &llist->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "llist");
@@ -1365,7 +1365,7 @@ lysp_stmt_refine(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &rf->presence, Y_STR_ARG, &rf->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &rf->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_REFINE, 0, &rf->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "refine");
@@ -1420,7 +1420,7 @@ lysp_stmt_typedef(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, stru
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &tpdf->units, Y_STR_ARG, &tpdf->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &tpdf->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_TYPEDEF, 0, &tpdf->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "typedef");
@@ -1504,7 +1504,7 @@ lysp_stmt_inout(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
             LY_CHECK_RET(lysp_stmt_grouping(ctx, child, &inout_p->node, &inout_p->groupings));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &inout_p->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &inout_p->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), ly_stmt2str(stmt->kw));
@@ -1572,7 +1572,7 @@ lysp_stmt_action(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
             LY_CHECK_RET(lysp_stmt_grouping(ctx, child, &act->node, &act->groupings));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &act->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, parent ? LY_STMT_ACTION : LY_STMT_RPC, 0, &act->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), parent ? "action" : "rpc");
@@ -1669,7 +1669,7 @@ lysp_stmt_notif(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
             LY_CHECK_RET(lysp_stmt_grouping(ctx, child, &notif->node, &notif->groupings));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &notif->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NOTIFICATION, 0, &notif->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "notification");
@@ -1755,7 +1755,7 @@ lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, str
             LY_CHECK_RET(lysp_stmt_notif(ctx, child, &grp->node, &grp->notifs));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &grp->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_GROUPING, 0, &grp->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "grouping");
@@ -1844,7 +1844,7 @@ lysp_stmt_augment(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, stru
             LY_CHECK_RET(lysp_stmt_notif(ctx, child, &aug->node, &aug->notifs));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &aug->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_AUGMENT, 0, &aug->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "augment");
@@ -1905,7 +1905,7 @@ lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             LY_CHECK_RET(lysp_stmt_augment(ctx, child, &uses->node, &uses->augments));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &uses->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_USES, 0, &uses->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "uses");
@@ -1984,7 +1984,7 @@ lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             LY_CHECK_RET(lysp_stmt_uses(ctx, child, &cas->node, &cas->child));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &cas->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_CASE, 0, &cas->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "case");
@@ -2072,7 +2072,7 @@ lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
             LY_CHECK_RET(lysp_stmt_list(ctx, child, &choice->node, &choice->child));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &choice->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_CHOICE, 0, &choice->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "choice");
@@ -2173,7 +2173,7 @@ lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, st
             LY_CHECK_RET(lysp_stmt_notif(ctx, child, &cont->node, &cont->notifs));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &cont->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_CONTAINER, 0, &cont->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "container");
@@ -2288,7 +2288,7 @@ lysp_stmt_list(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             LY_CHECK_RET(lysp_stmt_notif(ctx, child, &list->node, &list->notifs));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_NONE, 0, &list->exts));
+            LY_CHECK_RET(lysp_stmt_ext(ctx, child, LY_STMT_LIST, 0, &list->exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), "list");
@@ -2360,7 +2360,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **resul
         ret = lysp_stmt_qnames(&pctx, stmt, (struct lysp_qname **)result, Y_STR_ARG, exts);
         break;
     case LY_STMT_EXTENSION_INSTANCE:
-        ret = lysp_stmt_ext(&pctx, stmt, LY_STMT_NONE, 0, exts);
+        ret = lysp_stmt_ext(&pctx, stmt, LY_STMT_EXTENSION_INSTANCE, 0, exts);
         break;
     case LY_STMT_FRACTION_DIGITS:
         ret = lysp_stmt_type_fracdigits(&pctx, stmt, *(uint8_t **)result, exts);

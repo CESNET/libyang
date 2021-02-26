@@ -1073,6 +1073,43 @@ lys_nodetype2str(uint16_t nodetype)
     }
 }
 
+API enum ly_stmt
+lys_nodetype2stmt(uint16_t nodetype)
+{
+    switch (nodetype) {
+    case LYS_CONTAINER:
+        return LY_STMT_CONTAINER;
+    case LYS_CHOICE:
+        return LY_STMT_CHOICE;
+    case LYS_LEAF:
+        return LY_STMT_LEAF;
+    case LYS_LEAFLIST:
+        return LY_STMT_LEAF_LIST;
+    case LYS_LIST:
+        return LY_STMT_LIST;
+    case LYS_ANYXML:
+        return LY_STMT_ANYXML;
+    case LYS_ANYDATA:
+        return LY_STMT_ANYDATA;
+    case LYS_CASE:
+        return LY_STMT_CASE;
+    case LYS_RPC:
+        return LY_STMT_RPC;
+    case LYS_ACTION:
+        return LY_STMT_ACTION;
+    case LYS_NOTIF:
+        return LY_STMT_NOTIFICATION;
+    case LYS_USES:
+        return LY_STMT_USES;
+    case LYS_INPUT:
+        return LY_STMT_INPUT;
+    case LYS_OUTPUT:
+        return LY_STMT_OUTPUT;
+    default:
+        return LY_STMT_NONE;
+    }
+}
+
 const char *
 lys_datatype2str(LY_DATA_TYPE basetype)
 {
