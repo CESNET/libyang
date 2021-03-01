@@ -403,7 +403,7 @@ invalid_character:
                 dp_position = exponent + e_val;
             } else {
                 /* adding decimal point before the integer with adding leading zero(s) */
-                num_len = labs(e_val) + 2;
+                num_len = labs(e_val) + 2 + minus;
                 dp_position = exponent + e_val;
             }
             dp_position -= minus;
