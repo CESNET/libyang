@@ -251,21 +251,37 @@ struct lyxp_expr;
 #define LYS_NODETYPE_MASK 0xffff  /**< Mask for nodetypes, the value is limited for 16 bits */
 
 /**
- * @brief Generic test for operation (RPC or Action) statements.
+ * @brief Generic test for operation statements.
+ *
+ * This macro matches a subset of schema nodes that maps to common ::lysc_node or ::lysp_node structures. To match all
+ * such nodes, use ::LY_STMT_IS_NODE()
+ *
+ * This macro matches action and RPC.
  */
 #define LY_STMT_IS_OP(STMT) (((STMT) == LY_STMT_ACTION) || ((STMT) == LY_STMT_RPC))
 
 /**
- * @brief Generic test for schema node (anydata, anyxml, augment, case, choice, container, grouping,
- * leaf, leaf-list, list and uses) statements.
+ * @brief Generic test for schema data nodes.
  *
- * Covers the statements that maps to a common ::lysc_node or ::lysp_node structures. Note that the
- * list of statements that can appear in parsed or compiled schema trees differs (e.g. no uses in compiled tree).
+ * This macro matches a subset of schema nodes that maps to common ::lysc_node or ::lysp_node structures. To match all
+ * such nodes, use ::LY_STMT_IS_NODE()
  *
- * The operations (action/RPC) and notification statements are not included since they are used to be stored
- * in a separated lists in schema node structures.
+ * This macro matches anydata, anyxml, augment, case, choice, container, grouping, leaf, leaf-list, list and uses. Note
+ * that the list of statements that can appear in parsed or compiled schema trees differs (e.g. no uses in compiled tree).
  */
-#define LY_STMT_IS_NODE(STMT) (((STMT) >= LY_STMT_ANYDATA) && ((STMT) <= LY_STMT_LIST))
+#define LY_STMT_IS_DATA_NODE(STMT) (((STMT) >= LY_STMT_ANYDATA) && ((STMT) <= LY_STMT_LIST))
+
+/**
+ * @brief Generic test for any schema node that maps to common ::lysc_node or ::lysp_node structures.
+ *
+ * Note that the list of statements that can appear in parsed or compiled schema trees differs (e.g. no uses in compiled tree).
+ *
+ * To check for some of the subsets of this test, try ::LY_STMT_IS_DATA_NODE() or ::LY_STMT_IS_OP().
+ *
+ * This macro matches action, anydata, anyxml, augment, case, choice, container, grouping, input, leaf, leaf-list, list,
+ * notification, output, RPC and uses.
+ */
+#define LY_STMT_IS_NODE(STMT) (((STMT) >= LY_STMT_NOTIFICATION) && ((STMT) <= LY_STMT_LIST))
 
 /**
  * @brief List of YANG statements
@@ -276,6 +292,8 @@ enum ly_stmt {
     LY_STMT_NOTIFICATION,       /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node_notif *`.
                                      The RPCs/Actions and Notifications are expected in a separated lists than the rest of
                                      data definition nodes as it is done in generic structures of libyang. */
+    LY_STMT_INPUT,
+    LY_STMT_OUTPUT,
 
 /* LY_STMT_IS_OP */
     LY_STMT_ACTION,             /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node_action *`.
@@ -285,7 +303,7 @@ enum ly_stmt {
                                      The RPCs/Actions and Notifications are expected in a separated lists than the rest of
                                      data definition nodes as it is done in generic structures of libyang. */
 
-/* LY_STMT_IS_NODE */
+/* LY_STMT_IS_DATA_NODE */
     LY_STMT_ANYDATA,            /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
                                      Note that due to ::lysc_node compatibility the anydata is expected to be actually
                                      mixed in the linked list with other ::lysc_node based nodes. The RPCs/Actions and
@@ -351,7 +369,6 @@ enum ly_stmt {
                                      Therefore there is no storage expected. */
     LY_STMT_IMPORT,
     LY_STMT_INCLUDE,
-    LY_STMT_INPUT,
     LY_STMT_KEY,
     LY_STMT_LENGTH,
     LY_STMT_MANDATORY,          /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
@@ -363,7 +380,6 @@ enum ly_stmt {
     LY_STMT_NAMESPACE,
     LY_STMT_ORDERED_BY,
     LY_STMT_ORGANIZATION,
-    LY_STMT_OUTPUT,
     LY_STMT_PATH,
     LY_STMT_PATTERN,
     LY_STMT_POSITION,
