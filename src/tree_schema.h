@@ -2117,7 +2117,7 @@ struct lysc_when **lysc_node_when(const struct lysc_node *node);
  * @return LY_SUCCESS on success,
  * @return LY_ERR value to terminate DFS and return this value.
  */
-typedef LY_ERR (*lysc_dfs_clb)(struct lysc_node *node, void *child, ly_bool *dfs_continue);
+typedef LY_ERR (*lysc_dfs_clb)(struct lysc_node *node, void *data, ly_bool *dfs_continue);
 
 /**
  * @brief DFS traversal of all the schema nodes in a (sub)tree including any actions and nested notifications.
