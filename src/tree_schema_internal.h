@@ -48,9 +48,6 @@ struct stmt_info_s {
 /* statements informations filled in tree_schema.c */
 extern struct stmt_info_s stmt_attr_info[];
 
-/* list of the YANG statements strings */
-#define ly_stmt2str(STMT) stmt_attr_info[STMT].name
-
 /* list of the deviate modifications strings */
 extern const char * const ly_devmod_list[];
 #define ly_devmod2str(TYPE) ly_devmod_list[TYPE]

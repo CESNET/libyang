@@ -442,6 +442,13 @@ typedef enum {
 const char *lyext_parent2str(LYEXT_PARENT type);
 
 /**
+ * @brief Stringify statement identifier.
+ * @param[in] stmt The statement identifier to stringify.
+ * @return Constant string representation of the given @p stmt.
+ */
+const char *ly_stmt2str(enum ly_stmt stmt);
+
+/**
  * @brief Convert nodetype to statement identifier
  * @param[in] nodetype Nodetype to convert.
  * @return Statement identifier representing the given @p nodetype.

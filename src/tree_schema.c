@@ -129,6 +129,12 @@ struct stmt_info_s stmt_attr_info[] = {
     [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
 };
 
+API const char *
+ly_stmt2str(enum ly_stmt stmt)
+{
+    return stmt_attr_info[stmt].name;
+}
+
 const char * const ly_devmod_list[] = {
     [LYS_DEV_NOT_SUPPORTED] = "not-supported",
     [LYS_DEV_ADD] = "add",
