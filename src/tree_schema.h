@@ -328,8 +328,6 @@ enum ly_stmt {
 
 /* rest */
     LY_STMT_ARGUMENT,
-    LY_STMT_ARG_TEXT,
-    LY_STMT_ARG_VALUE,
     LY_STMT_BASE,
     LY_STMT_BELONGS_TO,
     LY_STMT_BIT,
@@ -380,9 +378,6 @@ enum ly_stmt {
     LY_STMT_REVISION_DATE,
     LY_STMT_STATUS,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
     LY_STMT_SUBMODULE,
-    LY_STMT_SYNTAX_SEMICOLON,
-    LY_STMT_SYNTAX_LEFT_BRACE,
-    LY_STMT_SYNTAX_RIGHT_BRACE,
     LY_STMT_TYPE,               /**< in ::lysc_ext_substmt.storage stored as a pointer to `struct lysc_type *` (cardinality < #LY_STMT_CARD_SOME)
                                      or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_type **` */
     LY_STMT_TYPEDEF,
@@ -392,7 +387,21 @@ enum ly_stmt {
     LY_STMT_VALUE,
     LY_STMT_WHEN,
     LY_STMT_YANG_VERSION,
-    LY_STMT_YIN_ELEMENT
+    LY_STMT_YIN_ELEMENT,
+
+    /* separated from the list of statements
+     * the following tokens are part of the syntax and parsers have to work
+     * with them, but they are not a standard YANG statements
+     */
+    LY_STMT_SYNTAX_SEMICOLON,
+    LY_STMT_SYNTAX_LEFT_BRACE,
+    LY_STMT_SYNTAX_RIGHT_BRACE,
+
+    /*
+     * YIN-specific tokens, still they are part of the syntax, but not the standard statements
+     */
+    LY_STMT_ARG_TEXT,
+    LY_STMT_ARG_VALUE
 };
 
 /**
