@@ -1,10 +1,9 @@
-libyang (1.0.215-1~1.gbpb054ac) UNRELEASED; urgency=medium
+libyang (1.0.215-1) unstable; urgency=medium
 
-  ** SNAPSHOT build @b054ac9257097809b1433cbd00ddc69ef8fb24c9 **
+  * Remove C++ symbols file, it's mostly impossible to maintain
+  * Update the libyang1 symbols file with the new symbol
 
-  * UNRELEASED
-
- -- Ondřej Surý <ondrej@debian.org>  Tue, 02 Mar 2021 14:15:16 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 02 Mar 2021 14:27:37 +0100
 
 libyang (1.0.184-2) unstable; urgency=medium
 
