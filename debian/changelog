@@ -1,3 +1,11 @@
+libyang (1.0.215-1~1.gbpb054ac) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @b054ac9257097809b1433cbd00ddc69ef8fb24c9 **
+
+  * UNRELEASED
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 02 Mar 2021 14:15:16 +0100
+
 libyang (1.0.184-2) unstable; urgency=medium
 
   * Move the C++ symbols file to be amd64 only (Closes: #969073)
