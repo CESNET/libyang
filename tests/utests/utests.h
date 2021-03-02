@@ -428,27 +428,19 @@ struct utest_context {
  * @param[in] ARGUMENT  expected optional value of the extension's argument
  * @param[in] CHILD     0 -> node doesnt have child, 1 -> node have children
  * @param[in] COMPILED  0 -> compiled data dosnt exists, 1 -> compiled data exists
- * @param[in] INSUBSTMS expected value identifying placement of the extension instance
- * @param[in] INSUBSTMS_INDEX expected indentifi index
- * @param[in] PARENT    0-> check if node is root, 1-> check if node is not root
- * @param[in] PARENT_TYPE expected parent type ::LYEXT_PARENT. not relevat if PARENT == 0
+ * @param[in] PARENT_STMT expected value identifying placement of the extension instance
+ * @param[in] PARENT_STMT_INDEX expected indentifi index
  * @param[in] FORMAT    expected format
  */
-#define CHECK_LYSP_EXT_INSTANCE(NODE, ARGUMENT, CHILD, COMPILED, INSUBSTMT, INSUBSTMT_INDEX, NAME, HAS_PARENT, PARENT_TYPE, FORMAT) \
+#define CHECK_LYSP_EXT_INSTANCE(NODE, ARGUMENT, CHILD, COMPILED, PARENT_STMT, PARENT_STMT_INDEX, NAME, FORMAT) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->argument, ARGUMENT); \
     CHECK_POINTER((NODE)->child, CHILD); \
     CHECK_POINTER((NODE)->compiled, COMPILED); \
     /*assert_int_equal((NODE)->flags, LYS_INTERNAL);*/ \
-    assert_int_equal((NODE)->insubstmt, INSUBSTMT); \
-    assert_int_equal((NODE)->insubstmt_index, INSUBSTMT_INDEX); \
+    assert_int_equal((NODE)->parent_stmt, PARENT_STMT); \
+    assert_int_equal((NODE)->parent_stmt_index, PARENT_STMT_INDEX); \
     assert_string_equal((NODE)->name, NAME); \
-    if (HAS_PARENT) { \
-        assert_non_null((NODE)->parent); \
-        assert_int_equal((NODE)->parent_type, PARENT_TYPE); \
-    } else { \
-        assert_null((NODE)->parent); \
-    } \
     assert_int_equal((NODE)->format, FORMAT);
 
 /**

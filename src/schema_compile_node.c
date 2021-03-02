@@ -241,7 +241,7 @@ lys_compile_when_(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags
     (*when)->context = (struct lysc_node *)ctx_node;
     DUP_STRING_GOTO(ctx->ctx, when_p->dsc, (*when)->dsc, ret, done);
     DUP_STRING_GOTO(ctx->ctx, when_p->ref, (*when)->ref, ret, done);
-    COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), LYEXT_PAR_WHEN, ret, done);
+    COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), ret, done);
     (*when)->flags = flags & LYS_STATUS_MASK;
 
 done:
@@ -302,7 +302,7 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_mu
     DUP_STRING_GOTO(ctx->ctx, must_p->emsg, must->emsg, ret, done);
     DUP_STRING_GOTO(ctx->ctx, must_p->dsc, must->dsc, ret, done);
     DUP_STRING_GOTO(ctx->ctx, must_p->ref, must->ref, ret, done);
-    COMPILE_EXTS_GOTO(ctx, must_p->exts, must->exts, must, LYEXT_PAR_MUST, ret, done);
+    COMPILE_EXTS_GOTO(ctx, must_p->exts, must->exts, must, ret, done);
 
 done:
     return ret;
@@ -1088,7 +1088,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, patterns_p[u].ref, (*pattern)->ref, ret, done);
-        COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), LYEXT_PAR_PATTERN, ret, done);
+        COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), ret, done);
     }
 done:
     return ret;
@@ -1280,8 +1280,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         } else {
             e->position = cur_pos;
         }
-        COMPILE_EXTS_GOTO(ctx, enums_p[u].exts, e->exts, e, basetype == LY_TYPE_ENUM ? LYEXT_PAR_TYPE_ENUM :
-                LYEXT_PAR_TYPE_BIT, ret, done);
+        COMPILE_EXTS_GOTO(ctx, enums_p[u].exts, e->exts, e, ret, done);
 
         if (basetype == LY_TYPE_BITS) {
             /* keep bits ordered by position */
@@ -1403,7 +1402,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                     base ? ((struct lysc_type_bin *)base)->length : NULL, &bin->length));
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, bin->length->exts, bin->length, LYEXT_PAR_LENGTH, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, bin->length->exts, bin->length, ret, cleanup);
             }
         }
         break;
@@ -1461,7 +1460,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
                     base ? ((struct lysc_type_dec *)base)->range : NULL, &dec->range));
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, LYEXT_PAR_RANGE, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, ret, cleanup);
             }
         }
         break;
@@ -1473,7 +1472,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                     base ? ((struct lysc_type_str *)base)->length : NULL, &str->length));
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, str->length->exts, str->length, LYEXT_PAR_LENGTH, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, str->length->exts, str->length, ret, cleanup);
             }
         } else if (base && ((struct lysc_type_str *)base)->length) {
             str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str *)base)->length);
@@ -1521,7 +1520,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
                     base ? ((struct lysc_type_num *)base)->range : NULL, &num->range));
             if (!tpdfname) {
-                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, num->range->exts, num->range, LYEXT_PAR_RANGE, ret, cleanup);
+                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, num->range->exts, num->range, ret, cleanup);
             }
         }
         break;
@@ -1920,7 +1919,7 @@ preparenext:
         ++(*type)->refcount;
     }
 
-    COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, (*type), LYEXT_PAR_TYPE, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, (*type), ret, cleanup);
 
 cleanup:
     ly_set_erase(&tpdf_chain, free);
@@ -2383,7 +2382,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     LY_CHECK_GOTO(ret = node_compile_spec(ctx, pnode, node), cleanup);
 
     /* final compilation tasks that require the node to be connected */
-    COMPILE_EXTS_GOTO(ctx, pnode->exts, node->exts, node, LYEXT_PAR_NODE, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, pnode->exts, node->exts, node, ret, cleanup);
     if (node->flags & LYS_MAND_TRUE) {
         /* inherit LYS_MAND_TRUE in parent containers */
         lys_compile_mandatory_parents(parent, 1);
@@ -2425,8 +2424,7 @@ lys_compile_node_action_inout(struct lysc_ctx *ctx, struct lysp_node *pnode, str
     struct lysc_node_action_inout *inout = (struct lysc_node_action_inout *)node;
 
     COMPILE_ARRAY_GOTO(ctx, inout_p->musts, inout->musts, lys_compile_must, ret, done);
-    COMPILE_EXTS_GOTO(ctx, inout_p->exts, inout->exts, inout, inout_p->nodetype == LYS_INPUT ? LYEXT_PAR_INPUT : LYEXT_PAR_OUTPUT,
-            ret, done);
+    COMPILE_EXTS_GOTO(ctx, inout_p->exts, inout->exts, inout, ret, done);
     ctx->options |= (inout_p->nodetype == LYS_INPUT) ? LYS_COMPILE_RPC_INPUT : LYS_COMPILE_RPC_OUTPUT;
 
     LY_LIST_FOR(inout_p->child, child_p) {

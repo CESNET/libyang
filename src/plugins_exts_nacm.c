@@ -55,7 +55,7 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
 
         inherited->def = lysc_ext_dup(arg->c_ext->def);
         inherited->parent = node;
-        inherited->parent_type = LYEXT_PAR_NODE;
+        inherited->parent_stmt = lys_nodetype2stmt(node->nodetype);
         if (arg->c_ext->argument) {
             LY_CHECK_RET(lydict_insert(node->module->ctx, arg->c_ext->argument, strlen(arg->c_ext->argument),
                     &inherited->argument));
@@ -92,9 +92,9 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
     }
 
     /* check that the extension is instantiated at an allowed place - data node */
-    if (c_ext->parent_type != LYEXT_PAR_NODE) {
+    if (!LY_STMT_IS_NODE(c_ext->parent_stmt)) {
         lyext_log(c_ext, LY_LLWRN, 0, cctx->path, "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
-                p_ext->name, lyext_parent2str(c_ext->parent_type));
+                p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_ENOT;
     } else {
         parent = (struct lysc_node *)c_ext->parent;

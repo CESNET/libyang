@@ -1824,7 +1824,7 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
     LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
 
     for ( ; index < LY_ARRAY_COUNT(ext); index++) {
-        if (ext[index].insubstmt == substmt) {
+        if (ext[index].parent_stmt == substmt) {
             return index;
         }
     }

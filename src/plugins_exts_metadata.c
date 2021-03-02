@@ -52,9 +52,9 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     LY_ARRAY_COUNT_TYPE u;
 
     /* annotations can appear only at the top level of a YANG module or submodule */
-    if (c_ext->parent_type != LYEXT_PAR_MODULE) {
+    if ((c_ext->parent_stmt != LY_STMT_MODULE) && (c_ext->parent_stmt != LY_STMT_SUBMODULE)) {
         lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
-                p_ext->name, lyext_parent2str(c_ext->parent_type));
+                p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_EVALID;
     }
     /* check mandatory argument */

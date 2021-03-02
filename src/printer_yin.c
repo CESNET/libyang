@@ -109,7 +109,7 @@ ypr_substmt(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index
 
     LEVEL++;
     LY_ARRAY_FOR(ext, u) {
-        if ((((struct lysp_ext_instance *)ext)[u].insubstmt != substmt) || (((struct lysp_ext_instance *)ext)[u].insubstmt_index != substmt_index)) {
+        if ((((struct lysp_ext_instance *)ext)[u].parent_stmt != substmt) || (((struct lysp_ext_instance *)ext)[u].parent_stmt_index != substmt_index)) {
             continue;
         }
         yprp_extension_instances(ctx, substmt, substmt_index, &((struct lysp_ext_instance *)ext)[u], &extflag, 1);
@@ -1261,7 +1261,7 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
         }
 
         count--;
-        if ((ext->flags & LYS_INTERNAL) || (ext->insubstmt != substmt) || (ext->insubstmt_index != substmt_index)) {
+        if ((ext->flags & LYS_INTERNAL) || (ext->parent_stmt != substmt) || (ext->parent_stmt_index != substmt_index)) {
             continue;
         }
 

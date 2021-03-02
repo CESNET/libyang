@@ -3172,8 +3172,8 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subele
     LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->name, strlen(e->name), LY_PREF_XML, &ctx->xmlctx->ns,
             &e->format, &e->prefix_data));
 
-    e->insubstmt = subelem;
-    e->insubstmt_index = subelem_index;
+    e->parent_stmt = subelem;
+    e->parent_stmt_index = subelem_index;
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
 

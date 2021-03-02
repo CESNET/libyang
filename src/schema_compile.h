@@ -159,13 +159,13 @@ struct lysc_unres_dflt {
         } \
     }
 
-#define COMPILE_EXTS_GOTO(CTX, EXTS_P, EXT_C, PARENT, PARENT_TYPE, RET, GOTO) \
+#define COMPILE_EXTS_GOTO(CTX, EXTS_P, EXT_C, PARENT, RET, GOTO) \
     if (EXTS_P) { \
         LY_ARRAY_COUNT_TYPE __u = (EXT_C) ? LY_ARRAY_COUNT(EXT_C) : 0; \
         LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, __u + LY_ARRAY_COUNT(EXTS_P), RET, GOTO); \
         LY_ARRAY_FOR(EXTS_P, __u) { \
             LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT, PARENT_TYPE, NULL); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__u], &(EXT_C)[LY_ARRAY_COUNT(EXT_C) - 1], PARENT, NULL); \
             if (RET == LY_ENOT) { \
                 LY_ARRAY_DECREMENT(EXT_C); \
                 RET = LY_SUCCESS; \
@@ -182,14 +182,13 @@ struct lysc_unres_dflt {
  * @param[in] ext_p Parsed extension instance.
  * @param[in,out] ext Prepared compiled extension instance.
  * @param[in] parent Extension instance parent.
- * @param[in] parent_type Extension instance parent type.
  * @param[in] ext_mod Optional module with the extension instance extension definition, set only for internal annotations.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the extension is disabled and should be ignored.
  * @return LY_ERR on error.
  */
 LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
-        LYEXT_PARENT parent_type, const struct lys_module *ext_mod);
+        const struct lys_module *ext_mod);
 
 /**
  * @brief Compile information from the identity statement
