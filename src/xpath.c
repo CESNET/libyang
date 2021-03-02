@@ -1565,7 +1565,7 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     ly_err_free(err);
     if (rc) {
         /* invalid value */
-        free(str);
+        /* function store automaticaly dealloc value when fail */
         goto fill;
     }
 
