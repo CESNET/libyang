@@ -269,9 +269,9 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_UNEXPNODE      LYVE_DATA, "Unexpected data %s node \"%s\" found."
 #define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
 
-#define LY_ERRMSG_NOPATTERN     /* LYVE_DATA */ "Unsatisfied pattern - \"%.*s\" does not conform to %s\"%s\"."
-#define LY_ERRMSG_NOLENGTH      /* LYVE_DATA */ "Unsatisfied length - string length \"%s\" is not allowed."
-#define LY_ERRMSG_NORANGE       /* LYVE_DATA */ "Unsatisfied range - value \"%s\" is out of the allowed range."
+#define LY_ERRMSG_NOPATTERN /* LYVE_DATA */ "Unsatisfied pattern - \"%.*s\" does not conform to %s\"%s\"."
+#define LY_ERRMSG_NOLENGTH /* LYVE_DATA */ "Unsatisfied length - string length \"%s\" is not allowed."
+#define LY_ERRMSG_NORANGE /* LYVE_DATA */ "Unsatisfied range - value \"%s\" is out of the allowed range."
 
 /* RFC 7950 section 15 errors */
 #define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
@@ -281,9 +281,9 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_NOMAND_CHOIC   LYVE_DATA, "Mandatory choice \"%s\" data do not exist."
 
 /* RFC 7950 section 15 error messages used in type plugin validation callbacks */
-#define LY_ERRMSG_NOLREF_VAL    /* LYVE_DATA */ "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value."
-#define LY_ERRMSG_NOLREF_INST   /* LYVE_DATA */ "Invalid leafref value \"%s\" - no existing target instance \"%s\"."
-#define LY_ERRMSG_NOINST        /* LYVE_DATA */ "Invalid instance-identifier \"%s\" value - required instance not found."
+#define LY_ERRMSG_NOLREF_VAL /* LYVE_DATA */ "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value."
+#define LY_ERRMSG_NOLREF_INST /* LYVE_DATA */ "Invalid leafref value \"%s\" - no existing target instance \"%s\"."
+#define LY_ERRMSG_NOINST /* LYVE_DATA */ "Invalid instance-identifier \"%s\" value - required instance not found."
 
 /******************************************************************************
  * Context

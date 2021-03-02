@@ -20,10 +20,10 @@
 #include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 #include "common.h"
 #include "compat.h"
@@ -39,7 +39,6 @@
 #include "xml.h"
 #include "xpath.h"
 
-
 /*
  * @brief function create and fill error structure. Error message is created from parameter err_msg and folowing parameters simulary to function printf.
  *
@@ -50,18 +49,20 @@
  * @return Created error information structure that can be freed using ::ly_err_free().
  */
 static struct ly_err_item *
-ly_err_msg_create(LY_ERR *err_code, LY_VECODE err_vecode, const char *err_msg, ...){
+ly_err_msg_create(LY_ERR *err_code, LY_VECODE err_vecode, const char *err_msg, ...)
+{
     struct ly_err_item *ret;
     char *msg;
     int  print_ret;
+
     va_list(print_args);
 
-    if (err_msg != NULL){
+    if (err_msg != NULL) {
         va_start(print_args, err_msg);
         print_ret = vasprintf(&msg, err_msg, print_args);
     }
 
-    if (print_ret < 0 || err_msg == NULL) {
+    if ((print_ret < 0) || (err_msg == NULL)) {
         ret = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         *err_code = LY_EMEM;
     } else {
@@ -70,7 +71,6 @@ ly_err_msg_create(LY_ERR *err_code, LY_VECODE err_vecode, const char *err_msg, .
 
     return ret;
 }
-
 
 /**
  * @brief Find import prefix in imports.
@@ -1326,7 +1326,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
         }
     }
     /* enum not found */
-    ret  = LY_EVALID;
+    ret = LY_EVALID;
     *err = ly_err_msg_create(&ret, LYVE_DATA,
             "Invalid enumeration value \"%.*s\".", (int)value_len, value);
     goto cleanup;

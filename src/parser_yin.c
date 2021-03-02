@@ -3305,7 +3305,7 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subel
 
         /* store prefix data for the argument as well */
         LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->argument, strlen(e->argument), LY_PREF_XML,
-            &ctx->xmlctx->ns, &e->format, &e->prefix_data));
+                &ctx->xmlctx->ns, &e->format, &e->prefix_data));
 
         /* parser next */
         LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));

@@ -2160,8 +2160,10 @@ LY_ERR
 yang_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lys_ypr_ctx ctx_ = {.out = out, .level = 0, .module = submodp->mod, .schema = LYS_YPR_PARSED,
-            .options = options}, *ctx = &ctx_;
+    struct lys_ypr_ctx ctx_ = {
+        .out = out, .level = 0, .module = submodp->mod, .schema = LYS_YPR_PARSED,
+        .options = options
+    }, *ctx = &ctx_;
 
     ly_print_(ctx->out, "%*ssubmodule %s {\n", INDENT, submodp->name);
     LEVEL++;

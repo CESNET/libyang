@@ -1173,6 +1173,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
         const char *prefix, const char *module_name, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
+
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, !prefix || !strcmp(prefix, module_name), LY_EINVAL);
 
     if (!ctx) {
