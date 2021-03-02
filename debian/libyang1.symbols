@@ -1,4 +1,4 @@
-# SymbolsHelper-Confirmed: 1.0.184 amd64
+# SymbolsHelper-Confirmed: 1.0.215 amd64
 libyang.so.1 libyang1 #MINVER#
 * Build-Depends-Package: libyang-dev
  ly_clean_plugins@Base 1.0.130
@@ -76,6 +76,7 @@ libyang.so.1 libyang1 #MINVER#
  lyd_dup_withsiblings@Base 1.0.130
  lyd_find_instance@Base 1.0.130
  lyd_find_path@Base 1.0.130
+ lyd_find_path_hash_based@Base 1.0.215
  lyd_find_sibling@Base 1.0.130
  lyd_find_sibling_set@Base 1.0.130
  lyd_find_sibling_val@Base 1.0.130
