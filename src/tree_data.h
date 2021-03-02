@@ -766,6 +766,14 @@ struct lyd_node_opaq {
 };
 
 /**
+ * @brief Macro for getting the value from an opaque node.
+ *
+ * @param[in] node Opaque node with the value.
+ * @return Node value.
+ */
+#define LYD_OPAQ_VALUE(node) ((struct lyd_node_opaq *)(node))->value
+
+/**
  * @brief Get the generic parent pointer of a data node.
  *
  * @param[in] node Node whose parent pointer to get.
