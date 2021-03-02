@@ -125,7 +125,7 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, u
         const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     if (*value) {
-        LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, lyext_substmt2str(stmt->kw));
+        LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(stmt->kw));
         return LY_EVALID;
     }
 
@@ -138,7 +138,7 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, u
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, substmt_index, exts));
             break;
         default:
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), lyext_substmt2str(stmt->kw));
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), ly_stmt2str(stmt->kw));
             return LY_EVALID;
         }
     }
@@ -175,7 +175,7 @@ lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, LY_ARRAY_COUNT(*qnames) - 1, exts));
             break;
         default:
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), lyext_substmt2str(stmt->kw));
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), ly_stmt2str(stmt->kw));
             return LY_EVALID;
         }
     }
@@ -211,7 +211,7 @@ lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, LY_ARRAY_COUNT(*texts) - 1, exts));
             break;
         default:
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), lyext_substmt2str(stmt->kw));
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(child->kw), ly_stmt2str(stmt->kw));
             return LY_EVALID;
         }
     }
