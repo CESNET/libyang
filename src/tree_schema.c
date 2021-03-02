@@ -1005,8 +1005,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     ext_p->format = LY_PREF_SCHEMA;
     ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
-    ext_p->insubstmt = LY_STMT_NONE;
-    ext_p->insubstmt_index = 0;
+    ext_p->parent_stmt = LY_STMT_MODULE;
+    ext_p->parent_stmt_index = 0;
 
     ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
@@ -1071,8 +1071,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     ext_p->format = LY_PREF_SCHEMA;
     ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
-    ext_p->insubstmt = LY_STMT_NONE;
-    ext_p->insubstmt_index = 0;
+    ext_p->parent_stmt = LY_STMT_MODULE;
+    ext_p->parent_stmt_index = 0;
 
     ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
@@ -1122,8 +1122,8 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
     ext_p->format = LY_PREF_SCHEMA;
     ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
-    ext_p->insubstmt = LY_STMT_NONE;
-    ext_p->insubstmt_index = 0;
+    ext_p->parent_stmt = LY_STMT_MODULE;
+    ext_p->parent_stmt_index = 0;
 
     ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);
@@ -1173,8 +1173,8 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
     ext_p->format = LY_PREF_SCHEMA;
     ext_p->prefix_data = mod;
     ext_p->flags = LYS_INTERNAL;
-    ext_p->insubstmt = LY_STMT_NONE;
-    ext_p->insubstmt_index = 0;
+    ext_p->parent_stmt = LY_STMT_MODULE;
+    ext_p->parent_stmt_index = 0;
 
     ext_p->child = stmt = calloc(1, sizeof *ext_p->child);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(mod->mod->ctx), LY_EMEM);

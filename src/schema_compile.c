@@ -62,7 +62,7 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
         DUP_STRING_GOTO(ctx->ctx, ext_p->name, ext_p->compiled->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, ext_p->argument, ext_p->compiled->argument, ret, done);
         ext_p->compiled->module = (struct lys_module *)ext_mod;
-        COMPILE_EXTS_GOTO(ctx, ext_p->exts, ext_p->compiled->exts, *ext, LYEXT_PAR_EXT, ret, done);
+        COMPILE_EXTS_GOTO(ctx, ext_p->exts, ext_p->compiled->exts, *ext, ret, done);
 
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
@@ -83,7 +83,7 @@ done:
 
 LY_ERR
 lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
-        LYEXT_PARENT parent_type, const struct lys_module *ext_mod)
+        const struct lys_module *ext_mod)
 {
     LY_ERR r, ret = LY_SUCCESS;
     const char *tmp, *name, *prefix;
@@ -93,13 +93,12 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument, ret);
     LY_CHECK_RET(ret);
 
-    ext->insubstmt = ext_p->insubstmt;
-    ext->insubstmt_index = ext_p->insubstmt_index;
+    ext->parent_stmt = ext_p->parent_stmt;
+    ext->parent_stmt_index = ext_p->parent_stmt_index;
     ext->module = ctx->cur_mod;
     ext->parent = parent;
-    ext->parent_type = parent_type;
 
-    lysc_update_path(ctx, ext->parent_type == LYEXT_PAR_NODE ? ((struct lysc_node *)ext->parent)->module : NULL, "{extension}");
+    lysc_update_path(ctx, LY_STMT_IS_NODE(ext->parent_stmt) ? ((struct lysc_node *)ext->parent)->module : NULL, "{extension}");
     lysc_update_path(ctx, NULL, ext_p->name);
 
     /* parse the prefix */
@@ -397,7 +396,7 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
         DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].ref, ident->ref, ret, done);
         ident->module = ctx_sc->cur_mod;
         /* backlinks (derived) can be added no sooner than when all the identities in the current module are present */
-        COMPILE_EXTS_GOTO(ctx_sc, identities_p[u].exts, ident->exts, ident, LYEXT_PAR_IDENT, ret, done);
+        COMPILE_EXTS_GOTO(ctx_sc, identities_p[u].exts, ident->exts, ident, ret, done);
         ident->flags = identities_p[u].flags;
 
         lysc_update_path(ctx_sc, NULL, NULL);
@@ -1705,7 +1704,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     }
 
     /* extension instances */
-    COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
+    COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, ret, error);
 
     /* the same for submodules */
     LY_ARRAY_FOR(sp->includes, u) {
@@ -1727,7 +1726,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
             LY_CHECK_GOTO(ret, error);
         }
 
-        COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
+        COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, ret, error);
     }
     ctx.pmod = sp;
 

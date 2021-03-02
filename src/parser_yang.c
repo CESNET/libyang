@@ -862,8 +862,8 @@ parse_ext(struct lys_yang_parser_ctx *ctx, const char *ext_name, size_t ext_name
     /* store the rest of information */
     e->format = LY_PREF_SCHEMA;
     e->prefix_data = ctx->parsed_mod;
-    e->insubstmt = insubstmt;
-    e->insubstmt_index = insubstmt_index;
+    e->parent_stmt = insubstmt;
+    e->parent_stmt_index = insubstmt_index;
 
     YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, ) {
         LY_CHECK_RET(parse_ext_substmt(ctx, kw, word, word_len, &e->child));

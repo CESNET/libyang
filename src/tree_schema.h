@@ -421,43 +421,6 @@ enum ly_stmt {
 };
 
 /**
- * @brief Extension instance structure parent enumeration
- */
-typedef enum {
-    LYEXT_PAR_MODULE,    /**< ::lysc_module */
-    LYEXT_PAR_NODE,      /**< ::lysc_node (and the derived structures including ::lysc_node_action and ::lysc_node_notif) */
-    LYEXT_PAR_INPUT,     /**< ::lysc_node_action_inout */
-    LYEXT_PAR_OUTPUT,    /**< ::lysc_node_action_inout */
-    LYEXT_PAR_TYPE,      /**< ::lysc_type */
-    LYEXT_PAR_TYPE_BIT,  /**< ::lysc_type_bitenum_item */
-    LYEXT_PAR_TYPE_ENUM, /**< ::lysc_type_bitenum_item */
-    LYEXT_PAR_MUST,      /**< ::lysc_must */
-    LYEXT_PAR_PATTERN,   /**< ::lysc_pattern */
-    LYEXT_PAR_LENGTH,    /**< ::lysc_range */
-    LYEXT_PAR_RANGE,     /**< ::lysc_range */
-    LYEXT_PAR_WHEN,      /**< ::lysc_when */
-    LYEXT_PAR_IDENT,     /**< ::lysc_ident */
-    LYEXT_PAR_EXT,       /**< ::lysc_ext */
-    LYEXT_PAR_IMPORT     /**< ::lysp_import */
-#if 0
-    LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
-    LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
-    LYEXT_PAR_REFINE,    /**< ::lysp_refine */
-    LYEXT_PAR_DEVIATION, /**< ::lysp_deviation */
-    LYEXT_PAR_DEVIATE,   /**< ::lysp_deviate */
-    LYEXT_PAR_INCLUDE,   /**< ::lysp_include */
-    LYEXT_PAR_REVISION   /**< ::lysp_revision */
-#endif
-} LYEXT_PARENT;
-
-/**
- * @brief Stringify extension instance parent type.
- * @param[in] type Parent type to stringify.
- * @return Constant string with the name of the parent statement.
- */
-const char *lyext_parent2str(LYEXT_PARENT type);
-
-/**
  * @brief Stringify statement identifier.
  * @param[in] stmt The statement identifier to stringify.
  * @return Constant string representation of the given @p stmt.
@@ -544,15 +507,14 @@ struct lysp_ext_instance {
                                                  (see ::ly_type_store_resolve_prefix()) */
 
     void *parent;                           /**< pointer to the parent element holding the extension instance(s), use
-                                                 ::lysp_ext_instance#parent_type to access the schema element */
+                                                 ::lysp_ext_instance#parent_stmt to access the schema element */
     struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
     struct lysc_ext_instance *compiled;     /**< pointer to the compiled data if any - in case the source format is YIN,
                                                  some of the information (argument) are available only after compilation */
-    enum ly_stmt insubstmt;                 /**< value identifying placement of the extension instance */
-    LY_ARRAY_COUNT_TYPE insubstmt_index;    /**< in case the instance is in a substatement, this identifies
-                                                 the index of that substatement */
+    enum ly_stmt parent_stmt;               /**< value identifying placement of the extension instance */
+    LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< in case the instance is in a substatement, this identifies
+                                                 the index of that substatement in its [sized array](@ref sizedarrays) (if any) */
     uint16_t flags;                         /**< LYS_INTERNAL value (@ref snodeflags) */
-    LYEXT_PARENT parent_type;               /**< type of the parent structure */
 };
 
 /**
@@ -1421,19 +1383,18 @@ struct lysc_ext {
  * @brief YANG extension instance
  */
 struct lysc_ext_instance {
-    uint32_t insubstmt_index;        /**< in case the instance is in a substatement that can appear multiple times,
-                                          this identifies the index of the substatement for this extension instance */
-    struct lys_module *module;       /**< module where the extension instantiated is defined */
     struct lysc_ext *def;            /**< pointer to the extension definition */
-    void *parent;                    /**< pointer to the parent element holding the extension instance(s), use
-                                          ::lysc_ext_instance#parent_type to access the schema element */
     const char *argument;            /**< optional value of the extension's argument */
-    enum ly_stmt insubstmt;          /**< value identifying placement of the extension instance in specific statement */
-    LYEXT_PARENT parent_type;        /**< type of the parent structure */
+    struct lys_module *module;       /**< module where the extension instantiated is defined */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
     struct lysc_ext_substmt *substmts; /**< list of allowed substatements with the storage to access the present substatements */
     void *data;                      /**< private plugins's data, not used by libyang */
+
+    void *parent;                    /**< pointer to the parent element holding the extension instance(s), use
+                                          ::lysc_ext_instance#parent_stmt to access the schema element */
+    enum ly_stmt parent_stmt;        /**< value identifying placement of the extension instance in specific statement */
+    LY_ARRAY_COUNT_TYPE parent_stmt_index; /**< in case the instance is in a substatement, this identifies
+                                          the index of that substatement in its [sized array](@ref sizedarrays) (if any) */
 };
 
 /**

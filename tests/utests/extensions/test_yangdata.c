@@ -118,7 +118,7 @@ test_schema(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
     assert_null(mod->compiled->exts);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
-            "Extension rc:yang-data is ignored since it appears as a non top-level statement in \"data node\" statement.",
+            "Extension rc:yang-data is ignored since it appears as a non top-level statement in \"container\" statement.",
             "/b:b/{extension='rc:yang-data'}/template");
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
