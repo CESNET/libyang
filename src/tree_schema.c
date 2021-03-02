@@ -3285,7 +3285,9 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             }
         }
     } else {
-        memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
+        if (node->iffeature_size) {
+            memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
+        }
     }
 
     /*
@@ -3829,7 +3831,9 @@ lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_
             if (ctx->models.list[i] == module) {
                 /* move all the models to not change the order in the list */
                 ctx->models.used--;
-                memmove(&ctx->models.list[i], ctx->models.list[i + 1], (ctx->models.used - i) * sizeof *ctx->models.list);
+                if (i < ctx->models.used) {
+                    memmove(&ctx->models.list[i], ctx->models.list[i + 1], (ctx->models.used - i) * sizeof *ctx->models.list);
+                }
                 ctx->models.list[ctx->models.used] = NULL;
                 /* we are done */
                 break;
@@ -3887,7 +3891,7 @@ lys_features_change(const struct lys_module *module, const char *name, int op, i
 {
     int all = 0;
     int i, j, k;
-    int progress, faili, failj, failk;
+    int progress, faili = 0, failj = 0, failk = 0;
 
     uint8_t fsize;
     struct lys_feature *f;

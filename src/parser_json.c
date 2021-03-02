@@ -369,7 +369,7 @@ static unsigned int
 json_get_anydata(struct lyd_node_anydata *any, const char *data)
 {
     struct ly_ctx *ctx = any->schema->module->ctx;
-    unsigned int len = 0, c = 0;
+    unsigned int len = 0, c = 0, skip = 0;
     char *str;
 
     if (data[len] == '"') {
@@ -398,10 +398,23 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
     do {
         switch (data[len]) {
         case '{':
-            c++;
+            if (!skip) {
+                c++;
+            }
             break;
         case '}':
-            c--;
+            if (!skip) {
+                c--;
+            }
+            break;
+        case '\\':
+            /* when parsing a string, ignore escaped quotes to not end it prematurely */
+            if (skip && data[len + 1]) {
+                len++;
+            }
+            break;
+        case '\"':
+            skip = !skip;
             break;
         default:
             break;
@@ -449,6 +462,17 @@ repeat:
     leaf->value_type = stype->base;
 
     if (data[len] == '"') {
+        if ((leaf->value_type == LY_TYPE_INT8) || (leaf->value_type == LY_TYPE_INT16) ||
+                (leaf->value_type == LY_TYPE_INT32) || (leaf->value_type == LY_TYPE_UINT8) ||
+                (leaf->value_type == LY_TYPE_UINT16) || (leaf->value_type == LY_TYPE_UINT32)) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected number, but found string)");
+            return 0;
+        }
+        if (leaf->value_type == LY_TYPE_BOOL) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected boolean, but found string)");
+            return 0;
+        }
+
         /* string representations */
         ++len;
         str = lyjson_parse_text(ctx, &data[len], &r);
@@ -464,6 +488,12 @@ repeat:
         }
         len += r + 1;
     } else if (data[len] == '-' || isdigit(data[len])) {
+        if ((leaf->value_type == LY_TYPE_INT64) || (leaf->value_type == LY_TYPE_UINT64) ||
+                (leaf->value_type == LY_TYPE_STRING)) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected string, but found number)");
+            return 0;
+        }
+
         /* numeric type */
         r = lyjson_parse_number(ctx, &data[len]);
         if (!r) {
@@ -482,6 +512,11 @@ repeat:
         }
         len += r;
     } else if (data[len] == 'f' || data[len] == 't') {
+        if (leaf->value_type == LY_TYPE_STRING) {
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected string, but found boolean)");
+            return 0;
+        }
+
         /* boolean */
         r = lyjson_parse_boolean(ctx, &data[len]);
         if (!r) {
@@ -715,6 +750,8 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first,
 
         if (iter->index) {
             flag_leaflist = 1;
+        } else {
+            flag_leaflist = 0;
         }
 
         LY_TREE_FOR(first, diter) {
@@ -1549,7 +1586,12 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         /* action reply */
         act_notif = reply_parent;
     } else if ((options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) && !act_notif) {
-        LOGVAL(ctx, LYE_MISSELEM, LY_VLOG_LYD, result, (options & LYD_OPT_RPC ? "action" : "notification"), result->schema->name);
+        if (result) {
+            LOGVAL(ctx, LYE_MISSELEM, LY_VLOG_LYD, result, (options & LYD_OPT_RPC ? "action" : "notification"),
+                   result->schema->name);
+        } else {
+            LOGVAL(ctx, LYE_MISSELEM, LY_VLOG_NONE, NULL, (options & LYD_OPT_RPC ? "action" : "notification"), "data");
+        }
         goto error;
     }
 

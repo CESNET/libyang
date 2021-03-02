@@ -96,7 +96,8 @@
         memset((char *)tmp + (sizeof *(current_ptr)) * (size), 0, (sizeof *(current_ptr)) * LY_YANG_ARRAY_SIZE); \
         (current_ptr) = tmp;                                                             \
     }                                                                                    \
-    actual = &(current_ptr)[(size)++];                                                   \
+    (size)++;                                                                            \
+    actual = &(current_ptr)[(size)-1];                                                   \
 
 void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 /* pointer on the current parsed element 'actual' */
@@ -5314,7 +5315,7 @@ yyreduce:
                                             (yyvsp[-1].nodes).node.ptr_leaflist->max = (yyvsp[0].uint);
                                             (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
                                             (yyval.nodes) = (yyvsp[-1].nodes);
-                                            if ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max) {
+                                            if ((yyvsp[-1].nodes).node.ptr_leaflist->max && ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max)) {
                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "max-elements");
                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
                                               YYABORT;
@@ -5478,7 +5479,7 @@ yyreduce:
                                        (yyvsp[-1].nodes).node.ptr_list->max = (yyvsp[0].uint);
                                        (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
                                        (yyval.nodes) = (yyvsp[-1].nodes);
-                                       if ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max) {
+                                       if ((yyvsp[-1].nodes).node.ptr_list->max && ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max)) {
                                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
                                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
                                          YYABORT;
@@ -7864,7 +7865,7 @@ yyreduce:
        if (yang_fill_type(trg, &tpdf->type, (struct yang_type *)tpdf->type.der, tpdf, param->unres)) {
          yang_type_free(trg->ctx, &tpdf->type);
        }
-       if (yang_check_ext_instance(trg, &tpdf->ext, tpdf->ext_size, tpdf, param->unres)) {
+       if (yang_check_ext_instance(trg, &tpdf->ext, &tpdf->ext_size, tpdf, param->unres)) {
          YYABORT;
        }
        if (unres_schema_add_node(trg, param->unres, &tpdf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)ext_instance) == -1) {
@@ -8051,7 +8052,7 @@ yyreduce:
        if (yang_fill_iffeature(trg, iffeature, ext_instance, s, param->unres, 0)) {
          YYABORT;
        }
-       if (yang_check_ext_instance(trg, &iffeature->ext, iffeature->ext_size, iffeature, param->unres)) {
+       if (yang_check_ext_instance(trg, &iffeature->ext, &iffeature->ext_size, iffeature, param->unres)) {
          YYABORT;
        }
        s = NULL;
@@ -8060,7 +8061,7 @@ yyreduce:
     break;
 
   case 823:
-     { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[-2].v))->ext, ((struct lys_restr *)(yyvsp[-2].v))->ext_size, (yyvsp[-2].v), param->unres)) {
+     { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[-2].v))->ext, &((struct lys_restr *)(yyvsp[-2].v))->ext_size, (yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
        actual = ext_instance;
@@ -8068,7 +8069,7 @@ yyreduce:
     break;
 
   case 824:
-     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)(yyvsp[-2].v))->ext, (*(struct lys_when **)(yyvsp[-2].v))->ext_size,
+     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)(yyvsp[-2].v))->ext, &(*(struct lys_when **)(yyvsp[-2].v))->ext_size,
                                    *(struct lys_when **)(yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
@@ -8085,7 +8086,7 @@ yyreduce:
            break;
          }
        }
-       if (yang_check_ext_instance(trg, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext_size,
+       if (yang_check_ext_instance(trg, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext_size,
                                    &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index], param->unres)) {
          YYABORT;
        }

@@ -23,6 +23,10 @@ module ext-def {
 
   extension complex-mand;
 
+  extension skipped {
+    argument value;
+  }
+
   typedef mystring {
     type string;
   }

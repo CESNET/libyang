@@ -166,7 +166,7 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp_old, struct l
     rc = lyp_check_import(module, exp, imp_new);
     lydict_remove(module->ctx, exp);
     module->imp_size++;
-    if (rc || yang_check_ext_instance(module, &imp_new->ext, imp_new->ext_size, imp_new, unres)) {
+    if (rc || yang_check_ext_instance(module, &imp_new->ext, &imp_new->ext_size, imp_new, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -508,7 +508,7 @@ int
 yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres)
 {
     int i, j;
-    char *vaux, c;
+    char *vaux, c = 0;
     struct unres_list_uniq *unique_info;
 
     /* count the number of unique leafs in the value */
@@ -1991,7 +1991,7 @@ yang_deviate_delete_unique(struct lys_module *module, struct lys_deviate *deviat
                            struct lys_node_list *list, int index, char * value)
 {
     struct ly_ctx *ctx = module->ctx;
-    int i, j, k;
+    int i, j, k = 0;
 
     /* find unique structures to delete */
     for (i = 0; i < list->unique_size; i++) {
@@ -2117,7 +2117,7 @@ yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
     if (!rc) {
         /* success, copy the filled data into the final array */
         memcpy(&trg->inc[trg->inc_size], inc, sizeof *inc);
-        if (yang_check_ext_instance(trg, &trg->inc[trg->inc_size].ext, trg->inc[trg->inc_size].ext_size,
+        if (yang_check_ext_instance(trg, &trg->inc[trg->inc_size].ext, &trg->inc[trg->inc_size].ext_size,
                                     &trg->inc[trg->inc_size], unres)) {
             ret = -1;
         }
@@ -3334,27 +3334,40 @@ free_yang_common(struct lys_module *module, struct lys_node *node)
 /* check function*/
 
 int
-yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
+yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint8_t *size,
                         void *parent, struct unres_schema *unres)
 {
     struct unres_ext *info;
-    uint i;
+    struct lys_ext_instance **ext_list = *ext;
+    uint8_t i = 0, orig_size = *size;
+    int rc;
 
-    for (i = 0; i < size; ++i) {
+    while (i < *size) {
         info = malloc(sizeof *info);
         LY_CHECK_ERR_RETURN(!info, LOGMEM(module->ctx), EXIT_FAILURE);
-        info->data.yang = (*ext)[i]->parent;
+        info->data.yang = ext_list[i]->parent;
         info->datatype = LYS_IN_YANG;
         info->parent = parent;
         info->mod = module;
-        info->parent_type = (*ext)[i]->parent_type;
-        info->substmt = (*ext)[i]->insubstmt;
-        info->substmt_index = (*ext)[i]->insubstmt_index;
+        info->parent_type = ext_list[i]->parent_type;
+        info->substmt = ext_list[i]->insubstmt;
+        info->substmt_index = ext_list[i]->insubstmt_index;
         info->ext_index = i;
-        if (unres_schema_add_node(module, unres, ext, UNRES_EXT, (struct lys_node *)info) == -1) {
+
+        rc = unres_schema_add_node(module, unres, ext, UNRES_EXT, (struct lys_node *)info);
+        if (rc == -1) {
             return EXIT_FAILURE;
         }
+        if (!rc && !ext_list[i]) {
+            /* this extension is skipped, move all extensions after it */
+            memmove(ext_list + i, ext_list + i + 1, (*size - i - 1) * sizeof(*ext_list));
+            --(*size);
+        } else {
+            ++i;
+        }
     }
+
+    lyp_reduce_ext_list(ext, *size, orig_size);
 
     return EXIT_SUCCESS;
 }
@@ -3463,7 +3476,7 @@ yang_check_iffeatures(struct lys_module *module, void *ptr, void *parent, enum y
             *ptr_size = size;
             return EXIT_FAILURE;
         }
-        if (yang_check_ext_instance(module, &iffeature[i].ext, iffeature[i].ext_size, &iffeature[i], unres)) {
+        if (yang_check_ext_instance(module, &iffeature[i].ext, &iffeature[i].ext_size, &iffeature[i], unres)) {
             *ptr_size = size;
             return EXIT_FAILURE;
         }
@@ -3522,7 +3535,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
     unsigned int i, j;
 
     type->parent = parent;
-    if (yang_check_ext_instance(module, &type->ext, type->ext_size, type, unres)) {
+    if (yang_check_ext_instance(module, &type->ext, &type->ext_size, type, unres)) {
         return EXIT_FAILURE;
     }
     for (j = 0; j < type->ext_size; ++j) {
@@ -3538,7 +3551,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             if (yang_check_iffeatures(module, &type->info.enums.enm[i], parent, ENUM_KEYWORD, unres)) {
                 return EXIT_FAILURE;
             }
-            if (yang_check_ext_instance(module, &type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
+            if (yang_check_ext_instance(module, &type->info.enums.enm[i].ext, &type->info.enums.enm[i].ext_size,
                                         &type->info.enums.enm[i], unres)) {
                 return EXIT_FAILURE;
             }
@@ -3555,7 +3568,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             if (yang_check_iffeatures(module, &type->info.bits.bit[i], parent, BIT_KEYWORD, unres)) {
                 return EXIT_FAILURE;
             }
-            if (yang_check_ext_instance(module, &type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
+            if (yang_check_ext_instance(module, &type->info.bits.bit[i].ext, &type->info.bits.bit[i].ext_size,
                                         &type->info.bits.bit[i], unres)) {
                 return EXIT_FAILURE;
             }
@@ -3575,7 +3588,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
     case LY_TYPE_STRING:
         if (type->info.str.length) {
             if (yang_check_ext_instance(module, &type->info.str.length->ext,
-                                        type->info.str.length->ext_size, type->info.str.length, unres)) {
+                                        &type->info.str.length->ext_size, type->info.str.length, unres)) {
                 return EXIT_FAILURE;
             }
             for (j = 0; j < type->info.str.length->ext_size; ++j) {
@@ -3587,7 +3600,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
         }
 
         for (i = 0; i < type->info.str.pat_count; ++i) {
-            if (yang_check_ext_instance(module, &type->info.str.patterns[i].ext, type->info.str.patterns[i].ext_size,
+            if (yang_check_ext_instance(module, &type->info.str.patterns[i].ext, &type->info.str.patterns[i].ext_size,
                                         &type->info.str.patterns[i], unres)) {
                 return EXIT_FAILURE;
             }
@@ -3602,7 +3615,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
     case LY_TYPE_DEC64:
         if (type->info.dec64.range) {
             if (yang_check_ext_instance(module, &type->info.dec64.range->ext,
-                                        type->info.dec64.range->ext_size, type->info.dec64.range, unres)) {
+                                        &type->info.dec64.range->ext_size, type->info.dec64.range, unres)) {
                 return EXIT_FAILURE;
             }
             for (j = 0; j < type->info.dec64.range->ext_size; ++j) {
@@ -3689,7 +3702,7 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         if (yang_fill_type(module, &tpdf[i].type, (struct yang_type *)tpdf[i].type.der, &tpdf[i], unres)) {
             goto error;
         }
-        if (yang_check_ext_instance(module, &tpdf[i].ext, tpdf[i].ext_size, &tpdf[i], unres)) {
+        if (yang_check_ext_instance(module, &tpdf[i].ext, &tpdf[i].ext_size, &tpdf[i], unres)) {
             goto error;
         }
         for (j = 0; j < tpdf[i].ext_size; ++j) {
@@ -3744,7 +3757,7 @@ yang_check_identities(struct lys_module *module, struct unres_schema *unres)
         if (yang_check_iffeatures(module, NULL, &module->ident[i], IDENTITY_KEYWORD, unres)) {
             goto error;
         }
-        if (yang_check_ext_instance(module, &module->ident[i].ext, module->ident[i].ext_size, &module->ident[i], unres)) {
+        if (yang_check_ext_instance(module, &module->ident[i].ext, &module->ident[i].ext_size, &module->ident[i], unres)) {
             goto error;
         }
     }
@@ -3765,7 +3778,7 @@ yang_check_must(struct lys_module *module, struct lys_restr *must, uint size, st
     uint i;
 
     for (i = 0; i < size; ++i) {
-        if (yang_check_ext_instance(module, &must[i].ext, must[i].ext_size, &must[i], unres)) {
+        if (yang_check_ext_instance(module, &must[i].ext, &must[i].ext_size, &must[i], unres)) {
             return EXIT_FAILURE;
         }
     }
@@ -3790,7 +3803,7 @@ yang_check_container(struct lys_module *module, struct lys_node_container *cont,
     }
     *child = NULL;
 
-    if (cont->when && yang_check_ext_instance(module, &cont->when->ext, cont->when->ext_size, cont->when, unres)) {
+    if (cont->when && yang_check_ext_instance(module, &cont->when->ext, &cont->when->ext_size, cont->when, unres)) {
         goto error;
     }
     if (yang_check_must(module, cont->must, cont->must_size, unres)) {
@@ -3838,7 +3851,7 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, int optio
         goto error;
     }
 
-    if (leaf->when && yang_check_ext_instance(module, &leaf->when->ext, leaf->when->ext_size, leaf->when, unres)) {
+    if (leaf->when && yang_check_ext_instance(module, &leaf->when->ext, &leaf->when->ext_size, leaf->when, unres)) {
         goto error;
     }
     if (yang_check_must(module, leaf->must, leaf->must_size, unres)) {
@@ -3905,7 +3918,7 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         }
     }
 
-    if (leaflist->when && yang_check_ext_instance(module, &leaflist->when->ext, leaflist->when->ext_size, leaflist->when, unres)) {
+    if (leaflist->when && yang_check_ext_instance(module, &leaflist->when->ext, &leaflist->when->ext_size, leaflist->when, unres)) {
         goto error;
     }
     if (yang_check_must(module, leaflist->must, leaflist->must_size, unres)) {
@@ -3973,7 +3986,7 @@ yang_check_list(struct lys_module *module, struct lys_node_list *list, struct ly
         goto error;
     }
 
-    if (list->when && yang_check_ext_instance(module, &list->when->ext, list->when->ext_size, list->when, unres)) {
+    if (list->when && yang_check_ext_instance(module, &list->when->ext, &list->when->ext_size, list->when, unres)) {
         goto error;
     }
     if (yang_check_must(module, list->must, list->must_size, unres)) {
@@ -4029,7 +4042,7 @@ yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, str
         free(value);
     }
 
-    if (choice->when && yang_check_ext_instance(module, &choice->when->ext, choice->when->ext_size, choice->when, unres)) {
+    if (choice->when && yang_check_ext_instance(module, &choice->when->ext, &choice->when->ext_size, choice->when, unres)) {
         goto error;
     }
 
@@ -4142,11 +4155,11 @@ yang_check_augment(struct lys_module *module, struct lys_node_augment *augment, 
         goto error;
     }
 
-    if (yang_check_ext_instance(module, &augment->ext, augment->ext_size, augment, unres)) {
+    if (yang_check_ext_instance(module, &augment->ext, &augment->ext_size, augment, unres)) {
         goto error;
     }
 
-    if (augment->when && yang_check_ext_instance(module, &augment->when->ext, augment->when->ext_size, augment->when, unres)) {
+    if (augment->when && yang_check_ext_instance(module, &augment->when->ext, &augment->when->ext_size, augment->when, unres)) {
         goto error;
     }
 
@@ -4188,7 +4201,7 @@ yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, int optio
         if (yang_check_must(module, uses->refine[i].must, uses->refine[i].must_size, unres)) {
             goto error;
         }
-        if (yang_check_ext_instance(module, &uses->refine[i].ext, uses->refine[i].ext_size, &uses->refine[i], unres)) {
+        if (yang_check_ext_instance(module, &uses->refine[i].ext, &uses->refine[i].ext_size, &uses->refine[i], unres)) {
             goto error;
         }
     }
@@ -4204,7 +4217,7 @@ yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, int optio
         goto error;
     }
 
-    if (uses->when && yang_check_ext_instance(module, &uses->when->ext, uses->when->ext_size, uses->when, unres)) {
+    if (uses->when && yang_check_ext_instance(module, &uses->when->ext, &uses->when->ext_size, uses->when, unres)) {
         goto error;
     }
 
@@ -4244,7 +4257,7 @@ yang_check_anydata(struct lys_module *module, struct lys_node_anydata *anydata, 
     }
     *child = NULL;
 
-    if (anydata->when && yang_check_ext_instance(module, &anydata->when->ext, anydata->when->ext_size, anydata->when, unres)) {
+    if (anydata->when && yang_check_ext_instance(module, &anydata->when->ext, &anydata->when->ext_size, anydata->when, unres)) {
         goto error;
     }
     if (yang_check_must(module, anydata->must, anydata->must_size, unres)) {
@@ -4297,7 +4310,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
             store_config_flag(node->parent, options);
         }
         store_config_flag(node, options);
-        if (yang_check_ext_instance(module, &node->ext, node->ext_size, node, unres)) {
+        if (yang_check_ext_instance(module, &node->ext, &node->ext_size, node, unres)) {
             goto error;
         }
         for (i = 0; i < node->ext_size; ++i) {
@@ -4360,7 +4373,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
             }
             if (((struct lys_node_case *)node)->when) {
                 if (yang_check_ext_instance(module, &((struct lys_node_case *)node)->when->ext,
-                        ((struct lys_node_case *)node)->when->ext_size, ((struct lys_node_case *)node)->when, unres)) {
+                        &((struct lys_node_case *)node)->when->ext_size, ((struct lys_node_case *)node)->when, unres)) {
                     goto error;
                 }
                 /* check XPath dependencies */
@@ -4447,7 +4460,7 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
     struct lys_tpdf *tmp_parent;
     int i, j;
 
-    if (yang_check_ext_instance(module, &deviate->ext, deviate->ext_size, deviate, unres)) {
+    if (yang_check_ext_instance(module, &deviate->ext, &deviate->ext_size, deviate, unres)) {
         goto error;
     }
     if (deviate->must_size && yang_check_deviate_must(module, unres, deviate, dev_target)) {
@@ -4635,7 +4648,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
         unres_schema_free(dev_target->module, &tmp_unres, 1);
     }
 
-    if (yang_check_ext_instance(module, &dev->ext, dev->ext_size, dev, unres)) {
+    if (yang_check_ext_instance(module, &dev->ext, &dev->ext_size, dev, unres)) {
         i = 0;
         goto free_type_error;
     }
@@ -4724,20 +4737,20 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         goto error;
     }
 
-    if (yang_check_ext_instance(module, &module->ext, module->ext_size, module, unres)) {
+    if (yang_check_ext_instance(module, &module->ext, &module->ext_size, module, unres)) {
         goto error;
     }
 
     /* check extension in revision */
     for (i = 0; i < module->rev_size; ++i) {
-        if (yang_check_ext_instance(module, &module->rev[i].ext, module->rev[i].ext_size, &module->rev[i], unres)) {
+        if (yang_check_ext_instance(module, &module->rev[i].ext, &module->rev[i].ext_size, &module->rev[i], unres)) {
             goto error;
         }
     }
 
     /* check extension in definition of extension */
     for (i = 0; i < module->extensions_size; ++i) {
-        if (yang_check_ext_instance(module, &module->extensions[i].ext, module->extensions[i].ext_size, &module->extensions[i], unres)) {
+        if (yang_check_ext_instance(module, &module->extensions[i].ext, &module->extensions[i].ext_size, &module->extensions[i], unres)) {
             goto error;
         }
     }
@@ -4747,7 +4760,7 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         if (yang_check_iffeatures(module, NULL, &module->features[i], FEATURE_KEYWORD, unres)) {
             goto error;
         }
-        if (yang_check_ext_instance(module, &module->features[i].ext, module->features[i].ext_size, &module->features[i], unres)) {
+        if (yang_check_ext_instance(module, &module->features[i].ext, &module->features[i].ext_size, &module->features[i], unres)) {
             goto error;
         }
 

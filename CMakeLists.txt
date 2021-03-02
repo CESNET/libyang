@@ -25,15 +25,15 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # micro version is changed with a set of small changes or bugfixes anywhere in the project.
 set(LIBYANG_MAJOR_VERSION 1)
 set(LIBYANG_MINOR_VERSION 0)
-set(LIBYANG_MICRO_VERSION 184)
+set(LIBYANG_MICRO_VERSION 215)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # Version of the library
 # Major version is changed with every backward non-compatible API/ABI change in libyang, minor version changes
 # with backward compatible change and micro version is connected with any internal change of the library.
 set(LIBYANG_MAJOR_SOVERSION 1)
-set(LIBYANG_MINOR_SOVERSION 9)
-set(LIBYANG_MICRO_SOVERSION 2)
+set(LIBYANG_MINOR_SOVERSION 10)
+set(LIBYANG_MICRO_SOVERSION 7)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
@@ -47,9 +47,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99")
-set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99 -fno-strict-aliasing")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_C_FLAGS_PACKAGE "-g -O3 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og")
 
 # options
@@ -246,16 +246,16 @@ target_link_libraries(yang ${PCRE_LIBRARIES})
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/libyang.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
+# generate pkg-config file
+configure_file("libyang.pc.in" "libyang.pc" @ONLY)
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
-    # generate and install pkg-config file
-    configure_file("libyang.pc.in" "libyang.pc" @ONLY)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
     # check that pkg-config includes the used path
     execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
     if(RETURN EQUAL 0)
-	string(STRIP "${PC_PATH}" PC_PATH)
-	set(PC_PATH "${PC_PATH}:$ENV{PKG_CONFIG_PATH}")
+        string(STRIP "${PC_PATH}" PC_PATH)
+        set(PC_PATH "${PC_PATH}:$ENV{PKG_CONFIG_PATH}")
         string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" SUBSTR "${PC_PATH}")
         string(LENGTH "${SUBSTR}" SUBSTR_LEN)
         if(SUBSTR_LEN EQUAL 0)

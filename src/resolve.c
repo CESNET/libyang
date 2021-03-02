@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include <limits.h>
 
 #include "libyang.h"
@@ -49,12 +50,46 @@ struct parsed_pred {
     } *pred;
 };
 
+static int
+check_overflow_mul(int64_t num1, int64_t num2)
+{
+    if (((num1 == -1) && (num2 == INT64_MIN)) || ((num2 == -1) && (num1 == INT64_MIN))) {
+        return 1;
+    }
+
+    if ((num1 > INT64_MAX / num2) || (num1 < INT64_MIN / num2)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static int
+check_overflow_sub(int64_t num1, int64_t num2)
+{
+    if (((num2 < 0) && (num1 > INT64_MAX + num2)) || ((num2 > 0) && (num1 < INT64_MIN + num2))) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static int
+check_overflow_add(int64_t num1, int64_t num2)
+{
+    if (((num2 > 0) && (num1 > INT64_MAX - num2)) || ((num2 < 0) && (num1 < INT64_MIN - num2))) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int
 parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
     const char *ptr;
     int minus = 0;
-    int64_t ret = 0, prev_ret;
+    int64_t ret = 0;
     int8_t str_exp, str_dig = -1, trailing_zeros = 0;
 
     ptr = *str_num;
@@ -83,17 +118,21 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
             }
             ++str_dig;
         } else {
-            prev_ret = ret;
+            if (check_overflow_mul(ret, 10)) {
+                return 1;
+            }
+            ret *= 10;
+
             if (minus) {
-                ret = ret * 10 - (ptr[0] - '0');
-                if (ret > prev_ret) {
+                if (check_overflow_sub(ret, ptr[0] - '0')) {
                     return 1;
                 }
+                ret -= ptr[0] - '0';
             } else {
-                ret = ret * 10 + (ptr[0] - '0');
-                if (ret < prev_ret) {
+                if (check_overflow_add(ret, ptr[0] - '0')) {
                     return 1;
                 }
+                ret += ptr[0] - '0';
             }
             if (str_dig > -1) {
                 ++str_dig;
@@ -126,12 +165,11 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
         if ((str_exp - 1) + (dig - str_dig) > 18) {
             return 1;
         }
-        prev_ret = ret;
-        ret *= dec_pow(dig - str_dig);
-        if ((minus && (ret > prev_ret)) || (!minus && (ret < prev_ret))) {
+
+        if (check_overflow_mul(ret, dec_pow(dig - str_dig))) {
             return 1;
         }
-
+        ret *= dec_pow(dig - str_dig);
     }
     if (str_dig > dig) {
         return 1;
@@ -886,7 +924,12 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
             ++parsed;
             ++id;
 
-            if ((ptr = strchr(id, quote)) == NULL) {
+            for (ptr = id; ptr && ptr[0] != quote; ++ptr) {
+                if (ptr[0] == '\\') {
+                    ++ptr;
+                }
+            }
+            if (!ptr) {
                 return -parsed;
             }
             ret = ptr - id;
@@ -1112,7 +1155,12 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
             ++parsed;
             ++id;
 
-            if ((ptr = strchr(id, quote)) == NULL) {
+            for (ptr = id; ptr && ptr[0] != quote; ++ptr) {
+                if (ptr[0] == '\\') {
+                    ++ptr;
+                }
+            }
+            if (!ptr) {
                 return -parsed;
             }
             ret = ptr - id;
@@ -4842,6 +4890,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
     struct lys_ext_instance *tmp_ext;
     struct ly_ctx *ctx = NULL;
     LYEXT_TYPE etype;
+    int rt = 0;
 
     switch (info->parent_type) {
     case LYEXT_PAR_NODE:
@@ -4897,10 +4946,14 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
 
         if (e->plugin && e->plugin->check_position) {
             /* common part - we have plugin with position checking function, use it first */
-            if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
+            rt = (*e->plugin->check_position)(info->parent, info->parent_type, info->substmt);
+            if (rt == 1) {
                 /* extension is not allowed here */
                 LOGVAL(ctx, LYE_INSTMT, vlog_type, vlog_node, e->name);
                 return -1;
+            } else if (rt == 2) {
+                *ext = NULL;
+                return EXIT_SUCCESS;
             }
         }
 
@@ -5056,10 +5109,18 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
 
         if (e->plugin && e->plugin->check_position) {
             /* common part - we have plugin with position checking function, use it first */
-            if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
+            rt = (*e->plugin->check_position)(info->parent, info->parent_type, info->substmt);
+            if (rt == 1) {
                 /* extension is not allowed here */
                 LOGVAL(ctx, LYE_INSTMT, vlog_type, vlog_node, e->name);
                 goto error;
+            } else if (rt == 2) {
+                lys_extension_instances_free(ctx, (*ext)->ext, (*ext)->ext_size, NULL);
+                lydict_remove(ctx, (*ext)->arg_value);
+                free(*ext);
+                *ext = NULL;
+                free(ext_prefix);
+                return EXIT_SUCCESS;
             }
         }
 
@@ -5121,9 +5182,10 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             goto error;
         }
 
-        if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
+        if (yang_check_ext_instance(info->mod, &(*ext)->ext, &(*ext)->ext_size, *ext, unres)) {
             goto error;
         }
+
         free(ext_prefix);
     }
 
@@ -5833,7 +5895,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     int mod_name_len, nam_len, rc;
     int need_implemented = 0;
     unsigned int i, j, found;
-    struct lys_ident *der, *cur;
+    struct lys_ident *der = NULL, *cur;
     struct lys_module *imod = NULL, *m, *tmod;
     struct ly_ctx *ctx;
 
@@ -6010,13 +6072,16 @@ fail:
     return NULL;
 
 match:
-    for (i = 0; i < cur->iffeature_size; i++) {
-        if (!resolve_iffeature(&cur->iffeature[i])) {
-            if (node) {
-                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+    if (!dflt) {
+        for (i = 0; i < cur->iffeature_size; i++) {
+            if (!resolve_iffeature(&cur->iffeature[i])) {
+                if (node) {
+                    LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+                }
+                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its %d. if-feature condition.",
+                       cur->name, i);
+                return NULL;
             }
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
-            return NULL;
         }
     }
     if (need_implemented) {
@@ -6206,17 +6271,20 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
  *
  * @param[in] node Data node with optional must statements.
  * @param[in] inout_parent If set, must in input or output parent of node->schema will be resolved.
+ * @param[in] ignore_fail 0 - no, 1 - yes, 2 - yes, but only for external dependencies.
+ * @param[in] multi_error 0 - no, 1 - yes.
  *
  * @return EXIT_SUCCESS on pass, EXIT_FAILURE on fail, -1 on error.
  */
 static int
-resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
+resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail, int multi_error)
 {
     uint8_t i, must_size;
     struct lys_node *schema;
     struct lys_restr *must;
     struct lyxp_set set;
     struct ly_ctx *ctx = node->schema->module->ctx;
+    int rc = EXIT_SUCCESS;
 
     assert(node);
     memset(&set, 0, sizeof set);
@@ -6267,6 +6335,7 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
             break;
         default:
             must_size = 0;
+            must = NULL;
             break;
         }
     }
@@ -6289,12 +6358,15 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
                 if (must[i].eapptag) {
                     ly_err_last_set_apptag(ctx, must[i].eapptag);
                 }
-                return 1;
+                rc = 1;
+                if (!multi_error) {
+                    break;
+                }
             }
         }
     }
 
-    return EXIT_SUCCESS;
+    return rc;
 }
 
 /**
@@ -6865,6 +6937,21 @@ check_type_union_leafref(struct lys_type *type)
     return type->der->has_union_leafref;
 }
 
+static void
+free_ext_data(struct ly_ctx *ctx, struct unres_ext *ext_data)
+{
+    /* cleanup on success or fatal error */
+    if (ext_data->datatype == LYS_IN_YIN) {
+        /* YIN */
+        lyxml_free(ctx, ext_data->data.yin);
+    } else {
+        /* YANG */
+        yang_free_ext_data(ext_data->data.yang);
+    }
+
+    free(ext_data);
+}
+
 /**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
@@ -7110,7 +7197,7 @@ featurecheckdone:
         ext_data = (struct unres_ext *)str_snode;
         extlist = &(*(struct lys_ext_instance ***)item)[ext_data->ext_index];
         rc = resolve_extension(ext_data, extlist, unres);
-        if (!rc) {
+        if (!rc && extlist[0]) {
             /* success */
             /* is there a callback to be done to finalize the extension? */
             eplugin = extlist[0]->def->plugin;
@@ -7127,17 +7214,6 @@ featurecheckdone:
                     }
                 }
             }
-        }
-        if (!rc || rc == -1) {
-            /* cleanup on success or fatal error */
-            if (ext_data->datatype == LYS_IN_YIN) {
-                /* YIN */
-                lyxml_free(ctx, ext_data->data.yin);
-            } else {
-                /* YANG */
-                yang_free_ext_data(ext_data->data.yang);
-            }
-            free(ext_data);
         }
         break;
     case UNRES_EXT_FINALIZE:
@@ -7328,6 +7404,73 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     }
 }
 
+/**
+ * @brief Save extension instance parent for Compacting later.
+ *
+ * @param[in] ext_parents Extension instance parent set
+ * @param[in] ext_par_types Extension instance parent type list, same size with ext_parents
+ * @param[in] ext_list Extension instance array
+ * @param[in] ext_data Unsolved extension instance data
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+save_skipped_ext_parent(struct ly_set *ext_parents, struct ly_set *ext_par_types,
+        struct lys_ext_instance **ext_list, struct unres_ext *ext_data)
+{
+    int rt;
+
+    if(!ext_list[ext_data->ext_index]) {
+        rt = ly_set_add(ext_parents, ext_data->parent, 0);
+        LY_CHECK_RETURN(rt == -1, rt);
+        if (ext_parents->number != ext_par_types->number) {
+            // a new skipped extension instance parent
+            rt = ly_set_add(ext_par_types, (void *)ext_data->datatype, 1);
+            LY_CHECK_RETURN(rt == -1, rt);
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Remove all NULL items from the extension instance array of given parent.
+ *
+ * @param[in] ctx Context with the modules
+ * @param[in] elem Extension instance parent
+ * @param[in] elem_type Extension instance parent type
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+compact_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type)
+{
+    int rt;
+    uint8_t *ext_size = 0, orig_size, i = 0, j = 0;
+    struct lys_ext_instance ***ext_list = NULL;
+
+    rt = lyp_get_ext_list(ctx, elem, elem_type, &ext_list, &ext_size, NULL);
+    LY_CHECK_RETURN(rt, -1);
+
+    orig_size = *ext_size;
+
+    while (i < *ext_size) {
+        if (!(*ext_list)[i]) {
+            /* this extension is skipped, move all extensions after it */
+            for (j = i; j < *ext_size - 1; j++) {
+                (*ext_list)[j] = (*ext_list)[j + 1];
+            }
+            --(*ext_size);
+        } else {
+            ++i;
+        }
+    }
+
+    lyp_reduce_ext_list(ext_list, *ext_size, orig_size);
+
+    return 0;
+}
+
 static int
 resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, struct ly_ctx *ctx, int forward_ref,
                            int print_all_errors, uint32_t *resolved)
@@ -7336,12 +7479,19 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
     int ret = 0, rc;
     struct ly_err_item *prev_eitem;
     enum int_log_opts prev_ilo;
-    LY_ERR prev_ly_errno;
+    LY_ERR prev_ly_errno = LY_SUCCESS;
+    struct ly_set *ext_parents = NULL, *ext_par_types = NULL;
 
     /* if there can be no forward references, every failure is final, so we can print it directly */
     if (forward_ref) {
         prev_ly_errno = ly_errno;
         ly_ilo_change(ctx, ILO_STORE, &prev_ilo, &prev_eitem);
+    }
+
+    if ((types & UNRES_EXT)) {
+        ext_parents = ly_set_new();
+        ext_par_types = ly_set_new();
+        LY_CHECK_ERR_GOTO(!ext_parents || !ext_par_types, ret = -1, finish);
     }
 
     do {
@@ -7359,6 +7509,19 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     /* to avoid double free */
                     unres->type[i] = UNRES_RESOLVED;
                 }
+
+                if (unres->type[i] == UNRES_EXT) {
+                    if (!rc) {
+                        ret = save_skipped_ext_parent(ext_parents, ext_par_types,
+                                *(struct lys_ext_instance***) unres->item[i],
+                                (struct unres_ext*) unres->str_snode[i]);
+                    }
+                    if (!rc || rc == -1) {
+                        free_ext_data(ctx, unres->str_snode[i]);
+                    }
+                    LY_CHECK_GOTO(ret, finish);
+                }
+
                 if (!rc || (unres->type[i] == UNRES_XPATH)) {
                     /* invalid XPath can never cause an error, only a warning */
                     if (unres->type[i] == UNRES_LIST_UNIQ) {
@@ -7367,6 +7530,7 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     }
 
                     unres->type[i] = UNRES_RESOLVED;
+
                     ++(*resolved);
                     ++res_count;
                 } else if ((rc == EXIT_FAILURE) && forward_ref) {
@@ -7380,7 +7544,8 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     if (forward_ref) {
                         ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
                     }
-                    return -1;
+                    ret = -1;
+                    goto finish;
                 }
             }
         }
@@ -7396,7 +7561,8 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                 resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
             }
         }
-        return -1;
+        ret = -1;
+        goto finish;
     }
 
     if (forward_ref) {
@@ -7405,6 +7571,17 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
         ly_errno = prev_ly_errno;
     }
 
+    if ((types & UNRES_EXT)) {
+        assert(ext_parents->number == ext_par_types->number);
+        for (i = 0; i < ext_parents->number; ++i) {
+            ret = compact_ext_list(ctx, ext_parents->set.g[i], (LYEXT_PAR)(uintptr_t)ext_parents->set.g[i]);
+            LY_CHECK_GOTO(ret == -1, finish);
+        }
+    }
+
+finish:
+    ly_set_free(ext_parents);
+    ly_set_free(ext_par_types);
     return ret;
 }
 
@@ -7438,10 +7615,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    /* another batch of resolved items */
+    /* another batch of resolved items (UNRES_MOD_IMPLEMENT must be set again because it can be added again) */
     if (resolve_unres_schema_types(unres, UNRES_TYPE_IDENTREF | UNRES_FEATURE | UNRES_TYPEDEF_DFLT | UNRES_TYPE_DFLT
-                                   | UNRES_TYPE_LEAFREF | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT, mod->ctx, 1, 0,
-                                   &resolved)) {
+                                   | UNRES_TYPE_LEAFREF | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT | UNRES_MOD_IMPLEMENT,
+                                   mod->ctx, 1, 0, &resolved)) {
         return -1;
     }
 
@@ -7532,6 +7709,9 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
         rc = resolve_unres_schema_item(mod, item, type, snode, unres);
         if (rc != EXIT_FAILURE) {
+            if (type == UNRES_EXT) {
+                free_ext_data(mod->ctx, (struct unres_ext*)snode);
+            }
             ly_ilo_restore(ctx, prev_ilo, prev_eitem, rc == -1 ? 1 : 0);
             if (rc != -1) {
                 /* print warnings here so that they are actually printed */
@@ -8158,11 +8338,13 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
  * @param[in] node Data node to resolve.
  * @param[in] type Type of the unresolved item.
  * @param[in] ignore_fail 0 - no, 1 - yes, 2 - yes, but only for external dependencies.
+ * @param[in] multi_error 0 - no, 1 - yes.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_fail, struct lys_when **failed_when)
+resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_fail, int multi_error,
+        struct lys_when **failed_when)
 {
     int rc, req_inst, ext_dep;
     struct lyd_node_leaf_list *leaf;
@@ -8256,13 +8438,13 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         break;
 
     case UNRES_MUST:
-        if ((rc = resolve_must(node, 0, ignore_fail))) {
+        if ((rc = resolve_must(node, 0, ignore_fail, multi_error))) {
             return rc;
         }
         break;
 
     case UNRES_MUST_INOUT:
-        if ((rc = resolve_must(node, 1, ignore_fail))) {
+        if ((rc = resolve_must(node, 1, ignore_fail, multi_error))) {
             return rc;
         }
         break;
@@ -8383,7 +8565,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
 {
     uint32_t i, j, first, resolved, del_items, stmt_count;
     uint8_t prev_when_status;
-    int rc, progress, ignore_fail;
+    int rc, rc2, progress, ignore_fail, multi_error;
     enum int_log_opts prev_ilo;
     struct ly_err_item *prev_eitem;
     LY_ERR prev_ly_errno = ly_errno;
@@ -8404,6 +8586,8 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     } else {
         ignore_fail = 0;
     }
+
+    multi_error = (options & LYD_OPT_MULTI_ERRORS) ? 1 : 0;
 
     LOGVRB("Resolving unresolved data nodes and their constraints...");
     if (!ignore_fail) {
@@ -8451,7 +8635,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
             }
 
             prev_when_status = unres->node[i]->when_status;
-            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, &when);
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, 0, &when);
             if (!rc) {
                 /* finish with error/delete the node only if when was changed from true to false, an external
                  * dependency was not required, or it was not provided (the flag would not be passed down otherwise,
@@ -8573,7 +8757,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                 stmt_count++;
             }
 
-            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, 0, NULL);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 if (!ignore_fail) {
@@ -8599,6 +8783,8 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         ly_errno = prev_ly_errno;
     }
 
+    rc = 0;
+
     /*
      * rest
      */
@@ -8608,10 +8794,13 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         }
         assert(!(options & LYD_OPT_TRUSTED) || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
 
-        rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
-        if (rc) {
-            /* since when was already resolved, a forward reference is an error */
-            return -1;
+        rc2 = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, multi_error, NULL);
+        if (rc2) {
+            if (!multi_error) {
+                /* since when was already resolved, a forward reference is an error */
+                return -1;
+            }
+            rc = -1;
         }
 
         unres->type[i] = UNRES_RESOLVED;
@@ -8619,7 +8808,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
 
     LOGVRB("All data nodes and constraints resolved.");
     unres->count = 0;
-    return EXIT_SUCCESS;
+    return rc;
 
 error:
     if (!ignore_fail) {

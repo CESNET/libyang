@@ -538,6 +538,11 @@ char *lyd_path(const struct lyd_node *node);
                                       in a diff structure. */
 #define LYD_OPT_LYB_MOD_UPDATE 0x80000 /**< Allow to parse data using an updated revision of a module, relevant only for LYB format. */
 #define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
+#define LYD_OPT_MULTI_ERRORS  0x2000000 /**< Report all validation errors instead of the first one.
+                                             Applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
+                                             And, the @ref logopts need support storing multiple error messages.
+                                             NOTE: Only some kinds of validation error are supported:
+                                                   must, unique, unresolved union and unresolved instance-identifier.  */
 
 /**@} parseroptions */
 
@@ -971,7 +976,9 @@ struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
- * Missing nodes are merged, leaf values updated.
+ * Missing nodes are merged, leaf values updated. Any attributes on the data nodes are strictly tied
+ * to the nodes - if the node is merged, its attributes are merged with it, if the node is not merged,
+ * its attributes are not merged either.
  *
  * If \p target and \p source do not share the top-level schema node, even if they
  * are from different modules, \p source parents up to top-level node will be created and
@@ -1199,7 +1206,8 @@ int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node 
  *              LYS_LEAFLIST:
  *                  Searched instance value.
  *              LYS_LIST:
- *                  Searched instance all ordered key values in the form of "[key1='val1'][key2='val2']...".
+ *                  Searched instance all ordered key values in the form of "[key1='val1'][key2='val2']...",
+ *                  while the key name may have optional prefixes their module names.
  * @param[out] match Found data node, NULL if not found.
  * @return 0 on success (even on not found), -1 on error.
  */
@@ -1516,6 +1524,22 @@ int lyd_lyb_data_length(const char *data);
  * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
  */
 void *lyd_set_private(const struct lyd_node *node, void *priv);
+
+/**
+ * @brief Get the data node based on a simple XPath.
+ * This API returns the closest parent of the node (or the node itself)
+ * identified by the nodeid (path). This API uses lyd_find_sibling() If cache is
+ * enabled and the siblings are NOT top-level nodes, this function finds the
+ * node in a constant time.
+ * @param[in] data_tree Existing data tree to get.
+ * @param[in] ctx Context to use.
+ * @param[in] path Simple data path (see @ref howtoxpath).
+ * @param[in] output possible values are 1 and 0.
+ * when set to 1, changes the behavior to ignoring RPC/action input schema nodes and using only output ones.
+ * @return NULL If no lyd_node exists for the given xpath.
+ */
+struct lyd_node *lyd_find_path_hash_based(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path,
+                                          int output);
 
 #endif
 

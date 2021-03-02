@@ -412,6 +412,19 @@ struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema
 const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr);
 
 /**
+ * @brief Internal version of lyd_value_type().
+ *
+ * @param[in] node Schema node of the value.
+ * @param[in] value String value to get the type of.
+ * @param[in] local_mod Local module for the value prefix resolution in case it is a default value (defined in schema).
+ * Otherwise set to NULL.
+ * @param[out] type Optionally the resolved type of the value.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
+int lyd_value_type_internal(struct lys_node *node, const char *value, const struct lys_module *local_mod,
+                            struct lys_type **type);
+
+/**
  * @brief Internal version of lyd_unlink().
  *
  * @param[in] node Node to unlink.

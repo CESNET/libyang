@@ -123,6 +123,7 @@ static char *lyp_ublock2urange[][2] = {
     {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]"},
     {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]"},
     {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]"},
+    {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]"},
     {NULL, NULL}
 };
 
@@ -298,6 +299,11 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
 int
 lyp_munmap(void *addr, size_t length)
 {
+    if (!addr) {
+        /* nothing to unmap */
+        return 0;
+    }
+
     return munmap(addr, length);
 }
 
@@ -928,7 +934,7 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
     }
 
     /* must return 0, already checked during parsing */
-    precomp = pcre_compile(perl_regex, PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
+    precomp = pcre_compile(perl_regex, PCRE_UTF8 | PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
                            &err_msg, &err_offset, NULL);
     if (!precomp) {
         LOGVAL(ctx, LYE_INREGEX, LY_VLOG_NONE, NULL, pattern, perl_regex + err_offset, err_msg);
@@ -1043,8 +1049,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
             /* copy WS */
             if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
                 if (count + (cur_expr - end) > buf_len) {
-                    lyxp_expr_free(exp);
                     LOGBUF(end);
+                    lyxp_expr_free(exp);
                     return -1;
                 }
                 strncpy(&buf[count], end, cur_expr - end);
@@ -1059,8 +1065,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
                 if (!module_name || strncmp(cur_expr, module_name, j)) {
                     /* print module name with colon, it does not equal to the parent one */
                     if (count + j > buf_len) {
-                        lyxp_expr_free(exp);
                         LOGBUF(cur_expr);
+                        lyxp_expr_free(exp);
                         return -1;
                     }
                     strncpy(&buf[count], cur_expr, j);
@@ -1070,8 +1076,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
 
                 /* copy the rest */
                 if (count + (exp->tok_len[i] - j) > buf_len) {
-                    lyxp_expr_free(exp);
                     LOGBUF(end);
+                    lyxp_expr_free(exp);
                     return -1;
                 }
                 strncpy(&buf[count], end, exp->tok_len[i] - j);
@@ -1378,19 +1384,21 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* find bit definition, identifiers appear ordered by their position */
             for (found = i = 0; i < type->info.bits.count; i++) {
                 if (!strncmp(type->info.bits.bit[i].name, &value[c], len) && !type->info.bits.bit[i].name[len]) {
-                    /* we have match, check if the value is enabled ... */
-                    for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
-                        if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[j])) {
-                            if (leaf) {
-                                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-                            } else {
-                                LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                    if (!dflt) {
+                        /* we have match, check if the value is enabled ... */
+                        for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
+                            if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[j])) {
+                                if (leaf) {
+                                    LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
+                                } else {
+                                    LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                                }
+                                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL,
+                                    "Bit \"%s\" is disabled by its %d. if-feature condition.",
+                                    type->info.bits.bit[i].name, j + 1);
+                                free(bits);
+                                goto error;
                             }
-                            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL,
-                                   "Bit \"%s\" is disabled by its %d. if-feature condition.",
-                                   type->info.bits.bit[i].name, j + 1);
-                            free(bits);
-                            goto error;
                         }
                     }
                     /* check that the value was not already set */
@@ -1523,17 +1531,19 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         /* find matching enumeration value */
         for (i = found = 0; i < type->info.enums.count; i++) {
             if (value && !strcmp(value, type->info.enums.enm[i].name)) {
-                /* we have match, check if the value is enabled ... */
-                for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
-                    if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[j])) {
-                        if (leaf) {
-                            LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-                        } else {
-                            LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                if (!dflt) {
+                    /* we have match, check if the value is enabled ... */
+                    for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
+                        if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[j])) {
+                            if (leaf) {
+                                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
+                            } else {
+                                LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
+                            }
+                            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d. if-feature condition.",
+                                value, j + 1);
+                            goto error;
                         }
-                        LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d. if-feature condition.",
-                               value, j + 1);
-                        goto error;
                     }
                 }
                 /* ... and store pointer to the definition */
@@ -1995,9 +2005,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
     }
 
-    /* free backup (using the original type) */
+    /* free backup (using the original type, unless we were parsing a leafref - then this was freed in the recursive call) */
     if (store) {
-        lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
+        if (type->base != LY_TYPE_LEAFREF) {
+            lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
+        }
         lydict_remove(ctx, old_val_str);
     }
     return ret;
@@ -2490,6 +2502,7 @@ lyp_check_date(struct ly_ctx *ctx, const char *date)
 {
     int i;
     struct tm tm, tm_;
+    time_t t;
     char *r;
 
     assert(date);
@@ -2505,16 +2518,18 @@ lyp_check_date(struct ly_ctx *ctx, const char *date)
         }
     }
 
+    /* pre-fill tm with valid data */
+    t = time(NULL);
+    localtime_r(&t, &tm);
+
     /* check content, e.g. 2018-02-31 */
-    memset(&tm, 0, sizeof tm);
     r = strptime(date, "%Y-%m-%d", &tm);
     if (!r || r != &date[LY_REV_SIZE - 1]) {
         goto error;
     }
-    /* set some arbitrary non-0 value in case DST changes, it could move the day otherwise */
-    tm.tm_hour = 12;
 
     memcpy(&tm_, &tm, sizeof tm);
+    tm_.tm_isdst = -1; /* mktime corrects DST mismatches, this stops it from doing that */
     mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
     if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
         /* checking days is enough, since other errors
@@ -3790,13 +3805,27 @@ copyutf8(struct ly_ctx *ctx, char *dst, const char *src)
 
         dst[0] = src[0];
         return 1;
-    } else if (!(src[0] & 0x20)) {
+    } else if ((src[0] & 0xe0) == 0xc0) {
         /* two bytes character */
+        if ((src[1] & 0xc0) != 0x80) {
+            LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x 0x%02x",
+                    (unsigned char)src[0], (unsigned char)src[1])
+            return 0;
+        }
+
         dst[0] = src[0];
         dst[1] = src[1];
         return 2;
-    } else if (!(src[0] & 0x10)) {
+    } else if ((src[0] & 0xf0) == 0xe0) {
         /* three bytes character */
+        if ((src[1] & 0xc0) != 0x80 || (src[2] & 0xc0) != 0x80) {
+            LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x 0x%02x 0x%02x",
+                    (unsigned char)src[0], (unsigned char)src[1], (src[1] ? (unsigned char)src[2] : 0))
+            return 0;
+        }
+
         value = ((uint32_t)(src[0] & 0xf) << 12) | ((uint32_t)(src[1] & 0x3f) << 6) | (src[2] & 0x3f);
         if (((value & 0xf800) == 0xd800) ||
                 (value >= 0xfdd0 && value <= 0xfdef) ||
@@ -3813,8 +3842,16 @@ copyutf8(struct ly_ctx *ctx, char *dst, const char *src)
         dst[1] = src[1];
         dst[2] = src[2];
         return 3;
-    } else if (!(src[0] & 0x08)) {
+    } else if ((src[0] & 0xf8) == 0xf0) {
         /* four bytes character */
+        if ((src[1] & 0xc0) != 0x80 || (src[2] & 0xc0) != 0x80 || (src[3] & 0xc0) != 0x80) {
+            LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x 0x%02x 0x%02x 0x%02x",
+                    (unsigned char)src[0], (unsigned char)src[1],
+                    (src[1] ? (unsigned char)src[2] : 0), ((src[1] && src[2]) ? (unsigned char)src[3] : 0));
+            return 0;
+        }
+
         value = ((uint32_t)(src[0] & 0x7) << 18) | ((uint32_t)(src[1] & 0x3f) << 12) | ((uint32_t)(src[2] & 0x3f) << 6) | (src[3] & 0x3f);
         if ((value & 0xffe) == 0xffe) {
             /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
@@ -3965,3 +4002,133 @@ lyp_get_yang_data_template(const struct lys_module *module, const char *yang_dat
 
     return ret;
 }
+
+int
+lyp_get_ext_list(struct ly_ctx *ctx, void *elem, LYEXT_PAR elem_type,
+        struct lys_ext_instance ****ext_list, uint8_t **ext_size, const char **stmt)
+{
+    const char *statement = NULL;
+
+    switch (elem_type) {
+    case LYEXT_PAR_MODULE:
+        *ext_size = &((struct lys_module *)elem)->ext_size;
+        *ext_list = &((struct lys_module *)elem)->ext;
+        statement = ((struct lys_module *)elem)->type ? "submodule" : "module";
+        break;
+    case LYEXT_PAR_IMPORT:
+        *ext_size = &((struct lys_import *)elem)->ext_size;
+        *ext_list = &((struct lys_import *)elem)->ext;
+        statement = "import";
+        break;
+    case LYEXT_PAR_INCLUDE:
+        *ext_size = &((struct lys_include *)elem)->ext_size;
+        *ext_list = &((struct lys_include *)elem)->ext;
+        statement = "include";
+        break;
+    case LYEXT_PAR_REVISION:
+        *ext_size = &((struct lys_revision *)elem)->ext_size;
+        *ext_list = &((struct lys_revision *)elem)->ext;
+        statement = "revision";
+        break;
+    case LYEXT_PAR_NODE:
+        *ext_size = &((struct lys_node *)elem)->ext_size;
+        *ext_list = &((struct lys_node *)elem)->ext;
+        statement = strnodetype(((struct lys_node *)elem)->nodetype);
+        break;
+    case LYEXT_PAR_IDENT:
+        *ext_size = &((struct lys_ident *)elem)->ext_size;
+        *ext_list = &((struct lys_ident *)elem)->ext;
+        statement = "identity";
+        break;
+    case LYEXT_PAR_TYPE:
+        *ext_size = &((struct lys_type *)elem)->ext_size;
+        *ext_list = &((struct lys_type *)elem)->ext;
+        statement = "type";
+        break;
+    case LYEXT_PAR_TYPE_BIT:
+        *ext_size = &((struct lys_type_bit *)elem)->ext_size;
+        *ext_list = &((struct lys_type_bit *)elem)->ext;
+        statement = "bit";
+        break;
+    case LYEXT_PAR_TYPE_ENUM:
+        *ext_size = &((struct lys_type_enum *)elem)->ext_size;
+        *ext_list = &((struct lys_type_enum *)elem)->ext;
+        statement = "enum";
+        break;
+    case LYEXT_PAR_TPDF:
+        *ext_size = &((struct lys_tpdf *)elem)->ext_size;
+        *ext_list = &((struct lys_tpdf *)elem)->ext;
+        statement = "typedef";
+        break;
+    case LYEXT_PAR_EXT:
+        *ext_size = &((struct lys_ext *)elem)->ext_size;
+        *ext_list = &((struct lys_ext *)elem)->ext;
+        statement = "extension";
+        break;
+    case LYEXT_PAR_EXTINST:
+        *ext_size = &((struct lys_ext_instance *)elem)->ext_size;
+        *ext_list = &((struct lys_ext_instance *)elem)->ext;
+        statement = "extension instance";
+        break;
+    case LYEXT_PAR_FEATURE:
+        *ext_size = &((struct lys_feature *)elem)->ext_size;
+        *ext_list = &((struct lys_feature *)elem)->ext;
+        statement = "feature";
+        break;
+    case LYEXT_PAR_REFINE:
+        *ext_size = &((struct lys_refine *)elem)->ext_size;
+        *ext_list = &((struct lys_refine *)elem)->ext;
+        statement = "refine";
+        break;
+    case LYEXT_PAR_RESTR:
+        *ext_size = &((struct lys_restr *)elem)->ext_size;
+        *ext_list = &((struct lys_restr *)elem)->ext;
+        statement = "YANG restriction";
+        break;
+    case LYEXT_PAR_WHEN:
+        *ext_size = &((struct lys_when *)elem)->ext_size;
+        *ext_list = &((struct lys_when *)elem)->ext;
+        statement = "when";
+        break;
+    case LYEXT_PAR_DEVIATE:
+        *ext_size = &((struct lys_deviate *)elem)->ext_size;
+        *ext_list = &((struct lys_deviate *)elem)->ext;
+        statement = "deviate";
+        break;
+    case LYEXT_PAR_DEVIATION:
+        *ext_size = &((struct lys_deviation *)elem)->ext_size;
+        *ext_list = &((struct lys_deviation *)elem)->ext;
+        statement = "deviation";
+        break;
+    default:
+        LOGERR(ctx, LY_EINT, "parent type %d", elem_type);
+        return -1;
+    }
+
+    if (stmt) {
+        *stmt = statement;
+    }
+
+    return 0;
+}
+
+inline void
+lyp_reduce_ext_list(struct lys_ext_instance ***ext, uint8_t new_size, uint8_t orig_size)
+{
+    struct lys_ext_instance **tmp;
+
+    if (new_size != orig_size) {
+        if (new_size == 0) {
+            free(*ext);
+            *ext = NULL;
+        } else {
+            tmp = realloc(*ext, new_size * sizeof(*tmp));
+            if (!tmp) {
+                /* we just reduce the size, so this failure is harmless. */
+                return;
+            }
+            *ext = tmp;
+        }
+    }
+}
+

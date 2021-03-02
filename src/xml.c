@@ -240,7 +240,7 @@ lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_
                 }
             }
         }
-        if (iter->content[0] && copy_ns) {
+        if (iter->content && iter->content[0] && copy_ns) {
             lyxml_correct_content_ns(ctx, iter, orig);
         }
         if (correct_attrs) {
@@ -668,7 +668,7 @@ parse_text(struct ly_ctx *ctx, const char *data, char delim, unsigned int *len)
 #define BUFSIZE 1024
 
     char buf[BUFSIZE];
-    char *result = NULL, *aux;
+    char *result = NULL;
     unsigned int r;
     int o, size = 0;
     int cdsect = 0;
@@ -790,8 +790,7 @@ loop:
     if (o) {
         if (result) {
             size = size + o;
-            aux = realloc(result, size + 1);
-            result = aux;
+            result = ly_realloc(result, size + 1);
         } else {
             size = o;
             result = malloc((size + 1) * sizeof *result);
@@ -868,6 +867,10 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
                 start = c + 1;
 
                 /* look for the prefix in namespaces */
+                if (prefix) {
+                    LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "prefix start, \":\" already parsed");
+                    goto error;
+                }
                 prefix = malloc((c - data + 1) * sizeof *prefix);
                 LY_CHECK_ERR_GOTO(!prefix, LOGMEM(ctx), error);
                 memcpy(prefix, data, c - data);
@@ -1248,6 +1251,11 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
         return NULL;
     }
 
+    if (!data) {
+        /* nothing to parse */
+        return NULL;
+    }
+
 repeat:
     /* process document */
     while (1) {
@@ -1445,15 +1453,22 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options,
     for (a = e->attr; a; a = a->next) {
         if (a->type == LYXML_ATTR_NS) {
             if (a->name) {
-                size += ly_print(out, " xmlns:%s=\"%s\"", a->name, a->value ? a->value : "");
+                size += ly_print(out, " xmlns:%s=\"", a->name);
             } else {
-                size += ly_print(out, " xmlns=\"%s\"", a->value ? a->value : "");
+                size += ly_print(out, " xmlns=\"");
             }
         } else if (a->ns && a->ns->prefix) {
-            size += ly_print(out, " %s:%s=\"%s\"", a->ns->prefix, a->name, a->value);
+            size += ly_print(out, " %s:%s=\"", a->ns->prefix, a->name);
         } else {
-            size += ly_print(out, " %s=\"%s\"", a->name, a->value);
+            size += ly_print(out, " %s=\"", a->name);
         }
+
+        if (a->value) {
+            size += lyxml_dump_text(out, a->value, LYXML_DATA_ATTR);
+        } else {
+            size += ly_print(out, "&quot;&quot;");
+        }
+        size += ly_print(out, "\"");
     }
 
     /* apply options */

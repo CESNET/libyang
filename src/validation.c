@@ -91,10 +91,15 @@ lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres)
                 }
             }
         }
+    }
 
-        /* check all relevant when conditions */
+    /* check all relevant when conditions */
+    if (!(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         if (node->when_status & LYD_WHEN) {
-            if (options & LYD_OPT_TRUSTED) {
+            if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF | LYD_OPT_NOTIF_FILTER)) && !op) {
+                /* we are validating an operation but are still on its parents (nested operation), parse them as trusted */
+                node->when_status |= LYD_WHEN_TRUE;
+            } else if (options & LYD_OPT_TRUSTED) {
                 node->when_status |= LYD_WHEN_TRUE;
             } else if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
                 return 1;
@@ -861,8 +866,8 @@ nextbit:
             for (i = 0; i < iff_size; i++) {
                 if (!resolve_iffeature(&iff[i])) {
                     LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, leaf->value_str, schema->name);
-                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "%s \"%s\" is disabled by its if-feature condition.",
-                           id, idname);
+                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "%s \"%s\" is disabled by its %d. if-feature condition.",
+                           id, idname, i);
                     return 1;
                 }
             }

@@ -33,6 +33,18 @@ matrix:
       os: osx
       compiler: gcc
       env: TRAVIS_ARCH="amd64"
+    - arch: ppc64le
+      os: linux
+      dist: bionic
+      sudo: required
+      compiler: gcc
+      env: TRAVIS_ARCH="ppc64le"
+    - arch: ppc64le
+      os: linux
+      dist: bionic
+      sudo: required
+      compiler: clang
+      env: TRAVIS_ARCH="ppc64le"       
   allow_failures:
     - os: osx
 
@@ -73,13 +85,14 @@ script:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cmake -DENABLE_VALGRIND_TESTS=OFF ..; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ "$TRAVIS_ARCH" = "amd64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_STATIC=${ENABLE_STATIC:-OFF} ..; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ "$TRAVIS_ARCH" = "arm64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_VALGRIND_TESTS=OFF ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ "$TRAVIS_ARCH" = "ppc64le" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_VALGRIND_TESTS=OFF ..; fi
   - make -j2 && ctest --output-on-failure
   - cd -
   - if [ "$DEPLOY_BUILD" = "TRUE" ]; then ./tools/abi-check.sh; fi
 
 deploy:
   - provider: script
-    script: bash <(curl -s https://codecov.io/bash)
+    script: ./tools/codecov.sh
     skip_cleanup: true
     verbose: true
     on:

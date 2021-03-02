@@ -4340,6 +4340,121 @@ test_extension_yang_data_yang(void **state)
     }
 }
 
+
+void
+test_extension_skipped_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<module name=\"ext\"\n"
+            "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+            "        xmlns:x=\"urn:ext\"\n"
+            "        xmlns:e=\"urn:ext-def\">\n"
+            "  <yang-version value=\"1.1\"/>\n"
+            "  <namespace uri=\"urn:ext\"/>\n"
+            "  <prefix value=\"x\"/>\n"
+            "  <import module=\"ext-def\">\n"
+            "    <prefix value=\"e\"/>\n"
+            "  </import>\n"
+            "  <e:a/>\n"
+            "  <e:skipped value=\"111\"/>\n"
+            "  <e:b x=\"111\"/>\n"
+            "  <container name=\"A\">\n"
+            "    <e:skipped value=\"222\"/>\n"
+            "    <e:a/>\n"
+            "    <e:skipped value=\"222\"/>\n"
+            "    <e:b x=\"222\"/>\n"
+            "    <e:skipped value=\"222\">\n"
+            "      <e:a/>\n"
+            "    </e:skipped>\n"
+            "    <leaf name=\"f\">\n"
+            "      <type name=\"string\"/>\n"
+            "      <e:skipped value=\"333\"/>\n"
+            "    </leaf>\n"
+            "  </container>\n"
+            "</module>\n";
+    const char *yin_skipped = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<module name=\"ext\"\n"
+            "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+            "        xmlns:x=\"urn:ext\"\n"
+            "        xmlns:e=\"urn:ext-def\">\n"
+            "  <yang-version value=\"1.1\"/>\n"
+            "  <namespace uri=\"urn:ext\"/>\n"
+            "  <prefix value=\"x\"/>\n"
+            "  <import module=\"ext-def\">\n"
+            "    <prefix value=\"e\"/>\n"
+            "  </import>\n"
+            "  <e:a/>\n"
+            "  <e:b x=\"111\"/>\n"
+            "  <container name=\"A\">\n"
+            "    <e:a/>\n"
+            "    <e:b x=\"222\"/>\n"
+            "    <leaf name=\"f\">\n"
+            "      <type name=\"string\"/>\n"
+            "    </leaf>\n"
+            "  </container>\n"
+            "</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin_skipped);
+}
+
+void
+test_extension_skipped_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:a;\n"
+                    "  e:skipped \"111\";\n"
+                    "  e:b \"111\";\n\n"
+                    "  container A {\n"
+                    "    e:skipped \"222\";\n"
+                    "    e:a;\n"
+                    "    e:skipped \"222\";\n"
+                    "    e:b \"222\";\n"
+                    "    e:skipped \"222\" {\n"
+                    "      e:a;\n"
+                    "    }\n"
+                    "    leaf f {\n"
+                    "      type string;\n"
+                    "      e:skipped \"333\";\n"
+                    "    }\n"
+                    "  }\n"
+                    "}\n";
+    const char *yang_skipped = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:a;\n"
+                    "  e:b \"111\";\n\n"
+                    "  container A {\n"
+                    "    e:a;\n"
+                    "    e:b \"222\";\n"
+                    "    leaf f {\n"
+                    "      type string;\n"
+                    "    }\n"
+                    "  }\n"
+                    "}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang_skipped);
+}
+
 int
 main(void)
 {
@@ -4362,6 +4477,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_complex_many_instace_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_arrays_str_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_extension_yang_data_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_extension_skipped_yin, setup_ctx_yin, teardown_ctx),
 
         cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),
@@ -4380,7 +4496,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_complex_mand_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_many_instace_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_arrays_str_yang, setup_ctx_yang, teardown_ctx),
-        cmocka_unit_test_setup_teardown(test_extension_yang_data_yang, setup_ctx_yang, teardown_ctx)
+        cmocka_unit_test_setup_teardown(test_extension_yang_data_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_extension_skipped_yang, setup_ctx_yang, teardown_ctx)
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);

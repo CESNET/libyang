@@ -355,7 +355,7 @@ TEST(test_ly_ctx_parse_module_fd_invalid)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     const char *yin_file = TESTS_DIR "/api/files/a.yin";
-    FILE *f;
+    FILE *f = nullptr;
 
     try {
         auto ctx = std::make_shared<libyang::Context>(yang_folder);
@@ -367,7 +367,9 @@ TEST(test_ly_ctx_parse_module_fd_invalid)
         throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
         ASSERT_STREQ("Module parsing failed.", e.what());
-        fclose(f);
+        if (f) {
+            fclose(f);
+        }
         return;
     }
 }

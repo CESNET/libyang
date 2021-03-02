@@ -326,6 +326,7 @@ lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_d
 
     ht->used = 0;
     ht->size = size;
+    ht->invalid = 0;
     ht->val_equal = val_equal;
     ht->cb_data = cb_data;
     ht->resize = (uint16_t)resize;
@@ -374,6 +375,7 @@ lyht_dup(const struct hash_table *orig)
 
     memcpy(ht->recs, orig->recs, (size_t)orig->used * (size_t)orig->rec_size);
     ht->used = orig->used;
+    ht->invalid = orig->invalid;
     return ht;
 }
 
@@ -397,10 +399,10 @@ lyht_resize(struct hash_table *ht, int enlarge)
     old_recs = ht->recs;
     old_size = ht->size;
 
-    if (enlarge) {
+    if (enlarge > 0) {
         /* double the size */
         ht->size <<= 1;
-    } else {
+    } else if (enlarge < 0) {
         /* half the size */
         ht->size >>= 1;
     }
@@ -410,6 +412,8 @@ lyht_resize(struct hash_table *ht, int enlarge)
 
     /* reset used, it will increase again */
     ht->used = 0;
+    /* reset invalid, it will increase agein */
+    ht->invalid = 0;
 
     /* add all the old records into the new records array */
     for (i = 0; i < old_size; ++i) {
@@ -762,6 +766,9 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
 
     /* insert it into the returned record */
     assert(rec->hits < 1);
+    if (rec->hits < 0) {
+        --ht->invalid;
+    }
     rec->hash = hash;
     rec->hits = 1;
     memcpy(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1));
@@ -872,6 +879,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
     /* check size & shrink if needed */
     ret = 0;
     --ht->used;
+    ++ht->invalid;
     if (ht->resize == 2) {
         r = (ht->used * 100) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
@@ -880,11 +888,25 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, va
             }
 
             /* shrink */
-            ret = lyht_resize(ht, 0);
+            ret = lyht_resize(ht, -1);
 
             if (resize_val_equal) {
                 lyht_set_cb(ht, old_val_equal);
             }
+        }
+    }
+
+    r = ((ht->size - ht->used - ht->invalid) * 100) / ht->size;
+    if (r < LYHT_REHASH_PERCENTAGE) {
+        if (resize_val_equal) {
+            old_val_equal = lyht_set_cb(ht, resize_val_equal);
+        }
+
+        /* rehash */
+        ret = lyht_resize(ht, 0);
+
+        if (resize_val_equal) {
+            lyht_set_cb(ht, old_val_equal);
         }
     }
 

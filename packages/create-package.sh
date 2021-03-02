@@ -20,6 +20,7 @@ cd ./build
 
 osc checkout home:liberouter
 cp home:liberouter/$package/$package.spec home:liberouter/$package/debian.changelog home:liberouter
+rm -rf home:liberouter/$package/*
 cp build-packages/debian* build-packages/$package* home:liberouter/$package
 cd home:liberouter/$package
 
@@ -37,8 +38,8 @@ if [ "$VERSION" != "$OLDVERSION" ]; then
     git log --since="$logtime" --pretty=format:"  * %s (%aN)%n" | grep "BUGFIX\|CHANGE\|FEATURE" >>debian.changelog
     git log -1  --pretty=format:"%n -- %aN <%aE>  %aD%n" >>debian.changelog
     echo -e "\n" >>debian.changelog
-    cat ../debian.changelog >>debian.changelog
 fi
+cat ../debian.changelog >>debian.changelog
 
 if [ "$VERSION" != "$OLDVERSION" ]; then
     git log -1 --date=format:'%a %b %d %Y' --pretty=format:"* %ad  %aN <%aE>" | tr -d "\n" >>$package.spec
@@ -50,4 +51,5 @@ cat ../$package.spec | sed -e '1,/%changelog/d' >>$package.spec
 
 # download source and update to opensuse build
 wget "https://github.com/CESNET/libyang/archive/master.tar.gz" -O master.tar.gz
+osc addremove
 osc commit -m travis-update
