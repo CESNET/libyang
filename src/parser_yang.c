@@ -894,7 +894,7 @@ parse_text_field(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, uint32_t
     enum ly_stmt kw;
 
     if (*value) {
-        LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, lyext_substmt2str(substmt));
+        LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(substmt));
         return LY_EVALID;
     }
 
@@ -910,7 +910,7 @@ parse_text_field(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, uint32_t
             LY_CHECK_RET(parse_ext(ctx, word, word_len, substmt, substmt_index, exts));
             break;
         default:
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(substmt));
             return LY_EVALID;
         }
     }
@@ -1266,7 +1266,7 @@ parse_text_fields(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, const c
             LY_CHECK_RET(parse_ext(ctx, word, word_len, substmt, LY_ARRAY_COUNT(*texts) - 1, exts));
             break;
         default:
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(substmt));
             return LY_EVALID;
         }
     }
@@ -1308,7 +1308,7 @@ parse_qnames(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, struct lysp_
             LY_CHECK_RET(parse_ext(ctx, word, word_len, substmt, LY_ARRAY_COUNT(*qnames) - 1, exts));
             break;
         default:
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));
+            LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(substmt));
             return LY_EVALID;
         }
     }
@@ -2087,7 +2087,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct lysp_type *type)
             break;
         case LY_STMT_PATH:
             if (type->path) {
-                LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, lyext_substmt2str(LY_STMT_PATH));
+                LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(LY_STMT_PATH));
                 return LY_EVALID;
             }
 
