@@ -92,13 +92,8 @@ LY_ERR
 lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
         const struct lys_module *ext_mod)
 {
-    LY_ERR r, ret = LY_SUCCESS;
-    const char *tmp, *name, *prefix;
-    size_t pref_len, name_len;
-    LY_ARRAY_COUNT_TYPE v;
-
-    DUP_STRING(ctx->ctx, ext_p->argument, ext->argument, ret);
-    LY_CHECK_RET(ret);
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_ext *ext_def;
 
     ext->parent_stmt = ext_p->parent_stmt;
     ext->parent_stmt_index = ext_p->parent_stmt_index;
@@ -108,79 +103,15 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     lysc_update_path(ctx, LY_STMT_IS_NODE(ext->parent_stmt) ? ((struct lysc_node *)ext->parent)->module : NULL, "{extension}");
     lysc_update_path(ctx, NULL, ext_p->name);
 
-    /* parse the prefix */
-    tmp = ext_p->name;
-    r = ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
-    /* it was parsed already */
-    assert(!r && !tmp[0]);
+    LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, ext_p, &ext_mod, &ext_def), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile_extension(ctx, ext_mod, ext_def, &ext->def), cleanup);
 
-    /* get module where the extension definition should be placed */
-    if (!ext_mod) {
-        ext_mod = ly_resolve_prefix(ctx->ctx, prefix, pref_len, ext_p->format, ext_p->prefix_data);
-        if (!ext_mod) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.",
-                    pref_len, prefix);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (!ext_mod->parsed->extensions) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                    ext_p->name, ext_mod->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
+    if (ext_def->argument) {
+        LY_CHECK_GOTO(ret = lysp_ext_instance_resolve_argument(ctx->ctx, ext_p, ext_def), cleanup);
     }
 
-    /* find the parsed extension definition there */
-    LY_ARRAY_FOR(ext_mod->parsed->extensions, v) {
-        if (!strcmp(name, ext_mod->parsed->extensions[v].name)) {
-            /* compile extension definition and assign it */
-            LY_CHECK_GOTO(ret = lys_compile_extension(ctx, ext_mod, &ext_mod->parsed->extensions[v], &ext->def), cleanup);
-            break;
-        }
-    }
-    if (!ext->def) {
-        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext_p->name);
-        ret = LY_EVALID;
-        goto cleanup;
-    }
-
-    /* unify the parsed extension from YIN and YANG sources. Without extension definition, it is not possible
-     * to get extension's argument from YIN source, so it is stored as one of the substatements. Here we have
-     * to find it, mark it with LYS_YIN_ARGUMENT and store it in the compiled structure. */
-    if ((ext_p->format == LY_PREF_XML) && ext->def->argument && !ext->argument) {
-        /* Schema was parsed from YIN and an argument is expected, ... */
-        struct lysp_stmt *stmt = NULL;
-
-        if (ext->def->flags & LYS_YINELEM_TRUE) {
-            /* ... argument was the first XML child element */
-            if (ext_p->child && !(ext_p->child->flags & LYS_YIN_ATTR)) {
-                /* TODO check namespace of the statement */
-                if (!strcmp(ext_p->child->stmt, ext->def->argument)) {
-                    stmt = ext_p->child;
-                }
-            }
-        } else {
-            /* ... argument was one of the XML attributes which are represented as child stmt
-             * with LYS_YIN_ATTR flag */
-            for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {
-                if (!strcmp(stmt->stmt, ext->def->argument)) {
-                    /* this is the extension's argument */
-                    break;
-                }
-            }
-        }
-        if (!stmt) {
-            /* missing extension's argument */
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Extension instance \"%s\" misses argument \"%s\".",
-                    ext_p->name, ext->def->argument);
-            ret = LY_EVALID;
-            goto cleanup;
-
-        }
-        LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, stmt->arg, 0, &ext->argument), cleanup);
-        stmt->flags |= LYS_YIN_ARGUMENT;
-    }
+    DUP_STRING(ctx->ctx, ext_p->argument, ext->argument, ret);
+    LY_CHECK_RET(ret);
 
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
@@ -195,7 +126,6 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         }
         LY_CHECK_GOTO(ret, cleanup);
     }
-    ext_p->compiled = ext;
 
 cleanup:
     lysc_update_path(ctx, NULL, NULL);

@@ -209,12 +209,13 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
     ly_bool child_presence;
-    const char *argument;
 
     if (!count && ext) {
         count = LY_ARRAY_COUNT(ext);
     }
     LY_ARRAY_FOR(ext, u) {
+        struct lysp_ext *ext_def = NULL;
+
         if (!count) {
             break;
         }
@@ -224,16 +225,17 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
             continue;
         }
 
-        ypr_open(ctx->out, flag);
-        argument = NULL;
-        if (ext[u].compiled) {
-            argument = ext[u].compiled->argument;
-        } else {
-            argument = ext[u].argument;
+        lysp_ext_find_definition(ctx->module->ctx, &ext[u], NULL, &ext_def);
+        if (!ext_def) {
+            continue;
         }
-        if (argument) {
+
+        ypr_open(ctx->out, flag);
+
+        if (ext_def->argument) {
             ly_print_(ctx->out, "%*s%s \"", INDENT, ext[u].name);
-            ypr_encode(ctx->out, argument, -1);
+            lysp_ext_instance_resolve_argument(ctx->module->ctx, &ext[u], ext_def);
+            ypr_encode(ctx->out, ext[u].argument, -1);
             ly_print_(ctx->out, "\"");
         } else {
             ly_print_(ctx->out, "%*s%s", INDENT, ext[u].name);

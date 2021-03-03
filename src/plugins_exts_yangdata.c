@@ -58,13 +58,6 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
                 p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_ENOT;
     }
-    /* check mandatory argument */
-    if (!c_ext->argument) {
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
-                "Extension %s is instantiated without mandatory argument representing YANG data template name.",
-                p_ext->name);
-        return LY_EVALID;
-    }
 
     mod_c = (struct lysc_module *)c_ext->parent;
 

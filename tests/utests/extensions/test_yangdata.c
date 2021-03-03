@@ -210,8 +210,7 @@ test_schema_invalid(void **state)
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data { container x { leaf x {type string;}}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Extension plugin \"libyang 2 - yang-data, version 1\": "
-            "Extension rc:yang-data is instantiated without mandatory argument representing YANG data template name.",
+    CHECK_LOG_CTX("Extension instance \"rc:yang-data\" misses argument element \"name\".",
             "/a:{extension='rc:yang-data'}");
 
     data = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"

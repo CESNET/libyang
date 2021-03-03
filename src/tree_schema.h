@@ -512,8 +512,6 @@ struct lysp_ext_instance {
     void *parent;                           /**< pointer to the parent element holding the extension instance(s), use
                                                  ::lysp_ext_instance#parent_stmt to access the schema element */
     struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
-    struct lysc_ext_instance *compiled;     /**< pointer to the compiled data if any - in case the source format is YIN,
-                                                 some of the information (argument) are available only after compilation */
     enum ly_stmt parent_stmt;               /**< value identifying placement of the extension instance */
     LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement in its [sized array](@ref sizedarrays) (if any) */

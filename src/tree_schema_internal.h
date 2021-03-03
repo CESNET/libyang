@@ -447,6 +447,34 @@ struct lysc_when ***lysc_node_when_p(const struct lysc_node *node);
 struct lysc_must **lysc_node_musts_p(const struct lysc_node *node);
 
 /**
+ * @brief Find parsed extension definition for the given extension instance.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] ext Extension instance for which the definition will be searched.
+ * @param[in, out] ext_mod Pointer to the module where the extension definition of the @p ext to correctly resolve prefixes.
+ * @param[out] ext_def Pointer to return found extension definition.
+ * @return LY_SUCCESS when the definition was found.
+ * @return LY_EVALID when the extension instance is invalid and/or the definition not found.
+ */
+LY_ERR lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, const struct lys_module **ext_mod,
+        struct lysp_ext **ext_def);
+
+/**
+ * @brief When the module comes from YIN format, the argument name is unknown because of missing extension definition
+ * (it might come from import modules which is not yet parsed at that time). Therefore, all the attributes are stored
+ * as substatements and resolving argument is postponed.
+ *
+ * There are 3 places which need the argument, so they resolve it when missing - YIN and YANG printers and extension instance
+ * compiler.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] ext_p Parsed extension to be updated.
+ * @param[in] ext_def Extension definition, found with ::lysp_ext_find_definition().
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysp_ext *ext_def);
+
+/**
  * @brief Iterate over the specified type of the extension instances
  *
  * @param[in] ext ([Sized array](@ref sizedarrays)) of extensions to explore

@@ -121,7 +121,7 @@ void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 #define ELEMENT_WRAPPER_END "</status>"
 
 #define TEST_1_CHECK_LYSP_EXT_INSTANCE(NODE, INSUBSTMT)\
-    CHECK_LYSP_EXT_INSTANCE((NODE), NULL, 1, NULL, INSUBSTMT, 0, "myext:c-define", LY_PREF_XML)
+    CHECK_LYSP_EXT_INSTANCE((NODE), NULL, 1, INSUBSTMT, 0, "myext:c-define", LY_PREF_XML)
 
 struct lys_yin_parser_ctx *YCTX;
 
@@ -335,7 +335,7 @@ test_yin_parse_extension_instance(void **state)
 
     ret = yin_parse_extension_instance(YCTX, LY_STMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
-    CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, NULL, LY_STMT_CONTACT, 0, "myext:ext", LY_PREF_XML);
+    CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, LY_STMT_CONTACT, 0, "myext:ext", LY_PREF_XML);
 
     CHECK_LYSP_STMT(exts->child, arg, 0, LYS_YIN_ATTR, 0, 1, stmt);
     stmt = "value";
@@ -355,7 +355,7 @@ test_yin_parse_extension_instance(void **state)
 
     ret = yin_parse_extension_instance(YCTX, LY_STMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
-    CHECK_LYSP_EXT_INSTANCE(exts, NULL, 0, NULL, LY_STMT_CONTACT, 0, "myext:extension-elem", LY_PREF_XML);
+    CHECK_LYSP_EXT_INSTANCE(exts, NULL, 0, LY_STMT_CONTACT, 0, "myext:extension-elem", LY_PREF_XML);
     lysp_ext_instance_free(UTEST_LYCTX, exts);
     LY_ARRAY_FREE(exts);
     exts = NULL;
@@ -377,7 +377,7 @@ test_yin_parse_extension_instance(void **state)
     ret = yin_parse_extension_instance(YCTX, LY_STMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
 
-    CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, NULL, LY_STMT_CONTACT, 0, "myext:ext", LY_PREF_XML);
+    CHECK_LYSP_EXT_INSTANCE(exts, NULL, 1, LY_STMT_CONTACT, 0, "myext:ext", LY_PREF_XML);
 
     stmt = "attr1";
     arg = "text1";
@@ -544,7 +544,7 @@ test_yin_parse_content(void **state)
     const char *exts_name = "myext:custom";
     const char *exts_arg = "totally amazing extension";
 
-    CHECK_LYSP_EXT_INSTANCE(exts, exts_arg, 0, NULL, LY_STMT_PREFIX, 0, exts_name, LY_PREF_XML);
+    CHECK_LYSP_EXT_INSTANCE(exts, exts_arg, 0, LY_STMT_PREFIX, 0, exts_name, LY_PREF_XML);
     assert_string_equal(value, "wsefsdf");
     assert_string_equal(units, "radians");
     assert_string_equal(when_p->cond, "condition...");
