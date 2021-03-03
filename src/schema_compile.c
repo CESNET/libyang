@@ -99,7 +99,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     ext->parent = parent;
     ext->parent_type = parent_type;
 
-    lysc_update_path(ctx, ext->parent_type == LYEXT_PAR_NODE ? (struct lysc_node *)ext->parent : NULL, "{extension}");
+    lysc_update_path(ctx, ext->parent_type == LYEXT_PAR_NODE ? ((struct lysc_node *)ext->parent)->module : NULL, "{extension}");
     lysc_update_path(ctx, NULL, ext_p->name);
 
     /* parse the prefix */
@@ -178,7 +178,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
 
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
-            lysc_update_path(ctx, (struct lysc_node *)ext, ext->argument);
+            lysc_update_path(ctx, ext->module, ext->argument);
         }
         ret = ext->def->plugin->compile(ctx, ext_p, ext);
         if (ret == LY_ENOT) {
@@ -250,7 +250,7 @@ lysc_unres_dflt_free(const struct ly_ctx *ctx, struct lysc_unres_dflt *r)
 }
 
 void
-lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *name)
+lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name)
 {
     int len;
     uint8_t nextlevel = 0; /* 0 - no starttag, 1 - '/' starttag, 2 - '=' starttag + '}' endtag */
@@ -277,7 +277,7 @@ remove_nodelevel:
         ctx->path[ctx->path_len] = '\0';
     } else {
         if (ctx->path_len > 1) {
-            if (!parent && (ctx->path[ctx->path_len - 1] == '}') && (ctx->path[ctx->path_len - 2] != '\'')) {
+            if (!parent_module && (ctx->path[ctx->path_len - 1] == '}') && (ctx->path[ctx->path_len - 2] != '\'')) {
                 /* extension of the special tag */
                 nextlevel = 2;
                 --ctx->path_len;
@@ -288,7 +288,7 @@ remove_nodelevel:
         } /* else the path is just initiated with '/', so do not add additional slash in case of top-level nodes */
 
         if (nextlevel != 2) {
-            if ((parent && (parent->module == ctx->cur_mod)) || (!parent && (ctx->path_len > 1) && (name[0] == '{'))) {
+            if ((parent_module && (parent_module == ctx->cur_mod)) || (!parent_module && (ctx->path_len > 1) && (name[0] == '{'))) {
                 /* module not changed, print the name unprefixed */
                 len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s", nextlevel ? "/" : "", name);
             } else {
@@ -1258,7 +1258,7 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
         for (u = orig_count; u < LY_ARRAY_COUNT(llist->dflts); ++u) {
             for (v = 0; v < u; ++v) {
                 if (!llist->dflts[u]->realtype->plugin->compare(llist->dflts[u], llist->dflts[v])) {
-                    lysc_update_path(ctx, llist->parent, llist->name);
+                    lysc_update_path(ctx, llist->parent ? llist->parent->module : NULL, llist->name);
                     LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Configuration leaf-list has multiple defaults of the same value \"%s\".",
                             llist->dflts[u]->canonical);
                     lysc_update_path(ctx, NULL, NULL);

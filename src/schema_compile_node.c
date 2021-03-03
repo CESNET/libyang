@@ -2465,7 +2465,7 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
     };
 
     /* input */
-    lysc_update_path(ctx, &action->node, "input");
+    lysc_update_path(ctx, action->module, "input");
     if (action_p->input.nodetype == LYS_UNKNOWN) {
         input = &implicit_input;
     } else {
@@ -2476,7 +2476,7 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
     LY_CHECK_GOTO(ret, done);
 
     /* output */
-    lysc_update_path(ctx, &action->node, "output");
+    lysc_update_path(ctx, action->module, "output");
     if (action_p->output.nodetype == LYS_UNKNOWN) {
         output = &implicit_output;
     } else {
@@ -3030,7 +3030,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
             return LY_EVALID;
         }
 
-        lysc_update_path(ctx, &list->node, key->name);
+        lysc_update_path(ctx, list->module, key->name);
         /* key must have the same config flag as the list itself */
         if ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
@@ -3725,7 +3725,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
     LY_ERR (*node_compile_spec)(struct lysc_ctx *, struct lysp_node *, struct lysc_node *);
 
     if (pnode->nodetype != LYS_USES) {
-        lysc_update_path(ctx, parent, pnode->name);
+        lysc_update_path(ctx, parent ? parent->module : NULL, pnode->name);
     } else {
         lysc_update_path(ctx, NULL, "{uses}");
         lysc_update_path(ctx, NULL, pnode->name);

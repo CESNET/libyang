@@ -164,11 +164,11 @@ const struct lysc_node *lys_find_ext_instance_node(const struct lysc_ext_instanc
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
  *
  * @param[in] ctx Compile context with the path.
- * @param[in] parent Parent of the current node to check difference with the currently processed module (taken from @p ctx).
+ * @param[in] parent_module Module of the current node's parent to check difference with the currently processed module (taken from @p ctx).
  * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is `{keyword}`, the following
  * call updates the segment to the form `{keyword='name'}` (to remove this compound segment, 2 calls with NULL @p name must be used).
  */
-void lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *name);
+void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name);
 
 /** @} extensionscompile */
 
