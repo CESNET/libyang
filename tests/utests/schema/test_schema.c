@@ -26,7 +26,11 @@ test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const ch
         const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
     *module_data = user_data;
-    *format = LYS_IN_YANG;
+    if ((*module_data)[0] == '<') {
+        *format = LYS_IN_YIN;
+    } else {
+        *format = LYS_IN_YANG;
+    }
     *free_module_data = NULL;
     return LY_SUCCESS;
 }
@@ -46,6 +50,10 @@ void test_includes(void **state);
 void test_identity(void **state);
 void test_feature(void **state);
 
+/* test_schema_extensions.c */
+void test_extension_argument(void **state);
+void test_extension_argument_element(void **state);
+
 int
 main(void)
 {
@@ -61,6 +69,10 @@ main(void)
         /** test_schema_stmts.c */
         UTEST(test_identity),
         UTEST(test_feature),
+
+        /** test_schema_extensions.c */
+        UTEST(test_extension_argument),
+        UTEST(test_extension_argument_element),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

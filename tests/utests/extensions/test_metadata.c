@@ -125,7 +125,7 @@ test_yin(void **state)
             "<md:annotation name=\"aa\"/>\n"
             "</module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"md:annotation\".", "/aa:{extension='md:annotation'}/aa");
+    CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"md:annotation aa\".", "/aa:{extension='md:annotation'}/aa");
 
     /* not allowed substatement */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
@@ -135,7 +135,7 @@ test_yin(void **state)
             "  <default value=\"x\"/>\n"
             "</md:annotation></module>";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YIN, NULL));
-    CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"md:annotation\" extension instance.", "/aa:{extension='md:annotation'}/aa");
+    CHECK_LOG_CTX("Invalid keyword \"default\" as a child of \"md:annotation aa\" extension instance.", "/aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of units substatement */
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"

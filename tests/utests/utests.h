@@ -427,16 +427,14 @@ struct utest_context {
  * @param[in] NODE      pointer to lysp_ext_instance variable
  * @param[in] ARGUMENT  expected optional value of the extension's argument
  * @param[in] CHILD     0 -> node doesnt have child, 1 -> node have children
- * @param[in] COMPILED  0 -> compiled data dosnt exists, 1 -> compiled data exists
  * @param[in] PARENT_STMT expected value identifying placement of the extension instance
  * @param[in] PARENT_STMT_INDEX expected indentifi index
  * @param[in] FORMAT    expected format
  */
-#define CHECK_LYSP_EXT_INSTANCE(NODE, ARGUMENT, CHILD, COMPILED, PARENT_STMT, PARENT_STMT_INDEX, NAME, FORMAT) \
+#define CHECK_LYSP_EXT_INSTANCE(NODE, ARGUMENT, CHILD, PARENT_STMT, PARENT_STMT_INDEX, NAME, FORMAT) \
     assert_non_null(NODE); \
     CHECK_STRING((NODE)->argument, ARGUMENT); \
     CHECK_POINTER((NODE)->child, CHILD); \
-    CHECK_POINTER((NODE)->compiled, COMPILED); \
     /*assert_int_equal((NODE)->flags, LYS_INTERNAL);*/ \
     assert_int_equal((NODE)->parent_stmt, PARENT_STMT); \
     assert_int_equal((NODE)->parent_stmt_index, PARENT_STMT_INDEX); \

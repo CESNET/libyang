@@ -24,7 +24,7 @@ ly_add_utest(NAME json SOURCES basic/test_json.c)
 ly_add_utest(NAME xpath SOURCES basic/test_xpath.c)
 ly_add_utest(NAME yanglib SOURCES basic/test_yanglib.c)
 
-ly_add_utest(NAME schema SOURCES schema/test_schema.c schema/test_schema_common.c schema/test_schema_stmts.c)
+ly_add_utest(NAME schema SOURCES schema/test_schema.c schema/test_schema_common.c schema/test_schema_stmts.c schema/test_schema_extensions.c)
 ly_add_utest(NAME parser_yang SOURCES schema/test_parser_yang.c)
 ly_add_utest(NAME parser_yin SOURCES schema/test_parser_yin.c)
 ly_add_utest(NAME tree_schema_compile SOURCES schema/test_tree_schema_compile.c)

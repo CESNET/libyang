@@ -1248,14 +1248,14 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
-    const char *argument;
-    const char *ext_argument;
     int8_t inner_flag = 0;
 
     if (!count && ext) {
         count = LY_ARRAY_COUNT(ext);
     }
     LY_ARRAY_FOR(ext, u) {
+        struct lysp_ext *ext_def = NULL;
+
         if (!count) {
             break;
         }
@@ -1265,21 +1265,38 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
             continue;
         }
 
-        ypr_close_parent(ctx, flag);
-        inner_flag = 0;
-        argument = NULL;
-        ext_argument = NULL;
-
-        if (ext[u].compiled) {
-            argument = ext[u].compiled->argument;
-            ext_argument = ext[u].compiled->def->argument;
-        } else {
-            argument = ext[u].argument;
+        lysp_ext_find_definition(ctx->module->ctx, &ext[u], NULL, &ext_def);
+        if (!ext_def) {
+            continue;
         }
 
-        ypr_open(ctx, ext[u].name, ext_argument, argument, inner_flag);
+        ypr_close_parent(ctx, flag);
+        inner_flag = 0;
+
+        if (ext_def->argument) {
+            lysp_ext_instance_resolve_argument(ctx->module->ctx, &ext[u], ext_def);
+        }
+
+        ypr_open(ctx, ext[u].name, (ext_def->flags & LYS_YINELEM_TRUE) ? NULL : ext_def->argument, ext[u].argument, inner_flag);
         LEVEL++;
+        if (ext_def->flags & LYS_YINELEM_TRUE) {
+            const char *prefix, *name, *id;
+            size_t prefix_len, name_len;
+
+            ypr_close_parent(ctx, &inner_flag);
+
+            /* we need to use the same namespace as for the extension instance element */
+            id = ext[u].name;
+            ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
+            ly_print_(ctx->out, "%*s<%.*s:%s>", INDENT, prefix_len, prefix, ext_def->argument);
+            lyxml_dump_text(ctx->out, ext[u].argument, 0);
+            ly_print_(ctx->out, "</%.*s:%s>\n", prefix_len, prefix, ext_def->argument);
+        }
         LY_LIST_FOR(ext[u].child, stmt) {
+            if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
+                continue;
+            }
+
             ypr_close_parent(ctx, &inner_flag);
             yprp_stmt(ctx, stmt);
         }
