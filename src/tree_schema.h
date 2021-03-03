@@ -476,7 +476,10 @@ struct lysp_ext {
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM_* values (@ref snodeflags) */
 
-    struct lysc_ext *compiled;       /**< pointer to the compiled extension definition */
+    struct lysc_ext *compiled;       /**< pointer to the compiled extension definition.
+                                          The extension definition is compiled only if there is compiled extension instance,
+                                          otherwise this pointer remains NULL. The compiled extension definition is shared
+                                          among all extension instances. */
 };
 
 /**

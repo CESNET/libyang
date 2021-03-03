@@ -52,6 +52,13 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
 {
     LY_ERR ret = LY_SUCCESS;
 
+    if (ext_p->compiled && (ext_p->compiled->refcount == 1)) {
+        /* context recompilation - all the extension instances were previously freed (the last link to the compiled extension
+         * remains from the parsed extension definition) and now we are recompiling them again, to have the up-to-date
+         * extension definition, we have to recompile it as well now */
+        lysc_extension_free(ctx->ctx, &ext_p->compiled);
+    }
+
     if (!ext_p->compiled) {
         lysc_update_path(ctx, NULL, "{extension}");
         lysc_update_path(ctx, NULL, ext_p->name);
