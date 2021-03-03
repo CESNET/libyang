@@ -1748,6 +1748,13 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
             break;
         }
 
+        if (tctx->tpdf->type.compiled && (tctx->tpdf->type.compiled->refcount == 1)) {
+            /* context recompilation - everything was freed previously (the only reference is from the parsed type itself)
+             * and we need now recompile the type again in the updated context. */
+            lysc_type_free(ctx->ctx, tctx->tpdf->type.compiled);
+            ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = NULL;
+        }
+
         if (tctx->tpdf->type.compiled) {
             /* it is not necessary to continue, the rest of the chain was already compiled,
              * but we still may need to inherit default and units values, so start dummy loops */

@@ -28,7 +28,6 @@
 #include "xpath.h"
 
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp);
-void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 static void lysc_node_free_(struct ly_ctx *ctx, struct lysc_node *node);
 
 static void
@@ -506,6 +505,7 @@ lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext)
     lydict_remove(ctx, (*ext)->argument);
     FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
     free(*ext);
+    *ext = NULL;
 }
 
 void

@@ -667,10 +667,17 @@ void lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action);
 /**
  * @brief Free the items inside the compiled Notification structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] action Compiled Notification structure to be cleaned.
+ * @param[in,out] notif Compiled Notification structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 void lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif);
+
+/**
+ * @brief Free the compiled extension definition and NULL the provided pointer.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] ext Compiled extendion definition to be freed.
+ */
+void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 
 /**
  * @brief Free the compiled extension instance structure.
