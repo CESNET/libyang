@@ -1474,7 +1474,7 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->nodeid->expr);
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" from module \"%s\" was not found.",
-                aug->nodeid->expr, LYSP_MODULE_NAME(aug->nodeid_pmod));
+                aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
     }

@@ -196,7 +196,7 @@ lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses
 
         aug->nodeid = exp;
         exp = NULL;
-        aug->nodeid_pmod = ctx->cur_mod->parsed;
+        aug->aug_pmod = ctx->pmod;
         aug->nodeid_ctx_node = ctx_node;
         aug->aug_p = aug_p;
 
@@ -1552,7 +1552,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     for (i = 0; i < ctx->uses_rfns.count; ++i) {
         rfn = ctx->uses_rfns.objs[i];
 
-        if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, rfn->nodeid_ctx_node, parent, pnode, ctx->cur_mod)) {
+        if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, rfn->nodeid_ctx_node, parent, pnode, orig_mod)) {
             /* not our target node */
             continue;
         }
@@ -1590,7 +1590,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     for (i = 0; i < ctx->devs.count; ++i) {
         dev = ctx->devs.objs[i];
 
-        if (!lysp_schema_nodeid_match(dev->nodeid, dev->dev_pmods[0], NULL, parent, pnode, ctx->cur_mod)) {
+        if (!lysp_schema_nodeid_match(dev->nodeid, dev->dev_pmods[0], NULL, parent, pnode, orig_mod)) {
             /* not our target node */
             continue;
         }
@@ -1636,8 +1636,6 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
                 /* restore previous path */
                 strcpy(ctx->path, orig_path);
                 ctx->path_len = strlen(ctx->path);
-                ctx->cur_mod = orig_mod;
-                ctx->pmod = orig_pmod;
 
                 LY_CHECK_GOTO(ret, cleanup);
             }
@@ -1863,7 +1861,7 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
     for (i = 0; i < ctx->uses_augs.count; ) {
         aug = ctx->uses_augs.objs[i];
 
-        if (!lysp_schema_nodeid_match(aug->nodeid, aug->nodeid_pmod, aug->nodeid_ctx_node, node, NULL, NULL)) {
+        if (!lysp_schema_nodeid_match(aug->nodeid, orig_mod->parsed, aug->nodeid_ctx_node, node, NULL, NULL)) {
             /* not our target node */
             ++i;
             continue;
@@ -1872,8 +1870,7 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         /* use the path and modules from the augment */
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
-        ctx->cur_mod = aug->nodeid_pmod->mod;
-        ctx->pmod = (struct lysp_module *)aug->nodeid_pmod;
+        ctx->pmod = (struct lysp_module *)aug->aug_pmod;
 
         /* apply augment, restore the path */
         ret = lys_compile_augment(ctx, aug->aug_p, node);
@@ -1890,7 +1887,7 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
     for (i = 0; i < ctx->augs.count; ) {
         aug = ctx->augs.objs[i];
 
-        if (!lysp_schema_nodeid_match(aug->nodeid, aug->nodeid_pmod, NULL, node, NULL, NULL)) {
+        if (!lysp_schema_nodeid_match(aug->nodeid, aug->aug_pmod, NULL, node, NULL, NULL)) {
             /* not our target node */
             ++i;
             continue;
@@ -1901,8 +1898,8 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         ctx->path_len = 1;
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
-        ctx->cur_mod = aug->nodeid_pmod->mod;
-        ctx->pmod = (struct lysp_module *)aug->nodeid_pmod;
+        ctx->cur_mod = aug->aug_pmod->mod;
+        ctx->pmod = (struct lysp_module *)aug->aug_pmod;
 
         /* apply augment, restore the path */
         ret = lys_compile_augment(ctx, aug->aug_p, node);
@@ -1955,7 +1952,7 @@ lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p
 
     aug->nodeid = exp;
     exp = NULL;
-    aug->nodeid_pmod = pmod;
+    aug->aug_pmod = pmod;
     aug->aug_p = aug_p;
 
 cleanup:
