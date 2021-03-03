@@ -222,6 +222,9 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         LY_CHECK_GOTO(ret, cleanup);
     }
 
+    /* remember parent count */
+    parents_count = xmlctx->elements.count;
+
     while (xmlctx->status == LYXML_ELEMENT) {
         /* find key definition */
         for (i = 0; i < key_set.count; ++i) {
@@ -253,8 +256,11 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
 
         /* skip any children, resursively */
-        parents_count = xmlctx->elements.count;
-        while ((parents_count < xmlctx->elements.count) || (xmlctx->status == LYXML_ELEMENT)) {
+        while (xmlctx->status == LYXML_ELEMENT) {
+            while (parents_count < xmlctx->elements.count) {
+                LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
+            }
+            assert(xmlctx->status == LYXML_ELEM_CLOSE);
             LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
         }
 
