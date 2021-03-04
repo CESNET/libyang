@@ -1199,9 +1199,9 @@ next:
 
         if (!ws_count && !lws_count && (options & LY_TYPE_STORE_DYNAMIC)) {
             ret = lydict_insert_zc(ctx, (char *)value, &can);
-            LY_CHECK_GOTO(ret, cleanup);
             value = NULL;
             options &= ~LY_TYPE_STORE_DYNAMIC;
+            LY_CHECK_GOTO(ret, cleanup);
         } else {
             ret = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count, &can);
             LY_CHECK_GOTO(ret, cleanup);
