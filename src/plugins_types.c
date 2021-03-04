@@ -53,7 +53,7 @@ ly_err_msg_create(LY_ERR *err_code, LY_VECODE err_vecode, const char *err_msg, .
 {
     struct ly_err_item *ret;
     char *msg;
-    int  print_ret;
+    int  print_ret = -1;
 
     va_list(print_args);
 
@@ -62,7 +62,7 @@ ly_err_msg_create(LY_ERR *err_code, LY_VECODE err_vecode, const char *err_msg, .
         print_ret = vasprintf(&msg, err_msg, print_args);
     }
 
-    if ((print_ret < 0) || (err_msg == NULL)) {
+    if (print_ret < 0) {
         ret = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
         *err_code = LY_EMEM;
     } else {
