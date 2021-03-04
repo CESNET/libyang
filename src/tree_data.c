@@ -1426,7 +1426,7 @@ API LY_ERR
 lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, uint32_t options,
         struct lyd_node **node)
 {
-    return lyd_new_path2(parent, ctx, path, value, 0, options, node, NULL);
+    return lyd_new_path2(parent, ctx, path, value, LYD_ANYDATA_STRING, options, node, NULL);
 }
 
 static LY_ERR
