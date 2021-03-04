@@ -1094,8 +1094,8 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
 /** @} pathoptions */
 
 /**
- * @brief Create a new node in the data tree based on a path. Cannot be used for anyxml/anydata nodes,
- * for those use ::lyd_new_path2.
+ * @brief Create a new node in the data tree based on a path. If creating anyxml/anydata nodes, ::lyd_new_path2
+ * should be used instead, this function expects the value as string.
  *
  * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
