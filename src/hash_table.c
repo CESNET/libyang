@@ -165,7 +165,7 @@ lydict_remove(const struct ly_ctx *ctx, const char *value)
     struct dict_rec rec, *match = NULL;
     char *val_p;
 
-    if (!value) {
+    if (!ctx || !value) {
         return LY_SUCCESS;
     }
 
