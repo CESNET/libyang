@@ -117,11 +117,10 @@ lyjson_check_next(struct lyjson_ctx *jsonctx)
         if ((*jsonctx->in->current == ',') || (*jsonctx->in->current == ']')) {
             return LY_SUCCESS;
         }
-    } else {
-        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Unexpected character \"%c\" after JSON %s.",
-                *jsonctx->in->current, lyjson_token2str(lyjson_ctx_status(jsonctx, 0)));
     }
 
+    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Unexpected character \"%c\" after JSON %s.",
+            *jsonctx->in->current, lyjson_token2str(lyjson_ctx_status(jsonctx, 0)));
     return LY_EVALID;
 }
 
