@@ -381,7 +381,7 @@ static LY_ERR
 lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *prefix, *name;
+    const char *prefix, *name, *val;
     size_t prefix_len, name_len;
     struct lyxml_ctx *xmlctx;
     const struct ly_ctx *ctx;
@@ -593,31 +593,43 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             lydctx->op_node = node;
         }
     } else if (snode->nodetype & LYD_NODE_ANY) {
-        if (!xmlctx->ws_only) {
-            /* value in inner node */
-            LOGVAL(ctx, LYVE_SYNTAX, "Text value \"%.*s\" inside an any node \"%s\" found.",
-                    xmlctx->value_len, xmlctx->value, snode->name);
+        if ((snode->nodetype == LYS_ANYDATA) && !xmlctx->ws_only) {
+            /* value in anydata node, we expect a tree */
+            LOGVAL(ctx, LYVE_SYNTAX, "Text value \"%.*s\" inside an anydata node \"%s\" found.",
+                    xmlctx->value_len < 20 ? xmlctx->value_len : 20, xmlctx->value, snode->name);
             ret = LY_EVALID;
             goto error;
         }
 
-        /* parser next */
-        LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
+        if (!xmlctx->ws_only) {
+            /* use an arbitrary text value for anyxml */
+            lydict_insert(xmlctx->ctx, xmlctx->value, xmlctx->value_len, &val);
 
-        /* parse any data tree with correct options */
-        prev_opts = lydctx->parse_opts;
-        lydctx->parse_opts &= ~LYD_PARSE_STRICT;
-        lydctx->parse_opts |= LYD_PARSE_OPAQ;
-        anchor = NULL;
-        while (xmlctx->status == LYXML_ELEMENT) {
-            ret = lydxml_subtree_r(lydctx, NULL, &anchor, NULL);
-            LY_CHECK_ERR_GOTO(ret, lydctx->parse_opts = prev_opts, error);
+            /* parser next */
+            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
+
+            /* create node */
+            ret = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, &node);
+            LY_CHECK_GOTO(ret, error);
+        } else {
+            /* parser next */
+            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
+
+            /* parse any data tree with correct options */
+            prev_opts = lydctx->parse_opts;
+            lydctx->parse_opts &= ~LYD_PARSE_STRICT;
+            lydctx->parse_opts |= LYD_PARSE_OPAQ;
+            anchor = NULL;
+            while (xmlctx->status == LYXML_ELEMENT) {
+                ret = lydxml_subtree_r(lydctx, NULL, &anchor, NULL);
+                LY_CHECK_ERR_GOTO(ret, lydctx->parse_opts = prev_opts, error);
+            }
+            lydctx->parse_opts = prev_opts;
+
+            /* create node */
+            ret = lyd_create_any(snode, anchor, LYD_ANYDATA_DATATREE, 1, &node);
+            LY_CHECK_GOTO(ret, error);
         }
-        lydctx->parse_opts = prev_opts;
-
-        /* create node */
-        ret = lyd_create_any(snode, anchor, LYD_ANYDATA_DATATREE, 1, &node);
-        LY_CHECK_GOTO(ret, error);
     }
     assert(node);
 
