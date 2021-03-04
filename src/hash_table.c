@@ -218,7 +218,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
     struct dict_rec *match = NULL, rec;
     uint32_t hash;
 
-    LOGDBG(LY_LDGDICT, "inserting \"%.*s\"", len, value);
+    LOGDBG(LY_LDGDICT, "inserting \"%.*s\"", (int)len, value);
 
     hash = dict_hash(value, len);
     /* set len as data for compare callback */

@@ -243,7 +243,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
             offset += i;   /* add read escaped characters */
             LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], value, &u),
                     LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08x).",
-                    offset - slash, &in[slash], value),
+                    (int)(offset - slash), &in[slash], value),
                     error);
             len += u;      /* update number of bytes in buffer */
             in += offset;  /* move the input by the processed bytes stored in the buffer ... */
@@ -276,7 +276,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
 
             LY_CHECK_ERR_GOTO(!is_jsonstrchar(code),
                     LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character in JSON string \"%.*s\" (0x%08x).",
-                    &in[offset] - start + code_len, start, code),
+                    (int)(&in[offset] - start + code_len), start, code),
                     error);
 
             /* character is ok, continue */
@@ -385,7 +385,7 @@ invalid_character:
         e_val = strtol(e_ptr, &ptr, LY_BASE_DEC);
         if (errno) {
             LOGVAL(jsonctx->ctx, LYVE_SEMANTICS, "Exponent out-of-bounds in a JSON Number value (%.*s).",
-                    offset - minus - (e_ptr - in), e_ptr);
+                    (int)(offset - minus - (e_ptr - in)), e_ptr);
             return LY_EVALID;
         }
 

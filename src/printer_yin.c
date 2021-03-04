@@ -1288,9 +1288,9 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
             /* we need to use the same namespace as for the extension instance element */
             id = ext[u].name;
             ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
-            ly_print_(ctx->out, "%*s<%.*s:%s>", INDENT, prefix_len, prefix, ext_def->argument);
+            ly_print_(ctx->out, "%*s<%.*s:%s>", INDENT, (int)prefix_len, prefix, ext_def->argument);
             lyxml_dump_text(ctx->out, ext[u].argument, 0);
-            ly_print_(ctx->out, "</%.*s:%s>\n", prefix_len, prefix, ext_def->argument);
+            ly_print_(ctx->out, "</%.*s:%s>\n", (int)prefix_len, prefix, ext_def->argument);
         }
         LY_LIST_FOR(ext[u].child, stmt) {
             if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {

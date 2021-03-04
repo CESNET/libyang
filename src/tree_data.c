@@ -1117,7 +1117,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
     /* find the module */
     if (prefix) {
         module = ly_ctx_get_module_implemented2(ctx, prefix, pref_len);
-        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", pref_len, prefix), LY_ENOTFOUND);
+        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", (int)pref_len, prefix), LY_ENOTFOUND);
     }
 
     /* set value if none */
@@ -2478,7 +2478,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     if (!ant) {
         /* attribute is not defined as a metadata annotation (RFC 7952) */
         LOGVAL(mod->ctx, LYVE_REFERENCE, "Annotation definition for attribute \"%s:%.*s\" not found.",
-                mod->name, name_len, name);
+                mod->name, (int)name_len, name);
         ret = LY_EINVAL;
         goto cleanup;
     }
@@ -3467,7 +3467,7 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
         str = strndup(prefix, pref_len);
         module = ly_ctx_get_module_latest(ctx, str);
         free(str);
-        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", pref_len, prefix), NULL);
+        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", (int)pref_len, prefix), NULL);
     }
 
     /* find the metadata */

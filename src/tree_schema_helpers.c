@@ -292,13 +292,13 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
         return LY_EVALID;
     } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
-                name_len, name);
+                (int)name_len, name);
         return LY_EVALID;
     } else {
         for (size_t u = 0; u < name_len; ++u) {
             if (iscntrl(name[u])) {
                 LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
-                        name_len, name, u + 1);
+                        (int)name_len, name, u + 1);
                 break;
             }
         }
@@ -1842,7 +1842,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     /* get module where the extension definition should be placed */
     mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", pref_len, prefix);
+        LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
         return LY_EVALID;
     } else if (!mod->parsed->extensions) {
         LOGVAL(ctx, LYVE_REFERENCE, "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
@@ -1894,7 +1894,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
                 ly_parse_nodeid(&arg, &prefix_arg, &prefix_arg_len, &name_arg, &name_arg_len);
                 if (ly_strncmp(ext_def->argument, name_arg, name_arg_len)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its first XML child, "
-                            "but \"%.*s\" element found.", ext_p->name, ext_def->argument, name_arg_len, name_arg);
+                            "but \"%.*s\" element found.", ext_p->name, ext_def->argument, (int)name_arg_len, name_arg);
                     return LY_EVALID;
                 }
 

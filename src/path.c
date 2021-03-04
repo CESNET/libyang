@@ -91,7 +91,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 for (i = 0; i < set->count; ++i) {
                     /* all the keys must be from the same module so this comparison should be fine */
                     if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
-                        LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
+                        LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", (int)name_len, name);
                         goto token_error;
                     }
                 }
@@ -155,7 +155,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 for (i = 0; i < set->count; ++i) {
                     /* all the keys must be from the same module so this comparison should be fine */
                     if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
-                        LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
+                        LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", (int)name_len, name);
                         goto token_error;
                     }
                 }
@@ -420,7 +420,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
         *mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
         if (!*mod) {
             LOGVAL(ctx, LYVE_XPATH, "No module connected with the prefix \"%.*s\" found (prefix format %s).",
-                    len, pref, ly_format2str(format));
+                    (int)len, pref, ly_format2str(format));
             goto error;
         } else if (!(*mod)->implemented) {
             if (lref == LY_PATH_LREF_FALSE) {
@@ -513,7 +513,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                     format, prefix_data, NULL, &mod, &name, &name_len));
             key = lys_find_child(ctx_node, mod, name, name_len, 0, 0);
             if (!key) {
-                LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+                LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", (int)name_len, name);
                 ret = LY_ENOTFOUND;
                 goto cleanup;
             } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
@@ -686,7 +686,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         LY_CHECK_GOTO(ret, cleanup);
         key = lys_find_child(ctx_node, mod, name, name_len, 0, 0);
         if (!key) {
-            LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+            LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", (int)name_len, name);
             ret = LY_EVALID;
             goto cleanup;
         } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
@@ -748,7 +748,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
                     LY_PATH_LREF_TRUE, format, prefix_data, unres, &mod, &name, &name_len));
             node2 = lys_find_child(node, mod, name, name_len, 0, 0);
             if (!node2) {
-                LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+                LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", (int)name_len, name);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -862,7 +862,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         /* find the next node */
         node2 = lys_find_child(ctx_node, mod, name, name_len, 0, getnext_opts);
         if (!node2 || (op && (node2->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node2 != op))) {
-            LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
+            LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", (int)name_len, name);
             ret = LY_EVALID;
             goto cleanup;
         }

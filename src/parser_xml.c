@@ -82,7 +82,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, struct lyd_meta **meta)
              * TODO exception for NETCONF filters which are supposed to map to the ietf-netconf without prefix */
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Missing mandatory prefix for XML metadata \"%.*s\".",
-                        xmlctx->name_len, xmlctx->name);
+                        (int)xmlctx->name_len, xmlctx->name);
                 goto cleanup;
             }
 
@@ -97,7 +97,7 @@ skip_attr:
         ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
         if (!ns) {
             /* unknown namespace, XML error */
-            LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", xmlctx->prefix_len, xmlctx->prefix);
+            LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
             goto cleanup;
         }
         mod = ly_ctx_get_module_implemented_ns(xmlctx->ctx, ns->uri);
@@ -106,8 +106,8 @@ skip_attr:
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE,
                         "Unknown (or not implemented) YANG module with namespace \"%s\" for metadata \"%.*s%s%.*s\".",
-                        ns->uri, xmlctx->prefix_len, xmlctx->prefix, xmlctx->prefix_len ? ":" : "", xmlctx->name_len,
-                        xmlctx->name);
+                        ns->uri, (int)xmlctx->prefix_len, xmlctx->prefix, xmlctx->prefix_len ? ":" : "",
+                        (int)xmlctx->name_len, xmlctx->name);
                 goto cleanup;
             }
             goto skip_attr;
@@ -158,7 +158,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
             /* get namespace of the attribute */
             ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
             if (!ns) {
-                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", xmlctx->prefix_len, xmlctx->prefix);
+                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -413,7 +413,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     /* get the element module */
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", prefix_len, prefix);
+        LOGVAL(ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)prefix_len, prefix);
         ret = LY_EVALID;
         goto error;
     }
@@ -445,19 +445,19 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         if (!snode) {
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 if (parent) {
-                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.", name_len, name,
-                            parent->schema->name);
+                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
+                            (int)name_len, name, parent->schema->name);
                 } else if (lydctx->ext) {
                     if (lydctx->ext->argument) {
-                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.", name_len, name,
-                                lydctx->ext->argument, lydctx->ext->def->name);
+                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.",
+                                (int)name_len, name, lydctx->ext->argument, lydctx->ext->def->name);
                     } else {
-                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.", name_len, name,
-                                lydctx->ext->def->name);
+                        LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.",
+                                (int)name_len, name, lydctx->ext->def->name);
                     }
                 } else {
-                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.", name_len, name,
-                            mod->name);
+                    LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
+                            (int)name_len, name, mod->name);
                 }
                 ret = LY_EVALID;
                 goto error;
@@ -544,7 +544,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         /* no children expected */
         if (xmlctx->status == LYXML_ELEMENT) {
             LOGVAL(ctx, LYVE_SYNTAX, "Child element \"%.*s\" inside a terminal node \"%s\" found.",
-                    xmlctx->name_len, xmlctx->name, snode->name);
+                    (int)xmlctx->name_len, xmlctx->name, snode->name);
             ret = LY_EVALID;
             goto error;
         }
@@ -552,7 +552,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         if (!xmlctx->ws_only) {
             /* value in inner node */
             LOGVAL(ctx, LYVE_SYNTAX, "Text value \"%.*s\" inside an inner node \"%s\" found.",
-                    xmlctx->value_len, xmlctx->value, snode->name);
+                    (int)xmlctx->value_len, xmlctx->value, snode->name);
             ret = LY_EVALID;
             goto error;
         }
@@ -596,7 +596,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         if ((snode->nodetype == LYS_ANYDATA) && !xmlctx->ws_only) {
             /* value in anydata node, we expect a tree */
             LOGVAL(ctx, LYVE_SYNTAX, "Text value \"%.*s\" inside an anydata node \"%s\" found.",
-                    xmlctx->value_len < 20 ? xmlctx->value_len : 20, xmlctx->value, snode->name);
+                    (int)xmlctx->value_len < 20 ? xmlctx->value_len : 20, xmlctx->value, snode->name);
             ret = LY_EVALID;
             goto error;
         }
@@ -702,7 +702,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, ly_
     prefix_len = xmlctx->prefix_len;
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", prefix_len, prefix);
+        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)prefix_len, prefix);
         return LY_EVALID;
     } else if (strcmp(ns->uri, uri)) {
         /* different namespace */
@@ -719,7 +719,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, ly_
     assert(xmlctx->status == LYXML_ELEM_CONTENT);
     if (!value && !xmlctx->ws_only) {
         LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected value \"%.*s\" in the \"%s\" element.",
-                xmlctx->value_len, xmlctx->value, name);
+                (int)xmlctx->value_len, xmlctx->value, name);
         rc = LY_EVALID;
         goto cleanup;
     }
@@ -818,8 +818,8 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     /* parse "eventTime" */
     r = lydxml_envelope(xmlctx, "eventTime", "urn:ietf:params:xml:ns:netconf:notification:1.0", 1, &child);
     if (r == LY_ENOT) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"eventTime\".", xmlctx->name_len,
-                xmlctx->name);
+        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unexpected element \"%.*s\" instead of \"eventTime\".",
+                (int)xmlctx->name_len, xmlctx->name);
         r = LY_EVALID;
     }
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
@@ -834,7 +834,7 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     if (xmlctx->status != LYXML_ELEM_CLOSE) {
         assert(xmlctx->status == LYXML_ELEMENT);
         LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"eventTime\".",
-                xmlctx->name_len, xmlctx->name);
+                (int)xmlctx->name_len, xmlctx->name);
         rc = LY_EVALID;
         goto cleanup;
     }
@@ -877,7 +877,7 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
     prefix_len = xmlctx->prefix_len;
     ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
-        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", prefix_len, prefix);
+        LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)prefix_len, prefix);
         return LY_EVALID;
     }
 
@@ -992,12 +992,12 @@ lydxml_env_netconf_rpc_reply_error_info(struct lyxml_ctx *xmlctx, struct lyd_nod
             /* learn namespace */
             ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
             if (!ns) {
-                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", xmlctx->prefix_len, xmlctx->prefix);
+                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
                 r = LY_EVALID;
                 goto error;
             } else if (!strcmp(ns->uri, "urn:ietf:params:xml:ns:netconf:base:1.0")) {
                 LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"error-info\".",
-                        xmlctx->name_len, xmlctx->name);
+                        (int)xmlctx->name_len, xmlctx->name);
                 r = LY_EVALID;
                 goto error;
             }
@@ -1027,7 +1027,7 @@ check_child:
         if (xmlctx->status != LYXML_ELEM_CLOSE) {
             assert(xmlctx->status == LYXML_ELEMENT);
             LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"error-info\".",
-                    xmlctx->name_len, xmlctx->name);
+                    (int)xmlctx->name_len, xmlctx->name);
             r = LY_EVALID;
             goto error;
         }
@@ -1179,7 +1179,7 @@ lydxml_env_netconf_rpc_reply_error(struct lyxml_ctx *xmlctx, struct lyd_node *pa
         if (r == LY_ENOT) {
             assert(xmlctx->status == LYXML_ELEMENT);
             LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"rpc-error\".",
-                    xmlctx->name_len, xmlctx->name);
+                    (int)xmlctx->name_len, xmlctx->name);
             r = LY_EVALID;
             goto error;
         }
@@ -1202,7 +1202,7 @@ check_child:
         if (xmlctx->status != LYXML_ELEM_CLOSE) {
             assert(xmlctx->status == LYXML_ELEMENT);
             LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"rpc-error\".",
-                    xmlctx->name_len, xmlctx->name);
+                    (int)xmlctx->name_len, xmlctx->name);
             r = LY_EVALID;
             goto error;
         }
@@ -1259,7 +1259,7 @@ lydxml_env_netconf_reply(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
         if (xmlctx->status != LYXML_ELEM_CLOSE) {
             assert(xmlctx->status == LYXML_ELEMENT);
             LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"ok\".",
-                    xmlctx->name_len, xmlctx->name);
+                    (int)xmlctx->name_len, xmlctx->name);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -1302,7 +1302,7 @@ finish:
         if (xmlctx->status != LYXML_ELEM_CLOSE) {
             assert(xmlctx->status == LYXML_ELEMENT);
             LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected sibling element \"%.*s\" of \"%s\".",
-                    xmlctx->name_len, xmlctx->name, parsed_elem);
+                    (int)xmlctx->name_len, xmlctx->name, parsed_elem);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -1388,8 +1388,8 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     for (i = 0; i < close_elem; ++i) {
         if (lydctx->xmlctx->status != LYXML_ELEM_CLOSE) {
             assert(lydctx->xmlctx->status == LYXML_ELEMENT);
-            LOGVAL(lydctx->xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\".", lydctx->xmlctx->name_len,
-                    lydctx->xmlctx->name);
+            LOGVAL(lydctx->xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\".",
+                    (int)lydctx->xmlctx->name_len, lydctx->xmlctx->name);
             rc = LY_EVALID;
             goto cleanup;
         }

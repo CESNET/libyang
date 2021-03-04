@@ -466,8 +466,8 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
 
 decimal:
     if (fraction && (len - 1 - fraction > fraction_digits)) {
-        if (asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.", (int)len, value,
-                fraction_digits) == -1) {
+        if (asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.",
+                (int)len, value, fraction_digits) == -1) {
             errmsg = NULL;
             rc = LY_EMEM;
         }
