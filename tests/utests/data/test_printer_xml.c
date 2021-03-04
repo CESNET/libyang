@@ -166,8 +166,19 @@ test_anydata(void **state)
             "  </cont>\n"
             "</any>\n";
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
-
     lyd_free_all(tree);
+
+    data = "<any xmlns=\"urn:tests:types\">\n"
+            "  <cont>\n"
+            "    <elem1 xmlns=\"urn:tests:defs\"  attr=\"&lt;test\">\n"
+            "       ahoj jak se vede &lt; how are you"
+            "    </elem1>\n"
+            "  </cont>\n"
+            "</any>\n";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
 }
 
 static void
