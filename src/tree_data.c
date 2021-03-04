@@ -1100,7 +1100,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
     }
 
     if (parent && !parent->schema) {
-        LOGERR(ctx, LY_EINVAL, "Cannot add metadata to an opaque node \"%s\".", ((struct lyd_node_opaq *)parent)->name);
+        LOGERR(ctx, LY_EINVAL, "Cannot add metadata \"%s\" to an opaque node \"%s\".", name, LYD_NAME(parent));
         return LY_EINVAL;
     }
     if (meta) {
