@@ -987,8 +987,8 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
 }
 
 API LY_ERR
-lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, void *value,
-        LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node)
+lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+        ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
@@ -1003,7 +1003,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_ANY, output ? LYS_GETNEXT_OUTPUT : 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    LY_CHECK_RET(lyd_create_any(schema, value, value_type, 1, &ret));
+    LY_CHECK_RET(lyd_create_any(schema, value, value_type, use_value, &ret));
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
     }

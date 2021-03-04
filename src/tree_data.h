@@ -969,15 +969,16 @@ LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, co
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
- * @param[in] value Value to be directly assigned to the node. Expected type is determined by @p value_type.
+ * @param[in] value Value for the node. Expected type is determined by @p value_type.
+ * @param[in] use_value Whether to directly take @p value and assign it to the node or make a copy.
  * @param[in] value_type Type of the provided value in @p value.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
  * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, void *value,
-        LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
+LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+        ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create new metadata.
