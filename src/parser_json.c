@@ -211,13 +211,13 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
         }
     } else {
         LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Top-level JSON object member \"%.*s\" must be namespace-qualified.",
-                is_attr ? name_len + 1 : name_len, is_attr ? name - 1 : name);
+                (int)(is_attr ? name_len + 1 : name_len), is_attr ? name - 1 : name);
         ret = LY_EVALID;
         goto cleanup;
     }
     if (!mod) {
         if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "No module named \"%.*s\" in the context.", prefix_len, prefix);
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "No module named \"%.*s\" in the context.", (int)prefix_len, prefix);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -239,14 +239,14 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
                 if (lydctx->ext) {
                     if (lydctx->ext->argument) {
                         LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.",
-                                name_len, name, lydctx->ext->argument, lydctx->ext->def->name);
+                                (int)name_len, name, lydctx->ext->argument, lydctx->ext->def->name);
                     } else {
                         LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the %s extension instance.",
-                                name_len, name, lydctx->ext->def->name);
+                                (int)name_len, name, lydctx->ext->def->name);
                     }
                 } else {
                     LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
-                            name_len, name, mod->name);
+                            (int)name_len, name, mod->name);
                 }
                 ret = LY_EVALID;
                 goto cleanup;
@@ -746,12 +746,12 @@ next_entry:
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
         if (!prefix) {
             LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
-                    lydctx->jsonctx->value_len, lydctx->jsonctx->value);
+                    (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             ret = LY_EVALID;
             goto cleanup;
         } else if (is_attr) {
             LOGVAL(ctx, LYVE_SYNTAX_JSON, "Invalid format of the Metadata identifier in JSON, unexpected '@' in \"%.*s\"",
-                    lydctx->jsonctx->value_len, lydctx->jsonctx->value);
+                    (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -761,7 +761,7 @@ next_entry:
         if (!mod) {
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 LOGVAL(ctx, LYVE_REFERENCE, "Prefix \"%.*s\" of the metadata \"%.*s\" does not match any module in the context.",
-                        prefix_len, prefix, name_len, name);
+                        (int)prefix_len, prefix, (int)name_len, name);
                 ret = LY_EVALID;
                 goto cleanup;
             }

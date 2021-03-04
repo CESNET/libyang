@@ -528,7 +528,7 @@ lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_
     /* match opening and closing element tags */
     if (!xmlctx->elements.count) {
         LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Stray closing element tag (\"%.*s\").",
-                name_len, name);
+                (int)name_len, name);
         return LY_EVALID;
     }
 
@@ -536,8 +536,8 @@ lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_
     if ((e->prefix_len != prefix_len) || (e->name_len != name_len) ||
             (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len)) {
         LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Opening (\"%.*s%s%.*s\") and closing (\"%.*s%s%.*s\") elements tag mismatch.",
-                e->prefix_len, e->prefix ? e->prefix : "", e->prefix ? ":" : "", e->name_len, e->name,
-                prefix_len, prefix ? prefix : "", prefix ? ":" : "", name_len, name);
+                (int)e->prefix_len, e->prefix ? e->prefix : "", e->prefix ? ":" : "", (int)e->name_len, e->name,
+                (int)prefix_len, prefix ? prefix : "", prefix ? ":" : "", (int)name_len, name);
         return LY_EVALID;
     }
 
@@ -816,7 +816,7 @@ lyxml_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyxml_ctx **xml
         /* update status */
         xmlctx->status = LYXML_END;
     } else if (closing) {
-        LOGVAL(ctx, LYVE_SYNTAX, "Stray closing element tag (\"%.*s\").", xmlctx->name_len, xmlctx->name);
+        LOGVAL(ctx, LYVE_SYNTAX, "Stray closing element tag (\"%.*s\").", (int)xmlctx->name_len, xmlctx->name);
         ret = LY_EVALID;
         goto cleanup;
     } else {

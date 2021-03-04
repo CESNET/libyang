@@ -364,7 +364,7 @@ decimal:
         if (fraction && (*len - 1 - fraction > frdigits)) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                     "Range boundary \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.",
-                    *len, value, frdigits);
+                    (int)(*len), value, frdigits);
             return LY_EINVAL;
         }
         if (fraction) {
@@ -631,7 +631,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                 /* min cannot be used elsewhere than in the first part */
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected data before min keyword (%.*s).", length_restr ? "length" : "range",
-                        expr - range_p->arg.str, range_p->arg.str);
+                                (int)(expr - range_p->arg.str), range_p->arg.str);
                 goto cleanup;
             }
             expr += ly_strlen_const("min");
@@ -2766,7 +2766,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         if (*id == '/') {
             LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid descendant-schema-nodeid value \"%.*s\" - absolute-schema-nodeid used.",
-                    nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+                    (int)(nodeid_len ? nodeid_len : strlen(nodeid)), nodeid);
             return LY_EVALID;
         }
     } else {
@@ -2776,7 +2776,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         if (*id != '/') {
             LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid absolute-schema-nodeid value \"%.*s\" - missing starting \"/\".",
-                    nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+                    (int)(nodeid_len ? nodeid_len : strlen(nodeid)), nodeid);
             return LY_EVALID;
         }
         ++id;
@@ -2790,7 +2790,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 assert(prefix);
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Invalid %s-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
-                        nodeid_type, id - nodeid, nodeid, prefix_len, prefix, LYSP_MODULE_NAME(ctx->pmod));
+                        nodeid_type, (int)(id - nodeid), nodeid, (int)prefix_len, prefix, LYSP_MODULE_NAME(ctx->pmod));
                 return LY_ENOTFOUND;
             }
         } else {
@@ -2816,8 +2816,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         if (ctx_node && (ctx_node->nodetype & (LYS_RPC | LYS_ACTION))) {
             /* move through input/output manually */
             if (mod != ctx_node->module) {
-                LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                        "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+                LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.",
+                        nodeid_type, (int)(id - nodeid), nodeid);
                 return LY_ENOTFOUND;
             }
             if (!ly_strncmp("input", name, name_len)) {
@@ -2835,8 +2835,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
             getnext_extra_flag = 0;
         }
         if (!ctx_node) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.",
+                    nodeid_type, (int)(id - nodeid), nodeid);
             return LY_ENOTFOUND;
         }
         current_nodetype = ctx_node->nodetype;
@@ -2855,7 +2855,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
         if (*id != '/') {
             LOGVAL(ctx->ctx, LYVE_REFERENCE,
                     "Invalid %s-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
-                    nodeid_type, id - nodeid + 1, nodeid);
+                    nodeid_type, (int)(id - nodeid + 1), nodeid);
             return LY_EVALID;
         }
         ++id;
@@ -2869,7 +2869,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
     } else {
         LOGVAL(ctx->ctx, LYVE_REFERENCE,
                 "Invalid %s-schema-nodeid value \"%.*s\" - unexpected end of expression.",
-                nodeid_type, nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+                nodeid_type, (int)(nodeid_len ? nodeid_len : strlen(nodeid)), nodeid);
     }
 
     return ret;
@@ -2917,13 +2917,13 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
                 if (ret == LY_EDENIED) {
                     LOGVAL(ctx->ctx, LYVE_REFERENCE,
                             "Unique's descendant-schema-nodeid \"%.*s\" refers to %s node instead of a leaf.",
-                            len, keystr, lys_nodetype2str((*key)->nodetype));
+                            (int)len, keystr, lys_nodetype2str((*key)->nodetype));
                 }
                 return LY_EVALID;
             } else if (flags) {
                 LOGVAL(ctx->ctx, LYVE_REFERENCE,
                         "Unique's descendant-schema-nodeid \"%.*s\" refers into %s node.",
-                        len, keystr, flags & LYS_IS_NOTIF ? "notification" : "RPC/action");
+                        (int)len, keystr, flags & LYS_IS_NOTIF ? "notification" : "RPC/action");
                 return LY_EVALID;
             }
 
@@ -3025,13 +3025,13 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         /* key node must be present */
         key = (struct lysc_node_leaf *)lys_find_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE);
         if (!key) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "The list's key \"%.*s\" not found.", len, keystr);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "The list's key \"%.*s\" not found.", (int)len, keystr);
             return LY_EVALID;
         }
         /* keys must be unique */
         if (key->flags & LYS_KEY) {
             /* the node was already marked as a key */
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Duplicated key identifier \"%.*s\".", len, keystr);
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Duplicated key identifier \"%.*s\".", (int)len, keystr);
             return LY_EVALID;
         }
 
@@ -3171,7 +3171,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, struct lysp_qname *dflt, stru
         mod = ly_resolve_prefix(ctx->ctx, prefix, prefix_len, LY_PREF_SCHEMA, (void *)dflt->mod);
         if (!mod) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Default case prefix \"%.*s\" not found "
-                    "in imports of \"%s\".", prefix_len, prefix, LYSP_MODULE_NAME(dflt->mod));
+                    "in imports of \"%s\".", (int)prefix_len, prefix, LYSP_MODULE_NAME(dflt->mod));
             return LY_EVALID;
         }
     } else {

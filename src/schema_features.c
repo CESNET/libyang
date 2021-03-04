@@ -423,8 +423,8 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
             /* now get the link to the feature definition */
             f = lysp_feature_find(qname->mod, &c[i], j - i, 1);
             if (!f) {
-                LOGVAL(ctx, LYVE_SYNTAX_YANG,
-                        "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", qname->str, j - i, &c[i]);
+                LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".",
+                        qname->str, (int)(j - i), &c[i]);
                 rc = LY_EVALID;
                 goto error;
             }
