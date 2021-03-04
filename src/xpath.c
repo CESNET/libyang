@@ -145,7 +145,7 @@ print_expr_struct_debug(const struct lyxp_expr *exp)
     for (i = 0; i < exp->used; ++i) {
         sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", lyxp_print_token(exp->tokens[i]), exp->tok_len[i],
                 &exp->expr[exp->tok_pos[i]]);
-        if (exp->repeat[i]) {
+        if (exp->repeat && exp->repeat[i]) {
             sprintf(tmp + strlen(tmp), " (repeat %d", exp->repeat[i][0]);
             for (j = 1; exp->repeat[i][j]; ++j) {
                 sprintf(tmp + strlen(tmp), ", %d", exp->repeat[i][j]);
