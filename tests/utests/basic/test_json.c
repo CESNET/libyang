@@ -216,16 +216,20 @@ test_number(void **state)
     ly_in_free(in, 0);
 }
 
+/* now string is tested in file ./tests/utests/types/string.c */
 static void
 test_string(void **state)
 {
     struct lyjson_ctx *jsonctx;
-    struct ly_in *in;
+    struct ly_in *in = NULL;
     const char *str;
 
+    str = "";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+
+#if 0
     /* simple string */
     str = "\"hello\"";
-    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     assert_int_equal(LYJSON_STRING, lyjson_ctx_status(jsonctx, 0));
     assert_ptr_equal(&str[1], jsonctx->value);
@@ -265,13 +269,14 @@ test_string(void **state)
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     CHECK_LOG_CTX("Invalid character reference \"\\f\" (0x0000000c).", "Line number 1.");
+#endif
 
     /* unterminated string */
     str = "\"unterminated string";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     CHECK_LOG_CTX("Missing quotation-mark at the end of a JSON string.", "Line number 1.");
-
+#if 0
     /* invalid escape sequence */
     str = "\"char \\x \"";
     assert_non_null(ly_in_memory(in, str));
@@ -283,6 +288,7 @@ test_string(void **state)
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     CHECK_LOG_CTX("Invalid character in JSON string \"\n\" (0x0000000a).", "Line number 1.");
+#endif
 
     ly_in_free(in, 0);
 }

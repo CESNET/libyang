@@ -242,6 +242,8 @@ test_dec64(void **state)
     TEST_TYPE_ERROR("dec64", "8.55  xxx", "Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits.", "1");
 }
 
+/* test string is now in file string.c */
+#if 0
 static void
 test_string(void **state)
 {
@@ -288,6 +290,8 @@ test_string(void **state)
     /* invalid pattern */
     TEST_TYPE_ERROR("str", "string15", "Unsatisfied pattern - \"string15\" does not conform to \"[a-z ]*\".", "1");
 }
+
+#endif
 
 static void
 test_bits(void **state)
@@ -1037,7 +1041,7 @@ main(void)
         UTEST(test_int, setup),
         UTEST(test_uint, setup),
         UTEST(test_dec64, setup),
-        UTEST(test_string, setup),
+        /* UTEST(test_string, setup),*/
         UTEST(test_bits, setup),
         UTEST(test_enums, setup),
         UTEST(test_binary, setup),
