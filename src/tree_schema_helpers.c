@@ -1822,7 +1822,6 @@ LY_ERR
 lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, const struct lys_module **ext_mod,
         struct lysp_ext **ext_def)
 {
-    LY_ERR r;
     const char *tmp, *name, *prefix;
     size_t pref_len, name_len;
     LY_ARRAY_COUNT_TYPE v;
@@ -1833,11 +1832,9 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
         *ext_mod = NULL;
     }
 
-    /* parse the prefix */
+    /* parse the prefix, the nodeid was previously already parsed and checked */
     tmp = ext->name;
-    r = ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
-    /* it was parsed already */
-    assert(!r && !tmp[0]);
+    ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
 
     /* get module where the extension definition should be placed */
     mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
