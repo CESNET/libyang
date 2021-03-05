@@ -470,7 +470,7 @@ struct lysp_include {
  */
 struct lysp_ext {
     const char *name;                /**< extension name */
-    const char *argument;            /**< argument name, NULL if not specified */
+    const char *argname;             /**< argument name, NULL if not specified */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1369,10 +1369,14 @@ struct lysc_prefix {
 
 /**
  * @brief Compiled YANG extension-stmt
+ *
+ * Note that the compiled extension definition is created only in case the extension is instantiated. It is not available
+ * from the compiled schema, but from the parsed extension definition which is being searched when an extension instance
+ * is being compiled.
  */
 struct lysc_ext {
     const char *name;                /**< extension name */
-    const char *argument;            /**< argument name, NULL if not specified */
+    const char *argname;             /**< argument name, NULL if not specified */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyext_plugin *plugin;     /**< Plugin implementing the specific extension */
     struct lys_module *module;       /**< module structure */

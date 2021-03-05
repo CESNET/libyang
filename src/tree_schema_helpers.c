@@ -1869,7 +1869,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
 LY_ERR
 lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysp_ext *ext_def)
 {
-    if (!ext_def->argument || ext_p->argument) {
+    if (!ext_def->argname || ext_p->argument) {
         /* nothing to do */
         return LY_SUCCESS;
     }
@@ -1889,9 +1889,9 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
 
                 arg = stmt->stmt;
                 ly_parse_nodeid(&arg, &prefix_arg, &prefix_arg_len, &name_arg, &name_arg_len);
-                if (ly_strncmp(ext_def->argument, name_arg, name_arg_len)) {
+                if (ly_strncmp(ext_def->argname, name_arg, name_arg_len)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its first XML child, "
-                            "but \"%.*s\" element found.", ext_p->name, ext_def->argument, (int)name_arg_len, name_arg);
+                            "but \"%.*s\" element found.", ext_p->name, ext_def->argname, (int)name_arg_len, name_arg);
                     return LY_EVALID;
                 }
 
@@ -1903,7 +1903,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
                 if (ly_resolve_prefix(ctx, prefix_ext, prefix_ext_len, ext_p->format, ext_p->prefix_data) !=
                         ly_resolve_prefix(ctx, prefix_arg, prefix_arg_len, stmt->format, stmt->prefix_data)) {
                     LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" element and its argument element \"%s\" are "
-                            "expected in the same namespace, but they differ.", ext_p->name, ext_def->argument);
+                            "expected in the same namespace, but they differ.", ext_p->name, ext_def->argname);
                     return LY_EVALID;
                 }
             }
@@ -1911,7 +1911,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
             /* ... argument was one of the XML attributes which are represented as child stmt
              * with LYS_YIN_ATTR flag */
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {
-                if (!strcmp(stmt->stmt, ext_def->argument)) {
+                if (!strcmp(stmt->stmt, ext_def->argname)) {
                     /* this is the extension's argument */
                     break;
                 }
@@ -1927,7 +1927,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
     if (!ext_p->argument) {
         /* missing extension's argument */
         LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" misses argument %s\"%s\".",
-                ext_p->name, (ext_def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_def->argument);
+                ext_p->name, (ext_def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_def->argname);
         return LY_EVALID;
     }
 

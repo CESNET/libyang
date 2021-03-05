@@ -119,7 +119,7 @@ void
 lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
 {
     lydict_remove(ctx, ext->name);
-    lydict_remove(ctx, ext->argument);
+    lydict_remove(ctx, ext->argname);
     lydict_remove(ctx, ext->dsc);
     lydict_remove(ctx, ext->ref);
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
@@ -502,7 +502,7 @@ lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext)
         return;
     }
     lydict_remove(ctx, (*ext)->name);
-    lydict_remove(ctx, (*ext)->argument);
+    lydict_remove(ctx, (*ext)->argname);
     FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
     free(*ext);
     *ext = NULL;

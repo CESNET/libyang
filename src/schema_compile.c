@@ -67,7 +67,7 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
         ext_p->compiled = calloc(1, sizeof **ext);
         ext_p->compiled->refcount = 1;
         DUP_STRING_GOTO(ctx->ctx, ext_p->name, ext_p->compiled->name, ret, done);
-        DUP_STRING_GOTO(ctx->ctx, ext_p->argument, ext_p->compiled->argument, ret, done);
+        DUP_STRING_GOTO(ctx->ctx, ext_p->argname, ext_p->compiled->argname, ret, done);
         ext_p->compiled->module = (struct lys_module *)ext_mod;
         COMPILE_EXTS_GOTO(ctx, ext_p->exts, ext_p->compiled->exts, *ext, ret, done);
 
@@ -106,7 +106,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, ext_p, &ext_mod, &ext_def), cleanup);
     LY_CHECK_GOTO(ret = lys_compile_extension(ctx, ext_mod, ext_def, &ext->def), cleanup);
 
-    if (ext_def->argument) {
+    if (ext_def->argname) {
         LY_CHECK_GOTO(ret = lysp_ext_instance_resolve_argument(ctx->ctx, ext_p, ext_def), cleanup);
     }
 

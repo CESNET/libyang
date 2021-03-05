@@ -404,7 +404,7 @@ struct utest_context {
 /**
  * @brief assert that lysp_ext structure members are correct
  * @param[in] NODE pointer to lysp_ext_instance variable
- * @param[in] ARGUMENT expected argument name
+ * @param[in] ARGNAME expected argument name
  * @param[in] COMPILED 0 -> compiled data dosnt exists, 1 -> compiled data exists
  * @param[in] DSC      expected string reprezent description
  * @param[in] EXTS     expected [sized array](@ref sizedarrays) size of list of extension instances
@@ -412,9 +412,9 @@ struct utest_context {
  * @param[in] NAME     expected name
  * @param[in] REF      expected ref
  */
-#define CHECK_LYSP_EXT(NODE, ARGUMENT, COMPILED, DSC, EXTS, FLAGS, NAME, REF) \
+#define CHECK_LYSP_EXT(NODE, ARGNAME, COMPILED, DSC, EXTS, FLAGS, NAME, REF) \
     assert_non_null(NODE); \
-    CHECK_STRING((NODE)->argument, ARGUMENT); \
+    CHECK_STRING((NODE)->argname, ARGNAME); \
     CHECK_POINTER((NODE)->compiled, COMPILED); \
     CHECK_STRING((NODE)->dsc, DSC); \
     CHECK_ARRAY((NODE)->exts, EXTS); \

@@ -232,7 +232,7 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
 
         ypr_open(ctx->out, flag);
 
-        if (ext_def->argument) {
+        if (ext_def->argname) {
             ly_print_(ctx->out, "%*s%s \"", INDENT, ext[u].name);
             lysp_ext_instance_resolve_argument(ctx->module->ctx, &ext[u], ext_def);
             ypr_encode(ctx->out, ext[u].argument, -1);
@@ -432,9 +432,9 @@ yprp_extension(struct lys_ypr_ctx *ctx, const struct lysp_ext *ext)
         yprp_extension_instances(ctx, LY_STMT_EXTENSION, 0, ext->exts, &flag, 0);
     }
 
-    if (ext->argument) {
+    if (ext->argname) {
         ypr_open(ctx->out, &flag);
-        ly_print_(ctx->out, "%*sargument %s", INDENT, ext->argument);
+        ly_print_(ctx->out, "%*sargument %s", INDENT, ext->argname);
         LEVEL++;
         if (ext->exts) {
             u = -1;
