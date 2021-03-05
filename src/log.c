@@ -1074,3 +1074,18 @@ ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag)
         }
     }
 }
+
+void
+ly_err_last_set_msg(const struct ly_ctx *ctx, const char *msg)
+{
+    struct ly_err_item *i;
+
+    if (log_opt != ILO_IGNORE) {
+        i = ly_err_first(ctx);
+        if (i) {
+            i = i->prev;
+            free(i->msg);
+            i->msg = strdup(msg);
+        }
+    }
+}

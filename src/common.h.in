@@ -66,6 +66,7 @@ void ly_err_free_next(struct ly_ctx *ctx, struct ly_err_item *last_eitem);
 void ly_ilo_change(struct ly_ctx *ctx, enum int_log_opts new_ilo, enum int_log_opts *prev_ilo, struct ly_err_item **prev_last_eitem);
 void ly_ilo_restore(struct ly_ctx *ctx, enum int_log_opts prev_ilo, struct ly_err_item *prev_last_eitem, int keep_and_print);
 void ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag);
+void ly_err_last_set_msg(const struct ly_ctx *ctx, const char *msg);
 extern THREAD_LOCAL enum int_log_opts log_opt;
 
 /*
