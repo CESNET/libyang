@@ -1673,10 +1673,16 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
                 case LYD_DIFF_OP_CREATE:
                     /* reverse create to delete */
                     LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_DELETE), cleanup);
+
+                    /* the whole subtree was reversed, there can be no other operation there */
+                    LYD_TREE_DFS_continue = 1;
                     break;
                 case LYD_DIFF_OP_DELETE:
                     /* reverse delete to create */
                     LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_CREATE), cleanup);
+
+                    /* the whole subtree was reversed, there can be no other operation there */
+                    LYD_TREE_DFS_continue = 1;
                     break;
                 case LYD_DIFF_OP_REPLACE:
                     switch (elem->schema->nodetype) {
