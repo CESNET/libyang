@@ -1574,7 +1574,7 @@ LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *sourc
  * The diff tree is completely independent on the @p first and @p second trees, meaning all
  * the information about the change is stored in the diff and the trees are not needed.
  *
- * !! Caution !!
+ * __!! Caution !!__
  * The diff tree should never be validated because it may easily not be valid! For example,
  * when data from one case branch are deleted and data from another branch created - data from both
  * branches are then stored in the diff tree simultaneously.
@@ -1590,6 +1590,8 @@ LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second
 
 /**
  * @brief Learn the differences between 2 data trees including all the following siblings.
+ *
+ * Details are mentioned in ::lyd_diff_tree().
  *
  * @param[in] first First data tree.
  * @param[in] second Second data tree.
@@ -1627,6 +1629,8 @@ LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff
 /**
  * @brief Apply the whole diff tree on a data tree.
  *
+ * Details are mentioned in ::lyd_diff_apply_module().
+ *
  * @param[in,out] data Data to apply the diff on.
  * @param[in] diff Diff to apply.
  * @return LY_SUCCESS on success,
@@ -1647,7 +1651,7 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
 
 #define LYD_DIFF_MERGE_DEFAULTS   0x01 /**< Default nodes in the diffs are treated as possibly explicitly modified. */
 
-/** @} diffoptions */
+/** @} diffmergeoptions */
 
 /**
  * @brief Merge 2 diffs into each other but restrict the operation to one module.
@@ -1655,12 +1659,12 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
  * The diffs must be possible to be merged, which is guaranteed only if the source diff was
  * created on data that had the target diff applied on them. In other words, this sequence is legal
  *
- * 1) diff1 from data1 and data2 -> data11 from apply diff1 on data1 -> diff2 from data11 and data3 ->
- *    -> data 33 from apply diff2 on data1
+ * 1) get diff1 from data1 and data2 -> get data11 from apply diff1 on data1 -> get diff2 from data11 and data3 ->
+ *    -> get data 33 from apply diff2 on data1
  *
  * and reusing these diffs
  *
- * 2) diff11 from merge diff1 and diff2 -> data33 from apply diff11 on data1
+ * 2) get diff11 from merge diff1 and diff2 -> get data33 from apply diff11 on data1
  *
  * @param[in,out] diff Target diff to merge into.
  * @param[in] src_diff Source diff.
@@ -1679,6 +1683,8 @@ LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_
 /**
  * @brief Merge 2 diff trees into each other.
  *
+ * Details are mentioned in ::lyd_diff_merge_module().
+ *
  * @param[in,out] diff_first Target diff first sibling to merge into.
  * @param[in] diff_parent Target diff parent to merge into.
  * @param[in] src_sibling Source diff sibling to merge.
@@ -1695,6 +1701,8 @@ LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_p
 
 /**
  * @brief Merge 2 diffs into each other.
+ *
+ * Details are mentioned in ::lyd_diff_merge_module().
  *
  * @param[in,out] diff Target diff to merge into.
  * @param[in] src_diff Source diff.
