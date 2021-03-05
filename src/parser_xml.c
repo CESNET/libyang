@@ -43,9 +43,9 @@ struct lyd_xml_ctx {
     uint32_t int_opts;             /**< internal data parser options */
     uint32_t path_len;             /**< used bytes in the path buffer */
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
+    struct ly_set node_when;       /**< set of nodes with "when" conditions */
     struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
-    struct ly_set node_when;       /**< set of nodes with "when" conditions */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
 
     /* callbacks */
@@ -583,7 +583,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             LY_CHECK_GOTO(ret, error);
 
             /* add any missing default children */
-            ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_types, &lydctx->node_when,
+            ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
                     (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, error);
         }

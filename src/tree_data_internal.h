@@ -200,14 +200,14 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
- * @param[in] node_types Optional set to add nodes with unresolved types into.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
+ * @param[in] node_types Optional set to add nodes with unresolved types into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when,
+        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types,
         uint32_t impl_opts, struct lyd_node **diff);
 
 /**

@@ -50,9 +50,9 @@ struct lyd_ctx {
     uint32_t path_len;             /**< used bytes in the path buffer */
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
+    struct ly_set node_when;       /**< set of nodes with "when" conditions */
     struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
-    struct ly_set node_when;       /**< set of nodes with "when" conditions */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
 
     /* callbacks */

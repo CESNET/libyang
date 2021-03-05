@@ -1394,8 +1394,8 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
 
         /* add all top-level defaults for this module, if going to validate subtree, do not add into unres sets
          * (lyd_validate_subtree() adds all the nodes in that case) */
-        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, validate_subtree ? NULL : node_types_p,
-                validate_subtree ? NULL : node_when_p, (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
+        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, validate_subtree ? NULL : node_when_p,
+                validate_subtree ? NULL : node_types_p, (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* our first module node pointer may no longer be the first */
@@ -1562,7 +1562,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
     if (int_opts & LYD_INTOPT_REPLY) {
         /* add output children defaults */
-        rc = lyd_new_implicit_r(op_node, lyd_node_child_p(op_node), NULL, NULL, node_types_p, node_when_p,
+        rc = lyd_new_implicit_r(op_node, lyd_node_child_p(op_node), NULL, NULL, node_when_p, node_types_p,
                 LYD_IMPLICIT_OUTPUT, diff);
         LY_CHECK_GOTO(rc, cleanup);
 
