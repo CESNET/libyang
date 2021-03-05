@@ -3637,7 +3637,7 @@ parse_extension(struct lys_yang_parser_ctx *ctx, struct lysp_ext **extensions)
             LY_CHECK_RET(parse_status(ctx, &ex->flags, &ex->exts));
             break;
         case LY_STMT_ARGUMENT:
-            LY_CHECK_RET(parse_argument(ctx, &ex->argument, &ex->flags, &ex->exts));
+            LY_CHECK_RET(parse_argument(ctx, &ex->argname, &ex->flags, &ex->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_EXTENSION, 0, &ex->exts));

@@ -257,9 +257,9 @@ yprp_extension(struct lys_ypr_ctx *ctx, const struct lysp_ext *ext)
         yprp_extension_instances(ctx, LY_STMT_EXTENSION, 0, ext->exts, &flag, 0);
     }
 
-    if (ext->argument) {
+    if (ext->argname) {
         ypr_close_parent(ctx, &flag);
-        ypr_open(ctx, "argument", "name", ext->argument, flag2);
+        ypr_open(ctx, "argument", "name", ext->argname, flag2);
 
         LEVEL++;
         if (ext->exts) {
@@ -1273,11 +1273,11 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
         ypr_close_parent(ctx, flag);
         inner_flag = 0;
 
-        if (ext_def->argument) {
+        if (ext_def->argname) {
             lysp_ext_instance_resolve_argument(ctx->module->ctx, &ext[u], ext_def);
         }
 
-        ypr_open(ctx, ext[u].name, (ext_def->flags & LYS_YINELEM_TRUE) ? NULL : ext_def->argument, ext[u].argument, inner_flag);
+        ypr_open(ctx, ext[u].name, (ext_def->flags & LYS_YINELEM_TRUE) ? NULL : ext_def->argname, ext[u].argument, inner_flag);
         LEVEL++;
         if (ext_def->flags & LYS_YINELEM_TRUE) {
             const char *prefix, *name, *id;
@@ -1288,9 +1288,9 @@ yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
             /* we need to use the same namespace as for the extension instance element */
             id = ext[u].name;
             ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
-            ly_print_(ctx->out, "%*s<%.*s:%s>", INDENT, (int)prefix_len, prefix, ext_def->argument);
+            ly_print_(ctx->out, "%*s<%.*s:%s>", INDENT, (int)prefix_len, prefix, ext_def->argname);
             lyxml_dump_text(ctx->out, ext[u].argument, 0);
-            ly_print_(ctx->out, "</%.*s:%s>\n", (int)prefix_len, prefix, ext_def->argument);
+            ly_print_(ctx->out, "</%.*s:%s>\n", (int)prefix_len, prefix, ext_def->argname);
         }
         LY_LIST_FOR(ext[u].child, stmt) {
             if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {

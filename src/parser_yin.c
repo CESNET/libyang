@@ -2071,7 +2071,7 @@ yin_parse_extension(struct lys_yin_parser_ctx *ctx, struct lysp_ext **extensions
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &ex->name, Y_IDENTIF_ARG, LY_STMT_EXTENSION));
 
-    struct yin_argument_meta arg_info = {&ex->flags, &ex->argument};
+    struct yin_argument_meta arg_info = {&ex->flags, &ex->argname};
     struct yin_subelement subelems[] = {
         {LY_STMT_ARGUMENT, &arg_info, YIN_SUBELEM_UNIQUE},
         {LY_STMT_DESCRIPTION, &ex->dsc, YIN_SUBELEM_UNIQUE},
