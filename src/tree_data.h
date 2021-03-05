@@ -1615,6 +1615,11 @@ typedef LY_ERR (*lyd_diff_cb)(const struct lyd_node *diff_node, struct lyd_node 
 /**
  * @brief Apply the whole diff on a data tree but restrict the operation to one module.
  *
+ * __!! Caution !!__
+ * If applying a diff that was created __without__ the ::LYD_DIFF_DEFAULTS flag, there may be some duplicate values
+ * created. Unless the resulting tree is validated (and default values thus consolidated), using it further
+ * (such as applying another diff) may cause unexpected results or errors.
+ *
  * @param[in,out] data Data to apply the diff on.
  * @param[in] diff Diff to apply.
  * @param[in] mod Module, whose diff/data only to consider, NULL for all modules.
