@@ -21,6 +21,7 @@
 #include "common.h"
 #include "dict.h"
 #include "log.h"
+#include "plugins_exts_compile.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -30,35 +31,10 @@
 struct lyxp_expr;
 
 /**
- * @defgroup scflags Schema compile flags
- *
- * Flags are currently used only internally - the compilation process does not have a public interface and it is
- * integrated in the schema parsers. The current options set does not make sense for public used, but it can be a way
- * to modify behavior of the compilation process in future.
- *
- * @{
- */
-#define LYS_COMPILE_GROUPING        0x01            /**< Compiling (validation) of a non-instantiated grouping.
-                                                      In this case not all the restrictions are checked since they can
-                                                      be valid only in the real placement of the grouping.
-                                                      TODO - what specifically is not done */
-#define LYS_COMPILE_DISABLED        0x02            /**< Compiling a disabled subtree (by its if-features). Meaning
-                                                      it will be removed at the end of compilation and should not be
-                                                      added to any unres sets. */
-#define LYS_COMPILE_NO_CONFIG       0x04            /**< ignore config statements, neither inherit config value */
-#define LYS_COMPILE_NO_DISABLED     0x08            /**< ignore if-feature statements */
-
-#define LYS_COMPILE_RPC_INPUT       (LYS_IS_INPUT | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of RPC/action input */
-#define LYS_COMPILE_RPC_OUTPUT      (LYS_IS_OUTPUT | LYS_COMPILE_NO_CONFIG) /**< Internal option when compiling schema tree of RPC/action output */
-#define LYS_COMPILE_NOTIFICATION    (LYS_IS_NOTIF | LYS_COMPILE_NO_CONFIG)  /**< Internal option when compiling schema tree of Notification */
-
-/** @} scflags */
-
-/**
- * @brief internal context for compilation
+ * @brief YANG schema compilation context.
  */
 struct lysc_ctx {
-    struct ly_ctx *ctx;
+    struct ly_ctx *ctx;         /**< libyang context */
     struct lys_module *cur_mod; /**< module currently being compiled,
                                      - identifier/path - used as the current module for unprefixed nodes
                                      - augment - module where the augment is defined
@@ -72,17 +48,17 @@ struct lysc_ctx {
     struct lysc_ext_instance *ext; /**< extension instance being processed and serving as a source for its substatements
                                      instead of the module itself */
     struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set tpdf_chain;
-    struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisifed */
-    struct ly_set augs;         /**< set of compiled non-applied top-level augments */
-    struct ly_set devs;         /**< set of compiled non-applied deviations */
-    struct ly_set uses_augs;    /**< set of compiled non-applied uses augments */
-    struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines */
+    struct ly_set tpdf_chain;   /**< stack for typedefs circular check */
+    struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
+    struct ly_set augs;         /**< set of compiled non-applied top-level augments (stored ::lysc_augment *) */
+    struct ly_set devs;         /**< set of compiled non-applied deviations (stored ::lysc_deviation *) */
+    struct ly_set uses_augs;    /**< set of compiled non-applied uses augments (stored ::lysc_augment *) */
+    struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines (stored ::lysc_refine *) */
     struct lys_glob_unres *unres;  /**< global unres sets */
-    uint32_t path_len;
+    uint32_t path_len;          /**< number of path bytes used */
     uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
-    char path[LYSC_CTX_BUFSIZE];
+    char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
 };
 
 /**

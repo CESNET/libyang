@@ -15,7 +15,6 @@
 #include <stdlib.h>
 
 #include "plugins_exts.h"
-#include "schema_compile.h"
 
 #include "tree_edit.h"
 #include "tree_schema.h"
@@ -50,11 +49,11 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     struct lysc_module *mod_c;
     const struct lysc_node *child;
     ly_bool valid = 1;
-    uint32_t prev_options = cctx->options;
+    uint32_t prev_options = *lysc_ctx_get_options(cctx);
 
     /* yang-data can appear only at the top level of a YANG module or submodule */
     if ((c_ext->parent_stmt != LY_STMT_MODULE) && (c_ext->parent_stmt != LY_STMT_SUBMODULE)) {
-        lyext_log(c_ext, LY_LLWRN, 0, cctx->path,
+        lyext_log(c_ext, LY_LLWRN, 0, lysc_ctx_get_path(cctx),
                 "Extension %s is ignored since it appears as a non top-level statement in \"%s\" statement.",
                 p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_ENOT;
@@ -66,7 +65,7 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     LY_ARRAY_FOR(mod_c->exts, u) {
         if ((&mod_c->exts[u] != c_ext) && (mod_c->exts[u].def == c_ext->def) && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
             /* duplication of the same yang-data extension in a single module */
-            lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
+            lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx), "Extension %s is instantiated multiple times.", p_ext->name);
             return LY_EVALID;
         }
     }
@@ -91,23 +90,25 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     c_ext->substmts[2].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[2].storage = &c_ext->data;
 
-    cctx->options |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
+    *lysc_ctx_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
     ret = lys_compile_extension_instance(cctx, p_ext, c_ext);
-    cctx->options = prev_options;
+    *lysc_ctx_get_options(cctx) = prev_options;
     LY_ARRAY_DECREMENT(c_ext->substmts);
     LY_ARRAY_DECREMENT(c_ext->substmts);
-    LY_CHECK_RET(ret);
+    if (ret) {
+        return ret;
+    }
 
     /* check that we have really just a single container data definition in the top */
     child = *(struct lysc_node **)c_ext->substmts[0].storage;
     if (!child) {
         valid = 0;
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                 "Extension %s is instantiated without any top level data node, but exactly one container data node is expected.",
                 p_ext->name);
     } else if (child->next) {
         valid = 0;
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                 "Extension %s is instantiated with multiple top level data nodes, but only a single container data node is allowed.",
                 p_ext->name);
     } else if (child->nodetype == LYS_CHOICE) {
@@ -117,13 +118,13 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
         while ((snode = lys_getnext(snode, child, mod_c, 0))) {
             if (snode->next) {
                 valid = 0;
-                lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
+                lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                         "Extension %s is instantiated with multiple top level data nodes (inside a single choice's case), "
                         "but only a single container data node is allowed.", p_ext->name);
                 break;
             } else if (snode->nodetype != LYS_CONTAINER) {
                 valid = 0;
-                lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
+                lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                         "Extension %s is instantiated with %s top level data node (inside a choice), "
                         "but only a single container data node is allowed.", p_ext->name, lys_nodetype2str(snode->nodetype));
                 break;
@@ -132,13 +133,13 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     } else if (child->nodetype != LYS_CONTAINER) {
         /* via uses */
         valid = 0;
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path,
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                 "Extension %s is instantiated with %s top level data node, but only a single container data node is allowed.",
                 p_ext->name, lys_nodetype2str(child->nodetype));
     }
 
     if (!valid) {
-        yangdata_free(cctx->ctx, c_ext);
+        yangdata_free(lysc_ctx_get_ctx(cctx), c_ext);
         c_ext->data = c_ext->substmts = NULL;
         return LY_EVALID;
     }
@@ -146,7 +147,7 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     return LY_SUCCESS;
 
 emem:
-    lyext_log(c_ext, LY_LLERR, LY_EMEM, cctx->path, "Memory allocation failed (%s()).", __func__);
+    lyext_log(c_ext, LY_LLERR, LY_EMEM, lysc_ctx_get_path(cctx), "Memory allocation failed (%s()).", __func__);
     return LY_EMEM;
 }
 

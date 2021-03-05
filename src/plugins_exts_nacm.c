@@ -15,6 +15,8 @@
 #include <stdlib.h>
 
 #include "plugins_exts.h"
+
+#include "dict.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 
@@ -103,7 +105,8 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
 
     /* check that the extension is instantiated at an allowed place - data node */
     if (!LY_STMT_IS_NODE(c_ext->parent_stmt)) {
-        lyext_log(c_ext, LY_LLWRN, 0, cctx->path, "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
+        lyext_log(c_ext, LY_LLWRN, 0, lysc_ctx_get_path(cctx),
+                "Extension %s is allowed only in a data nodes, but it is placed in \"%s\" statement.",
                 p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_ENOT;
     } else {
@@ -113,7 +116,7 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
             /* note LYS_AUGMENT and LYS_USES is not in the list since they are not present in the compiled tree. Instead, libyang
              * passes all their extensions to their children nodes */
 invalid_parent:
-            lyext_log(c_ext, LY_LLWRN, 0, cctx->path,
+            lyext_log(c_ext, LY_LLWRN, 0, lysc_ctx_get_path(cctx),
                     "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
             return LY_ENOT;
         }
@@ -129,9 +132,11 @@ invalid_parent:
              * We check plugin since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */
             if (parent->exts[u].def == c_ext->def) {
-                lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
+                lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
+                        "Extension %s is instantiated multiple times.", p_ext->name);
             } else {
-                lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension nacm:default-deny-write is mixed with nacm:default-deny-all.");
+                lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
+                        "Extension nacm:default-deny-write is mixed with nacm:default-deny-all.");
             }
             return LY_EVALID;
         }

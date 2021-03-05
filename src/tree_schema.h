@@ -515,9 +515,10 @@ struct lysp_ext_instance {
     void *prefix_data;                      /**< Format-specific data for prefix resolution
                                                  (see ::ly_type_store_resolve_prefix()) */
 
+    struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
+
     void *parent;                           /**< pointer to the parent element holding the extension instance(s), use
                                                  ::lysp_ext_instance#parent_stmt to access the schema element */
-    struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
     enum ly_stmt parent_stmt;               /**< value identifying placement of the extension instance */
     LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement in its [sized array](@ref sizedarrays) (if any) */
@@ -1398,7 +1399,8 @@ struct lysc_ext_instance {
     const char *argument;            /**< optional value of the extension's argument */
     struct lys_module *module;       /**< module where the extension instantiated is defined */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_ext_substmt *substmts; /**< list of allowed substatements with the storage to access the present substatements */
+    struct lysc_ext_substmt *substmts; /**< list of allowed substatements with the storage to access the present
+                                          substatements ([sized array](@ref sizedarrays)) */
     void *data;                      /**< private plugins's data, not used by libyang */
 
     void *parent;                    /**< pointer to the parent element holding the extension instance(s), use

@@ -12,11 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdlib.h>
-
-#include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
-#include "schema_compile.h"
+
 #include "tree_edit.h"
 #include "tree_schema.h"
 
@@ -54,14 +51,15 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 
     /* annotations can appear only at the top level of a YANG module or submodule */
     if ((c_ext->parent_stmt != LY_STMT_MODULE) && (c_ext->parent_stmt != LY_STMT_SUBMODULE)) {
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
+                "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
                 p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_EVALID;
     }
     /* check mandatory argument */
     if (!c_ext->argument) {
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated without mandatory argument representing metadata name.",
-                p_ext->name);
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
+                "Extension %s is instantiated without mandatory argument representing metadata name.", p_ext->name);
         return LY_EVALID;
     }
 
@@ -71,7 +69,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     LY_ARRAY_FOR(mod_c->exts, u) {
         if ((&mod_c->exts[u] != c_ext) && (mod_c->exts[u].def == c_ext->def) && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
             /* duplication of the same annotation extension in a single module */
-            lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
+            lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx), "Extension %s is instantiated multiple times.", p_ext->name);
             return LY_EVALID;
         }
     }
@@ -81,7 +79,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     if (!annotation) {
         goto emem;
     }
-    LY_ARRAY_CREATE_GOTO(cctx->ctx, c_ext->substmts, 6, ret, emem);
+    LY_ARRAY_CREATE_GOTO(lysc_ctx_get_ctx(cctx), c_ext->substmts, 6, ret, emem);
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_IFF].stmt = LY_STMT_IF_FEATURE;
@@ -117,7 +115,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     return ret;
 
 emem:
-    lyext_log(c_ext, LY_LLERR, LY_EMEM, cctx->path, "Memory allocation failed (%s()).", __func__);
+    lyext_log(c_ext, LY_LLERR, LY_EMEM, lysc_ctx_get_path(cctx), "Memory allocation failed (%s()).", __func__);
     return LY_EMEM;
 }
 
