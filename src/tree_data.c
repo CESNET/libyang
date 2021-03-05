@@ -1433,9 +1433,9 @@ static LY_ERR
 lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const char *value, uint32_t options)
 {
     LY_ERR ret = LY_SUCCESS, r;
-    const struct lysc_node *schema;
+    const struct lysc_node *schema = NULL;
     struct ly_path_predicate *pred;
-    LY_ARRAY_COUNT_TYPE u, new_count;
+    LY_ARRAY_COUNT_TYPE u, new_count = 0;
 
     assert(path);
 
@@ -1502,7 +1502,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     struct ly_path *p = NULL;
     struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent;
     const struct lysc_node *schema;
-    LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count;
+    LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
 
