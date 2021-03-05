@@ -22,6 +22,7 @@
 #include "in.h"
 #include "parser_internal.h"
 #include "schema_compile.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"

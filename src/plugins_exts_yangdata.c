@@ -14,9 +14,10 @@
 
 #include <stdlib.h>
 
-#include "common.h"
 #include "plugins_exts.h"
 #include "schema_compile.h"
+
+#include "tree_edit.h"
 #include "tree_schema.h"
 
 /**
@@ -74,7 +75,7 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
      * To let the compilation accept different statements possibly leading to the container top-level node, there are 3
      * allowed substatements pointing to a single storage. But when compiled, the substaments list is compressed just to
      * a single item providing the schema tree. */
-    LY_ARRAY_CREATE_RET(cctx->ctx, c_ext->substmts, 3, LY_EMEM);
+    LY_ARRAY_CREATE_GOTO(cctx->ctx, c_ext->substmts, 3, ret, emem);
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[0].stmt = LY_STMT_CONTAINER;
     c_ext->substmts[0].cardinality = LY_STMT_CARD_OPT;
@@ -143,6 +144,10 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     }
 
     return LY_SUCCESS;
+
+emem:
+    lyext_log(c_ext, LY_LLERR, LY_EMEM, cctx->path, "Memory allocation failed (%s()).", __func__);
+    return LY_EMEM;
 }
 
 /**

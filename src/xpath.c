@@ -41,6 +41,7 @@
 #include "schema_compile_node.h"
 #include "tree.h"
 #include "tree_data_internal.h"
+#include "tree_edit.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
 

@@ -11,11 +11,11 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
 
 #include <stdlib.h>
 
 #include "plugins_exts.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 
 /**
@@ -35,6 +35,7 @@ struct nacm_dfs_arg {
 static LY_ERR
 nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
 {
+    LY_ERR ret;
     struct nacm_dfs_arg *arg = data;
     struct lysc_ext_instance *inherited;
     LY_ARRAY_COUNT_TYPE u;
@@ -51,20 +52,28 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
         }
 
         /* duplicate this one to inherit it to the child */
-        LY_ARRAY_NEW_RET(node->module->ctx, node->exts, inherited, LY_EMEM);
+        LY_ARRAY_NEW_GOTO(node->module->ctx, node->exts, inherited, ret, emem);
 
         inherited->def = lysc_ext_dup(arg->c_ext->def);
         inherited->parent = node;
         inherited->parent_stmt = lys_nodetype2stmt(node->nodetype);
         if (arg->c_ext->argument) {
-            LY_CHECK_RET(lydict_insert(node->module->ctx, arg->c_ext->argument, strlen(arg->c_ext->argument),
-                    &inherited->argument));
+            LY_ERR ret;
+
+            if ((ret = lydict_insert(node->module->ctx, arg->c_ext->argument, strlen(arg->c_ext->argument),
+                    &inherited->argument))) {
+                return ret;
+            }
         }
         /* TODO duplicate extension instances */
         inherited->data = arg->c_ext->data;
     }
 
     return LY_SUCCESS;
+
+emem:
+    lyext_log(arg->c_ext, LY_LLERR, LY_EMEM, NULL, "Memory allocation failed (%s()).", __func__);
+    return ret;
 }
 
 /**
@@ -75,6 +84,7 @@ nacm_inherit_clb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
 LY_ERR
 nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
 {
+    LY_ERR ret;
     struct lysc_node *parent = NULL;
     LY_ARRAY_COUNT_TYPE u;
     struct nacm_dfs_arg dfs_arg;
@@ -130,9 +140,9 @@ invalid_parent:
     /* inherit the extension instance to all the children nodes */
     dfs_arg.c_ext = c_ext;
     dfs_arg.parent = parent;
-    LY_CHECK_RET(lysc_tree_dfs_full(parent, nacm_inherit_clb, &dfs_arg));
+    ret = lysc_tree_dfs_full(parent, nacm_inherit_clb, &dfs_arg);
 
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**

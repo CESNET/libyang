@@ -17,7 +17,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "common.h"
 #include "plugins_exts_metadata.c"
 #include "plugins_exts_nacm.c"
 #include "plugins_exts_yangdata.c"
