@@ -16,6 +16,7 @@
 #define LY_PLUGINS_EXTS_H_
 
 #include "log.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 
 struct ly_ctx;

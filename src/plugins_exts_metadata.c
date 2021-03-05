@@ -11,13 +11,13 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
 
 #include <stdlib.h>
 
 #include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
 #include "schema_compile.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 
 /**
@@ -47,6 +47,7 @@ struct lyext_metadata {
 LY_ERR
 annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
 {
+    LY_ERR ret;
     struct lyext_metadata *annotation;
     struct lysc_module *mod_c;
     LY_ARRAY_COUNT_TYPE u;
@@ -76,14 +77,11 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     }
 
     /* compile annotation substatements */
-    LY_ARRAY_CREATE_RET(cctx->ctx, c_ext->substmts, 6, LY_EMEM);
     c_ext->data = annotation = calloc(1, sizeof *annotation);
     if (!annotation) {
-        LOGMEM(cctx->ctx);
-        LY_ARRAY_FREE(c_ext->substmts);
-        c_ext->substmts = NULL;
-        return LY_EMEM;
+        goto emem;
     }
+    LY_ARRAY_CREATE_GOTO(cctx->ctx, c_ext->substmts, 6, ret, emem);
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_IFF].stmt = LY_STMT_IF_FEATURE;
@@ -115,9 +113,12 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     c_ext->substmts[ANNOTATION_SUBSTMT_REF].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[ANNOTATION_SUBSTMT_REF].storage = &annotation->ref;
 
-    LY_CHECK_RET(lys_compile_extension_instance(cctx, p_ext, c_ext));
+    ret = lys_compile_extension_instance(cctx, p_ext, c_ext);
+    return ret;
 
-    return LY_SUCCESS;
+emem:
+    lyext_log(c_ext, LY_LLERR, LY_EMEM, cctx->path, "Memory allocation failed (%s()).", __func__);
+    return LY_EMEM;
 }
 
 /**

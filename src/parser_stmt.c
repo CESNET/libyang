@@ -28,6 +28,7 @@
 #include "path.h"
 #include "schema_compile.h"
 #include "tree.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 

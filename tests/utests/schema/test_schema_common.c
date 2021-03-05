@@ -17,6 +17,7 @@
 
 #include "context.h"
 #include "log.h"
+#include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
