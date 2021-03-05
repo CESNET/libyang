@@ -22,6 +22,10 @@
 #include "plugins_exts_nacm.c"
 #include "plugins_exts_yangdata.c"
 
+/* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
+#include "common.h"
+#include "schema_compile.h"
+
 /**
  * @brief list of all extension plugins implemented internally
  */
@@ -50,4 +54,22 @@ lyext_get_plugin(struct lysc_ext *ext)
     }
 
     return NULL;
+}
+
+API struct ly_ctx *
+lysc_ctx_get_ctx(const struct lysc_ctx *ctx)
+{
+    return ctx->ctx;
+}
+
+API uint32_t *
+lysc_ctx_get_options(const struct lysc_ctx *ctx)
+{
+    return &((struct lysc_ctx *)ctx)->options;
+}
+
+API const char *
+lysc_ctx_get_path(const struct lysc_ctx *ctx)
+{
+    return ctx->path;
 }

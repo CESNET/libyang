@@ -15,8 +15,6 @@
 #ifndef LY_PLUGINS_EXTS_METADATA_H_
 #define LY_PLUGINS_EXTS_METADATA_H_
 
-#include "tree_schema.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

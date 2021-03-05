@@ -19,9 +19,10 @@
 #include "tree_edit.h"
 #include "tree_schema.h"
 
+#include "plugins_exts_compile.h"
+
 struct ly_ctx;
 struct lyd_node;
-struct lysc_ctx;
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,19 +44,6 @@ extern "C" {
  * It is matched when the plugin is being loaded by libyang.
  */
 #define LYEXT_VERSION_CHECK uint32_t lyext_api_version = LYEXT_API_VERSION;
-
-/**
- * @defgroup extensionscompile YANG Extensions - Compilation Helpers
- * @ingroup extensions
- * @brief Helper functions to compile (via lyext_clb_compile callback) statements inside the extension instance.
- *
- * NOTE: There is a lot of useful static functions in the tree_schema_compile.c which could be provided here. Since we don't want
- * to have a large API with functions which will be never used, we provide here just the functions which are evidently needed.
- * If you, as an extension plugin author, need to make some of the compile functions available, please contact libyang maintainers
- * via the GITHUB issue tracker.
- *
- * @{
- */
 
 /**
  * @brief Possible cardinalities of the YANG statements.
@@ -91,7 +79,11 @@ enum lys_ypr_schema_type {
 };
 
 /**
- * @brief YANG printer context.
+ * @brief Compiled YANG printer context for use in ::lyext_clb_schema_printer callback implementation.
+ *
+ * The structure provides basic information how the compiled schema is supposed to be printed and where. In the most simple
+ * case, the provided context is just passed into ::lysc_print_extension_instance() function which handles printing the
+ * extension's substatements in the standard way.
  */
 struct lys_ypr_ctx {
     struct ly_out *out;              /**< output specification */
@@ -100,13 +92,6 @@ struct lys_ypr_ctx {
     const struct lys_module *module; /**< schema to print */
     enum lys_ypr_schema_type schema; /**< type of the schema to print */
 };
-
-/**
- * @brief Compile substatements of an extension instance.
- * TODO
- * @return LY_ENOT if the extension is disabled and should be ignored.
- */
-LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext);
 
 /**
  * @brief Print substatements of an extension instance
@@ -130,16 +115,6 @@ void lysc_print_extension_instance(struct lys_ypr_ctx *ctx, const struct lysc_ex
 void lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
- * @brief Duplicate the compiled extension (definition) structure.
- * TODO should this be in API? currently required by nacm_compile()
- * Instead of duplicating memory, the reference counter in the @p orig is increased.
- *
- * @param[in] orig The extension structure to duplicate.
- * @return The duplicated structure to use.
- */
-struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
-
-/**
  * @brief Get pointer to the storage of the specified substatement in the given extension instance.
  *
  * The function simplifies access into the ::lysc_ext_instance.substmts sized array.
@@ -157,18 +132,6 @@ struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
  */
 LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt,
         void **instance_p, enum ly_stmt_cardinality *cardinality_p);
-
-/**
- * @brief Update path in the compile context, which is used for logging where the compilation failed.
- *
- * @param[in] ctx Compile context with the path.
- * @param[in] parent_module Module of the current node's parent to check difference with the currently processed module (taken from @p ctx).
- * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is `{keyword}`, the following
- * call updates the segment to the form `{keyword='name'}` (to remove this compound segment, 2 calls with NULL @p name must be used).
- */
-void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name);
-
-/** @} extensionscompile */
 
 /**
  * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
