@@ -368,12 +368,14 @@ void lys_node_unlink(struct lys_node *node);
 /**
  * @brief Free the schema node structure, includes unlinking it from the tree
  *
+ * @param[in] ctx libang context to use, @p node may not have it filled (in groupings, for example).
  * @param[in] node Schema tree node to free. Do not use the pointer after calling this function.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  * @param[in] shallow Whether to do a shallow free only (on a shallow copy of a node).
  */
-void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv), int shallow);
+void lys_node_free(struct ly_ctx *ctx, struct lys_node *node,
+                   void (*private_destructor)(const struct lys_node *node, void *priv), int shallow);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.

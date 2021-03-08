@@ -5654,7 +5654,7 @@ nextsibling:
 
 fail:
     LY_TREE_FOR_SAFE(uses->child, next, iter) {
-        lys_node_free(iter, NULL, 0);
+        lys_node_free(ctx, iter, NULL, 0);
     }
     free(refine_nodes);
     return -1;

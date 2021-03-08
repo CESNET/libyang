@@ -4213,7 +4213,7 @@ error:
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
 
     return NULL;
 }
@@ -4420,7 +4420,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
 error:
     lyxml_free(ctx, dflt);
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     return NULL;
 }
 
@@ -4581,7 +4581,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     return NULL;
 }
 
@@ -4803,7 +4803,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     return NULL;
 }
 
@@ -5117,7 +5117,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     return NULL;
 }
 
@@ -5490,7 +5490,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
 error:
 
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
@@ -5714,7 +5714,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
@@ -5859,7 +5859,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
@@ -6035,7 +6035,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
@@ -6216,7 +6216,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
@@ -6368,7 +6368,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     while (root.child) {
         lyxml_free(ctx, root.child);
     }
@@ -6522,7 +6522,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     return NULL;
 }
 

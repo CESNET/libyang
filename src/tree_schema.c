@@ -942,7 +942,7 @@ skip_nodetype_check:
         iter->next = NULL;
         iter->prev = iter;
         iter->parent = NULL;
-        lys_node_free(iter, NULL, 0);
+        lys_node_free(ctx, iter, NULL, 0);
     } else {
         if (shortcase) {
             /* create the implicit case to allow it to serve as a target of the augments,
@@ -2464,7 +2464,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug,
     /* children from a resolved augment are freed under the target node */
     if (!aug->target || (aug->flags & LYS_NOTAPPLIED)) {
         LY_TREE_FOR_SAFE(aug->child, next, sub) {
-            lys_node_free(sub, private_destructor, 0);
+            lys_node_free(ctx, sub, private_destructor, 0);
         }
     }
 
@@ -2722,11 +2722,11 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev,
 
                 LY_TREE_DFS_END(dev->orig_node, next, elem);
             }
-            lys_node_free(dev->orig_node, NULL, 0);
+            lys_node_free(ctx, dev->orig_node, NULL, 0);
         } else {
             /* it's just a shallow copy, freeing one node */
             dev->orig_node->module = module;
-            lys_node_free(dev->orig_node, NULL, 1);
+            lys_node_free(ctx, dev->orig_node, NULL, 1);
         }
     }
 
@@ -2798,19 +2798,14 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses,
 }
 
 void
-lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv), int shallow)
+lys_node_free(struct ly_ctx *ctx, struct lys_node *node,
+              void (*private_destructor)(const struct lys_node *node, void *priv), int shallow)
 {
-    struct ly_ctx *ctx;
     struct lys_node *sub, *next;
 
     if (!node) {
         return;
     }
-
-    assert(node->module);
-    assert(node->module->ctx);
-
-    ctx = node->module->ctx;
 
     /* remove private object */
     if (node->priv && private_destructor) {
@@ -2827,7 +2822,7 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
 
     if (!shallow && !(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LY_TREE_FOR_SAFE(node->child, next, sub) {
-            lys_node_free(sub, private_destructor, 0);
+            lys_node_free(ctx, sub, private_destructor, 0);
         }
     }
 
@@ -2942,7 +2937,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
      * are placed in the main module altogether */
     if (!module->type) {
         LY_TREE_FOR_SAFE(module->data, next, iter) {
-            lys_node_free(iter, private_destructor, 0);
+            lys_node_free(ctx, iter, private_destructor, 0);
         }
     }
 
@@ -3507,7 +3502,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     return retval;
 
 error:
-    lys_node_free(retval, NULL, 0);
+    lys_node_free(ctx, retval, NULL, 0);
     return NULL;
 }
 
@@ -5149,7 +5144,7 @@ lys_submodule_module_data_free(struct lys_submodule *submodule)
     /* remove parsed data */
     LY_TREE_FOR_SAFE(submodule->belongsto->data, next, elem) {
         if (elem->module == (struct lys_module *)submodule) {
-            lys_node_free(elem, NULL, 0);
+            lys_node_free(submodule->ctx, elem, NULL, 0);
         }
     }
 }
@@ -5546,7 +5541,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_USES:
                     pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
                     LY_TREE_FOR_SAFE((struct lys_node *)(*pp), snext, siter) {
-                        lys_node_free(siter, NULL, 0);
+                        lys_node_free(ctx, siter, NULL, 0);
                     }
                     *pp = NULL;
                     break;
