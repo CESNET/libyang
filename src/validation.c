@@ -49,7 +49,7 @@ lyv_keys(const struct lyd_node *list)
 }
 
 int
-lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres)
+lyv_data_context(struct lyd_node *node, int options, int check_node_order, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
     struct lys_node *sparent, *op;
@@ -114,8 +114,8 @@ lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     /* check elements order in case of RPC's input and output */
-    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY))
-            && (node->validity & LYD_VAL_MAND) && op) {
+    if (check_node_order && !(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) &&
+            (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && (node->validity & LYD_VAL_MAND) && op) {
         if ((node->prev != node) && node->prev->next) {
             /* find schema data parent */
             for (sparent = lys_parent(node->schema);
@@ -394,8 +394,8 @@ lyv_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data
 
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
-        if ((first->schema->flags & LYS_CONFIG_R) && first->schema->module->version >= LYS_VERSION_1_1) {
-            /* same values are allowed for status data */
+        if (!(first->schema->flags & LYS_CONFIG_R) && (first->schema->module->version >= LYS_VERSION_1_1)) {
+            /* same values are allowed for non-configuration data */
             return 0;
         }
         /* compare values */

@@ -4499,6 +4499,9 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
     }
 
     if ((deviate->flags & LYS_CONFIG_MASK)) {
+        struct lys_node *parent;
+        const struct lys_node_list *node_list;
+
         /* cannot add if it was explicitly set */
         if ((deviate->mod == LY_DEVIATE_ADD) && (dev_target->flags & LYS_CONFIG_SET)) {
             LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
@@ -4516,6 +4519,60 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
 
         /* ... and replace it with the value specified in deviation */
         dev_target->flags |= deviate->flags & LYS_CONFIG_MASK;
+
+        /* "config" is explicitely set in the node */
+        dev_target->flags |= LYS_CONFIG_SET;
+
+        /* "config" must be set to either "yes" or "no" */
+        assert(dev_target->flags ^ LYS_CONFIG_MASK);
+
+        /* from rfc7950#page-86: All key leafs in a list MUST have the same value
+         * for their "config" as the list itself.
+         */
+        if ((node_list = lys_is_key((const struct lys_node_leaf *)dev_target, NULL))) {
+            if ((node_list->flags & LYS_CONFIG_MASK) != (dev_target->flags & LYS_CONFIG_MASK)) {
+                LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
+                LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
+                    "The deviate statement causes a violation of \"config\" rules in a key leaf. "
+                    "The \"config\" value in the key leaf must be the same as in the list to which belongs.");
+                goto error;
+            }
+        }
+
+        /* from rfc7950#page-135: If the parent node is a case node,
+         * the value is the same as the case node's parent choice node.
+         */
+        if (dev_target->nodetype == LYS_CASE) {
+            parent = lys_parent(dev_target);
+            assert(parent && parent->nodetype == LYS_CHOICE);
+            if ((parent->flags & LYS_CONFIG_MASK) != (dev_target->flags & LYS_CONFIG_MASK)) {
+                LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
+                LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
+                    "The deviate statement causes a violation of \"config\" rules in a case node. "
+                    "The \"config\" value in the case must be the same as in the choice to which belongs.");
+                goto error;
+            }
+        }
+
+        /* from rfc7950#page-135: If a node has "config" set to "false",
+         * no node underneath it can have "config" set to "true".
+         */
+        if (dev_target->flags & LYS_CONFIG_R) {
+            struct lys_node *next, *elem;
+            LY_TREE_DFS_BEGIN(dev_target->child, next, elem) {
+                if (elem->flags & LYS_CONFIG_W) {
+                    /* Remove current config value of the elem including LYS_CONFIG_SET.
+                     * Note that LYS_CONFIG_SET is cleared. The point is that if the config was explicitly set to yes in the node,
+                     * and at the same time the inheritance from the ancestor was projected, then the config is switched to no,
+                     * so such a config does not have the value set explicitly, but rather implicitly. Therefore, the flag is deleted.
+                     */
+                    elem->flags &= ~(LYS_CONFIG_MASK | LYS_CONFIG_SET) ;
+                    /* set "config" to "no" */
+                    elem->flags |= LYS_CONFIG_R;
+                }
+                LY_TREE_DFS_END(dev_target->child, next, elem);
+            }
+        }
     }
 
     if ((deviate->flags & LYS_MAND_MASK) && yang_check_deviate_mandatory(deviate, dev_target)) {

@@ -1656,7 +1656,8 @@ lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_s
     node_leaf_list->value_str = lydict_insert(schema->module->ctx, val_str ? val_str : "", val_str_len);
     node_leaf_list->dflt = 0;
 
-    if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &node_leaf_list->value_str, NULL, node_leaf_list, NULL, NULL, 0, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &node_leaf_list->value_str, NULL, node_leaf_list,
+            NULL, NULL, 1, 0)) {
         lyd_free((struct lyd_node *)node_leaf_list);
         return NULL;
     }
@@ -4254,6 +4255,8 @@ lyd_replace(struct lyd_node *orig, struct lyd_node *repl)
         orig->parent->child = repl;
     }
 
+    orig->parent = NULL;
+
     /* predecessor */
     if (orig->prev == orig) {
         /* the old was alone */
@@ -4281,8 +4284,12 @@ lyd_replace(struct lyd_node *orig, struct lyd_node *repl)
         }
     }
 
+    /* the node is already unlinked, remove it from parent's hash table. */
+#ifdef LY_ENABLED_CACHE
+    lyd_unlink_hash(orig, repl->parent);
+#endif
+
 finish:
-    /* remove the old one */
     lyd_free(orig);
 }
 
@@ -4997,7 +5004,7 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
                 act_notif = iter;
             }
 
-            if (lyv_data_context(iter, options, unres) || lyv_data_content(iter, options, unres)) {
+            if (lyv_data_context(iter, options, 1, unres) || lyv_data_content(iter, options, unres)) {
                 goto cleanup;
             }
 

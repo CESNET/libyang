@@ -24,6 +24,12 @@ module tree1 {
         }
     }
 
+    choice x {
+        leaf x {
+            type string;
+        }
+    }
+
     container cont {
         leaf leaf4 {
             type uint8;
