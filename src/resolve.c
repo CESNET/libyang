@@ -7913,7 +7913,7 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         free(unres->item[i]);
         break;
     case UNRES_EXT:
-        free(unres->str_snode[i]);
+        free_ext_data(ctx, unres->str_snode[i]);
         break;
     case UNRES_EXT_FINALIZE:
         free(unres->str_snode[i]);
