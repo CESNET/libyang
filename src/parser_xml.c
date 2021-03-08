@@ -319,7 +319,12 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
     size_t pprefix_len, pname_len;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
 
-    if ((lydctx->parse_opts & LYD_PARSE_OPAQ) && ((*snode)->nodetype & (LYD_NODE_TERM | LYS_LIST))) {
+    if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
+        /* only checks specific to opaque nodes */
+        return LY_SUCCESS;
+    }
+
+    if ((*snode)->nodetype & (LYD_NODE_TERM | LYS_LIST)) {
         /* backup parser */
         prev_status = xmlctx->status;
         pprefix = xmlctx->prefix;
@@ -364,6 +369,13 @@ restore:
         xmlctx->name = pname;
         xmlctx->name_len = pname_len;
         xmlctx->in->current = prev_current;
+    } else if ((*snode)->nodetype & LYD_NODE_INNER) {
+        /* if there is a non-WS value, it cannot be parsed as an inner node */
+        assert(xmlctx->status == LYXML_ELEM_CONTENT);
+        if (!xmlctx->ws_only) {
+            *snode = NULL;
+        }
+
     }
 
     return ret;
