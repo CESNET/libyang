@@ -4572,7 +4572,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             break;
         }
@@ -4794,7 +4794,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             break;
         }
@@ -5108,7 +5108,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             break;
         }
@@ -5477,7 +5477,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
             retval->flags |= LYS_VALID_EXT;
             if (retval->ext[r]->flags & LYEXT_OPT_VALID_SUBTREE) {
                 retval->flags |= LYS_VALID_EXT_SUBTREE;
@@ -5701,8 +5701,9 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     }
 
     for (r = 0; r < retval->ext_size; ++r) {
-        /* set flag, which represent LYEXT_OPT_VALID */
-        if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
+        /* extension instance may not yet be resolved */
+        if (retval->ext[r] && (retval->ext[r]->flags & LYEXT_OPT_VALID)) {
+             /* set flag, which represent LYEXT_OPT_VALID */
             retval->flags |= LYS_VALID_EXT;
             if (retval->ext[r]->flags & LYEXT_OPT_VALID_SUBTREE) {
                 retval->flags |= LYS_VALID_EXT_SUBTREE;
