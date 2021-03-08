@@ -287,7 +287,10 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
         }
 
         /* print the attribute with its prefix and value */
-        ly_print_(ctx->out, " %s%s%s=\"%s\"", pref ? pref : "", pref ? ":" : "", attr->name.name, attr->value);
+        ly_print_(ctx->out, " %s%s%s=\"", pref ? pref : "", pref ? ":" : "", attr->name.name);
+        lyxml_dump_text(ctx->out, attr->value, 1);
+        ly_print_(ctx->out, "\""); /* print attribute value terminator */
+
     }
 
     return LY_SUCCESS;
@@ -482,7 +485,8 @@ xml_print_opaq(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
             xml_print_ns_prefix_data(ctx, node->format, node->val_prefix_data, LYXML_PREFIX_REQUIRED);
         }
 
-        ly_print_(ctx->out, ">%s", node->value);
+        ly_print_(ctx->out, ">");
+        lyxml_dump_text(ctx->out, node->value, 0);
     }
 
     if (node->child) {
