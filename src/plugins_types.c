@@ -342,8 +342,7 @@ API LY_ERR
 ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
         int64_t *ret, struct ly_err_item **err)
 {
-    char *errmsg = NULL;
-    int rc = 0;
+    LY_ERR ret_val;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
@@ -351,37 +350,36 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
-        rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Invalid empty %s value.", datatype);
+        return ret_val;
     }
 
     switch (ly_parse_int(value, value_len, min, max, base, ret)) {
     case LY_EDENIED:
-        rc = asprintf(&errmsg, "Value is out of %s's min/max bounds.", datatype);
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Value is out of %s's min/max bounds.", datatype);
+        break;
     case LY_SUCCESS:
-        return LY_SUCCESS;
+        ret_val = LY_SUCCESS;
+        break;
     default:
-        rc = asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        break;
     }
 
-error:
-    if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-        return LY_EMEM;
-    } else {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        return LY_EVALID;
-    }
+    return ret_val;
 }
 
 API LY_ERR
 ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len, uint64_t *ret,
         struct ly_err_item **err)
 {
-    char *errmsg = NULL;
-    int rc = 0;
+    LY_ERR ret_val = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
@@ -389,37 +387,36 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
-        rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Invalid empty %s value.", datatype);
+        return ret_val;
     }
 
     *err = NULL;
     switch (ly_parse_uint(value, value_len, max, base, ret)) {
     case LY_EDENIED:
-        rc = asprintf(&errmsg, "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
+        break;
     case LY_SUCCESS:
-        return LY_SUCCESS;
+        ret_val = LY_SUCCESS;
+        break;
     default:
-        rc = asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        break;
     }
 
-error:
-    if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-        return LY_EMEM;
-    } else {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        return LY_EVALID;
-    }
+    return ret_val;
 }
 
 API LY_ERR
 ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
-    LY_ERR rc = LY_EVALID;
-    char *errmsg = NULL;
+    LY_ERR ret_val = LY_EVALID;
     char *valcopy = NULL;
     size_t fraction = 0, size, len = 0, trailing_zeros;
     int64_t d;
@@ -429,15 +426,16 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
 
     /* parse value */
     if (!value_len) {
-        errmsg = strdup("Invalid empty decimal64 value.");
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Invalid empty decimal64 value.");
+        return ret_val;
     } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
-        if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
-                len + 1, (int)value_len, value) == -1) {
-            errmsg = NULL;
-            rc = LY_EMEM;
-        }
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Invalid %lu. character of decimal64 value \"%.*s\".",
+                len + 1, (int)value_len, value);
+        return ret_val;
     }
 
     if ((value[len] == '-') || (value[len] == '+')) {
@@ -466,12 +464,11 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
 
 decimal:
     if (fraction && (len - 1 - fraction > fraction_digits)) {
-        if (asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.",
-                (int)len, value, fraction_digits) == -1) {
-            errmsg = NULL;
-            rc = LY_EMEM;
-        }
-        goto error;
+        ret_val = LY_EVALID;
+        *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.",
+                (int)len, value, fraction_digits);
+        return ret_val;
     }
     if (fraction) {
         size = len + (fraction_digits - (len - 1 - fraction));
@@ -484,12 +481,11 @@ decimal:
         uint64_t u;
         for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u) {}
         if (u != value_len) {
-            if (asprintf(&errmsg, "Invalid %" PRIu64 ". character of decimal64 value \"%.*s\".",
-                    u + 1, (int)value_len, value) == -1) {
-                errmsg = NULL;
-                rc = LY_EMEM;
-            }
-            goto error;
+            ret_val = LY_EVALID;
+            *err = ly_err_msg_create(&ret_val, LYVE_DATA,
+                    "Invalid %" PRIu64 ". character of decimal64 value \"%.*s\".",
+                    u + 1, (int)value_len, value);
+            return ret_val;
         }
     }
 
@@ -512,18 +508,14 @@ decimal:
         memset(&valcopy[len], '0', fraction_digits);
     }
 
-    rc = ly_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807),
+    ret_val = ly_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807),
             valcopy, len, &d, err);
-    if (!rc && ret) {
+    if (!ret_val && ret) {
         *ret = d;
     }
     free(valcopy);
 
-error:
-    if (errmsg) {
-        *err = ly_err_new(LY_LLERR, rc, LYVE_DATA, errmsg, NULL, NULL);
-    }
-    return rc;
+    return ret_val;
 }
 
 API LY_ERR
@@ -531,7 +523,6 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 {
     int rc;
     LY_ARRAY_COUNT_TYPE u;
-    char *errmsg;
     pcre2_match_data *match_data = NULL;
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
@@ -548,22 +539,18 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
         pcre2_match_data_free(match_data);
 
         if ((rc != PCRE2_ERROR_NOMATCH) && (rc < 0)) {
+            LY_ERR ret = LY_ESYS;
             PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
             pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
 
-            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
-            return LY_ESYS;
+            *err = ly_err_msg_create(&ret, 0, (const char *)pcre2_errmsg);
+            return ret;
         } else if (((rc == PCRE2_ERROR_NOMATCH) && !patterns[u]->inverted) ||
                 ((rc != PCRE2_ERROR_NOMATCH) && patterns[u]->inverted)) {
-            LY_ERR ret = 0;
+            LY_ERR ret = LY_EVALID;
             const char *inverted = patterns[u]->inverted ? "inverted " : "";
-            if (asprintf(&errmsg, LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr) == -1) {
-                *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-                ret = LY_EMEM;
-            } else {
-                *err = ly_err_new(LY_LLERR, LY_EVALID, 0, errmsg, NULL, NULL);
-                ret = LY_EVALID;
-            }
+            *err = ly_err_msg_create(&ret, 0,
+                    LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr);
             return ret;
         }
     }
@@ -698,8 +685,7 @@ type_get_hints_base(uint32_t hints)
 static LY_ERR
 type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
 {
-    int rc;
-    char *msg;
+    LY_ERR ret = LY_SUCCESS;
 
     switch (type) {
     case LY_TYPE_UINT8:
@@ -709,16 +695,22 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
         if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM))) {
-            rc = asprintf(&msg, "Invalid non-number-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            goto error;
+            ret = LY_EVALID;
+            *err = ly_err_msg_create(&ret, LYVE_DATA,
+                    "Invalid non-number-encoded %s value \"%.*s\".",
+                    lys_datatype2str(type), (int)value_len, value);
+            return ret;
         }
         *base = type_get_hints_base(hints);
         break;
     case LY_TYPE_UINT64:
     case LY_TYPE_INT64:
         if (!(hints & LYD_VALHINT_NUM64)) {
-            rc = asprintf(&msg, "Invalid non-num64-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            goto error;
+            ret = LY_EVALID;
+            *err = ly_err_msg_create(&ret, LYVE_DATA,
+                    "Invalid non-num64-encoded %s value \"%.*s\".",
+                    lys_datatype2str(type), (int)value_len, value);
+            return ret;
         }
         *base = type_get_hints_base(hints);
         break;
@@ -730,20 +722,29 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
         if (!(hints & LYD_VALHINT_STRING)) {
-            rc = asprintf(&msg, "Invalid non-string-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            goto error;
+            ret = LY_EVALID;
+            *err = ly_err_msg_create(&ret, LYVE_DATA,
+                    "Invalid non-string-encoded %s value \"%.*s\".",
+                    lys_datatype2str(type), (int)value_len, value);
+            return ret;
         }
         break;
     case LY_TYPE_BOOL:
         if (!(hints & LYD_VALHINT_BOOLEAN)) {
-            rc = asprintf(&msg, "Invalid non-boolean-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            goto error;
+            ret = LY_EVALID;
+            *err = ly_err_msg_create(&ret, LYVE_DATA,
+                    "Invalid non-boolean-encoded %s value \"%.*s\".",
+                    lys_datatype2str(type), (int)value_len, value);
+            return ret;
         }
         break;
     case LY_TYPE_EMPTY:
         if (!(hints & LYD_VALHINT_EMPTY)) {
-            rc = asprintf(&msg, "Invalid non-empty-encoded %s value \"%.*s\".", lys_datatype2str(type), (int)value_len, value);
-            goto error;
+            ret = LY_EVALID;
+            *err = ly_err_msg_create(&ret, LYVE_DATA,
+                    "Invalid non-empty-encoded %s value \"%.*s\".",
+                    lys_datatype2str(type), (int)value_len, value);
+            return ret;
         }
         break;
     case LY_TYPE_UNKNOWN:
@@ -753,15 +754,6 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     }
 
     return LY_SUCCESS;
-
-error:
-    if ((rc == -1) || !msg) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-        return LY_EMEM;
-    } else {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, msg, NULL, NULL);
-        return LY_EVALID;
-    }
 }
 
 /**
@@ -1133,13 +1125,11 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     char *buf = NULL;
     size_t index;
     LY_ARRAY_COUNT_TYPE u;
-    char *errmsg = NULL;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
     ly_bool iscanonical = 1;
     size_t ws_count;
     size_t lws_count; /* leading whitespace count */
     const char *can = NULL;
-    int rc = 0;
 
     /* check hints */
     ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -1176,14 +1166,18 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
                 ret = ly_set_add(items, &type_bits->bits[u], 0, &inserted);
                 LY_CHECK_GOTO(ret, cleanup);
                 if (inserted != items->count - 1) {
-                    rc = asprintf(&errmsg, "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
+                    ret = LY_EVALID;
+                    *err = ly_err_msg_create(&ret, LYVE_DATA,
+                            "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
                     goto cleanup;
                 }
                 goto next;
             }
         }
         /* item not found */
-        rc = asprintf(&errmsg, "Invalid bit value \"%.*s\".", (int)item_len, item);
+        ret = LY_EVALID;
+        *err = ly_err_msg_create(&ret, LYVE_DATA,
+                "Invalid bit value \"%.*s\".", (int)item_len, item);
         goto cleanup;
 next:
         /* remember for canonized form: item + space/termination-byte */
@@ -1245,13 +1239,6 @@ next:
     storage->realtype = type;
 
 cleanup:
-    if (rc == -1) {
-        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-        ret = LY_EMEM;
-    } else if (errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        ret = LY_EVALID;
-    }
     ly_set_free(items, NULL);
     ly_set_free(items_ordered, NULL);
     free(buf);
@@ -1376,14 +1363,9 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     } else if ((value_len == ly_strlen_const("false")) && !strncmp(value, "false", ly_strlen_const("false"))) {
         i = 0;
     } else {
-        char *errmsg;
-        if (asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-            ret = LY_EMEM;
-        } else {
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-            ret = LY_EVALID;
-        }
+        ret = LY_EVALID;
+        *err = ly_err_msg_create(&ret, LYVE_DATA,
+                "Invalid boolean value \"%.*s\".", (int)value_len, value);
         goto cleanup;
     }
 
@@ -1423,14 +1405,9 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     if (value_len) {
-        char *errmsg;
-        if (asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-            ret = LY_EMEM;
-        } else {
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-            ret = LY_EVALID;
-        }
+        ret = LY_EVALID;
+        *err = ly_err_msg_create(&ret, LYVE_DATA,
+                "Invalid empty value \"%.*s\".", (int)value_len, value);
         goto cleanup;
     }
 
@@ -1764,8 +1741,7 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
         struct ly_err_item **err)
 {
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)storage->realtype;
-    LY_ERR ret;
-    char *errmsg;
+    LY_ERR ret = LY_SUCCESS;
 
     *err = NULL;
 
@@ -1777,16 +1753,10 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     /* find the target in data */
     ret = ly_path_eval(storage->target, tree, NULL);
     if (ret) {
-        if (asprintf(&errmsg, LY_ERRMSG_NOINST, storage->canonical) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-            ret = LY_EMEM;
-        } else {
-            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        }
-        return ret;
+        *err = ly_err_msg_create(&ret, LYVE_DATA, LY_ERRMSG_NOINST, storage->canonical);
     }
 
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
@@ -2108,6 +2078,7 @@ static LY_ERR
 ly_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
     char *errmsg = NULL;
 
@@ -2120,11 +2091,14 @@ ly_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_typ
 
     /* check leafref target existence */
     if (ly_type_find_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        *err = ly_err_msg_create(&ret, LYVE_DATA, errmsg);
+        if (errmsg != NULL) {
+            free(errmsg);
+        }
     }
 
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
@@ -2181,7 +2155,6 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
-    char *errmsg = NULL;
     uint32_t prev_lo;
 
     if (!types || !LY_ARRAY_COUNT(types)) {
@@ -2216,17 +2189,11 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
     }
 
     if (u == LY_ARRAY_COUNT(types)) {
-        if (asprintf(&errmsg, "Invalid union value \"%s\" - no matching subtype found.", subvalue->original) == -1) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, LY_EMEM_MSG, NULL, NULL);
-            ret = LY_EMEM;
-            goto cleanup;
-        }
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
         ret = LY_EVALID;
-        goto cleanup;
+        *err = ly_err_msg_create(&ret, LYVE_DATA,
+                "Invalid union value \"%s\" - no matching subtype found.", subvalue->original);
     }
 
-cleanup:
     /* restore logging */
     ly_log_options(prev_lo);
     return ret;
