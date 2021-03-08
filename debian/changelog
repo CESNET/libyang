@@ -1,10 +1,8 @@
-libyang (1.0.225-1~1.gbpfddb79) UNRELEASED; urgency=medium
+libyang (1.0.225-1) unstable; urgency=medium
 
-  ** SNAPSHOT build @fddb793dfb5949e3f8d981c3a75c3aef23c865ce **
+  * New upstream release
 
-  * UNRELEASED
-
- -- Ondřej Surý <ondrej@debian.org>  Mon, 08 Mar 2021 15:37:59 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 08 Mar 2021 15:39:56 +0100
 
 libyang (1.0.215-1) unstable; urgency=medium
 
