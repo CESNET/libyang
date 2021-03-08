@@ -943,7 +943,8 @@ error:
 
 /* logs directly */
 struct lyxml_elem *
-lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent, int options)
+lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent, int options,
+                 int bt_count)
 {
     const char *c = data, *start, *e;
     const char *lws;    /* leading white space for handling mixed content */
@@ -957,6 +958,11 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
     int nons_flag = 0, closed_flag = 0;
 
     *len = 0;
+
+    if (bt_count > LY_RECURSION_LIMIT) {
+        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "Recursion limit %d reached", LY_RECURSION_LIMIT);
+        return NULL;
+    }
 
     if (*c != '<') {
         return NULL;
@@ -1141,7 +1147,7 @@ process:
                     lyxml_add_child(ctx, elem, child);
                     elem->flags |= LYXML_ELEM_MIXED;
                 }
-                child = lyxml_parse_elem(ctx, c, &size, elem, options);
+                child = lyxml_parse_elem(ctx, c, &size, elem, options, bt_count + 1);
                 if (!child) {
                     goto error;
                 }
@@ -1295,7 +1301,7 @@ repeat:
         }
     }
 
-    root = lyxml_parse_elem(ctx, c, &len, NULL, options);
+    root = lyxml_parse_elem(ctx, c, &len, NULL, options, 0);
     if (!root) {
         goto error;
     } else if (!first) {

@@ -53,6 +53,9 @@
 /* how many bytes add when enlarging buffers */
 #define LY_BUF_STEP 128
 
+/* hard limit on recursion for cases with theoretical unlimited recursion */
+#define LY_RECURSION_LIMIT 10000
+
 /* internal logging options */
 enum int_log_opts {
     ILO_LOG = 0, /* log normally */
