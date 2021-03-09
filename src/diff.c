@@ -1640,12 +1640,38 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Remove specific operation from all the nodes in a subtree.
+ *
+ * @param[in] diff Diff subtree to process.
+ * @param[in] op Only expected operation.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_reverse_remove_op_r(struct lyd_node *diff, enum lyd_diff_op op)
+{
+    struct lyd_node *elem;
+    struct lyd_meta *meta;
+
+    LYD_TREE_DFS_BEGIN(diff, elem) {
+        meta = lyd_find_meta(elem->meta, NULL, "yang:operation");
+        if (meta) {
+            LY_CHECK_ERR_RET(lyd_diff_str2op(meta->value.canonical) != op, LOGINT(LYD_CTX(diff)), LY_EINT);
+            lyd_free_meta_single(meta);
+        }
+
+        LYD_TREE_DFS_END(diff, elem);
+    }
+
+    return LY_SUCCESS;
+}
+
 API LY_ERR
 lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
-    struct lyd_node *root, *elem;
+    struct lyd_node *root, *elem, *iter;
     enum lyd_diff_op op;
 
     LY_CHECK_ARG_RET(NULL, diff, LY_EINVAL);
@@ -1674,14 +1700,22 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
                     /* reverse create to delete */
                     LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_DELETE), cleanup);
 
-                    /* the whole subtree was reversed, there can be no other operation there */
+                    /* check all the children for the same operation, nothing else is expected */
+                    LY_LIST_FOR(lyd_child(elem), iter) {
+                        lyd_diff_reverse_remove_op_r(iter, LYD_DIFF_OP_CREATE);
+                    }
+
                     LYD_TREE_DFS_continue = 1;
                     break;
                 case LYD_DIFF_OP_DELETE:
                     /* reverse delete to create */
                     LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_CREATE), cleanup);
 
-                    /* the whole subtree was reversed, there can be no other operation there */
+                    /* check all the children for the same operation, nothing else is expected */
+                    LY_LIST_FOR(lyd_child(elem), iter) {
+                        lyd_diff_reverse_remove_op_r(iter, LYD_DIFF_OP_DELETE);
+                    }
+
                     LYD_TREE_DFS_continue = 1;
                     break;
                 case LYD_DIFF_OP_REPLACE:
