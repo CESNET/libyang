@@ -502,6 +502,14 @@ cast_string_elem(struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type r
 static LY_ERR
 cast_node_set_to_string(struct lyxp_set *set, char **str)
 {
+    if (!set->used) {
+        *str = strdup("");
+        if (!*str) {
+            LOGMEM_RET(set->ctx);
+        }
+        return LY_SUCCESS;
+    }
+
     switch (set->val.nodes[0].type) {
     case LYXP_NODE_NONE:
         /* invalid */
@@ -8643,8 +8651,6 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target)
             LY_CHECK_ERR_RET(!set->val.str, LOGMEM(set->ctx), LY_EMEM);
             break;
         case LYXP_SET_NODE_SET:
-            assert(set->used);
-
             /* we need the set sorted, it affects the result */
             assert(!set_sort(set));
 
