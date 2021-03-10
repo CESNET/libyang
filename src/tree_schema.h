@@ -228,6 +228,11 @@ struct lyxp_expr;
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
+/**
+ * @defgroup schemanodetypes Schema Node Types
+ * Values of the ::lysp_node.nodetype and ::lysc_node.nodetype members.
+ * @{
+ */
 #define LYS_UNKNOWN     0x0000    /**< uninitalized unknown statement node */
 #define LYS_CONTAINER   0x0001    /**< container statement node */
 #define LYS_CHOICE      0x0002    /**< choice statement node */
@@ -249,6 +254,7 @@ struct lyxp_expr;
 #define LYS_AUGMENT     0x8000
 
 #define LYS_NODETYPE_MASK 0xffff  /**< Mask for nodetypes, the value is limited for 16 bits */
+/** @} schemanodetypes */
 
 /**
  * @brief Generic test for operation statements.
@@ -937,7 +943,7 @@ struct lysp_deviation {
  */
 struct lysp_node {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
-    uint16_t nodetype;               /**< type of the node (mandatory) */
+    uint16_t nodetype;               /**< [type of the node](@ref schemanodetypes) (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< next sibling node (NULL if there is no one) */
     const char *name;                /**< node name (mandatory) */
@@ -1606,7 +1612,7 @@ struct lysc_type_bin {
  * @brief Compiled YANG data node
  */
 struct lysc_node {
-    uint16_t nodetype;               /**< type of the node (mandatory) */
+    uint16_t nodetype;               /**< [type of the node](@ref schemanodetypes) (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
