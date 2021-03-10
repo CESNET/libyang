@@ -20,6 +20,7 @@
 #include "tree_schema.h"
 
 #include "plugins_exts_compile.h"
+#include "plugins_exts_print.h"
 
 struct ly_ctx;
 struct lyd_node;
@@ -69,41 +70,6 @@ struct lysc_ext_substmt {
     void *storage;                         /**< pointer to the storage of the compiled statement according to the specific
                                                 lysc_ext_substmt::stmt and lysc_ext_substmt::cardinality */
 };
-
-/**
- * @brief Types of the YANG printers
- */
-enum lys_ypr_schema_type {
-    LYS_YPR_PARSED,   /**< YANG printer of the parsed schema */
-    LYS_YPR_COMPILED  /**< YANG printer of the compiled schema */
-};
-
-/**
- * @brief Compiled YANG printer context for use in ::lyext_clb_schema_printer callback implementation.
- *
- * The structure provides basic information how the compiled schema is supposed to be printed and where. In the most simple
- * case, the provided context is just passed into ::lysc_print_extension_instance() function which handles printing the
- * extension's substatements in the standard way.
- */
-struct lys_ypr_ctx {
-    struct ly_out *out;              /**< output specification */
-    uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
-    uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
-    const struct lys_module *module; /**< schema to print */
-    enum lys_ypr_schema_type schema; /**< type of the schema to print */
-};
-
-/**
- * @brief Print substatements of an extension instance
- *
- * Generic function to access YANG printer functions from the extension plugins (::lyext_clb_schema_printer).
- *
- * @param[in] ctx YANG printer context to provide output handler and other information for printing.
- * @param[in] ext The compiled extension instance to access the extensions and substatements data.
- * @param[in, out] flag Flag to be shared with the caller regarding the opening brackets - 0 if the '{' not yet printed,
- * 1 otherwise.
- */
-void lysc_print_extension_instance(struct lys_ypr_ctx *ctx, const struct lysc_ext_instance *ext, ly_bool *flag);
 
 /**
  * @brief Free the extension instance's data compiled with ::lys_compile_extension_instance().
@@ -187,7 +153,7 @@ typedef LY_ERR (*lyext_clb_data_validation)(struct lysc_ext_instance *ext, struc
  *
  * @return LY_SUCCESS when everything was fine, other LY_ERR values in case of failure
  */
-typedef LY_ERR (*lyext_clb_schema_printer)(struct lys_ypr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
+typedef LY_ERR (*lyext_clb_schema_printer)(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
 
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension

@@ -125,7 +125,7 @@ emem:
  * Implementation of lyext_clb_schema_printer set as ::lyext_plugin::sprinter
  */
 LY_ERR
-annotation_schema_printer(struct lys_ypr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
+annotation_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
 {
     lysc_print_extension_instance(ctx, ext, flag);
 

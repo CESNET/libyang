@@ -23,6 +23,18 @@ struct lysp_module;
 struct lysp_submodule;
 
 /**
+ * @brief Generic YANG schema printer context
+ *
+ * Note that the YANG extensions API provides getter to the members for the extension plugins.
+ */
+struct lyspr_ctx {
+    struct ly_out *out;              /**< output specification */
+    uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
+    const struct lys_module *module; /**< schema to print */
+};
+
+/**
  * @brief YANG printer of the parsed module. Full YANG printer.
  *
  * @param[in] out Output specification.
