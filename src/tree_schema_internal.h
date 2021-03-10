@@ -460,6 +460,22 @@ LY_ERR lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_
         struct lysp_ext **ext_def);
 
 /**
+ * @brief Get schema node in extension instance according to the given parameters.
+ *
+ * Wraps ::lys_getnext_ext() and match according to the given arguments.
+ *
+ * @param[in] ext Extension instance which top-level schema node is being searched.
+ * @param[in] module Optional parameter to match the extension instance's (and its data) module.
+ * @param[in] name Name of the schema node to find, if the string is not NULL-terminated, the @p name_len must be set.
+ * @param[in] name_len Length of the @p name string, use in case the @p name is not NULL-terminated string.
+ * @param[in] nodetype Allowed [type of the node](@ref schemanodetypes).
+ * @param[in] options ORed [lys_getnext options](@ref sgetnextflags).
+ * @return Found schema node if there is some satisfy the provided requirements.
+ */
+const struct lysc_node *lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module *module,
+        const char *name, size_t name_len, uint16_t nodetype, uint32_t options);
+
+/**
  * @brief When the module comes from YIN format, the argument name is unknown because of missing extension definition
  * (it might come from import modules which is not yet parsed at that time). Therefore, all the attributes are stored
  * as substatements and resolving argument is postponed.

@@ -438,7 +438,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     snode = NULL;
     if (mod && (!parent || parent->schema)) {
         if (!parent && lydctx->ext) {
-            snode = lys_find_ext_instance_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
+            snode = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
         } else {
             snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
         }

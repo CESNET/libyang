@@ -408,7 +408,7 @@ lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent, co
 }
 
 const struct lysc_node *
-lys_find_ext_instance_node(const struct lysc_ext_instance *ext, const struct lys_module *module, const char *name, size_t name_len,
+lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module *module, const char *name, size_t name_len,
         uint16_t nodetype, uint32_t options)
 {
     const struct lysc_node *node = NULL;
