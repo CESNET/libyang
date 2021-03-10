@@ -550,9 +550,15 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
         } else if (((rc == PCRE2_ERROR_NOMATCH) && !patterns[u]->inverted) ||
                 ((rc != PCRE2_ERROR_NOMATCH) && patterns[u]->inverted)) {
             LY_ERR ret = LY_EVALID;
-            const char *inverted = patterns[u]->inverted ? "inverted " : "";
-            *err = ly_err_msg_create(&ret, 0, NULL, NULL,
-                    LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr);
+            char *eapptag = patterns[u]->eapptag ? strdup(patterns[u]->eapptag) : NULL;
+
+            if (patterns[u]->emsg) {
+                *err = ly_err_msg_create(&ret, LYVE_DATA, NULL, eapptag, patterns[u]->emsg);
+            } else {
+                const char *inverted = patterns[u]->inverted ? "inverted " : "";
+                *err = ly_err_msg_create(&ret, 0, NULL, eapptag,
+                        LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr);
+            }
             return ret;
         }
     }
