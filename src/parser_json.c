@@ -230,7 +230,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     /* get the schema node */
     if (mod && (!parent || parent->schema)) {
         if (!parent && lydctx->ext) {
-            *snode_p = lys_find_ext_instance_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
+            *snode_p = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
         } else {
             *snode_p = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
         }
