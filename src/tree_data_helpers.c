@@ -26,6 +26,7 @@
 #include "log.h"
 #include "lyb.h"
 #include "parser_data.h"
+#include "plugins_types.h"
 #include "printer_data.h"
 #include "set.h"
 #include "tree.h"
@@ -33,6 +34,7 @@
 #include "tree_data_internal.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
+#include "xml.h"
 
 struct lyd_node *
 lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,

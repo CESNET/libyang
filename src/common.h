@@ -20,16 +20,14 @@
 #include <stdint.h>
 
 #include "context.h"
-#include "dict.h"
 #include "hash_table.h"
 #include "log.h"
 #include "set.h"
-#include "tree.h"
 #include "tree_data.h"
 
 struct ly_ctx;
 struct ly_in;
-struct lys_module;
+struct lysc_node;
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local

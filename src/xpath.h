@@ -20,10 +20,11 @@
 
 #include "compat.h"
 #include "log.h"
-#include "tree_data.h"
+#include "tree.h"
 #include "tree_schema.h"
 
 struct ly_ctx;
+struct lyd_node;
 
 /*
  * XPath evaluator fully compliant with http://www.w3.org/TR/1999/REC-xpath-19991116/

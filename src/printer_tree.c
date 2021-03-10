@@ -13,12 +13,21 @@
  */
 
 #include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "compat.h"
+#include "log.h"
+#include "out.h"
 #include "out_internal.h"
 #include "printer_internal.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "xpath.h"
+
+struct trt_tree_ctx;
 
 /******************************************************************************
  * Declarations start

@@ -20,13 +20,14 @@
 
 #include "log.h"
 #include "tree.h"
-#include "tree_data.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct ly_ctx;
+struct lyd_node;
+struct lyd_value;
 struct lys_module;
 struct lys_glob_unres;
 struct lysc_ident;

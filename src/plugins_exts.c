@@ -13,7 +13,8 @@
  */
 
 #include "plugins_exts.h"
-#include "plugins_exts_internal.h"
+#include "plugins_exts_compile.h"
+#include "plugins_exts_print.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -24,6 +25,7 @@
 
 /* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"
+#include "plugins_exts_internal.h"
 #include "printer_internal.h"
 #include "schema_compile.h"
 

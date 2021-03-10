@@ -32,6 +32,7 @@
 #include "parser_schema.h"
 #include "path.h"
 #include "plugins_exts.h"
+#include "plugins_exts_compile.h"
 #include "plugins_exts_internal.h"
 #include "plugins_types.h"
 #include "schema_compile_amend.h"

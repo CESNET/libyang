@@ -25,6 +25,7 @@ extern "C" {
 #endif
 
 struct lyd_node;
+struct lys_module;
 struct lysc_node;
 
 /**

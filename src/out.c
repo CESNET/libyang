@@ -31,7 +31,6 @@
 #include "compat.h"
 #include "log.h"
 #include "printer_data.h"
-#include "printer_internal.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 

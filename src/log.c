@@ -30,6 +30,7 @@
 #include "compat.h"
 #include "in_internal.h"
 #include "plugins_exts.h"
+#include "set.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 

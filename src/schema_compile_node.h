@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #include "log.h"
-#include "tree_data.h"
+#include "tree.h"
 #include "tree_schema.h"
 
 struct ly_ctx;

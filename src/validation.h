@@ -18,8 +18,8 @@
 #include <stdint.h>
 
 #include "log.h"
-#include "parser_data.h"
 
+struct ly_ctx;
 struct ly_set;
 struct lyd_node;
 struct lys_module;
