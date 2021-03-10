@@ -76,7 +76,7 @@ struct ly_ctx *lysc_ctx_get_ctx(const struct lysc_ctx *ctx);
 /**
  * @brief YANG schema compilation context getter for compilation options.
  * @param[in] ctx YANG schema compilation context.
- * @return pointer to the compilation context to allow modifying the options with @ref scflags values.
+ * @return pointer to the compilation options to allow modifying them with @ref scflags values.
  */
 uint32_t *lysc_ctx_get_options(const struct lysc_ctx *ctx);
 

@@ -24,6 +24,7 @@
 
 /* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"
+#include "printer_internal.h"
 #include "schema_compile.h"
 
 /**
@@ -72,4 +73,22 @@ API const char *
 lysc_ctx_get_path(const struct lysc_ctx *ctx)
 {
     return ctx->path;
+}
+
+API struct ly_out **
+lys_ypr_ctx_get_out(const struct lyspr_ctx *ctx)
+{
+    return &((struct lyspr_ctx *)ctx)->out;
+}
+
+API uint32_t *
+lys_ypr_ctx_get_options(const struct lyspr_ctx *ctx)
+{
+    return &((struct lyspr_ctx *)ctx)->options;
+}
+
+API uint16_t *
+lys_ypr_ctx_get_level(const struct lyspr_ctx *ctx)
+{
+    return &((struct lyspr_ctx *)ctx)->level;
 }

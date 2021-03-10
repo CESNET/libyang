@@ -34,10 +34,17 @@
  * @brief YIN printer context.
  */
 struct lys_ypr_ctx {
-    struct ly_out *out;              /**< output specification */
-    uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
-    uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
-    const struct lys_module *module; /**< schema to print */
+    union {
+        struct {
+            struct ly_out *out;              /**< output specification */
+            uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+            uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
+            const struct lys_module *module; /**< schema to print */
+        };
+        struct lyspr_ctx printer_ctx;
+    };
+
+    /* YIN printer specific members */
 };
 
 static void yprp_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t substmt_index,

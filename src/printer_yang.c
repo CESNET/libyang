@@ -26,8 +26,8 @@
 #include "log.h"
 #include "out.h"
 #include "out_internal.h"
-#include "plugins_exts.h"
 #include "plugins_exts_internal.h"
+#include "plugins_exts_print.h"
 #include "plugins_types.h"
 #include "printer_internal.h"
 #include "printer_schema.h"
@@ -36,6 +36,34 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
+
+/**
+ * @brief Types of the YANG printers
+ */
+enum lys_ypr_schema_type {
+    LYS_YPR_PARSED,   /**< YANG printer of the parsed schema */
+    LYS_YPR_COMPILED  /**< YANG printer of the compiled schema */
+};
+
+/**
+ * @brief Compiled YANG printer context
+ *
+ * Note that the YANG extensions API provides getter to the members for the extension plugins.
+ */
+struct lys_ypr_ctx {
+    union {
+        struct {
+            struct ly_out *out;              /**< output specification */
+            uint16_t level;                  /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+            uint32_t options;                /**< Schema output options (see @ref schemaprinterflags). */
+            const struct lys_module *module; /**< schema to print */
+        };
+        struct lyspr_ctx printer_ctx;
+    };
+
+    /* YANG printer specific members */
+    enum lys_ypr_schema_type schema; /**< type of the schema to print */
+};
 
 /**
  * @brief Print the given text as content of a double quoted YANG string,
@@ -2320,7 +2348,7 @@ yprc_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
         yprc_extension_instances(ctx, LY_STMT_EXTENSION_INSTANCE, 0, ext[u].exts, &inner_flag, 0);
 
         if (ext[u].def->plugin->sprinter) {
-            ext[u].def->plugin->sprinter(ctx, &ext[u], &inner_flag);
+            ext[u].def->plugin->sprinter(&ctx->printer_ctx, &ext[u], &inner_flag);
         }
 
         LEVEL--;
@@ -2329,8 +2357,9 @@ yprc_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
 }
 
 void
-lysc_print_extension_instance(struct lys_ypr_ctx *ctx, const struct lysc_ext_instance *ext, ly_bool *flag)
+lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
 {
+    struct lys_ypr_ctx *ctx = (struct lys_ypr_ctx *)ctx_generic;
     LY_ARRAY_COUNT_TYPE u, v;
 
     LY_ARRAY_FOR(ext->substmts, u) {
