@@ -299,18 +299,16 @@ test_bits(void **state)
     struct lyd_node *tree;
 
     /* valid data */
-    const char *bits_array[] = {"zero", "two"};
-
     CHECK_PARSE_LYD("<bits xmlns=\"urn:tests:types\">\n two    \t\nzero\n  </bits>", tree);
     assert_non_null(tree);
     tree = tree->next;
-    TEST_PATTERN_1(tree, "bits", 1, BITS, "zero two", bits_array);
+    TEST_PATTERN_1(tree, "bits", 1, BITS, "zero two", "zero", "two");
     lyd_free_all(tree);
 
     CHECK_PARSE_LYD("<bits xmlns=\"urn:tests:types\">zero  two</bits>", tree);
     assert_non_null(tree);
     tree = tree->next;
-    TEST_PATTERN_1(tree, "bits", 1, BITS, "zero two", bits_array);
+    TEST_PATTERN_1(tree, "bits", 1, BITS, "zero two", "zero", "two");
     lyd_free_all(tree);
 
     /* disabled feature */
