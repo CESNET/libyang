@@ -23,14 +23,14 @@
 #include <string.h>
 
 #include "common.h"
+#include "dict.h"
 #include "log.h"
-#include "plugins_exts.h"
+#include "plugins_exts_compile.h"
 #include "schema_compile.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"
 #include "set.h"
 #include "tree.h"
-#include "tree_data.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"

@@ -25,11 +25,10 @@
 
 #include "common.h"
 #include "compat.h"
-#include "dict.h"
 #include "in_internal.h"
 #include "out_internal.h"
 #include "tree.h"
-#include "tree_data.h"
+#include "tree_schema_internal.h"
 
 /* Move input p by s characters, if EOF log with lyxml_ctx c */
 #define move_input(c, s) \

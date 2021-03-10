@@ -24,6 +24,8 @@
 
 struct ly_ctx;
 struct lyd_node;
+struct lysc_ctx;
+struct lyspr_ctx;
 
 #ifdef __cplusplus
 extern "C" {

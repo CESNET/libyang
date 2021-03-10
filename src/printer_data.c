@@ -22,7 +22,6 @@
 #include "out_internal.h"
 #include "printer_internal.h"
 #include "tree_data.h"
-#include "tree_schema.h"
 
 static LY_ERR
 lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)

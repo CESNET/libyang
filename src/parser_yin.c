@@ -41,6 +41,8 @@
 #include "tree_schema_internal.h"
 #include "xml.h"
 
+struct lys_glob_unres;
+
 /**
  * @brief check if given string is URI of yin namespace.
  *

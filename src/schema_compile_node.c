@@ -30,6 +30,7 @@
 #include "dict.h"
 #include "log.h"
 #include "plugins_exts.h"
+#include "plugins_exts_compile.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"

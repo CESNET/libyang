@@ -16,6 +16,7 @@
 #include "validation.h"
 
 #include <assert.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +28,7 @@
 #include "hash_table.h"
 #include "log.h"
 #include "parser_data.h"
+#include "parser_internal.h"
 #include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
 #include "plugins_types.h"

@@ -24,7 +24,6 @@
 struct ly_ctx;
 struct ly_in;
 struct ly_out;
-struct ly_prefix;
 
 /* Macro to test if character is whitespace */
 #define is_xmlws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)

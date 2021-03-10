@@ -26,7 +26,7 @@
 #include "log.h"
 #include "out.h"
 #include "out_internal.h"
-#include "plugins_exts_internal.h"
+#include "plugins_exts.h"
 #include "plugins_exts_print.h"
 #include "plugins_types.h"
 #include "printer_internal.h"

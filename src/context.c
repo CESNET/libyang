@@ -16,7 +16,6 @@
 
 #include "context.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stddef.h>
@@ -31,7 +30,6 @@
 #include "hash_table.h"
 #include "in.h"
 #include "parser_data.h"
-#include "path.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "set.h"
@@ -39,7 +37,6 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "xpath.h"
 
 #include "../models/ietf-datastores@2018-02-14.h"
 #include "../models/ietf-inet-types@2013-07-15.h"
