@@ -241,6 +241,26 @@ struct utest_context {
     CHECK_POINTER((NODE)->length, LENGTH); \
     CHECK_ARRAY((NODE)->patterns, PATTERNS)
 
+/* @brief check compiled bits type
+ * @param[in] NODE     pointer to lysc_type_num value
+ * @param[in] EXTS     expected [sized array](@ref sizedarrays) size of extens list
+ * @param[in] BITS     expected number of bits
+ * @warning only integer types INT, UINT, NUM
+ */
+#define CHECK_LYSC_TYPE_BITS(NODE, EXTS, BITS) \
+    CHECK_LYSC_TYPE(NODE, LY_TYPE_BITS, EXTS); \
+    CHECK_ARRAY((NODE)->bits, BITS)
+
+
+#define CHECK_LYSC_TYPE_BITENUM_ITEM(NODE, POSITION, DSC, EXTS, FLAGS, NAME, REF)\
+    assert_non_null(NODE); \
+    assert_int_equal((NODE)->position, POSITION); \
+    CHECK_STRING((NODE)->dsc, DSC); \
+    CHECK_ARRAY((NODE)->exts, EXTS); \
+    assert_int_equal((NODE)->flags, FLAGS); \
+    CHECK_STRING((NODE)->name, NAME); \
+    CHECK_STRING((NODE)->ref, REF) \
+
 /* @brief check range
  * @param[in] NODE     pointer to lysc_range value
  * @param[in] DSC      expected descriptin (string)
@@ -844,16 +864,17 @@ struct utest_context {
  * @param[in] CANNONICAL_VAL expected cannonical value
  * @param[in] VALUE          expected array of bits names
  */
-#define CHECK_LYD_VALUE_BITS(NODE, CANNONICAL_VAL, VALUE) \
+#define CHECK_LYD_VALUE_BITS(NODE, CANNONICAL_VAL, ...) \
     assert_non_null((NODE).canonical); \
     assert_string_equal((NODE).canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
     { \
-        LY_ARRAY_COUNT_TYPE arr_size = sizeof(VALUE) / sizeof(VALUE[0]); \
+        const char *arr[] = { __VA_ARGS__ }; \
+        LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).bits_items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(VALUE[it], (NODE).bits_items[it]->name); \
+            assert_string_equal(arr[it], (NODE).bits_items[it]->name); \
         } \
     }
 
