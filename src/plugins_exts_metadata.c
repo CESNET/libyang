@@ -14,8 +14,12 @@
 
 #include "plugins_exts_metadata.h"
 
-#include "tree_edit.h"
-#include "tree_schema.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "libyang.h"
+#include "plugins_exts.h"
 
 /**
  * @brief Storage for ID used to check plugin API version compatibility.

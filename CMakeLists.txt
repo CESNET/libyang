@@ -135,6 +135,9 @@ set(libsrc
     src/printer_tree.c
     src/plugins_types.c
     src/plugins_exts.c
+    src/plugins_exts_metadata.c
+    src/plugins_exts_nacm.c
+    src/plugins_exts_yangdata.c
     src/xml.c
     src/xpath.c
     src/validation.c)
