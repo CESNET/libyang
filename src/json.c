@@ -153,7 +153,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
     while (in[offset]) {
         if (in[offset] == '\\') {
             /* escape sequence */
-            size_t slash = offset;
+            const char *slash = &in[offset];
             uint32_t value;
             uint8_t i = 1;
 
@@ -221,7 +221,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
                 offset++;
                 for (value = i = 0; i < 4; i++) {
                     if (!in[offset + i]) {
-                        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", &in[slash]);
+                        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", slash);
                         goto error;
                     } else if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
@@ -243,7 +243,7 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
             offset += i;   /* add read escaped characters */
             LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], value, &u),
                     LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08x).",
-                    (int)(offset - slash), &in[slash], value),
+                    (int)(&in[offset] - slash), slash, value),
                     error);
             len += u;      /* update number of bytes in buffer */
             in += offset;  /* move the input by the processed bytes stored in the buffer ... */
