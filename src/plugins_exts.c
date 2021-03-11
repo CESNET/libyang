@@ -19,9 +19,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "plugins_exts_metadata.c"
-#include "plugins_exts_nacm.c"
-#include "plugins_exts_yangdata.c"
+extern struct lyext_plugin metadata_plugin; /* plugins_exts_metadata.c */
+extern struct lyext_plugin nacm_plugin;     /* plugins_exts_nacm.c */
+extern struct lyext_plugin yangdata_plugin; /* plugins_exts_yangdata.c */
 
 /* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"

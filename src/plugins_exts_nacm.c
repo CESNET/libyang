@@ -12,13 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "libyang.h"
 #include "plugins_exts.h"
-
-#include "dict.h"
-#include "tree_edit.h"
-#include "tree_schema.h"
 
 /**
  * @brief Storage for ID used to check plugin API version compatibility.
