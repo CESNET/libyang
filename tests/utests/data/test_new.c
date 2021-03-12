@@ -29,22 +29,23 @@ const char *schema_a = "module a {\n"
         "      type string;\n"
         "    }\n"
         "    leaf c {\n"
-        "      type string;}\n"
-        "    }\n"
-        "    leaf foo {\n"
-        "      type uint16;\n"
-        "    }\n"
-        "    leaf-list ll {\n"
         "      type string;\n"
         "    }\n"
-        "    container c {\n"
-        "      leaf-list x {\n"
+        "  }\n"
+        "  leaf foo {\n"
+        "    type uint16;\n"
+        "  }\n"
+        "  leaf-list ll {\n"
+        "    type string;\n"
+        "  }\n"
+        "  container c {\n"
+        "    leaf-list x {\n"
         "    type string;\n"
         "    }\n"
-        "  }"
+        "  }\n"
         "  anydata any {\n"
         "    config false;\n"
-        "  }"
+        "  }\n"
         "  list l2 {\n"
         "    config false;\n"
         "    container c {\n"
@@ -258,6 +259,45 @@ test_path(void **state)
     lyd_free_tree(root);
 }
 
+static void
+test_path_ext(void **state)
+{
+    LY_ERR ret;
+    struct lyd_node *root, *node;
+    const struct lys_module *mod;
+    const char *mod_str = "module ext {yang-version 1.1; namespace urn:tests:extensions:ext; prefix e;"
+            "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
+            "rc:yang-data template {container c {leaf x {type string;} leaf y {type string;} leaf z {type string;}}}}";
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
+
+    UTEST_ADD_MODULE(mod_str, LYS_IN_YANG, NULL, &mod);
+
+    /* create x */
+    ret = lyd_new_ext_path(NULL, &mod->compiled->exts[0], "/ext:c/x", "xxx", 0, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "c");
+    assert_non_null(node = lyd_child(root));
+    assert_string_equal(node->schema->name, "x");
+    assert_string_equal("xxx", LYD_CANON_VALUE(node));
+
+    /* append y */
+    ret = lyd_new_ext_path(root, &mod->compiled->exts[0], "/ext:c/y", "yyy", 0, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(node->schema->name, "y");
+    assert_string_equal("yyy", LYD_CANON_VALUE(node));
+
+    /* append z */
+    ret = lyd_new_path(root, NULL, "ext:z", "zzz", 0, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(node->schema->name, "z");
+    assert_string_equal("zzz", LYD_CANON_VALUE(node));
+
+    lyd_free_tree(root);
+}
+
 int
 main(void)
 {
@@ -265,6 +305,7 @@ main(void)
         UTEST(test_top_level),
         UTEST(test_opaq),
         UTEST(test_path),
+        UTEST(test_path_ext),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
