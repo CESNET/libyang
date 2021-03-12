@@ -1117,6 +1117,33 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     return LY_SUCCESS;
 }
 
+API LY_ERR
+lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, ly_bool use_value,
+        LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node)
+{
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
+
+    LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
+
+    schema = lysc_ext_find_node(ext, NULL, name, 0, LYD_NODE_ANY, 0);
+    if (!schema) {
+        if (ext->argument) {
+            LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found in instance \"%s\" of extension %s.",
+                    name, ext->argument, ext->def->name);
+        } else {
+            LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found in instance of extension %s.", name, ext->def->name);
+        }
+        return LY_ENOTFOUND;
+    }
+    LY_CHECK_RET(lyd_create_any(schema, value, value_type, use_value, &ret));
+
+    *node = ret;
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Update node value.
  *

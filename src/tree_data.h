@@ -128,7 +128,7 @@ struct lyd_node_term;
  * Note, that in case the node is defined in an extension instance, the functions mentioned above do not work until you
  * provide parent where the new node is supposed to be inserted. The reason is that all the functions searches for the
  * top-level nodes directly inside modules. To create a top-level node defined in an extension instance, use
- * ::lyd_new_ext_inner(), ::lyd_new_ext_term() and ::lyd_new_ext_list() functions.
+ * ::lyd_new_ext_inner(), ::lyd_new_ext_term(), ::lyd_new_ext_any() and ::lyd_new_ext_list() functions.
  *
  * The [metadata](@ref howtoPluginsExtensionsMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
@@ -176,6 +176,7 @@ struct lyd_node_term;
  * - ::lyd_new_ext_inner()
  * - ::lyd_new_ext_term()
  * - ::lyd_new_ext_list()
+ * - ::lyd_new_ext_any()
  *
  * - ::lyd_dup_single()
  * - ::lyd_dup_siblings()
@@ -1024,6 +1025,8 @@ LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, c
 /**
  * @brief Create a new any node in the data tree.
  *
+ * To create a top-level any node defined in an extension instance, use ::lyd_new_ext_any().
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
@@ -1037,6 +1040,23 @@ LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, c
  */
 LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
+
+/**
+ * @brief Create a new top-level any node defined in the given extension instance.
+ *
+ * To create an any node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
+ * any node of a standard module's tree, use ::lyd_new_any().
+ *
+ * @param[in] ext Extension instance where the any node being created is defined.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
+ * @param[in] value Value for the node. Expected type is determined by @p value_type.
+ * @param[in] use_value Whether to directly take @p value and assign it to the node or make a copy.
+ * @param[in] value_type Type of the provided value in @p value.
+ * @param[out] node The created node.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, ly_bool use_value,
+        LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
 
 /**
  * @brief Create new metadata.
