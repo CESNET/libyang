@@ -1552,13 +1552,6 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
-lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, uint32_t options,
-        struct lyd_node **node)
-{
-    return lyd_new_path2(parent, ctx, path, value, LYD_ANYDATA_STRING, options, node, NULL);
-}
-
 static LY_ERR
 lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const char *value, uint32_t options)
 {
@@ -1623,9 +1616,36 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
-lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
+/**
+ * @brief Create a new node in the data tree based on a path. All node types can be created.
+ *
+ * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
+ * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
+ * nodes, they are always created.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
+ * @param[in] ctx libyang context, must be set if @p parent is NULL.
+ * @param[in] ext Extension instance where the node being created is defined. This argument takes effect only for absolute
+ * path or when the relative paths touches document root (top-level). In such cases the present extension instance replaces
+ * searching for the appropriate module.
+ * @param[in] path [Path](@ref howtoXPath) to create.
+ * @param[in] value Value of the new leaf/leaf-list (const char *) or anyxml/anydata (expected type depends on @p value_type).
+ * For other node types, it is ignored.
+ * @param[in] value_type Anyxml/anydata node @p value type.
+ * @param[in] options Bitmask of options, see @ref pathoptions.
+ * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
+ * @param[out] new_node Optional last node created.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, const char *path,
+        const void *value, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
+        struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lyxp_expr *exp = NULL;
@@ -1634,7 +1654,9 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     const struct lysc_node *schema;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
 
-    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
+    assert(parent || ctx);
+    assert(path);
+    assert((path[0] == '/') || parent);
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -1645,7 +1667,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, NULL, exp, LY_PATH_LREF_FALSE,
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, ext, exp, LY_PATH_LREF_FALSE,
             options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, LY_PREF_JSON,
             NULL, NULL, &p), cleanup);
 
@@ -1808,6 +1830,32 @@ cleanup:
         lyd_free_tree(nparent);
     }
     return ret;
+}
+
+API LY_ERR
+lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, uint32_t options,
+        struct lyd_node **node)
+{
+    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
+    return lyd_new_path_(parent, ctx, NULL, path, value, LYD_ANYDATA_STRING, options, node, NULL);
+}
+
+API LY_ERR
+lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
+        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
+{
+    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
+    return lyd_new_path_(parent, ctx, NULL, path, value, value_type, options, new_parent, new_node);
+}
+
+API LY_ERR
+lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path, const void *value,
+        uint32_t options, struct lyd_node **node)
+{
+    const struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
+
+    LY_CHECK_ARG_RET(ctx, ext, path, (path[0] == '/') || parent, LY_EINVAL);
+    return lyd_new_path_(parent, ctx, ext, path, value, LYD_ANYDATA_STRING, options, node, NULL);
 }
 
 LY_ERR

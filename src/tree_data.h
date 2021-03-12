@@ -128,7 +128,8 @@ struct lyd_node_term;
  * Note, that in case the node is defined in an extension instance, the functions mentioned above do not work until you
  * provide parent where the new node is supposed to be inserted. The reason is that all the functions searches for the
  * top-level nodes directly inside modules. To create a top-level node defined in an extension instance, use
- * ::lyd_new_ext_inner(), ::lyd_new_ext_term(), ::lyd_new_ext_any() and ::lyd_new_ext_list() functions.
+ * ::lyd_new_ext_inner(), ::lyd_new_ext_term(), ::lyd_new_ext_any(), ::lyd_new_ext_list() and ::lyd_new_ext_path()
+ * functions.
  *
  * The [metadata](@ref howtoPluginsExtensionsMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
@@ -177,6 +178,7 @@ struct lyd_node_term;
  * - ::lyd_new_ext_term()
  * - ::lyd_new_ext_list()
  * - ::lyd_new_ext_any()
+ * - ::lyd_new_ext_path()
  *
  * - ::lyd_dup_single()
  * - ::lyd_dup_siblings()
@@ -1175,6 +1177,8 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  * @brief Create a new node in the data tree based on a path. If creating anyxml/anydata nodes, ::lyd_new_path2
  * should be used instead, this function expects the value as string.
  *
+ * If creating data nodes defined inside an extension instance, use ::lyd_new_ext_path().
+ *
  * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
@@ -1198,6 +1202,8 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
  *
+ * If creating data nodes defined inside an extension instance, use ::lyd_new_ext_path().
+ *
  * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
@@ -1220,6 +1226,32 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  */
 LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
         LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node);
+
+/**
+ * @brief Create a new node defined in the given extension instance. In case of anyxml/anydata nodes, this function expects
+ * the @p value as string.
+ *
+ * If creating data nodes defined in a module's standard tree, use ::lyd_new_path() or ::lyd_new_path2().
+ *
+ * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
+ * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
+ * nodes, they are always created.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
+ * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
+ * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
+ * @param[in] ext Extension instance where the node being created is defined.
+ * @param[in] path [Path](@ref howtoXPath) to create.
+ * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
+ * @param[in] options Bitmask of options, see @ref pathoptions.
+ * @param[out] node Optional first created node.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path, const void *value,
+        uint32_t options, struct lyd_node **node);
 
 /**
  * @ingroup datatree
@@ -1821,7 +1853,7 @@ const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct 
  */
 typedef enum {
     LYD_PATH_STD, /**< Generic data path used for logging, node searching (::lyd_find_xpath(), ::lys_find_path()) as well as
-                       creating new nodes (::lyd_new_path(), ::lyd_new_path2()). */
+                       creating new nodes (::lyd_new_path(), ::lyd_new_path2(), ::lyd_new_ext_path()). */
     LYD_PATH_STD_NO_LAST_PRED  /**< Similar to ::LYD_PATH_STD except there is never a predicate on the last node. While it
                                     can be used to search for nodes, do not use it to create new data nodes (lists). */
 } LYD_PATH_TYPE;
