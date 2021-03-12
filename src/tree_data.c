@@ -855,7 +855,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
 
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0,
             LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION, output ? LYS_GETNEXT_OUTPUT : 0);
-    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node (and not a list) \"%s\" not found.", name), LY_ENOTFOUND);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node (not a list) \"%s\" not found.", name), LY_ENOTFOUND);
 
     LY_CHECK_RET(lyd_create_inner(schema, &ret));
     if (parent) {
@@ -865,6 +865,33 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
     if (node) {
         *node = ret;
     }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node)
+{
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
+
+    LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
+
+    schema = lysc_ext_find_node(ext, NULL, name, 0, LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION, 0);
+    if (!schema) {
+        if (ext->argument) {
+            LOGERR(ctx, LY_EINVAL, "Inner node (not a list) \"%s\" not found in instance \"%s\" of extension %s.",
+                    name, ext->argument, ext->def->name);
+        } else {
+            LOGERR(ctx, LY_EINVAL, "Inner node (not a list)  \"%s\" not found in instance of extension %s.",
+                    name, ext->def->name);
+        }
+        return LY_ENOTFOUND;
+    }
+    LY_CHECK_RET(lyd_create_inner(schema, &ret));
+
+    *node = ret;
+
     return LY_SUCCESS;
 }
 

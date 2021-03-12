@@ -128,7 +128,7 @@ struct lyd_node_term;
  * Note, that in case the node is defined in an extension instance, the functions mentioned above do not work until you
  * provide parent where the new node is supposed to be inserted. The reason is that all the functions searches for the
  * top-level nodes directly inside modules. To create a top-level node defined in an extension instance, use
- * ::lyd_new_ext_term() function.
+ * ::lyd_new_ext_inner() and ::lyd_new_ext_term() functions.
  *
  * The [metadata](@ref howtoPluginsExtensionsMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
@@ -173,6 +173,7 @@ struct lyd_node_term;
  * - ::lyd_new_path()
  * - ::lyd_new_path2()
  *
+ * - ::lyd_new_ext_inner()
  * - ::lyd_new_ext_term()
  *
  * - ::lyd_dup_single()
@@ -907,6 +908,10 @@ LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value
 /**
  * @brief Create a new inner node in the data tree.
  *
+ * To create list, use ::lyd_new_list() or ::lyd_new_list2().
+ *
+ * To create a top-level inner node defined in an extension instance, use ::lyd_new_ext_inner().
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
@@ -917,6 +922,21 @@ LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value
  */
 LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node);
+
+/**
+ * @brief Create a new top-level inner node defined in the given extension instance.
+ *
+ * To create list, use ::lyd_new_list() or ::lyd_new_list2().
+ *
+ * To create an inner node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
+ * node of a standard module's tree, use ::lyd_new_inner().
+ *
+ * @param[in] ext Extension instance where the inner node being created is defined.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
+ * @param[out] node The created node.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node);
 
 /**
  * @brief Create a new list node in the data tree.
