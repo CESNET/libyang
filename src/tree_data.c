@@ -974,8 +974,7 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_TERM, output ? LYS_GETNEXT_OUTPUT : 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, NULL,
-            &ret);
+    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, NULL, &ret);
     LY_CHECK_RET(rc);
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
@@ -984,6 +983,34 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
     if (node) {
         *node = ret;
     }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str, struct lyd_node **node)
+{
+    LY_ERR rc;
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
+
+    LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
+
+    schema = lysc_ext_find_node(ext, NULL, name, 0, LYD_NODE_TERM, 0);
+    if (!schema) {
+        if (ext->argument) {
+            LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found in instance \"%s\" of extension %s.",
+                    name, ext->argument, ext->def->name);
+        } else {
+            LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found in instance of extension %s.", name, ext->def->name);
+        }
+        return LY_ENOTFOUND;
+    }
+    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, NULL, &ret);
+    LY_CHECK_RET(rc);
+
+    *node = ret;
+
     return LY_SUCCESS;
 }
 

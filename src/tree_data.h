@@ -125,6 +125,11 @@ struct lyd_node_term;
  * about the modified data, and is generally simpler to use. Actually the third way is duplicating the existing data using
  * ::lyd_dup_single(), ::lyd_dup_siblings() and ::lyd_dup_meta_single().
  *
+ * Note, that in case the node is defined in an extension instance, the functions mentioned above do not work until you
+ * provide parent where the new node is supposed to be inserted. The reason is that all the functions searches for the
+ * top-level nodes directly inside modules. To create a top-level node defined in an extension instance, use
+ * ::lyd_new_ext_term() function.
+ *
  * The [metadata](@ref howtoPluginsExtensionsMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
  *
@@ -167,6 +172,8 @@ struct lyd_node_term;
  * - ::lyd_new_meta()
  * - ::lyd_new_path()
  * - ::lyd_new_path2()
+ *
+ * - ::lyd_new_ext_term()
  *
  * - ::lyd_dup_single()
  * - ::lyd_dup_siblings()
@@ -947,6 +954,8 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
 /**
  * @brief Create a new term node in the data tree.
  *
+ * To create a top-level term node defined in an extension instance, use ::lyd_new_ext_term().
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
@@ -959,6 +968,21 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
  */
 LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
         ly_bool output, struct lyd_node **node);
+
+/**
+ * @brief Create a new top-level term node defined in the given extension instance.
+ *
+ * To create a term node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
+ * node of a standard module's tree, use ::lyd_new_term().
+ *
+ * @param[in] ext Extension instance where the term node being created is defined.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] val_str String form of the value of the node being created. In case of an instance-identifier or identityref
+ * value, the JSON format is expected (module names instead of prefixes).
+ * @param[out] node The created node.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str, struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
