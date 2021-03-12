@@ -757,7 +757,7 @@ yin_parse_bit(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     type->flags |= LYS_SET_BIT;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, LY_STMT_BIT));
-    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, "bit", en->name);
+    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->bits, name, "bit", en->name);
 
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
