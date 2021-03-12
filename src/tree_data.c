@@ -946,6 +946,54 @@ cleanup:
 }
 
 API LY_ERR
+lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node, ...)
+{
+    struct lyd_node *ret = NULL, *key;
+    const struct lysc_node *schema, *key_s;
+    struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
+    va_list ap;
+    const char *key_val;
+    LY_ERR rc = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
+
+    schema = lysc_ext_find_node(ext, NULL, name, 0, LYS_LIST, 0);
+    if (!schema) {
+        if (ext->argument) {
+            LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found in instance \"%s\" of extension %s.",
+                    name, ext->argument, ext->def->name);
+        } else {
+            LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found in instance of extension %s.", name, ext->def->name);
+        }
+        return LY_ENOTFOUND;
+    }
+    /* create list inner node */
+    LY_CHECK_RET(lyd_create_inner(schema, &ret));
+
+    va_start(ap, node);
+
+    /* create and insert all the keys */
+    for (key_s = lysc_node_child(schema); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
+        key_val = va_arg(ap, const char *);
+
+        rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA,
+                NULL, &key);
+        LY_CHECK_GOTO(rc, cleanup);
+        lyd_insert_node(ret, NULL, key);
+    }
+
+cleanup:
+    va_end(ap);
+    if (rc) {
+        lyd_free_tree(ret);
+        ret = NULL;
+    } else if (node) {
+        *node = ret;
+    }
+    return rc;
+}
+
+API LY_ERR
 lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
         ly_bool output, struct lyd_node **node)
 {
