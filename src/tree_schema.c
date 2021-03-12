@@ -665,7 +665,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, expr, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, expr, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
             LY_PREF_JSON, NULL, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -699,7 +699,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, exp, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
             LY_PREF_JSON, NULL, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 

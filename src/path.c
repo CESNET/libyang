@@ -782,8 +782,8 @@ cleanup:
 
 LY_ERR
 ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target, LY_PREFIX_FORMAT format,
-        void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path)
+        const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
+        LY_PREFIX_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t tok_idx = 0;
@@ -861,7 +861,11 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         ++tok_idx;
 
         /* find the next node */
-        node2 = lys_find_child(ctx_node, mod, name, name_len, 0, getnext_opts);
+        if (!ctx_node && ext) {
+            node2 = lysc_ext_find_node(ext, mod, name, name_len, 0, getnext_opts);
+        } else {
+            node2 = lys_find_child(ctx_node, mod, name, name_len, 0, getnext_opts);
+        }
         if (!node2 || (op && (node2->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node2 != op))) {
             LOGVAL(ctx, LYVE_XPATH, "Not found node \"%.*s\" in path.", (int)name_len, name);
             ret = LY_EVALID;

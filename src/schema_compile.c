@@ -1018,7 +1018,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
     /* try to find the target */
-    LY_CHECK_RET(ly_path_compile(ctx->ctx, lref->cur_mod, node, lref->path, LY_PATH_LREF_TRUE,
+    LY_CHECK_RET(ly_path_compile(ctx->ctx, lref->cur_mod, node, NULL, lref->path, LY_PATH_LREF_TRUE,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
             LY_PREF_SCHEMA_RESOLVED, lref->prefixes, unres, &p));
 

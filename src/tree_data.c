@@ -1645,7 +1645,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, exp, LY_PATH_LREF_FALSE,
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, NULL, exp, LY_PATH_LREF_FALSE,
             options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, LY_PREF_JSON,
             NULL, NULL, &p), cleanup);
 
@@ -3896,7 +3896,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile the path */
-    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, expr, LY_PATH_LREF_FALSE,
+    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, NULL, expr, LY_PATH_LREF_FALSE,
             output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, LY_PREF_JSON,
             (void *)LYD_CTX(ctx_node), NULL, &lypath);
     LY_CHECK_GOTO(ret, cleanup);
