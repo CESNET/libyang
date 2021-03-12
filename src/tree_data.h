@@ -128,7 +128,7 @@ struct lyd_node_term;
  * Note, that in case the node is defined in an extension instance, the functions mentioned above do not work until you
  * provide parent where the new node is supposed to be inserted. The reason is that all the functions searches for the
  * top-level nodes directly inside modules. To create a top-level node defined in an extension instance, use
- * ::lyd_new_ext_inner() and ::lyd_new_ext_term() functions.
+ * ::lyd_new_ext_inner(), ::lyd_new_ext_term() and ::lyd_new_ext_list() functions.
  *
  * The [metadata](@ref howtoPluginsExtensionsMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
@@ -175,6 +175,7 @@ struct lyd_node_term;
  *
  * - ::lyd_new_ext_inner()
  * - ::lyd_new_ext_term()
+ * - ::lyd_new_ext_list()
  *
  * - ::lyd_dup_single()
  * - ::lyd_dup_siblings()
@@ -953,6 +954,22 @@ LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, 
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node, ...);
+
+/**
+ * @brief Create a new top-level list node defined in the given extension instance.
+ *
+ * To create a list node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
+ * list node of a standard module's tree, use ::lyd_new_list() or ::lyd_new_list2().
+ *
+ * @param[in] ext Extension instance where the list node being created is defined.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[out] node The created node.
+ * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
+ * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for
+ * key-less lists.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new list node in the data tree.
