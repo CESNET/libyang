@@ -230,6 +230,7 @@ typedef LY_ERR (*ly_type_validate_clb)(const struct ly_ctx *ctx, const struct ly
  * @brief Callback for comparing 2 values of the same type.
  *
  * In case the value types (::lyd_value.realtype) are different, ::LY_ENOT must always be returned.
+ * It can be assumed that the same libyang context (dictionary) was used for storing both values.
  *
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
