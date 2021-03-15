@@ -664,78 +664,6 @@ ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA
 }
 
 /**
- * @brief Validate, canonize and store value of the YANG built-in decimal64 types.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
-{
-    LY_ERR ret = LY_SUCCESS;
-    int64_t d;
-    struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
-    char buf[LY_NUMBER_MAXLEN];
-
-    if (!value || !value[0] || !value_len) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL,  NULL, "Invalid empty decimal64 value.");
-        goto cleanup;
-    }
-
-    /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-
-    ret = ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    /* prepare canonized value */
-    if (d) {
-        int count = sprintf(buf, "%" PRId64 " ", d);
-        if (((d > 0) && ((count - 1) <= type_dec->fraction_digits)) ||
-                ((count - 2) <= type_dec->fraction_digits)) {
-            /* we have 0. value, print the value with the leading zeros
-             * (one for 0. and also keep the correct with of num according
-             * to fraction-digits value)
-             * for (num<0) - extra character for '-' sign */
-            count = sprintf(buf, "%0*" PRId64 " ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
-        }
-        for (uint8_t i = type_dec->fraction_digits, j = 1; i > 0; i--) {
-            if (j && (i > 1) && (buf[count - 2] == '0')) {
-                /* we have trailing zero to skip */
-                buf[count - 1] = '\0';
-            } else {
-                j = 0;
-                buf[count - 1] = buf[count - 2];
-            }
-            count--;
-        }
-        buf[count - 1] = '.';
-    } else {
-        /* zero */
-        sprintf(buf, "0.0");
-    }
-
-    /* range of the number */
-    if (type_dec->range) {
-        ret = ly_type_validate_range(type->basetype, type_dec->range, d, buf, err);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-
-    ret = lydict_insert(ctx, buf, strlen(buf), &storage->canonical);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    storage->dec64 = d;
-    storage->realtype = type;
-
-cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
-    }
-    return ret;
-}
-
-/**
  * @brief Validate, canonize and store value of the YANG built-in enumeration type.
  *
  * Implementation of the ly_type_store_clb.
@@ -1797,6 +1725,11 @@ extern void ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 
 /* plugins_types_boolean.c */
 extern LY_ERR ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/* plugins_types_decimal64.c */
+extern LY_ERR ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type,
         const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
