@@ -1828,6 +1828,8 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     LY_ARRAY_COUNT_TYPE v;
     const struct lys_module *mod = NULL;
 
+    assert(ext_def);
+
     *ext_def = NULL;
     if (ext_mod) {
         *ext_mod = NULL;
@@ -1856,7 +1858,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
         }
     }
 
-    if (!ext_def) {
+    if (!(*ext_def)) {
         LOGVAL(ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
         return LY_EVALID;
     }
