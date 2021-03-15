@@ -681,6 +681,12 @@ ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA
 }
 
 API LY_ERR
+lys_set_implemented2(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
+{
+    return lys_set_implemented_r(mod, features, unres);
+}
+
+API LY_ERR
 ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 {
     LY_ARRAY_COUNT_TYPE u;
@@ -763,7 +769,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     } else if (!mod->implemented) {
         /* non-implemented module */
         if (options & LY_TYPE_STORE_IMPLEMENT) {
-            ret = lys_set_implemented_r((struct lys_module *)mod, NULL, unres);
+            ret = lys_set_implemented2((struct lys_module *)mod, NULL, unres);
             LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
