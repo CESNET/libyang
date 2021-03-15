@@ -584,9 +584,9 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
                     size_t len = stop - start;
 
                     /* do we already have the prefix? */
-                    mod = ly_type_store_resolve_prefix(ctx, start, len, *format_p, *prefix_data_p);
+                    mod = ly_resolve_prefix(ctx, start, len, *format_p, *prefix_data_p);
                     if (!mod) {
-                        mod = ly_type_store_resolve_prefix(ctx, start, len, format, prefix_data);
+                        mod = ly_resolve_prefix(ctx, start, len, format, prefix_data);
                         if (mod) {
                             assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
                             /* store a new prefix - module pair */
