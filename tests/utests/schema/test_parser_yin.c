@@ -657,7 +657,7 @@ test_validate_value(void **state)
     YCTX->xmlctx->value = "#invalid";
     YCTX->xmlctx->value_len = 8;
     assert_int_equal(yin_validate_value(YCTX, Y_IDENTIF_ARG), LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier character '#' (0x0023).", "Line number 1.");
+    CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", "Line number 1.");
 
     YCTX->xmlctx->value = "";
     YCTX->xmlctx->value_len = 0;
