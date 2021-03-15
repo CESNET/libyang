@@ -438,6 +438,13 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
         LY_CHECK_ERR_RET(already_read > ctx->xmlctx->value_len, LOGINT(ctx->xmlctx->ctx), LY_EINT);
     }
 
+    if ((already_read == 0) &&
+            ((val_type == Y_PREF_IDENTIF_ARG) || (val_type == Y_IDENTIF_ARG))) {
+        /* Empty identifier or prefix*/
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YIN, "Empty identifier is not allowed.");
+        return LY_EVALID;
+    }
+
     return LY_SUCCESS;
 }
 

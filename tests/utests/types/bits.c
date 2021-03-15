@@ -453,6 +453,16 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Invalid identifier first character '4' (0x0034).",
             "Line number 10.");
+
+    /* TEST EMPTY NAME*/
+    schema = MODULE_CREATE_YIN("TERR_8",
+            "<leaf name=\"port\"> <type name=\"bits\">"
+            "  <bit name=\"\"> <position value=\"20\"/> </bit>"
+            "  <bit name=\"second\"/>"
+            "</type></leaf>");
+    UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Empty identifier is not allowed.",
+            "Line number 10.");
 }
 
 static void
