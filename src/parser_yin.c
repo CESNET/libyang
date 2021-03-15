@@ -420,8 +420,6 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
     while (already_read < ctx->xmlctx->value_len) {
         LY_CHECK_ERR_RET(ly_getutf8((const char **)&val, &c, &utf8_char_len),
                 LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
-        already_read += utf8_char_len;
-        LY_CHECK_ERR_RET(already_read > ctx->xmlctx->value_len, LOGINT(ctx->xmlctx->ctx), LY_EINT);
 
         switch (val_type) {
         case Y_IDENTIF_ARG:
@@ -435,6 +433,9 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
             LY_CHECK_RET(lysp_check_stringchar((struct lys_parser_ctx *)ctx, c));
             break;
         }
+
+        already_read += utf8_char_len;
+        LY_CHECK_ERR_RET(already_read > ctx->xmlctx->value_len, LOGINT(ctx->xmlctx->ctx), LY_EINT);
     }
 
     return LY_SUCCESS;
