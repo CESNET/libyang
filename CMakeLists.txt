@@ -135,6 +135,7 @@ set(libsrc
     src/printer_tree.c
     src/plugins_types.c
     src/plugins_types_binary.c
+    src/plugins_types_bits.c
     src/plugins_types_integer.c
     src/plugins_types_string.c
     src/plugins_exts.c
