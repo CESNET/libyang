@@ -736,58 +736,6 @@ cleanup:
 }
 
 /**
- * @brief Validate and store value of the YANG built-in string type.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
-
-    /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-
-    /* length restriction of the string */
-    if (type_str->length) {
-        char buf[LY_NUMBER_MAXLEN];
-        size_t char_count = ly_utf8len(value, value_len);
-
-        /* value_len is in bytes, but we need number of chaarcters here */
-        snprintf(buf, LY_NUMBER_MAXLEN, "%zu", char_count);
-        ret = ly_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-
-    /* pattern restrictions */
-    ret = ly_type_validate_patterns(type_str->patterns, value, value_len, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    } else {
-        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-    storage->ptr = NULL;
-    storage->realtype = type;
-
-cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
-    }
-
-    return ret;
-}
-
-/**
  * @brief Validate, canonize and store value of the YANG built-in bits type.
  *
  * Implementation of the ly_type_store_clb.
@@ -2054,6 +2002,11 @@ extern LY_ERR ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type
         const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 extern LY_ERR ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/* plugins_types_string.c */
+extern LY_ERR ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type,
         const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
