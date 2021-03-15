@@ -145,6 +145,18 @@ const struct lys_module *ly_type_identity_module(const struct ly_ctx *ctx, const
         const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
+ * @brief Implement a module (just like ::lys_set_implemented()), but keep maintaining unresolved items.
+ *
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
+ * @param[in] mod Module to implement.
+ * @param[in] features Array of features to enable.
+ * @param[in,out] unres Global unres to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_set_implemented2(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+
+/**
  * @brief Get format-specific prefix for a module.
  *
  * Use only in implementations of ::ly_type_print_clb which provide all the necessary parameters for this function.
