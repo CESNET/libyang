@@ -788,51 +788,6 @@ cleanup:
 }
 
 /**
- * @brief Validate and store value of the YANG built-in boolean type.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
-{
-    LY_ERR ret = LY_SUCCESS;
-    int8_t i;
-
-    /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-
-    if ((value_len == ly_strlen_const("true")) && !strncmp(value, "true", ly_strlen_const("true"))) {
-        i = 1;
-    } else if ((value_len == ly_strlen_const("false")) && !strncmp(value, "false", ly_strlen_const("false"))) {
-        i = 0;
-    } else {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid boolean value \"%.*s\".", (int)value_len, value);
-        goto cleanup;
-    }
-
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    } else {
-        ret = lydict_insert(ctx, value, value_len, &storage->canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-    storage->boolean = i;
-    storage->realtype = type;
-
-cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
-    }
-    return ret;
-}
-
-/**
  * @brief Validate and store value of the YANG built-in empty type.
  *
  * Implementation of the ly_type_store_clb.
@@ -1839,6 +1794,11 @@ extern LY_ERR ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_typ
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 extern LY_ERR ly_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 extern void ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value);
+
+/* plugins_types_boolean.c */
+extern LY_ERR ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Set of type plugins for YANG built-in types
