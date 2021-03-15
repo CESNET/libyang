@@ -138,6 +138,7 @@ set(libsrc
     src/plugins_types_bits.c
     src/plugins_types_boolean.c
     src/plugins_types_decimal64.c
+    src/plugins_types_empty.c
     src/plugins_types_integer.c
     src/plugins_types_string.c
     src/plugins_exts.c
