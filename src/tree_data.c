@@ -987,9 +987,8 @@ cleanup:
     if (rc) {
         lyd_free_tree(ret);
         ret = NULL;
-    } else if (node) {
-        *node = ret;
     }
+    *node = ret;
     return rc;
 }
 
