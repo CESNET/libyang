@@ -134,6 +134,7 @@ set(libsrc
     src/printer_yin.c
     src/printer_tree.c
     src/plugins_types.c
+    src/plugins_types_binary.c
     src/plugins_types_integer.c
     src/plugins_exts.c
     src/plugins_exts_metadata.c
