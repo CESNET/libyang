@@ -684,10 +684,9 @@ type_get_hints_base(uint32_t hints)
     case LYD_VALHINT_HEXNUM:
         return LY_BASE_HEX;
     default:
-        break;
+        /* generic base - decimal by default, hexa if prexed by 0x/0X and octal otherwise if prefixed by 0 */
+        return 0;
     }
-
-    return 0;
 }
 
 /**
@@ -780,7 +779,7 @@ ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const 
 {
     LY_ERR ret = LY_SUCCESS;
     int64_t num;
-    int base;
+    int base = 1;
     char *str;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
