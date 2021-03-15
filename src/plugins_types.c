@@ -689,13 +689,12 @@ type_get_hints_base(uint32_t hints)
     }
 }
 
-/**
- * @brief Answer if the type is suitable for the parser's hit (if any) in the specified format
- */
-static LY_ERR
-type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
+API LY_ERR
+ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, value, err, LY_EINVAL);
 
     switch (type) {
     case LY_TYPE_UINT8:
@@ -704,6 +703,8 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
+        LY_CHECK_ARG_RET(NULL, base, LY_EINVAL);
+
         if (!(hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_OCTNUM | LYD_VALHINT_HEXNUM))) {
             ret = LY_EVALID;
             *err = ly_err_msg_create(&ret, LYVE_DATA, NULL, NULL,
@@ -715,6 +716,8 @@ type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TY
         break;
     case LY_TYPE_UINT64:
     case LY_TYPE_INT64:
+        LY_CHECK_ARG_RET(NULL, base, LY_EINVAL);
+
         if (!(hints & LYD_VALHINT_NUM64)) {
             ret = LY_EVALID;
             *err = ly_err_msg_create(&ret, LYVE_DATA, NULL, NULL,
@@ -784,7 +787,7 @@ ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const 
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, &base, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, &base, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     switch (type->basetype) {
@@ -846,7 +849,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const
     char *str;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, &base, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, &base, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     switch (type->basetype) {
@@ -912,7 +915,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     ret = ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err);
@@ -980,7 +983,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
     LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* validate characters and remember the number of octets for length validation */
@@ -1079,7 +1082,7 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* length restriction of the string */
@@ -1142,7 +1145,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     const char *can = NULL;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup_value);
 
     /* remember the present items for further work */
@@ -1312,7 +1315,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
     struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* find the matching enumeration value item */
@@ -1365,7 +1368,7 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     int8_t i;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     if ((value_len == ly_strlen_const("true")) && !strncmp(value, "true", ly_strlen_const("true"))) {
@@ -1411,7 +1414,7 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     LY_ERR ret = LY_SUCCESS;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     if (value_len) {
@@ -1495,7 +1498,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     ly_bool dyn;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* locate prefix if any */
@@ -1676,7 +1679,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     *err = NULL;
 
     /* check hints */
-    ret = type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS,  cleanup_value);
 
     switch (format) {
