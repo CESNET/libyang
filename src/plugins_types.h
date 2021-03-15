@@ -127,11 +127,13 @@ LY_ERR ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, 
         struct ly_err_item **err);
 
 /**
- * @brief Resolve format-specific prefixes to modules.
+ * @brief Get the corresponding module for the identity value.
  *
  * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
  *
  * @param[in] ctx libyang context.
+ * @param[in] ctx_node Schema node where the value is instantiated to determine the module in case of unprefixed value
+ * in specific @p format.
  * @param[in] prefix Prefix to resolve - identified beginning of a prefix in ::ly_type_store_clb's value parameter.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of the prefix (::ly_type_store_clb's format parameter).
@@ -139,8 +141,8 @@ LY_ERR ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, 
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
-const struct lys_module *ly_type_store_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-        LY_PREFIX_FORMAT format, void *prefix_data);
+const struct lys_module *ly_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Get format-specific prefix for a module.
