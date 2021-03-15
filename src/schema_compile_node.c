@@ -633,7 +633,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                 /* min cannot be used elsewhere than in the first part */
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected data before min keyword (%.*s).", length_restr ? "length" : "range",
-                                (int)(expr - range_p->arg.str), range_p->arg.str);
+                        (int)(expr - range_p->arg.str), range_p->arg.str);
                 goto cleanup;
             }
             expr += ly_strlen_const("min");
