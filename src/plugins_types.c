@@ -715,62 +715,6 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Validate and store value of the YANG built-in empty type.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
-{
-    LY_ERR ret = LY_SUCCESS;
-
-    /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-
-    if (value_len) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value \"%.*s\".", (int)value_len, value);
-        goto cleanup;
-    }
-
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    } else {
-        ret = lydict_insert(ctx, "", value_len, &storage->canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-    storage->ptr = NULL;
-    storage->realtype = type;
-
-cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
-    }
-    return ret;
-}
-
-/**
- * @brief Comparison callback for built-in empty type.
- *
- * Implementation of the ly_type_compare_clb.
- */
-static LY_ERR
-ly_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2)
-{
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
-    /* empty has just one value, so empty data must be always the same */
-    return LY_SUCCESS;
-}
-
 API LY_ERR
 ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 {
@@ -1732,6 +1676,12 @@ extern LY_ERR ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_
 extern LY_ERR ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type,
         const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/* plugins_types_empty.c */
+extern LY_ERR ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const char *value, size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+extern LY_ERR ly_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
  * @brief Set of type plugins for YANG built-in types
