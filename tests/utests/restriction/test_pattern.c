@@ -177,8 +177,6 @@ test_schema_yang(void **state)
             "pattern 1 err-apt-tag", "pattern 1 error message", 0, NULL);
 }
 
-/////////////////////////////////////////////
-// TODO:
 static void
 test_schema_yin(void **state)
 {
