@@ -1090,7 +1090,7 @@ test_plugin_store(void **state)
     val_text = "20";
     ly_ret = type->store(UTEST_LYCTX, &lysc_type_test, val_text, strlen(val_text),
             0, LY_PREF_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
-    assert_int_equal(LY_EVALID, ly_ret);
+    assert_int_equal(LY_EINVAL, ly_ret);
     ly_err_free(err);
 
     /* ERROR TESTS */

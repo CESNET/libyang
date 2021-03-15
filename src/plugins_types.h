@@ -102,6 +102,24 @@ struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode
 void ly_err_free(void *ptr);
 
 /**
+ * @brief Check that the type is suitable for the parser's hints (if any) in the specified format
+ *
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
+ * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types provided by parsers
+ *            to ::ly_type_store_clb.
+ * @param[in] value Lexical representation of the value to be stored.
+ * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] type Expected base type of the @p value by the caller.
+ * @param[out] base Pointer to store the numeric base for parsing numeric values using strtol()/strtoll() function.
+ * Returned (and required) only for numeric @p type values.
+ * @param[out] err Pointer to store error information in case of failure.
+ * @return LY_ERR value
+ */
+LY_ERR ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base,
+        struct ly_err_item **err);
+
+/**
  * @brief Resolve format-specific prefixes to modules.
  *
  * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
