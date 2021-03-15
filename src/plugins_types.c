@@ -147,10 +147,27 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
 }
 
 API const struct lys_module *
-ly_type_store_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-        LY_PREFIX_FORMAT format, void *prefix_data)
+ly_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data)
 {
-    return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
+    if (prefix_len) {
+        return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
+    } else {
+        switch (format) {
+        case LY_PREF_SCHEMA:
+        case LY_PREF_SCHEMA_RESOLVED:
+            /* use context node module, handles augments */
+            return ctx_node->module;
+        case LY_PREF_JSON:
+            /* use context node module (as specified) */
+            return ctx_node->module;
+        case LY_PREF_XML:
+            /* use the default namespace */
+            return ly_xml_resolve_prefix(ctx, NULL, 0, prefix_data);
+        }
+    }
+
+    return NULL;
 }
 
 /**
@@ -722,25 +739,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
         goto cleanup;
     }
 
-    if (prefix_len) {
-        mod = ly_type_store_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
-    } else {
-        switch (format) {
-        case LY_PREF_SCHEMA:
-        case LY_PREF_SCHEMA_RESOLVED:
-            /* use context node module, handles augments */
-            mod = ctx_node->module;
-            break;
-        case LY_PREF_JSON:
-            /* use context node module (as specified) */
-            mod = ctx_node->module;
-            break;
-        case LY_PREF_XML:
-            /* use the default namespace */
-            mod = ly_xml_resolve_prefix(ctx, NULL, 0, prefix_data);
-            break;
-        }
-    }
+    mod = ly_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
