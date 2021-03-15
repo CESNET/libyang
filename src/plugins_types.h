@@ -77,19 +77,24 @@ struct lysp_module;
  * required format via ::ly_type_print_clb implementation.
  */
 
-/**
- * @brief Helper function for various plugin functions to generate error information structure.
+/*
+ * @brief Create and fill error structure.
  *
- * @param[in] level Error level of the error.
- * @param[in] code Code of the error.
+ * Helper function for various plugin functions to generate error information structure.
+ *
+ * @param[in, out] err Pointer to store a new error structure filled according to the input parameters. If the storage
+ * already contains error information, the new record is appended into the errors list.
+ * @param[in] ecode Code of the error to fill. In case LY_SUCCESS value, nothing is done and LY_SUCCESS is returned.
  * @param[in] vecode Validity error code in case of LY_EVALID error code.
- * @param[in] msg Error message.
  * @param[in] path Path to the node causing the error.
  * @param[in] apptag Error-app-tag value.
- * @return NULL in case of memory allocation failure.
- * @return Created error information structure that can be freed using ::ly_err_free().
+ * @param[in] err_msg error formating message.
+ * @return The given @p ecode value if the @p err is successfully created. The structure can be freed using ::ly_err_free()
+ * or passed back from callback into libyang.
+ * @return LY_EMEM If there is not enough memory for allocating error record, the @p err is not touched in that case.
+ * @return LY_SUCCESS if @p ecode is LY_SUCCESS, the @p err is not touched in this case.
  */
-struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode, char *msg, char *path, char *apptag);
+LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_msg, ...);
 
 /**
  * @brief Destructor for the error records created with ::ly_err_new().

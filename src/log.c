@@ -118,25 +118,52 @@ ly_errapptag(const struct ly_ctx *ctx)
     return NULL;
 }
 
-API struct ly_err_item *
-ly_err_new(LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *msg, char *path, char *apptag)
+API LY_ERR
+ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_msg, ...)
 {
-    struct ly_err_item *eitem;
+    char *msg = NULL;
+    struct ly_err_item *e;
 
-    eitem = malloc(sizeof *eitem);
-    LY_CHECK_ERR_RET(!eitem, LOGMEM(NULL), NULL);
-    eitem->prev = eitem;
-    eitem->next = NULL;
+    if (!err || ecode == LY_SUCCESS) {
+        /* nothing to do */
+        return ecode;
+    }
+
+    e = malloc(sizeof *e);
+    LY_CHECK_ERR_RET(!e, LOGMEM(NULL), LY_EMEM);
+    e->prev = (*err) ? (*err)->prev : e;
+    e->next = NULL;
+    if (*err) {
+        (*err)->prev->next = e;
+    }
 
     /* fill in the information */
-    eitem->level = level;
-    eitem->no = no;
-    eitem->vecode = vecode;
-    eitem->msg = msg;
-    eitem->path = path;
-    eitem->apptag = apptag;
+    e->level = LY_LLERR;
+    e->no = ecode;
+    e->vecode = vecode;
+    e->path = path;
+    e->apptag = apptag;
 
-    return eitem;
+    if (err_msg) {
+        va_list print_args;
+
+        va_start(print_args, err_msg);
+
+        if (vasprintf(&msg, err_msg, print_args) == -1) {
+            /* we don't have anything more to do, just set err_msg to NULL to avoid undefined content,
+             * still keep the information about the original error instead of LY_EMEM or other printf's error */
+            msg = NULL;
+        }
+
+        va_end(print_args);
+    }
+    e->msg = msg;
+
+    if (!(*err)) {
+        *err = e;
+    }
+
+    return e->no;
 }
 
 API struct ly_err_item *
@@ -166,9 +193,7 @@ ly_err_free(void *ptr)
     /* clean the error list */
     for (i = (struct ly_err_item *)ptr; i; i = next) {
         next = i->next;
-        if (i->msg && strcmp(i->msg, LY_EMEM_MSG)) {
-            free(i->msg);
-        }
+        free(i->msg);
         free(i->path);
         free(i->apptag);
         free(i);
