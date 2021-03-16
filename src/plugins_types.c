@@ -270,7 +270,7 @@ ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, 
  *
  * Implementation of the ly_type_compare_clb.
  */
-static LY_ERR
+API LY_ERR
 ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
@@ -284,12 +284,7 @@ ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val
     return LY_ENOT;
 }
 
-/**
- * @brief Generic printer callback of the canonized value.
- *
- * Implementation of the ly_type_print_clb.
- */
-static const char *
+API const char *
 ly_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(format),
         void *UNUSED(prefix_data), ly_bool *dynamic)
 {
@@ -297,12 +292,7 @@ ly_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(form
     return (char *)value->canonical;
 }
 
-/**
- * @brief Generic duplication callback of the canonized and original values only.
- *
- * Implementation of the ly_type_dup_clb.
- */
-static LY_ERR
+API LY_ERR
 ly_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
@@ -311,12 +301,7 @@ ly_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, s
     return LY_SUCCESS;
 }
 
-/**
- * @brief Free canonized value in lyd_value.
- *
- * Implementation of the ly_type_free_clb.
- */
-static void
+API void
 ly_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->canonical);

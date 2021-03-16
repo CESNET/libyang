@@ -344,6 +344,34 @@ struct lysc_type_plugin {
 extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
 
 /**
+ * @brief Generic simple comparison callback checking the canonical value.
+ *
+ * Implementation of the ::ly_type_compare_clb.
+ */
+LY_ERR ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Generic simple printer callback of the canonized value.
+ *
+ * Implementation of the ::ly_type_print_clb.
+ */
+const char *ly_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic);
+
+/**
+ * @brief Generic simple duplication callback.
+ *
+ * Implementation of the ::ly_type_dup_clb.
+ */
+LY_ERR ly_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+
+/**
+ * @brief Generic cleanup callback freeing only the canonized value in ::lyd_value.canonical.
+ *
+ * Simple implementation of the ::ly_type_free_clb.
+ */
+void ly_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
+
+/**
  * @brief Unsigned integer value parser and validator.
  *
  * @param[in] datatype Type of the integer for logging.
