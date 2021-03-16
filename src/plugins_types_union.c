@@ -109,7 +109,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     }
 
     /* store format-specific data for later prefix resolution */
-    ret = ly_type_prefix_data_add(ctx, subvalue->original, value_len, format, prefix_data, &subvalue->format,
+    ret = ly_type_prefix_data_new(ctx, subvalue->original, value_len, format, prefix_data, &subvalue->format,
             &subvalue->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
     subvalue->hints = hints;

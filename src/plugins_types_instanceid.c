@@ -50,7 +50,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
     if ((format == LY_PREF_XML) || (format == LY_PREF_SCHEMA)) {
         /* everything is prefixed */
         LY_ARRAY_FOR(value->target, u) {
-            ly_strcat(&result, "/%s:%s", ly_type_print_get_prefix(value->target[u].node->module, format, prefix_data),
+            ly_strcat(&result, "/%s:%s", ly_type_get_prefix(value->target[u].node->module, format, prefix_data),
                     value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
@@ -70,7 +70,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     if (strchr(str, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[%s:%s=%c%s%c]", ly_type_print_get_prefix(pred->key->module, format, prefix_data),
+                    ly_strcat(&result, "[%s:%s=%c%s%c]", ly_type_get_prefix(pred->key->module, format, prefix_data),
                             pred->key->name, quot, str, quot);
                     if (d) {
                         free((char *)str);
@@ -100,7 +100,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
         LY_ARRAY_FOR(value->target, u) {
             if (mod != value->target[u].node->module) {
                 mod = value->target[u].node->module;
-                ly_strcat(&result, "/%s:%s", ly_type_print_get_prefix(mod, format, prefix_data), value->target[u].node->name);
+                ly_strcat(&result, "/%s:%s", ly_type_get_prefix(mod, format, prefix_data), value->target[u].node->name);
             } else {
                 ly_strcat(&result, "/%s", value->target[u].node->name);
             }
@@ -178,7 +178,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS,  cleanup_value);
 
-    LY_CHECK_GOTO(ret = ly_type_store_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
+    LY_CHECK_GOTO(ret = ly_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
             unres, &path, err), cleanup);
 
     /* store resolved schema path */
@@ -193,7 +193,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     /* cleanup */
 cleanup:
-    ly_type_store_lypath_free(ctx, path);
+    ly_type_lypath_free(ctx, path);
 
 cleanup_value:
     if (options & LY_TYPE_STORE_DYNAMIC) {

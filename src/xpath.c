@@ -3740,7 +3740,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
         if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 /* find leafref target */
-                if (ly_type_find_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
+                if (ly_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
                         &node, &errmsg)) {
                     LOGERR(set->ctx, LY_EVALID, errmsg);
                     free(errmsg);

@@ -80,7 +80,7 @@ ly_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_typ
     }
 
     /* check leafref target existence */
-    if (ly_type_find_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
+    if (ly_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, errmsg);
         if (errmsg != NULL) {
             free(errmsg);

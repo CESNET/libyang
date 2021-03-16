@@ -240,7 +240,7 @@ lys_compile_when_(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags
     LY_CHECK_ERR_RET(!(*when), LOGMEM(ctx->ctx), LY_EMEM);
     (*when)->refcount = 1;
     LY_CHECK_RET(lyxp_expr_parse(ctx->ctx, when_p->cond, 0, 1, &(*when)->cond));
-    LY_CHECK_RET(ly_type_prefix_data_add(ctx->ctx, when_p->cond, strlen(when_p->cond),
+    LY_CHECK_RET(ly_type_prefix_data_new(ctx->ctx, when_p->cond, strlen(when_p->cond),
             LY_PREF_SCHEMA, ctx->pmod, &format, (void **)&(*when)->prefixes));
     (*when)->context = (struct lysc_node *)ctx_node;
     DUP_STRING_GOTO(ctx->ctx, when_p->dsc, (*when)->dsc, ret, done);
@@ -302,7 +302,7 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_mu
     LY_PREFIX_FORMAT format;
 
     LY_CHECK_RET(lyxp_expr_parse(ctx->ctx, must_p->arg.str, 0, 1, &must->cond));
-    LY_CHECK_RET(ly_type_prefix_data_add(ctx->ctx, must_p->arg.str, strlen(must_p->arg.str),
+    LY_CHECK_RET(ly_type_prefix_data_new(ctx->ctx, must_p->arg.str, strlen(must_p->arg.str),
             LY_PREF_SCHEMA, must_p->arg.mod, &format, (void **)&must->prefixes));
     DUP_STRING_GOTO(ctx->ctx, must_p->eapptag, must->eapptag, ret, done);
     DUP_STRING_GOTO(ctx->ctx, must_p->emsg, must->emsg, ret, done);
@@ -1588,7 +1588,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_PREFIX_FORMAT format;
 
             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, type_p->path, &lref->path));
-            LY_CHECK_RET(ly_type_prefix_data_add(ctx->ctx, type_p->path->expr, strlen(type_p->path->expr),
+            LY_CHECK_RET(ly_type_prefix_data_new(ctx->ctx, type_p->path->expr, strlen(type_p->path->expr),
                     LY_PREF_SCHEMA, type_p->pmod, &format, (void **)&lref->prefixes));
         } else if (base) {
             LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, &lref->path));
