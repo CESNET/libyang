@@ -141,6 +141,7 @@ set(libsrc
     src/plugins_types_empty.c
     src/plugins_types_enumeration.c
     src/plugins_types_identityref.c
+    src/plugins_types_instanceid.c
     src/plugins_types_integer.c
     src/plugins_types_string.c
     src/plugins_exts.c
