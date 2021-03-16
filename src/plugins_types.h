@@ -143,7 +143,7 @@ LY_ERR ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, 
  * @return NULL otherwise.
  */
 const struct lys_module *ly_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data);
+        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, const void *prefix_data);
 
 /**
  * @brief Implement a module (just like ::lys_set_implemented()), but keep maintaining unresolved items.
