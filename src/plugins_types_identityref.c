@@ -39,7 +39,7 @@ ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format
     char *result = NULL;
 
     *dynamic = 1;
-    if (asprintf(&result, "%s:%s", ly_type_print_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
+    if (asprintf(&result, "%s:%s", ly_type_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
         return NULL;
     } else {
         return result;
@@ -110,7 +110,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     } else if (!mod->implemented) {
         /* non-implemented module */
         if (options & LY_TYPE_STORE_IMPLEMENT) {
-            ret = lys_set_implemented2((struct lys_module *)mod, NULL, unres);
+            ret = ly_type_make_implemented((struct lys_module *)mod, NULL, unres);
             LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,

@@ -261,7 +261,7 @@ ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefi
 }
 
 API const char *
-ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
+ly_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
 {
     return ly_get_prefix(mod, format, prefix_data);
 }
@@ -552,7 +552,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
 }
 
 API LY_ERR
-ly_type_prefix_data_add(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+ly_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
         const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
 {
     LY_CHECK_ARG_RET(ctx, value, format_p, prefix_data_p, LY_EINVAL);
@@ -661,7 +661,7 @@ ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA
 }
 
 API LY_ERR
-ly_type_store_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
+ly_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
         LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
         struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err)
 {
@@ -715,13 +715,13 @@ cleanup:
 }
 
 API void
-ly_type_store_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
+ly_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
 {
     ly_path_free(ctx, path);
 }
 
 API LY_ERR
-lys_set_implemented2(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
+ly_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
     return lys_set_implemented_r(mod, features, unres);
 }
@@ -743,7 +743,7 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 }
 
 API LY_ERR
-ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
+ly_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
         const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
 {
     LY_ERR ret;

@@ -155,7 +155,7 @@ const struct lys_module *ly_type_identity_module(const struct ly_ctx *ctx, const
  * @param[in,out] unres Global unres to add to.
  * @return LY_ERR value.
  */
-LY_ERR lys_set_implemented2(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+LY_ERR ly_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
 
 /**
  * @brief Get format-specific prefix for a module.
@@ -168,7 +168,7 @@ LY_ERR lys_set_implemented2(struct lys_module *mod, const char **features, struc
  * @return Module's prefix to print.
  * @return NULL on error.
  */
-const char *ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
+const char *ly_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Store used prefixes in a string into an internal libyang structure used in ::lyd_value.
@@ -187,7 +187,7 @@ const char *ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FOR
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LY_ERR ly_type_prefix_data_add(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+LY_ERR ly_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
         const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
 /*
  * @brief Duplicate prefix data.
@@ -211,6 +211,38 @@ LY_ERR ly_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format
  * @param[in] prefix_data Format-specific data to free.
  */
 void ly_type_prefix_data_free(LY_PREFIX_FORMAT format, void *prefix_data);
+
+/**
+ * @brief Helper function to create internal schema path representation for instance-identifier value representation.
+ *
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
+ * @param[in] ctx libyang Context
+ * @param[in] value Lexical representation of the value to be stored.
+ * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
+ * @param[in] format Input format of the value.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_type_store_resolve_prefix).
+ * @param[in] ctx_node The @p value schema context node.
+ * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[out] path Pointer to store the created structure representing the schema path from the @p value.
+ * @param[out] err Pointer to store the error information provided in case of failure.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR ly_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
+        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
+
+/**
+ * @brief Free ly_path structure used by instanceid value representation.
+ *
+ * The ly_path representation can be created by ::ly_type_lypath_new().
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
+ */
+void ly_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
 
 /**
  * @defgroup plugintypestoreopts Type store callback options.
@@ -440,38 +472,6 @@ LY_ERR ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t va
 LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *derived);
 
 /**
- * @brief Helper function to create internal schema path representation for instance-identifier value representation.
- *
- * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
- *
- * @param[in] ctx libyang Context
- * @param[in] value Lexical representation of the value to be stored.
- * @param[in] value_len Length (number of bytes) of the given \p value.
- * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
- * @param[in] format Input format of the value.
- * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_type_store_resolve_prefix).
- * @param[in] ctx_node The @p value schema context node.
- * @param[in,out] unres Global unres structure for newly implemented modules.
- * @param[out] path Pointer to store the created structure representing the schema path from the @p value.
- * @param[out] err Pointer to store the error information provided in case of failure.
- * @return LY_SUCCESS on success,
- * @return LY_ERR value on error.
- */
-LY_ERR ly_type_store_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
-        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
-
-/**
- * @brief Free ly_path structure used by instanceid value representation.
- *
- * The ly_path representation can be created by ::ly_type_store_lypath_new().
- *
- * @param[in] ctx libyang context.
- * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
- */
-void ly_type_store_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
-
-/**
  * @brief Data type validator for a range/length-restricted values.
  *
  * @param[in] basetype Base built-in type of the type with the range specified to get know if the @p range structure represents range or length restriction.
@@ -509,7 +509,7 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  * @param[out] errmsg Error message in case of error.
  * @return LY_ERR value.
  */
-LY_ERR ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
+LY_ERR ly_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
         const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
 
 /** @} types */
