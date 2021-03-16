@@ -537,7 +537,7 @@ lysc_when_free(struct ly_ctx *ctx, struct lysc_when **w)
         return;
     }
     lyxp_expr_free(ctx, (*w)->cond);
-    lysc_prefixes_free((*w)->prefixes);
+    ly_free_prefix_data(LY_PREF_SCHEMA_RESOLVED, (*w)->prefixes);
     lydict_remove(ctx, (*w)->dsc);
     lydict_remove(ctx, (*w)->ref);
     FREE_ARRAY(ctx, (*w)->exts, lysc_ext_instance_free);
@@ -548,7 +548,7 @@ void
 lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
 {
     lyxp_expr_free(ctx, must->cond);
-    lysc_prefixes_free(must->prefixes);
+    ly_free_prefix_data(LY_PREF_SCHEMA_RESOLVED, must->prefixes);
     lydict_remove(ctx, must->emsg);
     lydict_remove(ctx, must->eapptag);
     lydict_remove(ctx, must->dsc);
@@ -650,7 +650,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     case LY_TYPE_LEAFREF:
         lyxp_expr_free(ctx, ((struct lysc_type_leafref *)type)->path);
-        lysc_prefixes_free(((struct lysc_type_leafref *)type)->prefixes);
+        ly_free_prefix_data(LY_PREF_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes);
         break;
     case LY_TYPE_INST:
     case LY_TYPE_BOOL:

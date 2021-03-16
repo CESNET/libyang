@@ -552,38 +552,32 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
 }
 
 API LY_ERR
-lysc_prefixes_compile(const char *str, size_t str_len, const struct lysp_module *prefix_mod, struct lysc_prefix **prefixes)
+ly_type_prefix_data_add(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
 {
-    LY_ERR ret;
-    LY_PREFIX_FORMAT format = LY_PREF_SCHEMA_RESOLVED;
+    LY_CHECK_ARG_RET(ctx, value, format_p, prefix_data_p, LY_EINVAL);
 
-    LY_CHECK_ARG_RET(NULL, prefix_mod, prefixes, LY_EINVAL);
-
-    *prefixes = NULL;
-    ret = ly_store_prefix_data(prefix_mod->mod->ctx, str, str_len, LY_PREF_SCHEMA, (void *)prefix_mod, &format,
-            (void **)prefixes);
-    assert(format == LY_PREF_SCHEMA_RESOLVED);
-    return ret;
+    *prefix_data_p = NULL;
+    return ly_store_prefix_data(ctx, value, value_len, format, prefix_data, format_p, (void **)prefix_data_p);
 }
 
 API LY_ERR
-lysc_prefixes_dup(const struct lysc_prefix *orig, struct lysc_prefix **dup)
+ly_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *orig, void **dup)
 {
     LY_CHECK_ARG_RET(NULL, dup, LY_EINVAL);
 
     *dup = NULL;
-
     if (!orig) {
         return LY_SUCCESS;
     }
 
-    return ly_dup_prefix_data(NULL, LY_PREF_SCHEMA_RESOLVED, orig, (void **)dup);
+    return ly_dup_prefix_data(ctx, format, orig, (void **)dup);
 }
 
 API void
-lysc_prefixes_free(struct lysc_prefix *prefixes)
+ly_type_prefix_data_free(LY_PREFIX_FORMAT format, void *prefix_data)
 {
-    ly_free_prefix_data(LY_PREF_SCHEMA_RESOLVED, prefixes);
+    ly_free_prefix_data(format, prefix_data);
 }
 
 static int
@@ -897,7 +891,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     }
 
     /* store format-specific data for later prefix resolution */
-    ret = ly_store_prefix_data(ctx, subvalue->original, value_len, format, prefix_data, &subvalue->format,
+    ret = ly_type_prefix_data_add(ctx, subvalue->original, value_len, format, prefix_data, &subvalue->format,
             &subvalue->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
     subvalue->hints = hints;
@@ -910,7 +904,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
 cleanup:
     if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
         lydict_remove(ctx, subvalue->original);
-        ly_free_prefix_data(subvalue->format, subvalue->prefix_data);
+        ly_type_prefix_data_free(subvalue->format, subvalue->prefix_data);
         free(subvalue);
     } else {
         /* store it as union, the specific type is in the subvalue, but canonical value is the specific type value */
@@ -1017,7 +1011,7 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
     LY_CHECK_RET(lydict_insert(ctx, original->subvalue->original, strlen(original->subvalue->original),
             &dup->subvalue->original));
     dup->subvalue->format = original->subvalue->format;
-    LY_CHECK_RET(ly_dup_prefix_data(ctx, original->subvalue->format, original->subvalue->prefix_data,
+    LY_CHECK_RET(ly_type_prefix_data_dup(ctx, original->subvalue->format, original->subvalue->prefix_data,
             &dup->subvalue->prefix_data));
 
     dup->realtype = original->realtype;
@@ -1037,7 +1031,7 @@ ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
         if (value->subvalue->value.realtype) {
             value->subvalue->value.realtype->plugin->free(ctx, &value->subvalue->value);
         }
-        ly_free_prefix_data(value->subvalue->format, value->subvalue->prefix_data);
+        ly_type_prefix_data_free(value->subvalue->format, value->subvalue->prefix_data);
         lydict_remove(ctx, value->subvalue->original);
         free(value->subvalue);
         value->subvalue = NULL;
