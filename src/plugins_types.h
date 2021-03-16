@@ -171,34 +171,46 @@ LY_ERR lys_set_implemented2(struct lys_module *mod, const char **features, struc
 const char *ly_type_print_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
- * @brief Collect any possible used prefixes in a string into a sized array of pairs of prefixes and modules.
+ * @brief Store used prefixes in a string into an internal libyang structure used in ::lyd_value.
  *
- * @param[in] str String to look for prefixes in.
- * @param[in] str_len Length of @p str.
- * @param[in] prefix_mod Parsed module where to look for prefixes as imports.
- * @param[out] prefixes Compiled prefixes.
- * @return LY_SUCCESS on success,
- * @return LY_ERR value on error.
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
+ * If @p prefix_data_p are non-NULL, they are treated as valid according to the @p format_p and new possible
+ * prefixes are simply added. This way it is possible to store prefix data for several strings together.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] value Value string to be parsed.
+ * @param[in] value_len Length of the @p value string.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in,out] format_p Resulting format of the prefixes.
+ * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
+ * @return LY_ERR value.
  */
-LY_ERR lysc_prefixes_compile(const char *str, size_t str_len, const struct lysp_module *prefix_mod,
-        struct lysc_prefix **prefixes);
+LY_ERR ly_type_prefix_data_add(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
+/*
+ * @brief Duplicate prefix data.
+ *
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] orig Prefix data to duplicate.
+ * @param[out] dup Duplicated prefix data.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *orig, void **dup);
 
 /**
- * @brief Duplicate compiled prefixes.
+ * @brief Free internal prefix data.
  *
- * @param[in] orig Prefixes to duplicate.
- * @param[out] dup Diplicated prefixes.
- * @return LY_SUCCESS on success,
- * @return LY_ERR value on error.
- */
-LY_ERR lysc_prefixes_dup(const struct lysc_prefix *orig, struct lysc_prefix **dup);
-
-/**
- * @brief Free compiled prefixes.
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
  *
- * @param[in] prefixes Prefixes to free.
+ * @param[in] format Format of the prefixes.
+ * @param[in] prefix_data Format-specific data to free.
  */
-void lysc_prefixes_free(struct lysc_prefix *prefixes);
+void ly_type_prefix_data_free(LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @defgroup plugintypestoreopts Type store callback options.
