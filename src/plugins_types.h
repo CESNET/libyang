@@ -28,6 +28,7 @@ extern "C" {
 #endif
 
 struct ly_ctx;
+struct ly_path;
 struct lyd_node;
 struct lyd_value;
 struct lys_module;
@@ -397,6 +398,38 @@ LY_ERR ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t va
  * @return LY_ENOTFOUND if @p derived IS NOT not based on the @p base identity.
  */
 LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *derived);
+
+/**
+ * @brief Helper function to create internal schema path representation for instance-identifier value representation.
+ *
+ * Use only in implementations of ::ly_type_store_clb which provide all the necessary parameters for this function.
+ *
+ * @param[in] ctx libyang Context
+ * @param[in] value Lexical representation of the value to be stored.
+ * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
+ * @param[in] format Input format of the value.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_type_store_resolve_prefix).
+ * @param[in] ctx_node The @p value schema context node.
+ * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[out] path Pointer to store the created structure representing the schema path from the @p value.
+ * @param[out] err Pointer to store the error information provided in case of failure.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR ly_type_store_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
+        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
+
+/**
+ * @brief Free ly_path structure used by instanceid value representation.
+ *
+ * The ly_path representation can be created by ::ly_type_store_lypath_new().
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
+ */
+void ly_type_store_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
 
 /**
  * @brief Data type validator for a range/length-restricted values.

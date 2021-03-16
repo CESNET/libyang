@@ -681,6 +681,66 @@ ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA
 }
 
 API LY_ERR
+ly_type_store_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
+        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *exp = NULL;
+    uint32_t prefix_opt = 0;
+
+    LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_PREF_XML:
+        prefix_opt = LY_PATH_PREFIX_MANDATORY;
+        break;
+    case LY_PREF_JSON:
+        prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
+        break;
+    }
+
+    /* parse the value */
+    ret = ly_path_parse(ctx, ctx_node, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE,
+            prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
+    if (ret) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
+        goto cleanup;
+    }
+
+    if (options & LY_TYPE_STORE_IMPLEMENT) {
+        /* implement all prefixes */
+        LY_CHECK_GOTO(ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, unres, NULL), cleanup);
+    }
+
+    /* resolve it on schema tree */
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, LY_PATH_LREF_FALSE, (ctx_node->flags & LYS_IS_OUTPUT) ?
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, unres, path);
+    if (ret) {
+        ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
+                "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
+        goto cleanup;
+    }
+
+cleanup:
+    lyxp_expr_free(ctx, exp);
+    if (ret) {
+        ly_path_free(ctx, *path);
+    }
+
+    return ret;
+}
+
+API void
+ly_type_store_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
+{
+    ly_path_free(ctx, path);
+}
+
+API LY_ERR
 lys_set_implemented2(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
     return lys_set_implemented_r(mod, features, unres);
@@ -719,8 +779,6 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
     char *str;
     struct ly_path *path = NULL;
-    struct lyxp_expr *exp = NULL;
-    uint32_t prefix_opt = 0;
     ly_bool dyn;
 
     /* init */
@@ -730,39 +788,8 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS,  cleanup_value);
 
-    switch (format) {
-    case LY_PREF_SCHEMA:
-    case LY_PREF_SCHEMA_RESOLVED:
-    case LY_PREF_XML:
-        prefix_opt = LY_PATH_PREFIX_MANDATORY;
-        break;
-    case LY_PREF_JSON:
-        prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
-        break;
-    }
-
-    /* parse the value */
-    ret = ly_path_parse(ctx, ctx_node, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE,
-            prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
-    if (ret) {
-        ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
-                "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
-        goto cleanup;
-    }
-
-    if (options & LY_TYPE_STORE_IMPLEMENT) {
-        /* implement all prefixes */
-        LY_CHECK_GOTO(ret = lys_compile_expr_implement(ctx, exp, format, prefix_data, 1, unres, NULL), cleanup);
-    }
-
-    /* resolve it on schema tree */
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, LY_PATH_LREF_FALSE, (ctx_node->flags & LYS_IS_OUTPUT) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, unres, &path);
-    if (ret) {
-        ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
-                "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
-        goto cleanup;
-    }
+    LY_CHECK_GOTO(ret = ly_type_store_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
+            unres, &path, err), cleanup);
 
     /* store resolved schema path */
     storage->target = path;
@@ -776,8 +803,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
 
     /* cleanup */
 cleanup:
-    lyxp_expr_free(ctx, exp);
-    ly_path_free(ctx, path);
+    ly_type_store_lypath_free(ctx, path);
 
 cleanup_value:
     if (options & LY_TYPE_STORE_DYNAMIC) {
