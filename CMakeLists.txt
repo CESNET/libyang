@@ -145,6 +145,7 @@ set(libsrc
     src/plugins_types_integer.c
     src/plugins_types_leafref.c
     src/plugins_types_string.c
+    src/plugins_types_union.c
     src/plugins_exts.c
     src/plugins_exts_metadata.c
     src/plugins_exts_nacm.c
