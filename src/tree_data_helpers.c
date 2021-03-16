@@ -544,7 +544,7 @@ cleanup:
 
 LY_ERR
 ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
-        void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
+        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *start, *stop;

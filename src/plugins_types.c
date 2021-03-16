@@ -44,7 +44,7 @@
  * @brief Find import prefix in imports.
  */
 static const struct lys_module *
-ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *prefix_data)
+ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, const void *prefix_data)
 {
     const struct lysp_module *prefix_mod = prefix_data;
     struct lys_module *m = NULL;
@@ -75,9 +75,9 @@ ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, s
  */
 static const struct lys_module *
 ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len,
-        void *prefix_data)
+        const void *prefix_data)
 {
-    struct lysc_prefix *prefixes = prefix_data;
+    const struct lysc_prefix *prefixes = prefix_data;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(prefixes, u) {
@@ -93,7 +93,7 @@ ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *
  * @brief Find XML namespace prefix in XML namespaces, which are then mapped to modules.
  */
 static const struct lys_module *
-ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *prefix_data)
+ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, const void *prefix_data)
 {
     const struct lys_module *mod;
     const struct lyxml_ns *ns;
@@ -116,13 +116,14 @@ ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefi
  * @brief Find module name.
  */
 static const struct lys_module *
-ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(prefix_data))
+ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, const void *UNUSED(prefix_data))
 {
     return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
 }
 
 const struct lys_module *
-ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data)
+ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format,
+        const void *prefix_data)
 {
     const struct lys_module *mod = NULL;
 
@@ -148,7 +149,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
 
 API const struct lys_module *
 ly_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data)
+        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, const void *prefix_data)
 {
     if (prefix_len) {
         return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);

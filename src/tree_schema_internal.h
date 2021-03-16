@@ -836,6 +836,6 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  * @return NULL otherwise.
  */
 const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-        LY_PREFIX_FORMAT format, void *prefix_data);
+        LY_PREFIX_FORMAT format, const void *prefix_data);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
