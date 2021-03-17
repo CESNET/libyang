@@ -205,7 +205,7 @@ test_schema_yang(void **state)
     CHECK_LOG_CTX("Invalid length restriction - value \"-1\" does not fit the type limitations.",
             "/ERR3:port");
 
-    /* 
+    /*
      * PATTERN
      */
     schema = MODULE_CREATE_YANG("TPATTERN_0", "leaf port {type string"
@@ -300,6 +300,31 @@ test_schema_yang(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "my_type", 0, 0, 1, 0, 0, 0);
+
+    /* PATTERN AND LENGTH */
+    schema = MODULE_CREATE_YANG("TPL_0",
+            "typedef my_type {"
+            "   type string{"
+            "       length  \"2 .. 10\";"
+            "   }"
+            "}"
+            "leaf port {type my_type{ pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    assert_non_null(mod);
+    lysc_leaf = (void *) mod->compiled->data;
+    CHECK_LYSC_NODE_LEAF(lysc_leaf, NULL, 0, 0x5, 1, "port", 0, 0, 0, NULL, 0, 0, NULL, NULL);
+    CHECK_LYSC_TYPE_STR((struct lysc_type_str *)lysc_leaf->type, 0, 1, 1);
+    pattern = ((struct lysc_type_str *)lysc_leaf->type)->patterns[0];
+    CHECK_LYSC_PATTERN(pattern, NULL, NULL, NULL, "[a-zA-Z_][a-zA-Z0-9\\-_.]*", 0, 0, NULL);
+    range = ((struct lysc_type_str *)lysc_leaf->type)->length;
+    CHECK_LYSC_RANGE(range, NULL, NULL, NULL, 0, 1, NULL);
+    assert_int_equal(range->parts[0].min_u64, 2);
+    assert_int_equal(range->parts[0].max_u64, 10);
+    lysp_leaf = (void *) mod->parsed->data;
+    CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
+    CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "my_type", 0, 1, 1, 0, 0, 0);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""[a-zA-Z_][a-zA-Z0-9\\-_.]*",
+            NULL, NULL, NULL, 0, NULL);
 }
 
 static void
