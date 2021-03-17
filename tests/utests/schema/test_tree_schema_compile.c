@@ -1203,6 +1203,8 @@ test_type_bits(void **state)
     const struct lys_module *mod;
     struct lysc_type *type;
 
+    /* type bits is now tested in file type/bits.c */
+#if 0
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1; namespace urn:a;prefix a;feature f; leaf l {type bits {"
             "bit automin; bit one {if-feature f; position 1;}"
             "bit two; bit seven {position 7;} bit five {position 5;} bit eight;}}}", LYS_IN_YANG, &mod));
@@ -1236,11 +1238,14 @@ test_type_bits(void **state)
     assert_int_equal(7, ((struct lysc_type_bits *)type)->bits[1].position);
     assert_string_equal("eight", ((struct lysc_type_bits *)type)->bits[2].name);
     assert_int_equal(8, ((struct lysc_type_bits *)type)->bits[2].position);
+#endif
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type bits {"
             "bit one {if-feature f;}}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+
+#if 0
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
             "bit one {position -1;}}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid value \"-1\" of \"position\".", "Line number 1.");
@@ -1276,10 +1281,12 @@ test_type_bits(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;typedef mytype {type bits;}"
             "leaf l {type mytype {bit one;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Missing bit substatement for bits type mytype.", "/gg:l");
+#endif
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh; typedef mytype {type bits {bit one;}}"
             "leaf l {type mytype {bit one;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Bits type can be subtyped only in YANG 1.1 modules.", "/hh:l");
+
 }
 
 static void
