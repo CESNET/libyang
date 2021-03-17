@@ -293,6 +293,7 @@ test_string(void **state)
 
 #endif
 
+#if 0
 static void
 test_bits(void **state)
 {
@@ -323,6 +324,7 @@ test_bits(void **state)
     /* invalid bit value */
     TEST_TYPE_ERROR("bits", "one xero one", "Invalid bit value \"one\".", "1");
 }
+#endif
 
 static void
 test_enums(void **state)
@@ -1040,7 +1042,7 @@ main(void)
         UTEST(test_uint, setup),
         UTEST(test_dec64, setup),
         /* UTEST(test_string, setup),*/
-        UTEST(test_bits, setup),
+        /* UTEST(test_bits, setup), */
         UTEST(test_enums, setup),
         UTEST(test_binary, setup),
         UTEST(test_boolean, setup),
