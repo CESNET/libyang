@@ -1141,12 +1141,12 @@ const char *ly_data_type2str[LY_DATA_TYPE_COUNT] = {
  * @param[in] enums_p Array of the parsed enum structures to compile.
  * @param[in] basetype Base YANG built-in type from which the current type is derived. Only LY_TYPE_ENUM and LY_TYPE_BITS are expected.
  * @param[in] base_enums Array of the compiled enums information from the (latest) base type to check if the current enums are compatible.
- * @param[out] enums Newly created array of the compiled enums information for the current type.
+ * @param[out] bitenums Newly created array of the compiled bitenums information for the current type.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
 lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_DATA_TYPE basetype,
-        struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **enums)
+        struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **bitenums)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v, match = 0;
@@ -1184,11 +1184,11 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
                 /* value assigned by model */
                 cur_val = (int32_t)enums_p[u].value;
                 /* check collision with other values */
-                LY_ARRAY_FOR(*enums, v) {
-                    if (cur_val == (*enums)[v].value) {
+                LY_ARRAY_FOR(*bitenums, v) {
+                    if (cur_val == (*bitenums)[v].value) {
                         LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                                 "Invalid enumeration - value %d collide in items \"%s\" and \"%s\".",
-                                cur_val, enums_p[u].name, (*enums)[v].name);
+                                cur_val, enums_p[u].name, (*bitenums)[v].name);
                         return LY_EVALID;
                     }
                 }
@@ -1218,11 +1218,11 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
                 /* value assigned by model */
                 cur_pos = (uint32_t)enums_p[u].value;
                 /* check collision with other values */
-                LY_ARRAY_FOR(*enums, v) {
-                    if (cur_pos == (*enums)[v].position) {
+                LY_ARRAY_FOR(*bitenums, v) {
+                    if (cur_pos == (*bitenums)[v].position) {
                         LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                                 "Invalid bits - position %u collide in items \"%s\" and \"%s\".",
-                                cur_pos, enums_p[u].name, (*enums)[v].name);
+                                cur_pos, enums_p[u].name, (*bitenums)[v].name);
                         return LY_EVALID;
                     }
                 }
@@ -1276,7 +1276,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         }
 
         /* add new enum/bit */
-        LY_ARRAY_NEW_RET(ctx->ctx, *enums, e, LY_EMEM);
+        LY_ARRAY_NEW_RET(ctx->ctx, *bitenums, e, LY_EMEM);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].name, e->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].dsc, e->dsc, ret, done);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].ref, e->ref, ret, done);
@@ -1290,11 +1290,11 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
 
         if (basetype == LY_TYPE_BITS) {
             /* keep bits ordered by position */
-            for (v = u; v && (*enums)[v - 1].value > e->value; --v) {}
+            for (v = u; v && (*bitenums)[v - 1].position > e->position; --v) {}
             if (v != u) {
                 memcpy(&storage, e, sizeof *e);
-                memmove(&(*enums)[v + 1], &(*enums)[v], (u - v) * sizeof **enums);
-                memcpy(&(*enums)[v], &storage, sizeof storage);
+                memmove(&(*bitenums)[v + 1], &(*bitenums)[v], (u - v) * sizeof **bitenums);
+                memcpy(&(*bitenums)[v], &storage, sizeof storage);
             }
         }
     }
