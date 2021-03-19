@@ -324,6 +324,7 @@ test_bits(void **state)
     /* invalid bit value */
     TEST_TYPE_ERROR("bits", "one xero one", "Invalid bit value \"one\".", "1");
 }
+
 #endif
 
 static void
