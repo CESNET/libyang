@@ -40,19 +40,25 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
+
+    /* necessary variables */
     LY_ERR ret = LY_SUCCESS;
-    size_t item_len;
-    const char *item;
-    struct ly_set *items = NULL, *items_ordered = NULL;
-    size_t buf_size = 0;
-    char *buf = NULL;
-    size_t index;
-    LY_ARRAY_COUNT_TYPE u;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
-    ly_bool iscanonical = 1;
-    size_t ws_count;
-    size_t lws_count; /* leading whitespace count */
-    const char *can = NULL;
+    struct lysc_type_bitenum_item **bits_items = NULL;
+    struct ly_set *items = NULL;
+
+    uint32_t index_start;   /* start index of bit name */
+    uint32_t index_end = 0; /* end index of bit name */
+    uint32_t item_len;      /* length of bit name */
+    uint32_t buf_len = 0;
+    uint32_t item_pos;
+    uint32_t item_pos_expected;
+    char *buf = NULL;
+    const char *item = NULL;
+
+    ly_bool item_present;
+    LY_ARRAY_COUNT_TYPE item_present_index;
+    LY_ARRAY_COUNT_TYPE it;
 
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -62,113 +68,122 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     ret = ly_set_new(&items);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup_value);
 
-    ws_count = lws_count = 0;
-    for (index = 0; index < value_len; ++index) {
-        if (isspace(value[index])) {
-            ++ws_count;
-            continue;
+    /* get all values */
+    while (index_end < value_len) {
+        /* skip leading spaces */
+        index_start = index_end;
+        while ((index_start < value_len) && isspace(value[index_start])) {
+            index_start++;
         }
-        if (index == ws_count) {
-            lws_count = ws_count;
-        } else if (ws_count) {
-            iscanonical = 0;
+
+        index_end = index_start;
+        /* find end of word */
+        while ((index_end < value_len) && !isspace(value[index_end])) {
+            index_end++;
         }
-        ws_count = 0;
 
-        /* start of the item */
-        item = &value[index];
-        for (item_len = 0; index + item_len < value_len && !isspace(item[item_len]); item_len++) {}
-        LY_ARRAY_FOR(type_bits->bits, u) {
-            if (!ly_strncmp(type_bits->bits[u].name, item, item_len)) {
-                /* we have the match */
-                uint32_t inserted;
+        /* check if name of bit is valid */
+        item = &value[index_start];
+        item_len = index_end - index_start;
+        if (item_len == 0) {
+            /* loop read all bits names*/
+            break;
+        }
 
-                if (iscanonical && items->count && (type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position)) {
-                    iscanonical = 0;
-                }
-                ret = ly_set_add(items, &type_bits->bits[u], 0, &inserted);
-                LY_CHECK_GOTO(ret, cleanup);
-                if (inserted != items->count - 1) {
-                    ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                            "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
-                    goto cleanup;
-                }
-                goto next;
+        /* looking for correct name */
+        item_present = 0;
+        LY_ARRAY_FOR(type_bits->bits, it) {
+            if (!ly_strncmp(type_bits->bits[it].name, item, item_len)) {
+                item_present = 1;
+                item_present_index = it;
             }
         }
-        /* item not found */
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid bit value \"%.*s\".", (int)item_len, item);
-        goto cleanup;
-next:
-        /* remember for canonized form: item + space/termination-byte */
-        buf_size += item_len + 1;
-        index += item_len;
-    }
-    /* validation done */
 
-    if (iscanonical) {
-        /* items are already ordered */
-        items_ordered = items;
-        items = NULL;
-
-        if (!ws_count && !lws_count && (options & LY_TYPE_STORE_DYNAMIC)) {
-            ret = lydict_insert_zc(ctx, (char *)value, &can);
-            value = NULL;
-            options &= ~LY_TYPE_STORE_DYNAMIC;
-            LY_CHECK_GOTO(ret, cleanup);
-        } else {
-            ret = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count, &can);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    } else {
-        buf = malloc(buf_size * sizeof *buf);
-        if (!buf) {
-            ret = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+        /* check if name exists */
+        if (!item_present) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                    "Invalid bit value \"%.*s\".", (int)item_len, item);
             goto cleanup;
         }
-        index = 0;
 
-        ret = ly_set_dup(items, NULL, &items_ordered);
+        /* add item to set */
+        item_pos_expected = items->count;
+        ret = ly_set_add(items, &type_bits->bits[item_present_index], 0, &item_pos);
         LY_CHECK_GOTO(ret, cleanup);
-        items_ordered->count = 0;
+        if (item_pos != item_pos_expected) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                    "Bit \"%s\" used multiple times.", type_bits->bits[item_present_index].name);
+            goto cleanup;
+        }
+        /* count require buff size */
+        buf_len += item_len + 1;
+    }
 
-        /* generate ordered bits list */
-        LY_ARRAY_FOR(type_bits->bits, u) {
-            if (ly_set_contains(items, &type_bits->bits[u], NULL)) {
-                int c = sprintf(&buf[index], "%s%s", index ? " " : "", type_bits->bits[u].name);
-                if (c < 0) {
-                    ret = ly_err_new(err, LY_ESYS, 0, NULL, NULL, "sprintf() failed.");
-                    goto cleanup;
+
+    /* creating buffer for cannonical value */
+    if (buf_len != 0) {
+        uint32_t buf_index = 0;
+        LY_ARRAY_COUNT_TYPE it;
+
+        /* create space for cannonical value and array for bits*/
+        buf = malloc(buf_len * sizeof *buf);
+        if (buf == NULL) {
+            ret = LY_EMEM;
+            LOGMEM(ctx);
+            goto cleanup;
+        }
+        LY_ARRAY_CREATE_GOTO(ctx, bits_items, items->count, ret, cleanup);
+
+        /* generate ordered bits list and cannonical value*/
+        LY_ARRAY_FOR(type_bits->bits, it) {
+            if (ly_set_contains(items, &type_bits->bits[it], NULL)) {
+                uint32_t name_index = 0;
+
+                /* write space */
+                if (buf_index != 0) {
+                    buf[buf_index] = ' ';
+                    buf_index++;
                 }
-                index += c;
-                ret = ly_set_add(items_ordered, &type_bits->bits[u], 1, NULL);
-                LY_CHECK_GOTO(ret, cleanup);
+
+                /* write bit name*/
+                while (type_bits->bits[it].name[name_index]) {
+                    buf[buf_index] = type_bits->bits[it].name[name_index];
+                    buf_index++;
+                    name_index++;
+                }
+
+                bits_items[LY_ARRAY_COUNT(bits_items)] = &type_bits->bits[it];
+                LY_ARRAY_INCREMENT(bits_items);
             }
         }
-        assert(buf_size == index + 1);
-        /* termination NULL-byte */
-        buf[index] = '\0';
+        buf[buf_index] = 0;
 
-        ret = lydict_insert_zc(ctx, buf, &can);
+        ret = lydict_insert_zc(ctx, buf, &storage->canonical);
+        buf = NULL;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        bits_items = NULL;
+        ret = lydict_insert(ctx, "", 0, &storage->canonical);
         buf = NULL;
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* store all data */
-    storage->canonical = can;
-    can = NULL;
-    LY_ARRAY_CREATE_GOTO(ctx, storage->bits_items, items_ordered->count, ret, cleanup);
-    for (uint32_t x = 0; x < items_ordered->count; x++) {
-        storage->bits_items[x] = items_ordered->objs[x];
-        LY_ARRAY_INCREMENT(storage->bits_items);
-    }
+    /* store value */
+    storage->bits_items = bits_items;
     storage->realtype = type;
 
-cleanup:
+    /* RETURN LY_SUCCESS */
     ly_set_free(items, NULL);
-    ly_set_free(items_ordered, NULL);
+    if (options & LY_TYPE_STORE_DYNAMIC) {
+        free((char *)value);
+    }
+    return LY_SUCCESS;
+
+    /* ERROR HANDLING */
+cleanup:
+    LY_ARRAY_FREE(bits_items);
     free(buf);
-    lydict_remove(ctx, can);
+    ly_set_free(items, NULL);
 cleanup_value:
     if (options & LY_TYPE_STORE_DYNAMIC) {
         free((char *)value);
@@ -184,17 +199,26 @@ cleanup_value:
 LY_ERR
 ly_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
+    LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
+    struct lysc_type_bitenum_item **bits_items = NULL;
 
-    LY_ARRAY_CREATE_RET(ctx, dup->bits_items, LY_ARRAY_COUNT(original->bits_items), LY_EMEM);
+    LY_ARRAY_CREATE_RET(ctx, bits_items, LY_ARRAY_COUNT(original->bits_items), LY_EMEM);
     LY_ARRAY_FOR(original->bits_items, u) {
-        LY_ARRAY_INCREMENT(dup->bits_items);
-        dup->bits_items[u] = original->bits_items[u];
+        LY_ARRAY_INCREMENT(bits_items);
+        bits_items[u] = original->bits_items[u];
     }
 
-    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
+    ret = lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical);
+    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    dup->bits_items = bits_items;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
+
+    /* ERROR HANDLING */
+cleanup:
+    LY_ARRAY_FREE(bits_items);
+    return ret;
 }
 
 /**
