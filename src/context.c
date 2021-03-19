@@ -1544,12 +1544,15 @@ imported:
 
 
     /* consolidate the modules list */
-    for (i = o = ctx->internal_module_count; i < ctx->models.used; i++) {
-        if (ctx->models.list[o]) {
-            /* used cell */
-            o++;
-        } else {
-            /* the current output cell is empty, move here an input cell */
+    for (i = o = ctx->internal_module_count; i < ctx->models.used; ++i, ++o) {
+        if (!ctx->models.list[o]) {
+            /* the current output cell is empty, move here a non-empty input cell */
+            while (!ctx->models.list[i]) {
+                ++i;
+                if (i == ctx->models.used) {
+                    break;
+                }
+            }
             ctx->models.list[o] = ctx->models.list[i];
             ctx->models.list[i] = NULL;
         }
