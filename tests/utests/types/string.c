@@ -239,8 +239,8 @@ test_schema_yang(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "string", 0, 2, 1, 0, 0, 0);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""[a-zA-Z_][a-zA-Z0-9\\-_.]*", NULL, NULL, NULL, 0, NULL);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[1]), "\x15""abc.*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6" "[a-zA-Z_][a-zA-Z0-9\\-_.]*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[1]), "\x15" "abc.*", NULL, NULL, NULL, 0, NULL);
 
     schema = MODULE_CREATE_YANG("TPATTERN_2",
             "typedef my_type {"
@@ -263,7 +263,7 @@ test_schema_yang(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "my_type", 0, 1, 1, 0, 0, 0);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""bcd.*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6" "bcd.*", NULL, NULL, NULL, 0, NULL);
 
     /*
      * TEST pattern error
@@ -323,7 +323,7 @@ test_schema_yang(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "my_type", 0, 1, 1, 0, 0, 0);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""[a-zA-Z_][a-zA-Z0-9\\-_.]*",
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6" "[a-zA-Z_][a-zA-Z0-9\\-_.]*",
             NULL, NULL, NULL, 0, NULL);
 }
 
@@ -477,7 +477,7 @@ test_schema_yin(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "string", 0, 1, 1, 0, 0, 0);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""[a-zA-Z_][a-zA-Z0-9\\-_.]*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6" "[a-zA-Z_][a-zA-Z0-9\\-_.]*", NULL, NULL, NULL, 0, NULL);
 
     schema = MODULE_CREATE_YIN("TPATTERN_1", "<leaf name=\"port\"> <type name=\"string\">"
             "   <pattern value=\"[a-zA-Z_][a-zA-Z0-9\\-_.]*\"/>"
@@ -495,8 +495,8 @@ test_schema_yin(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "string", 0, 2, 1, 0, 0, 0);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""[a-zA-Z_][a-zA-Z0-9\\-_.]*", NULL, NULL, NULL, 0, NULL);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[1]), "\x15""abc.*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6" "[a-zA-Z_][a-zA-Z0-9\\-_.]*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[1]), "\x15" "abc.*", NULL, NULL, NULL, 0, NULL);
 
     schema = MODULE_CREATE_YIN("TPATTERN_2",
             "<typedef name=\"my_type\">"
@@ -519,7 +519,7 @@ test_schema_yin(void **state)
     lysp_leaf = (void *) mod->parsed->data;
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x40, 0, 0, "my_type", 0, 1, 1, 0, 0, 0);
-    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6""bcd.*", NULL, NULL, NULL, 0, NULL);
+    CHECK_LYSP_RESTR(&(lysp_leaf->type.patterns[0]), "\x6" "bcd.*", NULL, NULL, NULL, 0, NULL);
 
     /*
      * TEST pattern error

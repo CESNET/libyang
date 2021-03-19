@@ -251,7 +251,6 @@ struct utest_context {
     CHECK_LYSC_TYPE(NODE, LY_TYPE_BITS, EXTS); \
     CHECK_ARRAY((NODE)->bits, BITS)
 
-
 #define CHECK_LYSC_TYPE_BITENUM_ITEM(NODE, POSITION, DSC, EXTS, FLAGS, NAME, REF)\
     assert_non_null(NODE); \
     assert_int_equal((NODE)->position, POSITION); \
