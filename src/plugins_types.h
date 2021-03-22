@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "plugins.h"
 #include "tree.h"
 
 #include "tree_edit.h"
@@ -371,7 +372,7 @@ typedef void (*ly_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *val
  * functionality.
  */
 struct lyplg_type {
-    LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
+    LY_DATA_TYPE type;               /**< implemented type, use ::LY_TYPE_UNKNOWN for derived data types */
     ly_type_store_clb store;         /**< store and canonize the value in the type-specific way */
     ly_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
     ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
@@ -381,12 +382,19 @@ struct lyplg_type {
     const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
 };
 
-/**
- * @brief List of type plugins for built-in types.
- *
- * TODO hide behind some plugin getter
- */
-extern struct lyplg_type ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
+struct lyplg_type_record {
+    /* plugin identification */
+    const char *module;          /**< name of the module where the type is defined (top-level typedef) */
+    const char *revision;        /**< optional module revision - if not specified, the plugin applies to any revision,
+                                      which is not an optimal approach due to a possible future revisions of the module.
+                                      Instead, there should be defined multiple items in the plugins list, each with the
+                                      different revision, but all with the same pointer to the plugin functions. The
+                                      only valid use case for the NULL revision is the case the module has no revision. */
+    const char *name;            /**< name of the typedef */
+
+    /* runtime data */
+    struct lyplg_type plugin; /**< data to utilize plugin implementation */
+};
 
 /**
  * @brief Generic simple comparison callback checking the canonical value.

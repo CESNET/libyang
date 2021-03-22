@@ -33,7 +33,7 @@
 #include "path.h"
 #include "plugins_exts.h"
 #include "plugins_exts_compile.h"
-#include "plugins_exts_internal.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "schema_compile_amend.h"
 #include "schema_compile_node.h"
@@ -76,7 +76,8 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
         lysc_update_path(ctx, NULL, NULL);
 
         /* find extension definition plugin */
-        ext_p->compiled->plugin = lyext_get_plugin(ext_p->compiled);
+        ext_p->compiled->plugin = lyplg_find(LYPLG_EXTENSION, ext_p->compiled->module->name,
+                ext_p->compiled->module->revision, ext_p->compiled->name);
     }
 
     *ext = lysc_ext_dup(ext_p->compiled);

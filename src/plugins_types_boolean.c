@@ -26,6 +26,7 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
 ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
@@ -68,3 +69,21 @@ cleanup:
     }
     return ret;
 }
+
+const struct lyplg_type_record plugins_boolean[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_BOOL_STR,
+
+        .plugin.id = "libyang 2 - boolean, version 1",
+        .plugin.type = LY_TYPE_BOOL,
+        .plugin.store = ly_type_store_boolean,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    },
+    {0}
+};

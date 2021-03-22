@@ -45,7 +45,7 @@ struct lyext_metadata {
  *
  * Implementation of lyext_clb_compile callback set as lyext_plugin::compile.
  */
-LY_ERR
+static LY_ERR
 annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
 {
     LY_ERR ret;
@@ -128,7 +128,7 @@ emem:
  *
  * Implementation of lyext_clb_schema_printer set as ::lyext_plugin::sprinter
  */
-LY_ERR
+static LY_ERR
 annotation_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
 {
     lysc_print_extension_instance(ctx, ext, flag);
@@ -141,7 +141,7 @@ annotation_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, 
  *
  * Implementation of lyext_clb_free callback set as ::lyext_plugin::free.
  */
-void
+static void
 annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
     if (!ext->substmts) {
@@ -153,12 +153,19 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 }
 
 /**
- * @brief Plugin for the Metadata's annotation extension
+ * @brief Plugin descriptions for the Metadata's annotation extension
  */
-struct lyplg_ext metadata_plugin = {
-    .id = "libyang 2 - metadata, version 1",
-    .compile = &annotation_compile,
-    .validate = NULL,
-    .sprinter = &annotation_schema_printer,
-    .free = annotation_free
+const struct lyplg_ext_record plugins_metadata[] = {
+    {
+        .module = "ietf-yang-metadata",
+        .revision = "2016-08-05",
+        .name = "annotation",
+
+        .plugin.id = "libyang 2 - metadata, version 1",
+        .plugin.compile = &annotation_compile,
+        .plugin.validate = NULL,
+        .plugin.sprinter = &annotation_schema_printer,
+        .plugin.free = annotation_free
+    },
+    {0}     /* terminating zeroed record */
 };

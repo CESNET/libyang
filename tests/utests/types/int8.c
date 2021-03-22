@@ -22,6 +22,7 @@
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
 #include "path.h"
+#include "plugins_internal.h"
 
 #define LYD_TREE_CREATE(INPUT, MODEL) \
     CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, MODEL)
@@ -1379,7 +1380,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     char *alloc;
@@ -1393,7 +1394,7 @@ test_plugin_store(void **state)
 
     /* check proper type */
     assert_int_equal(LY_TYPE_INT8, type->type);
-    assert_string_equal("libyang 2 - integer, version 1", type->id);
+    assert_string_equal("libyang 2 - integers, version 1", type->id);
 
     /* check store
      * options = LY_TYPE_STORE_IMPLEMENT | LY_TYPE_STORE_DYNAMIC
@@ -1514,7 +1515,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1602,7 +1603,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1642,7 +1643,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type[2];
     const char *schema;
     LY_ERR ly_ret;

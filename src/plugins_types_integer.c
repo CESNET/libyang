@@ -26,6 +26,7 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
 ly_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
@@ -139,3 +140,112 @@ cleanup:
     }
     return ret;
 }
+
+const struct lyplg_type_record plugins_integer[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_UINT8_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_UINT8,
+        .plugin.store = ly_type_store_uint,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_UINT16_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_UINT16,
+        .plugin.store = ly_type_store_uint,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_UINT32_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_UINT32,
+        .plugin.store = ly_type_store_uint,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_UINT64_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_UINT64,
+        .plugin.store = ly_type_store_uint,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_INT8_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_INT8,
+        .plugin.store = ly_type_store_int,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_INT16_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_INT16,
+        .plugin.store = ly_type_store_int,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_INT32_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_INT32,
+        .plugin.store = ly_type_store_int,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    }, {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_INT64_STR,
+
+        .plugin.id = "libyang 2 - integers, version 1",
+        .plugin.type = LY_TYPE_INT64,
+        .plugin.store = ly_type_store_int,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    },
+    {0}
+};

@@ -25,39 +25,9 @@ extern struct lyplg_ext yangdata_plugin; /* plugins_exts_yangdata.c */
 
 /* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"
-#include "plugins_exts_internal.h"
+#include "plugins_internal.h"
 #include "printer_internal.h"
 #include "schema_compile.h"
-
-/**
- * @brief list of all extension plugins implemented internally
- */
-struct lyplg_ext_record lyext_plugins_internal[] = {
-    {"ietf-netconf-acm", "2012-02-22", "default-deny-write", &nacm_plugin},
-    {"ietf-netconf-acm", "2018-02-14", "default-deny-write", &nacm_plugin},
-    {"ietf-netconf-acm", "2012-02-22", "default-deny-all", &nacm_plugin},
-    {"ietf-netconf-acm", "2018-02-14", "default-deny-all", &nacm_plugin},
-    {"ietf-yang-metadata", "2016-08-05", "annotation", &metadata_plugin},
-    {"ietf-restconf", "2017-01-26", "yang-data", &yangdata_plugin},
-    {NULL, NULL, NULL, NULL} /* terminating item */
-};
-
-/* TODO support for external extension plugins */
-
-struct lyplg_ext *
-lyext_get_plugin(struct lysc_ext *ext)
-{
-    for (uint8_t u = 0; lyext_plugins_internal[u].module; ++u) {
-        if (!strcmp(ext->name, lyext_plugins_internal[u].name) &&
-                !strcmp(ext->module->name, lyext_plugins_internal[u].module) &&
-                (!lyext_plugins_internal[u].revision || !strcmp(ext->module->revision, lyext_plugins_internal[u].revision))) {
-            /* we have the match */
-            return lyext_plugins_internal[u].plugin;
-        }
-    }
-
-    return NULL;
-}
 
 API struct ly_ctx *
 lysc_ctx_get_ctx(const struct lysc_ctx *ctx)

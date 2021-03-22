@@ -15,6 +15,12 @@
 #ifndef LY_PLUGINS_INTERNAL_H_
 #define LY_PLUGINS_INTERNAL_H_
 
+#include <stdint.h>
+
+#include "plugins.h"
+#include "plugins_exts.h"
+#include "tree_schema.h"
+
 #define LY_TYPE_UNKNOWN_STR "unknown"               /**< text representation of ::LY_TYPE_UNKNOWN */
 #define LY_TYPE_BINARY_STR "binary"                 /**< text representation of ::LY_TYPE_BINARY */
 #define LY_TYPE_UINT8_STR "8bit unsigned integer"   /**< text representation of ::LY_TYPE_UINT8 */
@@ -35,5 +41,35 @@
 #define LY_TYPE_INT16_STR "16bit integer"           /**< text representation of ::LY_TYPE_INT16 */
 #define LY_TYPE_INT32_STR "32bit integer"           /**< text representation of ::LY_TYPE_INT32 */
 #define LY_TYPE_INT64_STR "64bit integer"           /**< text representation of ::LY_TYPE_INT64 */
+
+/**
+ * @brief Initiate libyang plugins.
+ *
+ * Covers both the types and extensions plugins.
+ *
+ * @return LY_SUCCESS in case of success
+ * @return LY_EINT in case of internal error
+ * @return LY_EMEM in case of memory allocation failure.
+ */
+LY_ERR lyplg_init(void);
+
+/**
+ * @brief Remove (unload) all the plugins currently available.
+ */
+void lyplg_clean(void);
+
+/**
+ * @brief Find the plugin matching the provided attributes.
+ *
+ * @param[in] type Type of the plugin to find (type or extension)
+ * @param[in] module Name of the module where the type/extension is defined. Must not be NULL, in case of plugins for
+ * built-in types, the module is "".
+ * @param[in] revision The revision of the module for which the plugin is implemented. NULL is not a wildcard, it matches
+ * only the plugins with NULL revision specified.
+ * @param[in] name Name of the type/extension which the plugin implements.
+ * @return NULL if the plugin matching the restrictions is not present.
+ * @return Pointer to the matching ::ly_type_plugin or ::lyext_plugin according to the plugin's @p type.
+ */
+void *lyplg_find(enum LYPLG type, const char *module, const char *revision, const char *name);
 
 #endif /* LY_PLUGINS_INTERNAL_H_ */

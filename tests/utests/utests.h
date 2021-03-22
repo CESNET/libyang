@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "libyang.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tests/config.h"
 #include "tree_schema_internal.h"
@@ -217,7 +218,7 @@ struct utest_context {
     assert_non_null(NODE); \
     assert_int_equal((NODE)->basetype, TYPE); \
     CHECK_ARRAY((NODE)->exts, EXTS); \
-    assert_ptr_equal((NODE)->plugin, &(ly_builtin_type_plugins[TYPE]))
+    assert_ptr_equal((NODE)->plugin, lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[TYPE]))
 
 /* @brief check compileted numeric type
  * @param[in] NODE pointer to lysc_type_num value
