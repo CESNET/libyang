@@ -1553,6 +1553,10 @@ imported:
                     break;
                 }
             }
+            if (i == ctx->models.used) {
+                break;
+            }
+
             ctx->models.list[o] = ctx->models.list[i];
             ctx->models.list[i] = NULL;
         }
