@@ -454,7 +454,7 @@ decimal:
 API LY_ERR
 ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
 {
-    int rc;
+    int rc, match_opts;
     LY_ARRAY_COUNT_TYPE u;
     pcre2_match_data *match_data = NULL;
 
@@ -467,7 +467,13 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
             return ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
         }
 
-        rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
+
+        match_opts = PCRE2_ANCHORED;
+#ifdef PCRE2_ENDANCHORED
+        /* PCRE2_ENDANCHORED was added in PCRE2 version 10.30 */
+        match_opts |= PCRE2_ENDANCHORED;
+#endif
+        rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, match_opts, match_data, NULL);
         pcre2_match_data_free(match_data);
 
         if ((rc != PCRE2_ERROR_NOMATCH) && (rc < 0)) {
