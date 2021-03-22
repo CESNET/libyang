@@ -63,7 +63,7 @@ struct lysp_module;
  * - duplicate data in lyd_value and
  * - free the connected data from lyd_value.
  *
- * All these functions are provided to libyang via a set of callback functions specified as ::lysc_type_plugin.
+ * All these functions are provided to libyang via a set of callback functions specified as ::lyplg_type.
  * All the callbacks are supposed to do not log directly via libyang logger. Instead, they return LY_ERR value and
  * ::ly_err_item error structure(s) describing the detected error(s) (helper functions ::ly_err_new() and ::ly_err_free()
  * are available).
@@ -369,7 +369,7 @@ typedef void (*ly_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *val
  * However, if the user type plugin for the specific type is loaded, the plugin can provide it's own functions.
  * The built-in types plugins and are public, so even the user type plugins can use them to do part of their own functionality.
  */
-struct lysc_type_plugin {
+struct lyplg_type {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
     ly_type_store_clb store;         /**< store and canonize the value in the type-specific way */
     ly_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
@@ -385,7 +385,7 @@ struct lysc_type_plugin {
  *
  * TODO hide behind some plugin getter
  */
-extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
+extern struct lyplg_type ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
 
 /**
  * @brief Generic simple comparison callback checking the canonical value.

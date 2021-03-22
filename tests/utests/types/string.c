@@ -1040,7 +1040,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lysc_type_plugin *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
+    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
     struct lysc_type *lysc_type;
     char *alloc_text;
     unsigned int alloc_text_size;
@@ -1149,7 +1149,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value values[10];
-    struct lysc_type_plugin *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
+    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1230,7 +1230,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value values[10];
-    struct lysc_type_plugin *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
+    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
 
@@ -1269,7 +1269,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     const struct lys_module *mod;
     struct lyd_value values[10];
-    struct lysc_type_plugin *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
+    struct lyplg_type *type = &(ly_builtin_type_plugins[LY_TYPE_STRING]);
     struct lysc_type *lysc_type[2];
     const char *schema;
     LY_ERR ly_ret;
