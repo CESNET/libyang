@@ -834,7 +834,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
 {
     size_t idx, idx2, start, end, size, brack;
     char *perl_regex, *ptr;
-    int err_code;
+    int err_code, compile_opts;
     const char *orig_ptr;
     PCRE2_SIZE err_offset;
     pcre2_code *code_local;
@@ -933,6 +933,13 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
 
     /* allocate space for the transformed pattern */
     size = strlen(pattern) + 1;
+    compile_opts = PCRE2_UTF | PCRE2_ANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE;
+#ifdef PCRE2_ENDANCHORED
+    compile_opts |= PCRE2_ENDANCHORED;
+#else
+    /* add space for trailing $ anchor */
+    size++;
+#endif
     perl_regex = malloc(size);
     LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
     perl_regex[0] = '\0';
@@ -979,6 +986,10 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
         ++idx;
         ++orig_ptr;
     }
+#ifndef PCRE2_ENDANCHORED
+    /* anchor match to end of subject */
+    perl_regex[idx++] = '$';
+#endif
     perl_regex[idx] = '\0';
 
     /* substitute Unicode Character Blocks with exact Character Ranges */
@@ -1032,8 +1043,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
     }
 
     /* must return 0, already checked during parsing */
-    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED,
-            PCRE2_UTF | PCRE2_ANCHORED | PCRE2_ENDANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE,
+    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED, compile_opts,
             &err_code, &err_offset, NULL);
     if (!code_local) {
         PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
