@@ -31,6 +31,7 @@
 #include "log.h"
 #include "plugins_exts.h"
 #include "plugins_exts_compile.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
@@ -1140,9 +1141,26 @@ static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
  * @brief stringification of the YANG built-in data types
  */
 const char *ly_data_type2str[LY_DATA_TYPE_COUNT] = {
-    "unknown", "binary", "8bit unsigned integer", "16bit unsigned integer",
-    "32bit unsigned integer", "64bit unsigned integer", "string", "bits", "boolean", "decimal64", "empty", "enumeration",
-    "identityref", "instance-identifier", "leafref", "union", "8bit integer", "16bit integer", "32bit integer", "64bit integer"
+    LY_TYPE_UNKNOWN_STR,
+    LY_TYPE_BINARY_STR,
+    LY_TYPE_UINT8_STR,
+    LY_TYPE_UINT16_STR,
+    LY_TYPE_UINT32_STR,
+    LY_TYPE_UINT64_STR,
+    LY_TYPE_STRING_STR,
+    LY_TYPE_BITS_STR,
+    LY_TYPE_BOOL_STR,
+    LY_TYPE_DEC64_STR,
+    LY_TYPE_EMPTY_STR,
+    LY_TYPE_ENUM_STR,
+    LY_TYPE_IDENT_STR,
+    LY_TYPE_INST_STR,
+    LY_TYPE_LEAFREF_STR,
+    LY_TYPE_UNION_STR,
+    LY_TYPE_INT8_STR,
+    LY_TYPE_INT16_STR,
+    LY_TYPE_INT32_STR,
+    LY_TYPE_INT64_STR
 };
 
 /**
