@@ -923,7 +923,7 @@ extern void ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value
 /**
  * @brief Set of type plugins for YANG built-in types
  */
-struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
+struct lyplg_type ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .validate = NULL, .compare = ly_type_compare_simple,
         .print = ly_type_print_simple, .duplicate = ly_type_dup_simple, .free = ly_type_free_simple,
