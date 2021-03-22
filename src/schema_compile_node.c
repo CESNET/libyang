@@ -1938,7 +1938,7 @@ preparenext:
 
         (*type)->basetype = basetype;
         /* TODO user type plugins */
-        (*type)->plugin = &ly_builtin_type_plugins[basetype];
+        (*type)->plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
         prev_type = *type;
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name,
                 &((struct lysp_tpdf *)tctx->tpdf)->type, basetype, tctx->tpdf->name, base, type);
@@ -1953,7 +1953,7 @@ preparenext:
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         /* TODO user type plugins */
-        (*type)->plugin = &ly_builtin_type_plugins[basetype];
+        (*type)->plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
         ++(*type)->refcount;
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, type_p, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);

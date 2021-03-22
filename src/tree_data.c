@@ -38,8 +38,8 @@
 #include "parser_internal.h"
 #include "path.h"
 #include "plugins_exts.h"
-#include "plugins_exts_internal.h"
 #include "plugins_exts_metadata.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
@@ -2645,7 +2645,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LOG_LOCSET(parent ? parent->schema : NULL, parent, NULL, NULL);
 
     LY_ARRAY_FOR(mod->compiled->exts, u) {
-        if ((mod->compiled->exts[u].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin) &&
+        if ((mod->compiled->exts[u].def->plugin == lyplg_find(LYPLG_EXTENSION, LYEXT_PLUGIN_INTERNAL_ANNOTATION)) &&
                 !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             /* we have the annotation definition */
             ant = &mod->compiled->exts[u];

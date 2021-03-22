@@ -133,6 +133,7 @@ set(libsrc
     src/printer_yang.c
     src/printer_yin.c
     src/printer_tree.c
+    src/plugins.c
     src/plugins_types.c
     src/plugins_types_binary.c
     src/plugins_types_bits.c
@@ -162,6 +163,10 @@ set(headers
     src/in.h
     src/parser_data.h
     src/parser_schema.h
+    src/plugins.h
+    src/plugins_exts.h
+    src/plugins_exts_compile.h
+    src/plugins_exts_print.h
     src/plugins_types.h
     src/out.h
     src/printer_data.h

@@ -16,6 +16,7 @@
 #define LY_PLUGINS_EXTS_H_
 
 #include "log.h"
+#include "plugins.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 
@@ -167,6 +168,20 @@ struct lyplg_ext {
     lyext_clb_schema_printer sprinter;  /**< Callback to print the compiled content (info format) of the extension instance */
     /* lyext_clb_data_printer dprinter; ? */
     lyext_clb_free free;                /**< Free the extension instance specific data created by ::lyplg_ext.compile callback */
+};
+
+struct lyplg_ext_record {
+    /* plugin identification */
+    const char *module;          /**< name of the module where the extension is defined */
+    const char *revision;        /**< optional module revision - if not specified, the plugin applies to any revision,
+                                      which is not an optimal approach due to a possible future revisions of the module.
+                                      Instead, there should be defined multiple items in the plugins list, each with the
+                                      different revision, but all with the same pointer to the plugin functions. The
+                                      only valid use case for the NULL revision is the case the module has no revision. */
+    const char *name;            /**< name of the extension */
+
+    /* runtime data */
+    struct lyplg_ext plugin;     /**< data to utilize plugin implementation */
 };
 
 /**

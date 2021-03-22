@@ -27,6 +27,7 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
 ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
@@ -96,3 +97,21 @@ cleanup:
     }
     return ret;
 }
+
+const struct lyplg_type_record plugins_decimal64[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_DEC64_STR,
+
+        .plugin.id = "libyang 2 - decimal64, version 1",
+        .plugin.type = LY_TYPE_DEC64,
+        .plugin.store = ly_type_store_decimal64,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_simple,
+        .plugin.print = ly_type_print_simple,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    },
+    {0}
+};

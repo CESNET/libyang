@@ -26,6 +26,9 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
+
+const struct lyplg_type_record plugins_leafref[];
 
 API LY_ERR
 ly_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
@@ -101,8 +104,26 @@ ly_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, 
 API void
 ly_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    if (value->realtype->plugin != &ly_builtin_type_plugins[LY_TYPE_LEAFREF]) {
+    if (value->realtype->plugin != &plugins_leafref[0].plugin) {
         /* leafref's realtype is again leafref only in case of incomplete store */
         value->realtype->plugin->free(ctx, value);
     }
 }
+
+const struct lyplg_type_record plugins_leafref[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_LEAFREF_STR,
+
+        .plugin.id = "libyang 2 - leafref, version 1",
+        .plugin.type = LY_TYPE_LEAFREF,
+        .plugin.store = ly_type_store_leafref,
+        .plugin.validate = ly_type_validate_leafref,
+        .plugin.compare = ly_type_compare_leafref,
+        .plugin.print = ly_type_print_leafref,
+        .plugin.duplicate = ly_type_dup_leafref,
+        .plugin.free = ly_type_free_leafref
+    },
+    {0}
+};

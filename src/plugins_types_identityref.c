@@ -27,6 +27,7 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API const char *
 ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
@@ -172,3 +173,21 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
     }
     return LY_ENOT;
 }
+
+const struct lyplg_type_record plugins_identityref[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_IDENT_STR,
+
+        .plugin.id = "libyang 2 - identityref, version 1",
+        .plugin.type = LY_TYPE_IDENT,
+        .plugin.store = ly_type_store_identityref,
+        .plugin.validate = NULL,
+        .plugin.compare = ly_type_compare_identityref,
+        .plugin.print = ly_type_print_identityref,
+        .plugin.duplicate = ly_type_dup_simple,
+        .plugin.free = ly_type_free_simple
+    },
+    {0}
+};

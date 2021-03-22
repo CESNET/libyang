@@ -30,7 +30,7 @@ LYEXT_VERSION_CHECK
  *
  * Implementation of ::lyext_clb_free callback set as lyext_plugin::free.
  */
-void
+static void
 yangdata_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
     lysc_extension_instance_substatements_free(ctx, ext->substmts);
@@ -41,7 +41,7 @@ yangdata_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
  *
  * Implementation of lyext_clb_compile callback set as lyext_plugin::compile.
  */
-LY_ERR
+static LY_ERR
 yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
 {
     LY_ERR ret;
@@ -156,7 +156,7 @@ emem:
  *
  * Implementation of ::lyext_clb_schema_printer set as ::lyext_plugin::sprinter
  */
-LY_ERR
+static LY_ERR
 yangdata_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
 {
     lysc_print_extension_instance(ctx, ext, flag);
@@ -164,12 +164,19 @@ yangdata_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly
 }
 
 /**
- * @brief Plugin for the yang-data extension
+ * @brief Plugin descriptions for the yang-data extension
  */
-struct lyplg_ext yangdata_plugin = {
-    .id = "libyang 2 - yang-data, version 1",
-    .compile = &yangdata_compile,
-    .validate = NULL,
-    .sprinter = &yangdata_schema_printer,
-    .free = yangdata_free
+const struct lyplg_ext_record plugins_yangdata[] = {
+    {
+        .module = "ietf-restconf",
+        .revision = "2017-01-26",
+        .name = "yang-data",
+
+        .plugin.id = "libyang 2 - yang-data, version 1",
+        .plugin.compile = &yangdata_compile,
+        .plugin.validate = NULL,
+        .plugin.sprinter = &yangdata_schema_printer,
+        .plugin.free = yangdata_free
+    },
+    {0}     /* terminating zeroed record */
 };

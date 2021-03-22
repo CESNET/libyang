@@ -35,6 +35,7 @@
 #include "hash_table.h"
 #include "in.h"
 #include "parser_data.h"
+#include "plugins_internal.h"
 #include "plugins_types.h"
 #include "schema_compile.h"
 #include "set.h"
@@ -226,10 +227,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* dictionary */
     lydict_init(&ctx->dict);
 
-#if 0 /* TODO when plugins implemented */
     /* plugins */
-    ly_load_plugins();
-#endif
+    LY_CHECK_ERR_RET(lyplg_init(), LOGINT(NULL), LY_EINT);
 
     /* initialize thread-specific keys */
     while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
@@ -914,10 +913,8 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     /* dictionary */
     lydict_clean(&ctx->dict);
 
-#if 0 /* TODO when plugins implemented */
     /* plugins - will be removed only if this is the last context */
-    ly_clean_plugins();
-#endif
+    lyplg_clean();
 
     free(ctx);
 }

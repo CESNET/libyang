@@ -26,6 +26,7 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 static LY_ERR
 ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, struct lyd_value_subvalue *subvalue,
@@ -229,3 +230,21 @@ ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
         value->subvalue = NULL;
     }
 }
+
+const struct lyplg_type_record plugins_union[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_UNION_STR,
+
+        .plugin.id = "libyang 2 - union,version 1",
+        .plugin.type = LY_TYPE_UNION,
+        .plugin.store = ly_type_store_union,
+        .plugin.validate = ly_type_validate_union,
+        .plugin.compare = ly_type_compare_union,
+        .plugin.print = ly_type_print_union,
+        .plugin.duplicate = ly_type_dup_union,
+        .plugin.free = ly_type_free_union
+    },
+    {0}
+};

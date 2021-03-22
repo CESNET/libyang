@@ -28,8 +28,8 @@
 /* additional internal headers for some useful simple macros */
 #include "common.h"
 #include "compat.h"
-
 #include "path.h"
+#include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API const char *
 ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
@@ -289,3 +289,21 @@ ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
     value->target = NULL;
     ly_type_free_simple(ctx, value);
 }
+
+const struct lyplg_type_record plugins_instanceid[] = {
+    {
+        .module = "",
+        .revision = NULL,
+        .name = LY_TYPE_INST_STR,
+
+        .plugin.id = "libyang 2 - instance-identifier, version 1",
+        .plugin.type = LY_TYPE_INST,
+        .plugin.store = ly_type_store_instanceid,
+        .plugin.validate = ly_type_validate_instanceid,
+        .plugin.compare = ly_type_compare_instanceid,
+        .plugin.print = ly_type_print_instanceid,
+        .plugin.duplicate = ly_type_dup_instanceid,
+        .plugin.free = ly_type_free_instanceid
+    },
+    {0}
+};

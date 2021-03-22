@@ -82,7 +82,7 @@ emem:
  *
  * Implementation of lyext_clb_compile callback set as lyext_plugin::compile.
  */
-LY_ERR
+static LY_ERR
 nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
 {
     LY_ERR ret;
@@ -126,9 +126,9 @@ invalid_parent:
 
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        if ((&parent->exts[u] != c_ext) && (parent->exts[u].def->plugin == c_ext->def->plugin)) {
+        if ((&parent->exts[u] != c_ext) && (parent->exts[u].def->plugin->compile == c_ext->def->plugin->compile)) {
             /* duplication of a NACM extension on a single node
-             * We check plugin since we want to catch even the situation that there is default-deny-all
+             * We check for all NACM plugins since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */
             if (parent->exts[u].def == c_ext->def) {
                 lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
@@ -150,12 +150,49 @@ invalid_parent:
 }
 
 /**
- * @brief Plugin for the NACM's default-deny-write and default-deny-all extensions
+ * @brief Plugin descriptions for the NACM's default-deny-write and default-deny-all extensions
  */
-struct lyplg_ext nacm_plugin = {
-    .id = "libyang 2 - NACM, version 1",
-    .compile = &nacm_compile,
-    .validate = NULL,
-    .sprinter = NULL,
-    .free = NULL
+const struct lyplg_ext_record plugins_nacm[] = {
+    {
+        .module = "ietf-netconf-acm",
+        .revision = "2012-02-22",
+        .name = "default-deny-write",
+
+        .plugin.id = "libyang 2 - NACM, version 1",
+        .plugin.compile = &nacm_compile,
+        .plugin.validate = NULL,
+        .plugin.sprinter = NULL,
+        .plugin.free = NULL
+    }, {
+        .module = "ietf-netconf-acm",
+        .revision = "2018-02-14",
+        .name = "default-deny-write",
+
+        .plugin.id = "libyang 2 - NACM, version 1",
+        .plugin.compile = &nacm_compile,
+        .plugin.validate = NULL,
+        .plugin.sprinter = NULL,
+        .plugin.free = NULL
+    }, {
+        .module = "ietf-netconf-acm",
+        .revision = "2012-02-22",
+        .name = "default-deny-all",
+
+        .plugin.id = "libyang 2 - NACM, version 1",
+        .plugin.compile = &nacm_compile,
+        .plugin.validate = NULL,
+        .plugin.sprinter = NULL,
+        .plugin.free = NULL
+    }, {
+        .module = "ietf-netconf-acm",
+        .revision = "2018-02-14",
+        .name = "default-deny-all",
+
+        .plugin.id = "libyang 2 - NACM, version 1",
+        .plugin.compile = &nacm_compile,
+        .plugin.validate = NULL,
+        .plugin.sprinter = NULL,
+        .plugin.free = NULL
+    },
+    {0} /* terminating zeroed item */
 };
