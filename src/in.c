@@ -19,6 +19,12 @@
 #define _DARWIN_C_SOURCE /* F_GETPATH */
 #endif
 
+#if defined(__NetBSD__) || defined(__OpenBSD__)
+/* realpath */
+#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE_EXTENDED /* realpath */
+#endif
+
 #include "in.h"
 #include "in_internal.h"
 

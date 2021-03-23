@@ -14,6 +14,11 @@
 #define _GNU_SOURCE /* asprintf */
 #define _POSIX_C_SOURCE 200809L /* strdup */
 
+#if defined(__NetBSD__) || defined(__OpenBSD__)
+#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE_EXTENDED /* realpath */
+#endif
+
 #include "context.h"
 
 #include <errno.h>
