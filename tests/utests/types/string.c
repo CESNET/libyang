@@ -798,8 +798,8 @@ test_data_xml(void **state)
     TEST_ERROR_XML("T_ANCHOR", "abc");
     CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not conform to \"a.*b\".",
             "Schema location /T_ANCHOR:port, line number 1.");
-    TEST_ERROR_XML("T_ANCHOR", "cb");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"cb\" does not conform to \"a.*b\".",
+    TEST_ERROR_XML("T_ANCHOR", "cab");
+    CHECK_LOG_CTX("Unsatisfied pattern - \"cab\" does not conform to \"a.*b\".",
             "Schema location /T_ANCHOR:port, line number 1.");
 }
 
