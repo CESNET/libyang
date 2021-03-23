@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 RETVAL=0
 
@@ -6,7 +6,7 @@ RETVAL=0
 SRC="$*"
 
 # param FUNC - name of the function in compat to check
-function check_compat_func {
+check_compat_func () {
 	FILES=`grep -rE "([^[:alnum:]]|^)$1\([^\)]+\)" --include=\*.{c,h} $SRC | cut -d: -f1 | uniq`
 	for f in $FILES; do
 		grep -q "#include \"compat.h\"" $f
@@ -17,7 +17,7 @@ function check_compat_func {
 	done
 }
 
-function check_compat_macro {
+check_compat_macro () {
 	FILES=`grep -rE "([^[:alnum:]]|^)$1([^[:alnum:]]|$)" --include=\*.{c,h} $SRC | cut -d: -f1 | uniq`
 	for f in $FILES; do
 		grep -q "#include \"compat.h\"" $f

@@ -16,6 +16,7 @@
 #define _COMPAT_H_
 
 #include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <sys/types.h>
 
@@ -53,11 +54,13 @@
 #cmakedefine HAVE_GETLINE
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
 
+#ifndef bswap64
 #define bswap64(val) \
     ( (((val) >> 56) & 0x00000000000000FF) | (((val) >> 40) & 0x000000000000FF00) | \
     (((val) >> 24) & 0x0000000000FF0000) | (((val) >>  8) & 0x00000000FF000000) | \
     (((val) <<  8) & 0x000000FF00000000) | (((val) << 24) & 0x0000FF0000000000) | \
     (((val) << 40) & 0x00FF000000000000) | (((val) << 56) & 0xFF00000000000000) )
+#endif
 
 #undef le64toh
 #undef htole64
