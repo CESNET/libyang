@@ -1738,6 +1738,29 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Find the correct plugin implementing the described type
+ *
+ * @param[in] mod Module where the type is defined
+ * @param[in] name Name of the type (typedef)
+ * @param[in] basetype Type's basetype (when the built-in base plugin is supposed to be used)
+ * @return Pointer to the plugin implementing the described data type.
+ */
+static struct lyplg_type *
+lys_compile_type_get_plugin(struct lys_module *mod, const char *name, LY_DATA_TYPE basetype)
+{
+    struct lyplg_type *p;
+
+    /* try to find loaded user type plugins */
+    p = lyplg_find(LYPLG_TYPE, mod->name, mod->revision, name);
+    if (!p) {
+        /* use the internal built-in type implementation */
+        p = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
+    }
+
+    return p;
+}
+
 LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
         struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
@@ -1937,8 +1960,7 @@ preparenext:
         }
 
         (*type)->basetype = basetype;
-        /* TODO user type plugins */
-        (*type)->plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
+        (*type)->plugin = lys_compile_type_get_plugin(tctx->tpdf->type.pmod->mod, tctx->tpdf->name, basetype);
         prev_type = *type;
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name,
                 &((struct lysp_tpdf *)tctx->tpdf)->type, basetype, tctx->tpdf->name, base, type);
@@ -1952,8 +1974,7 @@ preparenext:
     if (type_p->flags || !base || (basetype == LY_TYPE_LEAFREF)) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
-        /* TODO user type plugins */
-        (*type)->plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
+        (*type)->plugin = base ? base->plugin : lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
         ++(*type)->refcount;
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, type_p, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
