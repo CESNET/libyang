@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "common.h"
@@ -74,8 +75,33 @@ struct lyplg_record {
     int8_t plugin[];             /**< specific plugin type's data - ::lyplg_ext or ::lyplg_type */
 };
 
+static struct ly_set plugins_handlers = {0};
 static struct ly_set plugins_types = {0};
 static struct ly_set plugins_extensions = {0};
+
+/**
+ * @brief Just a variadic data to cover extension and type plugins by a single ::plugins_load() function.
+ *
+ * The values are taken from ::LY_PLUGINS_EXTENSIONS and ::LYPLG_TYPES macros.
+ */
+static const struct {
+    const char *id;          /**< string identifier: type/extension */
+    const char *apiver_var;  /**< expected variable name holding API version value */
+    const char *plugins_var; /**< expected variable name holding plugin records */
+    uint32_t apiver;         /**< expected API version */
+} plugins_load_info[] = {
+    {   /* LYPLG_TYPE */
+        .id = "type",
+        .apiver_var = "plugins_types_apiver__",
+        .plugins_var = "plugins_types__",
+        .apiver = LYPLG_TYPE_API_VERSION
+    }, {/* LYPLG_EXTENSION */
+        .id = "extension",
+        .apiver_var = "plugins_extensions_apiver__",
+        .plugins_var = "plugins_extensions__",
+        .apiver = LYPLG_EXT_API_VERSION
+    }
+};
 
 /**
  * @brief Iterate over list of loaded plugins of the given @p type.
@@ -151,7 +177,7 @@ plugins_insert(enum LYPLG type, const void *recs)
         for (uint32_t i = 0; rec[i].name; i++) {
             LY_CHECK_RET(ly_set_add(&plugins_extensions, (void *)&rec[i], 0, NULL));
         }
-    } else { /* LY_PLUGIN_TYPE */
+    } else { /* LYPLG_TYPE */
         const struct lyplg_type_record *rec = (const struct lyplg_type_record *)recs;
 
         for (uint32_t i = 0; rec[i].name; i++) {
@@ -172,6 +198,7 @@ lyplg_clean_(void)
 
     ly_set_erase(&plugins_types, NULL);
     ly_set_erase(&plugins_extensions, NULL);
+    ly_set_erase(&plugins_handlers, (void(*)(void *))dlclose);
 }
 
 void
@@ -180,6 +207,104 @@ lyplg_clean(void)
     pthread_mutex_lock(&plugins_guard);
     lyplg_clean_();
     pthread_mutex_unlock(&plugins_guard);
+}
+
+/**
+ * @brief Get the expected plugin objects from the loaded dynamic object and add the defined plugins into the lists of
+ * available extensions/types plugins.
+ *
+ * @param[in] dlhandler Loaded dynamic library handler.
+ * @param[in] pathname Path of the loaded library for logging.
+ * @param[in] type Type of the plugins to get from the dynamic library. Note that a single library can hold both types
+ * and extensions plugins implementations, so this function should be called twice (once for each plugin type) with
+ * different @p type values
+ * @return LY_ERR values.
+ */
+static LY_ERR
+plugins_load(void *dlhandler, const char *pathname, enum LYPLG type)
+{
+    const void *plugins;
+    uint32_t *version;
+
+    /* type plugin */
+    version = dlsym(dlhandler, plugins_load_info[type].apiver_var);
+    if (version) {
+        /* check version ... */
+        if (*version != plugins_load_info[type].apiver) {
+            LOGERR(NULL, LY_EINVAL, "Processing user %s plugin \"%s\" failed, wrong API version - %d expected, %d found.",
+                    plugins_load_info[type].id, pathname, plugins_load_info[type].apiver, *version);
+            return LY_EINVAL;
+        }
+
+        /* ... get types plugins information ... */
+        if (!(plugins = dlsym(dlhandler, plugins_load_info[type].plugins_var))) {
+            char *errstr = dlerror();
+            LOGERR(NULL, LY_EINVAL, "Processing user %s plugin \"%s\" failed, missing %s plugins information (%s).",
+                    plugins_load_info[type].id, pathname, plugins_load_info[type].id, errstr);
+            return LY_EINVAL;
+        }
+
+        /* ... and load all the types plugins */
+        LY_CHECK_RET(plugins_insert(type, plugins));
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+plugins_load_module(const char *pathname)
+{
+    LY_ERR ret = LY_SUCCESS;
+    void *dlhandler;
+    uint32_t types_count = 0, extensions_count = 0;
+
+    dlerror();    /* Clear any existing error */
+
+    dlhandler = dlopen(pathname, RTLD_NOW);
+    if (!dlhandler) {
+        LOGERR(NULL, LY_ESYS, "Loading \"%s\" as a plugin failed (%s).", pathname, dlerror());
+        return LY_ESYS;
+    }
+
+    if (ly_set_contains(&plugins_handlers, dlhandler, NULL)) {
+        /* the plugin is already loaded */
+        LOGVRB("Plugin \"%s\" already loaded.", pathname);
+
+        /* keep the correct refcount */
+        dlclose(dlhandler);
+        return LY_SUCCESS;
+    }
+
+    /* remember the current plugins lists for recovery */
+    types_count = plugins_types.count;
+    extensions_count = plugins_extensions.count;
+
+    /* type plugin */
+    ret = plugins_load(dlhandler, pathname, LYPLG_TYPE);
+    LY_CHECK_GOTO(ret, error);
+
+    /* extension plugin */
+    ret = plugins_load(dlhandler, pathname, LYPLG_EXTENSION);
+    LY_CHECK_GOTO(ret, error);
+
+    /* remember the dynamic plugin */
+    ret = ly_set_add(&plugins_handlers, dlhandler, 1, NULL);
+    LY_CHECK_GOTO(ret, error);
+
+    return LY_SUCCESS;
+
+error:
+    dlclose(dlhandler);
+
+    /* revert changes in the lists */
+    while (plugins_types.count > types_count) {
+        ly_set_rm_index(&plugins_types, plugins_types.count - 1, NULL);
+    }
+    while (plugins_extensions.count > extensions_count) {
+        ly_set_rm_index(&plugins_extensions, plugins_extensions.count - 1, NULL);
+    }
+
+    return ret;
 }
 
 LY_ERR
@@ -228,5 +353,28 @@ error:
         /* all the plugins here are internal, invalid record actually means an internal libyang error */
         ret = LY_EINT;
     }
+    return ret;
+}
+
+API LY_ERR
+lyplg_add(const char *pathname)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, pathname, LY_EINVAL);
+
+    /* works only in case a context exists */
+    pthread_mutex_lock(&plugins_guard);
+    if (!context_refcount) {
+        /* no context */
+        pthread_mutex_unlock(&plugins_guard);
+        LOGERR(NULL, LY_EDENIED, "To add a plugin, at least one context must exists.");
+        return LY_EDENIED;
+    }
+
+    ret = plugins_load_module(pathname);
+
+    pthread_mutex_unlock(&plugins_guard);
+
     return ret;
 }
