@@ -141,6 +141,13 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Plugin information for integer types implementation.
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_TYPES = {
+ */
 const struct lyplg_type_record plugins_integer[] = {
     {
         .module = "",

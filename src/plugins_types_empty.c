@@ -75,6 +75,13 @@ ly_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Plugin information for empty type implementation.
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_TYPES = {
+ */
 const struct lyplg_type_record plugins_empty[] = {
     {
         .module = "",

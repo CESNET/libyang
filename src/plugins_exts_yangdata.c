@@ -20,12 +20,6 @@
 #include "plugins_exts.h"
 
 /**
- * @brief Storage for ID used to check plugin API version compatibility.
- * Ignored here in the internal plugin.
-LYEXT_VERSION_CHECK
- */
-
-/**
  * @brief Free yang-data extension instances' data.
  *
  * Implementation of ::lyext_clb_free callback set as lyext_plugin::free.
@@ -165,6 +159,10 @@ yangdata_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly
 
 /**
  * @brief Plugin descriptions for the yang-data extension
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_EXTENSIONS = {
  */
 const struct lyplg_ext_record plugins_yangdata[] = {
     {
