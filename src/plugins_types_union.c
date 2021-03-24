@@ -231,6 +231,13 @@ ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
     }
 }
 
+/**
+ * @brief Plugin information for union type implementation.
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_TYPES = {
+ */
 const struct lyplg_type_record plugins_union[] = {
     {
         .module = "",

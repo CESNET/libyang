@@ -19,12 +19,6 @@
 #include "libyang.h"
 #include "plugins_exts.h"
 
-/**
- * @brief Storage for ID used to check plugin API version compatibility.
- * Ignored here in the internal plugin.
-LYEXT_VERSION_CHECK
- */
-
 struct nacm_dfs_arg {
     struct lysc_ext_instance *c_ext;
     struct lysc_node *parent;
@@ -151,6 +145,10 @@ invalid_parent:
 
 /**
  * @brief Plugin descriptions for the NACM's default-deny-write and default-deny-all extensions
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_EXTENSIONS = {
  */
 const struct lyplg_ext_record plugins_nacm[] = {
     {

@@ -22,12 +22,6 @@
 #include "plugins_exts.h"
 
 /**
- * @brief Storage for ID used to check plugin API version compatibility.
- * Ignored here in the internal plugin.
-LYEXT_VERSION_CHECK
- */
-
-/**
  * @brief Representation of the compiled metadata substatements - simplify storage for the items available via
  * ::lysc_ext_substmt.
  */
@@ -154,6 +148,10 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 
 /**
  * @brief Plugin descriptions for the Metadata's annotation extension
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_EXTENSIONS = {
  */
 const struct lyplg_ext_record plugins_metadata[] = {
     {

@@ -290,6 +290,13 @@ ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
     ly_type_free_simple(ctx, value);
 }
 
+/**
+ * @brief Plugin information for instance-identifier type implementation.
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_TYPES = {
+ */
 const struct lyplg_type_record plugins_instanceid[] = {
     {
         .module = "",

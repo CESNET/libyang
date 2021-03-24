@@ -81,6 +81,21 @@ struct lysp_module;
  * required format via ::ly_type_print_clb implementation.
  */
 
+/**
+ * @brief Extensions API version
+ */
+#define LYPLG_TYPE_API_VERSION 1
+
+/**
+ * @brief Macro to define plugin information in external plugins
+ *
+ * Use as follows:
+ * LYPLG_TYPES = {{<filled information of ::lyplg_type_record>}, ..., {0}};
+ */
+#define LYPLG_TYPES \
+    uint32_t plugins_types_apiver__ = LYPLG_TYPE_API_VERSION; \
+    const struct lyplg_type_record plugins_types__[]
+
 /*
  * @brief Create and fill error structure.
  *

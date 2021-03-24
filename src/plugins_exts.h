@@ -41,13 +41,17 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYEXT_API_VERSION 1
+#define LYPLG_EXT_API_VERSION 1
 
 /**
- * @brief Macro to store version of extension plugins API in the plugins.
- * It is matched when the plugin is being loaded by libyang.
+ * @brief Macro to define plugin information in external plugins
+ *
+ * Use as follows:
+ * LYPLG_EXTENSIONS = {{<filled information of ::lyplg_ext_record>}, ..., {0}};
  */
-#define LYEXT_VERSION_CHECK uint32_t lyext_api_version = LYEXT_API_VERSION;
+#define LYPLG_EXTENSIONS \
+    uint32_t plugins_extensions_apiver__ = LYPLG_EXT_API_VERSION; \
+    const struct lyplg_ext_record plugins_extensions__[]
 
 /**
  * @brief Possible cardinalities of the YANG statements.

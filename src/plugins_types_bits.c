@@ -222,6 +222,13 @@ ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
     value->canonical = NULL;
 }
 
+/**
+ * @brief Plugin information for bits type implementation.
+ *
+ * Note that external plugins are supposed to use:
+ *
+ *   LYPLG_TYPES = {
+ */
 const struct lyplg_type_record plugins_bits[] = {
     {
         .module = "",
