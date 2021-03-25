@@ -467,7 +467,6 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
             return ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
         }
 
-
         match_opts = PCRE2_ANCHORED;
 #ifdef PCRE2_ENDANCHORED
         /* PCRE2_ENDANCHORED was added in PCRE2 version 10.30 */

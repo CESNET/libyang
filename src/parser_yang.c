@@ -694,7 +694,7 @@ get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, si
             if (ctx->in->current[1] == '\n') {
                 break;
             }
-            /* fallthrough */
+        /* fallthrough */
         default:
             /* either a keyword start or an invalid character */
             goto keyword_start;

@@ -124,7 +124,7 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path,
     char *msg = NULL;
     struct ly_err_item *e;
 
-    if (!err || ecode == LY_SUCCESS) {
+    if (!err || (ecode == LY_SUCCESS)) {
         /* nothing to do */
         return ecode;
     }

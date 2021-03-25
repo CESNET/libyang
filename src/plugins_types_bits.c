@@ -119,7 +119,6 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
         buf_len += item_len + 1;
     }
 
-
     /* creating buffer for cannonical value */
     if (buf_len != 0) {
         uint32_t buf_index = 0;

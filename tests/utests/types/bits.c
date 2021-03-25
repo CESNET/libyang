@@ -235,8 +235,8 @@ test_schema_yang(void **state)
 
     /* feature is not present */
     schema = MODULE_CREATE_YANG("IF_0", "feature f;"
-    "leaf port {type bits { bit zero;\nbit one;"
-    " bit ten{if-feature f; position 10;}\tbit eleven;}}");
+            "leaf port {type bits { bit zero;\nbit one;"
+            " bit ten{if-feature f; position 10;}\tbit eleven;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     assert_int_equal(LY_ENOT, lys_feature_value (mod, "f"));
     assert_non_null(mod);
@@ -253,9 +253,10 @@ test_schema_yang(void **state)
 
     /* feature is present */
     schema = MODULE_CREATE_YANG("IF_1", "feature f;"
-    "leaf port {type bits { bit zero;\nbit one;"
-    " bit ten{position 10; if-feature f;}\tbit eleven;}}");
+            "leaf port {type bits { bit zero;\nbit one;"
+            " bit ten{position 10; if-feature f;}\tbit eleven;}}");
     const char *IF_1_FEATURES[] = {"f", NULL};
+
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, IF_1_FEATURES, &mod);
     assert_non_null(mod);
     lysc_leaf = (void *)mod->compiled->data;
