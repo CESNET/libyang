@@ -689,6 +689,12 @@ get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, si
             /* skip whitespaces (optsep) */
             ctx->indent += Y_TAB_SPACES;
             break;
+        case '\r':
+            /* possible CRLF endline */
+            if (ctx->in->current[1] == '\n') {
+                break;
+            }
+            /* fallthrough */
         default:
             /* either a keyword start or an invalid character */
             goto keyword_start;
