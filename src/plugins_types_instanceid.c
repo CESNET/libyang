@@ -31,12 +31,7 @@
 
 #include "path.h"
 
-/**
- * @brief Printer callback printing the instance-identifier value.
- *
- * Implementation of the ly_type_print_clb.
- */
-const char *
+API const char *
 ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     LY_ARRAY_COUNT_TYPE u, v;
@@ -155,12 +150,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
     return result;
 }
 
-/**
- * @brief Validate and store value of the YANG built-in instance-identifier type.
- *
- * Implementation of the ly_type_store_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
@@ -208,12 +198,7 @@ cleanup_value:
     }
 }
 
-/**
- * @brief Validate value of the YANG built-in instance-identifier type.
- *
- * Implementation of the ly_type_validate_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
         const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *tree, struct lyd_value *storage,
         struct ly_err_item **err)
@@ -233,12 +218,7 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     return ly_err_new(err, ret, LYVE_DATA, NULL, NULL, LY_ERRMSG_NOINST, storage->canonical);
 }
 
-/**
- * @brief Comparison callback checking the instance-identifier value.
- *
- * Implementation of the ly_type_compare_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     LY_ARRAY_COUNT_TYPE u, v;
@@ -294,12 +274,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
     return LY_SUCCESS;
 }
 
-/**
- * @brief Duplication callback of the instance-identifier values.
- *
- * Implementation of the ly_type_dup_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
@@ -307,12 +282,7 @@ ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *origina
     return ly_path_dup(ctx, original->target, &dup->target);
 }
 
-/**
- * @brief Free value of the YANG built-in instance-identifier types.
- *
- * Implementation of the ly_type_free_clb.
- */
-void
+API void
 ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     ly_path_free(ctx, value->target);
