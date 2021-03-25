@@ -79,12 +79,7 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
     return ret;
 }
 
-/**
- * @brief Store and canonize value of the YANG built-in union type.
- *
- * Implementation of the ly_type_store_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
@@ -144,12 +139,7 @@ cleanup_value:
     return ret;
 }
 
-/**
- * @brief Validate value of the YANG built-in union type.
- *
- * Implementation of the ly_type_validate_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
@@ -187,12 +177,7 @@ ly_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     return LY_SUCCESS;
 }
 
-/**
- * @brief Comparison callback checking the union value.
- *
- * Implementation of the ly_type_compare_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
@@ -205,23 +190,13 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
     return val1->subvalue->value.realtype->plugin->compare(&val1->subvalue->value, &val2->subvalue->value);
 }
 
-/**
- * @brief Printer callback printing the union value.
- *
- * Implementation of the ly_type_print_clb.
- */
-const char *
+API const char *
 ly_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     return value->subvalue->value.realtype->plugin->print(&value->subvalue->value, format, prefix_data, dynamic);
 }
 
-/**
- * @brief Duplication callback of the union values.
- *
- * Implementation of the ly_type_dup_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
@@ -240,12 +215,7 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
     return LY_SUCCESS;
 }
 
-/**
- * @brief Free value of the YANG built-in union type.
- *
- * Implementation of the ly_type_free_clb.
- */
-void
+API void
 ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->canonical);

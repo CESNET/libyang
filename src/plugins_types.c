@@ -266,11 +266,6 @@ ly_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *
     return ly_get_prefix(mod, format, prefix_data);
 }
 
-/**
- * @brief Generic comparison callback checking the canonical value.
- *
- * Implementation of the ly_type_compare_clb.
- */
 API LY_ERR
 ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2)
 {

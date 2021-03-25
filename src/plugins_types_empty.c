@@ -26,12 +26,7 @@
 #include "common.h"
 #include "compat.h"
 
-/**
- * @brief Validate and store value of the YANG built-in empty type.
- *
- * Implementation of the ly_type_store_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -68,12 +63,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Comparison callback for built-in empty type.
- *
- * Implementation of the ly_type_compare_clb.
- */
-LY_ERR
+API LY_ERR
 ly_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
