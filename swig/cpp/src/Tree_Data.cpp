@@ -431,8 +431,9 @@ S_Difflist Data_Node::diff(S_Data_Node second, int options) {
 S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
     struct lyd_node *new_node = nullptr;
 
+    ly_errno = LY_SUCCESS;
     new_node = lyd_new_path(node, ctx ? ctx->ctx : NULL, path, (void *)value, value_type, options);
-    if (!new_node) {
+    if (ly_errno) {
         check_libyang_error(node->schema->module->ctx);
     }
 
