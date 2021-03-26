@@ -12,15 +12,22 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE
+
 #include "plugins.h"
 #include "plugins_internal.h"
 
 #include <assert.h>
+#include <dirent.h>
 #include <dlfcn.h>
+#include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <string.h>
+#include <sys/types.h>
 
+#include "config.h"
 #include "common.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
@@ -88,17 +95,23 @@ static const struct {
     const char *id;          /**< string identifier: type/extension */
     const char *apiver_var;  /**< expected variable name holding API version value */
     const char *plugins_var; /**< expected variable name holding plugin records */
+    const char *envdir;      /**< environment variable containing directory with the plugins */
+    const char *dir;         /**< default directory with the plugins (has less priority than envdir) */
     uint32_t apiver;         /**< expected API version */
 } plugins_load_info[] = {
     {   /* LYPLG_TYPE */
         .id = "type",
         .apiver_var = "plugins_types_apiver__",
         .plugins_var = "plugins_types__",
+        .envdir = "LIBYANG_TYPES_PLUGINS_DIR",
+        .dir = LYPLG_TYPE_DIR,
         .apiver = LYPLG_TYPE_API_VERSION
     }, {/* LYPLG_EXTENSION */
         .id = "extension",
         .apiver_var = "plugins_extensions_apiver__",
         .plugins_var = "plugins_extensions__",
+        .envdir = "LIBYANG_EXTENSIONS_PLUGINS_DIR",
+        .dir = LYPLG_EXT_DIR,
         .apiver = LYPLG_EXT_API_VERSION
     }
 };
@@ -307,6 +320,56 @@ error:
     return ret;
 }
 
+static LY_ERR
+plugins_insert_dir(enum LYPLG type)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *pluginsdir;
+    DIR *dir;
+    ly_bool default_dir = 0;
+
+    /* try to get the plugins directory from environment variable */
+    pluginsdir = getenv(plugins_load_info[type].envdir);
+    if (!pluginsdir) {
+        /* remember that we are going to a default dir and do not print warning if the directory doesn't exist */
+        default_dir = 1;
+        pluginsdir = plugins_load_info[type].dir;
+    }
+
+    dir = opendir(pluginsdir);
+    if (!dir) {
+        /* no directory (or no access to it), no extension plugins */
+        if (!default_dir || (errno != ENOENT)) {
+            LOGWRN(NULL, "Failed to open libyang %s plugins directory \"%s\" (%s).", plugins_load_info[type].id,
+                    pluginsdir, strerror(errno));
+        }
+    } else {
+        struct dirent *file;
+
+        while ((file = readdir(dir))) {
+            size_t len;
+            char pathname[PATH_MAX];
+
+            /* required format of the filename is *LYPLG_SUFFIX */
+            len = strlen(file->d_name);
+            if ((len < LYPLG_SUFFIX_LEN + 1) || strcmp(&file->d_name[len - LYPLG_SUFFIX_LEN], LYPLG_SUFFIX)) {
+                continue;
+            }
+
+            /* and construct the filepath */
+            snprintf(pathname, PATH_MAX, "%s/%s", pluginsdir, file->d_name);
+
+            ret = plugins_load_module(pathname);
+            if (ret) {
+                break;
+            }
+        }
+        closedir(dir);
+    }
+
+    return ret;
+}
+
 LY_ERR
 lyplg_init(void)
 {
@@ -338,6 +401,12 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_nacm), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_yangdata), error);
+
+    /* external types */
+    LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_TYPE), error);
+
+    /* external extensions */
+    LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_EXTENSION), error);
 
     /* initiation done, wake-up possibly waiting threads creating another contexts */
     pthread_mutex_unlock(&plugins_guard);

@@ -84,10 +84,6 @@ set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
 set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
-configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
-
-#set(EXTENSIONS_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/extensions")
-#set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
 
 # setup bindings
 #set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
@@ -96,6 +92,9 @@ configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/
 #set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 #set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 #set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
+
+configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
 
 set(libsrc
     src/common.c
@@ -205,7 +204,9 @@ option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL"
 
 #option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
 #option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
-#set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
+set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
+set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
+set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
 
 #if(ENABLE_CACHE)
 #    set(LY_ENABLED_CACHE 1)
