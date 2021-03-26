@@ -1273,6 +1273,9 @@ utest_setup(void **state)
     /* libyang context */
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &current_utest_context->ctx));
 
+    /* clean all errors from the setup - usually warnings regarding the plugins directories */
+    UTEST_LOG_CLEAN;
+
     return 0;
 }
 
