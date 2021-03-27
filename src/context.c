@@ -157,7 +157,7 @@ error:
 static int
 ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
 {
-    unsigned int i, u;
+    unsigned int i, u, imported;
     struct lyd_node *module, *node;
     struct ly_set *set;
     const char *name, *revision;
@@ -177,6 +177,7 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
         name = NULL;
         revision = NULL;
         ly_set_clean(&features);
+        imported = 0;
 
         LY_TREE_FOR(module->child, node) {
             if (!strcmp(node->schema->name, "name")) {
@@ -189,8 +190,13 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
                     ((struct lyd_node_leaf_list*)node)->value.enm->value) {
                 /* imported module - skip it, it will be loaded as a side effect
                  * of loading another module */
-                continue;
+                imported = 1;
+                break;
             }
+        }
+
+        if (imported) {
+            continue;
         }
 
         /* use the gathered data to load the module */
