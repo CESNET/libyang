@@ -68,6 +68,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
     const char *node_path = NULL;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     struct ly_out *out = NULL;
+    ly_bool out_stdout = 0;
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
         goto cleanup;
@@ -133,6 +134,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
             YLMSG_E("Could not use stdout to print output.\n");
             goto cleanup;
         }
+        out_stdout = 1;
     }
 
     if (node_path) {
@@ -185,5 +187,5 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
 
 cleanup:
     free_cmdline(argv);
-    ly_out_free(out, NULL, ly_out_file(out, NULL) != stdout ? 1 : 0);
+    ly_out_free(out, NULL, out_stdout ? 0 : 1);
 }
