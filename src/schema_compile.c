@@ -457,14 +457,18 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
             }
         }
         if (!idref || !(*idref)) {
-            if (ident) {
+            if (ident || (ctx->options & LYS_COMPILE_DISABLED)) {
                 /* look into the parsed module to check whether the identity is not merely disabled */
                 LY_ARRAY_FOR(mod->parsed->identities, v) {
                     if (!strcmp(mod->parsed->identities[v].name, name)) {
-                        *enabled = 0;
+                        if (ident) {
+                            *enabled = 0;
+                        }
                         return LY_SUCCESS;
                     }
                 }
+            }
+            if (ident) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Unable to find base (%s) of identity \"%s\".", bases_p[u], ident->name);
             } else {
