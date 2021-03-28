@@ -531,6 +531,7 @@ restart:
             /* revert compilation of all the previous identities */
             for (v = 0; v < u; ++v) {
                 LY_ARRAY_FREE((*idents)[v].derived);
+                (*idents)[v].derived = NULL;
             }
 
             /* free the whole array if there are no identites left */
