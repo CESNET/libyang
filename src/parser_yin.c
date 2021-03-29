@@ -1047,6 +1047,12 @@ yin_parse_qname(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_sube
         }
         qname->mod = ctx->parsed_mod;
         return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
+    case LY_STMT_UNIQUE:
+        assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
+        qnames = (struct lysp_qname **)subinfo->dest;
+        LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *qnames, qname, LY_EMEM);
+        qname->mod = ctx->parsed_mod;
+        return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_TAG, Y_STR_ARG, exts);
     case LY_STMT_IF_FEATURE:
         assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
         qnames = (struct lysp_qname **)subinfo->dest;
@@ -3410,6 +3416,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             case LY_STMT_IDENTITY:
                 ret = yin_parse_identity(ctx, (struct lysp_ident **)subelem->dest);
                 break;
+            case LY_STMT_UNIQUE:
             case LY_STMT_IF_FEATURE:
                 ret = yin_parse_qname(ctx, kw, subelem, exts);
                 break;
@@ -3500,9 +3507,6 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
                 break;
             case LY_STMT_TYPEDEF:
                 ret = yin_parse_typedef(ctx, (struct tree_node_meta *)subelem->dest);
-                break;
-            case LY_STMT_UNIQUE:
-                ret = yin_parse_simple_elem(ctx, kw, subelem, YIN_ARG_TAG, Y_STR_ARG, exts);
                 break;
             case LY_STMT_USES:
                 ret = yin_parse_uses(ctx, (struct tree_node_meta *)subelem->dest);
