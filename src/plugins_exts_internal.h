@@ -23,7 +23,7 @@
 /**
  * @brief Record describing an implemented extension.
  */
-struct lyext_plugin_record {
+struct lyplg_ext_record {
     const char *module;          /**< name of the module where the extension is defined */
     const char *revision;        /**< optional module revision - if not specified, the plugin applies to any revision,
                                       which is not an optimal approach due to a possible future revisions of the module.
@@ -31,13 +31,13 @@ struct lyext_plugin_record {
                                       different revision, but all with the same pointer to the plugin extension. The
                                       only valid use case for the NULL revision is the case the module has no revision. */
     const char *name;            /**< name of the extension */
-    struct lyext_plugin *plugin; /**< plugin for the extension */
+    struct lyplg_ext *plugin;    /**< plugin for the extension */
 };
 
 /**
  * @brief List of internally implemented extension plugins.
  */
-extern struct lyext_plugin_record lyext_plugins_internal[];
+extern struct lyplg_ext_record lyext_plugins_internal[];
 
 /**
  * @brief Index of Metadata's annotation extension plugin in lyext_plugins_internal
@@ -54,6 +54,6 @@ extern struct lyext_plugin_record lyext_plugins_internal[];
  *
  * @param[in] mod YANG module where the
  */
-struct lyext_plugin *lyext_get_plugin(struct lysc_ext *ext);
+struct lyplg_ext *lyext_get_plugin(struct lysc_ext *ext);
 
 #endif /* LY_PLUGINS_EXTS_INTERNAL_H_ */
