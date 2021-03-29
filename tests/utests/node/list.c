@@ -451,7 +451,7 @@ test_schema_yin(void **state)
     lysc_node = lysc_node->next;
     CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "users", 0, LYS_LIST, 1, 0, 0, 0);
 
-    /*schema = MODULE_CREATE_YIN("T4",
+    schema = MODULE_CREATE_YIN("T4",
             "<list name=\"user\">"
             "   <key value=\"uid name\"/>"
             "   <unique tag=\"name\"/>"
@@ -468,7 +468,7 @@ test_schema_yin(void **state)
     lysc_node = lysc_node->next;
     CHECK_LYSC_NODE(lysc_node, 0, 0, 0x185,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);*/
+    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T5",
             "<list name=\"rule\">"
