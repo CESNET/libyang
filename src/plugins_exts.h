@@ -160,13 +160,13 @@ typedef LY_ERR (*lyext_clb_schema_printer)(struct lyspr_ctx *ctx, struct lysc_ex
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension
  */
-struct lyext_plugin {
+struct lyplg_ext {
     const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions of the plugins for external tools) */
     lyext_clb_compile compile;          /**< Callback to compile extension instance from the parsed data */
     lyext_clb_data_validation validate; /**< Callback to decide if data instance is valid according to the schema. */
     lyext_clb_schema_printer sprinter;  /**< Callback to print the compiled content (info format) of the extension instance */
     /* lyext_clb_data_printer dprinter; ? */
-    lyext_clb_free free;                /**< Free the extension instance specific data created by ::lyext_plugin.compile callback */
+    lyext_clb_free free;                /**< Free the extension instance specific data created by ::lyplg_ext.compile callback */
 };
 
 /**

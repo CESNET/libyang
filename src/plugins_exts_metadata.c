@@ -155,7 +155,7 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 /**
  * @brief Plugin for the Metadata's annotation extension
  */
-struct lyext_plugin metadata_plugin = {
+struct lyplg_ext metadata_plugin = {
     .id = "libyang 2 - metadata, version 1",
     .compile = &annotation_compile,
     .validate = NULL,

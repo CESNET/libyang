@@ -19,9 +19,9 @@
 #include <stdint.h>
 #include <string.h>
 
-extern struct lyext_plugin metadata_plugin; /* plugins_exts_metadata.c */
-extern struct lyext_plugin nacm_plugin;     /* plugins_exts_nacm.c */
-extern struct lyext_plugin yangdata_plugin; /* plugins_exts_yangdata.c */
+extern struct lyplg_ext metadata_plugin; /* plugins_exts_metadata.c */
+extern struct lyplg_ext nacm_plugin;     /* plugins_exts_nacm.c */
+extern struct lyplg_ext yangdata_plugin; /* plugins_exts_yangdata.c */
 
 /* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"
@@ -32,7 +32,7 @@ extern struct lyext_plugin yangdata_plugin; /* plugins_exts_yangdata.c */
 /**
  * @brief list of all extension plugins implemented internally
  */
-struct lyext_plugin_record lyext_plugins_internal[] = {
+struct lyplg_ext_record lyext_plugins_internal[] = {
     {"ietf-netconf-acm", "2012-02-22", "default-deny-write", &nacm_plugin},
     {"ietf-netconf-acm", "2018-02-14", "default-deny-write", &nacm_plugin},
     {"ietf-netconf-acm", "2012-02-22", "default-deny-all", &nacm_plugin},
@@ -44,7 +44,7 @@ struct lyext_plugin_record lyext_plugins_internal[] = {
 
 /* TODO support for external extension plugins */
 
-struct lyext_plugin *
+struct lyplg_ext *
 lyext_get_plugin(struct lysc_ext *ext)
 {
     for (uint8_t u = 0; lyext_plugins_internal[u].module; ++u) {

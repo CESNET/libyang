@@ -152,7 +152,7 @@ invalid_parent:
 /**
  * @brief Plugin for the NACM's default-deny-write and default-deny-all extensions
  */
-struct lyext_plugin nacm_plugin = {
+struct lyplg_ext nacm_plugin = {
     .id = "libyang 2 - NACM, version 1",
     .compile = &nacm_compile,
     .validate = NULL,

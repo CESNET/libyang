@@ -166,7 +166,7 @@ yangdata_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly
 /**
  * @brief Plugin for the yang-data extension
  */
-struct lyext_plugin yangdata_plugin = {
+struct lyplg_ext yangdata_plugin = {
     .id = "libyang 2 - yang-data, version 1",
     .compile = &yangdata_compile,
     .validate = NULL,

@@ -1385,7 +1385,7 @@ struct lysc_ext {
     const char *name;                /**< extension name */
     const char *argname;             /**< argument name, NULL if not specified */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lyext_plugin *plugin;     /**< Plugin implementing the specific extension */
+    struct lyplg_ext *plugin;        /**< Plugin implementing the specific extension */
     struct lys_module *module;       /**< module structure */
     uint32_t refcount;               /**< reference counter since extension definition is shared among all its instances */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
