@@ -478,7 +478,7 @@ struct lyd_value_subvalue {
     LY_PREFIX_FORMAT format;     /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
-    void *prefix_data;           /**< Format-specific data for prefix resolution (see ::ly_type_store_resolve_prefix()) */
+    void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
 };

@@ -28,7 +28,7 @@ extern "C" {
  */
 
 /**
- * @brief YANG printer context for use in ::lyext_clb_schema_printer callback implementation.
+ * @brief YANG printer context for use in ::lyplg_ext_schema_printer_clb callback implementation.
  *
  * The structure provides basic information how the compiled schema is supposed to be printed and where. In the most simple
  * case, the provided context is just passed into ::lysc_print_extension_instance() function which handles printing the
@@ -63,7 +63,7 @@ uint16_t *lys_ypr_ctx_get_level(const struct lyspr_ctx *ctx);
 /**
  * @brief Print substatements of an extension instance
  *
- * Generic function to access YANG printer functions from the extension plugins (::lyext_clb_schema_printer).
+ * Generic function to access YANG printer functions from the extension plugins (::lyplg_ext_schema_printer_clb).
  *
  * @param[in] ctx YANG printer context to provide output handler and other information for printing.
  * @param[in] ext The compiled extension instance to access the extensions and substatements data.

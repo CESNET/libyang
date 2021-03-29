@@ -28,7 +28,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -38,7 +38,7 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     *err = NULL;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     if (value_len) {
@@ -46,9 +46,9 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
         goto cleanup;
     }
 
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
         ret = lydict_insert(ctx, "", value_len, &storage->canonical);
@@ -58,14 +58,14 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     storage->realtype = type;
 
 cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return ret;
 }
 
 API LY_ERR
-ly_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
@@ -90,12 +90,12 @@ const struct lyplg_type_record plugins_empty[] = {
 
         .plugin.id = "libyang 2 - empty, version 1",
         .plugin.type = LY_TYPE_EMPTY,
-        .plugin.store = ly_type_store_empty,
+        .plugin.store = lyplg_type_store_empty,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_empty,
-        .plugin.print = ly_type_print_simple,
-        .plugin.duplicate = ly_type_dup_simple,
-        .plugin.free = ly_type_free_simple
+        .plugin.compare = lyplg_type_compare_empty,
+        .plugin.print = lyplg_type_print_simple,
+        .plugin.duplicate = lyplg_type_dup_simple,
+        .plugin.free = lyplg_type_free_simple
     },
     {0}
 };

@@ -30,7 +30,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -48,10 +48,10 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
-    ret = ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err);
+    ret = lyplg_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     /* prepare canonized value */
     if (d) {
@@ -82,7 +82,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     /* range of the number */
     if (type_dec->range) {
-        ret = ly_type_validate_range(type->basetype, type_dec->range, d, buf, err);
+        ret = lyplg_type_validate_range(type->basetype, type_dec->range, d, buf, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
@@ -92,7 +92,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     storage->realtype = type;
 
 cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return ret;
@@ -113,12 +113,12 @@ const struct lyplg_type_record plugins_decimal64[] = {
 
         .plugin.id = "libyang 2 - decimal64, version 1",
         .plugin.type = LY_TYPE_DEC64,
-        .plugin.store = ly_type_store_decimal64,
+        .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_simple,
-        .plugin.print = ly_type_print_simple,
-        .plugin.duplicate = ly_type_dup_simple,
-        .plugin.free = ly_type_free_simple
+        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.print = lyplg_type_print_simple,
+        .plugin.duplicate = lyplg_type_dup_simple,
+        .plugin.free = lyplg_type_free_simple
     },
     {0}
 };

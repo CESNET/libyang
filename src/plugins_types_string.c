@@ -28,7 +28,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -37,7 +37,7 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* length restriction of the string */
@@ -47,17 +47,17 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
         /* value_len is in bytes, but we need number of chaarcters here */
         snprintf(buf, LY_NUMBER_MAXLEN, "%zu", char_count);
-        ret = ly_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err);
+        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
     /* pattern restrictions */
-    ret = ly_type_validate_patterns(type_str->patterns, value, value_len, err);
+    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
         ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical);
@@ -67,7 +67,7 @@ ly_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, con
     storage->realtype = type;
 
 cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -89,12 +89,12 @@ const struct lyplg_type_record plugins_string[] = {
 
         .plugin.id = "libyang 2 - string, version 1",
         .plugin.type = LY_TYPE_STRING,
-        .plugin.store = ly_type_store_string,
+        .plugin.store = lyplg_type_store_string,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_simple,
-        .plugin.print = ly_type_print_simple,
-        .plugin.duplicate = ly_type_dup_simple,
-        .plugin.free = ly_type_free_simple
+        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.print = lyplg_type_print_simple,
+        .plugin.duplicate = lyplg_type_dup_simple,
+        .plugin.free = lyplg_type_free_simple
     },
     {0}
 };

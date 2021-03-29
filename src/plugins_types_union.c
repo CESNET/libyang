@@ -81,7 +81,7 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
 }
 
 API LY_ERR
-ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -99,9 +99,9 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     }
 
     /* remember the original value */
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &subvalue->original);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         ret = lydict_insert(ctx, value_len ? value : "", value_len, &subvalue->original);
@@ -109,7 +109,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     }
 
     /* store format-specific data for later prefix resolution */
-    ret = ly_type_prefix_data_new(ctx, subvalue->original, value_len, format, prefix_data, &subvalue->format,
+    ret = lyplg_type_prefix_data_new(ctx, subvalue->original, value_len, format, prefix_data, &subvalue->format,
             &subvalue->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
     subvalue->hints = hints;
@@ -122,7 +122,7 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
 cleanup:
     if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
         lydict_remove(ctx, subvalue->original);
-        ly_type_prefix_data_free(subvalue->format, subvalue->prefix_data);
+        lyplg_type_prefix_data_free(subvalue->format, subvalue->prefix_data);
         free(subvalue);
     } else {
         /* store it as union, the specific type is in the subvalue, but canonical value is the specific type value */
@@ -133,7 +133,7 @@ cleanup:
     }
 
 cleanup_value:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -141,7 +141,7 @@ cleanup_value:
 }
 
 API LY_ERR
-ly_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
+lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -179,7 +179,7 @@ ly_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
 }
 
 API LY_ERR
-ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
@@ -192,13 +192,13 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
 }
 
 API const char *
-ly_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     return value->subvalue->value.realtype->plugin->print(&value->subvalue->value, format, prefix_data, dynamic);
 }
 
 API LY_ERR
-ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
 
@@ -209,7 +209,7 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
     LY_CHECK_RET(lydict_insert(ctx, original->subvalue->original, strlen(original->subvalue->original),
             &dup->subvalue->original));
     dup->subvalue->format = original->subvalue->format;
-    LY_CHECK_RET(ly_type_prefix_data_dup(ctx, original->subvalue->format, original->subvalue->prefix_data,
+    LY_CHECK_RET(lyplg_type_prefix_data_dup(ctx, original->subvalue->format, original->subvalue->prefix_data,
             &dup->subvalue->prefix_data));
 
     dup->realtype = original->realtype;
@@ -217,14 +217,14 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
 }
 
 API void
-ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
+lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->canonical);
     if (value->subvalue) {
         if (value->subvalue->value.realtype) {
             value->subvalue->value.realtype->plugin->free(ctx, &value->subvalue->value);
         }
-        ly_type_prefix_data_free(value->subvalue->format, value->subvalue->prefix_data);
+        lyplg_type_prefix_data_free(value->subvalue->format, value->subvalue->prefix_data);
         lydict_remove(ctx, value->subvalue->original);
         free(value->subvalue);
         value->subvalue = NULL;
@@ -246,12 +246,12 @@ const struct lyplg_type_record plugins_union[] = {
 
         .plugin.id = "libyang 2 - union,version 1",
         .plugin.type = LY_TYPE_UNION,
-        .plugin.store = ly_type_store_union,
-        .plugin.validate = ly_type_validate_union,
-        .plugin.compare = ly_type_compare_union,
-        .plugin.print = ly_type_print_union,
-        .plugin.duplicate = ly_type_dup_union,
-        .plugin.free = ly_type_free_union
+        .plugin.store = lyplg_type_store_union,
+        .plugin.validate = lyplg_type_validate_union,
+        .plugin.compare = lyplg_type_compare_union,
+        .plugin.print = lyplg_type_print_union,
+        .plugin.duplicate = lyplg_type_dup_union,
+        .plugin.free = lyplg_type_free_union
     },
     {0}
 };

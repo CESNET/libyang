@@ -1103,7 +1103,7 @@ test_plugin_store(void **state)
     memcpy(alloc_text, val_text, alloc_text_size + 1);
 
     ly_ret = type->store(UTEST_LYCTX, lysc_type, alloc_text, alloc_text_size,
-            LY_TYPE_STORE_DYNAMIC, LY_PREF_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
+            LYPLG_TYPE_STORE_DYNAMIC, LY_PREF_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     alloc_text = NULL;
     assert_int_equal(LY_SUCCESS, ly_ret);
     CHECK_LYD_VALUE(value, STRING, "<250>");

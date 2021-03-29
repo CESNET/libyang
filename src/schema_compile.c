@@ -1093,7 +1093,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     uint32_t options;
     struct ly_err_item *err = NULL;
 
-    options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LY_TYPE_STORE_IMPLEMENT : 0;
+    options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
     ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_PREF_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, storage, unres, &err);
     if (ret == LY_EINCOMPLETE) {

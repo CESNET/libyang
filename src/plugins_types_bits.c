@@ -31,7 +31,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -57,7 +57,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     *err = NULL;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup_value);
 
     /* remember the present items for further work */
@@ -169,7 +169,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
 
     /* RETURN LY_SUCCESS */
     ly_set_free(items, NULL);
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return LY_SUCCESS;
@@ -180,7 +180,7 @@ cleanup:
     free(buf);
     ly_set_free(items, NULL);
 cleanup_value:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -188,7 +188,7 @@ cleanup_value:
 }
 
 API LY_ERR
-ly_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
@@ -213,7 +213,7 @@ cleanup:
 }
 
 API void
-ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
+lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     LY_ARRAY_FREE(value->bits_items);
     value->bits_items = NULL;
@@ -237,12 +237,12 @@ const struct lyplg_type_record plugins_bits[] = {
 
         .plugin.id = "libyang 2 - bits, version 1",
         .plugin.type = LY_TYPE_BITS,
-        .plugin.store = ly_type_store_bits,
+        .plugin.store = lyplg_type_store_bits,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_simple,
-        .plugin.print = ly_type_print_simple,
-        .plugin.duplicate = ly_type_dup_bits,
-        .plugin.free = ly_type_free_bits
+        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.print = lyplg_type_print_simple,
+        .plugin.duplicate = lyplg_type_dup_bits,
+        .plugin.free = lyplg_type_free_bits
     },
     {0}
 };

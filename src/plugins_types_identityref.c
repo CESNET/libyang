@@ -30,12 +30,12 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API const char *
-ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     char *result = NULL;
 
     *dynamic = 1;
-    if (asprintf(&result, "%s:%s", ly_type_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
+    if (asprintf(&result, "%s:%s", lyplg_type_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
         return NULL;
     } else {
         return result;
@@ -43,7 +43,7 @@ ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format
 }
 
 API LY_ERR
-ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -60,7 +60,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     *err = NULL;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* locate prefix if any */
@@ -79,7 +79,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
         goto cleanup;
     }
 
-    mod = ly_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
+    mod = lyplg_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
@@ -102,8 +102,8 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
         goto cleanup;
     } else if (!mod->implemented) {
         /* non-implemented module */
-        if (options & LY_TYPE_STORE_IMPLEMENT) {
-            ret = ly_type_make_implemented((struct lys_module *)mod, NULL, unres);
+        if (options & LYPLG_TYPE_STORE_IMPLEMENT) {
+            ret = lyplg_type_make_implemented((struct lys_module *)mod, NULL, unres);
             LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
@@ -115,7 +115,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
 
     /* check that the identity matches some of the type's base identities */
     LY_ARRAY_FOR(type_ident->bases, u) {
-        if (!ly_type_identity_isderived(type_ident->bases[u], ident)) {
+        if (!lyplg_type_identity_isderived(type_ident->bases[u], ident)) {
             /* we have match */
             break;
         }
@@ -147,14 +147,14 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     storage->ident = ident;
 
     /* get JSON form since there is no canonical */
-    str = (char *)ly_type_print_identityref(storage, LY_PREF_JSON, NULL, &dyn);
+    str = (char *)lyplg_type_print_identityref(storage, LY_PREF_JSON, NULL, &dyn);
     assert(str && dyn);
     ret = lydict_insert_zc(ctx, str, &storage->canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     storage->realtype = type;
 
 cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -162,7 +162,7 @@ cleanup:
 }
 
 API LY_ERR
-ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
@@ -189,12 +189,12 @@ const struct lyplg_type_record plugins_identityref[] = {
 
         .plugin.id = "libyang 2 - identityref, version 1",
         .plugin.type = LY_TYPE_IDENT,
-        .plugin.store = ly_type_store_identityref,
+        .plugin.store = lyplg_type_store_identityref,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_identityref,
-        .plugin.print = ly_type_print_identityref,
-        .plugin.duplicate = ly_type_dup_simple,
-        .plugin.free = ly_type_free_simple
+        .plugin.compare = lyplg_type_compare_identityref,
+        .plugin.print = lyplg_type_print_identityref,
+        .plugin.duplicate = lyplg_type_dup_simple,
+        .plugin.free = lyplg_type_free_simple
     },
     {0}
 };
