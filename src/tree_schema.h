@@ -441,6 +441,18 @@ const char *ly_stmt2str(enum ly_stmt stmt);
 enum ly_stmt lys_nodetype2stmt(uint16_t nodetype);
 
 /**
+ * @brief Possible cardinalities of the YANG statements.
+ *
+ * Used in extensions plugins to define cardinalities of the extension instance substatements.
+ */
+enum ly_stmt_cardinality {
+    LY_STMT_CARD_OPT,    /* 0..1 */
+    LY_STMT_CARD_MAND,   /* 1 */
+    LY_STMT_CARD_SOME,   /* 1..n */
+    LY_STMT_CARD_ANY     /* 0..n */
+};
+
+/**
  * @brief YANG import-stmt
  */
 struct lysp_import {
@@ -1389,6 +1401,19 @@ struct lysc_ext {
     struct lys_module *module;       /**< module structure */
     uint32_t refcount;               /**< reference counter since extension definition is shared among all its instances */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
+};
+
+/**
+ * @brief Description of the extension instance substatements.
+ *
+ * Provided by extensions plugins to libyang to be able to correctly compile the content of extension instances.
+ * Note that order of the defined records matters - just follow the values of ::ly_stmt and order the records from lower to higher values.
+ */
+struct lysc_ext_substmt {
+    enum ly_stmt stmt;                     /**< allowed substatement */
+    enum ly_stmt_cardinality cardinality;  /**< cardinality of the substatement */
+    void *storage;                         /**< pointer to the storage of the compiled statement according to the specific
+                                                lysc_ext_substmt::stmt and lysc_ext_substmt::cardinality */
 };
 
 /**
