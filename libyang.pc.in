@@ -5,7 +5,7 @@ libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 Name: @PROJECT_NAME@
 Description: @LIBYANG_DESCRIPTION@
 Version: @LIBYANG_VERSION@
-Requires.private: libpcre
+Requires.private: libpcre2-8
 Libs: -L${libdir} -lyang
-Libs.private: -lpcre
+Libs.private: -lpcre2-8
 Cflags: -I${includedir}
