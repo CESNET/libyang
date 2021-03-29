@@ -37,7 +37,7 @@ struct lyext_metadata {
 /**
  * @brief Compile annotation extension instances.
  *
- * Implementation of lyext_clb_compile callback set as lyext_plugin::compile.
+ * Implementation of ::lyplg_ext_compile_clb callback set as lyext_plugin::compile.
  */
 static LY_ERR
 annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
@@ -49,14 +49,14 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 
     /* annotations can appear only at the top level of a YANG module or submodule */
     if ((c_ext->parent_stmt != LY_STMT_MODULE) && (c_ext->parent_stmt != LY_STMT_SUBMODULE)) {
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
+        lyplg_ext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                 "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
                 p_ext->name, ly_stmt2str(c_ext->parent_stmt));
         return LY_EVALID;
     }
     /* check mandatory argument */
     if (!c_ext->argument) {
-        lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
+        lyplg_ext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx),
                 "Extension %s is instantiated without mandatory argument representing metadata name.", p_ext->name);
         return LY_EVALID;
     }
@@ -67,7 +67,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     LY_ARRAY_FOR(mod_c->exts, u) {
         if ((&mod_c->exts[u] != c_ext) && (mod_c->exts[u].def == c_ext->def) && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
             /* duplication of the same annotation extension in a single module */
-            lyext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx), "Extension %s is instantiated multiple times.", p_ext->name);
+            lyplg_ext_log(c_ext, LY_LLERR, LY_EVALID, lysc_ctx_get_path(cctx), "Extension %s is instantiated multiple times.", p_ext->name);
             return LY_EVALID;
         }
     }
@@ -113,14 +113,14 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     return ret;
 
 emem:
-    lyext_log(c_ext, LY_LLERR, LY_EMEM, lysc_ctx_get_path(cctx), "Memory allocation failed (%s()).", __func__);
+    lyplg_ext_log(c_ext, LY_LLERR, LY_EMEM, lysc_ctx_get_path(cctx), "Memory allocation failed (%s()).", __func__);
     return LY_EMEM;
 }
 
 /**
  * @brief INFO printer
  *
- * Implementation of lyext_clb_schema_printer set as ::lyext_plugin::sprinter
+ * Implementation of ::lyplg_ext_schema_printer_clb set as ::lyext_plugin::sprinter
  */
 static LY_ERR
 annotation_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag)
@@ -133,7 +133,7 @@ annotation_schema_printer(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, 
 /**
  * @brief Free annotation extension instances' data.
  *
- * Implementation of lyext_clb_free callback set as ::lyext_plugin::free.
+ * Implementation of ::lyplg_ext_free_clb callback set as ::lyext_plugin::free.
  */
 static void
 annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
@@ -142,7 +142,7 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
         return;
     }
 
-    lysc_extension_instance_substatements_free(ctx, ext->substmts);
+    lyplg_ext_instance_substatements_free(ctx, ext->substmts);
     free(ext->data);
 }
 

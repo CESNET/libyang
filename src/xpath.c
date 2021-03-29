@@ -1570,7 +1570,7 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     }
 
     /* ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(src->ctx, type, str, strlen(str), LY_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
+    rc = type->plugin->store(src->ctx, type, str, strlen(str), LYPLG_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
             LYD_HINT_DATA, xp_node->node->schema, &val, NULL, &err);
     ly_err_free(err);
     if (rc) {
@@ -3740,7 +3740,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
         if (sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (sleaf->type->basetype == LY_TYPE_LEAFREF) {
                 /* find leafref target */
-                if (ly_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
+                if (lyplg_type_resolve_leafref((struct lysc_type_leafref *)sleaf->type, &leaf->node, &leaf->value, set->tree,
                         &node, &errmsg)) {
                     LOGERR(set->ctx, LY_EVALID, errmsg);
                     free(errmsg);
@@ -4611,7 +4611,7 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
         return rc;
     }
 
-    rc = ly_type_validate_patterns(patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
+    rc = lyplg_type_validate_patterns(patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
     pcre2_code_free((*pattern)->code);
     free(*pattern);
     LY_ARRAY_FREE(patterns);

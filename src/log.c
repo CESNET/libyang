@@ -584,7 +584,7 @@ ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...)
 }
 
 API void
-lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...)
+lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...)
 {
     va_list ap;
     char *plugin_msg;

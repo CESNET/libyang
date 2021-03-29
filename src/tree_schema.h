@@ -507,7 +507,7 @@ struct lysp_stmt {
     const char *stmt;                /**< identifier of the statement */
     const char *arg;                 /**< statement's argument */
     LY_PREFIX_FORMAT format;         /**< prefix format of the identifier/argument (::LY_PREF_XML is YIN format) */
-    void *prefix_data;               /**< Format-specific data for prefix resolution (see ::ly_type_store_resolve_prefix()) */
+    void *prefix_data;               /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
 
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
@@ -525,7 +525,7 @@ struct lysp_ext_instance {
     const char *argument;                   /**< optional value of the extension's argument */
     LY_PREFIX_FORMAT format;                /**< prefix format of the extension name/argument (::LY_PREF_XML is YIN format) */
     void *prefix_data;                      /**< Format-specific data for prefix resolution
-                                                 (see ::ly_type_store_resolve_prefix()) */
+                                                 (see ly_resolve_prefix()) */
 
     struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
 

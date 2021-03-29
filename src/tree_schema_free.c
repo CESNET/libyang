@@ -989,7 +989,7 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
 }
 
 API void
-lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
+lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
 {
     LY_ARRAY_COUNT_TYPE u;
 

@@ -202,20 +202,19 @@
  * natural way to the specific data type. For example, IPv4 address type is defined as a string with a pattern, but it is
  * more effective and usual to store and handle IPv4 as a 32-bit number.
  *
- * libyang 1.x                  | libyang 2.0                     | Notes
- * :----------------------------|:--------------------------------|:---------------------------------------------------------
- * lys_getnext_union_type()     | -                               | Removed after the type representation redesign.
- * -                            | ::ly_type_identity_isderived()  | Helper functions for base types.
- * -                            | ::ly_type_parse_dec64()         | ^
- * -                            | ::ly_type_parse_int()           | ^
- * -                            | ::ly_type_parse_uint()          | ^
- * -                            | ::ly_type_validate_patterns()   | ^
- * -                            | ::ly_type_validate_range()      | ^
- * -                            | ::ly_type_print_get_prefix()    | Helper functions for processing prefixes in data values.
- * -                            | ::ly_type_store_resolve_prefix() | ^
- * -                            | ::lysc_prefixes_compile()       | ^
- * -                            | ::lysc_prefixes_dup()           | ^
- * -                            | ::lysc_prefixes_free()          | ^
+ * libyang 1.x                  | libyang 2.0                      | Notes
+ * :----------------------------|:---------------------------------|:--------------------------------------------------------
+ * lys_getnext_union_type()     | -                                | Removed after the type representation redesign.
+ * -                            | ::lyplg_type_identity_isderived()| Helper functions for base types.
+ * -                            | ::lyplg_type_parse_dec64()       | ^
+ * -                            | ::lyplg_type_parse_int()         | ^
+ * -                            | ::lyplg_type_parse_uint()        | ^
+ * -                            | ::lyplg_type_validate_patterns() | ^
+ * -                            | ::lyplg_type_validate_range()    | ^
+ * -                            | ::lyplg_type_get_prefix()        | Helper functions for processing prefixes in data values.
+ * -                            | ::lyplg_type_prefix_data_new()   | ^
+ * -                            | ::lyplg_type_prefix_data_dup()   | ^
+ * -                            | ::lyplg_type_prefix_data_free()  | ^
  *
  *
  * Extension implementation is not yet finished. The related functions (lys_ext_*()) from libyang 1.x are not currently

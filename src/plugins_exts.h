@@ -60,7 +60,7 @@ extern "C" {
  * @param[in] substmts The sized array of extension instance's substatements. The whole array is freed except the storage
  * places which are expected to be covered by the extension plugin.
  */
-void lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
+void lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
  * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
@@ -77,15 +77,15 @@ void lysc_extension_instance_substatements_free(struct ly_ctx *ctx, struct lysc_
  * @return LY_EVALID in case of non-conforming parsed data.
  * @return LY_ENOT in case the extension instance is not supported and should be removed.
  */
-typedef LY_ERR (*lyext_clb_compile)(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext);
+typedef LY_ERR (*lyplg_ext_compile_clb)(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext);
 
 /**
- * @brief Callback to free the extension specific data created by the ::lyext_clb_compile callback of the same extension plugin.
+ * @brief Callback to free the extension specific data created by the ::lyplg_ext_compile_clb callback of the same extension plugin.
  *
  * @param[in] ctx libyang context.
  * @param[in,out] ext Compiled extension structure where the data to free are placed.
  */
-typedef void (*lyext_clb_free)(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
+typedef void (*lyplg_ext_free_clb)(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
  * @brief Callback to decide if data instance is valid according to the schema.
@@ -104,7 +104,7 @@ typedef void (*lyext_clb_free)(struct ly_ctx *ctx, struct lysc_ext_instance *ext
  * @return LY_SUCCESS on data validation success.
  * @return LY_EVALID in case the validation fails.
  */
-typedef LY_ERR (*lyext_clb_data_validation)(struct lysc_ext_instance *ext, struct lyd_node *node);
+typedef LY_ERR (*lyplg_ext_data_validation_clb)(struct lysc_ext_instance *ext, struct lyd_node *node);
 
 /**
  * @brief Callback to print the compiled extension instance's private data in the INFO format.
@@ -116,18 +116,17 @@ typedef LY_ERR (*lyext_clb_data_validation)(struct lysc_ext_instance *ext, struc
  *
  * @return LY_SUCCESS when everything was fine, other LY_ERR values in case of failure
  */
-typedef LY_ERR (*lyext_clb_schema_printer)(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
+typedef LY_ERR (*lyplg_ext_schema_printer_clb)(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
 
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension
  */
 struct lyplg_ext {
-    const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions of the plugins for external tools) */
-    lyext_clb_compile compile;          /**< Callback to compile extension instance from the parsed data */
-    lyext_clb_data_validation validate; /**< Callback to decide if data instance is valid according to the schema. */
-    lyext_clb_schema_printer sprinter;  /**< Callback to print the compiled content (info format) of the extension instance */
-    /* lyext_clb_data_printer dprinter; ? */
-    lyext_clb_free free;                /**< Free the extension instance specific data created by ::lyplg_ext.compile callback */
+    const char *id;                         /**< Plugin identification (mainly for distinguish incompatible versions of the plugins for external tools) */
+    lyplg_ext_compile_clb compile;          /**< Callback to compile extension instance from the parsed data */
+    lyplg_ext_data_validation_clb validate; /**< Callback to decide if data instance is valid according to the schema. */
+    lyplg_ext_schema_printer_clb sprinter;  /**< Callback to print the compiled content (info format) of the extension instance */
+    lyplg_ext_free_clb free;                /**< Free the extension instance specific data created by ::lyplg_ext.compile callback */
 };
 
 struct lyplg_ext_record {
@@ -153,7 +152,8 @@ struct lyplg_ext_record {
  * @param[in] path Path relevant to the message.
  * @param[in] format Format string to print.
  */
-void lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...);
+void lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
+        const char *format, ...);
 
 /** @} extensions */
 

@@ -28,7 +28,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -40,7 +40,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
     *err = NULL;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* find the matching enumeration value item */
@@ -57,9 +57,9 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
 match:
     /* validation done */
 
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
-        options &= ~LY_TYPE_STORE_DYNAMIC;
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
         ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical);
@@ -69,7 +69,7 @@ match:
     storage->realtype = type;
 
 cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *) value);
     }
 
@@ -91,12 +91,12 @@ const struct lyplg_type_record plugins_enumeration[] = {
 
         .plugin.id = "libyang 2 - enumeration, version 1",
         .plugin.type = LY_TYPE_ENUM,
-        .plugin.store = ly_type_store_enum,
+        .plugin.store = lyplg_type_store_enum,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_simple,
-        .plugin.print = ly_type_print_simple,
-        .plugin.duplicate = ly_type_dup_simple,
-        .plugin.free = ly_type_free_simple
+        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.print = lyplg_type_print_simple,
+        .plugin.duplicate = lyplg_type_dup_simple,
+        .plugin.free = lyplg_type_free_simple
     },
     {0}
 };

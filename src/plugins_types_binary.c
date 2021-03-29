@@ -29,7 +29,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -43,7 +43,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
     *err = NULL;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* validate characters and remember the number of octets for length validation */
@@ -104,7 +104,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
     /* check if value meets the type requirments */
     if (type_bin->length) {
         const uint32_t value_length = ((base64_count + base64_terminated) / 4) * 3 - base64_terminated;
-        ret = ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value, err);
+        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
@@ -119,7 +119,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
     storage->realtype = type;
 
 cleanup:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
     return ret;
@@ -140,12 +140,12 @@ const struct lyplg_type_record plugins_binary[] = {
 
         .plugin.id = "libyang 2 - binary, version 1",
         .plugin.type = LY_TYPE_BINARY,
-        .plugin.store = ly_type_store_binary,
+        .plugin.store = lyplg_type_store_binary,
         .plugin.validate = NULL,
-        .plugin.compare = ly_type_compare_simple,
-        .plugin.print = ly_type_print_simple,
-        .plugin.duplicate = ly_type_dup_simple,
-        .plugin.free = ly_type_free_simple,
+        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.print = lyplg_type_print_simple,
+        .plugin.duplicate = lyplg_type_dup_simple,
+        .plugin.free = lyplg_type_free_simple,
     },
     {0}
 };

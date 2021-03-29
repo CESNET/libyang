@@ -32,7 +32,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API const char *
-ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL;
@@ -45,7 +45,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
     if ((format == LY_PREF_XML) || (format == LY_PREF_SCHEMA)) {
         /* everything is prefixed */
         LY_ARRAY_FOR(value->target, u) {
-            ly_strcat(&result, "/%s:%s", ly_type_get_prefix(value->target[u].node->module, format, prefix_data),
+            ly_strcat(&result, "/%s:%s", lyplg_type_get_prefix(value->target[u].node->module, format, prefix_data),
                     value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
@@ -65,7 +65,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     if (strchr(str, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[%s:%s=%c%s%c]", ly_type_get_prefix(pred->key->module, format, prefix_data),
+                    ly_strcat(&result, "[%s:%s=%c%s%c]", lyplg_type_get_prefix(pred->key->module, format, prefix_data),
                             pred->key->name, quot, str, quot);
                     if (d) {
                         free((char *)str);
@@ -95,7 +95,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
         LY_ARRAY_FOR(value->target, u) {
             if (mod != value->target[u].node->module) {
                 mod = value->target[u].node->module;
-                ly_strcat(&result, "/%s:%s", ly_type_get_prefix(mod, format, prefix_data), value->target[u].node->name);
+                ly_strcat(&result, "/%s:%s", lyplg_type_get_prefix(mod, format, prefix_data), value->target[u].node->name);
             } else {
                 ly_strcat(&result, "/%s", value->target[u].node->name);
             }
@@ -151,7 +151,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
 }
 
 API LY_ERR
-ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -165,10 +165,10 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     *err = NULL;
 
     /* check hints */
-    ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS,  cleanup_value);
 
-    LY_CHECK_GOTO(ret = ly_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
+    LY_CHECK_GOTO(ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
             unres, &path, err), cleanup);
 
     /* store resolved schema path */
@@ -176,17 +176,17 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
     path = NULL;
 
     /* store JSON string value */
-    str = (char *)ly_type_print_instanceid(storage, LY_PREF_JSON, NULL, &dyn);
+    str = (char *)lyplg_type_print_instanceid(storage, LY_PREF_JSON, NULL, &dyn);
     assert(str && dyn);
     LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->canonical), cleanup);
     storage->realtype = type;
 
     /* cleanup */
 cleanup:
-    ly_type_lypath_free(ctx, path);
+    lyplg_type_lypath_free(ctx, path);
 
 cleanup_value:
-    if (options & LY_TYPE_STORE_DYNAMIC) {
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         free((char *)value);
     }
 
@@ -199,7 +199,7 @@ cleanup_value:
 }
 
 API LY_ERR
-ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
+lyplg_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
         const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *tree, struct lyd_value *storage,
         struct ly_err_item **err)
 {
@@ -219,7 +219,7 @@ ly_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_
 }
 
 API LY_ERR
-ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     LY_ARRAY_COUNT_TYPE u, v;
 
@@ -275,7 +275,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
 }
 
 API LY_ERR
-ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
     dup->realtype = original->realtype;
@@ -283,11 +283,11 @@ ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *origina
 }
 
 API void
-ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
+lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     ly_path_free(ctx, value->target);
     value->target = NULL;
-    ly_type_free_simple(ctx, value);
+    lyplg_type_free_simple(ctx, value);
 }
 
 /**
@@ -305,12 +305,12 @@ const struct lyplg_type_record plugins_instanceid[] = {
 
         .plugin.id = "libyang 2 - instance-identifier, version 1",
         .plugin.type = LY_TYPE_INST,
-        .plugin.store = ly_type_store_instanceid,
-        .plugin.validate = ly_type_validate_instanceid,
-        .plugin.compare = ly_type_compare_instanceid,
-        .plugin.print = ly_type_print_instanceid,
-        .plugin.duplicate = ly_type_dup_instanceid,
-        .plugin.free = ly_type_free_instanceid
+        .plugin.store = lyplg_type_store_instanceid,
+        .plugin.validate = lyplg_type_validate_instanceid,
+        .plugin.compare = lyplg_type_compare_instanceid,
+        .plugin.print = lyplg_type_print_instanceid,
+        .plugin.duplicate = lyplg_type_dup_instanceid,
+        .plugin.free = lyplg_type_free_instanceid
     },
     {0}
 };

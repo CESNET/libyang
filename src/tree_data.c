@@ -61,7 +61,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
 {
     LY_ERR ret;
     struct ly_err_item *err = NULL;
-    uint32_t options = (dynamic && *dynamic ? LY_TYPE_STORE_DYNAMIC : 0);
+    uint32_t options = (dynamic && *dynamic ? LYPLG_TYPE_STORE_DYNAMIC : 0);
 
     if (incomplete) {
         *incomplete = 0;

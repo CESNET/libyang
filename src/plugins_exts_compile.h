@@ -57,7 +57,7 @@ extern "C" {
 /** @} scflags */
 
 /**
- * @brief YANG schema compilation context for use in ::lyext_clb_compile callback implementation.
+ * @brief YANG schema compilation context for use in ::lyplg_ext_compile_clb callback implementation.
  *
  * The structure stores complex information connected with the schema compilation process. In the most simple case,
  * the callback is just supposed to pass the provided callback to ::lys_compile_extension_instance() functions.
