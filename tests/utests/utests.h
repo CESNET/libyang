@@ -716,7 +716,40 @@ struct utest_context {
  * @param[in] PARENT  0-> check if node is root, 1-> check if node is not root
  * @param[in] PRIV    0-> pointer is null, 1-> pointer is not null
  * @param[in] REF     expected reference
- * @param[in] WHEN    expected [sized array](@ref sizedarrays) size of list of pointers to when statements * @param[in] WHEN      0-> pointer is null, 1 -> pointer is not null
+ * @param[in] ACTIONS 1 if is set pointer to structure lysc_node_action other 0
+ * @param[in] CHILD   1 if is set pointer to child other 0
+ * @param[in] MAX     possible maximum elements in list
+ * @param[in] MIN     possible minimum elements in list
+ * @param[in] MUSTS   [sized array](@ref sizedarrays) number of must node elements in array
+ * @param[in] NOTIFS  1 if is set pointer to any notifs node
+ * @param[in] UNIQUES [sized array](@ref sizedarrays) number of unique nodes element in array
+ * @param[in] WHEN    [sized array](@ref sizedarrays) size of when node array
+ */
+#define CHECK_LYSC_NODE_LIST(NODE, DSC, EXTS, FLAGS, MODULE, NAME, NEXT, \
+            PARENT, PRIV, REF, ACTIONS, CHILD, MAX, MIN, MUSTS, NOTIFS, UNIQUES, WHEN) \
+        CHECK_LYSC_NODE(NODE, DSC, EXTS, FLAGS, MODULE, NAME, NEXT, LYS_LIST, PARENT, PRIV, REF, WHEN); \
+        CHECK_POINTER((NODE)->actions, ACTIONS); \
+        CHECK_POINTER((NODE)->child, CHILD); \
+        assert_int_equal((NODE)->max, MAX); \
+        assert_int_equal((NODE)->min, MIN); \
+        CHECK_ARRAY((NODE)->musts, MUSTS); \
+        CHECK_POINTER((NODE)->notifs, NOTIFS); \
+        CHECK_ARRAY((NODE)->uniques, UNIQUES); \
+        CHECK_ARRAY(lysc_node_when((const struct lysc_node *)NODE), WHEN)
+
+/**
+ * @brief assert that lysc_node_leaf structure members are correct
+ * @param[in] NODE    pointer to lysc_node variable
+ * @param[in] DSC     expected description
+ * @param[in] EXTS    expected [sized array](@ref sizedarrays) size of list of the extension instances
+ * @param[in] FLAGS   [schema node flags](@ref snodeflags)
+ * @param[in] MODULE  0 pointer is null, 1 pointer is not null
+ * @param[in] NAME    expected name
+ * @param[in] NEXT    0 pointer is null, 1 pointer is not null
+ * @param[in] PARENT  0-> check if node is root, 1-> check if node is not root
+ * @param[in] PRIV    0-> pointer is null, 1-> pointer is not null
+ * @param[in] REF     expected reference
+ * @param[in] WHEN    expected [sized array](@ref sizedarrays) size of list of pointers to when statements
  * @param[in] MUSTS     expected [sized array](@ref sizedarrays) size of list of must restriction
  * @param[in] UNITS     expected string reprezenting units
  * @param[in] DFLT      0-> node dosn't have default value. 1 -> node have default value
@@ -807,6 +840,30 @@ struct utest_context {
     assert_null((NODE)->schema); \
     CHECK_POINTER((NODE)->val_prefix_data, VAL_PREFS); \
     assert_string_equal((NODE)->value, VALUE);
+
+/**
+ * @brief assert that lyd_node_opaq structure members are correct
+ * @param[in] NODE     pointer to lyd_node_opaq variable
+ * @param[in] CHILD    1 if node has children other 0
+ * @param[in] HILD_HT  1 if node has children hash table other 0
+ * @param[in] META     1 if node has metadata other 0
+ * @param[in] FLAGS    expected flag
+ * @param[in] NEXT     1 if next node is present other 0
+ * @param[in] PARENT   1 if node has parent other 0
+ * @param[in] PRIV     1 if node has private data other 0
+ * @param[in] SCHEMA   1 if node has schema other 0
+*/
+#define CHECK_LYD_NODE_INNER(NODE, CHILD, CHILD_HT, META, FLAGS, NEXT, PARENT, PRIV, SCHEMA) \
+    assert_non_null(NODE); \
+    CHECK_POINTER((NODE)->child, CHILD); \
+    CHECK_POINTER((NODE)->children_ht, CHILD_HT); \
+    CHECK_POINTER((NODE)->meta, META); \
+    assert_int_equal((NODE)->flags, FLAGS); \
+    CHECK_POINTER((NODE)->parent, PARENT); \
+    assert_non_null((NODE)->prev); \
+    CHECK_POINTER((NODE)->next, NEXT); \
+    CHECK_POINTER((NODE)->priv, PRIV); \
+    CHECK_POINTER((NODE)->schema, SCHEMA)
 
 /**
  * @brief assert that lyd_value structure members are correct
@@ -952,6 +1009,20 @@ struct utest_context {
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_UINT8, (NODE).realtype->basetype); \
     assert_int_equal(VALUE, (NODE).uint8);
+
+/**
+ * @brief Internal macro. Assert that lyd_value structure members are correct. Lyd value is type UINT32.
+ *        Example CHECK_LYD_VALUE(node->value, UINT32, "12", 12);
+ * @param[in] NODE           lyd_value variable
+ * @param[in] CANNONICAL_VAL expected cannonical value
+ * @param[in] VALUE          expected inteager (0 to MAX_UINT32).
+ */
+#define CHECK_LYD_VALUE_UINT32(NODE, CANNONICAL_VAL, VALUE) \
+    assert_non_null((NODE).canonical); \
+    assert_string_equal((NODE).canonical, CANNONICAL_VAL); \
+    assert_non_null((NODE).realtype); \
+    assert_int_equal(LY_TYPE_UINT32, (NODE).realtype->basetype); \
+    assert_int_equal(VALUE, (NODE).uint32);
 
 /**
  * @brief Internal macro. Assert that lyd_value structure members are correct. Lyd value is type STRING.
