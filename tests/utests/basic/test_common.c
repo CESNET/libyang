@@ -259,6 +259,121 @@ test_parse_instance_predicate(void **UNUSED(state))
     assert_string_equal(errmsg, "Predicate is incomplete.");
 }
 
+static void
+test_value_prefix_next(void **UNUSED(state))
+{
+    const char *next;
+    ly_bool is_prefix;
+
+    assert_int_equal(0, ly_value_prefix_next(NULL, NULL, &is_prefix, &next));
+    assert_int_equal(0, ly_value_prefix_next("", NULL, &is_prefix, &next));
+
+    /* prefix */
+    next = "pref:";
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(1, is_prefix);
+
+    /* no-prefix */
+    next = "node";
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+
+    /* no-prefix */
+    next = "::::";
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+
+    /* no-prefix */
+    next = "//a/:";
+    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+
+    /* no-prefix */
+    next = "//a//";
+    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+
+    /* prefix, prefix */
+    next = "pref1:pref2:";
+    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "pref2:");
+    assert_int_equal(1, is_prefix);
+    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(1, is_prefix);
+
+    /* prefix, no-prefix */
+    next = "pref:node";
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "node");
+    assert_int_equal(1, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+
+    /* no-prefix, prefix */
+    next = "/pref:";
+    assert_int_equal(1, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "pref:");
+    assert_int_equal(0, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(1, is_prefix);
+
+    /* no-prefix, prefix */
+    next = "//pref:";
+    assert_int_equal(2, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "pref:");
+    assert_int_equal(0, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(1, is_prefix);
+
+    /* no-prefix, prefix, no-prefix */
+    next =  "/pref:node";
+    assert_int_equal(1, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "pref:node");
+    assert_int_equal(0, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "node");
+    assert_int_equal(1, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+
+    /* prefix, no-prefix, prefix */
+    next =  "pref:node pref:";
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "node pref:");
+    assert_int_equal(1, is_prefix);
+    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "pref:");
+    assert_int_equal(0, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(1, is_prefix);
+
+    /* prefix, no-prefix, prefix, no-prefix */
+    next = "pref:node /pref:node";
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "node /pref:node");
+    assert_int_equal(1, is_prefix);
+    assert_int_equal(6, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "pref:node");
+    assert_int_equal(0, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_string_equal(next, "node");
+    assert_int_equal(1, is_prefix);
+    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_null(next);
+    assert_int_equal(0, is_prefix);
+}
+
 int
 main(void)
 {
@@ -268,6 +383,7 @@ main(void)
         UTEST(test_parse_uint),
         UTEST(test_parse_nodeid),
         UTEST(test_parse_instance_predicate),
+        UTEST(test_value_prefix_next),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
