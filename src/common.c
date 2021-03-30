@@ -66,6 +66,73 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
     }
 }
 
+uint32_t
+ly_value_prefix_next(const char *str_begin, const char *str_end, ly_bool *is_prefix, const char **str_next)
+{
+    const char *stop, *prefix;
+    size_t bytes;
+    uint32_t c;
+    ly_bool prefix_found;
+    uint32_t ret;
+
+    assert(is_prefix && str_next);
+
+#define IS_AT_END(PTR, STR_END) (STR_END ? PTR == STR_END : !(*PTR))
+
+    *str_next = NULL;
+    *is_prefix = 0;
+    ret = 0;
+
+    if (!str_begin || !(*str_begin) || (str_begin == str_end)) {
+        return ret;
+    }
+
+    stop = str_begin;
+    prefix = NULL;
+    prefix_found = 0;
+
+    do {
+        /* look for the beginning of the YANG value */
+        for (ly_getutf8(&stop, &c, &bytes);
+                !is_xmlqnamestartchar(c) && !IS_AT_END(stop, str_end);
+                ly_getutf8(&stop, &c, &bytes)) {}
+
+        if (IS_AT_END(stop, str_end)) {
+            break;
+        }
+
+        /* maybe the prefix was found */
+        prefix = stop - bytes;
+
+        /* look for the the end of the prefix */
+        for (ly_getutf8(&stop, &c, &bytes);
+                is_xmlqnamechar(c) && !IS_AT_END(stop, str_end);
+                ly_getutf8(&stop, &c, &bytes)) {}
+
+        prefix_found = c == ':' ? 1 : 0;
+
+        /* if it wasn't the prefix, keep looking */
+    } while (!IS_AT_END(stop, str_end) && !prefix_found);
+
+    if ((str_begin == prefix) && prefix_found) {
+        /* prefix found at the beginning of the input string */
+        *is_prefix = 1;
+        *str_next = IS_AT_END(stop, str_end) ? NULL : stop;
+        ret = (stop - bytes) - str_begin;
+    } else if ((str_begin != prefix) && (prefix_found)) {
+        /* there is a some string before prefix */
+        *str_next = prefix;
+        ret = prefix - str_begin;
+    } else {
+        /* no prefix found */
+        ret = stop - str_begin;
+    }
+
+#undef IS_AT_END
+
+    return ret;
+}
+
 LY_ERR
 ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
 {

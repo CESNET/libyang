@@ -370,6 +370,37 @@ char *ly_strnchr(const char *s, int c, size_t len);
 int ly_strncmp(const char *refstr, const char *str, size_t str_len);
 
 /**
+ * @brief Get all possible value prefixes from an YANG value by iteratively returning specific substrings.
+ *
+ * The function looks for possible prefix ending in a colon at the beginning of @p str_begin.
+ * If @p str_begin does not contain the prefix at the beginning, then either:
+ * 1. Returns the entire input string if the input string does not contain the prefix at all.
+ * 2. Returns a substring before the prefix. The substring is terminated by any character
+ *    that is not allowed to be present in prefix (except colon).
+ *
+ * Examples of inputs and outputs are shown in the table below.
+ * Output string @p str_next is used in the next iteration as input parameter @p str_begin.
+   @verbatim
+   |            INPUT              |                         OUTPUT                        |
+   |                               |   iteration 1    |   iteration 2    |   iteration 3   |
+   |------------------------------ |------------------|------------------|-----------------|
+   | /namespace_prefix:some_string | /                | namespace_prefix | some_string     |
+   | namespace_prefix:some_string  | namespace_prefix | some_string      | NULL            |
+   | /some_string                  | /some_string     | NULL             | NULL            |
+   @endverbatim
+ *
+ *
+ * @param[in] str_begin Begin of the input string.
+ * @param[in] str_end Length of the @p str_begin. If set to NULL then the @p str_begin must be NULL-terminated string.
+ * @param[out] is_prefix Type of substring found. Set to True for prefix, otherwise False.
+ * @param[out] str_next Remaining string starting after prefix/substring and ending with @p str_end.
+ * If the @p is_prefix is set to True then the colon character is skipped.
+ * If no string remains, it is set to NULL.
+ * @return Number of bytes (length) of the found prefix/substring starting at @p str_begin.
+ */
+uint32_t ly_value_prefix_next(const char *str_begin, const char *str_end, ly_bool *is_prefix, const char **str_next);
+
+/**
  * @brief Wrapper around strlen() to handle NULL strings.
  */
 #define ly_strlen(STR) (STR ? strlen(STR) : 0)
