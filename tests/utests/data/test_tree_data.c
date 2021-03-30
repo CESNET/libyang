@@ -22,7 +22,8 @@
 static int
 setup(void **state)
 {
-    const char *schema = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
+    const char *schema1 = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
+            "revision 2014-05-08;"
             "leaf bar {type string;}"
             "list l1 { key \"a b\"; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
             "leaf foo { type string;}"
@@ -33,15 +34,34 @@ setup(void **state)
             "    container c{leaf x {type string;} leaf-list d {type string;}}"
             "}}";
 
+    const char *schema2 = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "list l2 {config false;"
+            "    container c{leaf x {type string;}}}"
+            "anydata any {config false;}"
+            "}";
+
     UTEST_SETUP;
 
-    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema1, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
 
     return 0;
 }
 
 #define CHECK_PARSE_LYD(INPUT, PARSE_OPTION, VALIDATE_OPTION, TREE) \
     CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, PARSE_OPTION, VALIDATE_OPTION, LY_SUCCESS, TREE)
+
+#define CHECK_PARSE_LYD_PARAM_CTX(CTX, INPUT, PARSE_OPTION, OUT_NODE) \
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(CTX, INPUT, LYD_XML, PARSE_OPTION, LYD_VALIDATE_PRESENT, &OUT_NODE)); \
+    assert_non_null(OUT_NODE);
+
+#define RECREATE_CTX_WITH_MODULE(CTX, MODULE) \
+    ly_ctx_destroy(CTX, NULL); \
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &CTX)); \
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(MODULE, &_UC->in)); \
+    assert_int_equal(LY_SUCCESS, lys_parse(CTX, _UC->in, LYS_IN_YANG, NULL, NULL)); \
+    ly_in_free(_UC->in, 0);
 
 static void
 test_compare(void **state)
@@ -111,6 +131,135 @@ test_compare(void **state)
     assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
+}
+
+static void
+test_compare_diff_ctx(void **state)
+{
+    struct lyd_node *tree1, *tree2;
+    const char *data1, *data2;
+    struct ly_ctx *ctx2 = NULL;
+    const char *module;
+
+    /* create second context with the same schema */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "list l2 {config false;"
+            "    container c{leaf x {type string;}}"
+            "}}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with schema that has a different name */
+    module = "module c {namespace urn:tests:c;prefix c;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "list l2 {config false;"
+            "    container c{leaf x {type string;}}"
+            "}}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    data2 = "<l2 xmlns=\"urn:tests:c\"><c><x>b</x></c></l2>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
+    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with schema that has a different revision */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2015-05-08;"
+            "list l2 {config false;"
+            "    container c{leaf x {type string;}}"
+            "}}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
+    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with schema that has no revision */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "list l2 {config false;"
+            "    container c{leaf x {type string;}}"
+            "}}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
+    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with schema that has a different parent nodetype */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "container l2 {config false;"
+            "    container c{leaf x {type string;}}"
+            "}}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    data2 = "<l2 xmlns=\"urn:tests:b\"><c><x>b</x></c></l2>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, 0, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, 0, tree2);
+    assert_int_equal(LY_ENOT, lyd_compare_single(lyd_child(lyd_child(tree1)), lyd_child(lyd_child(tree2)), 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with the same opaq data nodes */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "anydata any {config false;}"
+            "}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<any xmlns=\"urn:tests:b\" xmlns:aa=\"urn:tests:b\"><x>aa:x</x></any>";
+    data2 = "<any xmlns=\"urn:tests:b\" xmlns:bb=\"urn:tests:b\"><x>bb:x</x></any>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, LYD_PARSE_ONLY, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, LYD_PARSE_ONLY, tree2);
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2, 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with the different opaq data node value */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "anydata any {config false;}"
+            "}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<any xmlns=\"urn:tests:b\" xmlns:aa=\"urn:tests:b\"><x>aa:x</x></any>";
+    data2 = "<any xmlns=\"urn:tests:b\" xmlns:bb=\"urn:tests:b\"><x>bb:y</x></any>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, LYD_PARSE_ONLY, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, LYD_PARSE_ONLY, tree2);
+    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* recreate second context with the wrong prefix in opaq data node value */
+    module = "module b {namespace urn:tests:b;prefix b;yang-version 1.1;"
+            "revision 2014-05-08;"
+            "anydata any {config false;}"
+            "}";
+    RECREATE_CTX_WITH_MODULE(ctx2, module);
+    data1 = "<any xmlns=\"urn:tests:b\" xmlns:aa=\"urn:tests:b\"><x>aa:x</x></any>";
+    data2 = "<any xmlns=\"urn:tests:b\" xmlns:bb=\"urn:tests:b\"><x>cc:x</x></any>";
+    CHECK_PARSE_LYD_PARAM_CTX(UTEST_LYCTX, data1, LYD_PARSE_ONLY, tree1);
+    CHECK_PARSE_LYD_PARAM_CTX(ctx2, data2, LYD_PARSE_ONLY, tree2);
+    assert_int_equal(LY_ENOT, lyd_compare_single(tree1, tree2, 0));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* clean up */
+    ly_ctx_destroy(ctx2, NULL);
+    _UC->in = NULL;
 }
 
 static void
@@ -313,6 +462,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_compare, setup),
+        UTEST(test_compare_diff_ctx, setup),
         UTEST(test_dup, setup),
         UTEST(test_target, setup),
         UTEST(test_list_pos, setup),
