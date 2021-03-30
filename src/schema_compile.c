@@ -1213,6 +1213,47 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Calculate context hash based on all the parsed and implemented modules, their order, and enabled features.
+ *
+ * @param[in] ctx libyang context to use.
+ * @return Module hash.
+ */
+static uint32_t
+lys_calculate_context_hash(const struct ly_ctx *ctx)
+{
+    const struct lys_module *mod;
+    const struct lysp_feature *f;
+    uint32_t idx = 0, f_idx, hash = 0;
+
+    while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
+        /* module name */
+        hash = dict_hash_multi(hash, mod->name, strlen(mod->name));
+
+        /* module revision */
+        if (mod->revision) {
+            hash = dict_hash_multi(hash, mod->revision, strlen(mod->revision));
+        }
+
+        /* implemented */
+        hash = dict_hash_multi(hash, (char *)&mod->implemented, sizeof mod->implemented);
+
+        /* enabled features */
+        if (mod->implemented) {
+            f = NULL;
+            f_idx = 0;
+            while ((f = lysp_feature_next(f, mod->parsed, &f_idx))) {
+                if (f->flags & LYS_FENABLED) {
+                    hash = dict_hash_multi(hash, f->name, strlen(f->name));
+                }
+            }
+        }
+    }
+
+    hash = dict_hash_multi(hash, NULL, 0);
+    return hash;
+}
+
 LY_ERR
 lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
@@ -1335,6 +1376,9 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     if (unres->leafrefs.count || unres->xpath.count || unres->dflts.count) {
         return lys_compile_unres_glob(ctx, unres);
     }
+
+    /* context was changed */
+    ctx->module_set_id = lys_calculate_context_hash(ctx);
 
     return LY_SUCCESS;
 }
@@ -1598,9 +1642,6 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
         /* just imported modules are not compiled */
         return LY_SUCCESS;
     }
-
-    /* context will be changed */
-    ++mod->ctx->module_set_id;
 
     sp = mod->parsed;
 

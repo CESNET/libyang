@@ -262,7 +262,6 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
             goto error;
         }
     }
-    ctx->module_set_id = 1;
 
     /* create dummy in */
     rc = ly_in_new_memory(internal_modules[0].data, &in);
@@ -321,7 +320,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
     return LY_SUCCESS;
 }
 
-API uint16_t
+API uint32_t
 ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
@@ -740,7 +739,7 @@ ylib_submodules(struct lyd_node *parent, const struct lysp_module *pmod, ly_bool
     return LY_SUCCESS;
 }
 
-API uint16_t
+API uint32_t
 ly_ctx_get_yanglib_id(const struct ly_ctx *ctx)
 {
     return ctx->module_set_id;
@@ -858,7 +857,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
     }
 
     /* IDs */
-    r = asprintf(&str, "%u", ctx->module_set_id);
+    r = asprintf(&str, "%08X", ctx->module_set_id);
     LY_CHECK_ERR_GOTO(r == -1, LOGMEM(ctx); ret = LY_EMEM, error);
     ret = lyd_new_term(root, NULL, "module-set-id", str, 0, NULL);
     LY_CHECK_ERR_GOTO(ret, free(str), error);

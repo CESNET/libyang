@@ -1360,7 +1360,6 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     /* add into context */
     ret = ly_set_add(&ctx->list, mod, 1, NULL);
     LY_CHECK_GOTO(ret, cleanup);
-    ctx->module_set_id++;
 
     /* resolve includes and all imports */
     LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), cleanup);

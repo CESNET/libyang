@@ -287,9 +287,9 @@ LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
  * as module-set-id in ::ly_ctx_get_yanglib_data() result.
  *
  * @param[in] ctx Context to be examined.
- * @return Numeric identifier of the current context's modules set.
+ * @return Numeric hash identifier of the current context's modules set.
  */
-uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
+uint32_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
 
 /**
  * @brief Callback for freeing returned module data in #ly_module_imp_clb.
@@ -517,7 +517,7 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] ctx Context to be examined.
  * @return Numeric identifier of the current context's modules set.
  */
-uint16_t ly_ctx_get_yanglib_id(const struct ly_ctx *ctx);
+uint32_t ly_ctx_get_yanglib_id(const struct ly_ctx *ctx);
 
 /**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.
