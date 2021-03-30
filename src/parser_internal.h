@@ -41,6 +41,8 @@ typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 
 /**
  * @brief Internal (common) context for YANG data parsers.
+ *
+ * Covers ::lyd_xml_ctx, ::lyd_json_ctx and lyd_lyb_ctx.
  */
 struct lyd_ctx {
     const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context of the data being parsed */
@@ -51,6 +53,7 @@ struct lyd_ctx {
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
     struct ly_set node_when;       /**< set of nodes with "when" conditions */
+    struct ly_set node_exts;       /**< set of nodes and extensions connected with a plugin providing own validation callback */
     struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */

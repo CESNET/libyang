@@ -83,12 +83,68 @@ test_add_simple(void **state)
     assert_int_equal(LY_SUCCESS, lyplg_add(TESTS_BIN "/plugins/plugin_simple" LYPLG_SUFFIX));
 }
 
+static void
+test_validation(void **state)
+{
+    const struct lys_module *mod;
+    struct lyd_node *tree;
+    const char *data;
+    const char *schema = "module libyang-plugins-validate {"
+            "  namespace urn:libyang:tests:plugins:validate;"
+            "  prefix v;"
+            "  extension extra-validation;"
+            "  typedef note { type string { v:extra-validation;}}"
+            "  leaf test1 {"
+            "    type v:note;"
+            "  }"
+            "  leaf test2 {"
+            "    type string;"
+            "    v:extra-validation;"
+            "  }"
+            "  leaf test3 {"
+            "    type string {v:extra-validation;}"
+            "  }"
+            "  leaf test4 {"
+            "    type string;"
+            "  }"
+            "}";
+
+    assert_int_equal(LY_SUCCESS, lyplg_add(TESTS_BIN "/plugins/plugin_validate" LYPLG_SUFFIX));
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    /* test1 - extra-validation done based on typedef's extension */
+    data = "<test1 xmlns=\"urn:libyang:tests:plugins:validate\">xxx</test1>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - validation test, version 1\": extra validation callback invoked on test1", NULL);
+    lyd_free_all(tree);
+
+    /* test2 - extra-validation done based on node's extension */
+    data = "<test2 xmlns=\"urn:libyang:tests:plugins:validate\">xxx</test2>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - validation test, version 1\": extra validation callback invoked on test2", NULL);
+    lyd_free_all(tree);
+
+    /* test3 - extra-validation done based on node type's extension */
+    data = "<test3 xmlns=\"urn:libyang:tests:plugins:validate\">xxx</test3>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - validation test, version 1\": extra validation callback invoked on test3", NULL);
+    lyd_free_all(tree);
+
+    /* test4 - extra-validation not done */
+    data = "<test4 xmlns=\"urn:libyang:tests:plugins:validate\">xxx</test4>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX(NULL, NULL);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_add_invalid),
         UTEST(test_add_simple),
+        UTEST(test_validation),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

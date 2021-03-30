@@ -34,6 +34,7 @@
 #include "tree_data_internal.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
+#include "validation.h"
 #include "xml.h"
 
 struct lyd_node *
@@ -222,7 +223,8 @@ lyd_parse_check_keys(struct lyd_node *node)
 }
 
 void
-lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, uint32_t options)
+lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct ly_set *exts_check, struct lyd_meta **meta,
+        uint32_t options)
 {
     struct lyd_meta *meta2, *prev_meta = NULL;
 
@@ -232,6 +234,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
             LY_CHECK_RET(ly_set_add(when_check, node, 1, NULL), );
         }
     }
+    LY_CHECK_RET(lysc_node_ext_tovalidate(exts_check, node), );
 
     LY_LIST_FOR(*meta, meta2) {
         if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults") &&

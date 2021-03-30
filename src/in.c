@@ -385,6 +385,7 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
     ly_set_erase(&lydctx->node_types, NULL);
     ly_set_erase(&lydctx->meta_types, NULL);
     ly_set_erase(&lydctx->node_when, NULL);
+    ly_set_erase(&lydctx->node_exts, NULL);
 }
 
 LY_ERR

@@ -201,13 +201,14 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
+ * @param[in] node_exts Optional set to add nodes and extension instances having own validation plugin callback into it.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types,
+        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_exts, struct ly_set *node_types,
         uint32_t impl_opts, struct lyd_node **diff);
 
 /**
@@ -403,11 +404,13 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  * @brief Set data flags for a newly parsed node.
  *
  * @param[in] node Node to use.
- * @param[in] when_check Set of nodes with unresolved when.
+ * @param[in,out] when_check Set of nodes with unresolved when.
+ * @param[in,out] exts_check Set of nodes and their extension instances if they have own validation callback.
  * @param[in,out] meta Node metadata, may be removed from.
  * @param[in] options Parse options.
  */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, uint32_t options);
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct ly_set *exts_check,
+        struct lyd_meta **meta, uint32_t options);
 
 /**
  * @brief Append all list key predicates to path.

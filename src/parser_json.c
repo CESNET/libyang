@@ -48,6 +48,7 @@ struct lyd_json_ctx {
     uint32_t path_len;             /**< used bytes in the path buffer */
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
     struct ly_set node_when;       /**< set of nodes with "when" conditions */
+    struct ly_set node_exts;       /**< set of nodes and extensions connected with a plugin providing own validation callback */
     struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
@@ -610,7 +611,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     }
                 }
                 /* add/correct flags */
-                lyd_parse_set_data_flags(node, &lydctx->node_when, &node->meta, lydctx->parse_opts);
+                lyd_parse_set_data_flags(node, &lydctx->node_when, &lydctx->node_exts, &node->meta, lydctx->parse_opts);
 
                 /* done */
                 break;
@@ -788,7 +789,7 @@ next_entry:
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add/correct flags */
-            lyd_parse_set_data_flags(node, &lydctx->node_when, &meta, lydctx->parse_opts);
+            lyd_parse_set_data_flags(node, &lydctx->node_when, &lydctx->node_exts, &meta, lydctx->parse_opts);
         } else {
             /* create attribute */
             const char *module_name;
@@ -1095,9 +1096,8 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
                 LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
 
                 /* add any missing default children */
-                ret = lyd_new_implicit_r(*node, lyd_node_child_p(*node), NULL, NULL, &lydctx->node_when,
-                        &lydctx->node_types, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ?
-                        LYD_IMPLICIT_NO_STATE : 0, NULL);
+                ret = lyd_new_implicit_r(*node, lyd_node_child_p(*node), NULL, NULL, &lydctx->node_when, &lydctx->node_exts,
+                        &lydctx->node_types, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
                 LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
             }
 
