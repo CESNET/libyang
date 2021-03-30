@@ -90,16 +90,11 @@ typedef void (*lyplg_ext_free_clb)(struct ly_ctx *ctx, struct lysc_ext_instance 
 /**
  * @brief Callback to decide if data instance is valid according to the schema.
  *
- * The callback is used only for the extension instances placed in the following parent statements
- * (which is specified as ::lysc_ext_instance.parent_type):
- *     - LYEXT_PAR_NODE - @p node is instance of the schema node where the extension instance was specified.
- *     - LYEXT_PAR_TPDF - @p node is instance of the schema node with the value of the typedef's type where the extension instance was specified.
- *     - LYEXT_PAR_TYPE - @p node is instance of the schema node with the value of the type where the extension instance was specified.
- *     - LYEXT_PAR_TYPE_BIT - @p node is instance of the schema node with the value of the bit where the extension instance was specified.
- *     - LYEXT_PAR_TYPE_ENUM - @p node is instance of the schema node with the value of the enum where the extension instance was specified.
+ * The callback is used only for the extension instances placed in the data nodes or type (the
+ * ::lysc_ext_instance.parent_stmt value must be ::LY_STMT_IS_DATA_NODE() values or ::LY_STMT_TYPE):
  *
  * @param[in] ext Extension instance to be checked.
- * @param[in] node Data node, where the extension data are supposed to be placed.
+ * @param[in] node Data node connected with the extension instance.
  *
  * @return LY_SUCCESS on data validation success.
  * @return LY_EVALID in case the validation fails.

@@ -1960,6 +1960,9 @@ preparenext:
         }
 
         (*type)->basetype = basetype;
+        /* collect extensions */
+        COMPILE_EXTS_GOTO(ctx, tctx->tpdf->type.exts, (*type)->exts, (*type), ret, cleanup);
+        /* get plugin for the type */
         (*type)->plugin = lys_compile_type_get_plugin(tctx->tpdf->type.pmod->mod, tctx->tpdf->name, basetype);
         prev_type = *type;
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name,
