@@ -164,16 +164,18 @@ void lyxml_ctx_free(struct lyxml_ctx *xmlctx);
 /**
  * @brief Compare values and their prefix mappings.
  *
- * @param[in] ctx libyang context.
+ * @param[in] ctx1 Libyang context for resolving prefixes in @p value1.
  * @param[in] value1 First value.
  * @param[in] val_prefix_data1 First value prefix data.
+ * @param[in] ctx2 Libyang context for resolving prefixes in @p value2.
+ * Can be set to NULL if @p ctx1 is equal to @p ctx2.
  * @param[in] value2 Second value.
  * @param[in] val_prefix_data2 Second value prefix data.
  * @return LY_SUCCESS if values are equal.
  * @return LY_ENOT if values are not equal.
  * @return LY_ERR on error.
  */
-LY_ERR lyxml_value_compare(const struct ly_ctx *ctx,  const char *value1, void *val_prefix_data1, const char *value2,
-        void *val_prefix_data2);
+LY_ERR lyxml_value_compare(const struct ly_ctx *ctx1, const char *value1, void *val_prefix_data1,
+        const struct ly_ctx *ctx2, const char *value2, void *val_prefix_data2);
 
 #endif /* LY_XML_H_ */
