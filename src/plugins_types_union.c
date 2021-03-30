@@ -40,6 +40,8 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
         return LY_EINVAL;
     }
 
+    *err = NULL;
+
     /* turn logging off */
     prev_lo = ly_log_options(0);
 
@@ -90,6 +92,8 @@ ly_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, cons
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_subvalue *subvalue = NULL;
+
+    *err = NULL;
 
     /* prepare subvalue storage */
     subvalue = calloc(1, sizeof *subvalue);

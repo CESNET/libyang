@@ -41,6 +41,8 @@ ly_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_ERR ret = LY_SUCCESS;
     int8_t i;
 
+    *err = NULL;
+
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);

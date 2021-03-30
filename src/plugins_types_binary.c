@@ -44,6 +44,8 @@ ly_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
 
+    *err = NULL;
+
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);

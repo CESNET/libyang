@@ -66,6 +66,8 @@ ly_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type
     struct lysc_ident *ident = NULL, *identities, *base;
     ly_bool dyn;
 
+    *err = NULL;
+
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);

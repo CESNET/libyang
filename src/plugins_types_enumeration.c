@@ -41,6 +41,8 @@ ly_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
 
+    *err = NULL;
+
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);

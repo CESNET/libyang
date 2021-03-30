@@ -44,6 +44,8 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, 
     struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
     char buf[LY_NUMBER_MAXLEN];
 
+    *err = NULL;
+
     if (!value || !value[0] || !value_len) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL,  NULL, "Invalid empty decimal64 value.");
         goto cleanup;

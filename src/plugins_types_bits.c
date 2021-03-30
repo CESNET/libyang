@@ -40,8 +40,6 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
-
-    /* necessary variables */
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
     struct lysc_type_bitenum_item **bits_items = NULL;
@@ -59,6 +57,8 @@ ly_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const
     ly_bool item_present;
     LY_ARRAY_COUNT_TYPE item_present_index;
     LY_ARRAY_COUNT_TYPE it;
+
+    *err = NULL;
 
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);

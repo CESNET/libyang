@@ -315,6 +315,8 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
 {
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
+    *err = NULL;
+
     /* consume leading whitespaces */
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
@@ -337,6 +339,8 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
         struct ly_err_item **err)
 {
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
+
+    *err = NULL;
 
     /* consume leading whitespaces */
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
@@ -365,6 +369,8 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
     char *valcopy = NULL;
     size_t fraction = 0, size, len = 0, trailing_zeros;
     int64_t d;
+
+    *err = NULL;
 
     /* consume leading whitespaces */
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
@@ -460,6 +466,8 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
+    *err = NULL;
+
     LY_ARRAY_FOR(patterns, u) {
         /* match_data needs to be allocated each time because of possible multi-threaded evaluation */
         match_data = pcre2_match_data_create_from_pattern(patterns[u]->code, NULL);
@@ -503,6 +511,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
     LY_ARRAY_COUNT_TYPE u;
     ly_bool is_length; /* length or range */
 
+    *err = NULL;
     is_length = (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? 1 : 0;
 
     LY_ARRAY_FOR(range->parts, u) {
@@ -607,6 +616,7 @@ ly_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA
 {
     LY_CHECK_ARG_RET(NULL, value || !value_len, err, LY_EINVAL);
 
+    *err = NULL;
     if (!value) {
         value = "";
     }
@@ -679,6 +689,8 @@ ly_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len
     uint32_t prefix_opt = 0;
 
     LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
+
+    *err = NULL;
 
     switch (format) {
     case LY_PREF_SCHEMA:

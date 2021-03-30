@@ -39,6 +39,8 @@ ly_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, cons
 {
     LY_ERR ret = LY_SUCCESS;
 
+    *err = NULL;
+
     /* check hints */
     ret = ly_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
