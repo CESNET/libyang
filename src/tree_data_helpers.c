@@ -547,12 +547,14 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
         const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *start, *stop;
     const struct lys_module *mod;
     const struct lyxml_ns *ns;
     struct lyxml_ns *new_ns;
     struct ly_set *ns_list;
     struct lysc_prefix *prefixes = NULL, *val_pref;
+    const char *value_iter, *value_next, *value_end;
+    uint32_t substr_len;
+    ly_bool is_prefix;
 
     switch (format) {
     case LY_PREF_SCHEMA:
@@ -569,37 +571,25 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
         }
 
         /* add all used prefixes */
-        for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
-            size_t bytes;
-            uint32_t c;
+        value_end = value + value_len;
+        for (value_iter = value; value_iter; value_iter = value_next) {
+            substr_len = ly_value_prefix_next(value_iter, value_end, &is_prefix, &value_next);
+            if (is_prefix) {
+                /* we have a possible prefix. Do we already have the prefix? */
+                mod = ly_resolve_prefix(ctx, value_iter, substr_len, *format_p, *prefix_data_p);
+                if (!mod) {
+                    mod = ly_resolve_prefix(ctx, value_iter, substr_len, format, prefix_data);
+                    if (mod) {
+                        assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
+                        /* store a new prefix - module pair */
+                        LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
+                        *prefix_data_p = prefixes;
 
-            ly_getutf8(&stop, &c, &bytes);
-            if (is_xmlqnamestartchar(c)) {
-                for (ly_getutf8(&stop, &c, &bytes);
-                        is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
-                        ly_getutf8(&stop, &c, &bytes)) {}
-                stop = stop - bytes;
-                if (*stop == ':') {
-                    /* we have a possible prefix */
-                    size_t len = stop - start;
-
-                    /* do we already have the prefix? */
-                    mod = ly_resolve_prefix(ctx, start, len, *format_p, *prefix_data_p);
-                    if (!mod) {
-                        mod = ly_resolve_prefix(ctx, start, len, format, prefix_data);
-                        if (mod) {
-                            assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
-                            /* store a new prefix - module pair */
-                            LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
-                            *prefix_data_p = prefixes;
-
-                            val_pref->prefix = strndup(start, len);
-                            LY_CHECK_ERR_GOTO(!val_pref->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                            val_pref->mod = mod;
-                        } /* else it is not even defined */
-                    } /* else the prefix is already present */
-                }
-                stop = stop + bytes;
+                        val_pref->prefix = strndup(value_iter, substr_len);
+                        LY_CHECK_ERR_GOTO(!val_pref->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                        val_pref->mod = mod;
+                    } /* else it is not even defined */
+                } /* else the prefix is already present */
             }
         }
         break;
@@ -617,38 +607,26 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
         }
 
         /* add all used prefixes */
-        for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
-            size_t bytes;
-            uint32_t c;
+        value_end = value + value_len;
+        for (value_iter = value; value_iter; value_iter = value_next) {
+            substr_len = ly_value_prefix_next(value_iter, value_end, &is_prefix, &value_next);
+            if (is_prefix) {
+                /* we have a possible prefix. Do we already have the prefix? */
+                ns = lyxml_ns_get(ns_list, value_iter, substr_len);
+                if (!ns) {
+                    ns = lyxml_ns_get(prefix_data, value_iter, substr_len);
+                    if (ns) {
+                        /* store a new prefix - namespace pair */
+                        new_ns = calloc(1, sizeof *new_ns);
+                        LY_CHECK_ERR_GOTO(!new_ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                        LY_CHECK_GOTO(ret = ly_set_add(ns_list, new_ns, 1, NULL), cleanup);
 
-            ly_getutf8(&stop, &c, &bytes);
-            if (is_xmlqnamestartchar(c)) {
-                for (ly_getutf8(&stop, &c, &bytes);
-                        is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
-                        ly_getutf8(&stop, &c, &bytes)) {}
-                stop = stop - bytes;
-                if (*stop == ':') {
-                    /* we have a possible prefix */
-                    size_t len = stop - start;
-
-                    /* do we already have the prefix? */
-                    ns = lyxml_ns_get(ns_list, start, len);
-                    if (!ns) {
-                        ns = lyxml_ns_get(prefix_data, start, len);
-                        if (ns) {
-                            /* store a new prefix - namespace pair */
-                            new_ns = calloc(1, sizeof *new_ns);
-                            LY_CHECK_ERR_GOTO(!new_ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                            LY_CHECK_GOTO(ret = ly_set_add(ns_list, new_ns, 1, NULL), cleanup);
-
-                            new_ns->prefix = strndup(start, len);
-                            LY_CHECK_ERR_GOTO(!new_ns->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                            new_ns->uri = strdup(ns->uri);
-                            LY_CHECK_ERR_GOTO(!new_ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                        } /* else it is not even defined */
-                    } /* else the prefix is already present */
-                }
-                stop = stop + bytes;
+                        new_ns->prefix = strndup(value_iter, substr_len);
+                        LY_CHECK_ERR_GOTO(!new_ns->prefix, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                        new_ns->uri = strdup(ns->uri);
+                        LY_CHECK_ERR_GOTO(!new_ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                    } /* else it is not even defined */
+                } /* else the prefix is already present */
             }
         }
         break;
