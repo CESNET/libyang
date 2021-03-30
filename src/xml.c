@@ -1087,11 +1087,15 @@ lyxml_dump_text(struct ly_out *out, const char *text, ly_bool attribute)
 }
 
 LY_ERR
-lyxml_value_compare(const struct ly_ctx *ctx, const char *value1, void *val_prefix_data1, const char *value2,
-        void *val_prefix_data2)
+lyxml_value_compare(const struct ly_ctx *ctx1, const char *value1, void *val_prefix_data1,
+        const struct ly_ctx *ctx2, const char *value2, void *val_prefix_data2)
 {
-    const char *ptr1, *ptr2, *end1, *end2;
+    const char *value1_iter, *value2_iter;
+    const char *value1_next, *value2_next;
+    uint32_t value1_len, value2_len;
+    ly_bool is_prefix1, is_prefix2;
     const struct lys_module *mod1, *mod2;
+    LY_ERR ret;
 
     if (!value1 && !value2) {
         return LY_SUCCESS;
@@ -1100,38 +1104,77 @@ lyxml_value_compare(const struct ly_ctx *ctx, const char *value1, void *val_pref
         return LY_ENOT;
     }
 
-    ptr1 = value1;
-    ptr2 = value2;
-    while (ptr1[0] && ptr2[0]) {
-        if (ptr1[0] != ptr2[0]) {
-            /* it can be a start of prefix that maps to the same module */
-            mod1 = mod2 = NULL;
-            if (val_prefix_data1 && (end1 = strchr(ptr1, ':'))) {
-                /* find module of the first prefix, if any */
-                mod1 = ly_resolve_prefix(ctx, ptr1, end1 - ptr1, LY_PREF_XML, val_prefix_data1);
-            }
-            if (val_prefix_data2 && (end2 = strchr(ptr2, ':'))) {
-                /* find module of the second prefix, if any */
-                mod2 = ly_resolve_prefix(ctx, ptr2, end2 - ptr2, LY_PREF_XML, val_prefix_data2);
-            }
+    if (!ctx2) {
+        ctx2 = ctx1;
+    }
 
-            if (!mod1 || !mod2 || (mod1 != mod2)) {
-                /* not a prefix or maps to different namespaces */
+    ret = LY_SUCCESS;
+    for (value1_iter = value1, value2_iter = value2;
+            value1_iter && value2_iter;
+            value1_iter = value1_next, value2_iter = value2_next) {
+        value1_len = ly_value_prefix_next(value1_iter, NULL, &is_prefix1, &value1_next);
+        value2_len = ly_value_prefix_next(value2_iter, NULL, &is_prefix2, &value2_next);
+
+        if (is_prefix1 != is_prefix2) {
+            ret = LY_ENOT;
+            break;
+        }
+
+        if (!is_prefix1) {
+            if (value1_len != value2_len) {
+                ret = LY_ENOT;
+                break;
+            }
+            if (strncmp(value1_iter, value2_iter, value1_len)) {
+                ret = LY_ENOT;
+                break;
+            }
+            continue;
+        }
+
+        mod1 = mod2 = NULL;
+        if (val_prefix_data1) {
+            /* find module of the first prefix, if any */
+            mod1 = ly_resolve_prefix(ctx1, value1_iter, value1_len, LY_PREF_XML, val_prefix_data1);
+        }
+        if (val_prefix_data2) {
+            mod2 = ly_resolve_prefix(ctx2, value2_iter, value2_len, LY_PREF_XML, val_prefix_data2);
+        }
+        if (!mod1 || !mod2) {
+            /* not a prefix or maps to different namespaces */
+            ret = LY_ENOT;
+            break;
+        }
+
+        if (mod1->ctx == mod2->ctx) {
+            /* same contexts */
+            if ((mod1->name != mod2->name) || (mod1->revision != mod2->revision)) {
+                ret = LY_ENOT;
+                break;
+            }
+        } else {
+            /* different contexts */
+            if (strcmp(mod1->name, mod2->name)) {
+                ret = LY_ENOT;
                 break;
             }
 
-            /* skip prefixes in both values (':' is skipped as iter) */
-            ptr1 = end1;
-            ptr2 = end2;
+            if (mod1->revision || mod2->revision) {
+                if (!mod1->revision || !mod2->revision) {
+                    ret = LY_ENOT;
+                    break;
+                }
+                if (strcmp(mod1->revision, mod2->revision)) {
+                    ret = LY_ENOT;
+                    break;
+                }
+            }
         }
-
-        ++ptr1;
-        ++ptr2;
-    }
-    if (ptr1[0] || ptr2[0]) {
-        /* not a match or simply different lengths */
-        return LY_ENOT;
     }
 
-    return LY_SUCCESS;
+    if (value1_iter || value2_iter) {
+        ret = LY_ENOT;
+    }
+
+    return ret;
 }
