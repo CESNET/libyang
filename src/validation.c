@@ -1342,7 +1342,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
             LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, NULL, NULL, impl_opts, diff));
         }
 
-        if (lysc_node_when(node->schema)) {
+        if (lysc_has_when(node->schema)) {
             /* when evaluation */
             LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
         }
