@@ -262,7 +262,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
             goto error;
         }
     }
-    ctx->module_set_id = 1;
+    ctx->change_count = 1;
 
     /* create dummy in */
     rc = ly_in_new_memory(internal_modules[0].data, &in);
@@ -322,10 +322,11 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 }
 
 API uint16_t
-ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
+ly_ctx_get_change_count(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
-    return ctx->module_set_id;
+
+    return ctx->change_count;
 }
 
 API void
@@ -740,14 +741,8 @@ ylib_submodules(struct lyd_node *parent, const struct lysp_module *pmod, ly_bool
     return LY_SUCCESS;
 }
 
-API uint16_t
-ly_ctx_get_yanglib_id(const struct ly_ctx *ctx)
-{
-    return ctx->module_set_id;
-}
-
 API LY_ERR
-ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
+ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, const char *content_id_format, ...)
 {
     LY_ERR ret;
     uint32_t i;
@@ -756,6 +751,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
     char *str;
     const struct lys_module *mod;
     struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL;
+    va_list ap;
 
     LY_CHECK_ARG_RET(ctx, ctx, root_p, LY_EINVAL);
 
@@ -858,7 +854,9 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
     }
 
     /* IDs */
-    r = asprintf(&str, "%u", ctx->module_set_id);
+    va_start(ap, content_id_format);
+    r = vasprintf(&str, content_id_format, ap);
+    va_end(ap);
     LY_CHECK_ERR_GOTO(r == -1, LOGMEM(ctx); ret = LY_EMEM, error);
     ret = lyd_new_term(root, NULL, "module-set-id", str, 0, NULL);
     LY_CHECK_ERR_GOTO(ret, free(str), error);

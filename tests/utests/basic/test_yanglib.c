@@ -114,7 +114,13 @@ test_yanglib(void **state)
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
     UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_get_yanglib_data(UTEST_LYCTX, &tree));
+    assert_int_equal(LY_SUCCESS, ly_ctx_get_yanglib_data(UTEST_LYCTX, &tree, "<<%u>>", ly_ctx_get_change_count(UTEST_LYCTX)));
+    lyd_free_all(tree);
+    assert_int_equal(LY_SUCCESS, ly_ctx_get_yanglib_data(UTEST_LYCTX, &tree, "%u", -10));
+    lyd_free_all(tree);
+    assert_int_equal(LY_SUCCESS, ly_ctx_get_yanglib_data(UTEST_LYCTX, &tree, ""));
+    lyd_free_all(tree);
+    assert_int_equal(LY_SUCCESS, ly_ctx_get_yanglib_data(UTEST_LYCTX, &tree, "%u", ly_ctx_get_change_count(UTEST_LYCTX)));
 
     /* make sure there is "a" with a submodule and deviation */
     ret = lyd_find_xpath(tree, "/ietf-yang-library:yang-library/module-set/module[name='a'][submodule/name='a_sub']"
