@@ -1600,7 +1600,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     }
 
     /* context will be changed */
-    ++mod->ctx->module_set_id;
+    ++mod->ctx->change_count;
 
     sp = mod->parsed;
 

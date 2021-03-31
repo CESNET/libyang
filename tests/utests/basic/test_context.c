@@ -208,11 +208,11 @@ test_models(void **state)
     ly_ctx_destroy(UTEST_LYCTX, NULL);
 
     /* invalid arguments */
-    assert_int_equal(0, ly_ctx_get_module_set_id(NULL));
-    CHECK_LOG("Invalid argument ctx (ly_ctx_get_module_set_id()).", NULL);
+    assert_int_equal(0, ly_ctx_get_change_count(NULL));
+    CHECK_LOG("Invalid argument ctx (ly_ctx_get_change_count()).", NULL);
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
-    assert_int_equal(UTEST_LYCTX->module_set_id, ly_ctx_get_module_set_id(UTEST_LYCTX));
+    assert_int_equal(UTEST_LYCTX->change_count, ly_ctx_get_change_count(UTEST_LYCTX));
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module x {namespace urn:x;prefix x;}", &in));
     assert_int_equal(LY_EINVAL, lys_create_module(UTEST_LYCTX, in, 4, 1, NULL, NULL, NULL, &unres, &mod1));

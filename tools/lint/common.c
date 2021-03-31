@@ -349,7 +349,7 @@ print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
     const struct lys_module *mod;
 
     if (outformat != LYD_UNKNOWN) {
-        if (ly_ctx_get_yanglib_data(ctx, &ylib)) {
+        if (ly_ctx_get_yanglib_data(ctx, &ylib, "%u", ly_ctx_get_change_count(ctx))) {
             YLMSG_E("Getting context info (ietf-yang-library data) failed. If the YANG module is missing or not implemented, use an option to add it internally.\n");
             return 1;
         }

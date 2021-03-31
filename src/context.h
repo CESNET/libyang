@@ -125,9 +125,8 @@ struct lysc_node;
  * - ::ly_ctx_reset_latests()
  *
  * - ::ly_ctx_get_yanglib_data()
- * - ::ly_ctx_get_yanglib_id()
  *
- * - ::ly_ctx_get_module_set_id()
+ * - ::ly_ctx_get_change_count()
  * - ::ly_ctx_internal_modules_count()
  *
  * - ::lys_search_localfile()
@@ -283,13 +282,12 @@ LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
 LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
 
 /**
- * @brief Get current ID of the modules set. The value is available also
- * as module-set-id in ::ly_ctx_get_yanglib_data() result.
+ * @brief Get the change count of the context (module set) during its life-time.
  *
  * @param[in] ctx Context to be examined.
- * @return Numeric identifier of the current context's modules set.
+ * @return Context change count.
  */
-uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
+uint16_t ly_ctx_get_change_count(const struct ly_ctx *ctx);
 
 /**
  * @brief Callback for freeing returned module data in #ly_module_imp_clb.
@@ -511,23 +509,26 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
         const char **features);
 
 /**
- * @brief Get current ID of the modules set. The value is available also
- * as module-set-id in ::ly_ctx_get_yanglib_data() result.
- *
- * @param[in] ctx Context to be examined.
- * @return Numeric identifier of the current context's modules set.
- */
-uint16_t ly_ctx_get_yanglib_id(const struct ly_ctx *ctx);
-
-/**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.
  * ietf-yang-library module must be loaded.
  *
+ * Note that "/ietf-yang-library:yang-library/datastore" list instances are not created and should be
+ * appended by the caller. There is a single "/ietf-yang-library:yang-library/schema" instance created
+ * with the key value "complete".
+ *
+ * If the data identifier can be limited to the existence and changes of this context, the following
+ * last 2 parameters can be used:
+ *
+ * "%u" as @p content_id_format and ::ly_ctx_get_change_count() as its parameter.
+ *
  * @param[in] ctx Context with the modules.
  * @param[out] root Generated yang-library data.
+ * @param[in] content_id_format Format string (printf-like) for the yang-library data identifier, which is
+ * the "content_id" node in the 2019-01-04 revision of ietf-yang-library.
+ * @param[in] ... Parameters for @p content_id_format.
  * @return LY_ERR value
  */
-LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root);
+LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root, const char *content_id_format, ...);
 
 /**
  * @brief Free all internal structures of the specified context.
