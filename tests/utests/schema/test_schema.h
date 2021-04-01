@@ -19,7 +19,7 @@
 
 #include "log.h"
 #include "parser_schema.h"
-#include "tests/config.h"
+#include "tests_config.h"
 
 LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
         const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT * format,

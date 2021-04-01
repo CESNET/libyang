@@ -20,7 +20,7 @@
 #include "out.h"
 #include "parser_data.h"
 #include "printer_data.h"
-#include "tests/config.h"
+#include "tests_config.h"
 #include "tree_schema.h"
 
 static int

@@ -9,9 +9,9 @@ else()
     find_program(VALGRIND_FOUND valgrind)
 endif()
 
-configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_BINARY_DIR}/tests/config.h" ESCAPE_QUOTES @ONLY)
+configure_file("${PROJECT_SOURCE_DIR}/tests/tests_config.h.in" "${PROJECT_BINARY_DIR}/tests/tests_config.h" ESCAPE_QUOTES @ONLY)
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
-include_directories(${PROJECT_BINARY_DIR})
+include_directories(${PROJECT_BINARY_DIR}/tests/)
 
 function(ly_add_utest)
     cmake_parse_arguments(ADDTEST "" "NAME;WRAP" "SOURCES" ${ARGN})
