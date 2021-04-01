@@ -29,7 +29,7 @@
 #include "libyang.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
-#include "tests/config.h"
+#include "tests_config.h"
 #include "tree_schema_internal.h"
 
 /**
