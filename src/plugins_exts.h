@@ -33,7 +33,64 @@ extern "C" {
 #endif
 
 /**
- * @defgroup extensions YANG Extensions
+ * @page howtoPluginsExtensions Extension Plugins
+ *
+ * Note that the part of the libyang API here is available only by including a separated `<libyang/plugins_exts.h>` header
+ * file. Also note that the extension plugins API is versioned separately from libyang itself, so backward incompatible
+ * changes can come even without changing libyang major version.
+ *
+ * YANG extensions are very complex. Usually only its description specifies how it is supposed to behave, what are the
+ * allowed substatements, their cardinality or if the standard YANG statements placed inside the extension differs somehow
+ * in their meaning or behavior. libyang provids the Extension plugins API to implement such extensions and add its support
+ * into libyang itself. However we tried our best, the API is not (and it cannot be) so universal and complete to cover all
+ * possibilities. There are definitely use cases which cannot be simply implemented only with this API.
+ *
+ * libyang implements 3 important extensions: [NACM](https://tools.ietf.org/html/rfc8341), [Metadata](@ref howtoDataMetadata)
+ * and [yang-data](@ref howtoDataYangdata). Despite the core implementation in all three cases is done via extension plugin
+ * API, also other parts of the libyang code had to be extended to cover complete scope of the extensions.
+ *
+ * We believe, that the API is capable to allow implementation of very wide range of YANG extensions. However, if you see
+ * limitations for the particular YANG extension, don't hesitate to contact the project developers to discuss all the
+ * options, including updating the API.
+ *
+ * The plugin's functionality is provided to libyang via a set of callbacks specified as an array of ::lyplg_ext_record
+ * structures using the ::LYPLG_EXTENSIONS macro.
+ *
+ * The most important ::lyplg_ext.compile callback is responsible for processing the parsed extension instance. In this
+ * phase, the callback must validate all the substatements, their values or placement of the extension instance itself.
+ * If needed, the processed data can be stored in some form into the compiled schema representation of the extension
+ * instance. To make the compilation process as easy as possible, libyang provides several
+ * [helper functions](@ref pluginsExtensionsCompile) to handle the schema compilation context and to compile standard YANG
+ * statements in the same way the libyang does it internally.
+ *
+ * The data validation callback ::lyplg_ext.validate is used for additional validation of a data nodes that contains the
+ * connected extension instance directly (as a substatement) or indirectly in case of terminal nodes via their type (no
+ * matter if the extension instance is placed directly in the leaf's/leaf-list's type or in the type of the referenced
+ * typedef).
+ *
+ * The ::lyplg_ext.sprinter callback implement printing the compiled extension instance data when the schema (module) is
+ * being printed in the ::LYS_OUT_YANG_COMPILED (info) format. As for compile callback, there are also
+ * [helper functions](@ref pluginsExtensionsPrint) to access printer's context and to print standard YANG statements
+ * placed in the extension instance by libyang itself.
+ *
+ * The last callback, ::lyplg_ext.free, is supposed to free all the data allocated by the ::lyplg_ext.compile callback.
+ * To free the data created by helper function ::lys_compile_extension_instance(), the plugin can used
+ * ::lyplg_ext_instance_substatements_free().
+ *
+ * The plugin information contains also the plugin identifier (::lyplg_type.id). This string can serve to identify the
+ * specific plugin responsible to storing data value. In case the user can recognize the id string, it can access the
+ * plugin specific data with the appropriate knowledge of its structure.
+ *
+ * Logging information from an extension plugin is possible via ::lyplg_ext_log() function
+ */
+
+/**
+ * @defgroup pluginsExtensions Plugins: Extensions
+ *
+ * Structures and functions to for libyang plugins implementing specific YANG extensions defined in YANG modules. For more
+ * information, see @ref howtoPluginsTypes.
+ *
+ * This part of libyang API is available by including `<libyang/plugins_ext.h>` header file.
  *
  * @{
  */
@@ -56,7 +113,7 @@ extern "C" {
 /**
  * @brief Free the extension instance's data compiled with ::lys_compile_extension_instance().
  *
- * @param[in] libyang context
+ * @param[in] ctx libyang context
  * @param[in] substmts The sized array of extension instance's substatements. The whole array is freed except the storage
  * places which are expected to be covered by the extension plugin.
  */
@@ -150,7 +207,7 @@ struct lyplg_ext_record {
 void lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
         const char *format, ...);
 
-/** @} extensions */
+/** @} pluginsExtensions */
 
 #ifdef __cplusplus
 }

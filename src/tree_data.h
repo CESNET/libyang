@@ -98,6 +98,82 @@ struct lyd_node_term;
  * - ::lyd_target()
  *
  * - ::lyd_lyb_data_length()
+ *
+ *
+ * @section howtoDataMetadata Metadata Support
+ *
+ * YANG Metadata annotations are defined in [RFC 7952](https://tools.ietf.org/html/rfc7952) as YANG extension (and libyang
+ * [implements them as internal extension plugin](@ref howtoPluginsExtensions)). In practice, it allows to have XML
+ * attributes (there is also a special encoding for JSON) in YANG modeled data. libyang does not allow to have any XML
+ * attribute without the appropriate annotation definition describing the data as it is done e.g. for leafs. When an
+ * attribute without a matching annotation definition is found in the input data, it is:
+ * - silently dropped (with warning) or
+ * - an error is reported in case the ::LYD_PARSE_STRICT parser option is provided to the
+ *   [parser function](@ref howtoDataParsers) or
+ * - stored into a generic ::lyd_attr structure without a connection with any YANG module in case the ::LYD_PARSE_OPAQ
+ *   parser options is provided to the [parser function](@ref howtoDataParsers).
+ *
+ * There are some XML attributes, described by [YANG](https://tools.ietf.org/html/rfc7950) and
+ * [NETCONF](https://tools.ietf.org/html/rfc6241) specifications, which are not defined as annotations, but libyang
+ * implements them this way. In case of attributes in the YANG namespace (`insert`, `value` and `key` attributes
+ * for the NETCONF edit-config operation), they are defined in special libyang's internal module `yang`, which is
+ * available in each context and the content of this schema can be printed via
+ * [schema printers](@ref howtoSchemaPrinters).
+ *
+ * In case of the attributes described in [NETCONF specification](https://tools.ietf.org/html/rfc6241), the libyang's
+ * annotations structures are hidden and cannot be printed despite, internally, they are part of the `ietf-netconf`'s
+ * schema structure. Therefore, these attributes are available only when the `ietf-netconf` schema is loaded in the
+ * context. The definitions of these annotations are as follows:
+ *
+ *     md:annotation operation {
+ *       type enumeration {
+ *         enum merge;
+ *         enum replace;
+ *         enum create;
+ *         enum delete;
+ *         enum remove;
+ *       }
+ *     }
+ *
+ *     md:annotation type {
+ *       type enumeration {
+ *         enum subtree;
+ *         enum xpath {
+ *           if-feature "nc:xpath";
+ *         }
+ *       }
+ *     }
+ *
+ *     md:annotation select {
+ *       type string;
+ *     }
+ *
+ * Note, that, following the specification,
+ * - the `type` and `select` XML attributes are supposed to be unqualified (without namespace) and that
+ * - the `select`'s content is XPath and it is internally transformed by libyang into the format where the
+ *   XML namespace prefixes are replaced by the YANG module names.
+ *
+ *
+ * @section howtoDataYangdata yang-data Support
+ *
+ * [RFC 8040](https://tools.ietf.org/html/rfc8040) defines ietf-restconf module, which includes yang-data extension. Despite
+ * the definition in the RESTCONF YANG module, the yang-data concept is quite generic and used even in modules without a
+ * connection to RESTCONF protocol. The extension allows to define a separated YANG trees usable separately from any
+ * datastore.
+ *
+ * libyang implements support for yang-data internally as an [extension plugin](@ref howtoPluginsExtensions). To ease the
+ * use of yang-data with libyang, there are several generic functions, which are usable for yang-data:
+ *
+ * - ::lyd_parse_ext_data()
+ * - ::lyd_parse_ext_op()
+ *
+ * - ::lys_getnext_ext()
+ *
+ * - ::lyd_new_ext_inner()
+ * - ::lyd_new_ext_list()
+ * - ::lyd_new_ext_term()
+ * - ::lyd_new_ext_any()
+ * - ::lyd_new_ext_path()
  */
 
 /**
@@ -131,7 +207,7 @@ struct lyd_node_term;
  * ::lyd_new_ext_inner(), ::lyd_new_ext_term(), ::lyd_new_ext_any(), ::lyd_new_ext_list() and ::lyd_new_ext_path()
  * functions.
  *
- * The [metadata](@ref howtoPluginsExtensionsMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
+ * The [metadata](@ref howtoDataMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
  *
  * Changing value of a terminal node (leaf, leaf-list) is possible with ::lyd_change_term(). Similarly, the metadata value

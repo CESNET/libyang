@@ -57,14 +57,14 @@ extern "C" {
  * - [Manipulation with the instance data](@ref howtoDataManipulation).
  * - Support for [default values in the instance data](@ref howtoDataWD) ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
  * - Support for [YANG extensions and user types](@ref howtoPlugins).
- * - Support for [YANG Metadata](@ref howtoPluginsExtensionsMetadata) ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
+ * - Support for [YANG Metadata](@ref howtoDataMetadata) ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
  *
  * The current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020)) as well as
  * YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
  *
  * @section about-license License
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2021 CESNET, z.s.p.o.
  *
  * (The BSD 3-Clause License)
  *
@@ -129,21 +129,6 @@ extern "C" {
  * The `prev` pointer is always filled. In case there is just a single item in the list, the `prev` pointer points to the
  * item itself. Otherwise, the `prev` pointer of the first item points to the last item of the list. In contrast, the
  * `next` pointer of the last item in the list is always NULL.
- */
-
-/**
- * @page howtoPlugins Plugins
- *
- * libyang supports several types of plugins to better support generic features of YANG that need some specific code for
- * their specific instances in YANG schemas. This is the case of YANG types, which are derived from YANG built-in types
- * (which are implemented by libyang), but the description of the derived type can specify some additional requirements or
- * restriction that cannot be implemented generically and some special code is needed. The second case for libyang plugins
- * are YANG extensions. For YANG extensions, most of the specification stays in their description (e.g. allowed substatements
- * or place of the extension instanciation) and libyang is not able to process such a text in a generic way. In both cases,
- * libyang provides API to provide functionality implementing the specifics of each type or extension.
- *
- * - @subpage howtoPluginsTypes
- * - @subpage howtoPluginsExtensions
  */
 
 /**

@@ -29,7 +29,10 @@ extern "C" {
 #endif
 
 /**
- * @ingroup extensions YANG Extensions
+ * @defgroup pluginsExtensionsCompile Plugins: Extensions compilation support
+ * @ingroup pluginsExtensions
+ *
+ * Helper functions to implement extension plugin's compile callback.
  *
  * @{
  */

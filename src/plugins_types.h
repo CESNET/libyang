@@ -44,41 +44,111 @@ struct lysc_type_leafref;
 struct lysp_module;
 
 /**
- * @defgroup types Plugins - Types
- * @{
+ * @page howtoPluginsTypes Type Plugins
  *
- * Structures and functions to for libyang plugins implementing specific YANG types defined in YANG schemas
- */
-
-/**
- * @page howtoPluginsTypes
+ * Note that the part of the libyang API here is available only by including a separated `<libyang/plugins_types.h>` header
+ * file. Also note that the type plugins API is versioned separately from libyang itself, so backward incompatible changes
+ * can come even without changing libyang major version.
  *
- * YANG allows schemas to define new data types via *typedef* statement or even in leaf's/leaf-list's *type* statements.
+ * YANG allows to define new data types via *typedef* statements or even in leaf's/leaf-list's *type* statements.
  * Such types are derived (directly or indirectly) from a set of [YANG built-in types](https://tools.ietf.org/html/rfc7950#section-4.2.4).
- * libyang implements all handling of the data values of the YANG types via plugins. Internally, plugins for the built-in types
- * and several others are implemented. Type plugin is supposed to
- * - validate (and canonize) data value according to the type's restrictions,
- * - store it as lyd_value,
- * - print it,
- * - compare two values (lyd_value) of the same type,
- * - duplicate data in lyd_value and
- * - free the connected data from lyd_value.
+ * libyang implements all handling of the data values of the YANG types via the Type Plugins API. Internally, there is
+ * implementation of the built-in types and others can be added as an external plugin (see @ref howtoPlugins).
  *
- * All these functions are provided to libyang via a set of callback functions specified as ::lyplg_type.
- * All the callbacks are supposed to do not log directly via libyang logger. Instead, they return LY_ERR value and
+ * Type plugin is supposed to
+ *  - store (and canonize) data value,
+ *  - validate it according to the type's restrictions,
+ *  - compare two values (::lyd_value) of the same type,
+ *  - duplicate value (::lyd_value),
+ *  - print it and
+ *  - free the specific data inserted into ::lyd_value.
+ *
+ * These tasks are implemented as callbacks provided to libyang via ::lyplg_type_record structures defined as array using
+ * ::LYPLG_TYPES macro.
+ *
+ * All the callbacks are supposed to do not log directly via libyang logger. Instead, they return ::LY_ERR value and
  * ::ly_err_item error structure(s) describing the detected error(s) (helper functions ::ly_err_new() and ::ly_err_free()
  * are available).
  *
  * The main functionality is provided via ::lyplg_type_store_clb callback responsible for canonizing and storing
  * provided string representation of the value in specified format (XML and JSON supported). Valid value is stored in
  * ::lyd_value structure - its union allows to store data as one of the predefined type or in a custom form behind
- * the ptr member (void *) of ::lyd_value structure. The callback is also responsible for storing canonized string
+ * the void *ptr member of ::lyd_value structure. The callback is also responsible for storing canonized string
  * representation of the value as ::lyd_value.canonical. If the type does not define canonical representation, the original
  * representation is stored. In case there are any differences between the representation in specific input types, the plugin
  * is supposed to store the value in JSON representation - typically, the difference is in prefix representation and JSON
- * format use directly the module names as prefixes. Optionally, in case the type requires some validation referencing other
- * entities in the data tree, the ::lyplg_type_validate_clb can be implemented. The stored value can be printed into the
- * required format via ::lyplg_type_print_clb implementation.
+ * format uses directly the module names as prefixes.
+ *
+ * Usually, all the validation according to the type's restrictions is done in the store callback. However, in case the type
+ * requires some validation referencing other entities in the data tree, the optional validation callback
+ * ::lyplg_type_validate_clb can be implemented.
+ *
+ * The stored values can be compared in a specific way by providing ::lyplg_type_compare_clb. In case the best way to compare
+ * the values is to compare their canonical string representations, the ::lyplg_type_compare_simple() function can be used.
+ *
+ * Data duplication is done with ::lyplg_type_dup_clb callbacks. Note that the callback is responsible even for duplicating
+ * the ::lyd_value.canonical, so the callback must be always present (the canonical value is always present). If there is
+ * nothing else to duplicate, the plugin can use the generic ::lyplg_type_dup_simple().
+ *
+ * The stored value can be printed into the required format via ::lyplg_type_print_clb implementation. Simple printing
+ * canonical representation of the value is implemented by ::lyplg_type_print_simple().
+ *
+ * And finally freeing any data stored in the ::lyd_value by the plugin is done by implementation of ::lyplg_type_free_clb.
+ * Freeing only the canonical string is implemented by ::lyplg_type_free_simple().
+ *
+ * The plugin information contains also the plugin identifier (::lyplg_type.id). This string can serve to identify the
+ * specific plugin responsible to storing data value. In case the user can recognize the id string, it can access the
+ * plugin specific data with the appropriate knowledge of its structure.
+ *
+ * Besides the mentioned `_simple` functions, libyang provides, as part of the type plugins API, all the callbacks
+ * implementing the built-in types in the internal plugins:
+ *
+ *  - [simple callbacks](@ref pluginsTypesSimple) handling only the canonical strings in the value,
+ *  - [binary built-in type](@ref pluginsTypesBinary)
+ *  - [bits built-in type](@ref pluginsTypesBits)
+ *  - [boolean built-in type](@ref pluginsTypesBoolean)
+ *  - [decimal64 built-in type](@ref pluginsTypesDecimal64)
+ *  - [empty built-in type](@ref pluginsTypesEmpty)
+ *  - [enumeration built-in type](@ref pluginsTypesEnumeration)
+ *  - [identityref built-in type](@ref pluginsTypesIdentityref)
+ *  - [instance-identifier built-in type](@ref pluginsTypesInstanceid)
+ *  - [integer built-in types](@ref pluginsTypesInteger)
+ *  - [leafref built-in type](@ref pluginsTypesLeafref)
+ *  - [string built-in type](@ref pluginsTypesString)
+ *  - [union built-in type](@ref pluginsTypesUnion)
+ *
+ * In addition to these callbacks, the API also provides sevral function which can help to implement your own plugin for the
+ * derived YANG types:
+ *
+ * - ::ly_err_new()
+ * - ::ly_err_free()
+ *
+ * - ::lyplg_type_lypath_new()
+ * - ::lyplg_type_lypath_free()
+ *
+ * - ::lyplg_type_prefix_data_new()
+ * - ::lyplg_type_prefix_data_dup()
+ * - ::lyplg_type_prefix_data_free()
+ * - ::lyplg_type_get_prefix()
+ *
+ * - ::lyplg_type_check_hints()
+ * - ::lyplg_type_identity_isderived()
+ * - ::lyplg_type_identity_module()
+ * - ::lyplg_type_make_implemented()
+ * - ::lyplg_type_parse_dec64()
+ * - ::lyplg_type_parse_int()
+ * - ::lyplg_type_parse_uint()
+ * - ::lyplg_type_resolve_leafref()
+ */
+
+/**
+ * @defgroup pluginsTypes Plugins: Types
+ * @{
+ *
+ * Structures and functions to for libyang plugins implementing specific YANG types defined in YANG modules. For more
+ * information, see @ref howtoPluginsTypes.
+ *
+ * This part of libyang API is available by including `<libyang/plugins_types.h>` header file.
  */
 
 /**
@@ -261,7 +331,7 @@ LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t
 void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
 
 /**
- * @defgroup plugintypestoreopts Type store callback options.
+ * @defgroup plugintypestoreopts Plugins: Type store callback options.
  *
  * Options applicable to ::lyplg_type_store_clb().
  *
@@ -296,7 +366,7 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
  * @param[in] ctx_node The @p value schema context node.
  * @param[out] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
- * @param[in,out] unres Global unres structure for newly implemented modules. Set only if ::LY_TYPE_STORE_IMPLEMENT is used.
+ * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  *             error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
@@ -412,6 +482,15 @@ struct lyplg_type_record {
 };
 
 /**
+ * @defgroup pluginsTypesSimple Plugins: Simple Types Callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Simple functions implementing @ref howtoPluginsTypes callbacks handling simply just the canonical string of the value
+ * (::lyd_value.canonical).
+ */
+
+/**
  * @brief Generic simple comparison callback checking the canonical value.
  * Implementation of the ::lyplg_type_compare_clb.
  */
@@ -435,8 +514,14 @@ LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *o
  */
 void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
 
-/*
- * Binary built-in type functions
+/** @} pluginsTypesSimple */
+
+/**
+ * @defgroup pluginsTypesBinary Plugins: Binary built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement binary built-in type.
  */
 
 /**
@@ -447,8 +532,14 @@ LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type 
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/*
- * Bits built-in type functions
+/** @} pluginsTypesBinary */
+
+/**
+ * @defgroup pluginsTypesBits Plugins: Bits built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement bits built-in type.
  */
 
 /**
@@ -471,8 +562,14 @@ LY_ERR lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *ori
  */
 void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value);
 
-/*
- * Boolean built-in type functions
+/** @} pluginsTypesBits */
+
+/**
+ * @defgroup pluginsTypesBoolean Plugins: Boolean built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement boolean built-in type.
  */
 
 /**
@@ -483,8 +580,14 @@ LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/*
- * Decimal64 built-in type functions
+/** @} pluginsTypesBoolean */
+
+/**
+ * @defgroup pluginsTypesDecimal64 Plugins: Decimal64 built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement decimal64 built-in type.
  */
 
 /**
@@ -495,8 +598,14 @@ LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_ty
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/*
- * Decimal64 built-in type functions
+/** @} pluginsTypesDecimal64 */
+
+/**
+ * @defgroup pluginsTypesEmpty Plugins: Empty built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement empty built-in type.
  */
 
 /**
@@ -513,8 +622,14 @@ LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *
  */
 LY_ERR lyplg_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2);
 
-/*
- * Enumeration built-in type functions
+/** @} pluginsTypesEmpty */
+
+/**
+ * @defgroup pluginsTypesEnumeration Plugins: Enumeration built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement enumeration built-in type.
  */
 
 /**
@@ -525,8 +640,14 @@ LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *t
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/*
- * Identityref built-in type functions
+/** @} pluginsTypesEnumeration */
+
+/**
+ * @defgroup pluginsTypesIdentityref Plugins: Identityref built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement identityref built-in type.
  */
 
 /**
@@ -550,8 +671,14 @@ LY_ERR lyplg_type_compare_identityref(const struct lyd_value *val1, const struct
 const char *lyplg_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
-/*
- * Instance-identifier built-in type functions
+/** @} pluginsTypesIdentityref */
+
+/**
+ * @defgroup pluginsTypesInstanceid Plugins: Instance-identifier built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement instance-identifier built-in type.
  */
 
 /**
@@ -594,8 +721,14 @@ LY_ERR lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lys
  */
 void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value);
 
-/*
- * Integer built-in types functions
+/** @} pluginsTypesInstanceid */
+
+/**
+ * @defgroup pluginsTypesInteger Plugins: Integer built-in types callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement integer built-in types.
  */
 
 /**
@@ -614,8 +747,14 @@ LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *t
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/*
- * Leafref built-in type functions
+/** @} pluginsTypesInteger */
+
+/**
+ * @defgroup pluginsTypesLeafref Plugins: Leafref built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement leafref built-in type.
  */
 
 /**
@@ -658,8 +797,14 @@ LY_ERR lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_t
  */
 void lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value);
 
-/*
- * String built-in type functions
+/** @} pluginsTypesLeafref */
+
+/**
+ * @defgroup pluginsTypesString Plugins: String built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement string built-in type.
  */
 
 /**
@@ -670,8 +815,14 @@ LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type 
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/*
- * Union built-in type functions
+/** @} pluginsTypesString */
+
+/**
+ * @defgroup pluginsTypesUnion Plugins: Union built-in type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement union built-in type.
  */
 
 /**
@@ -714,9 +865,7 @@ LY_ERR lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_typ
  */
 void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
 
-/*
- * Other supporting functions
- */
+/** @} pluginsTypesBits */
 
 /**
  * @brief Unsigned integer value parser and validator.
@@ -815,7 +964,7 @@ LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *
 LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
         const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
 
-/** @} types */
+/** @} pluginsTypes */
 
 #ifdef __cplusplus
 }
