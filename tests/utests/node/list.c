@@ -52,7 +52,6 @@ test_schema_yang(void **state)
     const struct lys_module *mod;
     struct lysc_node_list *lysc_leaf;
     struct lysc_node *lysc_node;
-    struct lysp_node_list *lysp_leaf;
 
     schema = MODULE_CREATE_YANG("T0", "list user {"
             "key uid;"
@@ -365,7 +364,6 @@ test_schema_yin(void **state)
     const struct lys_module *mod;
     struct lysc_node_list *lysc_leaf;
     struct lysc_node *lysc_node;
-    struct lysp_node_list *lysp_leaf;
 
     schema = MODULE_CREATE_YIN("T0", "<list name=\"user\">"
             "   <key value=\"uid\"/>"
@@ -1398,14 +1396,9 @@ test_json(void **state)
 static void
 test_diff(void **state)
 {
-    struct lyd_node *tree;
-    const char *data, *schema;
-    struct lyd_node_inner *list_tree;
-    struct lyd_node_term *list_leaf;
-
+    const char *schema;
     struct lyd_node *model_1, *model_2;
     struct lyd_node *diff;
-    const char *expected_string;
     const char *data_1;
     const char *data_2;
     const char *diff_expected;
@@ -1569,15 +1562,6 @@ test_diff(void **state)
     lyd_free_all(model_1);
     lyd_free_all(model_2);
     lyd_free_all(diff);
-
-    /* key changing */
-    diff_expected =
-            "<user xmlns=\"urn:tests:T0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\""
-            " yang:operation=\"none\">"
-            "<uid>1</uid>"
-            "<uid yang:operation=\"replace\" yang:orig-default=\"false\""
-            " yang:orig-value=\"1\">0</uid></user>";
-    CHECK_PARSE_LYD_PARAM(diff_expected, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, diff_expected);
 }
 
 static void
