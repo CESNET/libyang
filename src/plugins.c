@@ -24,13 +24,16 @@
 #include <limits.h>
 #include <pthread.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 
 #include "config.h"
 #include "common.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
+#include "set.h"
 
 /*
  * internal type plugins records

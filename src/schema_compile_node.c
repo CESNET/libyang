@@ -29,7 +29,7 @@
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
-#include "plugins_exts.h"
+#include "plugins.h"
 #include "plugins_exts_compile.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"

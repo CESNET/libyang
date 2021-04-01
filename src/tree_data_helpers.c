@@ -26,7 +26,6 @@
 #include "log.h"
 #include "lyb.h"
 #include "parser_data.h"
-#include "plugins_types.h"
 #include "printer_data.h"
 #include "set.h"
 #include "tree.h"
@@ -34,6 +33,7 @@
 #include "tree_data_internal.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
+#include "tree_schema_internal.h"
 #include "validation.h"
 #include "xml.h"
 

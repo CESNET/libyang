@@ -12,9 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "libyang.h"
 #include "plugins_exts.h"

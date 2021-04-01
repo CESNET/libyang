@@ -17,7 +17,6 @@
 #include "plugins_exts_print.h"
 
 #include <stdint.h>
-#include <string.h>
 
 extern struct lyplg_ext metadata_plugin; /* plugins_exts_metadata.c */
 extern struct lyplg_ext nacm_plugin;     /* plugins_exts_nacm.c */
@@ -25,7 +24,6 @@ extern struct lyplg_ext yangdata_plugin; /* plugins_exts_yangdata.c */
 
 /* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"
-#include "plugins_internal.h"
 #include "printer_internal.h"
 #include "schema_compile.h"
 
