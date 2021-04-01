@@ -22,7 +22,10 @@ extern "C" {
 #endif
 
 /**
- * @ingroup extensions YANG Extensions
+ * @defgroup pluginsExtensionsPrint Plugins: Extensions printer support
+ * @ingroup pluginsExtensions
+ *
+ * Helper functions to implement extension plugin's sprinter callback.
  *
  * @{
  */
@@ -72,7 +75,7 @@ uint16_t *lys_ypr_ctx_get_level(const struct lyspr_ctx *ctx);
  */
 void lysc_print_extension_instance(struct lyspr_ctx *ctx, const struct lysc_ext_instance *ext, ly_bool *flag);
 
-/** @} extensions */
+/** @} pluginsExtensionsPrint */
 
 #ifdef __cplusplus
 }

@@ -217,22 +217,23 @@
  * -                            | ::lyplg_type_prefix_data_free()  | ^
  *
  *
- * Extension implementation is not yet finished. The related functions (lys_ext_*()) from libyang 1.x are not currently
- * available and all the API changes will be described later. The same situation is with plugins handling. The API is not
- * yet ready. Despite the readiness of the data type plugins, support for loading them from external objects is not yet
- * supported.
+ * YANG extensions are supported via [extension plugins API](@ref pluginsExtensions) allowing to implement specific extension
+ * and load its support into libyang as a shared module. libyang implements several extensions on its own (see
+ * @ref howtoPluginsExtensions), but even these internal implementations use the same API. The API and [mechanism of loading
+ * external plugins](@ref howtoPlugins) changed a lot in contrast to libyang 1.x. The plugins are now loaded automatically
+ * with creating the first libyang context. The only public function to handle external plugins is ::lyplg_add().
  *
  *
  * libyang 1.x                  | libyang 2.0                     | Notes
  * :----------------------------|:--------------------------------|:---------------------------------------------------------
- * lys_ext_complex_get_substmt() | TBD                            | Not yet implemented feature.
- * lys_ext_instance_presence()  | TBD                             | ^
- * lys_ext_instance_substmt()   | TBD                             | ^
- * ly_clean_plugins()           | TBD                             | ^
- * ly_get_loaded_plugins()      | TBD                             | ^
- * ly_load_plugins()            | TBD                             | ^
- * ly_register_exts()           | TBD                             | ^
- * ly_register_types()          | TBD                             | ^
+ * lys_ext_complex_get_substmt()| lysc_ext_substmt()              | Changed design of the extensions and the way how it's substatements are accessed.
+ * lys_ext_instance_presence()  | lysc_ext_substmt()              | ^
+ * lys_ext_instance_substmt()   | lysc_ext_substmt()              | ^
+ * ly_clean_plugins()           | -                               | Manipulating external plugins (from plugins directories) is now automatically connected with creating (first) and destroying (last) libyang contexts.
+ * ly_get_loaded_plugins()      | -                               | ^
+ * ly_load_plugins()            | -                               | ^
+ * ly_register_exts()           | ::lyplg_add()                   | Redesigned to a common function for any plugin type.
+ * ly_register_types()          | ::lyplg_add()                   | ^
  *
  *
  * @section transitionData Data Instances

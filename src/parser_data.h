@@ -257,11 +257,13 @@ LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMA
         uint32_t validate_options, struct lyd_node **tree);
 
 /**
- * @brief Parse (and validate) data from the input handler as a YANG data tree following the schema tree of the given
+ * @brief Parse (and validate) data from the input handler as an extension data tree following the schema tree of the given
  * extension instance.
  *
  * Note that the data being parsed are limited only to the schema tree specified by the given extension, it does not allow
  * to mix them with the standard data from any module.
+ *
+ * Directly applicable to data defined as [yang-data](@ref howtoDataYangdata).
  *
  * @param[in] ext Extension instance providing the specific schema tree to match with the data being parsed.
  * @param[in] parent Optional parent to connect the parsed nodes to.
@@ -348,7 +350,9 @@ LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly
         enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
 
 /**
- * @brief Parse YANG data into an operation data tree following only the specification from the given extension instance.
+ * @brief Parse extension data into an operation data tree following only the specification from the given extension instance.
+ *
+ * Directly applicable to data defined as [yang-data](@ref howtoDataYangdata).
  *
  * At least one of @p parent, @p tree, or @p op must always be set.
  *
