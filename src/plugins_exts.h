@@ -26,6 +26,9 @@
 struct ly_ctx;
 struct lyd_node;
 struct lysc_ctx;
+struct lysc_ext_instance;
+struct lysc_ext_substmt;
+struct lysp_ext_instance;
 struct lyspr_ctx;
 
 #ifdef __cplusplus

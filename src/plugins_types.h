@@ -37,11 +37,9 @@ struct lys_glob_unres;
 struct lysc_ident;
 struct lysc_node;
 struct lysc_pattern;
-struct lysc_prefix;
 struct lysc_range;
 struct lysc_type;
 struct lysc_type_leafref;
-struct lysp_module;
 
 /**
  * @page howtoPluginsTypes Type Plugins

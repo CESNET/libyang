@@ -31,6 +31,7 @@
 #include "log.h"
 #include "parser_schema.h"
 #include "path.h"
+#include "plugins.h"
 #include "plugins_exts.h"
 #include "plugins_exts_compile.h"
 #include "plugins_internal.h"
