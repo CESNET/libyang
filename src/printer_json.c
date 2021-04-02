@@ -97,8 +97,7 @@ matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
 static LY_ERR
 json_print_array_open(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
-    /* leaf-list's content is always printed on a single line */
-    ly_print_(ctx->out, "[%s", (!node->schema || node->schema->nodetype != LYS_LEAFLIST) && DO_FORMAT ? "\n" : "");
+    ly_print_(ctx->out, "[%s", DO_FORMAT ? "\n" : "");
     LY_CHECK_RET(ly_set_add(&ctx->open, (void *)node, 0, NULL));
     LEVEL_INC;
 
@@ -131,16 +130,9 @@ is_open_array(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 static void
 json_print_array_close(struct jsonpr_ctx *ctx)
 {
-    const struct lysc_node *schema = ((const struct lyd_node *)ctx->open.objs[ctx->open.count - 1])->schema;
-
     LEVEL_DEC;
     ly_set_rm_index(&ctx->open, ctx->open.count - 1, NULL);
-    if (schema && (schema->nodetype == LYS_LEAFLIST)) {
-        /* leaf-list's content is always printed on a single line */
-        ly_print_(ctx->out, "]");
-    } else {
-        ly_print_(ctx->out, "%s%*s]", DO_FORMAT ? "\n" : "", INDENT);
-    }
+    ly_print_(ctx->out, "%s%*s]", DO_FORMAT ? "\n" : "", INDENT);
 }
 
 /**
@@ -612,7 +604,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         ly_print_(ctx->out, "%s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
                 (DO_FORMAT && has_content) ? "\n" : "");
     } else {
-        ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
+        ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? (DO_FORMAT ? ",\n" : ",") : "",
                 INDENT, (DO_FORMAT && has_content) ? "\n" : "");
     }
     LEVEL_INC;
@@ -673,8 +665,10 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
     if (!is_open_array(ctx, node)) {
         LY_CHECK_RET(json_print_member(ctx, node, 0));
         LY_CHECK_RET(json_print_array_open(ctx, node));
+        if (node->schema->nodetype == LYS_LEAFLIST)
+            ly_print_(ctx->out, "%*s", INDENT);
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        ly_print_(ctx->out, ",");
+        ly_print_(ctx->out, ",%s%*s", DO_FORMAT ? "\n" : "", INDENT);
     }
 
     if (node->schema->nodetype == LYS_LIST) {
