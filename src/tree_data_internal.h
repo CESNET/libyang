@@ -331,8 +331,23 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const st
 LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
         const struct lyd_node *ctx_node, const struct lyd_node *tree);
 
-/* generic function lys_value_validate */
-LY_ERR _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+/**
+ * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value coming
+ * from a schema.
+ *
+ * This function check just the type's restriction, if you want to check also the data tree context (e.g. in case of
+ * require-instance restriction), use ::lyd_value_validate().
+ *
+ * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
+ * @param[in] node Schema node for the @p value.
+ * @param[in] value String value to be checked, expected to be in JSON format.
+ * @param[in] value_len Length of the given @p value (mandatory).
+ * @param[in] format Value prefix format.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @return LY_SUCCESS on success
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
         LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**

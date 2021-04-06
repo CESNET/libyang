@@ -355,7 +355,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
                         goto cleanup;
                     }
 
-                    ret = _lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL);
+                    ret = lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL);
                     LY_CHECK_GOTO(ret, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -468,7 +468,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
                 break;
             }
 
-            if (_lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL)) {
+            if (lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL)) {
                 ret = LY_ENOT;
             }
             break;

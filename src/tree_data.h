@@ -1529,23 +1529,21 @@ void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
  *
  * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
  *
- * If there is no data node instance and you are fine with checking just the type's restrictions without the
- * data tree context (e.g. for the case of require-instance restriction), use ::lys_value_validate().
- *
  * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
- * @param[in] node Data node for the @p value.
+ * @param[in] schema Schema node of the @p value.
  * @param[in] value String value to be checked, it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
- * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
- *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
- *            then LY_EINCOMPLETE can be returned.
- * @param[out] realtype Optional real type of the value.
+ * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
+ * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
+ * @param[out] realtype Optional real type of @p value.
+ * @param[out] canonical Optional canonical value of @p value (in the dictionary).
  * @return LY_SUCCESS on success
- * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation (e.g. due to require-instance).
+ * @return LY_EINCOMPLETE in case the @p ctx_node is not provided and it was needed to finish the validation
+ * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-        const struct lyd_node *tree, const struct lysc_type **realtype);
+LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
+        const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to

@@ -269,7 +269,7 @@ main(int argc, char *argv[])
     }
 
     /* check the value */
-    match = lys_value_validate(ctx, mod->compiled->data, str, strlen(str));
+    match = lyd_value_validate(ctx, mod->compiled->data, str, strlen(str), NULL, NULL, NULL);
 
     if (verbose) {
         for (i = 0; i < patterns_count; i++) {

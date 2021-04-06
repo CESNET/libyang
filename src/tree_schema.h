@@ -101,7 +101,6 @@ struct lyxp_expr;
  * - ::lys_getnext()
  * - ::lys_nodetype2str()
  * - ::lys_set_implemented()
- * - ::lys_value_validate()
  *
  * - ::lysc_has_when()
  *
@@ -2430,21 +2429,6 @@ const struct lysc_node *lys_find_child(const struct lysc_node *parent, const str
  * @return LY_ERR on other errors during module compilation.
  */
 LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
-
-/**
- * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
- *
- * This function check just the type's restriction, if you want to check also the data tree context (e.g. in case of
- * require-instance restriction), use ::lyd_value_validate().
- *
- * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
- * @param[in] node Schema node for the @p value.
- * @param[in] value String value to be checked, expected to be in JSON format.
- * @param[in] value_len Length of the given @p value (mandatory).
- * @return LY_SUCCESS on success
- * @return LY_ERR value if an error occurred.
- */
-LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len);
 
 /**
  * @brief Stringify schema nodetype.
