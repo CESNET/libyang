@@ -814,18 +814,18 @@ test_instanceid(void **state)
     CHECK_PARSE_LYD(data, tree);
     /* key-predicate */
     data = "/types:list2[id='a'][value='b']/id";
-    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, (const struct lyd_node_term *)tree->prev, data, strlen(data),
-            tree, NULL));
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, tree->prev->schema, data, strlen(data), tree->prev,
+            NULL, NULL));
     CHECK_LOG_CTX("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - required instance not found.", "Data location /types:inst.");
     /* leaf-list-predicate */
     data = "/types:leaflisttarget[.='c']";
-    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, (const struct lyd_node_term *)tree->prev, data, strlen(data),
-            tree, NULL));
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, tree->prev->schema, data, strlen(data), tree->prev,
+            NULL, NULL));
     CHECK_LOG_CTX("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - required instance not found.", "Data location /types:inst.");
     /* position predicate */
     data = "/types:list_keyless[4]";
-    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, (const struct lyd_node_term *)tree->prev, data, strlen(data),
-            tree, NULL));
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(UTEST_LYCTX, tree->prev->schema, data, strlen(data), tree->prev,
+            NULL, NULL));
     CHECK_LOG_CTX("Invalid instance-identifier \"/types:list_keyless[4]\" value - required instance not found.", "Data location /types:inst.");
 
     lyd_free_all(tree);

@@ -248,7 +248,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = _lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns);
+            r = lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -346,7 +346,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
         if ((*snode)->nodetype & LYD_NODE_TERM) {
             /* value may not be valid in which case we parse it as an opaque node */
-            if (_lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns)) {
+            if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns)) {
                 *snode = NULL;
             }
         } else {

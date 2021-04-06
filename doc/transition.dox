@@ -180,7 +180,6 @@
  * -                            | ::lys_find_child()              | Helpers wrapper around ::lys_getnext().
  * -                            | ::lys_getnext_ext()             | Alternative to ::lys_getnext() allowing processing schema trees inside extension instances.
  * -                            | ::lys_nodetype2str()            | New functionality.
- * -                            | ::lys_value_validate()          | Supplement functionality to ::lyd_value_validate().
  * lys_is_key()                 | ::lysc_is_key()                 | Renamed to connect with the compiled schema tree.
  * -                            | ::lysc_is_userordered()         | Added functionality to simplify the examination of generic compiled schema nodes.
  * -                            | ::lysc_is_np_cont()             | ^

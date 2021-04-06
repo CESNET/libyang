@@ -113,7 +113,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
 }
 
 LY_ERR
-_lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
         LY_PREFIX_FORMAT format, void *prefix_data)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -152,14 +152,8 @@ _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, cons
 }
 
 API LY_ERR
-lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len)
-{
-    return _lys_value_validate(ctx, node, value, value_len, LY_PREF_JSON, NULL);
-}
-
-API LY_ERR
-lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-        const struct lyd_node *tree, const struct lysc_type **realtype)
+lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
+        const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
 {
     LY_ERR rc;
     struct ly_err_item *err = NULL;
@@ -167,44 +161,65 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
     struct lyd_value val = {0};
     ly_bool stored = 0;
 
-    LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, schema, value, LY_EINVAL);
 
-    type = ((struct lysc_node_leaf *)node->schema)->type;
+    type = ((struct lysc_node_leaf *)schema)->type;
+
     /* store */
-    rc = type->plugin->store(ctx ? ctx : LYD_CTX(node), type, value, value_len, 0, LY_PREF_JSON, NULL,
-            LYD_HINT_DATA, node->schema, &val, NULL, &err);
-    if (rc == LY_EINCOMPLETE) {
+    rc = type->plugin->store(ctx ? ctx : schema->module->ctx, type, value, value_len, 0, LY_PREF_JSON, NULL,
+            LYD_HINT_DATA, schema, &val, NULL, &err);
+    if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
+    }
 
+    if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type->plugin->validate(ctx ? ctx : LYD_CTX(node), type, &node->node, tree, &val, &err);
+        rc = type->plugin->validate(ctx ? ctx : schema->module->ctx, type, ctx_node, ctx_node, &val, &err);
     }
 
-    if (rc) {
-        if (err) {
-            if (ctx) {
-                LOG_LOCSET(NULL, &node->node, NULL, NULL);
-                LOGVAL(ctx, err->vecode, err->msg);
-                LOG_LOCBACK(0, 1, 0, 0);
+    if (rc && (rc != LY_EINCOMPLETE) && err) {
+        if (ctx) {
+            /* log error */
+            if (err->path) {
+                LOG_LOCSET(NULL, NULL, err->path, NULL);
+            } else if (ctx_node) {
+                LOG_LOCSET(NULL, ctx_node, NULL, NULL);
+            } else {
+                LOG_LOCSET(schema, NULL, NULL, NULL);
             }
-            ly_err_free(err);
+            LOGVAL(ctx, err->vecode, err->msg);
+            if (err->path) {
+                LOG_LOCBACK(0, 0, 1, 0);
+            } else if (ctx_node) {
+                LOG_LOCBACK(0, 1, 0, 0);
+            } else {
+                LOG_LOCBACK(1, 0, 0, 0);
+            }
         }
-        if (stored) {
-            type->plugin->free(ctx ? ctx : LYD_CTX(node), &val);
-        }
-        return rc;
+        ly_err_free(err);
     }
 
-    if (realtype) {
-        if (val.realtype->basetype == LY_TYPE_UNION) {
-            *realtype = val.subvalue->value.realtype;
-        } else {
-            *realtype = val.realtype;
+    if (!rc || (rc == LY_EINCOMPLETE)) {
+        if (realtype) {
+            /* return realtype */
+            if (val.realtype->basetype == LY_TYPE_UNION) {
+                *realtype = val.subvalue->value.realtype;
+            } else {
+                *realtype = val.realtype;
+            }
+        }
+
+        if (canonical) {
+            /* return canonical value */
+            lydict_insert(ctx ? ctx : schema->module->ctx, val.canonical, 0, canonical);
         }
     }
 
-    type->plugin->free(ctx ? ctx : LYD_CTX(node), &val);
-    return LY_SUCCESS;
+    if (stored) {
+        /* free value */
+        type->plugin->free(ctx ? ctx : schema->module->ctx, &val);
+    }
+    return rc;
 }
 
 API LY_ERR
@@ -1587,7 +1602,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 
         r = LY_SUCCESS;
         if (options & LYD_NEW_PATH_OPAQ) {
-            r = lys_value_validate(NULL, schema, value, strlen(value));
+            r = lys_value_validate(NULL, schema, value, strlen(value), LY_PREF_JSON, NULL);
         }
         if (!r) {
             /* store the new predicate */
@@ -1772,7 +1787,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
             r = LY_SUCCESS;
             if (options & LYD_NEW_PATH_OPAQ) {
-                r = lys_value_validate(NULL, schema, value, strlen(value));
+                r = lys_value_validate(NULL, schema, value, strlen(value), LY_PREF_JSON, NULL);
             }
             if (!r) {
                 ret = lyd_create_term(schema, value, strlen(value), NULL, LY_PREF_JSON, NULL, LYD_HINT_DATA, NULL, &node);
