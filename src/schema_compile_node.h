@@ -86,7 +86,8 @@ LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, u
  * @param[out] target Found target node if any.
  * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
  * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
- * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
+ * @return LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
+ * @return LY_EINCOMPLETE - when a node was not found in a module with osme disabled features, no error is logged.
  */
 LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len,
         const struct lysc_node *ctx_node, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,

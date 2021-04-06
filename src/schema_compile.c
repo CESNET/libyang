@@ -1397,6 +1397,7 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     struct lysc_node *node;
     struct lysc_augment *aug;
     struct lysc_deviation *dev;
+    const struct lys_module *mod;
     uint32_t i;
 
     /* remove all disabled nodes */
@@ -1413,28 +1414,52 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     }
 
     /* check that all augments were applied */
-    for (i = 0; i < ctx->augs.count; ++i) {
+    for (i = 0; i < ctx->augs.count; ) {
         aug = ctx->augs.objs[i];
-        lysc_update_path(ctx, NULL, "{augment}");
-        lysc_update_path(ctx, NULL, aug->nodeid->expr);
-        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" from module \"%s\" was not found.",
-                aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+        mod = lys_nodeid_get_target_module(aug->nodeid, aug->aug_pmod);
+        assert(mod);
+
+        if (lys_module_has_all_features_enabled(mod)) {
+            lysc_update_path(ctx, NULL, "{augment}");
+            lysc_update_path(ctx, NULL, aug->nodeid->expr);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" from module \"%s\" was not found.",
+                    aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
+            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(ctx, NULL, NULL);
+        } else {
+            /* possibly disabled target */
+            lysc_augment_free(ctx->ctx, aug);
+            ly_set_rm_index(&ctx->augs, i, NULL);
+            continue;
+        }
+
+        ++i;
     }
     if (ctx->augs.count) {
         return LY_ENOTFOUND;
     }
 
     /* check that all deviations were applied */
-    for (i = 0; i < ctx->devs.count; ++i) {
+    for (i = 0; i < ctx->devs.count; ) {
         dev = ctx->devs.objs[i];
-        lysc_update_path(ctx, NULL, "{deviation}");
-        lysc_update_path(ctx, NULL, dev->nodeid->expr);
-        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Deviation(s) target node \"%s\" from module \"%s\" was not found.",
-                dev->nodeid->expr, LYSP_MODULE_NAME(dev->dev_pmods[0]));
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+        mod = lys_nodeid_get_target_module(dev->nodeid, dev->dev_pmods[0]);
+        assert(mod);
+
+        if (lys_module_has_all_features_enabled(mod)) {
+            lysc_update_path(ctx, NULL, "{deviation}");
+            lysc_update_path(ctx, NULL, dev->nodeid->expr);
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Deviation(s) target node \"%s\" from module \"%s\" was not found.",
+                    dev->nodeid->expr, LYSP_MODULE_NAME(dev->dev_pmods[0]));
+            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(ctx, NULL, NULL);
+        } else {
+            /* possibly disabled target */
+            lysc_deviation_free(ctx->ctx, dev);
+            ly_set_rm_index(&ctx->devs, i, NULL);
+            continue;
+        }
+
+        ++i;
     }
     if (ctx->devs.count) {
         return LY_ENOTFOUND;

@@ -85,6 +85,15 @@ LY_ERR lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_no
 LY_ERR lysp_qname_dup(const struct ly_ctx *ctx, struct lysp_qname *qname, const struct lysp_qname *orig_qname);
 
 /**
+ * @brief Get the target module of a parsed node-id.
+ *
+ * @param[in] exp Parsed node-id expression.
+ * @param[in] exp_pmod Parsed module to use for resolving any prefixes.
+ * @return Target module.
+ */
+const struct lys_module *lys_nodeid_get_target_module(const struct lyxp_expr *exp, const struct lysp_module *exp_pmod);
+
+/**
  * @brief Free a compiled augment temporary structure.
  *
  * @param[in] ctx libyang context.

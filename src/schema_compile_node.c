@@ -2897,9 +2897,14 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
             getnext_extra_flag = 0;
         }
         if (!ctx_node) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.",
-                    nodeid_type, (int)(id - nodeid), nodeid);
-            return LY_ENOTFOUND;
+            if (lys_module_has_all_features_enabled(mod)) {
+                LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.",
+                        nodeid_type, (int)(id - nodeid), nodeid);
+                return LY_ENOTFOUND;
+            } else {
+                /* valid situation */
+                return LY_EINCOMPLETE;
+            }
         }
         current_nodetype = ctx_node->nodetype;
 
@@ -2976,7 +2981,10 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             ret = lysc_resolve_schema_nodeid(ctx, keystr, len, &list->node, uniques[v].mod->mod,
                     LY_PREF_SCHEMA, (void *)uniques[v].mod, LYS_LEAF, (const struct lysc_node **)key, &flags);
             if (ret != LY_SUCCESS) {
-                if (ret == LY_EDENIED) {
+                if (ret == LY_EINCOMPLETE) {
+                    /* ignore, the leaf is disabled */
+                    goto next_iter;
+                } else if (ret == LY_EDENIED) {
                     LOGVAL(ctx->ctx, LYVE_REFERENCE,
                             "Unique's descendant-schema-nodeid \"%.*s\" refers to %s node instead of a leaf.",
                             (int)len, keystr, lys_nodetype2str((*key)->nodetype));
@@ -3017,6 +3025,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             /* mark leaf as unique */
             (*key)->flags |= LYS_UNIQUE;
 
+next_iter:
             /* next unique value in line */
             keystr = delim;
         }
@@ -3542,6 +3551,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_ERR ret = LY_SUCCESS;
     struct lysc_when *when_shared = NULL;
     struct ly_set uses_child_set = {0};
+    const struct lys_module *mod;
 
     /* find the referenced grouping */
     LY_CHECK_RET(lys_compile_uses_find_grouping(ctx, uses_p, &grp, &grp_mod));
@@ -3643,28 +3653,58 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     }
 
     /* check that all augments were applied */
-    for (i = 0; i < ctx->uses_augs.count; ++i) {
-        if (((struct lysc_augment *)ctx->uses_augs.objs[i])->aug_p->parent != (struct lysp_node *)uses_p) {
+    for (i = 0; i < ctx->uses_augs.count; ) {
+        struct lysc_augment *aug = ctx->uses_augs.objs[i];
+
+        if (aug->aug_p->parent != (struct lysp_node *)uses_p) {
             /* augment of some parent uses, irrelevant now */
+            ++i;
             continue;
         }
 
-        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" in grouping \"%s\" was not found.",
-                ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
-        ret = LY_ENOTFOUND;
+        mod = lys_nodeid_get_target_module(aug->nodeid, ctx->cur_mod->parsed);
+        assert(mod);
+
+        if (lys_module_has_all_features_enabled(mod)) {
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" in grouping \"%s\" was not found.",
+                    aug->nodeid->expr, grp->name);
+            ret = LY_ENOTFOUND;
+        } else {
+            /* possibly disabled target */
+            lysc_augment_free(ctx->ctx, aug);
+            ly_set_rm_index(&ctx->uses_augs, i, NULL);
+            continue;
+        }
+
+        ++i;
     }
     LY_CHECK_GOTO(ret, cleanup);
 
     /* check that all refines were applied */
-    for (i = 0; i < ctx->uses_rfns.count; ++i) {
-        if (((struct lysc_refine *)ctx->uses_rfns.objs[i])->uses_p != uses_p) {
-            /* refine of some paretn uses, irrelevant now */
+    for (i = 0; i < ctx->uses_rfns.count; ) {
+        struct lysc_refine *rfn = ctx->uses_rfns.objs[i];
+
+        if (rfn->uses_p != uses_p) {
+            /* refine of some parent uses, irrelevant now */
+            ++i;
             continue;
         }
 
-        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
-                ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->expr, grp->name);
-        ret = LY_ENOTFOUND;
+        mod = lys_nodeid_get_target_module(rfn->nodeid, rfn->nodeid_pmod);
+        assert(mod);
+
+        if (lys_module_has_all_features_enabled(mod)) {
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
+                    rfn->nodeid->expr, grp->name);
+            ret = LY_ENOTFOUND;
+        } else {
+            /* possibly disabled target */
+            lysc_refine_free(ctx->ctx, rfn);
+            ly_set_rm_index(&ctx->uses_rfns, i, NULL);
+            continue;
+        }
+
+        ++i;
     }
     LY_CHECK_GOTO(ret, cleanup);
 

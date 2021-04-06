@@ -665,6 +665,32 @@ cleanup:
     return ret;
 }
 
+ly_bool
+lys_module_has_all_features_enabled(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    struct lysp_feature *features;
+
+    /* main module */
+    LY_ARRAY_FOR(mod->parsed->features, u) {
+        if (!(mod->parsed->features[u].flags & LYS_FENABLED)) {
+            return 0;
+        }
+    }
+
+    /* submodules */
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        features = mod->parsed->includes[u].submodule->features;
+        LY_ARRAY_FOR(features, v) {
+            if (!(features[v].flags & LYS_FENABLED)) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
 LY_ERR
 lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
         const char **features, struct lys_glob_unres *unres, struct lys_module **mod)

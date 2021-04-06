@@ -7173,7 +7173,7 @@ moveto:
                     break;
                 }
             }
-            if (i == -1) {
+            if ((i == -1) && moveto_mod && lys_module_has_all_features_enabled(moveto_mod)) {
                 path = lysc_path(set->cur_scnode, LYSC_PATH_LOG, NULL, 0);
                 LOGWRN(set->ctx, "Schema node \"%.*s\" not found (\"%.*s\") with context node \"%s\".",
                         ncname_len, ncname, (ncname - exp->expr) + ncname_len, exp->expr, path);

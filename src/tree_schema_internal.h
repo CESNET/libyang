@@ -603,6 +603,16 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
         struct lys_glob_unres *unres, void **result);
 
 /**
+ * @brief Check whether a module has all its features enabled or not.
+ *
+ * If there are some features disabled, schema paths may fail to be resolved without it being an error.
+ *
+ * @param[in] mod Module to check.
+ * @return Whether all the features in the module are enabled or not.
+ */
+ly_bool lys_module_has_all_features_enabled(const struct lys_module *mod);
+
+/**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
  * (libyang format of the if-feature expression).
  * @param[in] list The 2bits array with the compiled if-feature expression.

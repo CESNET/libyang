@@ -1351,6 +1351,15 @@ lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_
     return target_mod;
 }
 
+const struct lys_module *
+lys_nodeid_get_target_module(const struct lyxp_expr *exp, const struct lysp_module *exp_pmod)
+{
+    uint32_t i = exp->used - 1;
+
+    return lys_schema_node_get_module(exp_pmod->mod->ctx, exp->expr + exp->tok_pos[i], exp->tok_len[i], exp_pmod, NULL,
+            NULL);
+}
+
 /**
  * @brief Check whether a compiled node matches a single schema nodeid name test.
  *
@@ -2165,13 +2174,15 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
             flags = 0;
             ret = lysc_resolve_schema_nodeid(ctx, aug->nodeid, 0, NULL, ctx->cur_mod, LY_PREF_SCHEMA,
                     (void *)mod_p, 0, &target, &flags);
-            LY_CHECK_RET(ret);
-
-            /* apply the augment */
-            ctx->options |= flags;
-            ret = lys_compile_augment(ctx, aug, (struct lysc_node *)target);
-            ctx->options = opt_prev;
-            LY_CHECK_RET(ret);
+            if (!ret) {
+                /* apply the augment */
+                ctx->options |= flags;
+                ret = lys_compile_augment(ctx, aug, (struct lysc_node *)target);
+                ctx->options = opt_prev;
+                LY_CHECK_RET(ret);
+            } else if (ret != LY_EINCOMPLETE) {
+                return ret;
+            } /* else the target node is disabled */
         }
 
         lysc_update_path(ctx, NULL, NULL);
@@ -2209,12 +2220,14 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
                 flags = 0;
                 ret = lysc_resolve_schema_nodeid(ctx, aug->nodeid, 0, NULL, ctx->cur_mod, LY_PREF_SCHEMA,
                         submod, 0, &target, &flags);
-                LY_CHECK_RET(ret);
-
-                ctx->options |= flags;
-                ret = lys_compile_augment(ctx, aug, (struct lysc_node *)target);
-                ctx->options = opt_prev;
-                LY_CHECK_RET(ret);
+                if (!ret) {
+                    ctx->options |= flags;
+                    ret = lys_compile_augment(ctx, aug, (struct lysc_node *)target);
+                    ctx->options = opt_prev;
+                    LY_CHECK_RET(ret);
+                } else if (ret != LY_EINCOMPLETE) {
+                    return ret;
+                }
             }
 
             lysc_update_path(ctx, NULL, NULL);
