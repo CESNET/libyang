@@ -6928,6 +6928,11 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok
             }
             ++e_idx;
 
+            if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_NAMETEST)) {
+                /* definitely not a key */
+                return LY_EINVAL;
+            }
+
             /* ']' */
             while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
                 ++e_idx;
@@ -6946,6 +6951,11 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok
             return LY_EINVAL;
         }
         ++e_idx;
+
+        if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_DOT)) {
+            /* definitely not the value */
+            return LY_EINVAL;
+        }
 
         /* ']' */
         while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
