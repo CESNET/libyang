@@ -270,24 +270,18 @@ test_node_leaflist(void **state)
     assert_int_equal(0, dynamic);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, ll->flags);
 
-    /* ordered-by is ignored for state data, RPC/action output parameters and notification content */
+    /* ordered-by is ignored (with verbose message) for state data, RPC/action output parameters and notification content */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module d {yang-version 1.1;namespace urn:d;prefix d;"
             "leaf-list ll {config false; type string; ordered-by user;}}", LYS_IN_YANG, &mod));
-    /* but warning is present: */
-    CHECK_LOG_CTX("The ordered-by statement is ignored in lists representing state data (/d:ll).", NULL);
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data));
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, ll->flags);
-    UTEST_LOG_CLEAN;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module e {yang-version 1.1;namespace urn:e;prefix e;"
             "rpc oper {output {leaf-list ll {type string; ordered-by user;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("The ordered-by statement is ignored in lists representing RPC/action output parameters (/e:oper/output/ll).", NULL);
-    UTEST_LOG_CLEAN;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {yang-version 1.1;namespace urn:f;prefix f;"
             "notification event {leaf-list ll {type string; ordered-by user;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("The ordered-by statement is ignored in lists representing notification content (/f:event/ll).", NULL);
 
     /* forward reference in default */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module g {yang-version 1.1; namespace urn:g;prefix g;"
@@ -531,14 +525,12 @@ test_node_anydata(void **state)
     assert_int_equal(LYS_ANYDATA, any->nodetype);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE | LYS_SET_CONFIG, any->flags);
 
-    UTEST_LOG_CLEAN;
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;"
             "anyxml any;}", LYS_IN_YANG, &mod));
     any = (struct lysc_node_anydata *)mod->compiled->data;
     assert_non_null(any);
     assert_int_equal(LYS_ANYXML, any->nodetype);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, any->flags);
-    CHECK_LOG_CTX("Use of anyxml to define configuration data is not recommended. /b:any", NULL);     /* warning */
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;anydata any;}", LYS_IN_YANG, NULL));

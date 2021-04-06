@@ -2420,7 +2420,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     /* list ordering */
     if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         if ((node->flags & (LYS_CONFIG_R | LYS_IS_OUTPUT | LYS_IS_NOTIF)) && (node->flags & LYS_ORDBY_MASK)) {
-            LOGWRN(ctx->ctx, "The ordered-by statement is ignored in lists representing %s (%s).",
+            LOGVRB("The ordered-by statement is ignored in lists representing %s (%s).",
                     (node->flags & LYS_IS_OUTPUT) ? "RPC/action output parameters" :
                     (ctx->options & LYS_IS_NOTIF) ? "notification content" : "state data", ctx->path);
             node->flags &= ~LYS_ORDBY_MASK;
@@ -3365,7 +3365,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
     }
 
     if (any->flags & LYS_CONFIG_W) {
-        LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended. %s",
+        LOGVRB("Use of %s to define configuration data is not recommended. %s",
                 ly_stmt2str(any->nodetype == LYS_ANYDATA ? LY_STMT_ANYDATA : LY_STMT_ANYXML), ctx->path);
     }
 done:
