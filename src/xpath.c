@@ -3395,17 +3395,21 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
     LY_ARRAY_COUNT_TYPE u;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_BITS)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"bits\".", __func__, sleaf->name);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_BITS)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"bits\".", __func__, sleaf->name);
+            }
         }
 
         if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
             } else if (!warn_is_string_type(sleaf->type)) {
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
@@ -3483,12 +3487,15 @@ xpath_ceiling(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_se
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_DEC64)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_DEC64)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
+            }
         }
         set_scnode_clear_ctx(set);
         return rc;
@@ -3580,7 +3587,8 @@ xpath_contains(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
     if (options & LYXP_SCNODE_ALL) {
         if ((args[0]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
             } else if (!warn_is_string_type(sleaf->type)) {
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
@@ -3588,7 +3596,8 @@ xpath_contains(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
 
         if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
             } else if (!warn_is_string_type(sleaf->type)) {
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
@@ -3624,11 +3633,10 @@ xpath_contains(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
 static LY_ERR
 xpath_count(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
-    struct lysc_node *scnode = NULL;
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(scnode = warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
         }
         set_scnode_clear_ctx(set);
@@ -3700,13 +3708,16 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) && !warn_is_specific_type(sleaf->type, LY_TYPE_INST)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"leafref\" nor \"instance-identifier\".",
-                    __func__, sleaf->name);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) && !warn_is_specific_type(sleaf->type, LY_TYPE_INST)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"leafref\" nor \"instance-identifier\".",
+                        __func__, sleaf->name);
+            }
         }
         set_scnode_clear_ctx(set);
         if (sleaf && (sleaf->type->basetype == LY_TYPE_LEAFREF)) {
@@ -3777,13 +3788,15 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     ly_bool found;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", func);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", func, lys_nodetype2str(sleaf->nodetype),
-                    sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_IDENT)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"identityref\".", func, sleaf->name);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", func, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_IDENT)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"identityref\".", func, sleaf->name);
+            }
         }
 
         if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
@@ -3920,12 +3933,15 @@ xpath_enum_value(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_ENUM)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"enumeration\".", __func__, sleaf->name);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_ENUM)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"enumeration\".", __func__, sleaf->name);
+            }
         }
         set_scnode_clear_ctx(set);
         return rc;
@@ -4649,12 +4665,15 @@ xpath_round(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_DEC64)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
+        } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_DEC64)) {
+                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
+            }
         }
         set_scnode_clear_ctx(set);
         return rc;
