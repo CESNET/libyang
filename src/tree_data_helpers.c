@@ -266,6 +266,7 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, any, value_str, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, any->schema, any->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
 
     a = (struct lyd_node_any *)any;
     *value_str = NULL;
@@ -318,6 +319,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     struct lyd_node_any *t;
 
     LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, trg->schema, trg->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
 
     t = (struct lyd_node_any *)trg;
 
