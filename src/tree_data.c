@@ -3921,6 +3921,13 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
         /* find by hash */
         if (!lyht_find(parent->children_ht, &schema, hash, (void **)&match_p)) {
             siblings = *match_p;
+            if (siblings->prev != siblings) {
+                const struct lyd_node *first;
+                for (first = parent->child;
+                     siblings != first && siblings->prev->schema == schema;
+                     siblings = siblings->prev)
+                    ;
+            }
         } else {
             /* not found */
             siblings = NULL;
