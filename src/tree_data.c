@@ -3924,9 +3924,8 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
             if (siblings->prev != siblings) {
                 const struct lyd_node *first;
                 for (first = parent->child;
-                     siblings != first && siblings->prev->schema == schema;
-                     siblings = siblings->prev)
-                    ;
+                        siblings != first && siblings->prev->schema == schema;
+                        siblings = siblings->prev) {}
             }
         } else {
             /* not found */

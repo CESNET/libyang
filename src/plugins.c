@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
 #include "common.h"
+#include "config.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "set.h"

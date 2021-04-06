@@ -335,7 +335,7 @@ test_value_prefix_next(void **UNUSED(state))
     assert_int_equal(1, is_prefix);
 
     /* no-prefix, prefix, no-prefix */
-    next =  "/pref:node";
+    next = "/pref:node";
     assert_int_equal(1, ly_value_prefix_next(next, NULL, &is_prefix, &next));
     assert_string_equal(next, "pref:node");
     assert_int_equal(0, is_prefix);
@@ -347,7 +347,7 @@ test_value_prefix_next(void **UNUSED(state))
     assert_int_equal(0, is_prefix);
 
     /* prefix, no-prefix, prefix */
-    next =  "pref:node pref:";
+    next = "pref:node pref:";
     assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
     assert_string_equal(next, "node pref:");
     assert_int_equal(1, is_prefix);
