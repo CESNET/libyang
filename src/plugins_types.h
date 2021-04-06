@@ -164,7 +164,7 @@ struct lysc_type_leafref;
     uint32_t plugins_types_apiver__ = LYPLG_TYPE_API_VERSION; \
     const struct lyplg_type_record plugins_types__[]
 
-/*
+/**
  * @brief Create and fill error structure.
  *
  * Helper function for various plugin functions to generate error information structure.
@@ -273,7 +273,7 @@ const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT
  */
 LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
         const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
-/*
+/**
  * @brief Duplicate prefix data.
  *
  * Use only in implementations of ::lyplg_type_store_clb which provide all the necessary parameters for this function.
@@ -820,7 +820,7 @@ LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type 
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement union built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement union built-in type.
  */
 
 /**
