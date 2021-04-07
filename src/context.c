@@ -42,6 +42,7 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
@@ -288,6 +289,178 @@ error:
     lys_compile_unres_glob_erase(ctx, &unres);
     ly_ctx_destroy(ctx, NULL);
     return rc;
+}
+
+static LY_ERR
+ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
+{
+    struct lyd_node *module, *node;
+    struct ly_set *set;
+    const char **feature_arr = NULL;
+    const char *name = NULL, *revision = NULL;
+    struct ly_set features = {0};
+    ly_bool imported = 0;
+    const struct lys_module *mod;
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_RET(ret = lyd_find_xpath(yltree, "/ietf-yang-library:yang-library/modules-state/module", &set));
+
+    /* process the data tree */
+    for (uint32_t i = 0; i < set->count; ++i) {
+        module = set->dnodes[i];
+
+        /* initiate */
+        revision = NULL;
+        name = NULL;
+        imported = 0;
+
+        LY_LIST_FOR(lyd_child(module), node) {
+            if (!strcmp(node->schema->name, "name")) {
+                name = LYD_CANON_VALUE(node);
+            } else if (!strcmp(node->schema->name, "revision")) {
+                revision = LYD_CANON_VALUE(node);
+            } else if (!strcmp(node->schema->name, "feature")) {
+                LY_CHECK_GOTO(ret = ly_set_add(&features, node, 0, NULL), cleanup);
+            } else if (!strcmp(node->schema->name, "conformance-type") &&
+                    !strcmp(LYD_CANON_VALUE(node), "import")) {
+                /* imported module - skip it, it will be loaded as a side effect
+                 * of loading another module */
+                imported = 1;
+                break;
+            }
+        }
+
+        if (imported) {
+            continue;
+        }
+
+        feature_arr = malloc((features.count + 1) * sizeof *feature_arr);
+        LY_CHECK_ERR_GOTO(!feature_arr, ret = LY_EMEM, cleanup);
+
+        /* Parse features into an array of strings */
+        for (uint32_t u = 0; u < features.count; u++) {
+            feature_arr[u] = LYD_CANON_VALUE(features.dnodes[u]);
+        }
+        feature_arr[features.count] = NULL;
+        ly_set_clean(&features, free);
+
+        /* use the gathered data to load the module */
+        mod = ly_ctx_load_module(ctx, name, revision, feature_arr);
+        free(feature_arr);
+        if (!mod) {
+            LOGERR(ctx, LY_EINVAL, "Unable to load module specified by yang library data.");
+            ly_set_free(set, free);
+            return LY_EINVAL;
+        }
+    }
+
+cleanup:
+    ly_set_clean(&features, free);
+    ly_set_free(set, free);
+    return ret;
+}
+
+static LY_ERR
+ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format, int options,
+        LY_ERR (*parser_func)(const struct ly_ctx *, const char *, LYD_FORMAT, uint32_t, uint32_t, struct lyd_node **),
+        struct ly_ctx **ctx)
+{
+    const char *name = NULL, *revision = NULL;
+    struct lyd_node *module, *node;
+    struct lyd_node *yltree = NULL;
+    struct ly_set *set = NULL;
+    const char **feature_arr = NULL;
+    struct ly_set features = {0};
+    LY_ERR ret = LY_SUCCESS;
+    const struct lys_module *mod;
+    struct ly_ctx *ctx_yl = NULL, *ctx_new = NULL;
+
+    /* create a seperate context in case it is LY_CTX_NO_YANGLIBRARY since it needs it for parsing */
+    if (options & LY_CTX_NO_YANGLIBRARY) {
+        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, 0, &ctx_yl), cleanup);
+        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
+    } else {
+        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_yl), cleanup);
+        ctx_new = ctx_yl;
+    }
+
+    /* parse yang library data tree */
+    LY_CHECK_GOTO(ret = parser_func(ctx_yl, input, format, 0, LYD_VALIDATE_PRESENT, &yltree), cleanup);
+
+    LY_CHECK_GOTO(ret = lyd_find_xpath(yltree, "/ietf-yang-library:yang-library/module-set[1]/module", &set), cleanup);
+
+    if (set->count == 0) {
+        /* perhaps a legacy data tree? */
+        LY_CHECK_GOTO(ret = ly_ctx_new_yl_legacy(ctx_new, yltree), cleanup);
+    } else {
+        /* process the data tree */
+        for (uint32_t i = 0; i < set->count; ++i) {
+            module = set->dnodes[i];
+
+            /* initiate */
+            name = NULL;
+            revision = NULL;
+
+            /* Iterate over data */
+            LY_LIST_FOR(lyd_child(module), node) {
+                if (!strcmp(node->schema->name, "name")) {
+                    name = LYD_CANON_VALUE(node);
+                } else if (!strcmp(node->schema->name, "revision")) {
+                    revision = LYD_CANON_VALUE(node);
+                } else if (!strcmp(node->schema->name, "feature")) {
+                    LY_CHECK_GOTO(ret = ly_set_add(&features, node, 0, NULL), cleanup);
+                }
+            }
+
+            feature_arr = malloc((features.count + 1) * sizeof *feature_arr);
+            LY_CHECK_ERR_GOTO(!feature_arr, ret = LY_EMEM, cleanup);
+
+            /* Parse features into an array of strings */
+            for (uint32_t u = 0; u < features.count; u++) {
+                feature_arr[u] = LYD_CANON_VALUE(features.dnodes[u]);
+            }
+            feature_arr[features.count] = NULL;
+            ly_set_clean(&features, NULL);
+
+            /* use the gathered data to load the module */
+            mod = ly_ctx_load_module(ctx_new, name, revision, feature_arr);
+            free(feature_arr);
+            if (!mod) {
+                LOGERR(NULL, LY_EINVAL, "Unable to load module specified by yang library data.");
+                ret = LY_EINVAL;
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+    lyd_free_all(yltree);
+    ly_set_free(set, NULL);
+    ly_set_erase(&features, NULL);
+    if (ctx_yl != ctx_new) {
+        ly_ctx_destroy(ctx_yl, NULL);
+    }
+    *ctx = ctx_new;
+    if (ret) {
+        ly_ctx_destroy(*ctx, NULL);
+        *ctx = NULL;
+    }
+
+    return ret;
+}
+
+API LY_ERR
+ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx)
+{
+    LY_CHECK_ARG_RET2(NULL, path, ctx, LY_EINVAL);
+    return ly_ctx_new_yl_common(search_dir, path, format, options, lyd_parse_data_path, ctx);
+}
+
+API LY_ERR
+ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx)
+{
+    LY_CHECK_ARG_RET(NULL, data, ctx, LY_EINVAL);
+    return ly_ctx_new_yl_common(search_dir, data, format, options, lyd_parse_data_mem, ctx);
 }
 
 API uint16_t
