@@ -73,7 +73,7 @@ cmd_searchpath(struct ly_ctx **ctx, const char *cmdline)
         const char * const *dirs = ly_ctx_get_searchdirs(*ctx);
 
         printf("List of the searchpaths:\n");
-        for (uint32_t i = 0; dirs[0]; ++i) {
+        for (uint32_t i = 0; dirs[i]; ++i) {
             printf("    %s\n", dirs[i]);
         }
         goto cleanup;
