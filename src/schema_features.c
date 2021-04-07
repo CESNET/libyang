@@ -522,7 +522,7 @@ lys_enable_features(struct lysp_module *pmod, const char **features)
     uint32_t i = 0;
     struct lysp_feature *f = 0;
 
-    if (!features) {
+    if (!features || !features[0]) {
         /* keep all features disabled */
         return LY_SUCCESS;
     }
