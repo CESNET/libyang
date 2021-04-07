@@ -435,6 +435,261 @@ test_get_models(void **state)
     ly_in_free(in2, 0);
 }
 
+static void
+test_ylmem(void **state)
+{
+#define DATA_YANG_LIBRARY_START "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"\
+    "  <module-set>\n"\
+    "    <name>complete</name>\n"\
+    "    <module>\n"\
+    "      <name>yang</name>\n"\
+    "      <revision>2021-04-07</revision>\n"\
+    "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"\
+    "    </module>\n"\
+    "    <module>\n"\
+    "      <name>ietf-yang-library</name>\n"\
+    "      <revision>2019-01-04</revision>\n"\
+    "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"\
+    "    </module>\n"
+
+#define DATA_YANG_BASE_IMPORTS     "    <import-only-module>\n"\
+    "      <name>ietf-yang-metadata</name>\n"\
+    "      <revision>2016-08-05</revision>\n"\
+    "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"\
+    "    </import-only-module>\n"\
+    "    <import-only-module>\n"\
+    "      <name>ietf-inet-types</name>\n"\
+    "      <revision>2013-07-15</revision>\n"\
+    "      <namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace>\n"\
+    "    </import-only-module>\n"\
+    "    <import-only-module>\n"\
+    "      <name>ietf-yang-types</name>\n"\
+    "      <revision>2013-07-15</revision>\n"\
+    "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>\n"\
+    "    </import-only-module>\n"\
+    "    <import-only-module>\n"\
+    "      <name>ietf-datastores</name>\n"\
+    "      <revision>2018-02-14</revision>\n"\
+    "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>\n"\
+    "    </import-only-module>\n"
+
+#define DATA_YANG_SCHEMA_MODULE_STATE         "  </module-set>\n"\
+    "  <schema>\n"\
+    "    <name>complete</name>\n"\
+    "    <module-set>complete</module-set>\n"\
+    "  </schema>\n"\
+    "  <content-id>9</content-id>\n"\
+    "</yang-library>\n"\
+    "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"\
+    "  <module-set-id>12</module-set-id>\n"\
+    "  <module>\n"\
+    "    <name>ietf-yang-metadata</name>\n"\
+    "    <revision>2016-08-05</revision>\n"\
+    "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"\
+    "    <conformance-type>import</conformance-type>\n"\
+    "  </module>\n"\
+    "  <module>\n"\
+    "    <name>yang</name>\n"\
+    "    <revision>2020-06-17</revision>\n"\
+    "    <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"\
+    "    <conformance-type>implement</conformance-type>\n"\
+    "  </module>\n"\
+    "  <module>\n"\
+    "    <name>ietf-inet-types</name>\n"\
+    "    <revision>2013-07-15</revision>\n"\
+    "    <namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace>\n"\
+    "    <conformance-type>import</conformance-type>\n"\
+    "  </module>\n"\
+    "  <module>\n"\
+    "    <name>ietf-yang-types</name>\n"\
+    "    <revision>2013-07-15</revision>\n"\
+    "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>\n"\
+    "    <conformance-type>import</conformance-type>\n"\
+    "  </module>\n"\
+    "  <module>\n"\
+    "    <name>ietf-yang-library</name>\n"\
+    "    <revision>2019-01-04</revision>\n"\
+    "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"\
+    "    <conformance-type>implement</conformance-type>\n"\
+    "  </module>\n"\
+    "  <module>\n"\
+    "    <name>ietf-datastores</name>\n"\
+    "    <revision>2018-02-14</revision>\n"\
+    "    <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>\n"\
+    "    <conformance-type>import</conformance-type>\n"\
+    "  </module>\n"
+
+    const char *yanglibrary_only =
+            DATA_YANG_LIBRARY_START
+            DATA_YANG_BASE_IMPORTS
+            DATA_YANG_SCHEMA_MODULE_STATE
+            "</modules-state>\n";
+
+    const char *with_netconf =
+            DATA_YANG_LIBRARY_START
+            "    <module>\n"
+            "      <name>ietf-netconf</name>\n"
+            "      <revision>2011-06-01</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>\n"
+            "    </module>\n"
+            DATA_YANG_BASE_IMPORTS
+            "    <import-only-module>\n"
+            "      <name>ietf-netconf-acm</name>\n"
+            "      <revision>2018-02-14</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
+            "    </import-only-module>\n"
+            DATA_YANG_SCHEMA_MODULE_STATE
+            "  <module>\n"
+            "    <name>ietf-netconf</name>\n"
+            "    <revision>2011-06-01</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-netconf-acm</name>\n"
+            "    <revision>2018-02-14</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
+            "    <conformance-type>import</conformance-type>\n"
+            "  </module>\n"
+            "</modules-state>";
+
+    const char *with_netconf_features =
+            DATA_YANG_LIBRARY_START
+            "    <module>\n"
+            "      <name>ietf-netconf</name>\n"
+            "      <revision>2011-06-01</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>\n"
+            "      <feature>writable-running</feature>\n"
+            "      <feature>candidate</feature>\n"
+            "      <feature>confirmed-commit</feature>\n"
+            "      <feature>rollback-on-error</feature>\n"
+            "      <feature>validate</feature>\n"
+            "      <feature>startup</feature>\n"
+            "      <feature>url</feature>\n"
+            "      <feature>xpath</feature>\n"
+            "    </module>\n"
+            "    <import-only-module>\n"
+            "      <name>ietf-yang-metadata</name>\n"
+            "      <revision>2016-08-05</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"
+            "    </import-only-module>\n"
+            "    <import-only-module>\n"
+            "      <name>ietf-inet-types</name>\n"
+            "      <revision>2013-07-15</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace>\n"
+            "    </import-only-module>\n"
+            "    <import-only-module>\n"
+            "      <name>ietf-yang-types</name>\n"
+            "      <revision>2013-07-15</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>\n"
+            "    </import-only-module>\n"
+            "    <import-only-module>\n"
+            "      <name>ietf-datastores</name>\n"
+            "      <revision>2018-02-14</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>\n"
+            "    </import-only-module>\n"
+            "    <import-only-module>\n"
+            "      <name>ietf-netconf-acm</name>\n"
+            "      <revision>2018-02-14</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
+            "    </import-only-module>\n"
+            DATA_YANG_SCHEMA_MODULE_STATE
+            "  <module>\n"
+            "    <name>ietf-netconf</name>\n"
+            "    <revision>2011-06-01</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>\n"
+            "    <feature>writable-running</feature>\n"
+            "    <feature>candidate</feature>\n"
+            "    <feature>confirmed-commit</feature>\n"
+            "    <feature>rollback-on-error</feature>\n"
+            "    <feature>validate</feature>\n"
+            "    <feature>startup</feature>\n"
+            "    <feature>url</feature>\n"
+            "    <feature>xpath</feature>\n"
+            "    <conformance-type>implement</conformance-type>\n"
+            "  </module>\n"
+            "  <module>\n"
+            "    <name>ietf-netconf-acm</name>\n"
+            "    <revision>2018-02-14</revision>\n"
+            "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
+            "    <conformance-type>import</conformance-type>\n"
+            "  </module>\n"
+            "</modules-state>";
+
+    const char *garbage_revision =
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+            "  <module-set>\n"
+            "    <name>complete</name>\n"
+            "    <module>\n"
+            "      <name>yang</name>\n"
+            "      <revision>2020-06-17</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
+            "    </module>\n"
+            "    <module>\n"
+            "      <name>ietf-yang-library</name>\n"
+            "      <revision>2019-01-01</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
+            "    </module>\n"
+            DATA_YANG_BASE_IMPORTS
+            DATA_YANG_SCHEMA_MODULE_STATE
+            "</modules-state>\n";
+
+    const char *no_yanglibrary =
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
+            "  <module-set>\n"
+            "    <name>complete</name>\n"
+            "    <module>\n"
+            "      <name>yang</name>\n"
+            "      <revision>2021-04-07</revision>\n"
+            "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
+            "    </module>\n"
+            DATA_YANG_BASE_IMPORTS
+            DATA_YANG_SCHEMA_MODULE_STATE
+            "</modules-state>\n";
+
+    (void) state;
+    /* seperate context to avoid double free during teadown */
+    struct ly_ctx *ctx_test = NULL;
+
+    /* test invalid parameters */
+    assert_int_equal(LY_EINVAL, ly_ctx_new_ylpath(NULL, NULL, LYD_XML, 0, &ctx_test));
+    assert_int_equal(LY_EINVAL, ly_ctx_new_ylpath(NULL, TESTS_SRC, LYD_XML, 0, NULL));
+    assert_int_equal(LY_ESYS, ly_ctx_new_ylpath(NULL, TESTS_SRC "garbage", LYD_XML, 0, &ctx_test));
+
+    /* basic test with ietf-yang-library-only */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", yanglibrary_only, LYD_XML, 0, &ctx_test));
+    assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
+    assert_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
+    ly_ctx_destroy(ctx_test, NULL);
+
+    /* test loading module, should also import other module */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf, LYD_XML, 0, &ctx_test));
+    assert_int_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
+    assert_int_equal(1, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01")->implemented);
+    assert_int_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
+    assert_int_equal(0, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14")->implemented);
+    assert_int_equal(LY_ENOT, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
+    ly_ctx_destroy(ctx_test, NULL);
+
+    /* test loading module with feature if they are present */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, 0, &ctx_test));
+    assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
+    assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
+    assert_int_equal(LY_SUCCESS, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
+    ly_ctx_destroy(ctx_test, NULL);
+
+    /* test with not matching revision */
+    assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", garbage_revision, LYD_XML, 0, &ctx_test));
+
+    /* test data containing ietf-yang-library which conflicts with the option */
+    assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
+
+    /* test creating without ietf-yang-library */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", no_yanglibrary, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
+    assert_int_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
+    ly_ctx_destroy(ctx_test, NULL);
+}
+
 int
 main(void)
 {
@@ -444,6 +699,7 @@ main(void)
         UTEST(test_models),
         UTEST(test_imports),
         UTEST(test_get_models),
+        UTEST(test_ylmem),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
