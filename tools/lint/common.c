@@ -105,17 +105,24 @@ free_features(void *flist)
     }
 }
 
+
 void
 get_features(struct ly_set *fset, const char *module, const char ***features)
 {
+    static const char *all_features[] = {"*", NULL};
+
     /* get features list for this module */
     for (uint32_t u = 0; u < fset->count; ++u) {
         struct schema_features *sf = (struct schema_features *)fset->objs[u];
         if (!strcmp(module, sf->module)) {
+            /* matched module - explicitly set features */
             *features = (const char **)sf->features;
             return;
         }
     }
+
+    /* features not set, enable all features by default */
+    *features = all_features;
 }
 
 int
