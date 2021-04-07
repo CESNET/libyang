@@ -19,6 +19,7 @@
 
 #include "log.h"
 #include "parser_schema.h"
+#include "tree_data.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -211,6 +212,52 @@ struct ly_ctx;
  * @return LY_ERR return value.
  */
 LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx);
+
+/**
+ * @brief Create libyang context according to the content of the given yang-library data.
+ *
+ * This function loads the yang-library data from the given path. If you need to pass the data as
+ * string, use ::::ly_ctx_new_ylmem(). Both functions extend functionality of ::ly_ctx_new() by loading
+ * modules specified in the ietf-yang-library form into the context being created.
+ * The preferred tree model revision is 2019-01-04. However, only the first module-set is processed and loaded
+ * into the context. If there are no matching nodes from this tree, the legacy tree (originally from model revision 2016-04-09)
+ * is processed. Note, that the modules are loaded the same way as in case of ::ly_ctx_load_module(), so the schema paths in the
+ * yang-library data are ignored and the modules are loaded from the context's search locations. On the other hand, YANG features
+ * of the modules are set as specified in the yang-library data.
+ * To get yang library data from a libyang context, use ::ly_ctx_get_yanglib_data().
+ *
+ * @param[in] search_dir Directory where libyang will search for the imported or included modules and submodules.
+ * If no such directory is available, NULL is accepted.
+ * @param[in] path Path to the file containing yang-library-data in the specified format
+ * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
+ * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
+ * @return LY_ERR return value
+ */
+LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx);
+
+/**
+ * @brief Create libyang context according to the content of the given yang-library data.
+ *
+ * This function loads the yang-library data from the given string. If you need to pass the data as
+ * path to a file holding the data, use ::ly_ctx_new_ylpath(). Both functions extend functionality of
+ * ::ly_ctx_new() by loading modules specified in the ietf-yang-library form into the context being created.
+ * The preferred tree model revision is 2019-01-04. However, only the first module-set is processed and loaded
+ * into the context. If there are no matching nodes from this tree, the legacy tree (originally from model revision 2016-04-09)
+ * is processed. Note, that the modules are loaded the same way as in case of ::ly_ctx_load_module(), so the schema paths in the
+ * yang-library data are ignored and the modules are loaded from the context's search locations. On the other hand, YANG features
+ * of the modules are set as specified in the yang-library data.
+ * To get yang library data from a libyang context, use ::ly_ctx_get_yanglib_data().
+ *
+ * @param[in] search_dir Directory where libyang will search for the imported or included modules and submodules.
+ * If no such directory is available, NULL is accepted.
+ * @param[in] data String containing yang-library data in the specified format.
+ * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
+ * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
+ * @return LY_ERR return value
+ */
+LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx);
 
 /**
  * @brief Add the search path into libyang context
