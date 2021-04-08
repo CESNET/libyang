@@ -25,29 +25,6 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 
-static void
-lyd_hash_keyless_list_dfs(const struct lyd_node *child, uint32_t *hash)
-{
-    const struct lyd_node *iter;
-
-    LY_LIST_FOR(child, iter) {
-        switch (iter->schema->nodetype) {
-        case LYS_CONTAINER:
-        case LYS_LIST:
-            lyd_hash_keyless_list_dfs(lyd_child(iter), hash);
-            break;
-        case LYS_LEAFLIST:
-        case LYS_ANYXML:
-        case LYS_ANYDATA:
-        case LYS_LEAF:
-            *hash = dict_hash_multi(*hash, (char *)&iter->hash, sizeof iter->hash);
-            break;
-        default:
-            LOGINT(NULL);
-        }
-    }
-}
-
 LY_ERR
 lyd_hash(struct lyd_node *node)
 {
@@ -57,25 +34,29 @@ lyd_hash(struct lyd_node *node)
         return LY_SUCCESS;
     }
 
+    /* hash always starts with the module and schema name */
     node->hash = dict_hash_multi(0, node->schema->module->name, strlen(node->schema->module->name));
     node->hash = dict_hash_multi(node->hash, node->schema->name, strlen(node->schema->name));
 
     if (node->schema->nodetype == LYS_LIST) {
-        struct lyd_node_inner *list = (struct lyd_node_inner *)node;
-        if (!(node->schema->flags & LYS_KEYLESS)) {
-            /* list's hash is made of its keys */
+        if (node->schema->flags & LYS_KEYLESS) {
+            /* key-less list simply adds its schema name again to the hash, just so that it differs from the first-instance hash */
+            node->hash = dict_hash_multi(node->hash, node->schema->name, strlen(node->schema->name));
+        } else {
+            struct lyd_node_inner *list = (struct lyd_node_inner *)node;
+
+            /* list hash is made up from its keys */
             for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
                 const char *value = LYD_CANON_VALUE(iter);
                 node->hash = dict_hash_multi(node->hash, value, strlen(value));
             }
-        } else {
-            /* keyless status list */
-            lyd_hash_keyless_list_dfs(list->child, &node->hash);
         }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
+        /* leaf-list adds its value */
         const char *value = LYD_CANON_VALUE(node);
         node->hash = dict_hash_multi(node->hash, value, strlen(value));
     }
+
     /* finish the hash */
     node->hash = dict_hash_multi(node->hash, NULL, 0);
 
@@ -116,17 +97,6 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(c
 }
 
 /**
- * @brief Comparison callback for hash table that never considers 2 values equal.
- *
- * Implementation of ::lyht_value_equal_cb.
- */
-static ly_bool
-lyd_not_equal_value_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), ly_bool UNUSED(mod), void *UNUSED(cb_data))
-{
-    return 0;
-}
-
-/**
  * @brief Add single node into children hash table.
  *
  * @param[in] ht Children hash table.
@@ -137,17 +107,13 @@ lyd_not_equal_value_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), ly_bool UNUSE
 static LY_ERR
 lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_ht)
 {
-    LY_ERR rc = LY_SUCCESS;
-    lyht_value_equal_cb orig_cb = NULL;
     uint32_t hash;
 
     assert(ht && node && node->schema);
 
     /* add node itself */
     if (lyht_insert(ht, &node, node->hash, NULL)) {
-        LOGINT(LYD_CTX(node));
-        rc = LY_EINT;
-        goto cleanup;
+        LOGINT_RET(LYD_CTX(node));
     }
 
     /* add first instance of a (leaf-)list */
@@ -161,33 +127,20 @@ lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, ly_bool empty_
         /* remove any previous stored instance, only if we did not start with an empty HT */
         if (!empty_ht && node->next && (node->next->schema == node->schema)) {
             if (lyht_remove(ht, &node->next, hash)) {
-                LOGINT(LYD_CTX(node));
-                rc = LY_EINT;
-                goto cleanup;
+                LOGINT_RET(LYD_CTX(node));
             }
         }
 
-        if (hash == node->hash) {
-            /* special case, key-less list with no children hash is equal to the first instance list hash */
-            assert((node->schema->nodetype == LYS_LIST) && (node->schema->flags & LYS_KEYLESS) && !lyd_child(node));
-
-            /* we must allow exact duplicates in the hash table */
-            orig_cb = lyht_set_cb(ht, lyd_not_equal_value_cb);
-        }
+        /* in this case there would be the exact same value twice in the hash table, not supported (by the HT) */
+        assert(hash != node->hash);
 
         /* insert this instance as the first (leaf-)list instance */
         if (lyht_insert(ht, &node, hash, NULL)) {
-            LOGINT(LYD_CTX(node));
-            rc = LY_EINT;
-            goto cleanup;
+            LOGINT_RET(LYD_CTX(node));
         }
     }
 
-cleanup:
-    if (orig_cb) {
-        lyht_set_cb(ht, orig_cb);
-    }
-    return rc;
+    return LY_SUCCESS;
 }
 
 LY_ERR

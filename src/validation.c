@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Validation
  *
- * Copyright (c) 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _POSIX_C_SOURCE 200809L /* strdup */
+#define _GNU_SOURCE /* asprintf */
 
 #include "validation.h"
 
@@ -46,41 +47,58 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *new_diff = NULL;
     const struct lyd_node *prev_inst;
-    char *key = NULL, *value = NULL;
+    char *key = NULL, *value = NULL, *position = NULL;
     size_t buflen = 0, bufused = 0;
+    uint32_t pos;
 
     assert((op == LYD_DIFF_OP_DELETE) || (op == LYD_DIFF_OP_CREATE));
 
     if ((op == LYD_DIFF_OP_CREATE) && lysc_is_userordered(node->schema)) {
-        if (node->prev->next && (node->prev->schema == node->schema)) {
-            prev_inst = node->prev;
-        } else {
-            /* first instance */
-            prev_inst = NULL;
-        }
+        if (lysc_is_dup_inst_list(node->schema)) {
+            pos = lyd_list_pos(node);
 
-        if (node->schema->nodetype == LYS_LIST) {
-            /* generate key meta */
-            if (prev_inst) {
-                LY_CHECK_GOTO(ret = lyd_path_list_predicate(prev_inst, &key, &buflen, &bufused, 0), cleanup);
+            /* generate position meta */
+            if (pos > 1) {
+                if (asprintf(&position, "%" PRIu32, pos - 1) == -1) {
+                    LOGMEM(LYD_CTX(node));
+                    ret = LY_EMEM;
+                    goto cleanup;
+                }
             } else {
-                key = strdup("");
-                LY_CHECK_ERR_GOTO(!key, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+                position = strdup("");
+                LY_CHECK_ERR_GOTO(!position, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
             }
         } else {
-            /* generate value meta */
-            if (prev_inst) {
-                value = strdup(LYD_CANON_VALUE(prev_inst));
-                LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+            if (node->prev->next && (node->prev->schema == node->schema)) {
+                prev_inst = node->prev;
             } else {
-                value = strdup("");
-                LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+                /* first instance */
+                prev_inst = NULL;
+            }
+
+            if (node->schema->nodetype == LYS_LIST) {
+                /* generate key meta */
+                if (prev_inst) {
+                    LY_CHECK_GOTO(ret = lyd_path_list_predicate(prev_inst, &key, &buflen, &bufused, 0), cleanup);
+                } else {
+                    key = strdup("");
+                    LY_CHECK_ERR_GOTO(!key, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+                }
+            } else {
+                /* generate value meta */
+                if (prev_inst) {
+                    value = strdup(LYD_CANON_VALUE(prev_inst));
+                    LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+                } else {
+                    value = strdup("");
+                    LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
+                }
             }
         }
     }
 
     /* create new diff tree */
-    LY_CHECK_GOTO(ret = lyd_diff_add(node, op, NULL, NULL, key, value, NULL, &new_diff), cleanup);
+    LY_CHECK_GOTO(ret = lyd_diff_add(node, op, NULL, NULL, key, value, position, NULL, NULL, &new_diff), cleanup);
 
     /* merge into existing diff */
     ret = lyd_diff_merge_all(diff, new_diff, 0);
@@ -89,6 +107,7 @@ cleanup:
     lyd_free_tree(new_diff);
     free(key);
     free(value);
+    free(position);
     return ret;
 }
 
@@ -370,8 +389,7 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
     assert(node->flags & LYD_NEW);
 
     /* key-less list or non-configuration leaf-list */
-    if (((node->schema->nodetype == LYS_LIST) && (node->schema->flags & LYS_KEYLESS)) ||
-            ((node->schema->nodetype == LYS_LEAFLIST) && !(node->schema->flags & LYS_CONFIG_W))) {
+    if (lysc_is_dup_inst_list(node->schema)) {
         /* duplicate instances allowed */
         return LY_SUCCESS;
     }

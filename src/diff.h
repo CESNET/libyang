@@ -31,6 +31,14 @@ struct lyd_diff_userord {
 };
 
 /**
+ * @brief Internal structure for remembering "used" instances of lists with duplicate instances allowed.
+ */
+struct lyd_diff_dup_inst {
+    struct ly_set *inst_set;
+    uint32_t used;
+};
+
+/**
  * @brief Diff operations.
  */
 enum lyd_diff_op {
@@ -49,11 +57,14 @@ enum lyd_diff_op {
  * @param[in] orig_value Original value metadata to set.
  * @param[in] key Key metadata to set.
  * @param[in] value Value metadata to set.
+ * @param[in] position Position metadata to set.
  * @param[in] orig_key Original key metadata to set.
+ * @param[in] orig_position Original position metadata to set.
  * @param[in,out] diff Diff to append to.
  * @return LY_ERR value.
  */
 LY_ERR lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
-        const char *key, const char *value, const char *orig_key, struct lyd_node **diff);
+        const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
+        struct lyd_node **diff);
 
 #endif /* LY_DIFF_H_ */

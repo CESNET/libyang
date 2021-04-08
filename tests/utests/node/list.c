@@ -62,14 +62,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T1", "list user {"
             "key uid;"
@@ -81,12 +81,12 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5,  1, "name", 0, LYS_CONTAINER, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "name", 0, LYS_CONTAINER, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T2", "list grup {"
             "key \"guid\";"
@@ -95,12 +95,12 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "grup", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "grup", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "users", 0, LYS_LIST, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "users", 0, LYS_LIST, 1, 0, 0, 0);
 
     /* restriction */
     schema = MODULE_CREATE_YANG("T3", "list grup {"
@@ -112,12 +112,12 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0xa5, 1, "grup", 0, \
-            0, 0, 0, 0, 1, 20, 10, 0, 0, 0, 0);
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE | LYS_ORDBY_SYSTEM, 1, \
+            "grup", 0, 0, 0, 0, 0, 1, 20, 10, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "users", 0, LYS_LIST, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "users", 0, LYS_LIST, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T4", "list user {"
             "key \"uid name\";"
@@ -128,14 +128,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x185,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE | LYS_KEY, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T5", "list rule {"
             "key \"id\";"
@@ -148,16 +148,16 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "rule", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "rule", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 2, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "id", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "id", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85, 1,   "ip", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "ip", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85, 1,   "port", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "port", 0, LYS_LEAF, 1, 0, 0, 0);
 
     /* test error */
     schema = MODULE_CREATE_YANG("TERR_0", "list user {"
@@ -227,14 +227,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0xa86, 1, "user", 0, \
-            0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_KEYLESS | LYS_SET_CONFIG, \
+            1, "user", 0, 0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x6, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x6,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x6, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T7", "list user {"
             "key uid;"
@@ -246,14 +246,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x45, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T8", "list user {"
             "key uid;"
@@ -265,14 +265,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("TERROR0", "list user {"
             "key uid;"
@@ -308,14 +308,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x205, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_SET_DFLT, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T10", "list user {"
             "key uid;"
@@ -325,14 +325,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x305, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY | LYS_SET_DFLT, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YANG("T11",
             "typedef my_type {"
@@ -346,14 +346,14 @@ test_schema_yang(void **state)
             "}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
 }
 
@@ -374,14 +374,14 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T00", "<list name=\"user\">"
             "   <key value=\"u&lt;id\"/>"
@@ -405,12 +405,12 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5,  1, "name", 0, LYS_CONTAINER, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "name", 0, LYS_CONTAINER, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T2", "<list name=\"grup\">"
             "<key value=\"guid\"/>"
@@ -422,12 +422,12 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "grup", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "grup", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "users", 0, LYS_LIST, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "users", 0, LYS_LIST, 1, 0, 0, 0);
 
     /* restriction */
     schema = MODULE_CREATE_YIN("T3",
@@ -442,12 +442,12 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0xa5, 1, "grup", 0, \
-            0, 0, 0, 0, 1, 20, 10, 0, 0, 0, 0);
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE | LYS_ORDBY_SYSTEM, 1, "grup", \
+            0, 0, 0, 0, 0, 1, 20, 10, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "guid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "users", 0, LYS_LIST, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM,  1, "users", 0, LYS_LIST, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T4",
             "<list name=\"user\">"
@@ -459,14 +459,14 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x185,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE | LYS_KEY, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T5",
             "<list name=\"rule\">"
@@ -480,16 +480,16 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "rule", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "rule", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 2, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "id", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "id", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85, 1,   "ip", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "ip", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85, 1,   "port", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "port", 0, LYS_LEAF, 1, 0, 0, 0);
 
     /* test error */
     schema = MODULE_CREATE_YIN("TERR_0",
@@ -563,14 +563,14 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0xa86, 1, "user", 0, \
-            0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_KEYLESS | LYS_SET_CONFIG, \
+            1, "user", 0, 0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 0, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x6, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x6,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x6, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_R | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T7",
             "<list name=\"user\">"
@@ -583,14 +583,14 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x45, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("T8",
             "<list name=\"user\">"
@@ -603,14 +603,14 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x5, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
     schema = MODULE_CREATE_YIN("TERROR0",
             "<list name=\"user\">"
@@ -636,14 +636,14 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_ADD_MODULE(schema, LYS_IN_YIN, NULL, &mod);
     lysc_leaf = (void *)mod->compiled->data;
-    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, 0x85, 1, "user", 0, \
+    CHECK_LYSC_NODE_LIST(lysc_leaf, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, 1, "user", 0, \
             0, 0, 0, 0, 1, 0xffffffff, 0, 0, 0, 1, 0);
     lysc_node = lysc_leaf->child;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x105, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_KEY, 1, "uid", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x85,  1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_UNIQUE, 1, "name", 1, LYS_LEAF, 1, 0, 0, 0);
     lysc_node = lysc_node->next;
-    CHECK_LYSC_NODE(lysc_node, 0, 0, 0x205, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
+    CHECK_LYSC_NODE(lysc_node, 0, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_SET_DFLT, 1, "group", 0, LYS_LEAF, 1, 0, 0, 0);
 
 }
 

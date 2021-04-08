@@ -9,7 +9,7 @@ expect {
 	"list\r
 List of the loaded models:\r
     i ietf-yang-metadata@2016-08-05\r
-    I yang@2020-06-17\r
+    I yang@2021-04-07\r
     i ietf-inet-types@2013-07-15\r
     i ietf-yang-types@2013-07-15\r
     I ietf-datastores@2018-02-14\r

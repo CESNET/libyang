@@ -46,7 +46,7 @@ test_schema(void **state)
             "      list l {\n" /* no key */
             "        min-elements 0;\n"
             "        max-elements 4294967295;\n"
-            "        ordered-by system;\n"
+            "        ordered-by user;\n"
             "        status current;\n"
             "        leaf x {\n"
             "          type string;\n"

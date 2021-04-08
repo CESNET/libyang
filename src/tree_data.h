@@ -944,8 +944,8 @@ ly_bool lyd_is_default(const struct lyd_node *node);
  * @brief Learn the relative position of a list or leaf-list instance within other instances of the same schema node.
  *
  * @param[in] instance List or leaf-list instance to get the position of.
- * return 0 on error.
- * return Positive integer of the @p instance position.
+ * @return 0 on error.
+ * @return Positive integer of the @p instance position.
  */
 uint32_t lyd_list_pos(const struct lyd_node *instance);
 
@@ -1259,7 +1259,7 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
- * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
+ * For key-less lists and state leaf-lists, positional predicates should be used. If no predicate is used for these
  * nodes, they are always created.
  *
  * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
@@ -1610,7 +1610,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
  * @ingroup datatree
  * @defgroup dupoptions Data duplication options
  *
- * Various options to change ::lyd_dup_single(), ::lyd_dup_siblings() and ::lyd_dup_meta_single() behavior.
+ * Various options to change ::lyd_dup_single() and ::lyd_dup_siblings() behavior.
  *
  * Default behavior:
  * - only the specified node is duplicated without siblings, parents, or children.
@@ -1995,6 +1995,19 @@ LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_
  */
 LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
         size_t val_len, struct lyd_node **match);
+
+/**
+ * @brief Search the given siblings for all the exact same instances of a specific node instance. Accepts only nodes
+ * that are allowed to have several exact same instances. Uses hashes to whatever extent possible.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node instance to find.
+ * @param[out] set Set with all the found instances. The first item is always the first instance.
+ * @return LY_SUCCESS on success, @p set returned.
+ * @return LY_ENOTFOUND if not found, empty @p set returned.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
 
 /**
  * @brief Search the given siblings for an opaque node with a specific name.
