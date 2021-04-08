@@ -40,16 +40,31 @@ const char *schema_a = "module a {\n"
         "  }\n"
         "  container c {\n"
         "    leaf-list x {\n"
-        "    type string;\n"
+        "      type string;\n"
         "    }\n"
         "  }\n"
         "  anydata any {\n"
         "    config false;\n"
         "  }\n"
+        "  leaf-list ll2 {\n"
+        "    config false;\n"
+        "    type string;\n"
+        "  }\n"
         "  list l2 {\n"
         "    config false;\n"
         "    container c {\n"
         "      leaf x {\n"
+        "        type string;\n"
+        "      }\n"
+        "    }\n"
+        "  }\n"
+        "  container c2 {\n"
+        "    config false;\n"
+        "    list l3 {\n"
+        "      leaf x {\n"
+        "        type string;\n"
+        "      }\n"
+        "      leaf y {\n"
         "        type string;\n"
         "      }\n"
         "    }\n"
@@ -185,8 +200,10 @@ test_path(void **state)
 {
     LY_ERR ret;
     struct lyd_node *root, *node, *parent;
+    const struct lys_module *mod;
+    char *str;
 
-    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
 
     /* create 2 nodes */
     ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:c/x[.='val']", "vvv", 0, 0, &root, &node);
@@ -236,27 +253,95 @@ test_path(void **state)
 
     lyd_free_tree(root);
 
-    /* try LYD_NEWOPT_UPDATE */
-    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:l2[1]/c/x", "val", 0, 0, &root, &node);
+    /* key-less list */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:c2/l3/x", "val1", 0, 0, &root, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val", LYD_CANON_VALUE(node));
+    assert_string_equal("val1", LYD_CANON_VALUE(node));
 
-    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, 0, NULL, &node);
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[1]", NULL, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
 
-    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, LYD_NEW_PATH_UPDATE, NULL, &node);
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[2]/x", "val2", 0, 0, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_null(node);
 
-    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val2", 0, LYD_NEW_PATH_UPDATE, NULL, &node);
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3/x", "val3", 0, 0, NULL, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(node);
-    assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val2", LYD_CANON_VALUE(node));
 
-    lyd_free_tree(root);
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[4]/x", "empty", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[4]/x", "val4", 0, LYD_NEW_PATH_UPDATE, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[5]/x", "val5", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+
+    ret = lyd_new_path2(root, NULL, "/a:c2/l3[6]/x", "val6", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<c2 xmlns=\"urn:tests:a\">\n"
+            "  <l3>\n"
+            "    <x>val1</x>\n"
+            "  </l3>\n"
+            "  <l3>\n"
+            "    <x>val2</x>\n"
+            "  </l3>\n"
+            "  <l3>\n"
+            "    <x>val3</x>\n"
+            "  </l3>\n"
+            "  <l3>\n"
+            "    <x>val4</x>\n"
+            "  </l3>\n"
+            "  <l3>\n"
+            "    <x>val5</x>\n"
+            "  </l3>\n"
+            "  <l3>\n"
+            "    <x>val6</x>\n"
+            "  </l3>\n"
+            "</c2>\n");
+    free(str);
+    lyd_free_siblings(root);
+
+    /* state leaf-list */
+    ret = lyd_new_path2(NULL, UTEST_LYCTX, "/a:ll2", "val_first", 0, 0, &root, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_string_equal(node->schema->name, "ll2");
+    assert_string_equal("val_first", LYD_CANON_VALUE(node));
+
+    ret = lyd_new_path2(root, NULL, "/a:ll2[1]", "", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_EEXIST);
+
+    ret = lyd_new_path2(root, NULL, "/a:ll2[2]", "val2", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+
+    ret = lyd_new_path2(root, NULL, "/a:ll2[1]", "val", 0, LYD_NEW_PATH_UPDATE, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+
+    ret = lyd_new_path2(root, UTEST_LYCTX, "/a:ll2", "val3", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+
+    ret = lyd_new_path2(root, NULL, "/a:ll2[3][.='val3']", NULL, 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_EVALID);
+
+    lyd_print_mem(&str, root, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    assert_string_equal(str,
+            "<ll2 xmlns=\"urn:tests:a\">val</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:a\">val2</ll2>\n"
+            "<ll2 xmlns=\"urn:tests:a\">val3</ll2>\n");
+    free(str);
+    lyd_free_siblings(root);
 }
 
 static void

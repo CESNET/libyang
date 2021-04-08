@@ -19,6 +19,11 @@ module yang {
      else. libyang uses this module to implement various YANG attributes
      defined in RFC 6020.";
 
+  revision 2021-04-07 {
+    description
+      "Added metadata for key-less list and state leaf-list diff.";
+  }
+
   revision 2020-06-17 {
     description
       "Added metadata for diff.";
@@ -49,7 +54,7 @@ module yang {
     }
     reference "RFC7950 section 7.8.6. and section 7.7.9.";
     description
-      "In user ordered leaf-list, the attribute can be used to control
+      "In user ordered leaf-list, this attribute can be used to control
        where in the leaf-list the entry is inserted. It can be used during
        the NETCONF <edit-config> \"create\" operations to insert a new list or
        leaf-list entry, or during \"merge\" or \"replace\" operations to insert
@@ -66,7 +71,7 @@ module yang {
     type string;
     reference "RFC7950 section 7.7.9.";
     description
-      "In user ordered leaf-list, the attribute must be used if the attribute
+      "In user ordered leaf-list, this attribute must be used if the attribute
        insert is used and specifies before/after which existing instance the
        new instance should be inserted.";
   }
@@ -75,9 +80,22 @@ module yang {
     type string;
     reference "RFC7950 section 7.8.6.";
     description
-      "In user ordered list, the attribute must be used if the attribute
+      "In user ordered list, this attribute must be used if the attribute
        insert is used and specifies before/after which existing instance the
        new instance should be inserted.";
+  }
+
+  md:annotation position {
+    type union {
+        type empty;
+        type uint32 {
+            range 1..max;
+        }
+    }
+    description
+      "In key-less list or state leaf-list, this attribute must be used if
+       the attribute insert is used and specifies the instance position
+       before/after which the new instance should be inserted.";
   }
 
   md:annotation operation {
@@ -112,10 +130,10 @@ module yang {
        Top-level nodes must always have an operation.
 
        User-ordered lists/leaf-lists with operation 'create' and
-       'replace' MUST also have the 'key' or 'value' metadata defined.
-       It specifies the succeeding instance. In case the value of
-       this metadata is empty, the node was created/moved on the
-       last position.
+       'replace' MUST also have the 'key', 'value', or 'position'
+       metadata defined. It specifies the preceding instance.
+       In case the value of this metadata is empty, the node was
+       created/moved on the first position.
 
        All the operations keep the meaning of edit-config operations
        with similar names but some are further restricted, meaning
@@ -131,15 +149,27 @@ module yang {
   md:annotation orig-value {
     type string;
     description
-      "Previous value of a changed leaf. Alternatly, its meaning
-       is the same as \"value\" attribute but identifies the original
+      "Previous value of a changed leaf. Alternatively, its meaning
+       is the same as the \"value\" attribute but identifies the original
        leaf-list instance rather than the new one.";
   }
 
   md:annotation orig-key {
     type string;
     description
-      "Its meaning is the same as \"key\" attribute but identifies
+      "Its meaning is the same as the \"key\" attribute but identifies
+       the original list instance rather than the new one.";
+  }
+
+  md:annotation orig-position {
+    type union {
+        type empty;
+        type uint32 {
+            range 1..max;
+        }
+    }
+    description
+      "Its meaning is the same as the \"position\" attribute but identifies
        the original list instance rather than the new one.";
   }
 }

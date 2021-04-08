@@ -899,10 +899,11 @@ struct lysp_deviation {
 #define LYS_KEY          0x0100      /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_KEYLESS      0x0200      /**< flag for list without any key, applicable only to ::lysc_node_list */
 #define LYS_FENABLED     0x20        /**< feature enabled flag, applicable only to ::lysp_feature. */
-#define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
-                                          ::lysc_node_list/::lysp_node_list */
-#define LYS_ORDBY_USER   0x40        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
-                                          ::lysc_node_list/::lysp_node_list */
+#define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by system configuration lists, applicable only to
+                                          ::lysc_node_leaflist/::lysp_node_leaflist and ::lysc_node_list/::lysp_node_list */
+#define LYS_ORDBY_USER   0x40        /**< ordered-by user configuration lists, applicable only to
+                                          ::lysc_node_leaflist/::lysp_node_leaflist and ::lysc_node_list/::lysp_node_list;
+                                          is always set for state leaf-lists, and key-less lists */
 #define LYS_ORDBY_MASK   0x60        /**< mask for ordered-by values */
 #define LYS_YINELEM_TRUE 0x80        /**< yin-element true for extension's argument */
 #define LYS_YINELEM_FALSE 0x0100     /**< yin-element false for extension's argument */
@@ -1988,14 +1989,14 @@ struct lysc_module {
     ((!lysc_node || (lysc_node->nodetype != LYS_CONTAINER) || (lysc_node->flags & LYS_PRESENCE)) ? 0 : 1)
 
 /**
- * @brief Examine whether a node is a key-less list or a state leaf-list.
+ * @brief Examine whether a node is a key-less list or a non-configuration leaf-list.
  *
  * @param[in] lysc_node Schema node to examine.
  * @return Boolean value whether the @p node is a list with duplicate instances allowed.
  */
 #define lysc_is_dup_inst_list(lysc_node) \
     ((lysc_node && (((lysc_node->nodetype == LYS_LIST) && (lysc_node->flags & LYS_KEYLESS)) || \
-            ((lysc_node->nodetype == LYS_LEAFLIST) && (lysc_node->flags & LYS_CONFIG_R)))) ? 1 : 0)
+            ((lysc_node->nodetype == LYS_LEAFLIST) && !(lysc_node->flags & LYS_CONFIG_W)))) ? 1 : 0)
 
 /**
  * @brief Check whether the schema node data instance existence depends on any when conditions.

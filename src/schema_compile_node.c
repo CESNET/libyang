@@ -2782,7 +2782,13 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     if (llist->min) {
         llist->flags |= LYS_MAND_TRUE;
     }
-    llist->max = llist_p->max ? llist_p->max : (uint32_t)-1;
+    llist->max = llist_p->max ? llist_p->max : UINT32_MAX;
+
+    if (llist->flags & LYS_CONFIG_R) {
+        /* state leaf-list is always ordered-by user */
+        llist->flags &= ~LYS_ORDBY_SYSTEM;
+        llist->flags |= LYS_ORDBY_USER;
+    }
 
     /* checks */
     if ((llist->flags & LYS_SET_DFLT) && (llist->flags & LYS_MAND_TRUE)) {
@@ -3071,7 +3077,8 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     keystr = list_p->key;
     if (!keystr) {
         /* keyless list */
-        list->flags |= LYS_KEYLESS;
+        list->flags &= ~LYS_ORDBY_SYSTEM;
+        list->flags |= LYS_KEYLESS | LYS_ORDBY_USER;
     }
     while (keystr) {
         delim = strpbrk(keystr, " \t\n");

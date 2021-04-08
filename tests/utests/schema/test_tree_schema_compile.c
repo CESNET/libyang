@@ -261,7 +261,7 @@ test_node_leaflist(void **state)
     assert_int_equal(0, dynamic);
     assert_string_equal("1", dflt = ll->dflts[1]->realtype->plugin->print(ll->dflts[1], LY_PREF_SCHEMA, NULL, &dynamic));
     assert_int_equal(0, dynamic);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_DFLT | LYS_SET_CONFIG, ll->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_DFLT | LYS_SET_CONFIG, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data->next));
     assert_non_null(ll->dflts);
     assert_int_equal(6, ll->type->refcount); /* 3x type's reference, 3x default value's reference */
@@ -277,7 +277,7 @@ test_node_leaflist(void **state)
     CHECK_LOG_CTX("The ordered-by statement is ignored in lists representing state data (/d:ll).", NULL);
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data));
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, ll->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_CONFIG, ll->flags);
     UTEST_LOG_CLEAN;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module e {yang-version 1.1;namespace urn:e;prefix e;"
@@ -352,7 +352,7 @@ test_node_list(void **state)
     assert_non_null(list);
     assert_non_null(list->child);
     assert_false(list->child->flags & LYS_KEY);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG | LYS_KEYLESS, list->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_CONFIG | LYS_KEYLESS, list->flags);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;"
             "list l {key a; unique \"a c/b:b\"; unique \"c/e d\";"

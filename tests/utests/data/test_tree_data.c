@@ -380,7 +380,7 @@ test_target(void **state)
             LY_PATH_TARGET_SINGLE, LY_PREF_JSON, NULL, NULL, &path));
     term = lyd_target(path, tree);
 
-    const int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM | LYS_ORDBY_SYSTEM;
+    const int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM | LYS_ORDBY_USER;
 
     CHECK_LYSC_NODE(term->schema, NULL, 0, flag, 1, "d", 0, LYS_LEAFLIST, 1, 0, NULL, 0);
     assert_string_equal(LYD_CANON_VALUE(term), "b");
