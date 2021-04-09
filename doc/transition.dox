@@ -113,8 +113,6 @@
  * ly_ctx_get_disabled_module() and the associated ly_ctx_get_disabled_module_iter() | - | ^
  * ly_ctx_info()             | ::ly_ctx_get_yanglib_data()          | Clarification of what to expect as the output of the function and possibility to specify custom content ID.
  * ly_ctx_get_module_set_id() | ::ly_ctx_get_change_count()          | The functionality is the same but the exact meaning of the value was clarified.
- * ly_ctx_new_ylmem()        | TBD                                  | Not yet implemented feature.
- * ly_ctx_new_ylpath()       | TBD                                  | ^
  * -                         | ::ly_ctx_unset_searchdir_last()      | Extend the functionality of the ::ly_ctx_unset_searchdir() to make its use easier.
  * ly_ctx_get_module_older() | -                                    | Removed functionality.
  * -                         | ::ly_ctx_get_module_implemented()    | Supplement for ::ly_ctx_get_module()
