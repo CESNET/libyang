@@ -138,6 +138,35 @@ test_validation(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_not_implemented(void **state)
+{
+    const struct lys_module *mod;
+    struct lyd_node *tree;
+    const char *schema = "module libyang-plugins-unknown {"
+            "  namespace urn:libyang:tests:plugins:unknown;"
+            "  prefix u;"
+            "  extension myext;"
+            "  typedef mytype { type string;}"
+            "  leaf test {"
+            "    u:myext;"
+            "    type mytype;"
+            "  }"
+            "}";
+    const char *data = "<test xmlns=\"urn:libyang:tests:plugins:unknown\">xxx</test>";
+    char *printed = NULL;
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
+    free(printed);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX(NULL, NULL);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -145,6 +174,7 @@ main(void)
         UTEST(test_add_invalid),
         UTEST(test_add_simple),
         UTEST(test_validation),
+        UTEST(test_not_implemented),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

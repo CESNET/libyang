@@ -257,7 +257,7 @@ node_ext_tovalidate_add(struct ly_set *node_exts, struct lysc_ext_instance *exts
     struct node_ext *rec;
 
     LY_ARRAY_FOR(exts, const struct lysc_ext_instance, ext) {
-        if (ext->def->plugin->validate) {
+        if (ext->def->plugin && ext->def->plugin->validate) {
             rec = malloc(sizeof *rec);
             LY_CHECK_ERR_RET(!rec, LOGMEM(LYD_CTX(node)), LY_EMEM);
             rec->ext = ext;

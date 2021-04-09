@@ -2347,7 +2347,7 @@ yprc_extension_instances(struct lys_ypr_ctx *ctx, enum ly_stmt substmt, uint8_t 
         LEVEL++;
         yprc_extension_instances(ctx, LY_STMT_EXTENSION_INSTANCE, 0, ext[u].exts, &inner_flag, 0);
 
-        if (ext[u].def->plugin->sprinter) {
+        if (ext[u].def->plugin && ext[u].def->plugin->sprinter) {
             ext[u].def->plugin->sprinter(&ctx->printer_ctx, &ext[u], &inner_flag);
         }
 
