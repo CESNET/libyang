@@ -1259,8 +1259,8 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
- * For key-less lists and state leaf-lists, positional predicates should be used. If no predicate is used for these
- * nodes, they are always created.
+ * For key-less lists and non-configuration leaf-lists, positional predicates should be used. If no predicate is used
+ * for these nodes, they are always created.
  *
  * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
  * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
@@ -1278,14 +1278,7 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
  *
- * If creating data nodes defined inside an extension instance, use ::lyd_new_ext_path().
- *
- * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
- * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
- * and @p value is set, the predicate is preferred.
- *
- * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
- * nodes, they are always created.
+ * Details are mentioned in ::lyd_new_path().
  *
  * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
  * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
@@ -1309,12 +1302,7 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  *
  * If creating data nodes defined in a module's standard tree, use ::lyd_new_path() or ::lyd_new_path2().
  *
- * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
- * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
- * and @p value is set, the predicate is preferred.
- *
- * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
- * nodes, they are always created.
+ * Details are mentioned in ::lyd_new_path().
  *
  * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
  * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
