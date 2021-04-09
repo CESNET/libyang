@@ -665,8 +665,9 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
     if (!is_open_array(ctx, node)) {
         LY_CHECK_RET(json_print_member(ctx, node, 0));
         LY_CHECK_RET(json_print_array_open(ctx, node));
-        if (node->schema->nodetype == LYS_LEAFLIST)
+        if (node->schema->nodetype == LYS_LEAFLIST) {
             ly_print_(ctx->out, "%*s", INDENT);
+        }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
         ly_print_(ctx->out, ",%s%*s", DO_FORMAT ? "\n" : "", INDENT);
     }

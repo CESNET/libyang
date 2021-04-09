@@ -105,7 +105,6 @@ free_features(void *flist)
     }
 }
 
-
 void
 get_features(struct ly_set *fset, const char *module, const char ***features)
 {
