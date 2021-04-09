@@ -1155,12 +1155,12 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
             ++parsed;
             ++id;
 
-            for (ptr = id; ptr && ptr[0] != quote; ++ptr) {
+            for (ptr = id; ptr[0] && ptr[0] != quote; ++ptr) {
                 if (ptr[0] == '\\') {
                     ++ptr;
                 }
             }
-            if (!ptr) {
+            if (!ptr[0]) {
                 return -parsed;
             }
             ret = ptr - id;
