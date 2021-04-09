@@ -396,6 +396,12 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
                     ctx->indent += Y_TAB_SPACES - 1;
                 }
                 break;
+            case '\r':
+                if (ctx->in->current[1] != '\n') {
+                    LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
+                    return LY_EVALID;
+                }
+            /* fallthrough */
             case '\n':
                 if (block_indent) {
                     /* we will be removing the indents so we need our own buffer */
@@ -460,6 +466,13 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
                 string = STRING_PAUSED_CONTINUE;
                 need_buf = 1;
                 break;
+            case '\r':
+                if (ctx->in->current[1] != '\n') {
+                    LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
+                    return LY_EVALID;
+                }
+                MOVE_INPUT(ctx, 1);
+            /* fallthrough */
             case '\n':
                 LY_IN_NEW_LINE(ctx->in);
             /* fall through */
@@ -475,6 +488,13 @@ read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, 
             break;
         case STRING_PAUSED_CONTINUE:
             switch (ctx->in->current[0]) {
+            case '\r':
+                if (ctx->in->current[1] != '\n') {
+                    LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
+                    return LY_EVALID;
+                }
+                MOVE_INPUT(ctx, 1);
+            /* fallthrough */
             case '\n':
                 LY_IN_NEW_LINE(ctx->in);
             /* fall through */
@@ -589,6 +609,13 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
 
             ++ctx->in->current;
             break;
+        case '\r':
+            if (ctx->in->current[1] != '\n') {
+                LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
+                return LY_EVALID;
+            }
+            MOVE_INPUT(ctx, 1);
+        /* fallthrough */
         case '\n':
             if (*word_len) {
                 /* word is finished */
@@ -714,6 +741,13 @@ keyword_start:
     if (*kw != LY_STMT_NONE) {
         /* make sure we have the whole keyword */
         switch (ctx->in->current[0]) {
+        case '\r':
+            if (ctx->in->current[1] != '\n') {
+                LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
+                return LY_EVALID;
+            }
+            MOVE_INPUT(ctx, 1);
+        /* fallthrough */
         case '\n':
         case '\t':
         case ' ':
@@ -741,9 +775,11 @@ keyword_start:
     } else {
         /* still can be an extension */
         prefix = 0;
+
 extension:
         while (ctx->in->current[0] && (ctx->in->current[0] != ' ') && (ctx->in->current[0] != '\t') &&
-                (ctx->in->current[0] != '\n') && (ctx->in->current[0] != '{') && (ctx->in->current[0] != ';')) {
+                (ctx->in->current[0] != '\n') && (ctx->in->current[0] != '\r') && (ctx->in->current[0] != '{') &&
+                (ctx->in->current[0] != ';')) {
             uint32_t c = 0;
 
             LY_CHECK_ERR_RET(ly_getutf8(&ctx->in->current, &c, &len),
@@ -766,6 +802,7 @@ extension:
 
         *kw = LY_STMT_EXTENSION_INSTANCE;
     }
+
 success:
     if (word_p) {
         *word_p = (char *)word_start;
