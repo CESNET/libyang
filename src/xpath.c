@@ -2687,7 +2687,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
         expr_len = strlen(expr_str);
     }
     if (expr_len > UINT16_MAX) {
-        LOGVAL(ctx, LYVE_XPATH, "XPath expression cannot be longer than %ud characters.", UINT16_MAX);
+        LOGVAL(ctx, LYVE_XPATH, "XPath expression cannot be longer than %u characters.", UINT16_MAX);
         return LY_EVALID;
     }
 
