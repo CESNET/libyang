@@ -2715,7 +2715,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
             goto error;
         }
 
-        /* we will not be matching list position, keyless lists, or state leaf-lists this way */
+        /* we will not be matching list position, keyless lists, or non-configuration leaf-lists this way */
         if (((pp.schema->nodetype != LYS_LIST) || (((struct lys_node_list *)pp.schema)->keys_size && !isdigit(pp.pred[0].name[0])))
                 && ((pp.schema->nodetype != LYS_LEAFLIST) || (pp.schema->flags & LYS_CONFIG_W))) {
             sibling = resolve_json_data_node_hash(start, pp);
@@ -2744,8 +2744,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                 /* leaf-list, did we find it with the correct value or not? */
                 if (ssibling->nodetype == LYS_LEAFLIST) {
-                    if (ssibling->flags & LYS_CONFIG_R) {
-                        /* state leaf-lists will never match */
+                    if (!(ssibling->flags & LYS_CONFIG_W)) {
+                        /* non-configuration leaf-lists will never match */
                         continue;
                     }
 
