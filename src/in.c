@@ -21,8 +21,8 @@
 
 #if defined (__NetBSD__) || defined (__OpenBSD__)
 /* realpath */
-#define _XOPEN_SOURCE
-#define _XOPEN_SOURCE_EXTENDED /* realpath */
+#define _XOPEN_SOURCE 1
+#define _XOPEN_SOURCE_EXTENDED 1
 #endif
 
 #include "in.h"
