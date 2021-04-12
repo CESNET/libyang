@@ -327,6 +327,7 @@ lyht_new(uint32_t size, uint16_t val_size, lyht_value_equal_cb val_equal, void *
 
     ht->used = 0;
     ht->size = size;
+    ht->invalid = 0;
     ht->val_equal = val_equal;
     ht->cb_data = cb_data;
     ht->resize = resize;
@@ -373,6 +374,7 @@ lyht_dup(const struct hash_table *orig)
 
     memcpy(ht->recs, orig->recs, orig->used * orig->rec_size);
     ht->used = orig->used;
+    ht->invalid = orig->invalid;
     return ht;
 }
 
@@ -385,8 +387,15 @@ lyht_free(struct hash_table *ht)
     }
 }
 
+/**
+ * @brief Resize a hash table.
+ *
+ * @param[in] ht Hash table to resize.
+ * @param[in] operation Operation to perform. 1 to enlarge, -1 to shrink, 0 to only rehash all records.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lyht_resize(struct hash_table *ht, ly_bool enlarge)
+lyht_resize(struct hash_table *ht, int operation)
 {
     struct ht_rec *rec;
     unsigned char *old_recs;
@@ -395,10 +404,10 @@ lyht_resize(struct hash_table *ht, ly_bool enlarge)
     old_recs = ht->recs;
     old_size = ht->size;
 
-    if (enlarge) {
+    if (operation > 0) {
         /* double the size */
         ht->size <<= 1;
-    } else {
+    } else if (operation < 0) {
         /* half the size */
         ht->size >>= 1;
     }
@@ -406,8 +415,9 @@ lyht_resize(struct hash_table *ht, ly_bool enlarge)
     ht->recs = calloc(ht->size, ht->rec_size);
     LY_CHECK_ERR_RET(!ht->recs, LOGMEM(NULL); ht->recs = old_recs; ht->size = old_size, LY_EMEM);
 
-    /* reset used, it will increase again */
+    /* reset used and invalid, it will increase again */
     ht->used = 0;
+    ht->invalid = 0;
 
     /* add all the old records into the new records array */
     for (i = 0; i < old_size; ++i) {
@@ -682,6 +692,9 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, ly
 
     /* insert it into the returned record */
     assert(rec->hits < 1);
+    if (rec->hits < 0) {
+        --ht->invalid;
+    }
     rec->hash = hash;
     rec->hits = 1;
     memcpy(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1));
@@ -779,6 +792,7 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, ly
 
     /* check size & shrink if needed */
     --ht->used;
+    ++ht->invalid;
     if (ht->resize == 2) {
         r = (ht->used * LYHT_HUNDRED_PERCENTAGE) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
@@ -787,11 +801,26 @@ lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, ly
             }
 
             /* shrink */
-            ret = lyht_resize(ht, 0);
+            ret = lyht_resize(ht, -1);
 
             if (resize_val_equal) {
                 lyht_set_cb(ht, old_val_equal);
             }
+        }
+    }
+
+    /* rehash all records if needed */
+    r = ((ht->size - ht->used - ht->invalid) * 100) / ht->size;
+    if (r < LYHT_REHASH_PERCENTAGE) {
+        if (resize_val_equal) {
+            old_val_equal = lyht_set_cb(ht, resize_val_equal);
+        }
+
+        /* rehash */
+        ret = lyht_resize(ht, 0);
+
+        if (resize_val_equal) {
+            lyht_set_cb(ht, old_val_equal);
         }
     }
 
