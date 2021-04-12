@@ -103,6 +103,15 @@
  * introduce some kind of context lock to completely abandon any change of the YANG modules after starting work with the
  * instantiated data.
  *
+ * Another change to note is the removed destructor of private data (::lysc_node.priv) in ::ly_ctx_destroy(). The mechanism
+ * was not reliable with the context recompilation and the splitted parsed and compiled schema trees or the complexity of
+ * YANG extensions. It is better to let the caller maintain the allocated data directly via some memory pool or using
+ * ::lysc_tree_dfs_full() since he is the best to know where the additional data were added.
+ * 
+ * The meaining of the ::lysc_node.priv pointer can be now also changed by ::LY_CTX_SET_PRIV_PARSED context option, which
+ * makes libyang to connect the original parsed schema node structure (::lysp_node) into the compiled nodes via their 'priv'
+ * pointer. 
+ *
  * Other significant changes connected with the context are depicted in the following table.
  *
  * libyang 1.x               | libyang 2.0                          | Notes
@@ -126,6 +135,7 @@
  * ly_ctx_unset_searchdirs() | ::ly_ctx_unset_searchdir()           | Simplify API and instead of index numbers, work with the values themselves.
  * ly_ctx_set*()             | ::ly_ctx_set_options()               | API simplification.
  * ly_ctx_unset*()           | ::ly_ctx_unset_options()             | ^
+ * ly_ctx_destroy()          | ::ly_ctx_destroy()                   | The destructor callback parameter was removed, see the notes above.
  *
  *
  * @section transitionSchemas YANG Modules (Schema)

@@ -96,7 +96,7 @@ main(int argc, char *argv[])
     }
 
     store_config();
-    ly_ctx_destroy(ctx, NULL);
+    ly_ctx_destroy(ctx);
 
     return 0;
 }

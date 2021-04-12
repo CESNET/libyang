@@ -46,6 +46,6 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 
 	free(data);
 	free(mod);
-	ly_ctx_destroy(ctx, NULL);
+	ly_ctx_destroy(ctx);
 	return 0;
 }

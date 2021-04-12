@@ -753,16 +753,14 @@ void lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *no
 /**
  * @brief Free the compiled schema structure.
  * @param[in,out] module Compiled schema module structure to free.
- * @param[in] private_destructor Function to remove private data from the compiled schema tree.
  */
-void lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv));
+void lysc_module_free(struct lysc_module *module);
 
 /**
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
  * @param[in,out] module Schema module structure to free.
- * @param[in] private_destructor Function to remove private data from the compiled schema tree.
  */
-void lys_module_free(struct lys_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv));
+void lys_module_free(struct lys_module *module);
 
 /**
  * @brief match yang keyword

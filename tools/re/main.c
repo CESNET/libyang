@@ -294,7 +294,7 @@ main(int argc, char *argv[])
     }
 
 cleanup:
-    ly_ctx_destroy(ctx, NULL);
+    ly_ctx_destroy(ctx);
     for (i = 0; i < patterns_count; i++) {
         free(patterns[i]);
     }

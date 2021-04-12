@@ -99,7 +99,7 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, NULL));
 
     /* cleanup */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
 
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &UTEST_LYCTX));
@@ -114,7 +114,7 @@ static void
 test_options(void **state)
 {
     /* use own context with extra flags */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffff, &UTEST_LYCTX));
 
@@ -205,7 +205,7 @@ test_models(void **state)
     struct lys_glob_unres unres = {0};
 
     /* use own context with extra flags */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
 
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_change_count(NULL));
@@ -309,7 +309,7 @@ test_imports(void **state)
     const struct lys_module *mod1, *mod2, *import;
 
     /* use own context with extra flags */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
 
     /* import callback provides newer revision of module 'a' than present in context, so when importing 'a', the newer revision
      * from the callback should be loaded into the context and used as an import */
@@ -328,7 +328,7 @@ test_imports(void **state)
     assert_string_equal("2019-09-17", import->revision);
     assert_int_equal(0, import->implemented);
     assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-16"));
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
 
     /* import callback provides older revision of module 'a' than present in context, so when importing a, the newer revision
      * already present in the context should be selected and the callback's revision should not be loaded into the context */
@@ -660,7 +660,7 @@ test_ylmem(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", yanglibrary_only, LYD_XML, 0, &ctx_test));
     assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
     assert_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
-    ly_ctx_destroy(ctx_test, NULL);
+    ly_ctx_destroy(ctx_test);
 
     /* test loading module, should also import other module */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf, LYD_XML, 0, &ctx_test));
@@ -669,14 +669,14 @@ test_ylmem(void **state)
     assert_int_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
     assert_int_equal(0, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14")->implemented);
     assert_int_equal(LY_ENOT, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
-    ly_ctx_destroy(ctx_test, NULL);
+    ly_ctx_destroy(ctx_test);
 
     /* test loading module with feature if they are present */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, 0, &ctx_test));
     assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
     assert_int_equal(LY_SUCCESS, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
-    ly_ctx_destroy(ctx_test, NULL);
+    ly_ctx_destroy(ctx_test);
 
     /* test with not matching revision */
     assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", garbage_revision, LYD_XML, 0, &ctx_test));
@@ -687,7 +687,7 @@ test_ylmem(void **state)
     /* test creating without ietf-yang-library */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", no_yanglibrary, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
     assert_int_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
-    ly_ctx_destroy(ctx_test, NULL);
+    ly_ctx_destroy(ctx_test);
 }
 
 static LY_ERR
@@ -815,7 +815,7 @@ test_set_priv_parsed(void **state)
             "}\n";
 
     /* use own context with extra flags */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
     const char *feats[] = {"f1", NULL};
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);

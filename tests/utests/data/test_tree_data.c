@@ -57,7 +57,7 @@ setup(void **state)
     assert_non_null(OUT_NODE);
 
 #define RECREATE_CTX_WITH_MODULE(CTX, MODULE) \
-    ly_ctx_destroy(CTX, NULL); \
+    ly_ctx_destroy(CTX); \
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &CTX)); \
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(MODULE, &_UC->in)); \
     assert_int_equal(LY_SUCCESS, lys_parse(CTX, _UC->in, LYS_IN_YANG, NULL, NULL)); \
@@ -258,7 +258,7 @@ test_compare_diff_ctx(void **state)
     lyd_free_all(tree2);
 
     /* clean up */
-    ly_ctx_destroy(ctx2, NULL);
+    ly_ctx_destroy(ctx2);
     _UC->in = NULL;
 }
 

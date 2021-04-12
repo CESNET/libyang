@@ -1361,7 +1361,7 @@ lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 
         /* remove the module from the context and free it */
         ly_set_rm(&ctx->list, m, NULL);
-        lys_module_free(m, NULL);
+        lys_module_free(m);
     }
 
     if (unres->implementing.count) {
@@ -1545,7 +1545,7 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
         mod = ctx->list.objs[idx];
         if (mod->compiled) {
             /* free the module */
-            lysc_module_free(mod->compiled, NULL);
+            lysc_module_free(mod->compiled);
             mod->compiled = NULL;
         }
 
@@ -1721,7 +1721,7 @@ error:
     LOG_LOCBACK(0, 0, 1, 0);
     lys_precompile_augments_deviations_revert(ctx.ctx, mod);
     lys_compile_unres_mod_erase(&ctx, 1);
-    lysc_module_free(mod_c, NULL);
+    lysc_module_free(mod_c);
     mod->compiled = NULL;
 
     return ret;
