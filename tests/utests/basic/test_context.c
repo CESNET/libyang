@@ -690,6 +690,154 @@ test_ylmem(void **state)
     ly_ctx_destroy(ctx_test, NULL);
 }
 
+static LY_ERR
+check_node_priv_parsed_is_set(struct lysc_node *node, void *data, ly_bool *UNUSED(dfs_continue))
+{
+    const struct lysp_node *pnode;
+    const char ***iter;
+
+    pnode = (const struct lysp_node *)node->priv;
+    CHECK_POINTER(pnode, 1);
+    iter = (const char ***)data;
+    CHECK_POINTER(**iter, 1);
+    CHECK_STRING(pnode->name, **iter);
+    (*iter)++;
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+check_node_priv_parsed_not_set(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUSED(dfs_continue))
+{
+    CHECK_POINTER(node->priv, 0);
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Testing of LY_CTX_SET_PRIV_PARSED.
+ */
+static void
+test_set_priv_parsed(void **state)
+{
+    const struct lys_module *mod;
+    const char *schema_a;
+    const char **iter;
+    const char *check[] = {
+        "cont", "contnotif", "augleaf", "contx", "grpleaf", "l1",
+        "l1a", "l1b", "l1c", "foo1", "ll", "any", "l2",
+        "l2c", "l2cx", "ch", "cas", "casx", "oper",
+        "input", "inparam", "output", "outparam", "n1", NULL
+    };
+
+    /* each node must have a unique name. */
+    schema_a = "module a {\n"
+            "  namespace urn:tests:a;\n"
+            "  prefix a;yang-version 1.1;\n"
+            "  container cont {\n"
+            "    notification contnotif;\n"
+            "    leaf-list contx {\n"
+            "      type string;\n"
+            "    }\n"
+            "    uses grp;\n"
+            "  }\n"
+            "  list l1 {\n"
+            "    key \"l1a l1b\";\n"
+            "    leaf l1a {\n"
+            "      type string;\n"
+            "    }\n"
+            "    leaf l1b {\n"
+            "      type string;\n"
+            "    }\n"
+            "    leaf l1c {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  feature f1;\n"
+            "  feature f2;\n"
+            "  leaf foo1 {\n"
+            "    type uint16;\n"
+            "    if-feature f1;\n"
+            "  }\n"
+            "  leaf foo2 {\n"
+            "    type uint16;\n"
+            "  }\n"
+            "  leaf foo3 {\n"
+            "    type uint16;\n"
+            "    if-feature f2;\n"
+            "  }\n"
+            "  leaf-list ll {\n"
+            "    type string;\n"
+            "  }\n"
+            "  anydata any {\n"
+            "    config false;\n"
+            "  }\n"
+            "  list l2 {\n"
+            "    config false;\n"
+            "    container l2c {\n"
+            "      leaf l2cx {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  choice ch {\n"
+            "    case cas {\n"
+            "      leaf casx {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  rpc oper {\n"
+            "    input {\n"
+            "      leaf inparam {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "    output {\n"
+            "      leaf outparam {\n"
+            "        type int8;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  notification n1;\n"
+            "  grouping grp {\n"
+            "    leaf grpleaf {\n"
+            "      type uint16;\n"
+            "    }\n"
+            "  }\n"
+            "  augment /cont {\n"
+            "    leaf augleaf {\n"
+            "      type uint16;\n"
+            "    }\n"
+            "  }\n"
+            "  deviation /a:foo2 {\n"
+            "    deviate not-supported;\n"
+            "  }\n"
+            "}\n";
+
+    /* use own context with extra flags */
+    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    const char *feats[] = {"f1", NULL};
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
+
+    print_message("[          ] create context\n");
+    mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
+    iter = check;
+    assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_is_set, &iter));
+
+    print_message("[          ] unset option\n");
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
+    mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
+    iter = check;
+    assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_not_set, &iter));
+
+    print_message("[          ] set option\n");
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
+    mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
+    iter = check;
+    assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_is_set, &iter));
+}
+
 int
 main(void)
 {
@@ -700,6 +848,7 @@ main(void)
         UTEST(test_imports),
         UTEST(test_get_models),
         UTEST(test_ylmem),
+        UTEST(test_set_priv_parsed),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
