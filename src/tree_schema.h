@@ -76,8 +76,8 @@ struct lyxp_expr;
  * the ::lysc_node.priv pointers are used by libyang.
  * Note that the object is not freed by libyang when the context is being destroyed. So the caller is responsible
  * for freeing the provided structure after the context is destroyed or the private pointer is set to NULL in
- * appropriate schema nodes where the object was previously set. This can be automated via destructor function
- * to free these private objects. The destructor is passed to the ::ly_ctx_destroy() function.
+ * appropriate schema nodes where the object was previously set. Also ::lysc_tree_dfs_full() can be useful to manage
+ * the private data.
  *
  * Despite all the schema structures and their members are available as part of the libyang API and callers can use
  * it to navigate through the schema tree structure or to obtain various information, we recommend to use the following

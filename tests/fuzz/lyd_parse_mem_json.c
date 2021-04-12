@@ -75,7 +75,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 	data[len] = 0;
 
 	lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree);
-	ly_ctx_destroy(ctx, NULL);
+	ly_ctx_destroy(ctx);
 
 	free(data);
 

@@ -1296,7 +1296,7 @@ utest_teardown(void **state)
     *state = NULL;
 
     /* libyang context */
-    ly_ctx_destroy(current_utest_context->ctx, NULL);
+    ly_ctx_destroy(current_utest_context->ctx);
 
     /* utest context */
     ly_in_free(current_utest_context->in, 0);

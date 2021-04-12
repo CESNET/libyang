@@ -100,7 +100,7 @@ erase_context(struct context *c)
     ly_set_erase(&c->searchpaths, NULL);
 
     ly_out_free(c->out, NULL,  0);
-    ly_ctx_destroy(c->ctx, NULL);
+    ly_ctx_destroy(c->ctx);
 }
 
 static void

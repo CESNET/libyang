@@ -1392,7 +1392,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     goto cleanup;
 
 free_mod_cleanup:
-    lys_module_free(mod, NULL);
+    lys_module_free(mod);
     if (ret) {
         mod = NULL;
     } else {

@@ -89,7 +89,7 @@ test_extension_argument(void **state)
     free(printed);
 
     /* context reset */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
     ly_ctx_new(NULL, 0, &UTEST_LYCTX);
 
     /* from YIN */
@@ -191,7 +191,7 @@ test_extension_argument_element(void **state)
     free(printed);
 
     /* context reset */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
     ly_ctx_new(NULL, 0, &UTEST_LYCTX);
 
     /* from YIN */

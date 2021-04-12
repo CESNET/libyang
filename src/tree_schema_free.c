@@ -927,13 +927,16 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
     lysc_node_free_(ctx, node);
 }
 
-static void
-lysc_module_free_(struct lysc_module *module)
+void
+lysc_module_free(struct lysc_module *module)
 {
     struct ly_ctx *ctx;
     struct lysc_node *node, *node_next;
 
-    LY_CHECK_ARG_RET(NULL, module, );
+    if (!module) {
+        return;
+    }
+
     ctx = module->mod->ctx;
 
     LY_LIST_FOR_SAFE(module->data, node_next, node) {
@@ -951,28 +954,13 @@ lysc_module_free_(struct lysc_module *module)
 }
 
 void
-lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
-{
-    /* TODO use the destructor, this just suppress warning about unused parameter */
-    (void) private_destructor;
-
-    /* TODO if (module->mod->ctx->flags & LY_CTX_SET_PRIV_PARSED) is true, then
-     * don't use the destructor because private pointers are used by libyang.
-     */
-
-    if (module) {
-        lysc_module_free_(module);
-    }
-}
-
-void
-lys_module_free(struct lys_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
+lys_module_free(struct lys_module *module)
 {
     if (!module) {
         return;
     }
 
-    lysc_module_free(module->compiled, private_destructor);
+    lysc_module_free(module->compiled);
     FREE_ARRAY(module->ctx, module->identities, lysc_ident_free);
     lysp_module_free(module->parsed);
 

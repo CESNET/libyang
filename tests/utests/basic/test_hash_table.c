@@ -55,7 +55,7 @@ test_dict_hit(void **state)
     lydict_remove(UTEST_LYCTX, "test2");
 
     /* destroy dictionary - should raise warning about data presence */
-    ly_ctx_destroy(UTEST_LYCTX, NULL);
+    ly_ctx_destroy(UTEST_LYCTX);
     UTEST_LYCTX = NULL;
     CHECK_LOG("String \"test1\" not freed from the dictionary, refcount 1", NULL);
 

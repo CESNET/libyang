@@ -78,7 +78,7 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    ly_ctx_destroy(*ctx, NULL);
+    ly_ctx_destroy(*ctx);
     *ctx = ctx_new;
 
 cleanup:

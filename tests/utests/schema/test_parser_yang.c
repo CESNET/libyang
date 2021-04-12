@@ -100,7 +100,7 @@ setup(void **state)
 static int
 teardown(void **state)
 {
-    lys_module_free(YCTX->parsed_mod->mod, NULL);
+    lys_module_free(YCTX->parsed_mod->mod);
     LOG_LOCBACK(0, 0, 0, 1);
 
     free(YCTX);
@@ -546,7 +546,7 @@ mod_renew(struct lys_yang_parser_ctx *ctx)
 {
     struct ly_ctx *ly_ctx = ctx->parsed_mod->mod->ctx;
 
-    lys_module_free(ctx->parsed_mod->mod, NULL);
+    lys_module_free(ctx->parsed_mod->mod);
     ctx->parsed_mod = calloc(1, sizeof *ctx->parsed_mod);
     ctx->parsed_mod->mod = calloc(1, sizeof *ctx->parsed_mod->mod);
     ctx->parsed_mod->mod->parsed = ctx->parsed_mod;
@@ -562,7 +562,7 @@ submod_renew(struct lys_yang_parser_ctx *ctx)
 {
     struct ly_ctx *ly_ctx = ctx->parsed_mod->mod->ctx;
 
-    lys_module_free(ctx->parsed_mod->mod, NULL);
+    lys_module_free(ctx->parsed_mod->mod);
     ctx->parsed_mod = calloc(1, sizeof(struct lysp_submodule));
     ctx->parsed_mod->mod = calloc(1, sizeof *ctx->parsed_mod->mod);
     lydict_insert(ly_ctx, "name", 0, &ctx->parsed_mod->mod->name);
@@ -764,7 +764,7 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
     CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
-    lys_module_free(m, NULL);
+    lys_module_free(m);
 
     in.current = "prefix " SCHEMA_BEGINNING "}";
     m = calloc(1, sizeof *m);
@@ -772,7 +772,7 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
-    lys_module_free(m, NULL);
+    lys_module_free(m);
 
     in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
     m = calloc(1, sizeof *m);
@@ -780,7 +780,7 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
     CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
-    lys_module_free(m, NULL);
+    lys_module_free(m);
 
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,

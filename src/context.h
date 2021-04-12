@@ -593,11 +593,12 @@ LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root,
  * All instance data are supposed to be freed before destroying the context.
  * Data models are destroyed automatically as part of ::ly_ctx_destroy() call.
  *
+ * Note that the data stored by user into the ::lysc_node.priv pointer are kept
+ * untouched and the caller is responsible for freeing this private data.
+ *
  * @param[in] ctx libyang context to destroy
- * @param[in] private_destructor Optional destructor function for private objects assigned
- * to the schema nodes' priv pointer. If NULL, the private objects are not freed by libyang.
  */
-void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_node *node, void *priv));
+void ly_ctx_destroy(struct ly_ctx *ctx);
 
 /** @} context */
 

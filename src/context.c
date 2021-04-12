@@ -287,7 +287,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 error:
     ly_in_free(in, 0);
     lys_compile_unres_glob_erase(ctx, &unres);
-    ly_ctx_destroy(ctx, NULL);
+    ly_ctx_destroy(ctx);
     return rc;
 }
 
@@ -438,11 +438,11 @@ cleanup:
     ly_set_free(set, NULL);
     ly_set_erase(&features, NULL);
     if (ctx_yl != ctx_new) {
-        ly_ctx_destroy(ctx_yl, NULL);
+        ly_ctx_destroy(ctx_yl);
     }
     *ctx = ctx_new;
     if (ret) {
-        ly_ctx_destroy(*ctx, NULL);
+        ly_ctx_destroy(*ctx);
         *ctx = NULL;
     }
 
@@ -1098,7 +1098,7 @@ error:
 }
 
 API void
-ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_node *node, void *priv))
+ly_ctx_destroy(struct ly_ctx *ctx)
 {
     if (!ctx) {
         return;
@@ -1107,7 +1107,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     /* models list */
     for ( ; ctx->list.count; ctx->list.count--) {
         /* remove the module */
-        lys_module_free(ctx->list.objs[ctx->list.count - 1], private_destructor);
+        lys_module_free(ctx->list.objs[ctx->list.count - 1]);
     }
     free(ctx->list.objs);
 
