@@ -4107,6 +4107,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
 
+    *set = NULL;
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
