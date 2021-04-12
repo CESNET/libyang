@@ -161,8 +161,6 @@ struct ly_ctx;
  *
  * Options to change context behavior.
  *
- * Note that the flags 0xFF00 are reserved for internal use.
- *
  * @{
  */
 
