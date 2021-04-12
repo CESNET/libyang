@@ -85,14 +85,6 @@ set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 
-# setup bindings
-#set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
-#set(GEN_CPP_BINDINGS 1 CACHE BOOL "Enable C++ bindings.")
-# Python bindings depend on C++ bindings because of SWIG
-#set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
-#set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
-#set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
-
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
 
@@ -200,20 +192,10 @@ else()
 endif()
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
-#option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
 
-#option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
-#option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
 set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
-
-#if(ENABLE_CACHE)
-#    set(LY_ENABLED_CACHE 1)
-#endif()
-#if(ENABLE_LATEST_REVISIONS)
-#    set(LY_ENABLED_LATEST_REVISIONS 1)
-#endif()
 
 if(ENABLE_COVERAGE)
     if(NOT ENABLE_BUILD_TESTS)
@@ -319,51 +301,9 @@ if(PKG_CONFIG_FOUND)
     endif()
 endif()
 
-# YANG extensions plugins
-#set(EXTENSIONS_LIST "nacm" "metadata" "yangdata")
-# if the tests are enabled, build libyang_ext_test
 if(ENABLE_BUILD_TESTS)
     find_package(CMocka 1.0.0)
-#    if(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES Debug)
-#        list(APPEND EXTENSIONS_LIST "libyang_ext_test")
-#    endif(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES Debug)
 endif(ENABLE_BUILD_TESTS)
-
-#if(ENABLE_STATIC)
-#    set(EXTENSIONS_LIST_SIZE " 0 ")
-#    set(ITEM 0)
-#    foreach(EXTENSION ${EXTENSIONS_LIST})
-#        add_library(${EXTENSION} STATIC "src/extensions/${EXTENSION}.c")
-#        target_link_libraries(yang ${EXTENSION})
-#        set(EXTENSIONS_LIST_SIZE "${EXTENSIONS_LIST_SIZE} + lyext_size(${EXTENSION})")
-#        set(EXTERN_EXTENSIONS_LIST "${EXTERN_EXTENSIONS_LIST}extern struct lyext_plugin_list ${EXTENSION}[];\n")
-#        set(MEMCPY_EXTENSIONS_LIST "${MEMCPY_EXTENSIONS_LIST}    lyext_add(plugin, count, ${EXTENSION});\n")
-#        set(STATIC_LOADED_PLUGINS "${STATIC_LOADED_PLUGINS} \"${EXTENSION}\",")
-#        MATH(EXPR ITEM "${ITEM}+1")
-#    endforeach()
-#else()
-#    add_subdirectory(src/extensions)
-#endif(ENABLE_STATIC)
-
-# YANG user types plugins ("user_ipv4" is just an example, not installed by default)
-#set(USER_TYPE_LIST "user_date_and_time")
-#if(ENABLE_STATIC)
-#    set(USER_TYPE_LIST_SIZE " 0 ")
-#    foreach(USER_TYPE ${USER_TYPE_LIST})
-#        add_library(${USER_TYPE} STATIC "src/user_types/${USER_TYPE}.c")
-#        target_link_libraries(yang ${USER_TYPE})
-#        set(USER_TYPE_LIST_SIZE "${USER_TYPE_LIST_SIZE} + lytype_size(${USER_TYPE})")
-#        set(EXTERN_USER_TYPE_LIST "${EXTERN_USER_TYPE_LIST}extern struct lytype_plugin_list ${USER_TYPE}[];\n")
-#        set(MEMCPY_USER_TYPE_LIST "${MEMCPY_USER_TYPE_LIST}    lytype_add(plugin, count, ${USER_TYPE});\n")
-#        set(STATIC_LOADED_PLUGINS "${STATIC_LOADED_PLUGINS} \"${USER_TYPE}\",")
-#        MATH(EXPR ITEM "${ITEM}+1")
-#    endforeach()
-#    set(STATIC_LOADED_PLUGINS_COUNT "${ITEM}")
-#else()
-#    add_subdirectory(src/user_types)
-#endif(ENABLE_STATIC)
-#
-#configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
 # tests
 if(ENABLE_VALGRIND_TESTS)

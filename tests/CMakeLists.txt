@@ -32,16 +32,12 @@ function(ly_add_utest)
     endif()
 
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-#    set_property(TEST ${test_name} PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
-#    set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
     set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")
 
     if(ENABLE_VALGRIND_TESTS)
         if(VALGRIND_FOUND)
             add_test(${TEST_NAME}_valgrind valgrind --leak-check=full --show-leak-kinds=all --suppressions=${PROJECT_SOURCE_DIR}/tests/ld.supp --error-exitcode=1
                ${CMAKE_BINARY_DIR}/tests/${TEST_NAME})
-#            set_property(TEST ${test_name}_valgrind PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
-#            set_property(TEST ${test_name}_valgrind APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
         else(VALGRIND_FOUND)
             message(WARNING "valgrind executable not found! Disabling memory leaks tests.")
         endif(VALGRIND_FOUND)
