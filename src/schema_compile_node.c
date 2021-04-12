@@ -2395,6 +2395,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     node->module = ctx->cur_mod;
     node->parent = parent;
     node->prev = node;
+    node->priv = ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED ? pnode : NULL;
 
     /* compile any deviations for this node */
     LY_CHECK_GOTO(ret = lys_compile_node_deviations_refines(ctx, pnode, parent, &dev_pnode, &not_supported), error);

@@ -473,12 +473,30 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
 API LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
+    LY_ERR lyrc;
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+    lyrc = LY_SUCCESS;
+
+    if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
+        ctx->flags |= LY_CTX_SET_PRIV_PARSED;
+        if ((lyrc = lys_recompile(ctx, 0))) {
+            ly_ctx_unset_options(ctx, LY_CTX_SET_PRIV_PARSED);
+        }
+    }
 
     /* set the option(s) */
-    ctx->flags |= option;
+    if (!lyrc) {
+        ctx->flags |= option;
+    }
 
+    return lyrc;
+}
+
+static LY_ERR
+lysc_node_clear_priv_dfs_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUSED(dfs_continue))
+{
+    node->priv = NULL;
     return LY_SUCCESS;
 }
 
@@ -487,6 +505,22 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+
+    if ((ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
+        struct lys_module *mod;
+        uint32_t index;
+
+        index = 0;
+        while ((mod = (struct lys_module *)ly_ctx_get_module_iter(ctx, &index))) {
+            /* ignore modules that didn't compile */
+            if (!mod->compiled) {
+                continue;
+            }
+
+            /* set NULL for all ::lysc_node.priv pointers in module */
+            lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
+        }
+    }
 
     /* unset the option(s) */
     ctx->flags &= ~option;
