@@ -15,8 +15,9 @@
 #define _POSIX_C_SOURCE 200809L /* strdup */
 
 #if defined (__NetBSD__) || defined (__OpenBSD__)
-#define _XOPEN_SOURCE
-#define _XOPEN_SOURCE_EXTENDED /* realpath */
+/* realpath */
+#define _XOPEN_SOURCE 1
+#define _XOPEN_SOURCE_EXTENDED 1
 #endif
 
 #include "context.h"
