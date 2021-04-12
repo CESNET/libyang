@@ -956,6 +956,10 @@ lysc_module_free(struct lysc_module *module, void (*private_destructor)(const st
     /* TODO use the destructor, this just suppress warning about unused parameter */
     (void) private_destructor;
 
+    /* TODO if (module->mod->ctx->flags & LY_CTX_SET_PRIV_PARSED) is true, then
+     * don't use the destructor because private pointers are used by libyang.
+     */
+
     if (module) {
         lysc_module_free_(module);
     }

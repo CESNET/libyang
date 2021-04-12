@@ -72,7 +72,8 @@ struct lyxp_expr;
  * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees.
  *
  * The compiled schema tree nodes are able to hold private objects (::lysc_node.priv as a pointer to a structure,
- * function, variable, ...) used by a caller application.
+ * function, variable, ...) used by a caller application unless ::LY_CTX_SET_PRIV_PARSED is set, in that case
+ * the ::lysc_node.priv pointers are used by libyang.
  * Note that the object is not freed by libyang when the context is being destroyed. So the caller is responsible
  * for freeing the provided structure after the context is destroyed or the private pointer is set to NULL in
  * appropriate schema nodes where the object was previously set. This can be automated via destructor function
@@ -1653,7 +1654,7 @@ struct lysc_node {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    void *priv;                      /**< private arbitrary user data, not used by libyang */
+    void *priv;                      /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
 };
 
 struct lysc_node_action_inout {
@@ -1671,7 +1672,7 @@ struct lysc_node_action_inout {
             const char *dsc;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
             const char *ref;         /**< ALWAYS NULL, compatibility member with ::lysc_node */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /** private arbitrary user data, not used by libyang */
+            void *priv;              /** private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1697,7 +1698,7 @@ struct lysc_node_action {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /** private arbitrary user data, not used by libyang */
+            void *priv;              /** private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1727,7 +1728,7 @@ struct lysc_node_notif {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /** private arbitrary user data, not used by libyang */
+            void *priv;              /** private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1756,7 +1757,7 @@ struct lysc_node_container {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1785,7 +1786,7 @@ struct lysc_node_case {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1812,7 +1813,7 @@ struct lysc_node_choice {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1841,7 +1842,7 @@ struct lysc_node_leaf {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1871,7 +1872,7 @@ struct lysc_node_leaflist {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1905,7 +1906,7 @@ struct lysc_node_list {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
@@ -1938,7 +1939,7 @@ struct lysc_node_anydata {
             const char *dsc;         /**< description */
             const char *ref;         /**< reference */
             struct lysc_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-            void *priv;              /**< private arbitrary user data, not used by libyang */
+            void *priv;              /**< private arbitrary user data, not used by libyang unless ::LY_CTX_SET_PRIV_PARSED is set */
         };
     };
 
