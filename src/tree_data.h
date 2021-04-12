@@ -1662,7 +1662,8 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  *
  * Default behavior:
  * - source data tree is not modified in any way,
- * - any default nodes in the source are ignored if there are explicit nodes in the target.
+ * - any default nodes in the source are ignored if there are explicit nodes in the target,
+ * - any metadata are ignored - those present in the target are kept, those in the source are not merged.
  * @{
  */
 
