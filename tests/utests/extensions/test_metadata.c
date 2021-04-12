@@ -16,7 +16,7 @@
 
 #include "libyang.h"
 #include "plugins_exts.h"
-#include "plugins_exts_metadata.h"
+#include "plugins_exts/metadata.h"
 
 static void
 test_yang(void **state)

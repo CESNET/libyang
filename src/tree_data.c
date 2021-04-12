@@ -38,7 +38,7 @@
 #include "parser_internal.h"
 #include "path.h"
 #include "plugins.h"
-#include "plugins_exts_metadata.h"
+#include "plugins_exts/metadata.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "set.h"

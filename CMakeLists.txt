@@ -134,22 +134,22 @@ set(libsrc
     src/printer_tree.c
     src/plugins.c
     src/plugins_types.c
-    src/plugins_types_binary.c
-    src/plugins_types_bits.c
-    src/plugins_types_boolean.c
-    src/plugins_types_decimal64.c
-    src/plugins_types_empty.c
-    src/plugins_types_enumeration.c
-    src/plugins_types_identityref.c
-    src/plugins_types_instanceid.c
-    src/plugins_types_integer.c
-    src/plugins_types_leafref.c
-    src/plugins_types_string.c
-    src/plugins_types_union.c
+    src/plugins_types/binary.c
+    src/plugins_types/bits.c
+    src/plugins_types/boolean.c
+    src/plugins_types/decimal64.c
+    src/plugins_types/empty.c
+    src/plugins_types/enumeration.c
+    src/plugins_types/identityref.c
+    src/plugins_types/instanceid.c
+    src/plugins_types/integer.c
+    src/plugins_types/leafref.c
+    src/plugins_types/string.c
+    src/plugins_types/union.c
     src/plugins_exts.c
-    src/plugins_exts_metadata.c
-    src/plugins_exts_nacm.c
-    src/plugins_exts_yangdata.c
+    src/plugins_exts/metadata.c
+    src/plugins_exts/nacm.c
+    src/plugins_exts/yangdata.c
     src/xml.c
     src/xpath.c
     src/validation.c)

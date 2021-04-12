@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "plugins_exts_metadata.h"
+#include "metadata.h"
 
 #include <stdint.h>
 #include <stdlib.h>
