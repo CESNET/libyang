@@ -48,7 +48,42 @@ void *ly_realloc(void *ptr, size_t size);
  * @{
  */
 
-/** @} trees_edit */
+/**
+ * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
+ *
+ * Increases the size information.
+ *
+ * This is a generic macro for ::LY_ARRAY_NEW_RET and ::LY_ARRAY_NEW_GOTO.
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to allocate/resize. The size of the allocated
+ * space is counted from the type of the ARRAY, so do not provide placeholder void pointers.
+ * @param[out] NEW_ITEM Returning pointer to the newly allocated record in the ARRAY.
+ * @param[in] EACTION Action to perform in case of error (memory allocation failure).
+ */
+#define LY_ARRAY_NEW(CTX, ARRAY, EACTION) \
+    { \
+        void *p__; \
+        if (ARRAY) { \
+            ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+            p__ = realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
+                    sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
+            if (!p__) { \
+                --(*((LY_ARRAY_COUNT_TYPE*)(p__) - 1)); \
+                LOGMEM(CTX); \
+                EACTION; \
+            } \
+        } else { \
+            p__ = malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
+            if (!p__) { \
+                LOGMEM(CTX); \
+                EACTION; \
+            } \
+            *((LY_ARRAY_COUNT_TYPE*)(p__)) = 1; \
+        } \
+        p__ = (void*)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
+        memcpy(&(ARRAY), &p__, sizeof p__); \
+    }
 
 /**
  * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
@@ -62,20 +97,9 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) \
-        if (!(ARRAY)) { \
-            ARRAY = malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
-            *((LY_ARRAY_COUNT_TYPE*)(ARRAY)) = 1; \
-        } else { \
-            ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
-            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
-            if (!(ARRAY)) { \
-                LOGMEM(CTX); \
-                return RETVAL; \
-            } \
-        } \
-        ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-        (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) - 1]; \
-        memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
+    LY_ARRAY_NEW(CTX, ARRAY, return RETVAL); \
+    (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) - 1]; \
+    memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
 
 /**
  * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
@@ -90,21 +114,48 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] GOTO Label to go in case of error (memory allocation failure).
  */
 #define LY_ARRAY_NEW_GOTO(CTX, ARRAY, NEW_ITEM, RET, GOTO) \
-        if (!(ARRAY)) { \
-            ARRAY = malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
-            *((LY_ARRAY_COUNT_TYPE*)(ARRAY)) = 1; \
-        } else { \
-            ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
-            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
-            if (!(ARRAY)) { \
-                RET = LY_EMEM; \
+    LY_ARRAY_NEW(CTX, ARRAY, RET = LY_EMEM; goto GOTO); \
+    (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) - 1]; \
+    memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
+
+/**
+ * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
+ * If the ARRAY already exists, it is resized (space for SIZE items is added and zeroed).
+ *
+ * Does not set the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
+ * when the items are filled.
+ *
+ * This is a generic macro for ::LY_ARRAY_CREATE_RET and ::LY_ARRAY_CREATE_GOTO.
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to create.
+ * @param[in] SIZE Number of the new items the array is supposed to hold. The size of the allocated
+ * space is then counted from the type of the ARRAY, so do not provide placeholder void pointers.
+ * @param[in] EACTION Action to perform in case of error (memory allocation failure).
+ */
+#define LY_ARRAY_CREATE(CTX, ARRAY, SIZE, EACTION) \
+    { \
+        void *p__; \
+        if (ARRAY) { \
+            p__ = realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
+                    sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
+            if (!p__) { \
                 LOGMEM(CTX); \
-                goto GOTO; \
+                EACTION; \
+            } \
+        } else { \
+            p__ = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
+            if (!p__) { \
+                LOGMEM(CTX); \
+                EACTION; \
             } \
         } \
-        ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-        (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) - 1]; \
-        memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
+        p__ = (void*)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
+        memcpy(&(ARRAY), &p__, sizeof p__); \
+        if (ARRAY) { \
+            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(p__) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
+        } \
+    }
 
 /**
  * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
@@ -120,22 +171,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_ARRAY_CREATE_RET(CTX, ARRAY, SIZE, RETVAL) \
-        if (ARRAY) { \
-            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
-            if (!(ARRAY)) { \
-                LOGMEM(CTX); \
-                return RETVAL; \
-            } \
-            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
-        } else { \
-            ARRAY = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
-            if (!(ARRAY)) { \
-                LOGMEM(CTX); \
-                return RETVAL; \
-            } \
-            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-        }
+    LY_ARRAY_CREATE(CTX, ARRAY, SIZE, return RETVAL)
 
 /**
  * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
@@ -152,24 +188,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] GOTO Label to go in case of error (memory allocation failure).
  */
 #define LY_ARRAY_CREATE_GOTO(CTX, ARRAY, SIZE, RET, GOTO) \
-        if (ARRAY) { \
-            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((LY_ARRAY_COUNT(ARRAY) + (SIZE)) * sizeof *(ARRAY))); \
-            if (!(ARRAY)) { \
-                RET = LY_EMEM; \
-                LOGMEM(CTX); \
-                goto GOTO; \
-            } \
-            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
-        } else { \
-            ARRAY = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
-            if (!(ARRAY)) { \
-                RET = LY_EMEM; \
-                LOGMEM(CTX); \
-                goto GOTO; \
-            } \
-            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
-        }
+    LY_ARRAY_CREATE(CTX, ARRAY, SIZE, RET = LY_EMEM; goto GOTO)
 
 /**
  * @brief Increment the items counter in a ([sized array](@ref sizedarrays)).
@@ -238,6 +257,28 @@ void *ly_realloc(void *ptr, size_t size);
 /**
  * @brief Allocate and insert new item into linked list, return in case of error.
  *
+ * This is a generic macro for ::LY_LIST_NEW_RET and ::LY_LIST_NEW_GOTO.
+ *
+ * @param[in] CTX used for logging.
+ * @param[in,out] LIST Linked list to add to.
+ * @param[out] NEW_ITEM New item that is appended to the list.
+ * @param[in] LINKER name of structure member that is used to connect items together.
+ * @param[in] EACTION Action to perform in case of error (memory allocation failure).
+ */
+#define LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, EACTION) \
+    { \
+        void *p__ = calloc(1, sizeof *NEW_ITEM); \
+        if (!p__) { \
+            LOGMEM(CTX); \
+            EACTION; \
+        } \
+        memcpy(&(NEW_ITEM), &p__, sizeof p__); \
+        LY_LIST_INSERT(LIST, NEW_ITEM, LINKER); \
+    }
+
+/**
+ * @brief Allocate and insert new item into linked list, return in case of error.
+ *
  * @param[in] CTX used for logging.
  * @param[in,out] LIST Linked list to add to.
  * @param[out] NEW_ITEM New item that is appended to the list.
@@ -245,12 +286,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER, RETVAL) \
-    NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
-    if (!(NEW_ITEM)) { \
-        LOGMEM(CTX); \
-        return RETVAL; \
-    } \
-    LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
+    LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, return RETVAL)
 
 /**
  * @brief Allocate and insert new item into linked list, goto specified label in case of error.
@@ -263,13 +299,9 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] LABEL label to goto in case of error.
  */
 #define LY_LIST_NEW_GOTO(CTX, LIST, NEW_ITEM, LINKER, RET, LABEL) \
-    NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
-    if (!(NEW_ITEM)) { \
-        RET = LY_EMEM; \
-        LOGMEM(CTX); \
-        goto LABEL; \
-    } \
-    LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
+    LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, RET = LY_EMEM; goto LABEL)
+
+/** @} trees_edit */
 
 #ifdef __cplusplus
 }
