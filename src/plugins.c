@@ -205,6 +205,12 @@ plugins_insert(enum LYPLG type, const void *recs)
 }
 
 static void
+lyplg_close_cb(void *handle)
+{
+    dlclose(handle);
+}
+
+static void
 lyplg_clean_(void)
 {
     if (--context_refcount) {
@@ -214,7 +220,7 @@ lyplg_clean_(void)
 
     ly_set_erase(&plugins_types, NULL);
     ly_set_erase(&plugins_extensions, NULL);
-    ly_set_erase(&plugins_handlers, (void(*)(void *))dlclose);
+    ly_set_erase(&plugins_handlers, lyplg_close_cb);
 }
 
 void
