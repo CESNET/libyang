@@ -75,7 +75,24 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     /* store everything */
     ret = lydict_insert_zc(ctx, str, &storage->canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    storage->int64 = num;
+
+    /* matters for big-endian */
+    switch (type->basetype) {
+    case LY_TYPE_INT8:
+        storage->int8 = num;
+        break;
+    case LY_TYPE_INT16:
+        storage->int16 = num;
+        break;
+    case LY_TYPE_INT32:
+        storage->int32 = num;
+        break;
+    case LY_TYPE_INT64:
+        storage->int64 = num;
+        break;
+    default:
+        break;
+    }
     storage->realtype = type;
 
 cleanup:
@@ -131,7 +148,24 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     /* store everything */
     ret = lydict_insert_zc(ctx, str, &storage->canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    storage->int64 = num;
+
+    /* matters for big-endian */
+    switch (type->basetype) {
+    case LY_TYPE_UINT8:
+        storage->uint8 = num;
+        break;
+    case LY_TYPE_UINT16:
+        storage->uint16 = num;
+        break;
+    case LY_TYPE_UINT32:
+        storage->uint32 = num;
+        break;
+    case LY_TYPE_UINT64:
+        storage->uint64 = num;
+        break;
+    default:
+        break;
+    }
     storage->realtype = type;
 
 cleanup:
