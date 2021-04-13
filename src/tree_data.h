@@ -718,7 +718,19 @@ struct lyd_node_term {
 };
 
 /**
- * @brief Data node structure for the anydata data tree nodes - anydata or anyxml.
+ * @brief union for anydata/anyxml value representation.
+ */
+union lyd_any_value {
+    struct lyd_node *tree; /**< data tree */
+    const char *str;       /**< Generic string data */
+    const char *xml;       /**< Serialized XML data */
+    const char *json;      /**< I-JSON encoded string */
+    char *mem;             /**< LYD_ANYDATA_LYB memory chunk */
+};
+
+/**
+ * @brief Data node structure for the anydata data tree nodes - anydata or
+ * anyxml.
  */
 struct lyd_node_any {
     union {
@@ -742,13 +754,7 @@ struct lyd_node_any {
         };
     };                                      /**< common part corresponding to ::lyd_node */
 
-    union lyd_any_value {
-        struct lyd_node *tree;          /**< data tree */
-        const char *str;                /**< Generic string data */
-        const char *xml;                /**< Serialized XML data */
-        const char *json;               /**< I-JSON encoded string */
-        char *mem;                      /**< LYD_ANYDATA_LYB memory chunk */
-    } value;                            /**< pointer to the stored value representation of the anydata/anyxml node */
+    union lyd_any_value value;          /**< pointer to the stored value representation of the anydata/anyxml node */
     LYD_ANYDATA_VALUETYPE value_type;   /**< type of the data stored as ::lyd_node_any.value */
 };
 
