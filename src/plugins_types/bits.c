@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_bits.c
+ * @file bits.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in bits type plugin.
  *

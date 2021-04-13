@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_leafref.c
+ * @file leafref.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in leafref type plugin.
  *

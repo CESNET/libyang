@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_string.c
+ * @file string.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in string type plugin.
  *

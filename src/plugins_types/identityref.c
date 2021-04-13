@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_identityref.c
+ * @file identityref.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in identityref type plugin.
  *

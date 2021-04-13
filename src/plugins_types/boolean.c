@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_boolean.c
+ * @file boolean.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in boolean type plugin.
  *

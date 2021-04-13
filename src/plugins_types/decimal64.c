@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_decimal64.c
+ * @file decimal64.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in decimal64 type plugin.
  *

@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_enumeration.c
+ * @file enumeration.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in enumeration type plugin.
  *

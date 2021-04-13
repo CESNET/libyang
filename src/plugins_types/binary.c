@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_binary.c
+ * @file binary.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in binary type plugin.
  *

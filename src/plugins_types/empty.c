@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_empty.c
+ * @file empty.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in empty type plugin.
  *

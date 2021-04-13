@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_instanceid.c
+ * @file instanceid.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in instance-identifier type plugin.
  *

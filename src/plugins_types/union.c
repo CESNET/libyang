@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_union.c
+ * @file union.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in union type plugin.
  *

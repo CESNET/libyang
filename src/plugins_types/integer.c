@@ -1,5 +1,5 @@
 /**
- * @file plugins_types_integer.c
+ * @file integer.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in integer types plugin.
  *
