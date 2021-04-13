@@ -138,6 +138,8 @@ set(libsrc
     src/plugins_types/leafref.c
     src/plugins_types/string.c
     src/plugins_types/union.c
+    src/plugins_types/ip_address.c
+    src/plugins_types/ip_prefix.c
     src/plugins_exts.c
     src/plugins_exts/metadata.c
     src/plugins_exts/nacm.c

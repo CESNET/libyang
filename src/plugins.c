@@ -51,6 +51,9 @@ extern const struct lyplg_type_record plugins_leafref[];
 extern const struct lyplg_type_record plugins_string[];
 extern const struct lyplg_type_record plugins_union[];
 
+extern const struct lyplg_type_record plugins_ip_address[];
+extern const struct lyplg_type_record plugins_ip_prefix[];
+
 /*
  * internal extension plugins records
  */
@@ -405,6 +408,9 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_leafref), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
+
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ip_address), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ip_prefix), error);
 
     /* internal extensions */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);
