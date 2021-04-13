@@ -225,13 +225,14 @@ void *ly_realloc(void *ptr, size_t size);
  */
 #define LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)\
     if (!(*LIST)) { \
-        *LIST = (__typeof__(*(LIST)))NEW_ITEM; \
+        memcpy(LIST, &(NEW_ITEM), sizeof NEW_ITEM); \
     } else { \
-        do { \
-            __typeof__(*(LIST)) iterator; \
-            for (iterator = *(LIST); iterator->LINKER; iterator = iterator->LINKER) {} \
-            iterator->LINKER = (__typeof__(*(LIST)))NEW_ITEM; \
-        } while (0); \
+        size_t offset__ = (void*)&(*LIST)->LINKER - (void*)(*LIST); \
+        void **iter__ = (void **)((size_t)(*LIST) + offset__); \
+        while (*iter__) { \
+            iter__ = (void **)((size_t)(*iter__) + offset__); \
+        } \
+        memcpy(iter__, &(NEW_ITEM), sizeof NEW_ITEM); \
     }
 
 /**
