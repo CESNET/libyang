@@ -189,7 +189,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_UINT8_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_UINT8,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -202,7 +201,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_UINT16_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_UINT16,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -215,7 +213,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_UINT32_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_UINT32,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -228,7 +225,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_UINT64_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_UINT64,
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -241,7 +237,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_INT8_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_INT8,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -254,7 +249,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_INT16_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_INT16,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -267,7 +261,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_INT32_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_INT32,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
@@ -280,7 +273,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .name = LY_TYPE_INT64_STR,
 
         .plugin.id = "libyang 2 - integers, version 1",
-        .plugin.type = LY_TYPE_INT64,
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

@@ -84,7 +84,6 @@ const struct lyplg_type_record plugins_boolean[] = {
         .name = LY_TYPE_BOOL_STR,
 
         .plugin.id = "libyang 2 - boolean, version 1",
-        .plugin.type = LY_TYPE_BOOL,
         .plugin.store = lyplg_type_store_boolean,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
