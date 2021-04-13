@@ -170,7 +170,10 @@ set(headers
 # source files to be covered by the 'format' target
 set(format_sources
     compat/*
-    src/*)
+    src/*.c
+    src/*.h
+    src/plugins_exts/*
+    src/plugins_types/*)
 #
 # options
 #
@@ -305,6 +308,11 @@ if(ENABLE_BUILD_TESTS)
     find_package(CMocka 1.0.0)
 endif(ENABLE_BUILD_TESTS)
 
+if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+    # enable before adding tests to let them detect that format checking is available - one of the tests is format checking
+    source_format_enable()
+endif()
+
 # tests
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)
@@ -341,10 +349,9 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
     libyang_abicheck()
 endif()
 
-# source code format
-if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
-	source_format(${format_sources})
-endif()
+# source code format target for Makefile
+# - add it after tests which may also update list of sources to format
+source_format(${format_sources})
 
 # clean cmake cache
 add_custom_target(cclean
