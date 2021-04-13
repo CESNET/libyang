@@ -489,7 +489,7 @@ lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, si
                 return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, patterns[u]->emsg);
             } else {
                 const char *inverted = patterns[u]->inverted ? "inverted " : "";
-                return ly_err_new(err, LY_EVALID, 0, NULL, eapptag,
+                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
                         LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr);
             }
         }
