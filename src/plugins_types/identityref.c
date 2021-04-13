@@ -188,7 +188,6 @@ const struct lyplg_type_record plugins_identityref[] = {
         .name = LY_TYPE_IDENT_STR,
 
         .plugin.id = "libyang 2 - identityref, version 1",
-        .plugin.type = LY_TYPE_IDENT,
         .plugin.store = lyplg_type_store_identityref,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_identityref,

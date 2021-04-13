@@ -769,7 +769,6 @@ test_plugin_store(void **state)
     lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
 
     /* check proper type */
-    assert_int_equal(LY_TYPE_BITS, type->type);
     assert_string_equal("libyang 2 - bits, version 1", type->id);
 
     /* check store
@@ -897,7 +896,6 @@ test_plugin_compare(void **state)
     ly_ret = diff_type->plugin->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_PREF_XML, NULL, LYD_VALHINT_STRING, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
-    assert_int_equal(diff_type->plugin->type, LY_TYPE_BITS);
     assert_int_equal(LY_SUCCESS, type->compare(&diff_type_val, &(values[2])));
     assert_int_equal(LY_ENOT,    type->compare(&diff_type_val, &(values[1])));
     type->free(UTEST_LYCTX, &(diff_type_val));
@@ -910,7 +908,6 @@ test_plugin_compare(void **state)
     ly_ret = diff_type->plugin->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_PREF_XML, NULL, LYD_VALHINT_STRING, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
-    assert_int_equal(diff_type->plugin->type, LY_TYPE_BITS);
     assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[2])));
     assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[1])));
     type->free(UTEST_LYCTX, &(diff_type_val));
@@ -923,7 +920,6 @@ test_plugin_compare(void **state)
     ly_ret = diff_type->plugin->store(UTEST_LYCTX, diff_type, diff_type_text, strlen(diff_type_text),
             0, LY_PREF_XML, NULL, LYD_VALHINT_STRING, NULL, &diff_type_val, NULL, &err);
     assert_int_equal(LY_SUCCESS, ly_ret);
-    assert_int_equal(diff_type->plugin->type, LY_TYPE_STRING);
     assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[2])));
     assert_int_equal(LY_ENOT, type->compare(&diff_type_val, &(values[0])));
     type->free(UTEST_LYCTX, &(diff_type_val));

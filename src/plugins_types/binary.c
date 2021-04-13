@@ -139,7 +139,6 @@ const struct lyplg_type_record plugins_binary[] = {
         .name = LY_TYPE_BINARY_STR,
 
         .plugin.id = "libyang 2 - binary, version 1",
-        .plugin.type = LY_TYPE_BINARY,
         .plugin.store = lyplg_type_store_binary,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

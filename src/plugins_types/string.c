@@ -45,7 +45,7 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
         char buf[LY_NUMBER_MAXLEN];
         size_t char_count = ly_utf8len(value, value_len);
 
-        /* value_len is in bytes, but we need number of chaarcters here */
+        /* value_len is in bytes, but we need number of characters here */
         snprintf(buf, LY_NUMBER_MAXLEN, "%zu", char_count);
         ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
@@ -88,7 +88,6 @@ const struct lyplg_type_record plugins_string[] = {
         .name = LY_TYPE_STRING_STR,
 
         .plugin.id = "libyang 2 - string, version 1",
-        .plugin.type = LY_TYPE_STRING,
         .plugin.store = lyplg_type_store_string,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,

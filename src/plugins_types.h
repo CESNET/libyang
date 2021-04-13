@@ -455,14 +455,14 @@ typedef void (*lyplg_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *
  * functionality.
  */
 struct lyplg_type {
-    LY_DATA_TYPE type;               /**< implemented type, use ::LY_TYPE_UNKNOWN for derived data types */
+    const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions when
+                                             used by external tools) */
     lyplg_type_store_clb store;         /**< store and canonize the value in the type-specific way */
     lyplg_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
     lyplg_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
-    const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
 };
 
 struct lyplg_type_record {

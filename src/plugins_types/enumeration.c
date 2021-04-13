@@ -90,7 +90,6 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .name = LY_TYPE_ENUM_STR,
 
         .plugin.id = "libyang 2 - enumeration, version 1",
-        .plugin.type = LY_TYPE_ENUM,
         .plugin.store = lyplg_type_store_enum,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
