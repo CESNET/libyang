@@ -817,6 +817,7 @@ test_set_priv_parsed(void **state)
     /* use own context with extra flags */
     ly_ctx_destroy(UTEST_LYCTX);
     const char *feats[] = {"f1", NULL};
+
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
 

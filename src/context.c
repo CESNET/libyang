@@ -475,6 +475,7 @@ API LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_ERR lyrc;
+
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
     lyrc = LY_SUCCESS;
