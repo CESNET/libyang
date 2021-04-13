@@ -37,22 +37,29 @@ enum ly_path_pred_type {
 };
 
 /**
- * @brief Structure for holding one segment of resolved path on schema including simple predicates.
- * Is used as a [sized array](@ref sizedarrays).
+ * @brief Structure for simple path predicate.
+ */
+struct ly_path_predicate {
+    union {
+        uint64_t position; /**< position value for the position-predicate */
+        struct {
+            const struct lysc_node *key; /**< key node of the predicate, NULL in
+                                            case of a leaf-list predicate */
+            struct lyd_value value; /**< value representation according to the
+                                       key's type, its realtype is allocated */
+        };
+    };
+};
+
+/**
+ * @brief Structure for holding one segment of resolved path on schema including
+ * simple predicates. Is used as a [sized array](@ref sizedarrays).
  */
 struct ly_path {
     const struct lysc_node *node; /**< Schema node representing the path segment, first node has special meaning:
                                        - is a top-level node - path is absolute,
                                        - is inner node - path is relative */
-    struct ly_path_predicate {
-        union {
-            uint64_t position;    /**< position value for the position-predicate */
-            struct {
-                const struct lysc_node *key;    /**< key node of the predicate, NULL in case of a leaf-list predicate */
-                struct lyd_value value; /**< value representation according to the key's type, its realtype is allocated */
-            };
-        };
-    } *predicates;            /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
+    struct ly_path_predicate *predicates;  /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
     enum ly_path_pred_type pred_type;   /**< Predicate type (see YANG ABNF) */
 };
 
