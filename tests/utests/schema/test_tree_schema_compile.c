@@ -1746,7 +1746,7 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/..ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid character number 31 of expression '/interface[name = current()/..ifname]/ip'.", "Line number 4.");
+    CHECK_LOG_CTX("Invalid character 'i'[31] of expression '/interface[name = current()/..ifname]/ip'.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module vv {namespace urn:vv;prefix vv;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"

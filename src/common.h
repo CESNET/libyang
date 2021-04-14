@@ -251,7 +251,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_SUBELEM_REDEF  LYVE_SYNTAX_YIN, "Redefinition of \"%s\" sub-element in \"%s\" element."
 
 #define LY_VCODE_XP_EOE         LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
-#define LY_VCODE_XP_INEXPR      LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
+#define LY_VCODE_XP_INEXPR      LYVE_XPATH, "Invalid character '%c'[%u] of expression \'%s\'."
 #define LY_VCODE_XP_EOF         LYVE_XPATH, "Unexpected XPath expression end."
 #define LY_VCODE_XP_INTOK       LYVE_XPATH, "Unexpected XPath token \"%s\" (\"%.15s\")."
 #define LY_VCODE_XP_INTOK2      LYVE_XPATH, "Unexpected XPath token \"%s\" (\"%.15s\"), expected \"%s\"."
