@@ -140,6 +140,9 @@ set(libsrc
     src/plugins_types/union.c
     src/plugins_types/ip_address.c
     src/plugins_types/ip_prefix.c
+    src/plugins_types/date_and_time.c
+    src/plugins_types/hex_string.c
+    src/plugins_types/xpath1.0.c
     src/plugins_exts.c
     src/plugins_exts/metadata.c
     src/plugins_exts/nacm.c
