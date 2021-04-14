@@ -1,5 +1,5 @@
 name: libyang CI
-on: 
+on:
   push:
     branches:
       - libyang2
@@ -72,6 +72,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Uncrustify
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          git clone --branch uncrustify-0.71.0 https://github.com/uncrustify/uncrustify
+          cd uncrustify
+          mkdir build
+          cd build
+          CC=${{ matrix.config.cc }} cmake ..
+          make
+          sudo make install
+        if: ${{ matrix.config.name == 'Debug, Ubuntu 18.04, gcc' }}
 
       - name: Dependencies
         shell: bash
