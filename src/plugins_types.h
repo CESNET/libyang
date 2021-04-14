@@ -220,6 +220,7 @@ LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_le
  * @param[in] ctx_node Schema node where the value is instantiated to determine the module in case of unprefixed value
  * in specific @p format.
  * @param[in] prefix Prefix to resolve - identified beginning of a prefix in ::lyplg_type_store_clb's value parameter.
+ * If NULL, an unprefixed identity is resolved.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of the prefix (::lyplg_type_store_clb's format parameter).
  * @param[in] prefix_data Format-specific data (::lyplg_type_store_clb's prefix_data parameter).
