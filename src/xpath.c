@@ -5328,8 +5328,9 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_
             }
             break;
         case LY_PREF_XML:
-            /* not defined */
-            LOGINT_RET(set->ctx);
+            /* all nodes need to be prefixed */
+            LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", *qname_len, *qname);
+            return LY_EVALID;
         }
     }
 
