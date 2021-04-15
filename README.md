@@ -29,13 +29,6 @@ If you are interested in future plans announcements, please subscribe to the
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
-## Packages
-
-We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros. Check
-[this](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang) page and follow the
-instructions for your distro to install `libyang` package. The `libyang` package is built once a day from the
-master branch. If you want the latest code from the devel branch, install `libyang-experimental` package.
-
 ## Requirements
 
 ### Build Requirements
@@ -57,7 +50,7 @@ master branch. If you want the latest code from the devel branch, install `libya
 
 ### Runtime Requirements
 
-* libpcre2 >= 10.30
+* libpcre2 >= 10.21
 
 ## Building
 
