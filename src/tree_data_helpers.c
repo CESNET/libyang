@@ -373,62 +373,6 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     return LY_SUCCESS;
 }
 
-LYB_HASH
-lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
-{
-    const struct lys_module *mod;
-    uint32_t full_hash;
-    LYB_HASH hash;
-
-    if ((collision_id < LYS_NODE_HASH_COUNT) && sibling->hash[collision_id]) {
-        return sibling->hash[collision_id];
-    }
-
-    mod = sibling->module;
-
-    full_hash = dict_hash_multi(0, mod->name, strlen(mod->name));
-    full_hash = dict_hash_multi(full_hash, sibling->name, strlen(sibling->name));
-    if (collision_id) {
-        size_t ext_len;
-
-        if (collision_id > strlen(mod->name)) {
-            /* fine, we will not hash more bytes, just use more bits from the hash than previously */
-            ext_len = strlen(mod->name);
-        } else {
-            /* use one more byte from the module name than before */
-            ext_len = collision_id;
-        }
-        full_hash = dict_hash_multi(full_hash, mod->name, ext_len);
-    }
-    full_hash = dict_hash_multi(full_hash, NULL, 0);
-
-    /* use the shortened hash */
-    hash = full_hash & (LYB_HASH_MASK >> collision_id);
-    /* add colision identificator */
-    hash |= LYB_HASH_COLLISION_ID >> collision_id;
-
-    /* save this hash */
-    if (collision_id < LYS_NODE_HASH_COUNT) {
-        sibling->hash[collision_id] = hash;
-    }
-
-    return hash;
-}
-
-ly_bool
-lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(models, u) {
-        if (sibling->module == models[u]) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 void
 lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod)
 {

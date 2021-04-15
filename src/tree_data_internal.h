@@ -16,7 +16,6 @@
 #define LY_TREE_DATA_INTERNAL_H_
 
 #include "log.h"
-#include "lyb.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree_data.h"
@@ -32,25 +31,6 @@ struct lysc_module;
 #define LY_JSON_SUFFIX_LEN 5
 #define LY_LYB_SUFFIX ".lyb"
 #define LY_LYB_SUFFIX_LEN 4
-
-/**
- * @brief Hash schema sibling to be used for LYB data.
- *
- * @param[in] sibling Sibling to hash.
- * @param[in] collision_id Collision ID of the hash to generate.
- * @return Generated hash.
- */
-LYB_HASH lyb_hash(struct lysc_node *sibling, uint8_t collision_id);
-
-/**
- * @brief Check whether a sibling's module is in a module array.
- *
- * @param[in] sibling Sibling to check.
- * @param[in] models Modules in a sized array.
- * @return non-zero if the module was found,
- * @return Boolean value whether @p sibling's module found in the given @p models array.
- */
-ly_bool lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models);
 
 /**
  * @brief Check whether a node to be deleted is the root node, move it if it is.

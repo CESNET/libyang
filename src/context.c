@@ -236,6 +236,9 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     /* initialize thread-specific keys */
     while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
 
+    /* init LYB hash lock */
+    pthread_mutex_init(&ctx->lyb_hash_lock, NULL);
+
     /* models list */
     ctx->flags = options;
     if (search_dir) {
@@ -1122,6 +1125,9 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* dictionary */
     lydict_clean(&ctx->dict);
+
+    /* LYB hash lock */
+    pthread_mutex_destroy(&ctx->lyb_hash_lock);
 
     /* plugins - will be removed only if this is the last context */
     lyplg_clean();

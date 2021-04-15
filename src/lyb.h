@@ -122,10 +122,18 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
  *
  * Hash is divided to collision ID and hash itself.
  *
+ * @anchor collisionid
+ *
  * First bits are collision ID until 1 is found. The rest is truncated 32b hash.
  * 1xxx xxxx - collision ID 0 (no collisions)
  * 01xx xxxx - collision ID 1 (collision ID 0 hash collided)
  * 001x xxxx - collision ID 2 ...
+ *
+ * When finding a match for a unique schema (siblings) hash (sequence of hashes with increasing collision ID), the highest
+ * collision ID can be read from the last hash (LYB parser).
+ *
+ * To learn what is the highest collision ID of a hash that must be included in a unique schema (siblings) hash,
+ * collisions with all the preceding sibling schema hashes must be checked (LYB printer).
  */
 
 /* Number of bits the whole hash will take (including hash collision ID) */
@@ -167,5 +175,30 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 
 /* Type large enough for all meta data */
 #define LYB_META uint16_t
+
+/**
+ * @brief Get single hash for a schema node to be used for LYB data. Read from cache, if possible.
+ *
+ * @param[in] node Node to hash.
+ * @param[in] collision_id Collision ID of the hash to generate, see @ref collisionid.
+ * @return Generated hash.
+ */
+LYB_HASH lyb_get_hash(const struct lysc_node *node, uint8_t collision_id);
+
+/**
+ * @brief Fill the hash cache of all the schema nodes of a module.
+ *
+ * @param[in] mod Module to process.
+ */
+void lyb_cache_module_hash(const struct lys_module *mod);
+
+/**
+ * @brief Check whether a node's module is in a module array.
+ *
+ * @param[in] node Node to check.
+ * @param[in] models Modules in a sized array.
+ * @return Boolean value whether @p node's module was found in the given @p models array.
+ */
+ly_bool lyb_has_schema_model(const struct lysc_node *node, const struct lys_module **models);
 
 #endif /* LY_LYB_H_ */

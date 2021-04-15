@@ -83,7 +83,7 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HA
     struct lysc_node **col_node;
 
     /* get the first node inserted with last hash col ID ht_col_id */
-    if (lyht_find(ht, &sibling, lyb_hash(sibling, ht_col_id), (void **)&col_node)) {
+    if (lyht_find(ht, &sibling, lyb_get_hash(sibling, ht_col_id), (void **)&col_node)) {
         /* there is none. valid situation */
         return LY_SUCCESS;
     }
@@ -92,7 +92,7 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HA
     do {
         int64_t j;
         for (j = (int64_t)compare_col_id; j > -1; --j) {
-            if (lyb_hash(sibling, j) != lyb_hash(*col_node, j)) {
+            if (lyb_get_hash(sibling, j) != lyb_get_hash(*col_node, j)) {
                 /* one non-colliding hash */
                 break;
             }
@@ -104,7 +104,7 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HA
         }
 
         /* get next node inserted with last hash col ID ht_col_id */
-    } while (!lyht_find_next(ht, col_node, lyb_hash(*col_node, ht_col_id), (void **)&col_node));
+    } while (!lyht_find_next(ht, col_node, lyb_get_hash(*col_node, ht_col_id), (void **)&col_node));
 
     lyht_set_cb(ht, lyb_hash_equal_cb);
     return LY_SUCCESS;
@@ -154,7 +154,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
             }
 
             /* try to insert node with the current collision ID */
-            if (!lyht_insert_with_resize_cb(ht, &sibling, lyb_hash(sibling, i), lyb_ptr_equal_cb, NULL)) {
+            if (!lyht_insert_with_resize_cb(ht, &sibling, lyb_get_hash(sibling, i), lyb_ptr_equal_cb, NULL)) {
                 /* success, no collision */
                 break;
             }
@@ -163,7 +163,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
             if (i && !lyb_hash_sequence_check(ht, sibling, i, i)) {
                 /* it can be inserted after all, even though there is already a node with the same last collision ID */
                 lyht_set_cb(ht, lyb_ptr_equal_cb);
-                if (lyht_insert(ht, &sibling, lyb_hash(sibling, i), NULL)) {
+                if (lyht_insert(ht, &sibling, lyb_get_hash(sibling, i), NULL)) {
                     LOGINT(sibling->module->ctx);
                     lyht_set_cb(ht, lyb_hash_equal_cb);
                     lyht_free(ht);
@@ -205,7 +205,7 @@ lyb_hash_find(struct hash_table *ht, struct lysc_node *node, LYB_HASH *hash_p)
     uint32_t i;
 
     for (i = 0; i < LYB_HASH_BITS; ++i) {
-        hash = lyb_hash(node, i);
+        hash = lyb_get_hash(node, i);
         if (!hash) {
             LOGINT_RET(node->module->ctx);
         }
@@ -449,6 +449,11 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
         revision |= r;
     }
     LY_CHECK_RET(lyb_write_number(revision, sizeof revision, out, lybctx));
+
+    if (mod) {
+        /* fill cached hashes, if not already */
+        lyb_cache_module_hash(mod);
+    }
 
     return LY_SUCCESS;
 }
@@ -890,7 +895,7 @@ lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_
     for (i = 0; !(hash & (LYB_HASH_COLLISION_ID >> i)); ++i) {}
 
     for ( ; i; --i) {
-        hash = lyb_hash(schema, i - 1);
+        hash = lyb_get_hash(schema, i - 1);
         if (!hash) {
             return LY_EINT;
         }
