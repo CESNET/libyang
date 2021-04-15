@@ -169,6 +169,7 @@ set(headers
     src/printer_schema.h
     src/set.h
     src/tree.h
+    src/tree_edit.h
     src/tree_data.h
     src/tree_schema.h)
 
