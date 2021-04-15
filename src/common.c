@@ -1366,6 +1366,32 @@ dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2)
     return (num1 > num2 ? 1 : -1);
 }
 
+#ifdef LY_ENABLED_CACHE
+#  if defined(__has_feature)
+#    if __has_feature(thread_sanitizer)
+#      define LY_HASH_NO_TSAN __attribute__((no_sanitize("thread")))
+#    endif
+#  endif
+#  ifndef LY_HASH_NO_TSAN
+#    define LY_HASH_NO_TSAN
+#  endif
+
+LY_HASH_NO_TSAN static inline LYB_HASH lyb_hash_cache_check(const struct lys_node *sibling, const uint8_t collision_id)
+{
+    if ((collision_id < LYS_NODE_HASH_COUNT) && sibling->hash[collision_id]) {
+        return sibling->hash[collision_id];
+    }
+    return 0;
+}
+
+LY_HASH_NO_TSAN static inline void lyb_hash_cache_update(struct lys_node *sibling, const uint8_t collision_id, const LYB_HASH hash)
+{
+    if (collision_id < LYS_NODE_HASH_COUNT) {
+        sibling->hash[collision_id] = hash;
+    }
+}
+#endif
+
 LYB_HASH
 lyb_hash(struct lys_node *sibling, uint8_t collision_id)
 {
@@ -1375,8 +1401,8 @@ lyb_hash(struct lys_node *sibling, uint8_t collision_id)
     LYB_HASH hash;
 
 #ifdef LY_ENABLED_CACHE
-    if ((collision_id < LYS_NODE_HASH_COUNT) && sibling->hash[collision_id]) {
-        return sibling->hash[collision_id];
+    if ((hash = lyb_hash_cache_check(sibling, collision_id))) {
+        return hash;
     }
 #endif
 
@@ -1403,9 +1429,7 @@ lyb_hash(struct lys_node *sibling, uint8_t collision_id)
 
     /* save this hash */
 #ifdef LY_ENABLED_CACHE
-    if (collision_id < LYS_NODE_HASH_COUNT) {
-        sibling->hash[collision_id] = hash;
-    }
+    lyb_hash_cache_update(sibling, collision_id, hash);
 #endif
 
     return hash;
