@@ -8567,7 +8567,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     uint8_t prev_when_status;
     int rc, rc2, progress, ignore_fail, multi_error;
     enum int_log_opts prev_ilo;
-    struct ly_err_item *prev_eitem;
+    struct ly_err_item *prev_eitem = NULL;
     LY_ERR prev_ly_errno = ly_errno;
     struct lyd_node *parent;
     struct lys_when *when;
