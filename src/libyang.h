@@ -132,6 +132,22 @@ extern "C" {
  */
 
 /**
+ * @page howtoThreads Threading Limitations
+ *
+ * @section context Context
+ *
+ * It is safe to read from ::ly_ctx structure concurrently and use its dictionary, which is protected by a lock.
+ * Thread-safe functions include any ones working with data trees (only context dictionary is accessed) and all
+ * the `ly_ctx_get_*()` functions. Generally, they are the functions with `const` context parameter.
+ *
+ * @section data Data Trees
+ *
+ * Data trees are not internally synchronized so the general safe practice of a single writer **or** several concurrent
+ * readers should be followed. Specifically, only the functions with non-const ::lyd_node parameters modify the node(s)
+ * and no concurrent execution of such functions should be allowed on a single data tree or subtrees of one.
+ */
+
+/**
  * @internal
  * @page internals Developers' Notes
  * @tableofcontents
