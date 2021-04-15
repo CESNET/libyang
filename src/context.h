@@ -36,8 +36,9 @@ struct lysc_node;
  *
  * The first step with libyang is to create a new context using ::ly_ctx_new(). It returns a handler used in the following work.
  * Note that the context is supposed to provide a stable environment for work with the data. Therefore the caller should prepare
- * a complete context and after starting working with the data, the context and its content should not change. Despite the API
- * does not enforce this approach, it may change in future versions in the form of a locking mechanism which would allow further
+ * a complete context and after starting working with the data, the context and its content should not change. If it does,
+ * in most cases it leads to the context being recompiled and any parsed data invalid. Despite the API not enforcing this
+ * approach, it may change in future versions in the form of a locking mechanism which would allow further
  * optimization of data manipulation. Also note that modules cannot be removed from their context. If you need to change the set
  * of the schema modules in the context, the recommended way is to create a new context. To remove the context, there is ::ly_ctx_destroy() function.
  *
