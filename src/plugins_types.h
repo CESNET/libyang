@@ -115,7 +115,11 @@ struct lysc_type_leafref;
  *  - [string built-in type](@ref pluginsTypesString)
  *  - [union built-in type](@ref pluginsTypesUnion)
  *
- * In addition to these callbacks, the API also provides sevral function which can help to implement your own plugin for the
+ * And one derived type:
+ *
+ *  - [xpath1.0 `ietf-yang-types` type](@ref pluginsTypesXpath10)
+ *
+ * In addition to these callbacks, the API also provides several functions which can help to implement your own plugin for the
  * derived YANG types:
  *
  * - ::ly_err_new()
@@ -864,7 +868,50 @@ LY_ERR lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_typ
  */
 void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
 
-/** @} pluginsTypesBits */
+/** @} pluginsTypesUnion */
+
+/**
+ * @defgroup pluginsTypesXpath10 Plugins: xpath1.0 `ietf-yang-types` type callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement xpath1.0 derived type.
+ */
+
+/**
+ * @brief Validate, canonize and store value of the ietf-yang-types xpath1.0 type.
+ * Implementation of the ::lyplg_type_store_clb.
+ */
+LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/**
+ * @brief Comparison callback checking the union value.
+ * Implementation of the ::lyplg_type_compare_clb.
+ */
+LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Printer callback printing the xpath1.0 value.
+ * Implementation of the ::lyplg_type_print_clb.
+ */
+const char *lyplg_type_print_xpath10(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+        ly_bool *dynamic);
+
+/**
+ * @brief Duplication callback of the xpath1.0 values.
+ * Implementation of the ::lyplg_type_dup_clb.
+ */
+LY_ERR lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+
+/**
+ * @brief Free value of the derived xpath1.0 types.
+ * Implementation of the ::lyplg_type_free_clb.
+ */
+void lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value);
+
+/** @} pluginsTypesXpath10 */
 
 /**
  * @brief Unsigned integer value parser and validator.

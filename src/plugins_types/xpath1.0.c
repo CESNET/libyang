@@ -30,8 +30,6 @@
 /* internal header */
 #include "xpath.h"
 
-static void lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value);
-
 /**
  * @brief Stored value structure for xpath1.0
  */
@@ -199,11 +197,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Validate, canonize and store value of the ietf-yang-types xpath1.0 type.
- * Implementation of the ::lyplg_type_store_clb.
- */
-static LY_ERR
+API LY_ERR
 lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
@@ -248,10 +242,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of the ::lyplg_type_print_clb for xpath1.0.
- */
-static const char *
+API const char *
 lyplg_type_print_xpath10(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     char *str_value;
@@ -276,10 +267,7 @@ lyplg_type_print_xpath10(const struct lyd_value *value, LY_PREFIX_FORMAT format,
     return str_value;
 }
 
-/**
- * @brief Implementation of the ::lyplg_type_dup_clb for xpath1.0.
- */
-static LY_ERR
+API LY_ERR
 lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -310,10 +298,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Implementation of the ::lyplg_type_free_clb for xpath1.0.
- */
-static void
+API void
 lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_xpath10 *xp_val = value->ptr;
