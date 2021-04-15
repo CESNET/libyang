@@ -45,8 +45,9 @@ extern "C" {
  */
 #define LYS_COMPILE_GROUPING        0x01            /**< Compiling (validation) of a non-instantiated grouping.
                                                       In this case not all the restrictions are checked since they can
-                                                      be valid only in the real placement of the grouping.
-                                                      TODO - what specifically is not done */
+                                                      be valid only in the real placement of the grouping. This is
+                                                      the case of any restriction that needs to look out of the statements
+                                                      themselves, since the context is not known. */
 #define LYS_COMPILE_DISABLED        0x02            /**< Compiling a disabled subtree (by its if-features). Meaning
                                                       it will be removed at the end of compilation and should not be
                                                       added to any unres sets. */
@@ -119,8 +120,6 @@ void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, co
 
 /**
  * @brief Duplicate the compiled extension (definition) structure.
- * TODO should this be in API? currently required by nacm_compile()
- * Instead of duplicating memory, the reference counter in the @p orig is increased.
  *
  * @param[in] orig The extension structure to duplicate.
  * @return The duplicated structure to use.
