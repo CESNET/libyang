@@ -330,6 +330,9 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
 
     }
 
+    /* fill cached hashes, if not already */
+    lyb_cache_module_hash(*mod);
+
 cleanup:
     free(mod_name);
     return ret;
@@ -582,7 +585,7 @@ lyb_is_schema_hash_match(struct lysc_node *sibling, LYB_HASH *hash, uint8_t hash
 
     /* compare all the hashes starting from collision ID 0 */
     for (i = 0; i < hash_count; ++i) {
-        sibling_hash = lyb_hash(sibling, i);
+        sibling_hash = lyb_get_hash(sibling, i);
         if (sibling_hash != hash[i]) {
             return 0;
         }

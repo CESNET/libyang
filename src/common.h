@@ -304,6 +304,7 @@ struct ly_ctx {
     uint16_t change_count;            /**< Count of changes of the context, on some changes it could be incremented more times */
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
+    pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
 };
 
 /**

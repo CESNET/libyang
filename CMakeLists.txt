@@ -117,6 +117,7 @@ set(libsrc
     src/tree_schema_free.c
     src/tree_schema_helpers.c
     src/in.c
+    src/lyb.c
     src/parser_yang.c
     src/parser_yin.c
     src/parser_stmt.c
