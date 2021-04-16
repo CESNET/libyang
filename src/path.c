@@ -414,22 +414,23 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
     /* find next node module */
     if (pref) {
-        ret = LY_EVALID;
-
         LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
         *mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
         if (!*mod) {
             LOGVAL(ctx, LYVE_XPATH, "No module connected with the prefix \"%.*s\" found (prefix format %s).",
                     (int)len, pref, ly_format2str(format));
+            ret = LY_EVALID;
             goto error;
         } else if (!(*mod)->implemented) {
             if (lref == LY_PATH_LREF_FALSE) {
                 LOGVAL(ctx, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
+                ret = LY_EVALID;
                 goto error;
             }
+
             assert(unres);
-            LY_CHECK_GOTO(ret = lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
+            LY_CHECK_GOTO(lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
         }
 
         LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
@@ -469,7 +470,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
 error:
     LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
-    return LY_EVALID;
+    return ret;
 }
 
 LY_ERR
