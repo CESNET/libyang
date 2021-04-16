@@ -566,7 +566,7 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {
     LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
 
-    if (*index < (unsigned)ctx->list.count) {
+    if (*index < ctx->list.count) {
         return ctx->list.objs[(*index)++];
     } else {
         return NULL;
