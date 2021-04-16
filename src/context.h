@@ -136,10 +136,6 @@ struct lysc_node;
  */
 
 /**
- *
- */
-
-/**
  * @defgroup context Context
  * @{
  *
