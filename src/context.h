@@ -188,6 +188,12 @@ struct ly_ctx;
                                         Setting this option by ::ly_ctx_set_options() may result in context recompilation.
                                         Resetting this option by ::ly_ctx_unset_options() cause that private
                                         objects will be set to NULL. */
+#define LY_CTX_EXPLICIT_COMPILE 0x80 /**< If this flag is set, the compiled modules and their schema nodes are
+                                        not automatically updated (compiled) on any context changes. In other words, they do
+                                        not immediately take effect. To do that, call ::ly_ctx_compile(). Changes
+                                        requiring compilation include adding new modules, changing their features,
+                                        and implementing parsed-only modules. This option allows efficient compiled
+                                        context creation without redundant recompilations. */
 
 /** @} contextoptions */
 
@@ -259,6 +265,15 @@ LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT fo
  * @return LY_ERR return value
  */
 LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx);
+
+/**
+ * @brief Compile (recompile) the context applying all the performed changes after the last context compilation.
+ * Should be used only if ::LY_CTX_EXPLICIT_COMPILE option is set, has no effect otherwise.
+ *
+ * @param[in] ctx Context to compile.
+ * @return LY_ERR return value.
+ */
+LY_ERR ly_ctx_compile(struct ly_ctx *ctx);
 
 /**
  * @brief Add the search path into libyang context

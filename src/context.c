@@ -467,6 +467,44 @@ ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, in
     return ly_ctx_new_yl_common(search_dir, data, format, options, lyd_parse_data_mem, ctx);
 }
 
+API LY_ERR
+ly_ctx_compile(struct ly_ctx *ctx)
+{
+    struct lys_module *mod;
+    uint32_t i;
+    ly_bool recompile = 0;
+
+    LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
+
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
+        if (mod->to_compile) {
+            /* if was not implemented, will be */
+            mod->implemented = 1;
+
+            recompile = 1;
+        }
+    }
+
+    if (!recompile) {
+        /* no recompilation needed */
+        return LY_SUCCESS;
+    }
+
+    /* recompile */
+    LY_CHECK_RET(lys_recompile(ctx, 0));
+
+    /* everything is fine, clear the flags */
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
+        if (mod->to_compile) {
+            mod->to_compile = 0;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 API uint16_t
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
@@ -477,15 +515,16 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
 API LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
-    LY_ERR lyrc;
+    LY_ERR lyrc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
-    lyrc = LY_SUCCESS;
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         ctx->flags |= LY_CTX_SET_PRIV_PARSED;
-        if ((lyrc = lys_recompile(ctx, 0))) {
+        /* recompile to set the priv pointers */
+        lyrc = lys_recompile(ctx, 0);
+        if (lyrc) {
             ly_ctx_unset_options(ctx, LY_CTX_SET_PRIV_PARSED);
         }
     }

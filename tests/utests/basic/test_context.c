@@ -839,6 +839,88 @@ test_set_priv_parsed(void **state)
     assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_is_set, &iter));
 }
 
+static void
+test_explicit_compile(void **state)
+{
+    uint32_t i;
+    const struct lys_module *mod;
+    const char *schema_a = "module a {\n"
+            "  namespace urn:tests:a;\n"
+            "  prefix a;yang-version 1.1;\n"
+            "  feature f1;\n"
+            "  feature f2;\n"
+            "  leaf foo1 {\n"
+            "    type uint16;\n"
+            "    if-feature f1;\n"
+            "  }\n"
+            "  leaf foo2 {\n"
+            "    type uint16;\n"
+            "  }\n"
+            "  container cont {\n"
+            "    leaf foo3 {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *schema_b = "module b {\n"
+            "  namespace urn:tests:b;\n"
+            "  prefix b;yang-version 1.1;\n"
+            "  import a {\n"
+            "    prefix a;\n"
+            "  }\n"
+            "  augment /a:cont {\n"
+            "    leaf augleaf {\n"
+            "      type uint16;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *schema_c = "module c {\n"
+            "  namespace urn:tests:c;\n"
+            "  prefix c;yang-version 1.1;\n"
+            "  import a {\n"
+            "    prefix a;\n"
+            "  }\n"
+            "  deviation /a:foo2 {\n"
+            "    deviate not-supported;\n"
+            "  }\n"
+            "}\n";
+
+    /* use own context with extra flags */
+    ly_ctx_destroy(UTEST_LYCTX);
+    const char *feats[] = {"f1", NULL};
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_EXPLICIT_COMPILE, &UTEST_LYCTX));
+    UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema_c, LYS_IN_YANG, NULL, NULL);
+    assert_int_equal(LY_SUCCESS, lys_set_implemented((struct lys_module *)mod, feats));
+
+    /* none of the modules should be implemented */
+    i = 0;
+    while ((mod = ly_ctx_get_module_iter(UTEST_LYCTX, &i))) {
+        assert_false(mod->implemented);
+        assert_false(mod->compiled);
+    }
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_compile(UTEST_LYCTX));
+
+    /* check internal modules */
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "yang");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "ietf-datastores");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "ietf-yang-library");
+    assert_non_null(mod);
+
+    /* check test modules */
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "a");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "b");
+    assert_non_null(mod);
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "c");
+    assert_non_null(mod);
+}
+
 int
 main(void)
 {
@@ -850,6 +932,7 @@ main(void)
         UTEST(test_get_models),
         UTEST(test_ylmem),
         UTEST(test_set_priv_parsed),
+        UTEST(test_explicit_compile),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
