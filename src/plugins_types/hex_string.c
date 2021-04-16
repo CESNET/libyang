@@ -63,7 +63,8 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
 
     /* update the value correctly */
     lydict_remove(ctx, storage->canonical);
-    lydict_insert_zc(ctx, str, &storage->canonical);
+    storage->canonical = NULL;
+    LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->canonical), cleanup);
 
     /* validation succeeded and we do not want to change how it is stored */
 

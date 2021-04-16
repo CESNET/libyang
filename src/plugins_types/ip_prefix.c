@@ -212,7 +212,8 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     if (strcmp(canonical, storage->canonical)) {
         /* some conversion took place, update the value */
         lydict_remove(ctx, storage->canonical);
-        lydict_insert_zc(ctx, canonical, &storage->canonical);
+        storage->canonical = NULL;
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->canonical), cleanup);
     } else {
         free(canonical);
     }
@@ -248,7 +249,8 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     if (strcmp(canonical, storage->canonical)) {
         /* some conversion took place, update the value */
         lydict_remove(ctx, storage->canonical);
-        lydict_insert_zc(ctx, canonical, &storage->canonical);
+        storage->canonical = NULL;
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->canonical), cleanup);
     } else {
         free(canonical);
     }

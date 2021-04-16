@@ -25,6 +25,7 @@
 
 #include "libyang.h"
 
+#include "common.h"
 #include "compat.h"
 
 /**
@@ -78,9 +79,7 @@ lyplg_type_store_ip_address(const struct ly_ctx *ctx, const struct lysc_type *ty
     /* store as a string */
     ret = lyplg_type_store_string(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node,
             storage, unres, err);
-    if (ret) {
-        return ret;
-    }
+    LY_CHECK_RET(ret);
 
     if (strchr(storage->canonical, ':')) {
         /* canonize IPv6 address */
@@ -96,9 +95,7 @@ lyplg_type_store_ip_address(const struct ly_ctx *ctx, const struct lysc_type *ty
         if (ptr) {
             free(ipv6_addr);
         }
-        if (ret) {
-            goto cleanup;
-        }
+        LY_CHECK_GOTO(ret, cleanup);
 
         if (strncmp(storage->canonical, result, strlen(result))) {
             /* some conversion took place */
@@ -115,7 +112,8 @@ lyplg_type_store_ip_address(const struct ly_ctx *ctx, const struct lysc_type *ty
 
             /* update the value */
             lydict_remove(ctx, storage->canonical);
-            lydict_insert_zc(ctx, result, &storage->canonical);
+            storage->canonical = NULL;
+            LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, result, &storage->canonical), cleanup);
         } else {
             free(result);
         }

@@ -232,7 +232,8 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
 
         /* replace the canonical value */
         lydict_remove(ctx, storage->canonical);
-        lydict_insert_zc(ctx, canonical, &storage->canonical);
+        storage->canonical = NULL;
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->canonical), cleanup);
     }
 
 cleanup:
