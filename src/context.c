@@ -196,7 +196,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
 
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
 
-    LY_CHECK_GOTO(ret = lysp_load_module(ctx, name, revision, 1, features, &unres, &result), cleanup);
+    LY_CHECK_GOTO(ret = lys_load_module(ctx, name, revision, 1, features, &unres, &result), cleanup);
 
     /* resolve unres and revert, if needed */
     LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);

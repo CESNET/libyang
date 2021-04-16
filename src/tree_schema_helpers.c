@@ -666,7 +666,7 @@ cleanup:
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
+lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
         const char **features, struct lys_glob_unres *unres, struct lys_module **mod)
 {
     const char *module_data = NULL;
