@@ -800,6 +800,12 @@ lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_
 
     assert(!mod->implemented);
 
+    if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
+        /* do not compile the module yet */
+        mod->to_compile = 1;
+        return LY_SUCCESS;
+    }
+
     /* we have module from the current context */
     m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
     if (m) {
@@ -843,8 +849,14 @@ lys_set_implemented(struct lys_module *mod, const char **features)
             return r;
         }
 
-        /* full recompilation */
-        return lys_recompile(mod->ctx, 1);
+        if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
+            /* just mark the module as changed */
+            mod->to_compile = 1;
+            return LY_SUCCESS;
+        } else {
+            /* full recompilation */
+            return lys_recompile(mod->ctx, 1);
+        }
     }
 
     /* implement this module and any other required modules, recursively */
