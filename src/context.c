@@ -456,7 +456,7 @@ cleanup:
 API LY_ERR
 ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx)
 {
-    LY_CHECK_ARG_RET2(NULL, path, ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, path, ctx, LY_EINVAL);
     return ly_ctx_new_yl_common(search_dir, path, format, options, lyd_parse_data_path, ctx);
 }
 
