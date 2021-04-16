@@ -284,7 +284,7 @@ LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct
 LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len);
 
 /**
- * @brief Find and parse module of the given name.
+ * @brief Find and load a module of the given name.
  *
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
@@ -294,10 +294,10 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * case the module of the latest revision can not be made implemented.
  * @param[in] features All the features to enable if implementing the module.
  * @param[in] unres Global unres structure for all newly implemented modules.
- * @param[out] mod Parsed module structure.
+ * @param[out] mod Created module structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
+LY_ERR lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
         const char **features, struct lys_glob_unres *unres, struct lys_module **mod);
 
 /**

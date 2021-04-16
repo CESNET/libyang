@@ -281,7 +281,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p)
             ly_in_free(in, 1);
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, imp_p->module->name, imp_p->module->revision, 0, NULL, ctx->unres,
+            if (lys_load_module(ctx->ctx, imp_p->module->name, imp_p->module->revision, 0, NULL, ctx->unres,
                     (struct lys_module **)&mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
                         imp_p->module->name, ctx->cur_mod->name);
