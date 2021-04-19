@@ -13,18 +13,12 @@
  */
 
 #include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 
+#include "common.h"
 #include "compat.h"
-#include "log.h"
-#include "out.h"
 #include "out_internal.h"
-#include "printer_internal.h"
-#include "tree.h"
-#include "tree_schema.h"
+#include "tree_schema_internal.h"
 #include "xpath.h"
 
 struct trt_tree_ctx;
@@ -953,6 +947,7 @@ trp_print_flags(trt_flags_type flags_type, struct ly_out *out)
         ly_print_(out, "%s", "mp");
         break;
     default:
+        ly_print_(out, "%s", "--");
         break;
     }
 }
@@ -1390,13 +1385,20 @@ trt_print_keyword_stmt_str(struct trt_keyword_stmt ks, size_t mll, struct ly_out
 /**
  * @brief Print separator based on .type.
  * @param[in] ks is keyword statement structure.
+ * @param[in] grp_has_data is flag only for grouping section.
+ * Set to 1 if grouping section has some nodes.
+ * Set to 0 if it doesn't have nodes or it's not grouping section.
  * @param[in,out] out is output handler.
  */
 static void
-trt_print_keyword_stmt_end(struct trt_keyword_stmt ks, struct ly_out *out)
+trt_print_keyword_stmt_end(struct trt_keyword_stmt ks, ly_bool grp_has_data, struct ly_out *out)
 {
     if ((ks.type != TRD_KEYWORD_MODULE) && (ks.type != TRD_KEYWORD_SUBMODULE)) {
-        ly_print_(out, ":");
+        if ((ks.type == TRD_KEYWORD_GROUPING) && !grp_has_data) {
+            return;
+        } else {
+            ly_print_(out, ":");
+        }
     }
 }
 
@@ -1404,17 +1406,20 @@ trt_print_keyword_stmt_end(struct trt_keyword_stmt ks, struct ly_out *out)
  * @brief Print entire struct trt_keyword_stmt structure.
  * @param[in] ks is item to print.
  * @param[in] mll is max line length.
+ * @param[in] grp_has_data is flag only for grouping section.
+ * Set to 1 if grouping section has some nodes.
+ * Set to 0 if it doesn't have nodes or it's not grouping section.
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_keyword_stmt(struct trt_keyword_stmt ks, size_t mll, struct ly_out *out)
+trp_print_keyword_stmt(struct trt_keyword_stmt ks, size_t mll,  ly_bool grp_has_data, struct ly_out *out)
 {
     if (TRP_KEYWORD_STMT_IS_EMPTY(ks)) {
         return;
     }
     trt_print_keyword_stmt_begin(ks, out);
     trt_print_keyword_stmt_str(ks, mll, out);
-    trt_print_keyword_stmt_end(ks, out);
+    trt_print_keyword_stmt_end(ks, grp_has_data, out);
 }
 
 /******************************************************************************
@@ -2024,8 +2029,9 @@ tro_lysp_flags2status(uint16_t flags)
 static trt_flags_type
 tro_lysp_flags2config(uint16_t flags)
 {
-    return flags & LYS_CONFIG_R ?
-           TRD_FLAGS_TYPE_RO : TRD_FLAGS_TYPE_RW;
+    return flags & LYS_CONFIG_R ? TRD_FLAGS_TYPE_RO :
+           flags & LYS_CONFIG_W ? TRD_FLAGS_TYPE_RW :
+           TRD_FLAGS_TYPE_EMPTY;
 }
 
 /**
@@ -2281,7 +2287,7 @@ tro_modi_first_sibling(struct trt_tree_ctx *tc)
             tc->pn = pm->data;
             break;
         case TRD_SECT_AUGMENT:
-            tc->pn = ((const struct lysp_node_augment *)tc->pn->parent)->child;
+            tc->pn = (const struct lysp_node *)pm->augments;
             break;
         case TRD_SECT_RPCS:
             tc->pn = (const struct lysp_node *)pm->rpcs;
@@ -2290,7 +2296,7 @@ tro_modi_first_sibling(struct trt_tree_ctx *tc)
             tc->pn = (const struct lysp_node *)pm->notifs;
             break;
         case TRD_SECT_GROUPING:
-            tc->pn = ((const struct lysp_node_grp *)tc->pn->parent)->child;
+            tc->pn = (const struct lysp_node *)pm->groupings;
             break;
         case TRD_SECT_YANG_DATA:
             /*TODO: yang-data is not supported now */
@@ -2344,11 +2350,11 @@ tro_modi_next_augment(struct trt_tree_ctx *tc)
         augs = tc->module->parsed->augments;
     } else {
         /* get augment sibling from top-node pointer */
-        augs = (const struct lysp_node_augment *)tc->tpn->parent->next;
+        augs = (const struct lysp_node_augment *)tc->tpn->next;
     }
 
-    if ((augs) && (augs->child)) {
-        tc->pn = augs->child;
+    if (augs) {
+        tc->pn = &augs->node;
         tc->tpn = tc->pn;
         return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_AUGMENT, augs->nodeid);
     } else {
@@ -2419,11 +2425,11 @@ tro_modi_next_grouping(struct trt_tree_ctx *tc)
         tc->section = TRD_SECT_GROUPING;
         grps = tc->module->parsed->groupings;
     } else {
-        grps = (const struct lysp_node_grp *)tc->tpn->parent->next;
+        grps = (const struct lysp_node_grp *)tc->tpn->next;
     }
 
-    if ((grps) && (grps->child)) {
-        tc->pn = grps->child;
+    if (grps) {
+        tc->pn = &grps->node;
         tc->tpn = tc->pn;
         return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_GROUPING, grps->name);
     } else {
@@ -2726,6 +2732,41 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
 }
 
 /**
+ * @brief Get address of the current node.
+ * @param[in] tc contains current node.
+ * @return Address of lysp_node, or NULL.
+ */
+static const void *
+trb_tree_ctx_get_node(struct trt_tree_ctx *tc)
+{
+    return (const void *)tc->pn;
+}
+
+/**
+ * @brief Get address of current node's child.
+ * @param[in,out] tc contains current node.
+ */
+static const void *
+trb_tree_ctx_get_child(struct trt_tree_ctx *tc)
+{
+    if (!trb_tree_ctx_get_node(tc)) {
+        return NULL;
+    }
+
+    return lysp_node_child(tc->pn);
+}
+
+/**
+ * @brief Set current node on its child.
+ * @param[in,out] tc contains current node.
+ */
+static void
+trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
+{
+    tc->pn = trb_tree_ctx_get_child(tc);
+}
+
+/**
  * @brief Print subtree of nodes.
  *
  * The current node is expected to be the root of the subtree.
@@ -2743,6 +2784,10 @@ trb_print_subtree_nodes(uint32_t max_gap_before_type, struct trt_wrapper wr, str
 {
     struct trt_parent_cache new_ca;
     struct trt_node node;
+
+    if (!trb_tree_ctx_get_node(tc)) {
+        return;
+    }
 
     trb_print_entire_node(max_gap_before_type, wr, ca, pc, tc);
     /* go to the actual node's child */
@@ -2800,10 +2845,18 @@ trb_print_family_tree(trd_wrapper_type wr_t, struct trt_printer_ctx *pc, struct 
     uint32_t total_parents;
     uint32_t max_gap_before_type;
 
+    if (!trb_tree_ctx_get_node(tc)) {
+        return;
+    }
+
     wr = wr_t == TRD_WRAPPER_TOP ? TRP_INIT_WRAPPER_TOP : TRP_INIT_WRAPPER_BODY;
     ca = TRP_EMPTY_PARENT_CACHE;
     total_parents = trb_get_number_of_siblings(pc->fp.modify, tc);
     max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
+
+    if ((tc->section == TRD_SECT_GROUPING) && (tc->tpn == tc->pn->parent)) {
+        ca.lys_config = 0x0;
+    }
 
     for (uint32_t i = 0; i < total_parents; i++) {
         ly_print_(pc->out, "\n");
@@ -2817,181 +2870,29 @@ trb_print_family_tree(trd_wrapper_type wr_t, struct trt_printer_ctx *pc, struct 
  *****************************************************************************/
 
 /**
- * @brief General function to prevent repetitiveness code.
- * @param[in] ks is section representation.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_body_section(struct trt_keyword_stmt ks, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    if (TRP_KEYWORD_STMT_IS_EMPTY(ks)) {
-        return;
-    }
-    trp_print_keyword_stmt(ks, pc->max_line_length, pc->out);
-    trb_print_family_tree(TRD_WRAPPER_BODY, pc, tc);
-}
-
-/**
- * @brief Print 'module' keyword, its name and all nodes.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_module_section(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    trp_print_keyword_stmt(pc->fp.read.module_name(tc), pc->max_line_length, pc->out);
-    /* check if module section contains any data */
-    if (tc->tpn) {
-        trb_print_family_tree(TRD_WRAPPER_TOP, pc, tc);
-    }
-}
-
-/**
- * @brief For all augment sections: print 'augment' keyword, its target node and all nodes.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_augmentations(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    ly_bool once = 1;
-
-    for (struct trt_keyword_stmt ks = pc->fp.modify.next_augment(tc);
-            !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
-            ks = pc->fp.modify.next_augment(tc)) {
-        if (once) {
-            ly_print_(pc->out, "\n");
-            ly_print_(pc->out, "\n");
-            once = 0;
-        } else {
-            ly_print_(pc->out, "\n");
-        }
-        trm_print_body_section(ks, pc, tc);
-    }
-}
-
-/**
- * @brief For rpcs section: print 'rpcs' keyword and all its nodes.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_rpcs(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    struct trt_keyword_stmt rpc = pc->fp.modify.get_rpcs(tc);
-
-    if (!(TRP_KEYWORD_STMT_IS_EMPTY(rpc))) {
-        ly_print_(pc->out, "\n");
-        ly_print_(pc->out, "\n");
-        trm_print_body_section(rpc, pc, tc);
-    }
-}
-
-/**
- * @brief For notifications section: print 'notifications' keyword and all its nodes.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_notifications(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    struct trt_keyword_stmt notifs = pc->fp.modify.get_notifications(tc);
-
-    if (!(TRP_KEYWORD_STMT_IS_EMPTY(notifs))) {
-        ly_print_(pc->out, "\n");
-        ly_print_(pc->out, "\n");
-        trm_print_body_section(notifs, pc, tc);
-    }
-}
-
-/**
- * @brief For all grouping sections: print 'grouping' keyword, its name and all nodes.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_groupings(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    ly_bool once = 1;
-
-    for (struct trt_keyword_stmt ks = pc->fp.modify.next_grouping(tc);
-            !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
-            ks = pc->fp.modify.next_grouping(tc)) {
-        if (once) {
-            ly_print_(pc->out, "\n");
-            ly_print_(pc->out, "\n");
-            once = 0;
-        } else {
-            ly_print_(pc->out, "\n");
-        }
-        trm_print_body_section(ks, pc, tc);
-    }
-}
-
-/**
- * @brief For all yang-data sections: print 'yang-data' keyword and all its nodes.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_yang_data(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    ly_bool once = 1;
-
-    for (struct trt_keyword_stmt ks = pc->fp.modify.next_yang_data(tc);
-            !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
-            ks = pc->fp.modify.next_yang_data(tc)) {
-        if (once) {
-            ly_print_(pc->out, "\n");
-            ly_print_(pc->out, "\n");
-            once = 0;
-        } else {
-            ly_print_(pc->out, "\n");
-        }
-        trm_print_body_section(ks, pc, tc);
-    }
-}
-
-/**
- * @brief Print sections module, augment, rpcs, notifications, grouping, yang-data.
- * @param[in] pc contains mainly functions for printing.
- * @param[in,out] tc is the tree context.
- */
-static void
-trm_print_sections(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
-{
-    trm_print_module_section(pc, tc);
-
-    trm_print_augmentations(pc, tc);
-
-    trm_print_rpcs(pc, tc);
-
-    trm_print_notifications(pc, tc);
-
-    trm_print_groupings(pc, tc);
-
-    trm_print_yang_data(pc, tc);
-
-    ly_print_(pc->out, "\n");
-}
-
-/**
- * @brief Set default settings for trt_printer_ctx.
+ * @brief Settings if lysp_node are used for browsing through the tree.
  *
- * Fill trt_printer_ctx so that it will contain all items correctly defined
- * except for max_line_length which is parameters of the printer tree module.
- *
+ * @param[in] module YANG schema tree structure representing
+ * YANG module.
  * @param[in] out is output handler.
- * @param[in] max_line_length is the maximum line length limit that should not be exceeded.
- * @param[in,out] ctx fill structure with default values.
+ * @param[in] max_line_length is the maximum line length limit
+ * that should not be exceeded.
+ * @param[in,out] pc will be adapted to lysp_tree.
+ * @param[in,out] tc will be adapted to lysp_tree.
  */
 static void
-trm_default_printer_ctx(struct ly_out *out, size_t max_line_length, struct trt_printer_ctx *ctx)
+trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    ctx->out = out;
+    *tc = (struct trt_tree_ctx) {
+        .section = TRD_SECT_MODULE,
+        .module = module,
+        .pn = module->parsed->data,
+        .tpn = module->parsed->data,
+    };
 
-    ctx->fp.modify = (struct trt_fp_modify_ctx) {
+    pc->out = out;
+
+    pc->fp.modify = (struct trt_fp_modify_ctx) {
         .parent = tro_modi_parent,
         .first_sibling = tro_modi_first_sibling,
         .next_sibling = tro_modi_next_sibling,
@@ -3003,35 +2904,217 @@ trm_default_printer_ctx(struct ly_out *out, size_t max_line_length, struct trt_p
         .next_yang_data = tro_modi_next_yang_data
     };
 
-    ctx->fp.read = (struct trt_fp_read) {
+    pc->fp.read = (struct trt_fp_read) {
         .module_name = tro_read_module_name,
         .node = tro_read_node,
         .if_sibling_exists = tro_read_if_sibling_exists
     };
 
-    ctx->fp.print = (struct trt_fp_print) {
+    pc->fp.print = (struct trt_fp_print) {
         .print_features_names = tro_print_features_names,
         .print_keys = tro_print_keys
     };
 
-    ctx->max_line_length = max_line_length;
+    pc->max_line_length = max_line_length;
 }
 
 /**
- * @brief Set default settings for trt_tree_ctx.
+ * @brief Printing section 'module', 'rpcs' or 'notifications'.
  *
- * Pointers to current nodes will be set to module data.
+ * First node must be the first child of 'module',
+ * 'rpcs' or 'notifications'.
  *
- * @param[in] module is pointer to the YANG schema tree structures representing YANG module.
- * @param[in,out] tc fill structure with default values.
+ * @param[in] ks is section representation.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
  */
 static void
-trm_default_tree_ctx(const struct lys_module *module, struct trt_tree_ctx *tc)
+trm_print_section_as_family_tree(struct trt_keyword_stmt ks, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    tc->section = TRD_SECT_MODULE;
-    tc->module = module;
-    tc->pn = module->parsed->data;
-    tc->tpn = module->parsed->data;
+    if (TRP_KEYWORD_STMT_IS_EMPTY(ks)) {
+        return;
+    }
+
+    trp_print_keyword_stmt(ks, pc->max_line_length, 0, pc->out);
+    if ((ks.type == TRD_KEYWORD_MODULE) || (ks.type == TRD_KEYWORD_SUBMODULE)) {
+        trb_print_family_tree(TRD_WRAPPER_TOP, pc, tc);
+    } else {
+        trb_print_family_tree(TRD_WRAPPER_BODY, pc, tc);
+    }
+}
+
+/**
+ * @brief Printing section 'augment', 'grouping' or 'yang-data'.
+ *
+ * First node is augment, grouping or yang-data itself.
+ *
+ * @param[in] ks is section representation.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_section_as_subtree(struct trt_keyword_stmt ks, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    ly_bool grp_has_data = 0;
+
+    if (TRP_KEYWORD_STMT_IS_EMPTY(ks)) {
+        return;
+    }
+
+    if (ks.type == TRD_KEYWORD_GROUPING) {
+        grp_has_data = trb_tree_ctx_get_child(tc) ? 1 : 0;
+    }
+
+    trp_print_keyword_stmt(ks, pc->max_line_length, grp_has_data, pc->out);
+    trb_tree_ctx_set_child(tc);
+    trb_print_family_tree(TRD_WRAPPER_BODY, pc, tc);
+}
+
+/**
+ * @brief Print 'module' keyword, its name and all nodes.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_module_section(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    trm_print_section_as_family_tree(pc->fp.read.module_name(tc), pc, tc);
+}
+
+/**
+ * @brief For all augment sections: print 'augment' keyword,
+ * its target node and all nodes.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_augmentations(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    ly_bool once;
+
+    if (!pc->fp.modify.next_augment) {
+        return;
+    }
+
+    once = 1;
+    for (struct trt_keyword_stmt ks = pc->fp.modify.next_augment(tc);
+            !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
+            ks = pc->fp.modify.next_augment(tc)) {
+
+        if (once) {
+            ly_print_(pc->out, "\n");
+            ly_print_(pc->out, "\n");
+            once = 0;
+        } else {
+            ly_print_(pc->out, "\n");
+        }
+
+        trm_print_section_as_subtree(ks, pc, tc);
+    }
+}
+
+/**
+ * @brief For rpcs section: print 'rpcs' keyword and all its nodes.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_rpcs(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    struct trt_keyword_stmt rpc;
+
+    assert(pc->fp.modify.get_rpcs);
+
+    rpc = pc->fp.modify.get_rpcs(tc);
+
+    if (!(TRP_KEYWORD_STMT_IS_EMPTY(rpc))) {
+        ly_print_(pc->out, "\n");
+        ly_print_(pc->out, "\n");
+        trm_print_section_as_family_tree(rpc, pc, tc);
+    }
+}
+
+/**
+ * @brief For notifications section: print 'notifications' keyword
+ * and all its nodes.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_notifications(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    struct trt_keyword_stmt notifs;
+
+    assert(pc->fp.modify.get_notifications);
+
+    notifs = pc->fp.modify.get_notifications(tc);
+
+    if (!(TRP_KEYWORD_STMT_IS_EMPTY(notifs))) {
+        ly_print_(pc->out, "\n");
+        ly_print_(pc->out, "\n");
+        trm_print_section_as_family_tree(notifs, pc, tc);
+    }
+}
+
+/**
+ * @brief For all grouping sections: print 'grouping' keyword, its name
+ * and all nodes.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_groupings(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    ly_bool once;
+
+    if (!pc->fp.modify.next_grouping) {
+        return;
+    }
+
+    once = 1;
+    for (struct trt_keyword_stmt ks = pc->fp.modify.next_grouping(tc);
+            !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
+            ks = pc->fp.modify.next_grouping(tc)) {
+        if (once) {
+            ly_print_(pc->out, "\n");
+            ly_print_(pc->out, "\n");
+            once = 0;
+        } else {
+            ly_print_(pc->out, "\n");
+        }
+        trm_print_section_as_subtree(ks, pc, tc);
+    }
+}
+
+/**
+ * @brief For all yang-data sections: print 'yang-data' keyword
+ * and all its nodes.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_yang_data(struct trt_printer_ctx *UNUSED(pc), struct trt_tree_ctx *UNUSED(tc))
+{
+    /* TODO yang-data is not implemented */
+    return;
+}
+
+/**
+ * @brief Print sections module, augment, rpcs, notifications,
+ * grouping, yang-data.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in,out] tc is the tree context.
+ */
+static void
+trm_print_sections(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    trm_print_module_section(pc, tc);
+    trm_print_augmentations(pc, tc);
+    trm_print_rpcs(pc, tc);
+    trm_print_notifications(pc, tc);
+    trm_print_groupings(pc, tc);
+    trm_print_yang_data(pc, tc);
+    ly_print_(pc->out, "\n");
 }
 
 /******************************************************************************
@@ -3047,19 +3130,21 @@ tree_print_parsed_module(struct ly_out *out, const struct lys_module *module, ui
     LY_ERR erc;
     struct ly_out_clb_arg clb_arg = TRP_INIT_LY_OUT_CLB_ARG(TRD_PRINT, out, 0, LY_SUCCESS);
 
+    LY_CHECK_ARG_RET3(module->ctx, out, module, module->parsed, LY_EINVAL);
+
     if ((erc = ly_out_new_clb(&trp_ly_out_clb_func, &clb_arg, &new_out))) {
         return erc;
     }
 
     line_length = line_length == 0 ? SIZE_MAX : line_length;
-    trm_default_printer_ctx(new_out, line_length, &pc);
-    trm_default_tree_ctx(module, &tc);
+    trm_lysp_tree_ctx(module, new_out, line_length, &pc, &tc);
 
     trm_print_sections(&pc, &tc);
+    erc = clb_arg.last_error;
 
     ly_out_free(new_out, NULL, 1);
 
-    return clb_arg.last_error;
+    return erc;
 }
 
 LY_ERR
