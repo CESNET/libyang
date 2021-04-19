@@ -1890,10 +1890,10 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         /* use the path and modules from the augment */
         strcpy(orig_path, ctx->path);
         ctx->path_len = 1;
-        lysc_update_path(ctx, NULL, "{augment}");
-        lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
         ctx->cur_mod = aug->aug_pmod->mod;
         ctx->pmod = (struct lysp_module *)aug->aug_pmod;
+        lysc_update_path(ctx, NULL, "{augment}");
+        lysc_update_path(ctx, NULL, aug->aug_p->nodeid);
 
         /* apply augment, restore the path */
         ret = lys_compile_augment(ctx, aug->aug_p, node);
