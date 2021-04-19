@@ -578,31 +578,6 @@ LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT fo
 void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath);
 
 /**
- * @brief Load the (sub)module into the context.
- *
- * This function does not check the presence of the (sub)module in context, it should be done before calling this function.
- *
- * module_name and submodule_name are alternatives - only one of the
- *
- * @param[in] ctx libyang context where to work.
- * @param[in] name Name of the (sub)module to load.
- * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
- * @param[in] features Array of enabled features ended with NULL.
- * @param[in] need_implemented Whether the (sub)module is needed implemented or not.
- * @param[in] main_ctx Parser context of the main module in case of loading submodule.
- * @param[in] main_name Main module name in case of loading submodule.
- * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
- * backup and it is actually ok if the input data are not found. However, parser reports errors even in this case.
- * @param[in,out] unres Global unres structure for newly implemented modules.
- * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
- * If it is a module, it is already in the context!
- * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
- */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
-        ly_bool need_implemented, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
-        struct lys_glob_unres *unres, void **result);
-
-/**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
  * (libyang format of the if-feature expression).
  * @param[in] list The 2bits array with the compiled if-feature expression.
