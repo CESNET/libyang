@@ -10,24 +10,10 @@
  * You may obtain a copy of the License at
  *
  *     https://opensource.org/licenses/BSD-3-Clause
- */
-
-#include <assert.h>
-#include <string.h>
-
-#include "common.h"
-#include "compat.h"
-#include "out_internal.h"
-#include "tree_schema_internal.h"
-#include "xpath.h"
-
-struct trt_tree_ctx;
-
-/******************************************************************************
- * Declarations start
- *****************************************************************************/
-
-/*
+ *
+ * @section TRP_DESIGN Design
+ *
+ * @code
  *          +---------+    +---------+    +---------+
  *   output |   trp   |    |   trb   |    |   tro   |
  *      <---+  Print  +<---+  Browse +<-->+  Obtain |
@@ -43,60 +29,94 @@ struct trt_tree_ctx;
  *                              ^
  *                              | input
  *                              +
+ * @endcode
  *
- * Glossary:
- * trt - type
- * trp - functions for Printing
- * trb - functions for Browse the tree
- * tro - functions for Obtaining information from libyang
- * trm - Main functions, Manager
- * trg - General functions
+ * @subsection TRP_GLOSSARY Glossary
  *
- * - Manager functions (trm) are able to print individual sections of the YANG tree diagram
- *   (eg module, notifications, rpcs ...) and they call Browse functions (trb).
- * - Browse functions contain a general algorithm (Preorder DFS) for traversing the tree.
- *   They call the Obtain functions (tro) to get information about the node
- *   or eg to get a sibling or child for the current node.
- *   This obtained information is passed on to the Print functions (trp) for printing.
- *   Gap offsets before the node type are also calculated in the Browse functions.
- * - Print functions (trp) take care of the printing itself.
- *   They can also split one node into multiple lines if the node does not fit on one line.
+ * @subsubsection TRP_trm trm
+ * Manager functions are at the peak of abstraction. They are
+ * able to print individual sections of the YANG tree diagram
+ * (eg module, notifications, rpcs ...) and they call
+ * Browse functions (\ref TRP_trb).
  *
- * For future adjustments:
- *  it is assumed that the changes are likely to take place mainly for tro functions
- *  because they are the only ones dependent on libyang implementation.
- *  In special cases, changes will also need to be made to the trp functions
- *  if a special algorithm is needed to print (right now this is prepared for printing list's keys
- *  and if-features).
+ * @subsubsection TRP_trb trb
+ * Browse functions contain a general algorithm (Preorder DFS)
+ * for traversing the tree. It does not matter what data type
+ * the tree contains (\ref lysp_node), because it
+ * requires a ready-made getter functions for traversing the tree
+ * (\ref trt_fp_all) and transformation function to its own node
+ * data type (\ref trt_node). These getter functions are generally
+ * referred to as \ref TRP_tro. Browse functions can repeatedly
+ * traverse nodes in the tree, for example, to calculate the alignment
+ * gap before the nodes \<type\> in the YANG Tree Diagram.
+ * The obtained \ref trt_node is passed to the \ref TRP_trp functions
+ * to print the Tree diagram.
+ *
+ * @subsubsection TRP_tro tro
+ * Functions that provide an extra wrapper for the libyang library.
+ * The Obtain functions provide information to
+ * \ref TRP_trb functions for printing the Tree diagram.
+ *
+ * @subsubsection TRP_trp trp
+ * Print functions take care of the printing YANG diagram. They can
+ * also split one node into multiple lines if the node does not fit
+ * on one line.
+ *
+ * @subsubsection TRP_trt trt
+ * Data type marking in the printer_tree module.
+ *
+ * @subsubsection TRP_trg trg
+ * General functions.
+ *
+ * @subsection TRP_ADJUSTMENTS Adjustments
+ * It is assumed that the changes are likely to take place mainly for
+ * \ref TRP_tro functions because * they are the only ones dependent
+ * on libyang implementation. In special cases, changes will also need
+ * to be made to the \ref TRP_trp functions if a special algorithm is
+ * needed to print (right now this is prepared for printing list's keys
+ * and if-features).
  */
+
+#include <assert.h>
+#include <string.h>
+
+#include "common.h"
+#include "compat.h"
+#include "out_internal.h"
+#include "tree_schema_internal.h"
+#include "xpath.h"
 
 /**
  * @brief List of available actions.
  */
 typedef enum {
-    TRD_PRINT = 0,
-    TRD_CHAR_COUNT
+    TRD_PRINT = 0,  /**< Normal behavior. It just prints. */
+    TRD_CHAR_COUNT  /**< Characters will be counted instead of printing. */
 } trt_ly_out_clb_arg_flag;
 
 /**
- * @brief Specific argument to be passed to the ly_write_clb.
+ * @brief Structure is passed as 'writeclb' argument
+ * to the ly_out_new_clb().
  */
 struct ly_out_clb_arg {
-    trt_ly_out_clb_arg_flag mode;       /**< flag specifying which action to take. */
-    struct ly_out *out;                 /**< The ly_out pointer delivered to the printer tree module via the main interface. */
-    size_t counter;                     /**< Counter of printed characters. */
-    LY_ERR last_error;                  /**< The last error that occurred. If no error has occurred, it will be LY_SUCCESS. */
+    trt_ly_out_clb_arg_flag mode;   /**< flag specifying which action to take. */
+    struct ly_out *out;             /**< The ly_out pointer delivered to the printer tree module via the main interface. */
+    size_t counter;                 /**< Counter of printed characters. */
+    LY_ERR last_error;              /**< The last error that occurred. If no error has occurred, it will be ::LY_SUCCESS. */
 };
 
 /**
  * @brief Initialize struct ly_out_clb_arg with default settings.
  */
 #define TRP_INIT_LY_OUT_CLB_ARG(MODE, OUT, COUNTER, LAST_ERROR) \
-    (struct ly_out_clb_arg){.mode = MODE, .out = OUT, .counter = COUNTER, .last_error = LAST_ERROR}
+    (struct ly_out_clb_arg) { \
+        .mode = MODE, .out = OUT, \
+        .counter = COUNTER, .last_error = LAST_ERROR \
+    }
 
-/******************************************************************************
+/**********************************************************************
  * Print getters
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Callback functions that prints special cases.
@@ -104,19 +124,18 @@ struct ly_out_clb_arg {
  * It just groups together tree context with trt_fp_print.
  */
 struct trt_cf_print {
-    const struct trt_tree_ctx *ctx;                                 /**< Context of libyang tree. */
-    void (*pf)(const struct trt_tree_ctx *, struct ly_out *);       /**< Pointing to function which printing list's keys or features. */
+    const struct trt_tree_ctx *ctx;                             /**< Context of libyang tree. */
+    void (*pf)(const struct trt_tree_ctx *, struct ly_out *);   /**< Pointing to function which printing list's keys or features. */
 };
 
 /**
  * @brief Callback functions for printing special cases.
  *
- * Functions with the suffix 'trp' can print most of the text on output, just by setting the pointer to the string.
- * But in some cases, it's not that simple, because its entire string is fragmented in memory.
- * For example, for printing list's keys or if-features.
+ * Functions with the suffix 'trp' can print most of the text on
+ * output, just by setting the pointer to the string. But in some
+ * cases, it's not that simple, because its entire string is fragmented
+ * in memory. For example, for printing list's keys or if-features.
  * However, this depends on how the libyang library is implemented.
- * This implementation of the printer_tree module goes through a lysp tree, but if it goes through a lysc tree,
- * these special cases would be different.
  * Functions must print including spaces or delimiters between names.
  */
 struct trt_fp_print {
@@ -136,14 +155,15 @@ struct trt_pck_print {
  * @brief Initialize struct trt_pck_print by parameters.
  */
 #define TRP_INIT_PCK_PRINT(TREE_CTX, FP_PRINT) \
-    (struct trt_pck_print){.tree_ctx = TREE_CTX, .fps = FP_PRINT}
+    (struct trt_pck_print) {.tree_ctx = TREE_CTX, .fps = FP_PRINT}
 
-/******************************************************************************
+/**********************************************************************
  * Indent
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief Constants which are defined in the RFC or are observable from the pyang tool.
+ * @brief Constants which are defined in the RFC or are observable
+ * from the pyang tool.
  */
 typedef enum {
     TRD_INDENT_EMPTY = 0,               /**< If the node is a case node, there is no space before the \<name\>. */
@@ -168,14 +188,15 @@ typedef enum {
 #define TRD_LINEBREAK -1
 
 /**
- * @brief Records the alignment between the individual elements of the node.
+ * @brief Records the alignment between the individual
+ * elements of the node.
  *
- * See trp_indent_in_node_are_eq, trp_indent_in_node_place_break.
+ * @see trp_default_indent_in_node, trp_try_normal_indent_in_node
  */
 struct trt_indent_in_node {
     trt_indent_in_node_type type;   /**< Type of indent in node. */
-    int16_t btw_name_opts;          /**< Indent between node name and opts. */
-    int16_t btw_opts_type;          /**< Indent between opts and type. */
+    int16_t btw_name_opts;          /**< Indent between node name and \<opts\>. */
+    int16_t btw_opts_type;          /**< Indent between \<opts\> and \<type\>. */
     int16_t btw_type_iffeatures;    /**< Indent between type and features. Ignored if \<type\> missing. */
 };
 
@@ -191,11 +212,11 @@ typedef enum {
  * @brief For resolving sibling symbol ('|') placement.
  *
  * Bit indicates where the sibling symbol must be printed.
- * This place is in multiples of TRD_INDENT_BTW_SIBLINGS.
+ * This place is in multiples of ::TRD_INDENT_BTW_SIBLINGS.
  *
- * See: TRP_INIT_WRAPPER_TOP, TRP_INIT_WRAPPER_BODY, trp_wrapper_set_mark,
- * trp_wrapper_set_shift, trp_wrapper_if_last_sibling, trp_wrapper_eq,
- * trp_print_wrapper
+ * @see TRP_INIT_WRAPPER_TOP, TRP_INIT_WRAPPER_BODY,
+ * trp_wrapper_set_mark, trp_wrapper_set_shift,
+ * trp_wrapper_if_last_sibling, trp_wrapper_eq, trp_print_wrapper
  */
 struct trt_wrapper {
     trd_wrapper_type type;  /**< Location of the wrapper. */
@@ -214,10 +235,13 @@ struct trt_wrapper {
  * @endcode
  */
 #define TRP_INIT_WRAPPER_TOP \
-    (struct trt_wrapper) {.type = TRD_WRAPPER_TOP, .actual_pos = 0, .bit_marks1 = 0}
+    (struct trt_wrapper) { \
+        .type = TRD_WRAPPER_TOP, .actual_pos = 0, .bit_marks1 = 0 \
+    }
 
 /**
- * @brief Get wrapper related to subsection e.g. Augmenations or Groupings.
+ * @brief Get wrapper related to subsection
+ * e.g. Augmenations or Groupings.
  *
  * @code
  * module: <module-name>
@@ -228,7 +252,9 @@ struct trt_wrapper {
  * @endcode
  */
 #define TRP_INIT_WRAPPER_BODY \
-    (struct trt_wrapper) {.type = TRD_WRAPPER_BODY, .actual_pos = 0, .bit_marks1 = 0}
+    (struct trt_wrapper) { \
+        .type = TRD_WRAPPER_BODY, .actual_pos = 0, .bit_marks1 = 0 \
+    }
 
 /**
  * @brief Package which only groups wrapper and indent in node.
@@ -242,35 +268,37 @@ struct trt_pck_indent {
  * @brief Initialize struct trt_pck_indent by parameters.
  */
 #define TRP_INIT_PCK_INDENT(WRAPPER, INDENT_IN_NODE) \
-    (struct trt_pck_indent){.wrapper = WRAPPER, .in_node = INDENT_IN_NODE}
+    (struct trt_pck_indent){ \
+        .wrapper = WRAPPER, .in_node = INDENT_IN_NODE \
+    }
 
-/******************************************************************************
+/**********************************************************************
  * status
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Status of the node.
  *
- * See: trp_print_status
+ * @see trp_print_status
  */
 typedef enum {
     TRD_STATUS_TYPE_EMPTY = 0,
-    TRD_STATUS_TYPE_CURRENT,
-    TRD_STATUS_TYPE_DEPRECATED,
-    TRD_STATUS_TYPE_OBSOLETE
+    TRD_STATUS_TYPE_CURRENT,    /**< ::LYS_STATUS_CURR */
+    TRD_STATUS_TYPE_DEPRECATED, /**< ::LYS_STATUS_DEPRC */
+    TRD_STATUS_TYPE_OBSOLETE    /**< ::LYS_STATUS_OBSLT */
 } trt_status_type;
 
-/******************************************************************************
+/**********************************************************************
  * flags
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Flag of the node.
  *
- * See: trp_print_flags, trp_get_flags_strlen
+ * @see trp_print_flags, trp_get_flags_strlen
  */
 typedef enum {
-    TRD_FLAGS_TYPE_EMPTY = 0,
+    TRD_FLAGS_TYPE_EMPTY = 0,           /**< -- */
     TRD_FLAGS_TYPE_RW,                  /**< rw */
     TRD_FLAGS_TYPE_RO,                  /**< ro */
     TRD_FLAGS_TYPE_RPC_INPUT_PARAMS,    /**< -w */
@@ -280,9 +308,9 @@ typedef enum {
     TRD_FLAGS_TYPE_MOUNT_POINT          /**< mp */
 } trt_flags_type;
 
-/******************************************************************************
+/**********************************************************************
  * node_name and opts
- *****************************************************************************/
+ *********************************************************************/
 
 #define TRD_NODE_NAME_PREFIX_CHOICE "("
 #define TRD_NODE_NAME_PREFIX_CASE ":("
@@ -291,26 +319,27 @@ typedef enum {
 /**
  * @brief Type of the node.
  *
- * Used mainly to complete the correct \<opts\> next to or around the \<name\>.
+ * Used mainly to complete the correct \<opts\> next to or
+ * around the \<name\>.
  */
 typedef enum {
-    TRD_NODE_ELSE = 0,              /**< For some node which does not require special treatment. \<name\> */
-    TRD_NODE_CASE,                  /**< For case node. :(\<name\>) */
-    TRD_NODE_CHOICE,                /**< For choice node. (\<name\>) */
-    TRD_NODE_OPTIONAL_CHOICE,       /**< For choice node with optional mark. (\<name\>)? */
-    TRD_NODE_OPTIONAL,              /**< For an optional leaf, anydata, or anyxml. \<name\>? */
-    TRD_NODE_CONTAINER,             /**< For a presence container. \<name\>! */
-    TRD_NODE_LISTLEAFLIST,          /**< For a leaf-list or list (without keys). \<name\>* */
-    TRD_NODE_KEYS,                  /**< For a list's keys. \<name\>* [\<keys\>] */
-    TRD_NODE_TOP_LEVEL1,            /**< For a top-level data node in a mounted module. \<name\>/ */
-    TRD_NODE_TOP_LEVEL2,            /**< For a top-level data node of a module identified in a mount point parent reference. \<name\>@ */
-    TRD_NODE_TRIPLE_DOT             /**< For collapsed sibling nodes and their children. Special case which doesn't belong here very well. */
+    TRD_NODE_ELSE = 0,          /**< For some node which does not require special treatment. \<name\> */
+    TRD_NODE_CASE,              /**< For case node. :(\<name\>) */
+    TRD_NODE_CHOICE,            /**< For choice node. (\<name\>) */
+    TRD_NODE_OPTIONAL_CHOICE,   /**< For choice node with optional mark. (\<name\>)? */
+    TRD_NODE_OPTIONAL,          /**< For an optional leaf, anydata, or anyxml. \<name\>? */
+    TRD_NODE_CONTAINER,         /**< For a presence container. \<name\>! */
+    TRD_NODE_LISTLEAFLIST,      /**< For a leaf-list or list (without keys). \<name\>* */
+    TRD_NODE_KEYS,              /**< For a list's keys. \<name\>* [\<keys\>] */
+    TRD_NODE_TOP_LEVEL1,        /**< For a top-level data node in a mounted module. \<name\>/ */
+    TRD_NODE_TOP_LEVEL2,        /**< For a top-level data node of a module identified in a mount point parent reference. \<name\>@ */
+    TRD_NODE_TRIPLE_DOT         /**< For collapsed sibling nodes and their children. Special case which doesn't belong here very well. */
 } trt_node_type;
 
 /**
  * @brief Type of node and his name.
  *
- * See: TRP_EMPTY_NODE_NAME, TRP_NODE_NAME_IS_EMPTY,
+ * @see TRP_EMPTY_NODE_NAME, TRP_NODE_NAME_IS_EMPTY,
  * trp_print_node_name, trp_mark_is_used, trp_print_opts_keys
  */
 struct trt_node_name {
@@ -323,7 +352,9 @@ struct trt_node_name {
  * @brief Create struct trt_node_name as empty.
  */
 #define TRP_EMPTY_NODE_NAME \
-    (struct trt_node_name){.type = TRD_NODE_ELSE, .module_prefix = NULL, .str = NULL}
+    (struct trt_node_name) { \
+        .type = TRD_NODE_ELSE, .module_prefix = NULL, .str = NULL \
+    }
 
 /**
  * @brief Check if struct trt_node_name is empty.
@@ -331,12 +362,15 @@ struct trt_node_name {
 #define TRP_NODE_NAME_IS_EMPTY(NODE_NAME) \
     !NODE_NAME.str
 
-/**< Every opts mark has a length of one. */
+/**
+ * @brief Every \<opts\> mark except string of list's keys
+ * has a length of one.
+ */
 #define TRD_OPTS_MARK_LENGTH 1
 
-/******************************************************************************
+/**********************************************************************
  * type
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Type of the \<type\>
@@ -344,14 +378,15 @@ struct trt_node_name {
 typedef enum {
     TRD_TYPE_NAME = 0,  /**< Type is just a name that does not require special treatment. */
     TRD_TYPE_TARGET,    /**< Should have a form "-> TARGET", where TARGET is the leafref path. */
-    TRD_TYPE_LEAFREF,   /**< This type is set automatically by the 'trp' algorithm. So set type as TRD_TYPE_TARGET. */
+    TRD_TYPE_LEAFREF,   /**< This type is set automatically by the 'trp' algorithm.
+                             So set type as ::TRD_TYPE_TARGET. */
     TRD_TYPE_EMPTY      /**< Type is not used at all. */
 } trt_type_type;
 
 /**
  * @brief \<type\> in the \<node\>.
  *
- * See: TRP_EMPTY_TRT_TYPE, TRP_TRT_TYPE_IS_EMPTY, trp_print_type
+ * @see TRP_EMPTY_TRT_TYPE, TRP_TRT_TYPE_IS_EMPTY, trp_print_type
  */
 struct trt_type {
     trt_type_type type; /**< Type of the \<type\>. */
@@ -376,35 +411,45 @@ struct trt_type {
 #define TRP_INIT_TRT_TYPE(TYPE_OF_TYPE, STRING) \
     (struct trt_type) {.type = TYPE_OF_TYPE, .str = STRING}
 
-/******************************************************************************
+/**********************************************************************
  * node
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief \<node\> data for printing.
  *
- * It contains RFC's: \<status\>--\<flags\> \<name\>\<opts\> \<type\> \<if-features\>.
+ * It contains RFC's:
+ * \<status\>--\<flags\> \<name\>\<opts\> \<type\> \<if-features\>.
  * Item \<opts\> is moved to part struct trt_node_name.
- * For printing [\<keys\>] and if-features is required special functions which prints them.
+ * For printing [\<keys\>] and if-features is required special
+ * functions which prints them.
  *
- * See: TRP_EMPTY_NODE, trp_node_is_empty, trp_node_body_is_empty, trp_print_node_up_to_name,
- * trp_print_divided_node_up_to_name, trp_print_node
+ * @see TRP_EMPTY_NODE, trp_node_is_empty, trp_node_body_is_empty,
+ * trp_print_node_up_to_name, trp_print_divided_node_up_to_name,
+ * trp_print_node
  */
 struct trt_node {
-    trt_status_type status;             /**< \<status\>. */
-    trt_flags_type flags;               /**< \<flags\>. */
-    struct trt_node_name name;          /**< \<node\> with \<opts\> mark or [\<keys\>]. */
-    struct trt_type type;               /**< \<type\> contains the name of the type or type for leafref. */
-    ly_bool iffeatures;                 /**< \<if-features\>. Value 1 means that iffeatures are present and will be printed by print_features_names callback. */
-    ly_bool last_one;                   /**< Information about whether the node is the last. */
+    trt_status_type status;     /**< \<status\>. */
+    trt_flags_type flags;       /**< \<flags\>. */
+    struct trt_node_name name;  /**< \<node\> with \<opts\> mark or [\<keys\>]. */
+    struct trt_type type;       /**< \<type\> contains the name of the type or type for leafref. */
+    ly_bool iffeatures;         /**< \<if-features\>. Value 1 means that iffeatures are present and
+                                     will be printed by trt_fp_print.print_features_names callback. */
+    ly_bool last_one;           /**< Information about whether the node is the last. */
 };
 
 /**
  * @brief Create struct trt_node as empty.
  */
 #define TRP_EMPTY_NODE \
-    (struct trt_node) {.status = TRD_STATUS_TYPE_EMPTY, .flags = TRD_FLAGS_TYPE_EMPTY, \
-        .name = TRP_EMPTY_NODE_NAME, .type = TRP_EMPTY_TRT_TYPE, .iffeatures = 0, .last_one = 1}
+    (struct trt_node) { \
+        .status = TRD_STATUS_TYPE_EMPTY, \
+        .flags = TRD_FLAGS_TYPE_EMPTY, \
+        .name = TRP_EMPTY_NODE_NAME, \
+        .type = TRP_EMPTY_TRT_TYPE, \
+        .iffeatures = 0, \
+        .last_one = 1 \
+    }
 
 /**
  * @brief Package which only groups indent and node.
@@ -418,11 +463,13 @@ struct trt_pair_indent_node {
  * @brief Initialize struct trt_pair_indent_node by parameters.
  */
 #define TRP_INIT_PAIR_INDENT_NODE(INDENT_IN_NODE, NODE) \
-    (struct trt_pair_indent_node){.indent = INDENT_IN_NODE, .node = NODE}
+    (struct trt_pair_indent_node) { \
+        .indent = INDENT_IN_NODE, .node = NODE \
+    }
 
-/******************************************************************************
+/**********************************************************************
  * statement
- *****************************************************************************/
+ *********************************************************************/
 
 #define TRD_TOP_KEYWORD_MODULE "module"
 #define TRD_TOP_KEYWORD_SUBMODULE "submodule"
@@ -450,15 +497,15 @@ typedef enum {
 /**
  * @brief Main sign of the tree nodes.
  *
- * See: TRP_EMPTY_KEYWORD_STMT, TRP_KEYWORD_STMT_IS_EMPTY
+ * @see TRP_EMPTY_KEYWORD_STMT, TRP_KEYWORD_STMT_IS_EMPTY
  * trt_print_keyword_stmt_begin, trt_print_keyword_stmt_str,
  * trt_print_keyword_stmt_end, trp_print_keyword_stmt
  * trp_keyword_type_strlen
  *
  */
 struct trt_keyword_stmt {
-    trt_keyword_type type;      /**< String containing some of the top or body keyword. */
-    const char *str;            /**< Name or path, it determines the type. */
+    trt_keyword_type type;  /**< String containing some of the top or body keyword. */
+    const char *str;        /**< Name or path, it determines the type. */
 };
 
 /**
@@ -479,21 +526,22 @@ struct trt_keyword_stmt {
 #define TRP_INIT_KEYWORD_STMT(KEYWORD_TYPE, STRING) \
     (struct trt_keyword_stmt) {.type = KEYWORD_TYPE, .str = STRING}
 
-/******************************************************************************
+/**********************************************************************
  * Modify getters
- *****************************************************************************/
+ *********************************************************************/
 
 struct trt_parent_cache;
 
 /**
  * @brief Functions that change the state of the tree_ctx structure.
  *
- * The 'tro' functions are set here, which provide data for the 'trp' printing functions
- * and are also called from the 'trb' browsing functions when walking through a tree.
- * These callback functions need to be checked or reformulated
- * if changes to the libyang library affect the printing tree.
- * For all, if the value cannot be returned,
- * its empty version obtained by relevant TRP_EMPTY macro is returned.
+ * The tro functions are set here, which provide data
+ * for the 'trp' printing functions and are also called from the
+ * 'trb' browsing functions when walking through a tree. These callback
+ * functions need to be checked or reformulated if changes to the
+ * libyang library affect the printing tree. For all, if the value
+ * cannot be returned, its empty version obtained by relevant TRP_EMPTY
+ * macro is returned.
  */
 struct trt_fp_modify_ctx {
     ly_bool (*parent)(struct trt_tree_ctx *);                                           /**< Jump to parent node. Return true if parent exists. */
@@ -507,9 +555,9 @@ struct trt_fp_modify_ctx {
     struct trt_keyword_stmt (*next_yang_data)(struct trt_tree_ctx *);                   /**< Jump to the yang-data section. */
 };
 
-/******************************************************************************
+/**********************************************************************
  * Read getters
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Functions that do not change the state of the tree_structure.
@@ -517,17 +565,18 @@ struct trt_fp_modify_ctx {
  * For details see trt_fp_modify_ctx.
  */
 struct trt_fp_read {
-    struct trt_keyword_stmt (*module_name)(const struct trt_tree_ctx *);                        /**< Get name of the module. */
-    struct trt_node (*node)(struct trt_parent_cache, const struct trt_tree_ctx *);              /**< Get current node. */
-    ly_bool (*if_sibling_exists)(const struct trt_tree_ctx *);  /**< Check if node's sibling exists. */
+    struct trt_keyword_stmt (*module_name)(const struct trt_tree_ctx *);            /**< Get name of the module. */
+    struct trt_node (*node)(struct trt_parent_cache, const struct trt_tree_ctx *);  /**< Get current node. */
+    ly_bool (*if_sibling_exists)(const struct trt_tree_ctx *);                      /**< Check if node's sibling exists. */
 };
 
-/******************************************************************************
+/**********************************************************************
  * All getters
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief A set of all necessary functions that must be provided for the printer.
+ * @brief A set of all necessary functions that must be provided
+ * for the printer.
  */
 struct trt_fp_all {
     struct trt_fp_modify_ctx modify;    /**< Function pointers which modify state of trt_tree_ctx. */
@@ -535,23 +584,23 @@ struct trt_fp_all {
     struct trt_fp_print print;          /**< Functions pointers for printing special items in node. */
 };
 
-/******************************************************************************
+/**********************************************************************
  * Printer context
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief Main structure for trp component (printer part).
+ * @brief Main structure for \ref TRP_trp part.
  */
 struct trt_printer_ctx {
     struct ly_out *out;     /**< Handler to printing. */
-    struct trt_fp_all fp;   /**< 'tro' functions callbacks. */
+    struct trt_fp_all fp;   /**< \ref TRP_tro functions callbacks. */
     size_t max_line_length; /**< The maximum number of characters that can be
                                printed on one line, including the last. */
 };
 
-/******************************************************************************
+/**********************************************************************
  * Tro functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief The name of the section to which the node belongs.
@@ -569,45 +618,52 @@ typedef enum {
  * @brief Types of nodes that have some effect on their children.
  */
 typedef enum {
-    TRD_ANCESTOR_ELSE = 0,
-    TRD_ANCESTOR_RPC_INPUT,
-    TRD_ANCESTOR_RPC_OUTPUT,
-    TRD_ANCESTOR_NOTIF
+    TRD_ANCESTOR_ELSE = 0,      /**< Everything not listed. */
+    TRD_ANCESTOR_RPC_INPUT,     /**< ::LYS_INPUT */
+    TRD_ANCESTOR_RPC_OUTPUT,    /**< ::LYS_OUTPUT */
+    TRD_ANCESTOR_NOTIF          /**< ::LYS_NOTIF */
 } trt_ancestor_type;
 
 /**
  * @brief Saved information when browsing the tree downwards.
  *
- * This structure helps prevent frequent retrieval of information from the tree.
- * Browsing functions (trb) are designed to preserve this structures during their recursive calls.
- * Browsing functions (trb) do not interfere in any way with this data.
- * This structure is used by Obtaining functions (tro) which, thanks to this structure, can return a node with the correct data.
- * The word parent is in the name, because this data refers to the last parent and at the same time the states of its ancestors data.
- * Only the function jumping on the child (next_child(...)) creates this structure,
- * because the pointer to the current node moves down the tree.
- * It's like passing the genetic code to children.
- * Some data must be inherited and there are two approaches to this problem.
- * Either it will always be determined which inheritance states belong to the current node
- * (which can lead to regular travel to the root node) or the inheritance states will be stored during the recursive calls.
- * So the problem was solved by the second option.
- * Why does the structure contain this data? Because it walks through the lysp tree.
- * In the future, this data may change if another type of tree (such as the lysc tree) is traversed.
+ * This structure helps prevent frequent retrieval of information
+ * from the tree. Functions \ref TRP_trb are designed to preserve
+ * this structures during their recursive calls. This functions do not
+ * interfere in any way with this data. This structure
+ * is used by \ref TRP_tro functions which, thanks to this
+ * structure, can return a node with the correct data. The word
+ * \b parent is in the structure name, because this data refers to
+ * the last parent and at the same time the states of its
+ * ancestors data. Only the function jumping on the child
+ * (next_child(...)) creates this structure, because the pointer
+ * to the current node moves down the tree. It's like passing
+ * the genetic code to children. Some data must be inherited and
+ * there are two approaches to this problem. Either it will always
+ * be determined which inheritance states belong to the current node
+ * (which can lead to regular travel to the root node) or
+ * the inheritance states will be stored during the recursive calls.
+ * So the problem was solved by the second option. Why does
+ * the structure contain this data? Because it walks through
+ * the lysp tree.
  *
- * See: TRO_EMPTY_PARENT_CACHE, tro_parent_cache_for_child
+ * @see TRO_EMPTY_PARENT_CACHE, tro_parent_cache_for_child
  */
 struct trt_parent_cache {
-    trt_ancestor_type ancestor;             /**< Some types of nodes have a special effect on their children. */
-    uint16_t lys_status;                    /**< Inherited status CURR, DEPRC, OBSLT. */
-    uint16_t lys_config;                    /**< Inherited config W or R. */
-    const struct lysp_node_list *last_list; /**< The last LYS_LIST passed. */
+    trt_ancestor_type ancestor; /**< Some types of nodes have a special effect on their children. */
+    uint16_t lys_status;        /**< Inherited status CURR, DEPRC, OBSLT. */
+    uint16_t lys_config;        /**< Inherited config W or R. */
+    const struct lysp_node_list *last_list; /**< The last ::LYS_LIST passed. */
 };
 
 /**
  * @brief Return trt_parent_cache filled with default values.
  */
 #define TRP_EMPTY_PARENT_CACHE \
-    (struct trt_parent_cache) {.ancestor = TRD_ANCESTOR_ELSE, .lys_status = LYS_STATUS_CURR, \
-        .lys_config = LYS_CONFIG_W, .last_list = NULL}
+    (struct trt_parent_cache) { \
+        .ancestor = TRD_ANCESTOR_ELSE, .lys_status = LYS_STATUS_CURR, \
+        .lys_config = LYS_CONFIG_W, .last_list = NULL \
+    }
 
 /**
  * @brief Main structure for browsing the libyang tree
@@ -633,12 +689,12 @@ struct trt_tree_ctx_node_patch {
 #define TRP_INIT_TREE_CTX_NODE_PATCH(PN, TPN) \
     (struct trt_tree_ctx_node_patch){.pn = PN, .tpn = TPN}
 
-/** Getter function for tro_lysp_node_charptr function. */
+/** Getter function for tro_lysp_node_charptr(). */
 typedef const char *(*trt_get_charptr_func)(const struct lysp_node *pn);
 
-/******************************************************************************
+/**********************************************************************
  * Definition of the general Trg functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Print a substring but limited to the maximum length.
@@ -669,11 +725,12 @@ trg_charptr_has_data(const char *str)
 }
 
 /**
- * @brief Check if 'word' in 'src' is present where words are delimited by 'delim'.
- * @param[in] src is source where words are separated by delim.
+ * @brief Check if @p word in @p src is present where words are
+ * delimited by @p delim.
+ * @param[in] src is source where words are separated by @p delim.
  * @param[in] word to be searched.
- * @param[in] delim is delimiter between words in src.
- * @return 1 if src contains word otherwise 0.
+ * @param[in] delim is delimiter between @p words in @p src.
+ * @return 1 if src contains @p word otherwise 0.
  */
 static ly_bool
 trg_word_is_present(const char *src, const char *word, char delim)
@@ -711,14 +768,14 @@ trg_word_is_present(const char *src, const char *word, char delim)
     }
 }
 
-/******************************************************************************
+/**********************************************************************
  * Definition of printer functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief Write callback for ly_out_new_clb function.
+ * @brief Write callback for ly_out_new_clb().
  *
- * @param[in] user_data is type of struct ly_out_clb_arg*.
+ * @param[in] user_data is type of struct ly_out_clb_arg.
  * @param[in] buf contains input characters
  * @param[in] count is number of characters in buf.
  * @return Number of printed bytes.
@@ -767,8 +824,9 @@ trp_indent_in_node_are_eq(struct trt_indent_in_node first, struct trt_indent_in_
 }
 
 /**
- * @brief Setting ' ' symbol because node is last sibling.
- * @param[in] wr is wrapper over which the shift operation is to be performed.
+ * @brief Setting space character because node is last sibling.
+ * @param[in] wr is wrapper over which the shift operation
+ * is to be performed.
  * @return New shifted wrapper.
  */
 static struct trt_wrapper
@@ -783,7 +841,8 @@ trp_wrapper_set_shift(struct trt_wrapper wr)
 }
 
 /**
- * @brief Setting '|' symbol because node is divided or it is not last sibling.
+ * @brief Setting '|' symbol because node is divided or
+ * it is not last sibling.
  * @param[in] wr is source of wrapper.
  * @return New wrapper which is marked at actual position and shifted.
  */
@@ -798,7 +857,8 @@ trp_wrapper_set_mark(struct trt_wrapper wr)
 /**
  * @brief Setting ' ' symbol if node is last sibling otherwise set '|'.
  * @param[in] wr is actual wrapper.
- * @param[in] last_one is flag. Value 1 saying if the node is the last and has no more siblings.
+ * @param[in] last_one is flag. Value 1 saying if the node is the last
+ * and has no more siblings.
  * @return New wrapper for the actual node.
  */
 static struct trt_wrapper
@@ -879,9 +939,11 @@ trp_node_is_empty(struct trt_node node)
 }
 
 /**
- * @brief Check if [\<keys\>], \<type\> and \<iffeatures\> are empty/not_set.
+ * @brief Check if [\<keys\>], \<type\> and
+ * \<iffeatures\> are empty/not_set.
  * @param[in] node is item to test.
- * @return 1 if node has no \<keys\> \<type\> or \<iffeatures\> otherwise 0.
+ * @return 1 if node has no \<keys\> \<type\> or \<iffeatures\>
+ * otherwise 0.
  */
 static ly_bool
 trp_node_body_is_empty(struct trt_node node)
@@ -1033,7 +1095,8 @@ trp_print_node_name(struct trt_node_name node_name, struct ly_out *out)
 }
 
 /**
- * @brief Check if mark (?, !, *, /, @) is implicitly contained in struct trt_node_name.
+ * @brief Check if mark (?, !, *, /, @) is implicitly contained in
+ * struct trt_node_name.
  * @param[in] node_name is structure containing the 'mark'.
  * @return 1 if contain otherwise 0.
  */
@@ -1058,7 +1121,8 @@ trp_mark_is_used(struct trt_node_name node_name)
  * @brief Print opts keys.
  * @param[in] node_name contains type of the node with his name.
  * @param[in] btw_name_opts is number of spaces between name and [keys].
- * @param[in] cf is basically a pointer to the function that prints the keys.
+ * @param[in] cf is basically a pointer to the function that prints
+ * the keys.
  * @param[in,out] out is output handler.
  */
 static void
@@ -1107,7 +1171,8 @@ trp_print_type(struct trt_type type, struct ly_out *out)
  * @brief Print all iffeatures of node
  *
  * @param[in] iffeature_flag contains if if-features is present.
- * @param[in] cf is basically a pointer to the function that prints the list of features.
+ * @param[in] cf is basically a pointer to the function that prints
+ * the list of features.
  * @param[in,out] out is output handler.
  */
 static void
@@ -1135,8 +1200,9 @@ trp_print_node_up_to_name(struct trt_node node, struct ly_out *out)
     /* <status>--<flags> */
     trp_print_status(node.status, out);
     ly_print_(out, "--");
-    /* If the node is a case node, there is no space before the <name> */
-    /* also case node has no flags. */
+    /* If the node is a case node, there is no space before the <name>
+     * also case node has no flags.
+     */
     if (node.name.type != TRD_NODE_CASE) {
         trp_print_flags(node.flags, out);
         ly_print_(out, " ");
@@ -1146,7 +1212,8 @@ trp_print_node_up_to_name(struct trt_node node, struct ly_out *out)
 }
 
 /**
- * @brief Print alignment (spaces) instead of \<status\>--\<flags\> \<name\> for divided node.
+ * @brief Print alignment (spaces) instead of
+ * \<status\>--\<flags\> \<name\> for divided node.
  * @param[in] node contains items to print.
  * @param[in] out is output handler.
  */
@@ -1177,7 +1244,8 @@ trp_print_divided_node_up_to_name(struct trt_node node, struct ly_out *out)
 /**
  * @brief Print struct trt_node structure.
  * @param[in] node is item to print.
- * @param[in] pck package of functions for printing [\<keys\>] and \<iffeatures\>.
+ * @param[in] pck package of functions for
+ * printing [\<keys\>] and \<iffeatures\>.
  * @param[in] indent is the indent in node.
  * @param[in,out] out is output handler.
  */
@@ -1234,7 +1302,7 @@ trp_print_node(struct trt_node node, struct trt_pck_print pck, struct trt_indent
 }
 
 /**
- * @brief Print .keyword based on .type.
+ * @brief Print keyword based on trt_keyword_stmt.type.
  * @param[in] ks is keyword statement to print.
  * @param[in,out] out is output handler
  */
@@ -1302,7 +1370,7 @@ trp_keyword_type_strlen(trt_keyword_type type)
 }
 
 /**
- * @brief Print .str which is string of name or path.
+ * @brief Print trt_keyword_stmt.str which is string of name or path.
  * @param[in] ks is keyword statement structure.
  * @param[in] mll is max line length.
  * @param[in,out] out is output handler.
@@ -1367,7 +1435,9 @@ trt_print_keyword_stmt_str(struct trt_keyword_stmt ks, size_t mll, struct ly_out
         } else {
             /* printing on new line */
             if (subpath_printed == 0) {
-                /* first subpath is too long but print it at first line anyway */
+                /* first subpath is too long
+                 * but print it at first line anyway
+                 */
                 sub_ptr = trg_print_substr(sub_ptr, sub_len, out);
                 subpath_printed = 1;
                 continue;
@@ -1383,7 +1453,7 @@ trt_print_keyword_stmt_str(struct trt_keyword_stmt ks, size_t mll, struct ly_out
 }
 
 /**
- * @brief Print separator based on .type.
+ * @brief Print separator based on trt_keyword_stmt.type
  * @param[in] ks is keyword statement structure.
  * @param[in] grp_has_data is flag only for grouping section.
  * Set to 1 if grouping section has some nodes.
@@ -1412,7 +1482,7 @@ trt_print_keyword_stmt_end(struct trt_keyword_stmt ks, ly_bool grp_has_data, str
  * @param[in,out] out is output handler.
  */
 static void
-trp_print_keyword_stmt(struct trt_keyword_stmt ks, size_t mll,  ly_bool grp_has_data, struct ly_out *out)
+trp_print_keyword_stmt(struct trt_keyword_stmt ks, size_t mll, ly_bool grp_has_data, struct ly_out *out)
 {
     if (TRP_KEYWORD_STMT_IS_EMPTY(ks)) {
         return;
@@ -1422,12 +1492,13 @@ trp_print_keyword_stmt(struct trt_keyword_stmt ks, size_t mll,  ly_bool grp_has_
     trt_print_keyword_stmt_end(ks, grp_has_data, out);
 }
 
-/******************************************************************************
+/**********************************************************************
  * Main trp functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief Printing one line including wrapper and node which can be incomplete (divided).
+ * @brief Printing one line including wrapper and node
+ * which can be incomplete (divided).
  * @param[in] node is \<node\> representation.
  * @param[in] pck contains special printing functions callback.
  * @param[in] indent contains wrapper and indent in node numbers.
@@ -1441,7 +1512,8 @@ trp_print_line(struct trt_node node, struct trt_pck_print pck, struct trt_pck_in
 }
 
 /**
- * @brief Printing one line including wrapper and \<status\>--\<flags\> \<name\>\<option_mark\>.
+ * @brief Printing one line including wrapper and
+ * \<status\>--\<flags\> \<name\>\<option_mark\>.
  * @param[in] node is \<node\> representation.
  * @param[in] wr is wrapper for printing indentation before node.
  * @param[in] out is output handler.
@@ -1454,7 +1526,8 @@ trp_print_line_up_to_node_name(struct trt_node node, struct trt_wrapper wr, stru
 }
 
 /**
- * @brief Check if leafref target must be change to string 'leafref' because his target string is too long.
+ * @brief Check if leafref target must be change to string 'leafref'
+ * because his target string is too long.
  * @param[in] node containing leafref target.
  * @param[in] wr is wrapper for printing indentation before node.
  * @param[in] mll is max line length.
@@ -1487,7 +1560,8 @@ trp_leafref_target_is_too_long(struct trt_node node, struct trt_wrapper wr, size
 /**
  * @brief Get default indent in node based on node values.
  * @param[in] node is \<node\> representation.
- * @return Default indent in node assuming that the node will not be divided.
+ * @return Default indent in node assuming that the node
+ * will not be divided.
  */
 static struct trt_indent_in_node
 trp_default_indent_in_node(struct trt_node node)
@@ -1519,9 +1593,11 @@ trp_default_indent_in_node(struct trt_node node)
  *
  * The order where the linebreak tag can be placed is from the end.
  *
- * @param[in] indent containing alignment lengths or already linebreak marks.
+ * @param[in] indent containing alignment lengths
+ * or already linebreak marks.
  * @return indent with a newly placed linebreak tag.
- * @return .type set to TRD_INDENT_IN_NODE_FAILED if it is not possible to place a more linebreaks.
+ * @return .type set to TRD_INDENT_IN_NODE_FAILED if it is not possible
+ * to place a more linebreaks.
  */
 static struct trt_indent_in_node
 trp_indent_in_node_place_break(struct trt_indent_in_node indent)
@@ -1552,7 +1628,8 @@ trp_indent_in_node_place_break(struct trt_indent_in_node indent)
  * Items in the second half of the node will be empty.
  *
  * @param[in] node the whole \<node\> to be split.
- * @param[in] indent contains information in which part of the \<node\> the first half ends.
+ * @param[in] indent contains information in which part of the \<node\>
+ * the first half ends.
  * @return first half of the node, indent is unchanged.
  */
 static struct trt_pair_indent_node
@@ -1581,7 +1658,8 @@ trp_first_half_node(struct trt_node node, struct trt_indent_in_node indent)
  * Indentations belonging to the first node will be reset to zero.
  *
  * @param[in] node the whole \<node\> to be split.
- * @param[in] indent contains information in which part of the \<node\> the second half starts.
+ * @param[in] indent contains information in which part of the \<node\>
+ * the second half starts.
  * @return second half of the node, indent is newly set.
  */
 static struct trt_pair_indent_node
@@ -1590,9 +1668,9 @@ trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
     struct trt_pair_indent_node ret = TRP_INIT_PAIR_INDENT_NODE(indent, node);
 
     if (indent.btw_name_opts < 0) {
-        /* Logically, the information up to token <opts> should be deleted,
-         * but the the trp_print_node function needs it to create
-         * the correct indent.
+        /* Logically, the information up to token <opts> should
+         * be deleted, but the the trp_print_node function needs it to
+         * create the correct indent.
          */
         ret.indent.btw_name_opts = 0;
         ret.indent.btw_opts_type = TRP_TRT_TYPE_IS_EMPTY(node.type) ? 0 : TRD_INDENT_BEFORE_TYPE;
@@ -1615,8 +1693,8 @@ trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
 /**
  * @brief Get the correct alignment for the node.
  *
- * This function is recursively called itself.
- * It's like a backend function for a function trp_try_normal_indent_in_node.
+ * This function is recursively called itself. It's like a backend
+ * function for a function trp_try_normal_indent_in_node().
  *
  * @param[in] node is \<node\> representation.
  * @param[in] pck contains speciall callback functions for printing.
@@ -1660,9 +1738,13 @@ trp_try_normal_indent_in_node_(struct trt_node node, struct trt_pck_print pck, s
  * @param[in] indent contains wrapper and indent in node numbers.
  * @param[in] mll is max line length.
  * @param[in,out] out is output handler.
- * @return .type == TRD_INDENT_IN_NODE_DIVIDED - the node does not fit in the line, some indent variable has negative value as a line break sign.
- * @return .type == TRD_INDENT_IN_NODE_NORMAL - the node fits into the line, all indent variables values has non-negative number.
- * @return .type == TRD_INDENT_IN_NODE_FAILED - the node does not fit into the line, all indent variables has negative or zero values, function failed.
+ * @return ::TRD_INDENT_IN_NODE_DIVIDED - the node does not fit in the
+ * line, some indent variable has negative value as a line break sign.
+ * @return ::TRD_INDENT_IN_NODE_NORMAL - the node fits into the line,
+ * all indent variables values has non-negative number.
+ * @return ::TRD_INDENT_IN_NODE_FAILED - the node does not fit into the
+ * line, all indent variables has negative or zero values,
+ * function failed.
  */
 static struct trt_pair_indent_node
 trp_try_normal_indent_in_node(struct trt_node node, struct trt_pck_print pck, struct trt_pck_indent indent, size_t mll, struct ly_out *out)
@@ -1682,7 +1764,8 @@ trp_try_normal_indent_in_node(struct trt_node node, struct trt_pck_print pck, st
 }
 
 /**
- * @brief Auxiliary function for trp_print_entire_node that prints split nodes.
+ * @brief Auxiliary function for trp_print_entire_node()
+ * that prints split nodes.
  * @param[in] node is node representation.
  * @param[in] ppck contains speciall callback functions for printing.
  * @param[in] ipck contains wrapper and indent in node numbers.
@@ -1715,7 +1798,8 @@ trp_print_divided_node(struct trt_node node, struct trt_pck_print ppck, struct t
 }
 
 /**
- * @brief Printing of the wrapper and the whole node, which can be divided into several lines.
+ * @brief Printing of the wrapper and the whole node,
+ * which can be divided into several lines.
  * @param[in] node is node representation.
  * @param[in] ppck contains speciall callback functions for printing.
  * @param[in] ipck contains wrapper and indent in node numbers.
@@ -1773,14 +1857,15 @@ trp_print_entire_node(struct trt_node node, struct trt_pck_print ppck, struct tr
     }
 }
 
-/******************************************************************************
+/**********************************************************************
  * Definition of Tro reading functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief Get new trt_parent_cache if we apply the transfer to the child node in the tree.
+ * @brief Get new trt_parent_cache if we apply the transfer
+ * to the child node in the tree.
  * @param[in] ca is parent cache for current node.
- * @param[in] pn is pointer to the current tree node.
+ * @param[in] tc contains current tree node.
  * @return Cache for the current node.
  */
 static struct trt_parent_cache
@@ -1812,12 +1897,8 @@ tro_parent_cache_for_child(struct trt_parent_cache ca, const struct lysp_node *p
 }
 
 /**
- * @brief Read next sibling of the current node.
- * @param[in] origin_tc is context of the tree.
- * @return A patch structure that has prepared pointers for updating struct trt_tree_ctx.
- *  If sibling exists then .pn points to him, otherwise is set to NULL.
- *  The .tpn points to its sibling if it exists and if .pn points to the same node as .tpn,
- *  otherwise .tpn value from origin_tc is copied.
+ * @brief Get next sibling of the current node.
+ * @param[in] node points to lysp_node.
  */
 static struct trt_tree_ctx_node_patch
 tro_read_next_sibling(const struct trt_tree_ctx *origin_tc)
@@ -1915,7 +1996,8 @@ tro_lysp_node_to_iffeature(const struct lysp_qname *iffs)
 /**
  * @brief Find out if leaf is also the key in last list.
  * @param[in] pn is pointer to leaf.
- * @param[in] ca_last_list is pointer to last visited list. Obtained from trt_parent_cache.
+ * @param[in] ca_last_list is pointer to last visited list.
+ * Obtained from trt_parent_cache.
  * @return 1 if leaf is also the key, otherwise 0.
  */
 static ly_bool
@@ -1991,12 +2073,16 @@ tro_lysp_leaf_type_name(const struct lysp_node *pn)
 }
 
 /**
- * @brief Get pointer to data using node type specification and getter function.
+ * @brief Get pointer to data using node type specification
+ * and getter function.
  *
- * @param[in] flags is node type specification. If it is the correct node, the getter function is called.
- * @param[in] f is getter function which provides the desired char pointer from the structure.
+ * @param[in] flags is node type specification.
+ * If it is the correct node, the getter function is called.
+ * @param[in] f is getter function which provides the desired
+ * char pointer from the structure.
  * @param[in] pn pointer to node.
- * @return NULL if node has wrong type or getter function return pointer to NULL.
+ * @return NULL if node has wrong type or getter function return
+ * pointer to NULL.
  * @return Pointer to desired char pointer obtained from the node.
  */
 static const char *
@@ -2011,7 +2097,8 @@ tro_lysp_node_charptr(uint16_t flags, trt_get_charptr_func f, const struct lysp_
 }
 
 /**
- * @brief Transformation of the lysp flags to Yang tree \<status\>.
+ * @brief Transformation of the Schema nodes flags to
+ * Tree diagram \<status\>.
  * @param[in] flags is node's flags obtained from the tree.
  */
 static trt_status_type
@@ -2023,7 +2110,8 @@ tro_lysp_flags2status(uint16_t flags)
 }
 
 /**
- * @brief Transformation of the lysp flags to Yang tree \<flags\> but more specifically 'ro' or 'rw'.
+ * @brief Transformation of the Schema nodes flags to Tree diagram
+ * \<flags\> but more specifically 'ro' or 'rw'.
  * @param[in] flags is node's flags obtained from the tree.
  */
 static trt_flags_type
@@ -2051,7 +2139,8 @@ tro_read_module_name(const struct trt_tree_ctx *tc)
  * @brief Resolve \<status\> of the current node.
  * @param[in] nodetype is node's type obtained from the tree.
  * @param[in] flags is node's flags obtained from the tree.
- * @param[in] ca_lys_status is inherited status obtained from trt_parent_cache.
+ * @param[in] ca_lys_status is inherited status
+ * obtained from trt_parent_cache.
  * @return The status type.
  */
 static trt_status_type
@@ -2074,8 +2163,10 @@ tro_resolve_status(uint16_t nodetype, uint16_t flags, uint16_t ca_lys_status)
  * @brief Resolve \<flags\> of the current node.
  * @param[in] nodetype is node's type obtained from the tree.
  * @param[in] flags is node's flags obtained from the tree.
- * @param[in] ca_ancestor is ancestor type obtained from trt_parent_cache.
- * @param[in] ca_lys_config is inherited config item obtained from trt_parent_cache.
+ * @param[in] ca_ancestor is ancestor type obtained
+ * from trt_parent_cache.
+ * @param[in] ca_lys_config is inherited config item
+ * obtained from trt_parent_cache.
  * @return The flags type.
  */
 static trt_flags_type
@@ -2104,7 +2195,8 @@ tro_resolve_flags(uint16_t nodetype, uint16_t flags, trt_ancestor_type ca_ancest
 /**
  * @brief Resolve node type of the current node.
  * @param[in] pn is pointer to the current node in the tree.
- * @param[in] ca_last_list is pointer to the last visited list. Obtained from the trt_parent_cache.
+ * @param[in] ca_last_list is pointer to the last visited list.
+ * Obtained from the trt_parent_cache.
  */
 static trt_node_type
 tro_resolve_node_type(const struct lysp_node *pn, const struct lysp_node_list *ca_last_list)
@@ -2134,7 +2226,8 @@ tro_resolve_node_type(const struct lysp_node *pn, const struct lysp_node_list *c
 
 /**
  * @brief Transformation of current lysp_node to struct trt_node.
- * @param[in] ca contains stored important data when browsing the tree downwards.
+ * @param[in] ca contains stored important data
+ * when browsing the tree downwards.
  * @param[in] tc is context of the tree.
  */
 static struct trt_node
@@ -2190,15 +2283,18 @@ tro_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     return ret;
 }
 
-/******************************************************************************
+/**********************************************************************
  * Modify Tro getters
- *****************************************************************************/
+ *********************************************************************/
 
 /**
- * @brief Change current node pointer to its parent but only if parent exists.
- * @param[in,out] tc is tree context. Contains pointer to the current node.
+ * @brief Change current node pointer to its parent
+ * but only if parent exists.
+ * @param[in,out] tc is tree context.
+ * Contains pointer to the current node.
  * @return 1 if the node had parents and the change was successful.
- * @return 0 if the node did not have parents. The pointer to the current node did not change.
+ * @return 0 if the node did not have parents.
+ * The pointer to the current node did not change.
  */
 static ly_bool
 tro_modi_parent(struct trt_tree_ctx *tc)
@@ -2214,11 +2310,15 @@ tro_modi_parent(struct trt_tree_ctx *tc)
 }
 
 /**
- * @brief Change the current node pointer to its child but only if exists.
+ * @brief Change the current node pointer to its child
+ * but only if exists.
  * @param[in] ca contains inherited data from ancestors.
- * @param[in,out] tc is context of the tree. Contains pointer to the current node.
- * @return Non-empty \<node\> representation of the current node's child. The tc parameter is modified.
- * @return Empty \<node\> representation if child don't exists. The tc parameter is not modified.
+ * @param[in,out] tc is context of the tree.
+ * Contains pointer to the current node.
+ * @return Non-empty \<node\> representation of the current
+ * node's child. The @p tc is modified.
+ * @return Empty \<node\> representation if child don't exists.
+ * The @p tc is not modified.
  */
 static struct trt_node
 tro_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
@@ -2266,8 +2366,9 @@ tro_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 }
 
 /**
- * @brief Change the current node pointer to the first child of node's parent.
- * If current node is already first sibling/child then nothing will change.
+ * @brief Change the current node pointer to the first child of node's
+ * parent. If current node is already first sibling/child then nothing
+ * will change.
  * @param[in,out] tc is tree context.
  */
 static void
@@ -2309,11 +2410,15 @@ tro_modi_first_sibling(struct trt_tree_ctx *tc)
 }
 
 /**
- * @brief Change the pointer to the current node to its next sibling only if exists.
+ * @brief Change the pointer to the current node to its next sibling
+ * only if exists.
  * @param[in] ca contains inherited data from ancestors.
- * @param[in,out] tc is tree context. Contains pointer to the current node.
- * @return Non-empty \<node\> representation if sibling exists. The tc is modified.
- * @return Empty \<node\> representation otherwise. The tc is not modified.
+ * @param[in,out] tc is tree context.
+ * Contains pointer to the current node.
+ * @return Non-empty \<node\> representation if sibling exists.
+ * The @p tc is modified.
+ * @return Empty \<node\> representation otherwise.
+ * The @p tc is not modified.
  */
 static struct trt_node
 tro_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
@@ -2333,9 +2438,9 @@ tro_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 
 /**
  * @brief Get next (or first) augment section if exists.
- * @param[in,out] tc is tree context.
+ * @param[in,out] tc is tree context. It is modified and his current
+ * node is set to the lysp_node_augment.
  * @return Section's representation if (next augment) section exists.
- *  The tc is modified and his pointer points to the first node in augment section.
  * @return Empty section structure otherwise.
  */
 static struct trt_keyword_stmt
@@ -2365,8 +2470,8 @@ tro_modi_next_augment(struct trt_tree_ctx *tc)
 /**
  * @brief Get rpcs section if exists.
  * @param[in,out] tc is tree context.
- * @return Section representation if it exists.
- *  The tc is modified and his pointer points to the first node in rpcs section.
+ * @return Section representation if it exists. The @p tc is modified
+ * and his pointer points to the first node in rpcs section.
  * @return Empty section representation otherwise.
  */
 static struct trt_keyword_stmt
@@ -2389,7 +2494,8 @@ tro_modi_get_rpcs(struct trt_tree_ctx *tc)
  * @brief Get notification section if exists
  * @param[in,out] tc is tree context.
  * @return Section representation if it exists.
- *  The tc is modified and his pointer points to the first node in notification section.
+ * The @p tc is modified and his pointer points to the
+ * first node in notification section.
  * @return Empty section representation otherwise.
  */
 static struct trt_keyword_stmt
@@ -2410,9 +2516,9 @@ tro_modi_get_notifications(struct trt_tree_ctx *tc)
 
 /**
  * @brief Get next (or first) grouping section if exists
- * @param[in,out] tc is tree context.
+ * @param[in,out] tc is tree context. It is modified and his current
+ * node is set to the lysp_node_grp.
  * @return The next (or first) section representation if it exists.
- *  The tc is modified and his pointer points to the first node in this grouping section.
  * @return Empty section representation otherwise.
  */
 static struct trt_keyword_stmt
@@ -2454,9 +2560,9 @@ tro_modi_next_yang_data(struct trt_tree_ctx *tc)
     return TRP_EMPTY_KEYWORD_STMT;
 }
 
-/******************************************************************************
+/**********************************************************************
  * Print Tro getters
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Print current node's iffeatures.
@@ -2483,9 +2589,10 @@ tro_print_features_names(const struct trt_tree_ctx *tc, struct ly_out *out)
 /**
  * @brief Print current list's keys.
  *
- * Well, actually printing keys in the lysp_tree is trivial, because char* points to all keys.
- * However, special functions have been reserved for this, because in principle
- * the list of elements can have more implementations.
+ * Well, actually printing keys in the lysp_tree is trivial,
+ * because char* points to all keys. However, special functions have
+ * been reserved for this, because in principle the list of elements
+ * can have more implementations.
  *
  * @param[in] tc is tree context.
  * @param[in,out] out is output handler.
@@ -2507,15 +2614,16 @@ tro_print_keys(const struct trt_tree_ctx *tc, struct ly_out *out)
     }
 }
 
-/******************************************************************************
+/**********************************************************************
  * Definition of tree browsing functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Get size of node name.
  * @param[in] name contains name and mark.
  * @return positive value total size of the node name.
- * @return negative value as an indication that option mark is included in the total size.
+ * @return negative value as an indication that option mark
+ * is included in the total size.
  */
 static int32_t
 trb_strlen_of_name_and_mark(struct trt_node_name name)
@@ -2533,10 +2641,12 @@ trb_strlen_of_name_and_mark(struct trt_node_name name)
 }
 
 /**
- * @brief Calculate the btw_opts_type indent size for a particular node.
+ * @brief Calculate the trt_indent_in_node.btw_opts_type indent size
+ * for a particular node.
  * @param[in] name is the node for which we get btw_opts_type.
- * @param[in] max_len4all is the maximum value of btw_opts_type that it can have.
- * @return btw_opts_type for node.
+ * @param[in] max_len4all is the maximum value of btw_opts_type
+ * that it can have.
+ * @return Indent between \<opts\> and \<type\> for node.
  */
 static int16_t
 trb_calc_btw_opts_type(struct trt_node_name name, int16_t max_len4all)
@@ -2560,8 +2670,9 @@ trb_calc_btw_opts_type(struct trt_node_name name, int16_t max_len4all)
 /**
  * @brief Print node.
  *
- * This function is wrapper for trp_print_entire_node function.
- * But difference is that take max_gap_before_type parameter which will be used to set the unified alignment.
+ * This function is wrapper for trp_print_entire_node().
+ * But difference is that take @p max_gap_before_type which will be
+ * used to set the unified alignment.
  *
  * @param[in] max_gap_before_type is number of indent before \<type\>.
  * @param[in] wr is wrapper for printing indentation before node.
@@ -2585,12 +2696,15 @@ trb_print_entire_node(uint32_t max_gap_before_type, struct trt_wrapper wr, struc
 }
 
 /**
- * @brief Check if parent of the current node is the last of his siblings.
+ * @brief Check if parent of the current node is the last
+ * of his siblings.
  *
- * To mantain stability use this function only if the current node is the first of the siblings.
- * Side-effect -> current node is set to the first sibling if node has a parent otherwise no side-effect.
+ * To mantain stability use this function only if the current node is
+ * the first of the siblings.
+ * Side-effect -> current node is set to the first sibling
+ * if node has a parent otherwise no side-effect.
  *
- * @param[in] fp contains all 'tro' callback functions.
+ * @param[in] fp contains all \ref TRP_tro callback functions.
  * @param[in,out] tc is tree context.
  * @return 1 if parent is last sibling otherwise 0.
  */
@@ -2614,8 +2728,10 @@ trb_parent_is_last_sibling(struct trt_fp_all fp, struct trt_tree_ctx *tc)
  * @param[in] ca contains inherited data from ancestors.
  * @param[in] pc contains mainly functions for printing.
  * @param[in,out] tc is tree context.
- * @return positive number lesser than upper_limit as a sign that only the node name is included in the size.
- * @return negative number whose absolute value is less than upper_limit and sign that node name and his opt mark is included in the size.
+ * @return positive number as a sign that only the node name is
+ * included in the size.
+ * @return negative number sign that node name and his opt mark is
+ * included in the size.
  */
 static int32_t
 trb_maxlen_node_name(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
@@ -2635,7 +2751,8 @@ trb_maxlen_node_name(struct trt_parent_cache ca, struct trt_printer_ctx *pc, str
 }
 
 /**
- * @brief Find maximal indent between \<opts\> and \<type\> for siblings.
+ * @brief Find maximal indent between
+ * \<opts\> and \<type\> for siblings.
  *
  * Side-effect -> Current node is set to the first sibling.
  *
@@ -2656,18 +2773,22 @@ trb_max_btw_opts_type4siblings(struct trt_parent_cache ca, struct trt_printer_ct
 }
 
 /**
- * @brief Find out if it is possible to unify the alignment before \<type\>.
+ * @brief Find out if it is possible to unify
+ * the alignment before \<type\>.
  *
- * The goal is for all node siblings to have the same alignment for \<type\> as if they were in a column.
- * All siblings who cannot adapt because they do not fit on the line at all are ignored.
+ * The goal is for all node siblings to have the same alignment
+ * for \<type\> as if they were in a column. All siblings who cannot
+ * adapt because they do not fit on the line at all are ignored.
  * Side-effect -> Current node is set to the first sibling.
  *
  * @param[in] ca contains inherited data from ancestors.
  * @param[in] pc contains mainly functions for printing.
  * @param[in,out] tc is tree context.
  * @return 0 if all siblings cannot fit on the line.
- * @return positive number indicating the maximum number of spaces before \<type\> if the length of the node name is 0.
- *  To calculate the btw_opts_type indent size for a particular node, use the trb_calc_btw_opts_type function.
+ * @return positive number indicating the maximum number of spaces
+ * before \<type\> if the length of the node name is 0. To calculate
+ * the trt_indent_in_node.btw_opts_type indent size for a particular
+ * node, use the trb_calc_btw_opts_type().
 */
 static uint32_t
 trb_try_unified_indent(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
@@ -2676,11 +2797,13 @@ trb_try_unified_indent(struct trt_parent_cache ca, struct trt_printer_ctx *pc, s
 }
 
 /**
- * @brief For the current node: recursively print all of its child nodes and all of its siblings, including their children.
+ * @brief For the current node: recursively print all of its child
+ * nodes and all of its siblings, including their children.
  *
- * This function is an auxiliary function for trb_print_subtree_nodes.
+ * This function is an auxiliary function for trb_print_subtree_nodes().
  * The parent of the current node is expected to exist.
- * Nodes are printed, including unified sibling node alignment (align \<type\> to column).
+ * Nodes are printed, including unified sibling node alignment
+ * (align \<type\> to column).
  * Side-effect -> current node is set to the last sibling.
  *
  * @param[in] wr is wrapper for printing identation before node.
@@ -2770,14 +2893,19 @@ trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
  * @brief Print subtree of nodes.
  *
  * The current node is expected to be the root of the subtree.
- * Before root node is no linebreak printing. This must be addressed by the caller.
- * Root node will also be printed. Behind last printed node is no linebreak.
+ * Before root node is no linebreak printing. This must be addressed by
+ * the caller. Root node will also be printed. Behind last printed node
+ * is no linebreak.
  *
- * @param[in] max_gap_before_type is result from trb_try_unified_indent function for root node. Set parameter to 0 if distance does not matter.
- * @param[in] wr is wrapper saying how deep in the whole tree is the root of the subtree.
- * @param[in] ca is parent_cache from root's parent. If root is top-level node, insert TRP_EMPTY_PARENT_CACHE.
- * @param[in] pc is pointer to the printer (trp) context.
- * @param[in,out] tc is pointer to the tree (tro) context.
+ * @param[in] max_gap_before_type is result from
+ * trb_try_unified_indent() function for root node. Set parameter to 0
+ * if distance does not matter.
+ * @param[in] wr is wrapper saying how deep in the whole tree
+ * is the root of the subtree.
+ * @param[in] ca is parent_cache from root's parent.
+ * If root is top-level node, insert ::TRP_EMPTY_PARENT_CACHE.
+ * @param[in] pc is \ref TRP_trp settings.
+ * @param[in,out] tc is context of tree printer.
  */
 static void
 trb_print_subtree_nodes(uint32_t max_gap_before_type, struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
@@ -2829,9 +2957,10 @@ trb_get_number_of_siblings(struct trt_fp_modify_ctx fp, struct trt_tree_ctx *tc)
 /**
  * @brief Print all parents and their children.
  *
- * This function is suitable for printing top-level nodes that do not have ancestors.
- * Function call print_subtree_nodes for all top-level siblings.
- * Use this function after 'module' keyword or 'augment' and so.
+ * This function is suitable for printing top-level nodes that
+ * do not have ancestors. Function call trb_print_subtree_nodes()
+ * for all top-level siblings. Use this function after 'module' keyword
+ * or 'augment' and so.
  *
  * @param[in] wr_t is type of the wrapper.
  * @param[pc] pc contains mainly functions for printing.
@@ -2865,9 +2994,9 @@ trb_print_family_tree(trd_wrapper_type wr_t, struct trt_printer_ctx *pc, struct 
     }
 }
 
-/******************************************************************************
+/**********************************************************************
  * Definition of trm main functions
- *****************************************************************************/
+ *********************************************************************/
 
 /**
  * @brief Settings if lysp_node are used for browsing through the tree.
@@ -3117,9 +3246,9 @@ trm_print_sections(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     ly_print_(pc->out, "\n");
 }
 
-/******************************************************************************
+/**********************************************************************
  * Definition of module interface
- *****************************************************************************/
+ *********************************************************************/
 
 LY_ERR
 tree_print_parsed_module(struct ly_out *out, const struct lys_module *module, uint32_t UNUSED(options), size_t line_length)
