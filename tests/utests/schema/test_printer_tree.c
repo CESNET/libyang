@@ -37,20 +37,38 @@ static void
 base_sections(void **state)
 {
     TEST_LOCAL_SETUP;
+
+    orig =
+            "module a01xx {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"xx:y\";\n"
+            "  prefix xx;\n"
+            "  container c;\n"
+            "  container d;\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    /* module with import statement */
     orig =
             "module a01 {\n"
             "  yang-version 1.1;\n"
             "  namespace \"x:y\";\n"
             "  prefix x;\n"
             "\n"
+            "  import a01xx {\n"
+            "    prefix xx;\n"
+            "  }\n"
+            "\n"
             "  grouping g1;\n"
             "\n"
             "  grouping g2;\n"
-            "  container c;\n"
-            "  container d;\n"
-            "  augment \"/x:c\" {\n"
+            "  container g;\n"
+            "  augment \"/xx:c\" {\n"
+            "    container e;\n"
             "  }\n"
-            "  augment \"/x:d\" {\n"
+            "  augment \"/xx:d\" {\n"
+            "    container f;\n"
             "  }\n"
             "  rpc rpc1;\n"
             "  rpc rpc2;\n"
@@ -58,11 +76,17 @@ base_sections(void **state)
             "  notification n2;\n"
             "}\n";
 
-    /* from yanglint 1 */
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    /* from pyang */
     expect =
             "module: a01\n"
-            "  +--rw c\n"
-            "  +--rw d\n"
+            "  +--rw g\n"
+            "\n"
+            "  augment /xx:c:\n"
+            "    +--rw e\n"
+            "  augment /xx:d:\n"
+            "    +--rw f\n"
             "\n"
             "  rpcs:\n"
             "    +---x rpc1\n"
@@ -70,9 +94,11 @@ base_sections(void **state)
             "\n"
             "  notifications:\n"
             "    +---n n1\n"
-            "    +---n n2\n";
+            "    +---n n2\n"
+            "\n"
+            "  grouping g1\n"
+            "  grouping g2\n";
 
-    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
@@ -190,21 +216,49 @@ node_grouping_flags(void **state)
             "  prefix x;\n"
             "\n"
             "  grouping g {\n"
-            "    container c;\n"
+            "    leaf a {\n"
+            "      type string;\n"
+            "      config true;\n"
+            "    }\n"
+            "    leaf b {\n"
+            "      type string;\n"
+            "      config false;\n"
+            "    }\n"
+            "    leaf c {\n"
+            "      type string;\n"
+            "    }\n"
+            "    container d {\n"
+            "      config false;\n"
+            "      leaf e {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "    container f {\n"
+            "      leaf g {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
             "  }\n"
             "  container d {\n"
             "    uses g;\n"
             "  }\n"
             "}\n";
 
-    /* handwritten. Neither Pyang nor Yanglint1 provided the required output. */
+    /* from yanglint1 */
     expect =
             "module: a05\n"
             "  +--rw d\n"
             "     +---u g\n"
             "\n"
             "  grouping g:\n"
-            "    +--rw c\n";
+            "    +--rw a?   string\n"
+            "    +--ro b?   string\n"
+            "    +---- c?   string\n"
+            "    +--ro d\n"
+            "    |  +--ro e?   string\n"
+            "    +---- f\n"
+            "       +---- g?   string\n";
+
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
