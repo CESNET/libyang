@@ -22,21 +22,16 @@
 
 #define TEST_LOCAL_SETUP \
     char *printed; \
-    struct ly_out *out; \
     const struct lys_module *mod; \
     const char *orig; \
-    const char *expect;
+    const char *expect; \
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &UTEST_OUT));
 
-#define TEST_LOCAL_CALL_PRINT(LINE_LENGTH) \
-    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_TREE, LINE_LENGTH, 0));
-
-#define TEST_LOCAL_PRECHECK(LINE_LENGTH) \
-    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out)); \
-    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod); \
-    TEST_LOCAL_CALL_PRINT(LINE_LENGTH)
+#define TEST_LOCAL_PRINT(MOD, LINE_LENGTH) \
+    assert_int_equal(LY_SUCCESS, lys_print_module(UTEST_OUT, MOD, LYS_OUT_TREE, LINE_LENGTH, 0));
 
 #define TEST_LOCAL_TEARDOWN \
-    ly_out_free(out, NULL, 1);
+    ly_out_free(UTEST_OUT, NULL, 1);
 
 static void
 base_sections(void **state)
@@ -77,8 +72,9 @@ base_sections(void **state)
             "    +---n n1\n"
             "    +---n n2\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -110,8 +106,9 @@ node_status(void **state)
             "  x--rw m\n"
             "  o--rw n\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -139,8 +136,9 @@ node_config_flags(void **state)
             "  +--rw l\n"
             "  +--ro m\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -174,8 +172,9 @@ node_rpcs_flags(void **state)
             "        +---w input\n"
             "           +---w in?   string\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -206,9 +205,9 @@ node_grouping_flags(void **state)
             "\n"
             "  grouping g:\n"
             "    +--rw c\n";
-
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -233,8 +232,9 @@ notif_inside_container(void **state)
             "  +--rw c\n"
             "     +---n notif\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -256,8 +256,9 @@ node_choice(void **state)
             "module: a07\n"
             "  +--rw (my_choice)?\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -282,8 +283,9 @@ node_case(void **state)
             "  +--rw (my_choice)?\n"
             "     +--:(my_case)\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -338,8 +340,9 @@ optional_opts(void **state)
             "  +--rw x1      anyxml\n"
             "  +--rw x2?     anyxml\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -365,8 +368,9 @@ presence_container(void **state)
             "  +--rw c\n"
             "  +--rw d!\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -410,8 +414,9 @@ node_keys(void **state)
             "  |  +--rw b    string\n"
             "  +--rw ll*   string\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -441,8 +446,9 @@ node_type_target(void **state)
             "  +--rw a?   -> /x:b\n"
             "  +--rw b?   string\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -474,8 +480,9 @@ node_type_leafref(void **state)
             "  +--rw a?\n"
             "          leafref\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -503,8 +510,11 @@ node_iffeatures(void **state)
             "module: a14\n"
             "  +--rw c {foo or bar}?\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    const char *feats[] = {"foo", NULL};
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -551,8 +561,9 @@ indent_wrapper(void **state)
             "     +--rw j\n"
             "     +--rw k\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -598,11 +609,14 @@ line_length_twiddling(void **state)
             "     +--rw nod-leaf?   some-long-type {f}?\n"
             "     +--rw nos-leaf?   int32 {f}?\n";
 
-    TEST_LOCAL_PRECHECK(42);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    const char *feats[] = {"f", NULL};
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 42);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
-    ly_out_reset(out);
+    ly_out_reset(UTEST_OUT);
     /* break_before_iffeature */
 
     /* pyang --tree-line-length 41 */
@@ -614,11 +628,12 @@ line_length_twiddling(void **state)
             "     |       {f}?\n"
             "     +--rw nos-leaf?   int32 {f}?\n";
 
-    TEST_LOCAL_CALL_PRINT(41);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 41);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
-    ly_out_reset(out);
+    ly_out_reset(UTEST_OUT);
     /* break_before_type */
 
     /* pyang --tree-line-length 29 */
@@ -632,11 +647,12 @@ line_length_twiddling(void **state)
             "     +--rw nos-leaf?   int32\n"
             "             {f}?\n";
 
-    TEST_LOCAL_CALL_PRINT(29);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 29);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
-    ly_out_reset(out);
+    ly_out_reset(UTEST_OUT);
     /* break_before_keys */
 
     /* pyang --tree-line-length 23 */
@@ -652,11 +668,12 @@ line_length_twiddling(void **state)
             "     +--rw nos-leaf?\n"
             "             int32 {f}?\n";
 
-    TEST_LOCAL_CALL_PRINT(23);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 23);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
-    ly_out_reset(out);
+    ly_out_reset(UTEST_OUT);
     /* every_node_name_is_too_long */
 
     /* pyang --tree-line-length 14 */
@@ -673,8 +690,9 @@ line_length_twiddling(void **state)
             "             int32\n"
             "             {f}?\n";
 
-    TEST_LOCAL_CALL_PRINT(14);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 14);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
     TEST_LOCAL_TEARDOWN;
@@ -707,8 +725,9 @@ break_before_leafref(void **state)
             "  +--rw abcd?\n"
             "          -> /x:e\n";
 
-    TEST_LOCAL_PRECHECK(14);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 14);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -744,8 +763,11 @@ break_before_leafref_and_iffeature(void **state)
             "          leafref\n"
             "          {f}?\n";
 
-    TEST_LOCAL_PRECHECK(20);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    const char *feats[] = {"f", NULL};
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
+    TEST_LOCAL_PRINT(mod, 20);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -795,8 +817,9 @@ basic_unified_indent_before_type(void **state)
             "     +--rw E        longType\n"
             "     +--rw G?       int8\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -848,11 +871,12 @@ twiddling_unified_indent_before_type(void **state)
             "     +--rw E                longType\n"
             "     +--rw G?               int8\n";
 
-    TEST_LOCAL_PRECHECK(36);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 36);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
-    ly_out_reset(out);
+    ly_out_reset(UTEST_OUT);
     /* unified_indent_before_type_long_node_name */
 
     /* pyang --tree-line-length 32 */
@@ -866,11 +890,12 @@ twiddling_unified_indent_before_type(void **state)
             "     |       longType\n"
             "     +--rw G?               int8\n";
 
-    TEST_LOCAL_CALL_PRINT(32);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 32);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
-    ly_out_reset(out);
+    ly_out_reset(UTEST_OUT);
     /* unified_indent_before_type_long_node_type */
 
     /* pyang --tree-line-length 31 */
@@ -888,8 +913,9 @@ twiddling_unified_indent_before_type(void **state)
             "     +--rw G?\n"
             "             int8\n";
 
-    TEST_LOCAL_CALL_PRINT(31);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 31);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
 
     TEST_LOCAL_TEARDOWN;
@@ -918,8 +944,9 @@ inheritance_of_config_flag(void **state)
             "  +--ro a\n"
             "     +--ro b?   string\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -972,8 +999,9 @@ inheritance_of_status_flag(void **state)
             "     o--rw h\n"
             "        o--rw e?   string\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -1013,8 +1041,9 @@ key_leaf_is_always_mandatory_true(void **state)
             "     |  +--rw k2    string\n"
             "     +--rw k1    string\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
@@ -1071,8 +1100,9 @@ transition_between_rpc_and_notif(void **state)
             "     +---n n1\n"
             "     +---n n2\n";
 
-    TEST_LOCAL_PRECHECK(72);
-    assert_int_equal(strlen(expect), ly_out_printed(out));
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
     TEST_LOCAL_TEARDOWN;
 }
