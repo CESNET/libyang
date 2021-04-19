@@ -102,6 +102,34 @@ base_sections(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* from pyang */
+    expect =
+            "module: a01\n"
+            "  +--rw g\n"
+            "\n"
+            "  augment /xx:c:\n"
+            "    +--rw e\n"
+            "  augment /xx:d:\n"
+            "    +--rw f\n"
+            "\n"
+            "  rpcs:\n"
+            "    +---x rpc1\n"
+            "    +---x rpc2\n"
+            "\n"
+            "  notifications:\n"
+            "    +---n n1\n"
+            "    +---n n2\n";
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -136,6 +164,15 @@ node_status(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -166,6 +203,15 @@ node_config_flags(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -186,6 +232,12 @@ node_rpcs_flags(void **state)
             "          type string;\n"
             "        }\n"
             "      }\n"
+            "\n"
+            "      output {\n"
+            "        leaf out {\n"
+            "          type string;\n"
+            "        }\n"
+            "      }\n"
             "    }\n"
             "  }\n"
             "}\n";
@@ -196,12 +248,23 @@ node_rpcs_flags(void **state)
             "  +--rw cont\n"
             "     +---x rpc1\n"
             "        +---w input\n"
-            "           +---w in?   string\n";
+            "        |  +---w in?   string\n"
+            "        +--ro output\n"
+            "           +--ro out?   string\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -263,6 +326,27 @@ node_grouping_flags(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    /* from pyang */
+    expect =
+            "module: a05\n"
+            "  +--rw d\n"
+            "     +--rw a?   string\n"
+            "     +--ro b?   string\n"
+            "     +--rw c?   string\n"
+            "     +--ro d\n"
+            "     |  +--ro e?   string\n"
+            "     +--rw f\n"
+            "        +--rw g?   string\n";
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -290,6 +374,15 @@ notif_inside_container(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -314,6 +407,15 @@ node_choice(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -341,6 +443,15 @@ node_case(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -398,6 +509,15 @@ optional_opts(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -426,6 +546,15 @@ presence_container(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -472,6 +601,15 @@ node_keys(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -504,6 +642,15 @@ node_type_target(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -538,6 +685,15 @@ node_type_leafref(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -570,6 +726,15 @@ node_iffeatures(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -619,6 +784,15 @@ indent_wrapper(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -671,6 +845,14 @@ line_length_twiddling(void **state)
     assert_string_equal(printed, expect);
 
     ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 42);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    ly_out_reset(UTEST_OUT);
     /* break_before_iffeature */
 
     /* pyang --tree-line-length 41 */
@@ -686,6 +868,14 @@ line_length_twiddling(void **state)
     TEST_LOCAL_PRINT(mod, 41);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 41);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     ly_out_reset(UTEST_OUT);
     /* break_before_type */
@@ -705,6 +895,14 @@ line_length_twiddling(void **state)
     TEST_LOCAL_PRINT(mod, 29);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 29);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     ly_out_reset(UTEST_OUT);
     /* break_before_keys */
@@ -728,6 +926,14 @@ line_length_twiddling(void **state)
     assert_string_equal(printed, expect);
 
     ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 23);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    ly_out_reset(UTEST_OUT);
     /* every_node_name_is_too_long */
 
     /* pyang --tree-line-length 14 */
@@ -748,6 +954,14 @@ line_length_twiddling(void **state)
     TEST_LOCAL_PRINT(mod, 14);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 14);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     TEST_LOCAL_TEARDOWN;
 }
@@ -783,6 +997,15 @@ break_before_leafref(void **state)
     TEST_LOCAL_PRINT(mod, 14);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 14);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -823,6 +1046,15 @@ break_before_leafref_and_iffeature(void **state)
     TEST_LOCAL_PRINT(mod, 20);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 20);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -875,6 +1107,15 @@ basic_unified_indent_before_type(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -931,6 +1172,14 @@ twiddling_unified_indent_before_type(void **state)
     assert_string_equal(printed, expect);
 
     ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 36);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    ly_out_reset(UTEST_OUT);
     /* unified_indent_before_type_long_node_name */
 
     /* pyang --tree-line-length 32 */
@@ -948,6 +1197,14 @@ twiddling_unified_indent_before_type(void **state)
     TEST_LOCAL_PRINT(mod, 32);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 32);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     ly_out_reset(UTEST_OUT);
     /* unified_indent_before_type_long_node_type */
@@ -971,6 +1228,14 @@ twiddling_unified_indent_before_type(void **state)
     TEST_LOCAL_PRINT(mod, 31);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 31);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     TEST_LOCAL_TEARDOWN;
 }
@@ -1002,6 +1267,15 @@ inheritance_of_config_flag(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -1057,6 +1331,15 @@ inheritance_of_status_flag(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -1099,6 +1382,25 @@ key_leaf_is_always_mandatory_true(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* from pyang but with some swapped lines */
+    expect =
+            "module: a23\n"
+            "  +--rw a* [k1]\n"
+            "     +--rw k1    string\n"
+            "     +--rw b* [k2]\n"
+            "        +--rw k2    string\n"
+            "        +--rw k1?   string\n";
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -1112,6 +1414,9 @@ transition_between_rpc_and_notif(void **state)
             "  namespace \"x:y\";\n"
             "  prefix x;\n"
             "  container top {\n"
+            "    leaf g {\n"
+            "      type string;\n"
+            "    }\n"
             "    action rpc1 {\n"
             "\n"
             "      input {\n"
@@ -1143,6 +1448,7 @@ transition_between_rpc_and_notif(void **state)
     expect =
             "module: a24\n"
             "  +--rw top\n"
+            "     +--rw g?      string\n"
             "     +---x rpc1\n"
             "     |  +---w input\n"
             "     |     +---w in?   string\n"
@@ -1158,6 +1464,49 @@ transition_between_rpc_and_notif(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
+static void
+local_augment(void **state)
+{
+    TEST_LOCAL_SETUP;
+
+    orig =
+            "module a25 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"x:y\";\n"
+            "  prefix x;\n"
+            "  container g;\n"
+            "  augment \"/x:g\" {\n"
+            "    container e;\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    /* from pyang */
+    expect =
+            "module: a25\n"
+            "  +--rw g\n"
+            "     +--rw e\n";
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
     TEST_LOCAL_TEARDOWN;
 }
 
@@ -1189,6 +1538,7 @@ main(void)
         UTEST(inheritance_of_status_flag),
         UTEST(key_leaf_is_always_mandatory_true),
         UTEST(transition_between_rpc_and_notif),
+        UTEST(local_augment),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
