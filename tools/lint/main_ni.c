@@ -664,6 +664,11 @@ fill_context(int argc, char *argv[], struct context *c)
         return ret;
     }
 
+    if (c->schema_out_format == LYS_OUT_TREE) {
+        /* print tree from lysc_nodes */
+        ly_ctx_set_options(c->ctx, LY_CTX_SET_PRIV_PARSED);
+    }
+
     /* the second batch of checks */
     if (c->schema_print_options && !c->schema_out_format) {
         YLMSG_W("Schema printer options specified, but the schema output format is missing.\n");
