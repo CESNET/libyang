@@ -418,8 +418,10 @@ typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const str
  *
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
- *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
- * @param[in] prefix_data Format-specific data for getting any prefixes (see ::lyplg_type_get_prefix()).
+ *            Only 2 formats are currently implemented: ::LY_PREFIX_XML and ::LY_PREFIX_JSON.
+ * @param[in] prefix_data Format-specific data for processing prefixes. In case of using one of the built-in's print
+ * callback (or ::lyplg_type_print_simple()), the argument is just simply passed in. If you need to handle prefixes
+ * in the value on your own, there is ::lyplg_type_get_prefix() function to help.
  * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
  *            for freeing it.
  * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
