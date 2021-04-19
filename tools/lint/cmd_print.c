@@ -137,6 +137,11 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
         out_stdout = 1;
     }
 
+    if (format == LYS_OUT_TREE) {
+        /* print tree from lysc_nodes */
+        ly_ctx_set_options(*ctx, LY_CTX_SET_PRIV_PARSED);
+    }
+
     if (node_path) {
         const struct lysc_node *node;
         node = lys_find_path(*ctx, NULL, node_path, 0);
