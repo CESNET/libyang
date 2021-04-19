@@ -47,7 +47,6 @@ struct lysc_ctx {
                                      instead of the module itself */
     struct ly_set groupings;    /**< stack for groupings circular check */
     struct ly_set tpdf_chain;   /**< stack for typedefs circular check */
-    struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
     struct ly_set augs;         /**< set of compiled non-applied top-level augments (stored ::lysc_augment *) */
     struct ly_set devs;         /**< set of compiled non-applied deviations (stored ::lysc_deviation *) */
     struct ly_set uses_augs;    /**< set of compiled non-applied uses augments (stored ::lysc_augment *) */
@@ -71,6 +70,7 @@ struct lys_glob_unres {
     struct ly_set xpath;        /**< when/must to check */
     struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
+    struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
     ly_bool full_compilation;   /**< flag marking that all the currently implemented modules were compiled in this
                                     compilation (meaning that all their disabled nodes are still present) */
     ly_bool recompile;          /**< flag marking that a module needs to be recompiled for this compilation to succeed */

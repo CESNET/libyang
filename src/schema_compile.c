@@ -1341,6 +1341,19 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         return lys_compile_unres_glob(ctx, unres);
     }
 
+    /* finally, remove all disabled nodes */
+    for (i = 0; i < unres->disabled.count; ++i) {
+        node = unres->disabled.snodes[i];
+        if (node->flags & LYS_KEY) {
+            LOG_LOCSET(node, NULL, NULL, NULL);
+            LOGVAL(ctx, LYVE_REFERENCE, "Key \"%s\" is disabled by its if-features.", node->name);
+            LOG_LOCBACK(1, 0, 0, 0);
+            return LY_EVALID;
+        }
+
+        lysc_node_free(ctx, node, 1);
+    }
+
     return LY_SUCCESS;
 }
 
@@ -1386,6 +1399,7 @@ lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *un
     ly_set_erase(&unres->dflts, NULL);
     ly_set_erase(&unres->xpath, NULL);
     ly_set_erase(&unres->leafrefs, NULL);
+    ly_set_erase(&unres->disabled, NULL);
 }
 
 /**
@@ -1397,24 +1411,10 @@ lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *un
 static LY_ERR
 lys_compile_unres_mod(struct lysc_ctx *ctx)
 {
-    struct lysc_node *node;
     struct lysc_augment *aug;
     struct lysc_deviation *dev;
     struct lys_module *orig_mod = ctx->cur_mod;
     uint32_t i;
-
-    /* remove all disabled nodes */
-    for (i = 0; i < ctx->disabled.count; ++i) {
-        node = ctx->disabled.snodes[i];
-        if (node->flags & LYS_KEY) {
-            LOG_LOCSET(node, NULL, NULL, NULL);
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Key \"%s\" is disabled by its if-features.", node->name);
-            LOG_LOCBACK(1, 0, 0, 0);
-            return LY_EVALID;
-        }
-
-        lysc_node_free(ctx->ctx, node, 1);
-    }
 
     /* check that all augments were applied */
     for (i = 0; i < ctx->augs.count; ++i) {
@@ -1462,7 +1462,6 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
 
     ly_set_erase(&ctx->groupings, NULL);
     ly_set_erase(&ctx->tpdf_chain, NULL);
-    ly_set_erase(&ctx->disabled, NULL);
 
     if (!error) {
         /* there can be no leftover deviations or augments */
