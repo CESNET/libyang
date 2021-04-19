@@ -1397,6 +1397,7 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     struct lysc_node *node;
     struct lysc_augment *aug;
     struct lysc_deviation *dev;
+    struct lys_module *orig_mod = ctx->cur_mod;
     uint32_t i;
 
     /* remove all disabled nodes */
@@ -1415,10 +1416,12 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
     /* check that all augments were applied */
     for (i = 0; i < ctx->augs.count; ++i) {
         aug = ctx->augs.objs[i];
+        ctx->cur_mod = aug->aug_pmod->mod;
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->nodeid->expr);
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" from module \"%s\" was not found.",
                 aug->nodeid->expr, LYSP_MODULE_NAME(aug->aug_pmod));
+        ctx->cur_mod = orig_mod;
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
     }
