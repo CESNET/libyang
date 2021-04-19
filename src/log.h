@@ -249,8 +249,10 @@ typedef enum
     LY_EINT,        /**< Internal error */
     LY_EVALID,      /**< Validation failure */
     LY_EDENIED,     /**< Operation is not allowed */
-    LY_EINCOMPLETE, /**< The operation did not failed, but for some reason it was not possible to finish it completely.
+    LY_EINCOMPLETE, /**< The operation did not fail, but for some reason it was not possible to finish it completely.
                          According to the specific use case, the caller is usually supposed to perform the operation again. */
+    LY_ERECOMPILE,  /**< The operation did not fail, but requires context recompilation before it can be completed.
+                         According to the specific use case, the caller should react appropriately. */
     LY_ENOT,        /**< Negative result */
     LY_EOTHER,      /**< Unknown error */
 

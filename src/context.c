@@ -503,7 +503,7 @@ ly_ctx_compile(struct ly_ctx *ctx)
     }
 
     /* recompile */
-    LY_CHECK_RET(lys_recompile(ctx, 0));
+    LY_CHECK_RET(lys_recompile(ctx, 1));
 
     /* everything is fine, clear the flags */
     for (i = 0; i < ctx->list.count; ++i) {

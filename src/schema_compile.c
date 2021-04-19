@@ -1097,7 +1097,10 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
     ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_PREF_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, storage, unres, &err);
-    if (ret == LY_EINCOMPLETE) {
+    if (ret == LY_ERECOMPILE) {
+        /* fine, but we need to recompile */
+        return LY_ERECOMPILE;
+    } else if (ret == LY_EINCOMPLETE) {
         /* we have no data so we will not be resolving it */
         ret = LY_SUCCESS;
     }
@@ -1327,14 +1330,14 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
             ret = lys_compile_unres_llist_dflts(&cctx, r->llist, r->dflt, r->dflts, unres);
         }
         LOG_LOCBACK(1, 0, 0, 0);
-        LY_CHECK_RET(ret);
+        LY_CHECK_RET(ret && (ret != LY_ERECOMPILE), ret);
 
         lysc_unres_dflt_free(ctx, r);
         ly_set_rm_index(&unres->dflts, unres->dflts.count - 1, NULL);
     }
 
-    /* some unres items may have been added */
-    if (unres->leafrefs.count || unres->xpath.count || unres->dflts.count) {
+    /* some unres items may have been added or recompilation needed */
+    if (unres->leafrefs.count || unres->xpath.count || unres->dflts.count || unres->recompile) {
         return lys_compile_unres_glob(ctx, unres);
     }
 
@@ -1509,13 +1512,12 @@ lys_compile_identities(struct lysc_ctx *ctx)
             LY_CHECK_RET(lys_identity_precompile(ctx, NULL, NULL, submod->identities, &ctx->cur_mod->identities));
         }
     }
-
     if (ctx->cur_mod->parsed->identities) {
         LY_CHECK_RET(lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities, &ctx->cur_mod->identities));
     }
+
     lysc_update_path(ctx, NULL, "{submodule}");
     LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, u) {
-
         submod = ctx->cur_mod->parsed->includes[u].submodule;
         if (submod->identities) {
             lysc_update_path(ctx, NULL, submod->name);
@@ -1536,6 +1538,9 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
     struct lys_glob_unres unres = {0};
     LY_ERR ret = LY_SUCCESS;
     uint32_t prev_lo = 0;
+
+    /* we are always recompiling all the modules */
+    unres.full_compilation = 1;
 
     if (!log) {
         /* recompile, must succeed because the modules were already compiled; hide messages because any
@@ -1572,6 +1577,12 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
             }
             goto cleanup;
         }
+
+        if (unres.recompile) {
+            /* we need to recompile again (newly compiled module caused another new implemented module) */
+            ret = lys_recompile(ctx, log);
+            goto cleanup;
+        }
     }
 
     /* resolve global unres */
@@ -1583,6 +1594,35 @@ cleanup:
     }
     lys_compile_unres_glob_erase(ctx, &unres);
     return ret;
+}
+
+/**
+ * @brief Check whether a module does not have any (recursive) compiled import.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether the module has a compiled imported module.
+ */
+static ly_bool
+lys_has_compiled_import_r(struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(mod->parsed->imports, u) {
+        if (!mod->parsed->imports[u].module->implemented) {
+            continue;
+        }
+
+        if (mod->parsed->imports[u].module->compiled) {
+            return 1;
+        }
+
+        /* recursive */
+        if (lys_has_compiled_import_r(mod->parsed->imports[u].module)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 LY_ERR
@@ -1599,9 +1639,22 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
 
+    /* if some previous module was not fully compiled, it is forbidden to compile another one (even though it
+     * may be okay in some cases) */
+    assert(!unres->recompile);
+
     if (!mod->implemented) {
         /* just imported modules are not compiled */
         return LY_SUCCESS;
+    }
+
+    if (!unres->full_compilation) {
+        /* check whether this module may reference any already-compiled modules */
+        if (lys_has_compiled_import_r(mod)) {
+            /* it may and we need even disabled nodes in those modules, recompile them */
+            unres->recompile = 1;
+            return LY_SUCCESS;
+        }
     }
 
     /* context will be changed */
@@ -1623,36 +1676,41 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
 
     /* process imports */
     LY_ARRAY_FOR(sp->imports, u) {
-        LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), error);
+        LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), cleanup);
     }
 
     /* identities */
-    LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), error);
+    LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), cleanup);
 
     /* augments and deviations */
-    LY_CHECK_GOTO(ret = lys_precompile_augments_deviations(&ctx), error);
+    LY_CHECK_GOTO(ret = lys_precompile_augments_deviations(&ctx), cleanup);
+
+    if (unres->recompile) {
+        /* some augments/deviations may not be possible to apply when the whole compilation may fail */
+        goto cleanup;
+    }
 
     /* compile augments and deviations of our module from other modules so they can be applied during compilation */
-    LY_CHECK_GOTO(ret = lys_precompile_own_augments(&ctx), error);
-    LY_CHECK_GOTO(ret = lys_precompile_own_deviations(&ctx), error);
+    LY_CHECK_GOTO(ret = lys_precompile_own_augments(&ctx), cleanup);
+    LY_CHECK_GOTO(ret = lys_precompile_own_deviations(&ctx), cleanup);
 
     /* data nodes */
     LY_LIST_FOR(sp->data, pnode) {
-        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), error);
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), cleanup);
     }
 
     /* top-level RPCs */
     LY_LIST_FOR((struct lysp_node *)sp->rpcs, pnode) {
-        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), error);
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), cleanup);
     }
 
     /* top-level notifications */
     LY_LIST_FOR((struct lysp_node *)sp->notifs, pnode) {
-        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), error);
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL), cleanup);
     }
 
     /* extension instances */
-    COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, ret, error);
+    COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, ret, cleanup);
 
     /* the same for submodules */
     LY_ARRAY_FOR(sp->includes, u) {
@@ -1661,20 +1719,20 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
 
         LY_LIST_FOR(submod->data, pnode) {
             ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL);
-            LY_CHECK_GOTO(ret, error);
+            LY_CHECK_GOTO(ret, cleanup);
         }
 
         LY_LIST_FOR((struct lysp_node *)submod->rpcs, pnode) {
             ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL);
-            LY_CHECK_GOTO(ret, error);
+            LY_CHECK_GOTO(ret, cleanup);
         }
 
         LY_LIST_FOR((struct lysp_node *)submod->notifs, pnode) {
             ret = lys_compile_node(&ctx, pnode, NULL, 0, NULL);
-            LY_CHECK_GOTO(ret, error);
+            LY_CHECK_GOTO(ret, cleanup);
         }
 
-        COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, ret, error);
+        COMPILE_EXTS_GOTO(&ctx, submod->exts, mod_c->exts, mod_c, ret, cleanup);
     }
     ctx.pmod = sp;
 
@@ -1683,13 +1741,13 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     ctx.options |= LYS_COMPILE_GROUPING;
     LY_LIST_FOR(sp->groupings, grp) {
         if (!(grp->flags & LYS_USED_GRP)) {
-            LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), error);
+            LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), cleanup);
         }
     }
     LY_LIST_FOR(sp->data, pnode) {
         LY_LIST_FOR((struct lysp_node_grp *)lysp_node_groupings(pnode), grp) {
             if (!(grp->flags & LYS_USED_GRP)) {
-                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, grp), error);
+                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, grp), cleanup);
             }
         }
     }
@@ -1699,13 +1757,13 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
 
         LY_LIST_FOR(submod->groupings, grp) {
             if (!(grp->flags & LYS_USED_GRP)) {
-                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), error);
+                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), cleanup);
             }
         }
         LY_LIST_FOR(submod->data, pnode) {
             LY_LIST_FOR((struct lysp_node_grp *)lysp_node_groupings(pnode), grp) {
                 if (!(grp->flags & LYS_USED_GRP)) {
-                    LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, grp), error);
+                    LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, pnode, grp), cleanup);
                 }
             }
         }
@@ -1715,17 +1773,15 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     LOG_LOCBACK(0, 0, 1, 0);
 
     /* finish compilation for all unresolved module items in the context */
-    LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), error);
+    LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
 
-    lys_compile_unres_mod_erase(&ctx, 0);
-    return LY_SUCCESS;
-
-error:
+cleanup:
     LOG_LOCBACK(0, 0, 1, 0);
-    lys_precompile_augments_deviations_revert(ctx.ctx, mod);
-    lys_compile_unres_mod_erase(&ctx, 1);
-    lysc_module_free(mod_c);
-    mod->compiled = NULL;
-
+    lys_compile_unres_mod_erase(&ctx, ret);
+    if (ret) {
+        lys_precompile_augments_deviations_revert(ctx.ctx, mod);
+        lysc_module_free(mod_c);
+        mod->compiled = NULL;
+    }
     return ret;
 }

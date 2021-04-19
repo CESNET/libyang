@@ -71,7 +71,9 @@ struct lys_glob_unres {
     struct ly_set xpath;        /**< when/must to check */
     struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
-    ly_bool recompile;          /**< flag whether all the modules need to be recompiled (because of new deviations) */
+    ly_bool full_compilation;   /**< flag marking that all the currently implemented modules were compiled in this
+                                    compilation (meaning that all their disabled nodes are still present) */
+    ly_bool recompile;          /**< flag marking that a module needs to be recompiled for this compilation to succeed */
 };
 
 /**
@@ -238,6 +240,7 @@ LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_ex
 
 /**
  * @brief Finish compilation of all the global unres sets.
+ * Will always finish the compilation (never return @p unres with `recompile` set).
  *
  * @param[in] ctx libyang context.
  * @param[in] unres Global unres structure with the sets to resolve.
@@ -277,7 +280,8 @@ LY_ERR lys_recompile(struct ly_ctx *ctx, ly_bool log);
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
  * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in,out] unres Global unres structure for newly implemented modules. If `recompile` was set, @p mod
+ * was actually not compiled because there is at least one compiled imported module that must be recompiled first.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 LY_ERR lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unres);

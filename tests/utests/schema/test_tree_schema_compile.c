@@ -2455,10 +2455,10 @@ test_augment(void **state)
     assert_non_null(node = ((struct lysc_node_container *)node)->child);
     assert_string_equal("p", node->name);
     assert_non_null(node = node->next);
-    assert_string_equal("ll", node->name);
-    assert_non_null(node = node->next);
     assert_string_equal("l", node->name);
     assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = node->next);
+    assert_string_equal("ll", node->name);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module i {namespace urn:i;prefix i;import himp {prefix hi;}"
             "augment /hi:func/hi:input {leaf x {type string;}}"
@@ -2516,7 +2516,7 @@ test_augment(void **state)
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:i;prefix i;import himp {prefix hi;}"
             "augment /hi:func/input {leaf x {type string;}}"
             "augment /hi:func/output {leaf y {type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"/hi:func/input\" - target node not found.", "/hh:{augment='/hi:func/input'}");
+    CHECK_LOG_CTX("Augment target node \"/hi:func/input\" from module \"hh\" was not found.", "/hh:{augment='/hi:func/input'}");
 }
 
 static void
