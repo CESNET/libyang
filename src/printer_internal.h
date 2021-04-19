@@ -114,7 +114,11 @@ LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lysp_module *mod
 LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t options);
 
 /**
- * @brief YANG Tree Diagram printer of the parsed submodule. Full YANG Tree printer.
+ * @brief Full YANG Tree Diagram printer.
+ *
+ * The module should be compiled and the @ref contextoptions must be set to LY_CTX_SET_PRIV_PARSED.
+ * If not, the printer will use parsed (unresolved) YANG schema tree, which means,
+ * for example, that `grouping` sections will be on the output.
  *
  * @param[in] out Output specification.
  * @param[in] module Main module.
@@ -122,7 +126,7 @@ LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lysp_submodul
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for ::LYS_OUT_TREE printer.
  * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
-LY_ERR tree_print_parsed_module(struct ly_out *out, const struct lys_module *module, uint32_t options,
+LY_ERR tree_print_module(struct ly_out *out, const struct lys_module *module, uint32_t options,
         size_t line_length);
 
 /**

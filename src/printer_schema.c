@@ -68,7 +68,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
             ret = LY_EINVAL;
             break;
         }
-        ret = tree_print_parsed_module(out, module, options, line_length);
+        ret = tree_print_module(out, module, options, line_length);
         break;
     /* TODO not yet implemented
     case LYS_OUT_INFO:

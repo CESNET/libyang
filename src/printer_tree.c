@@ -42,7 +42,7 @@
  * @subsubsection TRP_trb trb
  * Browse functions contain a general algorithm (Preorder DFS)
  * for traversing the tree. It does not matter what data type
- * the tree contains (\ref lysp_node), because it
+ * the tree contains (\ref lysc_node or \ref lysp_node), because it
  * requires a ready-made getter functions for traversing the tree
  * (\ref trt_fp_all) and transformation function to its own node
  * data type (\ref trt_node). These getter functions are generally
@@ -55,13 +55,16 @@
  * @subsubsection TRP_tro tro
  * Functions that provide an extra wrapper for the libyang library.
  * The Obtain functions are further specialized according to whether
- * they operate on lysp_tree (\ref TRP_trop). If they are general
- * algorithms, then they have the prefix \b tro_. The Obtain functions
- * provide information to \ref TRP_trb functions for printing the
- * Tree diagram.
+ * they operate on lysp_tree (\ref TRP_trop) or lysc_tree
+ * (\ref TRP_troc). If they are general algorithms, then they have the
+ * prefix \b tro_. The Obtain functions provide information to
+ * \ref TRP_trb functions for printing the Tree diagram.
  *
  * @subsubsection TRP_trop trop
  * Functions for Obtaining information from Parsed schema tree.
+ *
+ * @subsubsection TRP_troc troc
+ * Functions for Obtaining information from Compiled schema tree.
  *
  * @subsubsection TRP_trp trp
  * Print functions take care of the printing YANG diagram. They can
@@ -76,11 +79,12 @@
  *
  * @subsection TRP_ADJUSTMENTS Adjustments
  * It is assumed that the changes are likely to take place mainly for
- * \ref TRP_tro, \ref TRP_trop functions because they are the only
- * ones dependent on libyang implementation. In special cases, changes
- * will also need to be made to the \ref TRP_trp functions if a special
- * algorithm is needed to print (right now this is prepared for
- * printing list's keys and if-features).
+ * \ref TRP_tro, \ref TRP_trop or \ref TRP_troc functions because
+ * they are the only ones dependent on libyang implementation.
+ * In special cases, changes will also need to be made to the
+ * \ref TRP_trp functions if a special algorithm is needed to print
+ * (right now this is prepared for printing list's keys
+ * and if-features).
  */
 
 #include <assert.h>
@@ -142,6 +146,9 @@ struct trt_cf_print {
  * cases, it's not that simple, because its entire string is fragmented
  * in memory. For example, for printing list's keys or if-features.
  * However, this depends on how the libyang library is implemented.
+ * This implementation of the printer_tree module goes through
+ * a lysp tree, but if it goes through a lysc tree, these special cases
+ * would be different.
  * Functions must print including spaces or delimiters between names.
  */
 struct trt_fp_print {
@@ -541,7 +548,7 @@ struct trt_parent_cache;
 /**
  * @brief Functions that change the state of the tree_ctx structure.
  *
- * The 'trop' functions are set here, which provide data
+ * The 'trop' or 'troc' functions are set here, which provide data
  * for the 'trp' printing functions and are also called from the
  * 'trb' browsing functions when walking through a tree. These callback
  * functions need to be checked or reformulated if changes to the
@@ -651,7 +658,8 @@ typedef enum {
  * the inheritance states will be stored during the recursive calls.
  * So the problem was solved by the second option. Why does
  * the structure contain this data? Because it walks through
- * the lysp tree.
+ * the lysp tree. For walks through the lysc tree is trt_parent_cache
+ * useless.
  *
  * @see TRO_EMPTY_PARENT_CACHE, tro_parent_cache_for_child
  */
@@ -675,13 +683,25 @@ struct trt_parent_cache {
  * @brief Main structure for browsing the libyang tree
  */
 struct trt_tree_ctx {
+    ly_bool lysc_tree;                  /**< The lysc nodes are used for browsing through the tree.
+                                             It is assumed that once set, it does not change.
+                                             If it is true then trt_tree_ctx.pn and
+                                             trt_tree_ctx.tpn are not used.
+                                             If it is false then trt_tree_ctx.cn is not used. */
     trt_actual_section section;         /**< To which section pn points. */
     const struct lys_module *module;    /**< Schema tree structures. */
     const struct lysp_node *pn;         /**< Actual pointer to parsed node. */
     const struct lysp_node *tpn;        /**< Pointer to actual top-node. */
+    const struct lysc_node *cn;         /**< Actual pointer to compiled node. */
 };
 
-/** Getter function for tro_lysp_node_charptr(). */
+/**
+ * @brief Get lysp_node from trt_tree_ctx.cn.
+ */
+#define TRP_TREE_CTX_GET_LYSP_NODE(CN) \
+    ((const struct lysp_node *)CN->priv)
+
+/** Getter function for trop_node_charptr(). */
 typedef const char *(*trt_get_charptr_func)(const struct lysp_node *pn);
 
 /**
@@ -1871,7 +1891,7 @@ trp_print_entire_node(struct trt_node node, struct trt_pck_print ppck, struct tr
 }
 
 /**********************************************************************
- * trop getters
+ * trop and troc getters
  *********************************************************************/
 
 /**
@@ -1973,16 +1993,122 @@ trop_init_getters()
     };
 }
 
+/**
+ * @brief Get nodetype.
+ * @param[in] node is any lysc_node.
+ */
+static uint16_t
+troc_nodetype(const void *node)
+{
+    return ((const struct lysc_node *)node)->nodetype;
+}
+
+/**
+ * @brief Get sibling.
+ * @param[in] node is any lysc_node.
+ */
+static const void *
+troc_next(const void *node)
+{
+    return ((const struct lysc_node *)node)->next;
+}
+
+/**
+ * @brief Get parent.
+ * @param[in] node is any lysc_node.
+ */
+static const void *
+troc_parent(const void *node)
+{
+    return ((const struct lysc_node *)node)->parent;
+}
+
+/**
+ * @brief Try to get child.
+ * @param[in] node is any lysc_node.
+ */
+static const void *
+troc_child(const void *node)
+{
+    return lysc_node_child(node);
+}
+
+/**
+ * @brief Try to get action.
+ * @param[in] node is any lysc_node.
+ */
+static const void *
+troc_actions(const void *node)
+{
+    return lysc_node_actions(node);
+}
+
+/**
+ * @brief Try to get action.
+ * @param[in] node must be of type lysc_node_action.
+ */
+static const void *
+troc_action_input(const void *node)
+{
+    return &((const struct lysc_node_action *)node)->input;
+}
+
+/**
+ * @brief Try to get action.
+ * @param[in] node must be of type lysc_node_action.
+ */
+static const void *
+troc_action_output(const void *node)
+{
+    return &((const struct lysc_node_action *)node)->output;
+}
+
+/**
+ * @brief Try to get action.
+ * @param[in] node is any lysc_node.
+ */
+static const void *
+troc_notifs(const void *node)
+{
+    return lysc_node_notifs(node);
+}
+
+/**
+ * @brief Fill struct tro_getters with \ref TRP_troc getters
+ * which are adapted to lysc nodes.
+ */
+static struct tro_getters
+troc_init_getters()
+{
+    return (struct tro_getters) {
+               .nodetype = troc_nodetype,
+               .next = troc_next,
+               .parent = troc_parent,
+               .child = troc_child,
+               .actions = troc_actions,
+               .action_input = troc_action_input,
+               .action_output = troc_action_output,
+               .notifs = troc_notifs
+    };
+}
+
 /**********************************************************************
  * tro functions
  *********************************************************************/
 
 /**
  * @brief Get next sibling of the current node.
- * @param[in] node points to lysp_node.
+ *
+ * This is a general algorithm that is able to
+ * work with lysp_node or lysc_node.
+ *
+ * @param[in] node points to lysp_node or lysc_node.
+ * @param[in] lysc_tree flag to determine what type the @p node is.
+ * If set to true, then @p points to lysc_node otherwise lysp_node.
+ * This flag should be the same as trt_tree_ctx.lysc_tree.
  */
 static const void *
-tro_next_sibling(const void *node)
+tro_next_sibling(const void *node, ly_bool lysc_tree)
 {
     struct tro_getters get;
     const void *tmp, *parent;
@@ -1990,7 +2116,7 @@ tro_next_sibling(const void *node)
 
     assert(node);
 
-    get = trop_init_getters();
+    get = lysc_tree ? troc_init_getters() : trop_init_getters();
 
     if (get.nodetype(node) & (LYS_RPC | LYS_ACTION)) {
         if ((tmp = get.next(node))) {
@@ -2054,10 +2180,17 @@ tro_next_sibling(const void *node)
 
 /**
  * @brief Get child of the current node.
- * @param[in] node points to lysp_node.
+ *
+ * This is a general algorithm that is able to
+ * work with lysp_node or lysc_node.
+ *
+ * @param[in] node points to lysp_node or lysc_node.
+ * @param[in] lysc_tree flag to determine what type the @p node is.
+ * If set to true, then @p points to lysc_node otherwise lysp_node.
+ * This flag should be the same as trt_tree_ctx.lysc_tree.
  */
 static const void *
-tro_next_child(const void *node)
+tro_next_child(const void *node, ly_bool lysc_tree)
 {
     struct tro_getters get;
     const void *tmp;
@@ -2065,7 +2198,7 @@ tro_next_child(const void *node)
 
     assert(node);
 
-    get = trop_init_getters();
+    get = lysc_tree ? troc_init_getters() : trop_init_getters();
 
     if (get.nodetype(node) & (LYS_ACTION | LYS_RPC)) {
         if (get.child(get.action_input(node))) {
@@ -2098,6 +2231,45 @@ tro_next_child(const void *node)
 }
 
 /**
+ * @brief Get new trt_parent_cache if we apply the transfer
+ * to the child node in the tree.
+ * @param[in] ca is parent cache for current node.
+ * @param[in] tc contains current tree node.
+ * @return Cache for the current node.
+ */
+static struct trt_parent_cache
+tro_parent_cache_for_child(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
+{
+    struct trt_parent_cache ret = TRP_EMPTY_PARENT_CACHE;
+
+    if (!tc->lysc_tree) {
+        const struct lysp_node *pn = tc->pn;
+
+        ret.ancestor =
+                pn->nodetype & (LYS_INPUT) ? TRD_ANCESTOR_RPC_INPUT :
+                pn->nodetype & (LYS_OUTPUT) ? TRD_ANCESTOR_RPC_OUTPUT :
+                pn->nodetype & (LYS_NOTIF) ? TRD_ANCESTOR_NOTIF :
+                ca.ancestor;
+
+        ret.lys_status =
+                pn->flags & (LYS_STATUS_CURR | LYS_STATUS_DEPRC | LYS_STATUS_OBSLT) ? pn->flags :
+                ca.lys_status;
+
+        ret.lys_config =
+                ca.ancestor == TRD_ANCESTOR_RPC_INPUT ? 0 : /* because <flags> will be -w */
+                ca.ancestor == TRD_ANCESTOR_RPC_OUTPUT ? LYS_CONFIG_R :
+                pn->flags & (LYS_CONFIG_R | LYS_CONFIG_W) ? pn->flags :
+                ca.lys_config;
+
+        ret.last_list =
+                pn->nodetype & (LYS_LIST) ? (struct lysp_node_list *)pn :
+                ca.last_list;
+    }
+
+    return ret;
+}
+
+/**
  * @brief Transformation of the Schema nodes flags to
  * Tree diagram \<status\>.
  * @param[in] flags is node's flags obtained from the tree.
@@ -2121,6 +2293,127 @@ tro_flags2config(uint16_t flags)
     return flags & LYS_CONFIG_R ? TRD_FLAGS_TYPE_RO :
            flags & LYS_CONFIG_W ? TRD_FLAGS_TYPE_RW :
            TRD_FLAGS_TYPE_EMPTY;
+}
+
+/**
+ * @brief Print current node's iffeatures.
+ * @param[in] tc is tree context.
+ * @param[in,out] out is output handler.
+ */
+static void
+tro_print_features_names(const struct trt_tree_ctx *tc, struct ly_out *out)
+{
+    const struct lysp_qname *iffs;
+
+    iffs = tc->lysc_tree ?
+            TRP_TREE_CTX_GET_LYSP_NODE(tc->cn)->iffeatures :
+            tc->pn->iffeatures;
+
+    LY_ARRAY_COUNT_TYPE i;
+
+    LY_ARRAY_FOR(iffs, i) {
+        if (i == 0) {
+            ly_print_(out, "%s", iffs[i].str);
+        } else {
+            ly_print_(out, ",%s", iffs[i].str);
+        }
+    }
+
+}
+
+/**
+ * @brief Print current list's keys.
+ *
+ * Well, actually printing keys in the lysp_tree is trivial,
+ * because char* points to all keys. However, special functions have
+ * been reserved for this, because in principle the list of elements
+ * can have more implementations.
+ *
+ * @param[in] tc is tree context.
+ * @param[in,out] out is output handler.
+ */
+static void
+tro_print_keys(const struct trt_tree_ctx *tc, struct ly_out *out)
+{
+    const struct lysp_node_list *list;
+
+    list = tc->lysc_tree ?
+            (const struct lysp_node_list *)TRP_TREE_CTX_GET_LYSP_NODE(tc->cn) :
+            (const struct lysp_node_list *)tc->pn;
+    assert(list->nodetype & LYS_LIST);
+
+    if (trg_charptr_has_data(list->key)) {
+        ly_print_(out, "%s", list->key);
+    }
+}
+
+/**
+ * @brief Get rpcs section if exists.
+ * @param[in,out] tc is tree context.
+ * @return Section representation if it exists. The @p tc is modified
+ * and his pointer points to the first node in rpcs section.
+ * @return Empty section representation otherwise.
+ */
+static struct trt_keyword_stmt
+tro_modi_get_rpcs(struct trt_tree_ctx *tc)
+{
+    assert(tc && tc->module);
+    const void *actions;
+
+    if (tc->lysc_tree) {
+        actions = tc->module->compiled->rpcs;
+        if (actions) {
+            tc->cn = actions;
+        }
+    } else {
+        actions = tc->module->parsed->rpcs;
+        if (actions) {
+            tc->pn = actions;
+            tc->tpn = tc->pn;
+        }
+    }
+
+    if (actions) {
+        tc->section = TRD_SECT_RPCS;
+        return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_RPC, NULL);
+    } else {
+        return TRP_EMPTY_KEYWORD_STMT;
+    }
+}
+
+/**
+ * @brief Get notification section if exists
+ * @param[in,out] tc is tree context.
+ * @return Section representation if it exists.
+ * The @p tc is modified and his pointer points to the
+ * first node in notification section.
+ * @return Empty section representation otherwise.
+ */
+static struct trt_keyword_stmt
+tro_modi_get_notifications(struct trt_tree_ctx *tc)
+{
+    assert(tc && tc->module);
+    const void *notifs;
+
+    if (tc->lysc_tree) {
+        notifs = tc->module->compiled->notifs;
+        if (notifs) {
+            tc->cn = notifs;
+        }
+    } else {
+        notifs = tc->module->parsed->notifs;
+        if (notifs) {
+            tc->pn = notifs;
+            tc->tpn = tc->pn;
+        }
+    }
+
+    if (notifs) {
+        tc->section = TRD_SECT_NOTIF;
+        return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_NOTIF, NULL);
+    } else {
+        return TRP_EMPTY_KEYWORD_STMT;
+    }
 }
 
 /**
@@ -2158,41 +2451,6 @@ tro_read_module_name(const struct trt_tree_ctx *tc)
  *********************************************************************/
 
 /**
- * @brief Get new trt_parent_cache if we apply the transfer
- * to the child node in the tree.
- * @param[in] ca is parent cache for current node.
- * @param[in] tc contains current tree node.
- * @return Cache for the current node.
- */
-static struct trt_parent_cache
-trop_parent_cache_for_child(struct trt_parent_cache ca, const struct lysp_node *pn)
-{
-    struct trt_parent_cache ret;
-
-    ret.ancestor =
-            pn->nodetype & (LYS_INPUT) ? TRD_ANCESTOR_RPC_INPUT :
-            pn->nodetype & (LYS_OUTPUT) ? TRD_ANCESTOR_RPC_OUTPUT :
-            pn->nodetype & (LYS_NOTIF) ? TRD_ANCESTOR_NOTIF :
-            ca.ancestor;
-
-    ret.lys_status =
-            pn->flags & (LYS_STATUS_CURR | LYS_STATUS_DEPRC | LYS_STATUS_OBSLT) ? pn->flags :
-            ca.lys_status;
-
-    ret.lys_config =
-            ca.ancestor == TRD_ANCESTOR_RPC_INPUT ? 0 :     /* because <flags> will be -w */
-            ca.ancestor == TRD_ANCESTOR_RPC_OUTPUT ? LYS_CONFIG_R :
-            pn->flags & (LYS_CONFIG_R | LYS_CONFIG_W) ? pn->flags :
-            ca.lys_config;
-
-    ret.last_list =
-            pn->nodetype & (LYS_LIST) ? (struct lysp_node_list *)pn :
-            ca.last_list;
-
-    return ret;
-}
-
-/**
  * @brief Check if list statement has keys.
  * @param[in] pn is pointer to the list.
  * @return 1 if has keys, otherwise 0.
@@ -2205,7 +2463,7 @@ trop_list_has_keys(const struct lysp_node *pn)
 
 /**
  * @brief Check if it contains at least one feature.
- * @param[in] iffs is pointer to the if-features.
+ * @param[in] pn is current node.
  * @return 1 if has if-features, otherwise 0.
  */
 static ly_bool
@@ -2485,7 +2743,7 @@ trop_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     /* <iffeature> */
     ret.iffeatures = trop_node_has_iffeature(pn);
 
-    ret.last_one = !tro_next_sibling(pn);
+    ret.last_one = !tro_next_sibling(pn, tc->lysc_tree);
 
     return ret;
 }
@@ -2498,7 +2756,7 @@ trop_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
 static ly_bool
 trop_read_if_sibling_exists(const struct trt_tree_ctx *tc)
 {
-    return tro_next_sibling(tc->pn) != NULL;
+    return tro_next_sibling(tc->pn, tc->lysc_tree) != NULL;
 }
 
 /**********************************************************************
@@ -2545,9 +2803,9 @@ trop_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 
     assert(tc && tc->pn);
 
-    if ((tmp = tro_next_child(tc->pn))) {
+    if ((tmp = tro_next_child(tc->pn, tc->lysc_tree))) {
         tc->pn = tmp;
-        return trop_read_node(trop_parent_cache_for_child(ca, tc->pn), tc);
+        return trop_read_node(tro_parent_cache_for_child(ca, tc), tc);
     } else {
         return TRP_EMPTY_NODE;
     }
@@ -2615,7 +2873,7 @@ trop_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 
     assert(tc && tc->pn);
 
-    pn = tro_next_sibling(tc->pn);
+    pn = tro_next_sibling(tc->pn, tc->lysc_tree);
     tpn = tc->tpn == tc->pn ? pn : tc->tpn;
 
     /* if next sibling exists */
@@ -2661,53 +2919,6 @@ trop_modi_next_augment(struct trt_tree_ctx *tc)
 }
 
 /**
- * @brief Get rpcs section if exists.
- * @param[in,out] tc is tree context.
- * @return Section representation if it exists. The @p tc is modified
- * and his pointer points to the first node in rpcs section.
- * @return Empty section representation otherwise.
- */
-static struct trt_keyword_stmt
-trop_modi_get_rpcs(struct trt_tree_ctx *tc)
-{
-    assert(tc && tc->module && tc->module->parsed);
-    const struct lysp_node_action *actions = tc->module->parsed->rpcs;
-
-    if (actions) {
-        tc->section = TRD_SECT_RPCS;
-        tc->pn = &actions->node;
-        tc->tpn = tc->pn;
-        return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_RPC, NULL);
-    } else {
-        return TRP_EMPTY_KEYWORD_STMT;
-    }
-}
-
-/**
- * @brief Get notification section if exists
- * @param[in,out] tc is tree context.
- * @return Section representation if it exists.
- * The @p tc is modified and his pointer points to the
- * first node in notification section.
- * @return Empty section representation otherwise.
- */
-static struct trt_keyword_stmt
-trop_modi_get_notifications(struct trt_tree_ctx *tc)
-{
-    assert(tc && tc->module && tc->module->parsed);
-    const struct lysp_node_notif *notifs = tc->module->parsed->notifs;
-
-    if (notifs) {
-        tc->section = TRD_SECT_NOTIF;
-        tc->pn = &notifs->node;
-        tc->tpn = tc->pn;
-        return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_NOTIF, NULL);
-    } else {
-        return TRP_EMPTY_KEYWORD_STMT;
-    }
-}
-
-/**
  * @brief Get next (or first) grouping section if exists
  * @param[in,out] tc is tree context. It is modified and his current
  * node is set to the lysp_node_grp.
@@ -2737,55 +2948,217 @@ trop_modi_next_grouping(struct trt_tree_ctx *tc)
 }
 
 /**********************************************************************
- * Print Tro getters
+ * Definition of troc reading functions
  *********************************************************************/
 
 /**
- * @brief Print current node's iffeatures.
- * @param[in] tc is tree context.
- * @param[in,out] out is output handler.
+ * @copydoc trop_read_if_sibling_exists
  */
-static void
-trop_print_features_names(const struct trt_tree_ctx *tc, struct ly_out *out)
+static ly_bool
+troc_read_if_sibling_exists(const struct trt_tree_ctx *tc)
 {
-    const struct lysp_qname *iffs = tc->pn->iffeatures;
+    return tro_next_sibling(tc->cn, tc->lysc_tree) != NULL;
+}
 
-    LY_ARRAY_COUNT_TYPE i;
-
-    LY_ARRAY_FOR(iffs, i) {
-        if (i == 0) {
-            ly_print_(out, "%s", iffs[i].str);
-        } else {
-            ly_print_(out, ",%s", iffs[i].str);
-        }
+/**
+ * @brief Resolve \<flags\> of the current node.
+ *
+ * Use this function only if trt_tree_ctx.lysc_tree is true.
+ *
+ * @param[in] nodetype is current lysc_node.nodetype.
+ * @param[in] flags is current lysc_node.flags.
+ * @return The flags type.
+ */
+static trt_flags_type
+troc_resolve_flags(uint16_t nodetype, uint16_t flags)
+{
+    if ((nodetype & LYS_INPUT) || (flags & LYS_IS_INPUT)) {
+        return TRD_FLAGS_TYPE_RPC_INPUT_PARAMS;
+    } else if ((nodetype & LYS_OUTPUT) || (flags & LYS_IS_OUTPUT)) {
+        return TRD_FLAGS_TYPE_RO;
+    } else if (nodetype & LYS_IS_NOTIF) {
+        return TRD_FLAGS_TYPE_RO;
+    } else if (nodetype & LYS_NOTIF) {
+        return TRD_FLAGS_TYPE_NOTIF;
+    } else if (nodetype & LYS_USES) {
+        return TRD_FLAGS_TYPE_USES_OF_GROUPING;
+    } else if (nodetype & (LYS_RPC | LYS_ACTION)) {
+        return TRD_FLAGS_TYPE_RPC;
+    } else {
+        return tro_flags2config(flags);
     }
 }
 
 /**
- * @brief Print current list's keys.
+ * @brief Resolve node type of the current node.
  *
- * Well, actually printing keys in the lysp_tree is trivial,
- * because char* points to all keys. However, special functions have
- * been reserved for this, because in principle the list of elements
- * can have more implementations.
+ * Use this function only if trt_tree_ctx.lysc_tree is true.
  *
- * @param[in] tc is tree context.
- * @param[in,out] out is output handler.
+ * @param[in] nodetype is current lysc_node.nodetype.
+ * @param[in] flags is current lysc_node.flags.
+ */
+static trt_node_type
+troc_resolve_node_type(uint16_t nodetype, uint16_t flags)
+{
+    if (nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+        return TRD_NODE_ELSE;
+    } else if (nodetype & LYS_CASE) {
+        return TRD_NODE_CASE;
+    } else if ((nodetype & LYS_CHOICE) && !(flags & LYS_MAND_TRUE)) {
+        return TRD_NODE_OPTIONAL_CHOICE;
+    } else if (nodetype & LYS_CHOICE) {
+        return TRD_NODE_CHOICE;
+    } else if ((nodetype & LYS_CONTAINER) && (flags & LYS_PRESENCE)) {
+        return TRD_NODE_CONTAINER;
+    } else if ((nodetype & LYS_LIST) && !(flags & LYS_KEYLESS)) {
+        return TRD_NODE_KEYS;
+    } else if (nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        return TRD_NODE_LISTLEAFLIST;
+    } else if ((nodetype & (LYS_ANYDATA | LYS_ANYXML)) && !(flags & LYS_MAND_TRUE)) {
+        return TRD_NODE_OPTIONAL;
+    } else if ((nodetype & LYS_LEAF) && !(flags & (LYS_MAND_TRUE | LYS_KEY))) {
+        return TRD_NODE_OPTIONAL;
+    } else {
+        return TRD_NODE_ELSE;
+    }
+}
+
+/**
+ * @brief Transformation of current lysc_node to struct trt_node.
+ * @param[in] ca is not used.
+ * @param[in] tc is context of the tree.
+ */
+static struct trt_node
+troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
+{
+    (void) ca;
+    const struct lysc_node *cn;
+    struct trt_node ret;
+
+    assert(tc && tc->cn);
+
+    cn = tc->cn;
+    ret = TRP_EMPTY_NODE;
+
+    /* <status> */
+    ret.status = tro_flags2status(cn->flags);
+
+    /* TODO: TRD_FLAGS_TYPE_MOUNT_POINT aka "mp" is not supported right now. */
+    /* <flags> */
+    ret.flags = troc_resolve_flags(cn->nodetype, cn->flags);
+
+    /* TODO: TRD_NODE_TOP_LEVEL1 aka '/' is not supported right now. */
+    /* TODO: TRD_NODE_TOP_LEVEL2 aka '@' is not supported right now. */
+    /* set type of the node */
+    ret.name.type = troc_resolve_node_type(cn->nodetype, cn->flags);
+
+    /* TODO: ret.name.module_prefix is not supported right now. */
+    ret.name.module_prefix = NULL;
+
+    /* set node's name */
+    ret.name.str = cn->name;
+
+    /* <type> */
+    ret.type = trop_resolve_type(TRP_TREE_CTX_GET_LYSP_NODE(cn));
+
+    /* <iffeature> */
+    ret.iffeatures = trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(cn));
+
+    ret.last_one = !tro_next_sibling(cn, tc->lysc_tree);
+
+    return ret;
+}
+
+/**********************************************************************
+ * Modify troc getters
+ *********************************************************************/
+
+/**
+ * @copydoc trop_modi_parent()
+ */
+static ly_bool
+troc_modi_parent(struct trt_tree_ctx *tc)
+{
+    assert(tc && tc->cn);
+    /* If no parent exists, stay in actual node. */
+    if (tc->cn->parent) {
+        tc->cn = tc->cn->parent;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/**
+ * @copydoc trop_modi_next_sibling()
+ */
+static struct trt_node
+troc_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
+{
+    const struct lysc_node *cn;
+
+    assert(tc && tc->cn);
+
+    cn = tro_next_sibling(tc->cn, tc->lysc_tree);
+
+    /* if next sibling exists */
+    if (cn) {
+        /* update trt_tree_ctx */
+        tc->cn = cn;
+        return troc_read_node(ca, tc);
+    } else {
+        return TRP_EMPTY_NODE;
+    }
+}
+
+/**
+ * @copydoc trop_modi_next_child()
+ */
+static struct trt_node
+troc_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
+{
+    const struct lysc_node *tmp;
+
+    assert(tc && tc->cn);
+
+    if ((tmp = tro_next_child(tc->cn, tc->lysc_tree))) {
+        tc->cn = tmp;
+        return troc_read_node(ca, tc);
+    } else {
+        return TRP_EMPTY_NODE;
+    }
+}
+
+/**
+ * @copydoc trop_modi_first_sibling()
  */
 static void
-trop_print_keys(const struct trt_tree_ctx *tc, struct ly_out *out)
+troc_modi_first_sibling(struct trt_tree_ctx *tc)
 {
-    const struct lysp_node *pn = tc->pn;
-    const struct lysp_node_list *list;
+    assert(tc && tc->cn);
 
-    if (pn->nodetype != LYS_LIST) {
-        return;
-    }
+    if (troc_modi_parent(tc)) {
+        troc_modi_next_child(TRP_EMPTY_PARENT_CACHE, tc);
+    } else {
+        /* current node is top-node */
+        struct lysc_module *cm = tc->module->compiled;
 
-    list = (const struct lysp_node_list *)pn;
-
-    if (trg_charptr_has_data(list->key)) {
-        ly_print_(out, "%s", list->key);
+        switch (tc->section) {
+        case TRD_SECT_MODULE:
+            tc->cn = cm->data;
+            break;
+        case TRD_SECT_RPCS:
+            tc->cn = (const struct lysc_node *)cm->rpcs;
+            break;
+        case TRD_SECT_NOTIF:
+            tc->cn = (const struct lysc_node *)cm->notifs;
+            break;
+        case TRD_SECT_YANG_DATA:
+            /*TODO: yang-data is not supported now */
+            break;
+        default:
+            assert(0);
+        }
     }
 }
 
@@ -3009,7 +3382,7 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
         /* print node */
         trb_print_entire_node(max_gap_before_type, wr, ca, pc, tc);
 
-        new_ca = trop_parent_cache_for_child(ca, tc->pn);
+        new_ca = tro_parent_cache_for_child(ca, tc);
         /* go to the actual node's child or stay in actual node */
         node = pc->fp.modify.next_child(ca, tc);
         child_flag = !trp_node_is_empty(node);
@@ -3032,12 +3405,14 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
 /**
  * @brief Get address of the current node.
  * @param[in] tc contains current node.
- * @return Address of lysp_node, or NULL.
+ * @return Address of lysc_node or lysp_node, or NULL.
  */
 static const void *
 trb_tree_ctx_get_node(struct trt_tree_ctx *tc)
 {
-    return (const void *)tc->pn;
+    return tc->lysc_tree ?
+           (const void *)tc->cn :
+           (const void *)tc->pn;
 }
 
 /**
@@ -3051,7 +3426,11 @@ trb_tree_ctx_get_child(struct trt_tree_ctx *tc)
         return NULL;
     }
 
-    return lysp_node_child(tc->pn);
+    if (tc->lysc_tree) {
+        return lysc_node_child(tc->cn);
+    } else {
+        return lysp_node_child(tc->pn);
+    }
 }
 
 /**
@@ -3061,7 +3440,13 @@ trb_tree_ctx_get_child(struct trt_tree_ctx *tc)
 static void
 trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
 {
-    tc->pn = trb_tree_ctx_get_child(tc);
+    const void *node = trb_tree_ctx_get_child(tc);
+
+    if (tc->lysc_tree) {
+        tc->cn = node;
+    } else {
+        tc->pn = node;
+    }
 }
 
 /**
@@ -3094,7 +3479,7 @@ trb_print_subtree_nodes(uint32_t max_gap_before_type, struct trt_wrapper wr, str
 
     trb_print_entire_node(max_gap_before_type, wr, ca, pc, tc);
     /* go to the actual node's child */
-    new_ca = trop_parent_cache_for_child(ca, tc->pn);
+    new_ca = tro_parent_cache_for_child(ca, tc);
     node = pc->fp.modify.next_child(ca, tc);
 
     if (!trp_node_is_empty(node)) {
@@ -3133,9 +3518,9 @@ trb_get_number_of_siblings(struct trt_fp_modify_ctx fp, struct trt_tree_ctx *tc)
  * @brief Print all parents and their children.
  *
  * This function is suitable for printing top-level nodes that
- * do not have ancestors. Function call trb_print_subtree_nodes()
- * for all top-level siblings. Use this function after 'module' keyword
- * or 'augment' and so.
+ * do not have ancestors. Function call trb_print_subtree_nodes() for all
+ * top-level siblings. Use this function after 'module' keyword or
+ * 'augment' and so.
  *
  * @param[in] wr_t is type of the wrapper.
  * @param[pc] pc contains mainly functions for printing.
@@ -3158,8 +3543,10 @@ trb_print_family_tree(trd_wrapper_type wr_t, struct trt_printer_ctx *pc, struct 
     total_parents = trb_get_number_of_siblings(pc->fp.modify, tc);
     max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
 
-    if ((tc->section == TRD_SECT_GROUPING) && (tc->tpn == tc->pn->parent)) {
-        ca.lys_config = 0x0;
+    if (!tc->lysc_tree) {
+        if ((tc->section == TRD_SECT_GROUPING) && (tc->tpn == tc->pn->parent)) {
+            ca.lys_config = 0x0;
+        }
     }
 
     for (uint32_t i = 0; i < total_parents; i++) {
@@ -3188,10 +3575,12 @@ static void
 trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     *tc = (struct trt_tree_ctx) {
+        .lysc_tree = 0,
         .section = TRD_SECT_MODULE,
         .module = module,
         .pn = module->parsed->data,
         .tpn = module->parsed->data,
+        .cn = NULL
     };
 
     pc->out = out;
@@ -3202,8 +3591,8 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .next_sibling = trop_modi_next_sibling,
         .next_child = trop_modi_next_child,
         .next_augment = trop_modi_next_augment,
-        .get_rpcs = trop_modi_get_rpcs,
-        .get_notifications = trop_modi_get_notifications,
+        .get_rpcs = tro_modi_get_rpcs,
+        .get_notifications = tro_modi_get_notifications,
         .next_grouping = trop_modi_next_grouping,
         .next_yang_data = tro_modi_next_yang_data
     };
@@ -3215,11 +3604,123 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
     };
 
     pc->fp.print = (struct trt_fp_print) {
-        .print_features_names = trop_print_features_names,
-        .print_keys = trop_print_keys
+        .print_features_names = tro_print_features_names,
+        .print_keys = tro_print_keys
     };
 
     pc->max_line_length = max_line_length;
+}
+
+/**
+ * @brief Settings if lysc_node are used for browsing through the tree.
+ *
+ * Pointers to current nodes will be set to module data.
+ *
+ * @param[in] module YANG schema tree structure representing
+ * YANG module.
+ * @param[in] out is output handler.
+ * @param[in] max_line_length is the maximum line length limit
+ * that should not be exceeded.
+ * @param[in,out] pc will be adapted to lysc_tree.
+ * @param[in,out] tc will be adapted to lysc_tree.
+ */
+static void
+trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    *tc = (struct trt_tree_ctx) {
+        .lysc_tree = 1,
+        .section = TRD_SECT_MODULE,
+        .module = module,
+        .tpn = NULL,
+        .pn = NULL,
+        .cn = module->compiled->data
+    };
+
+    pc->out = out;
+
+    pc->fp.modify = (struct trt_fp_modify_ctx) {
+        .parent = troc_modi_parent,
+        .first_sibling = troc_modi_first_sibling,
+        .next_sibling = troc_modi_next_sibling,
+        .next_child = troc_modi_next_child,
+        .next_augment = trop_modi_next_augment,
+        .get_rpcs = tro_modi_get_rpcs,
+        .get_notifications = tro_modi_get_notifications,
+        .next_grouping = NULL,
+        .next_yang_data = tro_modi_next_yang_data
+    };
+
+    pc->fp.read = (struct trt_fp_read) {
+        .module_name = tro_read_module_name,
+        .node = troc_read_node,
+        .if_sibling_exists = troc_read_if_sibling_exists
+    };
+
+    pc->fp.print = (struct trt_fp_print) {
+        .print_features_names = tro_print_features_names,
+        .print_keys = tro_print_keys
+    };
+
+    pc->max_line_length = max_line_length;
+}
+
+/**
+ * @brief Reset settings to browsing through the lysc tree.
+ * @param[in,out] pc resets to \ref TRP_troc functions.
+ * @param[in,out] tc resets to lysc browsing.
+ */
+static void
+trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    trm_lysc_tree_ctx(tc->module, pc->out, pc->max_line_length, pc, tc);
+}
+
+/**
+ * @brief Reset settings to browsing through the lysp tree.
+ * @param[in,out] pc resets to \ref TRP_trop functions.
+ * @param[in,out] tc resets to lysp browsing.
+ */
+static void
+trm_reset_to_lysp_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    trm_lysp_tree_ctx(tc->module, pc->out, pc->max_line_length, pc, tc);
+}
+
+/**
+ * @brief If augment's target node is located on the current module.
+ * @param[in] pn is examined augment.
+ * @param[in] pmod is current module.
+ * @return 1 if nodeid refers to the local node, otherwise 0.
+ */
+static ly_bool
+trm_nodeid_target_is_local(const struct lysp_node_augment *pn, const struct lysp_module *pmod)
+{
+    const char *id, *prefix, *name;
+    size_t prefix_len, name_len;
+    const struct lys_module *mod;
+    ly_bool ret = 0;
+
+    if (pn == NULL) {
+        return ret;
+    }
+
+    id = pn->nodeid;
+    if (!id) {
+        return ret;
+    }
+    /* only absolute-schema-nodeid is taken into account */
+    assert(id[0] == '/');
+    ++id;
+
+    ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
+    if (prefix) {
+        mod = ly_resolve_prefix(pmod->mod->ctx, prefix, prefix_len, LY_PREF_SCHEMA, pmod);
+        ret = mod->parsed == pmod;
+    } else {
+        ret = 1;
+    }
+
+    return ret;
 }
 
 /**
@@ -3295,15 +3796,30 @@ static void
 trm_print_augmentations(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     ly_bool once;
+    ly_bool origin_was_lysc_tree = 0;
 
     if (!pc->fp.modify.next_augment) {
         return;
+    }
+
+    if (tc->lysc_tree) {
+        origin_was_lysc_tree = 1;
+        trm_reset_to_lysp_tree_ctx(pc, tc);
     }
 
     once = 1;
     for (struct trt_keyword_stmt ks = pc->fp.modify.next_augment(tc);
             !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
             ks = pc->fp.modify.next_augment(tc)) {
+
+        if (origin_was_lysc_tree) {
+            /* if lysc tree is used, then only augments targeting
+             * another module are printed
+             */
+            if (trm_nodeid_target_is_local((const struct lysp_node_augment *)tc->tpn, tc->module->parsed)) {
+                continue;
+            }
+        }
 
         if (once) {
             ly_print_(pc->out, "\n");
@@ -3314,6 +3830,10 @@ trm_print_augmentations(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
         }
 
         trm_print_section_as_subtree(ks, pc, tc);
+    }
+
+    if (origin_was_lysc_tree) {
+        trm_reset_to_lysc_tree_ctx(pc, tc);
     }
 }
 
@@ -3426,7 +3946,7 @@ trm_print_sections(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
  *********************************************************************/
 
 LY_ERR
-tree_print_parsed_module(struct ly_out *out, const struct lys_module *module, uint32_t UNUSED(options), size_t line_length)
+tree_print_module(struct ly_out *out, const struct lys_module *module, uint32_t UNUSED(options), size_t line_length)
 {
     struct trt_printer_ctx pc;
     struct trt_tree_ctx tc;
@@ -3441,7 +3961,11 @@ tree_print_parsed_module(struct ly_out *out, const struct lys_module *module, ui
     }
 
     line_length = line_length == 0 ? SIZE_MAX : line_length;
-    trm_lysp_tree_ctx(module, new_out, line_length, &pc, &tc);
+    if ((module->ctx->flags & LY_CTX_SET_PRIV_PARSED) && module->compiled) {
+        trm_lysc_tree_ctx(module, new_out, line_length, &pc, &tc);
+    } else {
+        trm_lysp_tree_ctx(module, new_out, line_length, &pc, &tc);
+    }
 
     trm_print_sections(&pc, &tc);
     erc = clb_arg.last_error;
