@@ -269,6 +269,11 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     }
     ctx->change_count = 1;
 
+    if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
+        /* use it for creating the initial context */
+        ctx->flags |= LY_CTX_EXPLICIT_COMPILE;
+    }
+
     /* create dummy in */
     rc = ly_in_new_memory(internal_modules[0].data, &in);
     LY_CHECK_GOTO(rc, error);
@@ -282,6 +287,12 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 
     /* resolve global unres */
     LY_CHECK_GOTO(rc = lys_compile_unres_glob(ctx, &unres), error);
+
+    if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
+        /* compile now */
+        LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), error);
+        ctx->flags &= ~LY_CTX_EXPLICIT_COMPILE;
+    }
 
     ly_in_free(in, 0);
     lys_compile_unres_glob_erase(ctx, &unres);
