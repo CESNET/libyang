@@ -1678,9 +1678,6 @@ test_type_leafref(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;typedef mytype {type leafref;}"
             "leaf ref1 {type mytype;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Missing path substatement for leafref type mytype.", "/ii:ref1");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;feature f;"
-            "leaf ref {type leafref {path /target;}}leaf target {if-feature f;type string;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location /jj:ref.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;"
             "leaf ref {type leafref {path /target;}}leaf target {type string;config false;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not.", "Schema location /kk:ref.");
@@ -2480,6 +2477,19 @@ test_augment(void **state)
     assert_null(cont->child);
     assert_non_null(cont->notifs);
     assert_null(cont->notifs->next);
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, NULL, NULL);
+    UTEST_LOG_CLEAN;
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module k {namespace urn:k; prefix k;yang-version 1.1;"
+            "feature f;"
+            "container c {if-feature f; leaf a {type string;}}}", LYS_IN_YANG, &mod));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module l {namespace urn:l; prefix l; yang-version 1.1;"
+            "import k {prefix k;}"
+            "augment /k:c {leaf b {type string;}}"
+            "leaf c {when \"/k:c/l:b\"; type string;}}", LYS_IN_YANG, NULL));
+    /* no xpath warning expected */
+    CHECK_LOG(NULL, NULL);
+    assert_null(mod->compiled->data);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
             "augment /x/ {leaf a {type int8;}}}", LYS_IN_YANG, &mod));

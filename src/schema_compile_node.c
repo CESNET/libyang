@@ -2410,7 +2410,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     /* if-features */
     LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), error);
     if (!enabled && !(ctx->options & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
-        ly_set_add(&ctx->disabled, node, 1, NULL);
+        ly_set_add(&ctx->unres->disabled, node, 1, NULL);
         ctx->options |= LYS_COMPILE_DISABLED;
     }
 
