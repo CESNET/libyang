@@ -31,7 +31,7 @@
 void
 cmd_print_help(void)
 {
-    printf("Usage: print [-f (yang | yin | tree | info [-q -P PATH])] [-o OUTFILE]\n"
+    printf("Usage: print [-f (yang | yin | tree [-q -P PATH] | info [-q -P PATH])] [-o OUTFILE]\n"
             "            [<module-name1>[@revision]] ...\n"
             "                  Print a schema module. The <module-name> is not required\n"
             "                  only in case the -P option is specified.\n\n"

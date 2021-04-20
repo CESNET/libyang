@@ -130,6 +130,18 @@ LY_ERR tree_print_module(struct ly_out *out, const struct lys_module *module, ui
         size_t line_length);
 
 /**
+ * @brief YANG Tree Diagram printer of the compiled schema node
+ *
+ * @param[in] out Output specification.
+ * @param[in] node Schema node to be printed including all its substatements.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for ::LYS_OUT_TREE printer.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
+ */
+LY_ERR tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint32_t options,
+        size_t line_length);
+
+/**
  * @brief XML printer of YANG data.
  *
  * @param[in] out Output specification.

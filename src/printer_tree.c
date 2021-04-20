@@ -3403,6 +3403,60 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
 }
 
 /**
+ * @brief Calculate the wrapper about how deep in the tree the node is.
+ * @param[in] node from which to count.
+ * @return wrapper for @p node.
+ */
+static struct trt_wrapper
+trb_count_depth(const struct lysc_node *node)
+{
+    struct trt_wrapper wr = TRP_INIT_WRAPPER_TOP;
+    const struct lysc_node *parent;
+
+    if (!node) {
+        return wr;
+    }
+
+    for (parent = node->parent; parent; parent = parent->parent) {
+        wr = trp_wrapper_set_shift(wr);
+    }
+
+    return wr;
+}
+
+/**
+ * @brief Print all parent nodes of @p node and the @p node itself.
+ *
+ * Side-effect -> trt_tree_ctx.cn will be set to @p node.
+ *
+ * @param[in] node on which the function is focused.
+ * @param[in] pc is \ref TRP_trp settings.
+ * @param[in,out] tc is context of tree printer.
+ * @return wrapper for @p node.
+ */
+static void
+trb_print_parents(const struct lysc_node *node, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    struct trt_wrapper wr;
+
+    assert(pc && tc && tc->section == TRD_SECT_MODULE);
+
+    /* stop recursion */
+    if (!node) {
+        return;
+    }
+    trb_print_parents(node->parent, pc, tc);
+
+    /* setup for printing */
+    tc->cn = node;
+    wr = trb_count_depth(node);
+
+    /* print node */
+    ly_print_(pc->out, "\n");
+    trb_print_entire_node(0, wr, TRP_EMPTY_PARENT_CACHE, pc, tc);
+}
+
+/**
  * @brief Get address of the current node.
  * @param[in] tc contains current node.
  * @return Address of lysc_node or lysp_node, or NULL.
@@ -3518,18 +3572,19 @@ trb_get_number_of_siblings(struct trt_fp_modify_ctx fp, struct trt_tree_ctx *tc)
  * @brief Print all parents and their children.
  *
  * This function is suitable for printing top-level nodes that
- * do not have ancestors. Function call trb_print_subtree_nodes() for all
- * top-level siblings. Use this function after 'module' keyword or
- * 'augment' and so.
+ * do not have ancestors. Function call trb_print_subtree_nodes()
+ * for all top-level siblings. Use this function after 'module' keyword
+ * or 'augment' and so. The nodes may not be exactly top-level in the
+ * tree, but the function considers them that way.
  *
- * @param[in] wr_t is type of the wrapper.
+ * @param[in] wr is wrapper saying how deeply the top-level nodes are
+ * immersed in the tree.
  * @param[pc] pc contains mainly functions for printing.
  * @param[in,out] tc is tree context.
  */
 static void
-trb_print_family_tree(trd_wrapper_type wr_t, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    struct trt_wrapper wr;
     struct trt_parent_cache ca;
     uint32_t total_parents;
     uint32_t max_gap_before_type;
@@ -3538,7 +3593,6 @@ trb_print_family_tree(trd_wrapper_type wr_t, struct trt_printer_ctx *pc, struct 
         return;
     }
 
-    wr = wr_t == TRD_WRAPPER_TOP ? TRP_INIT_WRAPPER_TOP : TRP_INIT_WRAPPER_BODY;
     ca = TRP_EMPTY_PARENT_CACHE;
     total_parents = trb_get_number_of_siblings(pc->fp.modify, tc);
     max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
@@ -3742,9 +3796,9 @@ trm_print_section_as_family_tree(struct trt_keyword_stmt ks, struct trt_printer_
 
     trp_print_keyword_stmt(ks, pc->max_line_length, 0, pc->out);
     if ((ks.type == TRD_KEYWORD_MODULE) || (ks.type == TRD_KEYWORD_SUBMODULE)) {
-        trb_print_family_tree(TRD_WRAPPER_TOP, pc, tc);
+        trb_print_family_tree(TRP_INIT_WRAPPER_TOP, pc, tc);
     } else {
-        trb_print_family_tree(TRD_WRAPPER_BODY, pc, tc);
+        trb_print_family_tree(TRP_INIT_WRAPPER_BODY, pc, tc);
     }
 }
 
@@ -3772,7 +3826,7 @@ trm_print_section_as_subtree(struct trt_keyword_stmt ks, struct trt_printer_ctx 
 
     trp_print_keyword_stmt(ks, pc->max_line_length, grp_has_data, pc->out);
     trb_tree_ctx_set_child(tc);
-    trb_print_family_tree(TRD_WRAPPER_BODY, pc, tc);
+    trb_print_family_tree(TRP_INIT_WRAPPER_BODY, pc, tc);
 }
 
 /**
@@ -3976,16 +4030,47 @@ tree_print_module(struct ly_out *out, const struct lys_module *module, uint32_t 
 }
 
 LY_ERR
-tree_print_submodule(struct ly_out *UNUSED(out), const struct lys_module *UNUSED(module), const struct lysp_submodule *UNUSED(submodp), uint32_t UNUSED(options), size_t UNUSED(line_length))
-// LY_ERR tree_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options, size_t line_length)
+tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint32_t options, size_t line_length)
 {
-    /** Not implemented right now. */
-    return LY_SUCCESS;
+    struct trt_printer_ctx pc;
+    struct trt_tree_ctx tc;
+    struct ly_out *new_out;
+    struct trt_wrapper wr;
+    LY_ERR erc;
+    struct ly_out_clb_arg clb_arg = TRP_INIT_LY_OUT_CLB_ARG(TRD_PRINT, out, 0, LY_SUCCESS);
+
+    assert(out && node);
+
+    if (!(node->module->ctx->flags & LY_CTX_SET_PRIV_PARSED)) {
+        return LY_EINVAL;
+    }
+
+    if ((erc = ly_out_new_clb(&trp_ly_out_clb_func, &clb_arg, &new_out))) {
+        return erc;
+    }
+
+    line_length = line_length == 0 ? SIZE_MAX : line_length;
+    trm_lysc_tree_ctx(node->module, new_out, line_length, &pc, &tc);
+
+    trp_print_keyword_stmt(pc.fp.read.module_name(&tc), pc.max_line_length, 0, pc.out);
+    trb_print_parents(node, &pc, &tc);
+
+    if (!(options & LYS_PRINT_NO_SUBSTMT)) {
+        tc.cn = lysc_node_child(node);
+        wr = trb_count_depth(tc.cn);
+        trb_print_family_tree(wr, &pc, &tc);
+    }
+    ly_print_(out, "\n");
+
+    erc = clb_arg.last_error;
+    ly_out_free(new_out, NULL, 1);
+
+    return erc;
 }
 
 LY_ERR
-tree_print_compiled_node(struct ly_out *UNUSED(out), const struct lysc_node *UNUSED(node), uint32_t UNUSED(options), size_t UNUSED(line_length))
-// LY_ERR tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint32_t options, size_t line_length)
+tree_print_submodule(struct ly_out *UNUSED(out), const struct lys_module *UNUSED(module), const struct lysp_submodule *UNUSED(submodp), uint32_t UNUSED(options), size_t UNUSED(line_length))
+// LY_ERR tree_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options, size_t line_length)
 {
     /** Not implemented right now. */
     return LY_SUCCESS;

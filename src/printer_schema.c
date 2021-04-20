@@ -191,7 +191,7 @@ lys_print_clb(ly_write_clb writeclb, void *user_data, const struct lys_module *m
 }
 
 API LY_ERR
-lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, size_t UNUSED(line_length), uint32_t options)
+lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
 {
     LY_ERR ret;
 
@@ -208,10 +208,10 @@ lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT f
     case LYS_OUT_YIN:
         ret = yin_print_parsed(out, module);
         break;
+    */
     case LYS_OUT_TREE:
         ret = tree_print_compiled_node(out, node, options, line_length);
         break;
-    */
     default:
         LOGERR(NULL, LY_EINVAL, "Unsupported output format.");
         ret = LY_EINVAL;
