@@ -1510,6 +1510,86 @@ local_augment(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
+static void
+print_compiled_node(void **state)
+{
+    TEST_LOCAL_SETUP;
+    const struct lysc_node *node;
+
+    orig =
+            "module a26 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"x:y\";\n"
+            "  prefix x;\n"
+            "  container g {\n"
+            "    leaf a {\n"
+            "      type string;\n"
+            "    }\n"
+            "    container h {\n"
+            "      leaf b {\n"
+            "        type string;\n"
+            "        mandatory true;\n"
+            "      }\n"
+            "      leaf c {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+
+    /* pyang -f tree --tree-path /g/h/c */
+    expect =
+            "module: a26\n"
+            "  +--rw g\n"
+            "     +--rw h\n"
+            "        +--rw c?   string\n";
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    node = lys_find_path(UTEST_LYCTX, NULL, "/a26:g/h/c", 0);
+    CHECK_POINTER(node, 1);
+    assert_int_equal(LY_SUCCESS, lys_print_node(UTEST_OUT, node, LYS_OUT_TREE, 72, 0));
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* pyang -f tree --tree-path /g/h */
+    expect =
+            "module: a26\n"
+            "  +--rw g\n"
+            "     +--rw h\n"
+            "        +--rw b    string\n"
+            "        +--rw c?   string\n";
+
+    node = lys_find_path(UTEST_LYCTX, NULL, "/a26:g/h", 0);
+    CHECK_POINTER(node, 1);
+    assert_int_equal(LY_SUCCESS, lys_print_node(UTEST_OUT, node, LYS_OUT_TREE, 72, 0));
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* pyang whose output is adjusted manually */
+    expect =
+            "module: a26\n"
+            "  +--rw g\n"
+            "     +--rw h\n";
+
+    node = lys_find_path(UTEST_LYCTX, NULL, "/a26:g/h", 0);
+    CHECK_POINTER(node, 1);
+    assert_int_equal(LY_SUCCESS, lys_print_node(UTEST_OUT, node, LYS_OUT_TREE, 72, LYS_PRINT_NO_SUBSTMT));
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
 int
 main(void)
 {
@@ -1539,6 +1619,7 @@ main(void)
         UTEST(key_leaf_is_always_mandatory_true),
         UTEST(transition_between_rpc_and_notif),
         UTEST(local_augment),
+        UTEST(print_compiled_node),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
