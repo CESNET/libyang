@@ -43,6 +43,9 @@ struct context {
     /* options flags */
     uint8_t list;        /* -l option to print list of schemas */
 
+    /* line length for 'tree' format */
+    size_t line_length; /* --tree-line-length */
+
     /*
      * schema
      */
@@ -171,6 +174,10 @@ help(int shortout)
             "                In case the -f option with data encoding is specified,\n"
             "                the list is printed as ietf-yang-library data.\n\n"
 
+            "  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
+            "                The limit of the maximum line length on which the 'tree'\n"
+            "                format will try to be printed.\n\n"
+
             "  -o OUTFILE, --output=OUTFILE\n"
             "                Write the output to OUTFILE instead of stdout.\n\n"
 
@@ -227,23 +234,7 @@ help(int shortout)
             "                Load and implement internal \"ietf-yang-library\" YANG module.\n"
             "                Note that this module includes definitions of mandatory state\n"
             "                data that can result in unexpected data validation errors.\n\n"
-
-#if 0
-            "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
-            "Tree output specific options:\n"
-            "  --tree-help           - Print help on tree symbols and exit.\n"
-            "  --tree-print-groupings\n"
-            "                        Print top-level groupings in a separate section.\n"
-            "  --tree-print-uses     - Print uses nodes instead the resolved grouping nodes.\n"
-            "  --tree-no-leafref-target\n"
-            "                        Do not print target nodes of leafrefs.\n"
-            "  --tree-path=SCHEMA_PATH\n"
-            "                        Print only the specified subtree.\n"
-            "  --tree-line-length=LINE_LENGTH\n"
-            "                        Wrap lines if longer than the specified length (it is not a strict limit, longer lines\n"
-            "                        can often appear).\n\n"
-#endif
-            "\n");
+            "");
 }
 
 static void
@@ -376,6 +367,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"help",             no_argument,       NULL, 'h'},
         {"makeimplemented",  no_argument,       NULL, 'i'},
         {"list",             no_argument,       NULL, 'l'},
+        {"tree-line-length", required_argument, NULL, 'L'},
         {"merge",            no_argument,       NULL, 'm'},
         {"yang-library",     no_argument,       NULL, 'y'},
         {"output",           required_argument, NULL, 'o'},
@@ -394,11 +386,12 @@ fill_context(int argc, char *argv[], struct context *c)
     uint8_t data_type_set = 0;
 
     c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
+    c->line_length = 0;
 
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:Def:F:hilmyo:p:P:qnt:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:hilL:myo:p:P:qnt:vV", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilmyo:p:P:qnt:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilL:myo:p:P:qnt:vV", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'd': /* --default */
@@ -466,6 +459,10 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'l': /* --list */
             c->list = 1;
+            break;
+
+        case 'L': /* --tree-line-length */
+            c->line_length = atoi(optarg);
             break;
 
         case 'o': /* --output */
@@ -648,6 +645,10 @@ fill_context(int argc, char *argv[], struct context *c)
         c->data_operational.path = NULL;
     }
 
+    if ((c->schema_out_format != LYS_OUT_TREE) && c->line_length) {
+        YLMSG_E("--tree-line-length take effect only in case of the tree output format.\n");
+    }
+
     /* default output stream */
     if (!c->out) {
         if (ly_out_new_file(stdout, &c->out)) {
@@ -730,8 +731,8 @@ main_ni(int argc, char *argv[])
                 }
             } else {
                 for (uint32_t u = 0; u < c.schema_modules.count; ++u) {
-                    ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format, 0,
-                            c.schema_print_options);
+                    ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format,
+                            c.line_length, c.schema_print_options);
                     if (ret) {
                         YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)c.schema_modules.objs[u])->name);
                         goto cleanup;

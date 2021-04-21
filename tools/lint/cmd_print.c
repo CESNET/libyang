@@ -31,13 +31,16 @@
 void
 cmd_print_help(void)
 {
-    printf("Usage: print [-f (yang | yin | tree [-q -P PATH] | info [-q -P PATH])] [-o OUTFILE]\n"
-            "            [<module-name1>[@revision]] ...\n"
+    printf("Usage: print [-f (yang | yin | tree [-q -P PATH -L LINE_LENGTH ] | info [-q -P PATH])]\n"
+            "            [-o OUTFILE] [<module-name1>[@revision]] ...\n"
             "                  Print a schema module. The <module-name> is not required\n"
             "                  only in case the -P option is specified.\n\n"
             "  -f FORMAT, --format=FORMAT\n"
             "                  Print the module in the specified FORMAT. If format not\n"
             "                  specified, the 'tree' format is used.\n"
+            "  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
+            "                 The limit of the maximum line length on which the 'tree'\n"
+            "                 format will try to be printed.\n"
             "  -P PATH, --schema-node=PATH\n"
             "                 Print only the specified subtree of the schema.\n"
             "                 The PATH is the XPath subset mentioned in documentation as\n"
@@ -138,6 +141,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
     struct option options[] = {
         {"format", required_argument, NULL, 'f'},
         {"help", no_argument, NULL, 'h'},
+        {"tree-line-length", required_argument, NULL, 'L'},
         {"output", required_argument, NULL, 'o'},
         {"schema-node", required_argument, NULL, 'P'},
         {"single-node", no_argument, NULL, 'q'},
@@ -148,12 +152,13 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     struct ly_out *out = NULL;
     ly_bool out_stdout = 0;
+    size_t line_length = 0;
 
     if (parse_cmdline(cmdline, &argc, &argv)) {
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "f:ho:P:q", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "f:hL:o:P:q", options, &opt_index)) != -1) {
         switch (opt) {
         case 'o': /* --output */
             if (out) {
@@ -185,6 +190,10 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
             }
             break;
 
+        case 'L': /* --tree-line-length */
+            line_length = atoi(optarg);
+            break;
+
         case 'P': /* --schema-node */
             node_path = optarg;
             break;
@@ -205,6 +214,11 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
     /* file name */
     if ((argc == optind) && !node_path) {
         YLMSG_E("Missing the name of the module to print.\n");
+        goto cleanup;
+    }
+
+    if ((format != LYS_OUT_TREE) && line_length) {
+        YLMSG_E("--tree-line-length take effect only in case of the tree output format.\n");
         goto cleanup;
     }
 
@@ -237,7 +251,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
             goto cleanup;
         }
     } else {
-        cmd_print_modules(argc, argv, out, ctx, format, 0, options_print);
+        cmd_print_modules(argc, argv, out, ctx, format, line_length, options_print);
         goto cleanup;
     }
 
