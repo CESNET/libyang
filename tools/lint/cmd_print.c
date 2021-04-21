@@ -50,6 +50,85 @@ cmd_print_help(void)
             "                  Write the output to OUTFILE instead of stdout.\n");
 }
 
+static LY_ERR
+cmd_print_submodule(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
+{
+    LY_ERR erc;
+    const struct lysp_submodule *submodule;
+
+    submodule = revision ?
+            ly_ctx_get_submodule(*ctx, name, revision) :
+            ly_ctx_get_submodule_latest(*ctx, name);
+
+    erc = submodule ?
+            lys_print_submodule(out, submodule, format, line_length, options) :
+            LY_ENOTFOUND;
+
+    return erc;
+}
+
+static LY_ERR
+cmd_print_module(struct ly_out *out, struct ly_ctx **ctx, char *name, char *revision, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
+{
+    LY_ERR erc;
+    struct lys_module *module;
+
+    module = revision ?
+            ly_ctx_get_module(*ctx, name, revision) :
+            ly_ctx_get_module_latest(*ctx, name);
+
+    erc = module ?
+            lys_print_module(out, module, format, line_length, options) :
+            LY_ENOTFOUND;
+
+    return erc;
+}
+
+static void
+cmd_print_modules(int argc, char **argv, struct ly_out *out, struct ly_ctx **ctx, LYS_OUTFORMAT format, size_t line_length, uint32_t options)
+{
+    LY_ERR erc;
+    char *name, *revision;
+    ly_bool search_submodul;
+
+    for (int i = 0; i < argc - optind; i++) {
+        name = argv[optind + i];
+        /* get revision */
+        revision = strchr(name, '@');
+        if (revision) {
+            revision[0] = '\0';
+            ++revision;
+        }
+
+        erc = cmd_print_module(out, ctx, name, revision, format, line_length, options);
+
+        if (erc == LY_ENOTFOUND) {
+            search_submodul = 1;
+            erc = cmd_print_submodule(out, ctx, name, revision, format, line_length, options);
+        } else {
+            search_submodul = 0;
+        }
+
+        if (erc == LY_SUCCESS) {
+            continue;
+        } else if (erc == LY_ENOTFOUND) {
+            if (revision) {
+                YLMSG_E("No (sub)module \"%s\" in revision %s found.\n", name, revision);
+            } else {
+                YLMSG_E("No (sub)module \"%s\" found.\n", name);
+            }
+            break;
+        } else {
+            if (search_submodul) {
+                YLMSG_E("Unable to print submodule %s.\n", name);
+            } else {
+                YLMSG_E("Unable to print module %s.\n", name);
+            }
+            break;
+        }
+    }
+}
+
 void
 cmd_print(struct ly_ctx **ctx, const char *cmdline)
 {
@@ -158,36 +237,8 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
             goto cleanup;
         }
     } else {
-        for (int i = 0; i < argc - optind; i++) {
-            struct lys_module *module;
-            char *revision;
-
-            /* get revision */
-            revision = strchr(argv[optind + i], '@');
-            if (revision) {
-                revision[0] = '\0';
-                ++revision;
-            }
-
-            if (revision) {
-                module = ly_ctx_get_module(*ctx, argv[optind + i], revision);
-            } else {
-                module = ly_ctx_get_module_latest(*ctx, argv[optind + i]);
-            }
-            if (!module) {
-                /* TODO try to find it as a submodule */
-                if (revision) {
-                    YLMSG_E("No (sub)module \"%s\" in revision %s found.\n", argv[optind + i], revision);
-                } else {
-                    YLMSG_E("No (sub)module \"%s\" found.\n", argv[optind + i]);
-                }
-                goto cleanup;
-            }
-            if (lys_print_module(out, module, format, 0, options_print)) {
-                YLMSG_E("Unable to print module %s.\n", argv[optind + i]);
-                goto cleanup;
-            }
-        }
+        cmd_print_modules(argc, argv, out, ctx, format, 0, options_print);
+        goto cleanup;
     }
 
 cleanup:
