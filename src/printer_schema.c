@@ -86,7 +86,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
 
 API LY_ERR
 lys_print_submodule(struct ly_out *out, const struct lysp_submodule *submodule, LYS_OUTFORMAT format,
-        size_t UNUSED(line_length), uint32_t options)
+        size_t line_length, uint32_t options)
 {
     LY_ERR ret;
 
@@ -102,10 +102,10 @@ lys_print_submodule(struct ly_out *out, const struct lysp_submodule *submodule, 
     case LYS_OUT_YIN:
         ret = yin_print_parsed_submodule(out, submodule, options);
         break;
-    /* TODO not yet implemented
     case LYS_OUT_TREE:
-        ret = tree_print_submodule(out, submodule, options, line_length);
+        ret = tree_print_parsed_submodule(out, submodule, options, line_length);
         break;
+    /* TODO not yet implemented
     case LYS_OUT_INFO:
         ret = info_print_model(out, module, target_node);
         break;
