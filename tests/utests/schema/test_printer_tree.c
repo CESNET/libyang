@@ -1590,6 +1590,59 @@ print_compiled_node(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
+static LY_ERR
+local_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
+static void
+print_parsed_submodule(void **state)
+{
+    TEST_LOCAL_SETUP;
+
+    orig = "module a27 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"x:y\";\n"
+            "  prefix x;\n"
+            "\n"
+            "  include \"a27-sub\";\n"
+            "}\n";
+
+    char *submodule =
+            "submodule a27-sub {\n"
+            "  yang-version 1.1;\n"
+            "  belongs-to a27 {\n"
+            "    prefix x;\n"
+            "  }\n"
+            "\n"
+            "  container h {\n"
+            "    leaf b {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    /* edited pyang output */
+    expect =
+            "submodule: a27-sub\n"
+            "  +--rw h\n"
+            "     +--rw b?   string\n";
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, local_imp_clb, submodule);
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    assert_int_equal(LY_SUCCESS, lys_print_submodule(UTEST_OUT, mod->parsed->includes[0].submodule, LYS_OUT_TREE, 72, 0));
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
 int
 main(void)
 {
@@ -1620,6 +1673,7 @@ main(void)
         UTEST(transition_between_rpc_and_notif),
         UTEST(local_augment),
         UTEST(print_compiled_node),
+        UTEST(print_parsed_submodule),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
