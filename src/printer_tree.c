@@ -689,7 +689,8 @@ struct trt_tree_ctx {
                                              trt_tree_ctx.tpn are not used.
                                              If it is false then trt_tree_ctx.cn is not used. */
     trt_actual_section section;         /**< To which section pn points. */
-    const struct lys_module *module;    /**< Schema tree structures. */
+    const struct lysp_module *pmod;     /**< Parsed YANG schema tree. */
+    const struct lysc_module *cmod;     /**< Compiled YANG schema tree. */
     const struct lysp_node *pn;         /**< Actual pointer to parsed node. */
     const struct lysp_node *tpn;        /**< Pointer to actual top-node. */
     const struct lysc_node *cn;         /**< Actual pointer to compiled node. */
@@ -2357,16 +2358,16 @@ tro_print_keys(const struct trt_tree_ctx *tc, struct ly_out *out)
 static struct trt_keyword_stmt
 tro_modi_get_rpcs(struct trt_tree_ctx *tc)
 {
-    assert(tc && tc->module);
+    assert(tc);
     const void *actions;
 
     if (tc->lysc_tree) {
-        actions = tc->module->compiled->rpcs;
+        actions = tc->cmod->rpcs;
         if (actions) {
             tc->cn = actions;
         }
     } else {
-        actions = tc->module->parsed->rpcs;
+        actions = tc->pmod->rpcs;
         if (actions) {
             tc->pn = actions;
             tc->tpn = tc->pn;
@@ -2392,16 +2393,16 @@ tro_modi_get_rpcs(struct trt_tree_ctx *tc)
 static struct trt_keyword_stmt
 tro_modi_get_notifications(struct trt_tree_ctx *tc)
 {
-    assert(tc && tc->module);
+    assert(tc);
     const void *notifs;
 
     if (tc->lysc_tree) {
-        notifs = tc->module->compiled->notifs;
+        notifs = tc->cmod->notifs;
         if (notifs) {
             tc->cn = notifs;
         }
     } else {
-        notifs = tc->module->parsed->notifs;
+        notifs = tc->pmod->notifs;
         if (notifs) {
             tc->pn = notifs;
             tc->tpn = tc->pn;
@@ -2440,10 +2441,19 @@ tro_modi_next_yang_data(struct trt_tree_ctx *tc)
 static struct trt_keyword_stmt
 tro_read_module_name(const struct trt_tree_ctx *tc)
 {
-    assert(tc && tc->module && tc->module->name);
-    return (struct trt_keyword_stmt) {
-               .type = TRD_KEYWORD_MODULE, .str = tc->module->name
-    };
+    assert(tc);
+
+    struct trt_keyword_stmt ret;
+
+    ret.type = !tc->lysc_tree && tc->pmod->is_submod ?
+            TRD_KEYWORD_SUBMODULE :
+            TRD_KEYWORD_MODULE;
+
+    ret.str = !tc->lysc_tree ?
+            LYSP_MODULE_NAME(tc->pmod) :
+            tc->cmod->mod->name;
+
+    return ret;
 }
 
 /**********************************************************************
@@ -2820,29 +2830,27 @@ trop_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 static void
 trop_modi_first_sibling(struct trt_tree_ctx *tc)
 {
-    assert(tc && tc->pn);
+    assert(tc && tc->pn && tc->pmod);
 
     if (trop_modi_parent(tc)) {
         trop_modi_next_child(TRP_EMPTY_PARENT_CACHE, tc);
     } else {
         /* current node is top-node */
-        struct lysp_module *pm = tc->module->parsed;
-
         switch (tc->section) {
         case TRD_SECT_MODULE:
-            tc->pn = pm->data;
+            tc->pn = tc->pmod->data;
             break;
         case TRD_SECT_AUGMENT:
-            tc->pn = (const struct lysp_node *)pm->augments;
+            tc->pn = (const struct lysp_node *)tc->pmod->augments;
             break;
         case TRD_SECT_RPCS:
-            tc->pn = (const struct lysp_node *)pm->rpcs;
+            tc->pn = (const struct lysp_node *)tc->pmod->rpcs;
             break;
         case TRD_SECT_NOTIF:
-            tc->pn = (const struct lysp_node *)pm->notifs;
+            tc->pn = (const struct lysp_node *)tc->pmod->notifs;
             break;
         case TRD_SECT_GROUPING:
-            tc->pn = (const struct lysp_node *)pm->groupings;
+            tc->pn = (const struct lysp_node *)tc->pmod->groupings;
             break;
         case TRD_SECT_YANG_DATA:
             /*TODO: yang-data is not supported now */
@@ -2897,13 +2905,13 @@ trop_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 static struct trt_keyword_stmt
 trop_modi_next_augment(struct trt_tree_ctx *tc)
 {
-    assert(tc && tc->module && tc->module->parsed);
+    assert(tc);
     const struct lysp_node_augment *augs;
 
     /* if next_augment func was called for the first time */
     if (tc->section != TRD_SECT_AUGMENT) {
         tc->section = TRD_SECT_AUGMENT;
-        augs = tc->module->parsed->augments;
+        augs = tc->pmod->augments;
     } else {
         /* get augment sibling from top-node pointer */
         augs = (const struct lysp_node_augment *)tc->tpn->next;
@@ -2928,12 +2936,12 @@ trop_modi_next_augment(struct trt_tree_ctx *tc)
 static struct trt_keyword_stmt
 trop_modi_next_grouping(struct trt_tree_ctx *tc)
 {
-    assert(tc && tc->module && tc->module->parsed);
+    assert(tc);
     const struct lysp_node_grp *grps;
 
     if (tc->section != TRD_SECT_GROUPING) {
         tc->section = TRD_SECT_GROUPING;
-        grps = tc->module->parsed->groupings;
+        grps = tc->pmod->groupings;
     } else {
         grps = (const struct lysp_node_grp *)tc->tpn->next;
     }
@@ -3141,17 +3149,15 @@ troc_modi_first_sibling(struct trt_tree_ctx *tc)
         troc_modi_next_child(TRP_EMPTY_PARENT_CACHE, tc);
     } else {
         /* current node is top-node */
-        struct lysc_module *cm = tc->module->compiled;
-
         switch (tc->section) {
         case TRD_SECT_MODULE:
-            tc->cn = cm->data;
+            tc->cn = tc->cmod->data;
             break;
         case TRD_SECT_RPCS:
-            tc->cn = (const struct lysc_node *)cm->rpcs;
+            tc->cn = (const struct lysc_node *)tc->cmod->rpcs;
             break;
         case TRD_SECT_NOTIF:
-            tc->cn = (const struct lysc_node *)cm->notifs;
+            tc->cn = (const struct lysc_node *)tc->cmod->notifs;
             break;
         case TRD_SECT_YANG_DATA:
             /*TODO: yang-data is not supported now */
@@ -3631,9 +3637,10 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
     *tc = (struct trt_tree_ctx) {
         .lysc_tree = 0,
         .section = TRD_SECT_MODULE,
-        .module = module,
-        .pn = module->parsed->data,
-        .tpn = module->parsed->data,
+        .pmod = module->parsed,
+        .cmod = NULL,
+        .pn = module->parsed ? module->parsed->data : NULL,
+        .tpn = module->parsed ? module->parsed->data : NULL,
         .cn = NULL
     };
 
@@ -3684,7 +3691,8 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
     *tc = (struct trt_tree_ctx) {
         .lysc_tree = 1,
         .section = TRD_SECT_MODULE,
-        .module = module,
+        .pmod = module->parsed,
+        .cmod = module->compiled,
         .tpn = NULL,
         .pn = NULL,
         .cn = module->compiled->data
@@ -3726,7 +3734,7 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
 static void
 trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    trm_lysc_tree_ctx(tc->module, pc->out, pc->max_line_length, pc, tc);
+    trm_lysc_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, pc, tc);
 }
 
 /**
@@ -3737,7 +3745,7 @@ trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 static void
 trm_reset_to_lysp_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    trm_lysp_tree_ctx(tc->module, pc->out, pc->max_line_length, pc, tc);
+    trm_lysp_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, pc, tc);
 }
 
 /**
@@ -3870,7 +3878,7 @@ trm_print_augmentations(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
             /* if lysc tree is used, then only augments targeting
              * another module are printed
              */
-            if (trm_nodeid_target_is_local((const struct lysp_node_augment *)tc->tpn, tc->module->parsed)) {
+            if (trm_nodeid_target_is_local((const struct lysp_node_augment *)tc->tpn, tc->pmod)) {
                 continue;
             }
         }
@@ -4069,9 +4077,31 @@ tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint3
 }
 
 LY_ERR
-tree_print_submodule(struct ly_out *UNUSED(out), const struct lys_module *UNUSED(module), const struct lysp_submodule *UNUSED(submodp), uint32_t UNUSED(options), size_t UNUSED(line_length))
-// LY_ERR tree_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options, size_t line_length)
+tree_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *submodp, uint32_t UNUSED(options), size_t line_length)
 {
-    /** Not implemented right now. */
-    return LY_SUCCESS;
+    struct trt_printer_ctx pc;
+    struct trt_tree_ctx tc;
+    struct ly_out *new_out;
+    LY_ERR erc;
+    struct ly_out_clb_arg clb_arg = TRP_INIT_LY_OUT_CLB_ARG(TRD_PRINT, out, 0, LY_SUCCESS);
+
+    assert(submodp);
+    LY_CHECK_ARG_RET(submodp->mod->ctx, out, LY_EINVAL);
+
+    if ((erc = ly_out_new_clb(&trp_ly_out_clb_func, &clb_arg, &new_out))) {
+        return erc;
+    }
+
+    line_length = line_length == 0 ? SIZE_MAX : line_length;
+    trm_lysp_tree_ctx(submodp->mod, new_out, line_length, &pc, &tc);
+    tc.pmod = (struct lysp_module *)submodp;
+    tc.tpn = submodp->data;
+    tc.pn = tc.tpn;
+
+    trm_print_sections(&pc, &tc);
+    erc = clb_arg.last_error;
+
+    ly_out_free(new_out, NULL, 1);
+
+    return erc;
 }
