@@ -330,8 +330,10 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
 
     }
 
-    /* fill cached hashes, if not already */
-    lyb_cache_module_hash(*mod);
+    if (*mod) {
+        /* fill cached hashes, if not already */
+        lyb_cache_module_hash(*mod);
+    }
 
 cleanup:
     free(mod_name);
