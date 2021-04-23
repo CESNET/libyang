@@ -244,14 +244,20 @@ cleanup:
 }
 
 API const char *
-lyplg_type_print_xpath10(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
     char *str_value;
     struct ly_err_item *err = NULL;
 
-    if (format == LY_VALUE_JSON) {
+    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
         /* canonical */
-        *dynamic = 0;
+        if (dynamic) {
+            *dynamic = 0;
+        }
+        if (value_len) {
+            *value_len = strlen(value->canonical);
+        }
         return value->canonical;
     }
 

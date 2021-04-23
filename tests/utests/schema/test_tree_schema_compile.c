@@ -257,16 +257,16 @@ test_node_leaflist(void **state)
     assert_non_null(ll->dflts);
     assert_int_equal(6, ll->type->refcount); /* 3x type's reference, 3x default value's reference (typedef's default does not reference own type) */
     assert_int_equal(2, LY_ARRAY_COUNT(ll->dflts));
-    assert_string_equal("1", dflt = ll->dflts[0]->realtype->plugin->print(ll->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("1", dflt = ll->dflts[0]->realtype->plugin->print(UTEST_LYCTX, ll->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
-    assert_string_equal("1", dflt = ll->dflts[1]->realtype->plugin->print(ll->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("1", dflt = ll->dflts[1]->realtype->plugin->print(UTEST_LYCTX, ll->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_DFLT | LYS_SET_CONFIG, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist *)mod->compiled->data->next));
     assert_non_null(ll->dflts);
     assert_int_equal(6, ll->type->refcount); /* 3x type's reference, 3x default value's reference */
     assert_int_equal(1, LY_ARRAY_COUNT(ll->dflts));
-    assert_string_equal("10", dflt = ll->dflts[0]->realtype->plugin->print(ll->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("10", dflt = ll->dflts[0]->realtype->plugin->print(UTEST_LYCTX, ll->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, ll->flags);
 
@@ -1927,7 +1927,7 @@ test_type_dflt(void **state)
     assert_int_equal(3, type->refcount);     /* 2x type reference, 1x default value's reference (typedf's default does not reference own type)*/
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
-    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_string_equal("xxx", leaf->units);
 
@@ -1938,7 +1938,7 @@ test_type_dflt(void **state)
     assert_int_equal(3, type->refcount);     /* 2x type reference, 1x default value's reference */
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     leaf = (struct lysc_node_leaf *)mod->compiled->data;
-    assert_string_equal("goodbye", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("goodbye", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_string_equal("yyy", leaf->units);
 
@@ -1950,7 +1950,7 @@ test_type_dflt(void **state)
     assert_int_equal(6, type->refcount);     /* 4x type reference, 2x default value's reference (1 shared compiled type of typedefs which default does not reference own type) */
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     leaf = (struct lysc_node_leaf *)mod->compiled->data;
-    assert_string_equal("goodbye", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("goodbye", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_string_equal("yyy", leaf->units);
     type = ((struct lysc_node_leaf *)mod->compiled->data->next)->type;
@@ -1958,7 +1958,7 @@ test_type_dflt(void **state)
     assert_int_equal(6, type->refcount);     /* 4x type reference, 2x default value's reference (1 shared compiled type of typedefs which default does not reference own type) */
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     leaf = (struct lysc_node_leaf *)mod->compiled->data->next;
-    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_string_equal("xxx", leaf->units);
 
@@ -1969,7 +1969,7 @@ test_type_dflt(void **state)
     assert_int_equal(4, type->refcount);     /* 3x type reference, 1x default value's reference (typedef's default does not reference own type) */
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     leaf = (struct lysc_node_leaf *)mod->compiled->data;
-    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_string_equal("xxx", leaf->units);
 
@@ -2244,16 +2244,16 @@ test_refine(void **state)
     assert_non_null((leaf = (struct lysc_node_leaf *)((struct lysc_node_container *)parent)->child));
     assert_int_equal(LYS_LEAF, leaf->nodetype);
     assert_string_equal("l", leaf->name);
-    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(LYS_CONFIG_R, leaf->flags & LYS_CONFIG_MASK);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(LYS_LEAFLIST, llist->nodetype);
     assert_string_equal("ll", llist->name);
     assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
-    assert_string_equal("hello", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", llist->dflts[0]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
-    assert_string_equal("world", llist->dflts[1]->realtype->plugin->print(llist->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("world", llist->dflts[1]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(5, llist->max);
     assert_non_null(child = llist->next);
@@ -2266,7 +2266,7 @@ test_refine(void **state)
     assert_int_equal(LYS_LEAF, leaf->nodetype);
     assert_string_equal("x", leaf->name);
     assert_false(LYS_MAND_TRUE & leaf->flags);
-    assert_string_equal("cheers!", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("cheers!", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_non_null(leaf->musts);
     assert_int_equal(2, LY_ARRAY_COUNT(leaf->musts));
@@ -2293,7 +2293,7 @@ test_refine(void **state)
     assert_int_equal(LYS_LEAF, leaf->nodetype);
     assert_string_equal("x", leaf->name);
     assert_false(LYS_MAND_TRUE & leaf->flags);
-    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
 
     /* invalid */
@@ -2626,15 +2626,15 @@ test_deviation(void **state)
     assert_null(leaf->dflt);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(1, LY_ARRAY_COUNT(llist->dflts));
-    assert_string_equal("hello", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", llist->dflts[0]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_non_null(leaf = (struct lysc_node_leaf *)llist->next);
-    assert_string_equal("nothing", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("nothing", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(5, leaf->dflt->realtype->refcount);     /* 3x type reference, 2x default value reference (typedef's default does not reference own type) */
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(1, LY_ARRAY_COUNT(llist->dflts));
-    assert_string_equal("nothing", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("nothing", llist->dflts[0]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module g {yang-version 1.1; namespace urn:g;prefix g;import e {prefix x;}"
@@ -2651,19 +2651,19 @@ test_deviation(void **state)
     assert_string_equal("ba", ((struct lysc_node_choice *)node)->dflt->name);
     assert_non_null(leaf = (struct lysc_node_leaf *)node->next);
     assert_non_null(leaf->dflt);
-    assert_string_equal("bye", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("bye", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(3, LY_ARRAY_COUNT(llist->dflts));
-    assert_string_equal("hello", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", llist->dflts[0]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
-    assert_string_equal("all", llist->dflts[1]->realtype->plugin->print(llist->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("all", llist->dflts[1]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
-    assert_string_equal("people", llist->dflts[2]->realtype->plugin->print(llist->dflts[2], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("people", llist->dflts[2]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[2], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_non_null(leaf = (struct lysc_node_leaf *)llist->next);
     assert_non_null(leaf->dflt);
-    assert_string_equal("hi", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hi", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(6, leaf->dflt->realtype->refcount);     /* 3x type reference, 3x default value reference
     - previous type's default values were replaced by node's default values where d2 now has 2 default values */
@@ -2671,9 +2671,9 @@ test_deviation(void **state)
     assert_int_equal(0, LY_ARRAY_COUNT(leaf->musts[0].prefixes));
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
-    assert_string_equal("hi", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hi", llist->dflts[0]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
-    assert_string_equal("all", llist->dflts[1]->realtype->plugin->print(llist->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("all", llist->dflts[1]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[1], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module h {yang-version 1.1; namespace urn:h;prefix h;import e {prefix x;}"
@@ -2687,7 +2687,7 @@ test_deviation(void **state)
     assert_string_equal("ba", ((struct lysc_node_choice *)node)->dflt->name);
     assert_non_null(leaf = (struct lysc_node_leaf *)node->next);
     assert_non_null(leaf->dflt);
-    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module i {namespace urn:i;prefix i;"
@@ -2804,14 +2804,14 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
     assert_string_equal("a", leaf->name);
     assert_int_equal(LY_TYPE_INT8, leaf->type->basetype);
-    assert_string_equal("10", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("10", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(10, leaf->dflt->uint8);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_string_equal("b", llist->name);
     assert_int_equal(LY_TYPE_INT8, llist->type->basetype);
     assert_int_equal(1, LY_ARRAY_COUNT(llist->dflts));
-    assert_string_equal("1", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic));
+    assert_string_equal("1", llist->dflts[0]->realtype->plugin->print(UTEST_LYCTX, llist->dflts[0], LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
     assert_int_equal(1, llist->dflts[0]->uint8);
 
@@ -2852,7 +2852,7 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
     assert_string_equal("s", leaf->name);
     assert_non_null(leaf->dflt);
-    assert_non_null(str = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_VALUE_SCHEMA, mod->parsed, &dynamic));
+    assert_non_null(str = leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, mod->parsed, &dynamic, NULL));
     assert_string_equal("/s:y", str);
     if (dynamic) {
         free((char *)str);

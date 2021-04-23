@@ -129,7 +129,7 @@ setup(void **state)
     { \
         const char *_str; \
         uint8_t _dynamic; \
-        assert_non_null(_str = (VALUE)->realtype->plugin->print(VALUE, FORMAT, (void *)PREFIX_DATA, &_dynamic)); \
+        assert_non_null(_str = (VALUE)->realtype->plugin->print(UTEST_LYCTX, VALUE, FORMAT, (void *)PREFIX_DATA, &_dynamic, NULL)); \
         assert_string_equal(EXPECTED, _str); \
         if (_dynamic) { \
             free((char *)_str); \

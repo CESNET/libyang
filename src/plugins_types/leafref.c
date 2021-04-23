@@ -90,9 +90,10 @@ lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value 
 }
 
 API const char *
-lyplg_type_print_leafref(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    return value->realtype->plugin->print(value, format, prefix_data, dynamic);
+    return value->realtype->plugin->print(ctx, value, format, prefix_data, dynamic, value_len);
 }
 
 API LY_ERR

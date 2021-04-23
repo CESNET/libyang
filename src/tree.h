@@ -233,6 +233,7 @@ extern const char *ly_data_type2str[LY_DATA_TYPE_COUNT];
  * @brief All kinds of supported value formats and prefix mappings to modules.
  */
 typedef enum {
+    LY_VALUE_CANON,           /**< canonical value, prefix mapping is type-specific */
     LY_VALUE_SCHEMA,          /**< YANG schema value, prefixes map to YANG import prefixes */
     LY_VALUE_SCHEMA_RESOLVED, /**< resolved YANG schema value, prefixes map to module structures directly */
     LY_VALUE_XML,             /**< XML data value, prefixes map to XML namespace prefixes */

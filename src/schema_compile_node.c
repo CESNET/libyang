@@ -2876,6 +2876,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 /* inherit the module of the previous context node */
                 mod = ctx_node->module;
                 break;
+            case LY_VALUE_CANON:
             case LY_VALUE_XML:
                 /* not really defined */
                 LOGINT_RET(ctx->ctx);

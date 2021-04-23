@@ -29,13 +29,13 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
-API const char *
-lyplg_type_print_identityref(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
+static char *
+identityref_print(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data)
 {
     char *result = NULL;
 
-    *dynamic = 1;
-    if (asprintf(&result, "%s:%s", lyplg_type_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
+    if (asprintf(&result, "%s:%s", lyplg_type_get_prefix(value->ident->module, format, prefix_data),
+            value->ident->name) == -1) {
         return NULL;
     } else {
         return result;
@@ -55,7 +55,6 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     const struct lys_module *mod = NULL;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ident *ident = NULL, *identities, *base;
-    ly_bool dyn;
 
     *err = NULL;
 
@@ -147,8 +146,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     storage->ident = ident;
 
     /* get JSON form since there is no canonical */
-    str = (char *)lyplg_type_print_identityref(storage, LY_VALUE_JSON, NULL, &dyn);
-    assert(str && dyn);
+    str = identityref_print(storage, LY_VALUE_JSON, NULL);
     ret = lydict_insert_zc(ctx, str, &storage->canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     storage->realtype = type;
@@ -159,6 +157,30 @@ cleanup:
     }
 
     return ret;
+}
+
+API const char *
+lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len)
+{
+    char *result;
+
+    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
+        if (dynamic) {
+            *dynamic = 0;
+        }
+        if (value_len) {
+            *value_len = strlen(value->canonical);
+        }
+        return value->canonical;
+    }
+
+    result = identityref_print(value, format, prefix_data);
+    *dynamic = 1;
+    if (value_len) {
+        *value_len = strlen(result);
+    }
+    return result;
 }
 
 API LY_ERR

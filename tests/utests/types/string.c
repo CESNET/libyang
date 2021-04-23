@@ -1249,10 +1249,10 @@ test_plugin_print(void **state)
     /* print value */
     ly_bool dynamic = 0;
 
-    assert_string_equal("20", type->print(&(values[0]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("0x4A", type->print(&(values[1]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("<|>", type->print(&(values[2]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("\"", type->print(&(values[3]), LY_VALUE_XML, NULL, &dynamic));
+    assert_string_equal("20", type->print(UTEST_LYCTX, &(values[0]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("0x4A", type->print(UTEST_LYCTX, &(values[1]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("<|>", type->print(UTEST_LYCTX, &(values[2]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("\"", type->print(UTEST_LYCTX, &(values[3]), LY_VALUE_XML, NULL, &dynamic, NULL));
 
     for (int unsigned it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
         type->free(UTEST_LYCTX, &(values[it]));

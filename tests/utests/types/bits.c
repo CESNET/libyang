@@ -960,12 +960,12 @@ test_plugin_print(void **state)
     /* print value */
     ly_bool dynamic = 0;
 
-    assert_string_equal("", type->print(&(values[0]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("zero two", type->print(&(values[1]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("three", type->print(&(values[2]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("zero two", type->print(&(values[3]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("zero", type->print(&(values[4]), LY_VALUE_XML, NULL, &dynamic));
-    assert_string_equal("three", type->print(&(values[5]), LY_VALUE_XML, NULL, &dynamic));
+    assert_string_equal("", type->print(UTEST_LYCTX, &(values[0]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("zero two", type->print(UTEST_LYCTX, &(values[1]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("three", type->print(UTEST_LYCTX, &(values[2]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("zero two", type->print(UTEST_LYCTX, &(values[3]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("zero", type->print(UTEST_LYCTX, &(values[4]), LY_VALUE_XML, NULL, &dynamic, NULL));
+    assert_string_equal("three", type->print(UTEST_LYCTX, &(values[5]), LY_VALUE_XML, NULL, &dynamic, NULL));
 
     for (unsigned int it = 0; it < sizeof(val_init) / sizeof(val_init[0]); it++) {
         type->free(UTEST_LYCTX, &(values[it]));

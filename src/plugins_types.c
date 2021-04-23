@@ -137,6 +137,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
     case LY_VALUE_XML:
         mod = ly_xml_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
+    case LY_VALUE_CANON:
     case LY_VALUE_JSON:
         mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
@@ -157,6 +158,7 @@ lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx
         case LY_VALUE_SCHEMA_RESOLVED:
             /* use context node module, handles augments */
             return ctx_node->module;
+        case LY_VALUE_CANON:
         case LY_VALUE_JSON:
             /* use context node module (as specified) */
             return ctx_node->module;
@@ -250,6 +252,7 @@ ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix
     case LY_VALUE_XML:
         prefix = ly_xml_get_prefix(mod, prefix_data);
         break;
+    case LY_VALUE_CANON:
     case LY_VALUE_JSON:
         prefix = ly_json_get_prefix(mod, prefix_data);
         break;
@@ -279,11 +282,16 @@ lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *
 }
 
 API const char *
-lyplg_type_print_simple(const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
-        void *UNUSED(prefix_data), ly_bool *dynamic)
+lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
-    *dynamic = 0;
-    return (char *)value->canonical;
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = strlen(value->canonical);
+    }
+    return value->canonical;
 }
 
 API LY_ERR
@@ -686,6 +694,9 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     *err = NULL;
 
     switch (format) {
+    case LY_VALUE_CANON:
+        LOGARG(ctx, format);
+        return LY_EINVAL;
     case LY_VALUE_SCHEMA:
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_XML:
@@ -769,7 +780,6 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     LY_ERR ret;
     struct lyxp_set set = {0};
     const char *val_str;
-    ly_bool dynamic;
     uint32_t i;
     int rc;
 
@@ -778,13 +788,10 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
             &set, 0);
     if (ret) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(value, LY_VALUE_JSON, NULL, &dynamic);
+        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
-        }
-        if (dynamic) {
-            free((char *)val_str);
         }
         goto error;
     }
@@ -801,7 +808,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     }
     if (i == set.used) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(value, LY_VALUE_JSON, NULL, &dynamic);
+        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (set.used) {
             rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
         } else {
@@ -810,9 +817,6 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
         if (rc == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
-        }
-        if (dynamic) {
-            free((char *)val_str);
         }
         goto error;
     }

@@ -32,7 +32,8 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API const char *
-lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL;
@@ -60,7 +61,7 @@ lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT forma
                 case LY_PATH_PREDTYPE_LIST: {
                     /* key-predicate */
                     ly_bool d = 0;
-                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
+                    const char *str = pred->value.realtype->plugin->print(ctx, &pred->value, format, prefix_data, &d, NULL);
                     char quot = '\'';
                     if (strchr(str, quot)) {
                         quot = '"';
@@ -75,7 +76,7 @@ lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT forma
                 case LY_PATH_PREDTYPE_LEAFLIST: {
                     /* leaf-list-predicate */
                     ly_bool d = 0;
-                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
+                    const char *str = pred->value.realtype->plugin->print(ctx, &pred->value, format, prefix_data, &d, NULL);
                     char quot = '\'';
                     if (strchr(str, quot)) {
                         quot = '"';
@@ -89,64 +90,76 @@ lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT forma
                 }
             }
         }
-    } else if (format == LY_VALUE_JSON) {
-        /* only the first node or the node changing module is prefixed */
-        struct lys_module *mod = NULL;
-        LY_ARRAY_FOR(value->target, u) {
-            if (mod != value->target[u].node->module) {
-                mod = value->target[u].node->module;
-                ly_strcat(&result, "/%s:%s", lyplg_type_get_prefix(mod, format, prefix_data), value->target[u].node->name);
-            } else {
-                ly_strcat(&result, "/%s", value->target[u].node->name);
-            }
-            LY_ARRAY_FOR(value->target[u].predicates, v) {
-                struct ly_path_predicate *pred = &value->target[u].predicates[v];
+        *dynamic = 1;
+    } else if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
+        /* generate canonical, only the first node or the node changing module is prefixed */
+        if (!value->canonical) {
+            struct lys_module *mod = NULL;
+            LY_ARRAY_FOR(value->target, u) {
+                if (mod != value->target[u].node->module) {
+                    mod = value->target[u].node->module;
+                    ly_strcat(&result, "/%s:%s", lyplg_type_get_prefix(mod, format, prefix_data), value->target[u].node->name);
+                } else {
+                    ly_strcat(&result, "/%s", value->target[u].node->name);
+                }
+                LY_ARRAY_FOR(value->target[u].predicates, v) {
+                    struct ly_path_predicate *pred = &value->target[u].predicates[v];
 
-                switch (value->target[u].pred_type) {
-                case LY_PATH_PREDTYPE_NONE:
-                    break;
-                case LY_PATH_PREDTYPE_POSITION:
-                    /* position predicate */
-                    ly_strcat(&result, "[%" PRIu64 "]", pred->position);
-                    break;
-                case LY_PATH_PREDTYPE_LIST: {
-                    /* key-predicate */
-                    ly_bool d = 0;
-                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
-                    char quot = '\'';
-                    if (strchr(str, quot)) {
-                        quot = '"';
+                    switch (value->target[u].pred_type) {
+                    case LY_PATH_PREDTYPE_NONE:
+                        break;
+                    case LY_PATH_PREDTYPE_POSITION:
+                        /* position predicate */
+                        ly_strcat(&result, "[%" PRIu64 "]", pred->position);
+                        break;
+                    case LY_PATH_PREDTYPE_LIST: {
+                        /* key-predicate */
+                        ly_bool d = 0;
+                        const char *str = pred->value.realtype->plugin->print(ctx, &pred->value, format, prefix_data, &d, NULL);
+                        char quot = '\'';
+                        if (strchr(str, quot)) {
+                            quot = '"';
+                        }
+                        ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, str, quot);
+                        if (d) {
+                            free((char *)str);
+                        }
+                        break;
                     }
-                    ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, str, quot);
-                    if (d) {
-                        free((char *)str);
+                    case LY_PATH_PREDTYPE_LEAFLIST: {
+                        /* leaf-list-predicate */
+                        ly_bool d = 0;
+                        const char *str = pred->value.realtype->plugin->print(ctx, &pred->value, format, prefix_data, &d, NULL);
+                        char quot = '\'';
+                        if (strchr(str, quot)) {
+                            quot = '"';
+                        }
+                        ly_strcat(&result, "[.=%c%s%c]", quot, str, quot);
+                        if (d) {
+                            free((char *)str);
+                        }
+                        break;
                     }
-                    break;
-                }
-                case LY_PATH_PREDTYPE_LEAFLIST: {
-                    /* leaf-list-predicate */
-                    ly_bool d = 0;
-                    const char *str = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
-                    char quot = '\'';
-                    if (strchr(str, quot)) {
-                        quot = '"';
                     }
-                    ly_strcat(&result, "[.=%c%s%c]", quot, str, quot);
-                    if (d) {
-                        free((char *)str);
-                    }
-                    break;
-                }
                 }
             }
+
+            lydict_insert_zc(ctx, result, (const char **)&value->canonical);
+        }
+
+        /* use canonical */
+        result = (char *)value->canonical;
+        if (dynamic) {
+            *dynamic = 0;
         }
     } else {
         /* not supported format */
-        free(result);
         return NULL;
     }
 
-    *dynamic = 1;
+    if (value_len) {
+        *value_len = strlen(result);
+    }
     return result;
 }
 
@@ -157,9 +170,7 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
-    char *str;
     struct ly_path *path = NULL;
-    ly_bool dyn;
 
     /* init */
     *err = NULL;
@@ -174,12 +185,10 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     /* store resolved schema path */
     storage->target = path;
     path = NULL;
-
-    /* store JSON string value */
-    str = (char *)lyplg_type_print_instanceid(storage, LY_VALUE_JSON, NULL, &dyn);
-    assert(str && dyn);
-    LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->canonical), cleanup);
     storage->realtype = type;
+
+    /* generate canonical value */
+    lyplg_type_print_instanceid(ctx, storage, LY_VALUE_CANON, NULL, NULL, NULL);
 
     /* cleanup */
 cleanup:
@@ -199,7 +208,7 @@ cleanup_value:
 }
 
 API LY_ERR
-lyplg_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
+lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
         const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *tree, struct lyd_value *storage,
         struct ly_err_item **err)
 {
@@ -214,8 +223,14 @@ lyplg_type_validate_instanceid(const struct ly_ctx *UNUSED(ctx), const struct ly
     }
 
     /* find the target in data */
-    ret = ly_path_eval(storage->target, tree, NULL);
-    return ly_err_new(err, ret, LYVE_DATA, NULL, NULL, LY_ERRMSG_NOINST, storage->canonical);
+    if (!(ret = ly_path_eval(storage->target, tree, NULL))) {
+        return LY_SUCCESS;
+    }
+
+    /* error */
+    const char *value = storage->realtype->plugin->print(ctx, storage, LY_VALUE_CANON, NULL, NULL, NULL);
+
+    return ly_err_new(err, ret, LYVE_DATA, NULL, NULL, LY_ERRMSG_NOINST, value);
 }
 
 API LY_ERR
