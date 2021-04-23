@@ -37,28 +37,28 @@
  * Manager functions are at the peak of abstraction. They are
  * able to print individual sections of the YANG tree diagram
  * (eg module, notifications, rpcs ...) and they call
- * Browse functions (\ref TRP_trb).
+ * Browse functions (@ref TRP_trb).
  *
  * @subsubsection TRP_trb trb
  * Browse functions contain a general algorithm (Preorder DFS)
  * for traversing the tree. It does not matter what data type
- * the tree contains (\ref lysc_node or \ref lysp_node), because it
+ * the tree contains (@ref lysc_node or @ref lysp_node), because it
  * requires a ready-made getter functions for traversing the tree
- * (\ref trt_fp_all) and transformation function to its own node
- * data type (\ref trt_node). These getter functions are generally
- * referred to as \ref TRP_tro. Browse functions can repeatedly
+ * (@ref trt_fp_all) and transformation function to its own node
+ * data type (@ref trt_node). These getter functions are generally
+ * referred to as @ref TRP_tro. Browse functions can repeatedly
  * traverse nodes in the tree, for example, to calculate the alignment
  * gap before the nodes \<type\> in the YANG Tree Diagram.
- * The obtained \ref trt_node is passed to the \ref TRP_trp functions
+ * The obtained @ref trt_node is passed to the @ref TRP_trp functions
  * to print the Tree diagram.
  *
  * @subsubsection TRP_tro tro
  * Functions that provide an extra wrapper for the libyang library.
  * The Obtain functions are further specialized according to whether
- * they operate on lysp_tree (\ref TRP_trop) or lysc_tree
- * (\ref TRP_troc). If they are general algorithms, then they have the
+ * they operate on lysp_tree (@ref TRP_trop) or lysc_tree
+ * (@ref TRP_troc). If they are general algorithms, then they have the
  * prefix \b tro_. The Obtain functions provide information to
- * \ref TRP_trb functions for printing the Tree diagram.
+ * @ref TRP_trb functions for printing the Tree diagram.
  *
  * @subsubsection TRP_trop trop
  * Functions for Obtaining information from Parsed schema tree.
@@ -79,10 +79,10 @@
  *
  * @subsection TRP_ADJUSTMENTS Adjustments
  * It is assumed that the changes are likely to take place mainly for
- * \ref TRP_tro, \ref TRP_trop or \ref TRP_troc functions because
+ * @ref TRP_tro, @ref TRP_trop or @ref TRP_troc functions because
  * they are the only ones dependent on libyang implementation.
  * In special cases, changes will also need to be made to the
- * \ref TRP_trp functions if a special algorithm is needed to print
+ * @ref TRP_trp functions if a special algorithm is needed to print
  * (right now this is prepared for printing list's keys
  * and if-features).
  */
@@ -106,7 +106,7 @@ typedef enum {
 
 /**
  * @brief Structure is passed as 'writeclb' argument
- * to the ly_out_new_clb().
+ * to the ::ly_out_new_clb().
  */
 struct ly_out_clb_arg {
     trt_ly_out_clb_arg_flag mode;   /**< flag specifying which action to take. */
@@ -561,10 +561,6 @@ struct trt_fp_modify_ctx {
     void (*first_sibling)(struct trt_tree_ctx *);                                       /**< Jump on the first of the siblings. */
     struct trt_node (*next_sibling)(struct trt_parent_cache, struct trt_tree_ctx *);    /**< Jump to next sibling of the current node. */
     struct trt_node (*next_child)(struct trt_parent_cache, struct trt_tree_ctx *);      /**< Jump to the child of the current node. */
-    struct trt_keyword_stmt (*next_augment)(struct trt_tree_ctx *);                     /**< Jump to the augment section. */
-    struct trt_keyword_stmt (*get_rpcs)(struct trt_tree_ctx *);                         /**< Jump to the rpcs section. */
-    struct trt_keyword_stmt (*get_notifications)(struct trt_tree_ctx *);                /**< Jump to the notifications section. */
-    struct trt_keyword_stmt (*next_grouping)(struct trt_tree_ctx *);                    /**< Jump to the grouping section. */
 };
 
 /**********************************************************************
@@ -601,11 +597,11 @@ struct trt_fp_all {
  *********************************************************************/
 
 /**
- * @brief Main structure for \ref TRP_trp part.
+ * @brief Main structure for @ref TRP_trp part.
  */
 struct trt_printer_ctx {
     struct ly_out *out;     /**< Handler to printing. */
-    struct trt_fp_all fp;   /**< \ref TRP_tro functions callbacks. */
+    struct trt_fp_all fp;   /**< @ref TRP_tro functions callbacks. */
     size_t max_line_length; /**< The maximum number of characters that can be
                                printed on one line, including the last. */
 };
@@ -640,10 +636,10 @@ typedef enum {
  * @brief Saved information when browsing the tree downwards.
  *
  * This structure helps prevent frequent retrieval of information
- * from the tree. Functions \ref TRP_trb are designed to preserve
+ * from the tree. Functions @ref TRP_trb are designed to preserve
  * this structures during their recursive calls. This functions do not
  * interfere in any way with this data. This structure
- * is used by \ref TRP_trop functions which, thanks to this
+ * is used by @ref TRP_trop functions which, thanks to this
  * structure, can return a node with the correct data. The word
  * \b parent is in the structure name, because this data refers to
  * the last parent and at the same time the states of its
@@ -705,7 +701,7 @@ struct trt_tree_ctx {
 #define TRP_TREE_CTX_GET_LYSP_NODE(CN) \
     ((const struct lysp_node *)CN->priv)
 
-/** Getter function for trop_node_charptr(). */
+/** Getter function for ::trop_node_charptr(). */
 typedef const char *(*trt_get_charptr_func)(const struct lysp_node *pn);
 
 /**
@@ -810,7 +806,7 @@ trg_word_is_present(const char *src, const char *word, char delim)
  *********************************************************************/
 
 /**
- * @brief Write callback for ly_out_new_clb().
+ * @brief Write callback for ::ly_out_new_clb().
  *
  * @param[in] user_data is type of struct ly_out_clb_arg.
  * @param[in] buf contains input characters
@@ -1731,7 +1727,7 @@ trp_second_half_node(struct trt_node node, struct trt_indent_in_node indent)
  * @brief Get the correct alignment for the node.
  *
  * This function is recursively called itself. It's like a backend
- * function for a function trp_try_normal_indent_in_node().
+ * function for a function ::trp_try_normal_indent_in_node().
  *
  * @param[in] node is \<node\> representation.
  * @param[in] pck contains speciall callback functions for printing.
@@ -1801,7 +1797,7 @@ trp_try_normal_indent_in_node(struct trt_node node, struct trt_pck_print pck, st
 }
 
 /**
- * @brief Auxiliary function for trp_print_entire_node()
+ * @brief Auxiliary function for ::trp_print_entire_node()
  * that prints split nodes.
  * @param[in] node is node representation.
  * @param[in] ppck contains speciall callback functions for printing.
@@ -1979,7 +1975,7 @@ trop_notifs(const void *node)
 }
 
 /**
- * @brief Fill struct tro_getters with \ref TRP_trop getters
+ * @brief Fill struct tro_getters with @ref TRP_trop getters
  * which are adapted to lysp nodes.
  */
 static struct tro_getters
@@ -2078,7 +2074,7 @@ troc_notifs(const void *node)
 }
 
 /**
- * @brief Fill struct tro_getters with \ref TRP_troc getters
+ * @brief Fill struct tro_getters with @ref TRP_troc getters
  * which are adapted to lysc nodes.
  */
 static struct tro_getters
@@ -3159,7 +3155,7 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
  *********************************************************************/
 
 /**
- * @copydoc trop_modi_parent()
+ * @copydoc ::trop_modi_parent()
  */
 static ly_bool
 troc_modi_parent(struct trt_tree_ctx *tc)
@@ -3175,7 +3171,7 @@ troc_modi_parent(struct trt_tree_ctx *tc)
 }
 
 /**
- * @copydoc trop_modi_next_sibling()
+ * @copydoc ::trop_modi_next_sibling()
  */
 static struct trt_node
 troc_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
@@ -3215,7 +3211,7 @@ troc_modi_next_child(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 }
 
 /**
- * @copydoc trop_modi_first_sibling()
+ * @copydoc ::trop_modi_first_sibling()
  */
 static void
 troc_modi_first_sibling(struct trt_tree_ctx *tc)
@@ -3301,7 +3297,7 @@ trb_calc_btw_opts_type(struct trt_node_name name, int16_t max_len4all)
 /**
  * @brief Print node.
  *
- * This function is wrapper for trp_print_entire_node().
+ * This function is wrapper for ::trp_print_entire_node().
  * But difference is that take @p max_gap_before_type which will be
  * used to set the unified alignment.
  *
@@ -3335,7 +3331,7 @@ trb_print_entire_node(uint32_t max_gap_before_type, struct trt_wrapper wr, struc
  * Side-effect -> current node is set to the first sibling
  * if node has a parent otherwise no side-effect.
  *
- * @param[in] fp contains all \ref TRP_tro callback functions.
+ * @param[in] fp contains all @ref TRP_tro callback functions.
  * @param[in,out] tc is tree context.
  * @return 1 if parent is last sibling otherwise 0.
  */
@@ -3419,7 +3415,7 @@ trb_max_btw_opts_type4siblings(struct trt_parent_cache ca, struct trt_printer_ct
  * @return positive number indicating the maximum number of spaces
  * before \<type\> if the length of the node name is 0. To calculate
  * the trt_indent_in_node.btw_opts_type indent size for a particular
- * node, use the trb_calc_btw_opts_type().
+ * node, use the ::trb_calc_btw_opts_type().
 */
 static uint32_t
 trb_try_unified_indent(struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
@@ -3431,7 +3427,7 @@ trb_try_unified_indent(struct trt_parent_cache ca, struct trt_printer_ctx *pc, s
  * @brief For the current node: recursively print all of its child
  * nodes and all of its siblings, including their children.
  *
- * This function is an auxiliary function for trb_print_subtree_nodes().
+ * This function is an auxiliary function for ::trb_print_subtree_nodes().
  * The parent of the current node is expected to exist.
  * Nodes are printed, including unified sibling node alignment
  * (align \<type\> to column).
@@ -3513,7 +3509,7 @@ trb_count_depth(const struct lysc_node *node)
  * Side-effect -> trt_tree_ctx.cn will be set to @p node.
  *
  * @param[in] node on which the function is focused.
- * @param[in] pc is \ref TRP_trp settings.
+ * @param[in] pc is @ref TRP_trp settings.
  * @param[in,out] tc is context of tree printer.
  * @return wrapper for @p node.
  */
@@ -3595,13 +3591,13 @@ trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
  * is no linebreak.
  *
  * @param[in] max_gap_before_type is result from
- * trb_try_unified_indent() function for root node. Set parameter to 0
- * if distance does not matter.
+ * ::trb_try_unified_indent() function for root node.
+ * Set parameter to 0 if distance does not matter.
  * @param[in] wr is wrapper saying how deep in the whole tree
  * is the root of the subtree.
  * @param[in] ca is parent_cache from root's parent.
  * If root is top-level node, insert ::TRP_EMPTY_PARENT_CACHE.
- * @param[in] pc is \ref TRP_trp settings.
+ * @param[in] pc is @ref TRP_trp settings.
  * @param[in,out] tc is context of tree printer.
  */
 static void
@@ -3655,7 +3651,7 @@ trb_get_number_of_siblings(struct trt_fp_modify_ctx fp, struct trt_tree_ctx *tc)
  * @brief Print all parents and their children.
  *
  * This function is suitable for printing top-level nodes that
- * do not have ancestors. Function call trb_print_subtree_nodes()
+ * do not have ancestors. Function call ::trb_print_subtree_nodes()
  * for all top-level siblings. Use this function after 'module' keyword
  * or 'augment' and so. The nodes may not be exactly top-level in the
  * tree, but the function considers them that way.
@@ -3729,10 +3725,6 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .first_sibling = trop_modi_first_sibling,
         .next_sibling = trop_modi_next_sibling,
         .next_child = trop_modi_next_child,
-        .next_augment = trop_modi_next_augment,
-        .get_rpcs = tro_modi_get_rpcs,
-        .get_notifications = tro_modi_get_notifications,
-        .next_grouping = trop_modi_next_grouping,
     };
 
     pc->fp.read = (struct trt_fp_read) {
@@ -3782,10 +3774,6 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .first_sibling = troc_modi_first_sibling,
         .next_sibling = troc_modi_next_sibling,
         .next_child = troc_modi_next_child,
-        .next_augment = trop_modi_next_augment,
-        .get_rpcs = tro_modi_get_rpcs,
-        .get_notifications = tro_modi_get_notifications,
-        .next_grouping = NULL,
     };
 
     pc->fp.read = (struct trt_fp_read) {
@@ -3804,7 +3792,7 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
 
 /**
  * @brief Reset settings to browsing through the lysc tree.
- * @param[in,out] pc resets to \ref TRP_troc functions.
+ * @param[in,out] pc resets to @ref TRP_troc functions.
  * @param[in,out] tc resets to lysc browsing.
  */
 static void
@@ -3815,7 +3803,7 @@ trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 
 /**
  * @brief Reset settings to browsing through the lysp tree.
- * @param[in,out] pc resets to \ref TRP_trop functions.
+ * @param[in,out] pc resets to @ref TRP_trop functions.
  * @param[in,out] tc resets to lysp browsing.
  */
 static void
@@ -3936,19 +3924,15 @@ trm_print_augmentations(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     ly_bool once;
     ly_bool origin_was_lysc_tree = 0;
 
-    if (!pc->fp.modify.next_augment) {
-        return;
-    }
-
     if (tc->lysc_tree) {
         origin_was_lysc_tree = 1;
         trm_reset_to_lysp_tree_ctx(pc, tc);
     }
 
     once = 1;
-    for (struct trt_keyword_stmt ks = pc->fp.modify.next_augment(tc);
+    for (struct trt_keyword_stmt ks = trop_modi_next_augment(tc);
             !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
-            ks = pc->fp.modify.next_augment(tc)) {
+            ks = trop_modi_next_augment(tc)) {
 
         if (origin_was_lysc_tree) {
             /* if lysc tree is used, then only augments targeting
@@ -3985,9 +3969,7 @@ trm_print_rpcs(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_keyword_stmt rpc;
 
-    assert(pc->fp.modify.get_rpcs);
-
-    rpc = pc->fp.modify.get_rpcs(tc);
+    rpc = tro_modi_get_rpcs(tc);
 
     if (!(TRP_KEYWORD_STMT_IS_EMPTY(rpc))) {
         ly_print_(pc->out, "\n");
@@ -4007,9 +3989,7 @@ trm_print_notifications(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_keyword_stmt notifs;
 
-    assert(pc->fp.modify.get_notifications);
-
-    notifs = pc->fp.modify.get_notifications(tc);
+    notifs = tro_modi_get_notifications(tc);
 
     if (!(TRP_KEYWORD_STMT_IS_EMPTY(notifs))) {
         ly_print_(pc->out, "\n");
@@ -4029,14 +4009,14 @@ trm_print_groupings(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     ly_bool once;
 
-    if (!pc->fp.modify.next_grouping) {
+    if (tc->lysc_tree) {
         return;
     }
 
     once = 1;
-    for (struct trt_keyword_stmt ks = pc->fp.modify.next_grouping(tc);
+    for (struct trt_keyword_stmt ks = trop_modi_next_grouping(tc);
             !(TRP_KEYWORD_STMT_IS_EMPTY(ks));
-            ks = pc->fp.modify.next_grouping(tc)) {
+            ks = trop_modi_next_grouping(tc)) {
         if (once) {
             ly_print_(pc->out, "\n");
             ly_print_(pc->out, "\n");
@@ -4069,7 +4049,7 @@ trm_print_yang_data(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
     for (LY_ARRAY_COUNT_TYPE u = 0; u < count; ++u) {
         struct trt_keyword_stmt ks;
 
-        /* Only lys_compile_extension_instance() can set item
+        /* Only ::lys_compile_extension_instance() can set item
          * ::lysp_ext_instance.parsed.
          */
         if (!tc->pmod->exts[u].parsed) {
