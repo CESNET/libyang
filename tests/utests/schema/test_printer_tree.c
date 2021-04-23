@@ -1643,6 +1643,149 @@ print_parsed_submodule(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
+static void
+yang_data(void **state)
+{
+    TEST_LOCAL_SETUP;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
+
+    orig =
+            "module a28 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"x:y\";\n"
+            "  prefix x;\n"
+            "\n"
+            "  import ietf-restconf {\n"
+            "    prefix rc;\n"
+            "    revision-date 2017-01-26;\n"
+            "  }\n"
+            "\n"
+            "  rc:yang-data \"tmp1\" {\n"
+            "    container cont1 {\n"
+            "      leaf lf {\n"
+            "        type string;\n"
+            "      }\n"
+            "      list l2 {\n"
+            "        key\n"
+            "          \"a b\";\n"
+            "        leaf a {\n"
+            "          type string;\n"
+            "        }\n"
+            "        leaf b {\n"
+            "          type string;\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  rc:yang-data \"tmp2\" {\n"
+            "    container con2 {\n"
+            "      leaf lf {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  rc:yang-data \"tmp3\" {\n"
+            "    uses g1;\n"
+            "    uses g2;\n"
+            "  }\n"
+            "  rc:yang-data \"tmp4\" {\n"
+            "    choice x {\n"
+            "      case a {\n"
+            "        container z;\n"
+            "      }\n"
+            "      case b {\n"
+            "        container y;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  grouping g1 {\n"
+            "    description\n"
+            "      \"Some Text\";\n"
+            "  }\n"
+            "\n"
+            "  grouping g2 {\n"
+            "    container cont3;\n"
+            "  }\n"
+            "  container mont;\n"
+            "}\n";
+
+    /* from pyang but with these adjustments:
+     *  - <flags> is always '--' for yang-data nodes
+     *  - yang-data tmp3 has two 'uses' nodes
+     *  - grouping g2 has ':' character at the end
+     */
+    expect =
+            "module: a28\n"
+            "  +--rw mont\n"
+            "\n"
+            "  grouping g1\n"
+            "  grouping g2:\n"
+            "    +---- cont3\n"
+            "\n"
+            "  yang-data tmp1:\n"
+            "    +---- cont1\n"
+            "       +---- lf?   string\n"
+            "       +---- l2* [a b]\n"
+            "          +---- a    string\n"
+            "          +---- b    string\n"
+            "  yang-data tmp2:\n"
+            "    +---- con2\n"
+            "       +---- lf?   string\n"
+            "  yang-data tmp3:\n"
+            "    +---u g1\n"
+            "    +---u g2\n"
+            "  yang-data tmp4:\n"
+            "    +---- (x)?\n"
+            "       +--:(a)\n"
+            "       |  +---- z\n"
+            "       +--:(b)\n"
+            "          +---- y\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* from pyang but with these adjustments:
+     *  <flags> is always '--' for yang-data nodes
+     */
+    expect =
+            "module: a28\n"
+            "  +--rw mont\n"
+            "\n"
+            "  yang-data tmp1:\n"
+            "    +---- cont1\n"
+            "       +---- lf?   string\n"
+            "       +---- l2* [a b]\n"
+            "          +---- a    string\n"
+            "          +---- b    string\n"
+            "  yang-data tmp2:\n"
+            "    +---- con2\n"
+            "       +---- lf?   string\n"
+            "  yang-data tmp3:\n"
+            "    +---- cont3\n"
+            "  yang-data tmp4:\n"
+            "    +---- (x)?\n"
+            "       +--:(a)\n"
+            "       |  +---- z\n"
+            "       +--:(b)\n"
+            "          +---- y\n";
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
 int
 main(void)
 {
@@ -1674,6 +1817,7 @@ main(void)
         UTEST(local_augment),
         UTEST(print_compiled_node),
         UTEST(print_parsed_submodule),
+        UTEST(yang_data),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
