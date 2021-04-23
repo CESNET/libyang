@@ -2256,10 +2256,13 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
             if (!mod->implemented) {
                 /* implement (compile) the target module with our augments/deviations */
                 LY_CHECK_GOTO(ret = lys_set_implemented_r(mod, NULL, ctx->unres), cleanup);
-            } else {
+            } else if (!ctx->unres->full_compilation) {
                 /* target module was already compiled, we need to recompile it */
                 ctx->unres->recompile = 1;
             }
+            /* else the module is implemented and was compiled in this compilation run or will yet be;
+             * we actually do not need the module compiled now because its compiled nodes will not be accessed,
+             * augments/deviations are applied during the target module compilation and the rest is in global unres */
 
             if (ctx->unres->recompile) {
                 /* we need some module recompiled and cannot continue */

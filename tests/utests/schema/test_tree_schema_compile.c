@@ -32,14 +32,35 @@ setup(void **state)
     return 0;
 }
 
+static void
+test_imp_free_data(void *model_data, void *UNUSED(user_data))
+{
+    free(model_data);
+}
+
 static LY_ERR
-test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
         const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
         const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
 {
-    *module_data = user_data;
-    *format = LYS_IN_YANG;
-    *free_module_data = NULL;
+    char *nl;
+
+    if ((nl = strchr(user_data, '\n'))) {
+        /* more modules */
+        if (!strncmp(user_data + 7, mod_name, strlen(mod_name))) {
+            *module_data = strndup(user_data, nl - (char *)user_data);
+            *format = LYS_IN_YANG;
+            *free_module_data = test_imp_free_data;
+        } else {
+            *module_data = strdup(nl + 1);
+            *format = LYS_IN_YANG;
+            *free_module_data = test_imp_free_data;
+        }
+    } else {
+        *module_data = user_data;
+        *format = LYS_IN_YANG;
+        *free_module_data = NULL;
+    }
     return LY_SUCCESS;
 }
 
@@ -2902,6 +2923,28 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)lysc_node_child(mod->compiled->data));
     assert_string_equal("l", leaf->name);
     assert_int_equal(LY_TYPE_LEAFREF, leaf->type->basetype);
+
+    /* complex dependencies */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m-base {namespace urn:m-base;prefix mb;"
+            "container cont {leaf l {type string;} leaf l2 {type string;}}}", LYS_IN_YANG, NULL));
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module m-base-aug {namespace urn:m-base-aug;prefix mba;"
+            "import m-base {prefix mb;}"
+            "augment /mb:cont {leaf l {type string;} leaf l2 {type string;}}"
+            "container cont2 {leaf l {type string;}}}"
+            "\n"
+            "module m-base-aug2 {namespace urn:m-base-aug2;prefix mba2;"
+            "import m-base {prefix mb;} import m-base-aug {prefix mba;}"
+            "augment /mb:cont {leaf augl1 {type string;}}"
+            "augment /mba:cont2 {leaf augl2 {type string;}}}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m-dev {namespace urn:m-dev;prefix md;"
+            "import m-base-aug {prefix mba;} import m-base-aug2 {prefix mba2;}"
+            "deviation /mba:cont2/mba2:augl2 {deviate not-supported;}}", LYS_IN_YANG, NULL));
+    assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "m-base-aug")));
+    node = mod->compiled->data;
+    assert_string_equal(node->name, "cont2");
+    assert_non_null(node = lysc_node_child(node));
+    assert_string_equal(node->name, "l");
+    assert_null(node->next);
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
             "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG, &mod));
