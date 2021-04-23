@@ -1390,17 +1390,15 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     /* compile features */
     LY_CHECK_GOTO(ret = lys_compile_feature_iffeatures(mod->parsed), cleanup);
 
-    if (!implement) {
-        /* pre-compile identities of the module */
-        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), cleanup);
+    /* pre-compile identities of the module and any submodules */
+    LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), cleanup);
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        submod = mod->parsed->includes[u].submodule;
+        ret = lys_identity_precompile(NULL, ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
 
-        /* pre-compile identities of any submodules */
-        LY_ARRAY_FOR(mod->parsed->includes, u) {
-            submod = mod->parsed->includes[u].submodule;
-            ret = lys_identity_precompile(NULL, ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    } else {
+    if (implement) {
         /* implement (compile) */
         LY_CHECK_GOTO(ret = lys_set_implemented_r(mod, features, unres), cleanup);
     }

@@ -1459,17 +1459,9 @@ lys_compile_identities(struct lysc_ctx *ctx)
     struct lysp_submodule *submod;
     LY_ARRAY_COUNT_TYPE u;
 
-    if (!ctx->cur_mod->identities) {
-        LY_CHECK_RET(lys_identity_precompile(ctx, NULL, NULL, ctx->cur_mod->parsed->identities, &ctx->cur_mod->identities));
-        LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, u) {
-            submod = ctx->cur_mod->parsed->includes[u].submodule;
-            LY_CHECK_RET(lys_identity_precompile(ctx, NULL, NULL, submod->identities, &ctx->cur_mod->identities));
-        }
-    }
     if (ctx->cur_mod->parsed->identities) {
         LY_CHECK_RET(lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities, &ctx->cur_mod->identities));
     }
-
     lysc_update_path(ctx, NULL, "{submodule}");
     LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, u) {
         submod = ctx->cur_mod->parsed->includes[u].submodule;
