@@ -1343,7 +1343,7 @@ lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_
 
     ptr = ly_strnchr(nametest, ':', nametest_len);
     if (ptr) {
-        target_mod = ly_resolve_prefix(ctx, nametest, ptr - nametest, LY_PREF_SCHEMA, (void *)mod);
+        target_mod = ly_resolve_prefix(ctx, nametest, ptr - nametest, LY_VALUE_SCHEMA, (void *)mod);
         if (!target_mod) {
             LOGVAL(ctx, LYVE_REFERENCE,
                     "Invalid absolute-schema-nodeid nametest \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",

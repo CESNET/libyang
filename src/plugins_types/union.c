@@ -82,7 +82,7 @@ ly_type_union_store_type(const struct ly_ctx *ctx, struct lysc_type **types, str
 
 API LY_ERR
 lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -192,7 +192,7 @@ lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *v
 }
 
 API const char *
-lyplg_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_union(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     return value->subvalue->value.realtype->plugin->print(&value->subvalue->value, format, prefix_data, dynamic);
 }

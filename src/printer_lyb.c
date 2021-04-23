@@ -553,23 +553,19 @@ lyb_print_header(struct ly_out *out)
  *
  * @param[in] out Out structure.
  * @param[in] format Value prefix format.
- * @param[in] prefix_data Format-specific data to print:
- *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
- *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON            - NULL
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_prefix_data(struct ly_out *out, LY_PREFIX_FORMAT format, const void *prefix_data, struct lylyb_ctx *lybctx)
+lyb_print_prefix_data(struct ly_out *out, LY_VALUE_FORMAT format, const void *prefix_data, struct lylyb_ctx *lybctx)
 {
     const struct ly_set *set;
     const struct lyxml_ns *ns;
     uint32_t i;
 
     switch (format) {
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         set = prefix_data;
         if (!set) {
             /* no prefix data */
@@ -596,7 +592,7 @@ lyb_print_prefix_data(struct ly_out *out, LY_PREFIX_FORMAT format, const void *p
             LY_CHECK_RET(lyb_write_string(ns->uri, 0, 1, out, lybctx));
         }
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         /* nothing to print */
         break;
     default:

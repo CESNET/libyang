@@ -89,7 +89,7 @@ LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, u
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
 LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len,
-        const struct lysc_node *ctx_node, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
+        const struct lysc_node *ctx_node, const struct lys_module *cur_mod, LY_VALUE_FORMAT format, void *prefix_data,
         uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag);
 
 /**

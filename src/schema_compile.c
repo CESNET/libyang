@@ -376,7 +376,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
         if (s) {
             /* prefixed identity */
             name = &s[1];
-            mod = ly_resolve_prefix(ctx->ctx, bases_p[u], s - bases_p[u], LY_PREF_SCHEMA, (void *)base_pmod);
+            mod = ly_resolve_prefix(ctx->ctx, bases_p[u], s - bases_p[u], LY_VALUE_SCHEMA, (void *)base_pmod);
         } else {
             name = bases_p[u];
             mod = base_pmod->mod;
@@ -722,7 +722,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             when_list = lysc_node_when(node);
             LY_ARRAY_FOR(when_list, u) {
                 when = when_list[u];
-                ret = lyxp_atomize(set->ctx, when->cond, node->module, LY_PREF_SCHEMA_RESOLVED, when->prefixes,
+                ret = lyxp_atomize(set->ctx, when->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
                         when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
                     LOGVAL(set->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
@@ -791,7 +791,7 @@ lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, const char 
 }
 
 LY_ERR
-lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
+lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p)
 {
     uint32_t i;
@@ -862,7 +862,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
     LY_ARRAY_FOR(whens, u) {
         /* first check whether all the referenced modules are implemented */
         mod = NULL;
-        ret = lys_compile_expr_implement(ctx->ctx, whens[u]->cond, LY_PREF_SCHEMA_RESOLVED, whens[u]->prefixes,
+        ret = lys_compile_expr_implement(ctx->ctx, whens[u]->cond, LY_VALUE_SCHEMA_RESOLVED, whens[u]->prefixes,
                 ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
         if (ret) {
             goto cleanup;
@@ -873,7 +873,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
         }
 
         /* check "when" */
-        ret = lyxp_atomize(ctx->ctx, whens[u]->cond, node->module, LY_PREF_SCHEMA_RESOLVED, whens[u]->prefixes,
+        ret = lyxp_atomize(ctx->ctx, whens[u]->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, whens[u]->prefixes,
                 whens[u]->context, &tmp_set, opts);
         if (ret) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", whens[u]->cond->expr);
@@ -912,7 +912,7 @@ check_musts:
     LY_ARRAY_FOR(musts, u) {
         /* first check whether all the referenced modules are implemented */
         mod = NULL;
-        ret = lys_compile_expr_implement(ctx->ctx, musts[u].cond, LY_PREF_SCHEMA_RESOLVED, musts[u].prefixes,
+        ret = lys_compile_expr_implement(ctx->ctx, musts[u].cond, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes,
                 ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED, unres, &mod);
         if (ret) {
             goto cleanup;
@@ -923,7 +923,7 @@ check_musts:
         }
 
         /* check "must" */
-        ret = lyxp_atomize(ctx->ctx, musts[u].cond, node->module, LY_PREF_SCHEMA_RESOLVED, musts[u].prefixes, node,
+        ret = lyxp_atomize(ctx->ctx, musts[u].cond, node->module, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes, node,
                 &tmp_set, opts);
         if (ret) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
@@ -982,7 +982,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     /* try to find the target */
     LY_CHECK_RET(ly_path_compile(ctx->ctx, lref->cur_mod, node, NULL, lref->path, LY_PATH_LREF_TRUE,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
-            LY_PREF_SCHEMA_RESOLVED, lref->prefixes, unres, &p));
+            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, unres, &p));
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;
@@ -1050,7 +1050,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     struct ly_err_item *err = NULL;
 
     options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
-    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_PREF_SCHEMA, (void *)dflt_pmod,
+    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, storage, unres, &err);
     if (ret == LY_ERECOMPILE) {
         /* fine, but we need to recompile */

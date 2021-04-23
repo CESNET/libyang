@@ -355,7 +355,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
                         goto cleanup;
                     }
 
-                    ret = lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL);
+                    ret = lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL);
                     LY_CHECK_GOTO(ret, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -468,7 +468,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
                 break;
             }
 
-            if (lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL)) {
+            if (lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_VALUE_JSON, NULL)) {
                 ret = LY_ENOT;
             }
             break;
@@ -564,7 +564,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 
                     ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, meta->name.name, strlen(meta->name.name),
                             meta->name.prefix, ly_strlen(meta->name.prefix), meta->name.module_name,
-                            ly_strlen(meta->name.module_name), meta->value, ly_strlen(meta->value), NULL, LY_PREF_JSON,
+                            ly_strlen(meta->name.module_name), meta->value, ly_strlen(meta->value), NULL, LY_VALUE_JSON,
                             NULL, meta->hints);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
@@ -600,7 +600,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     if (mod) {
                         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod,
                                 meta->name.name, strlen(meta->name.name), meta->value, ly_strlen(meta->value),
-                                &dynamic, LY_PREF_JSON, NULL, meta->hints);
+                                &dynamic, LY_VALUE_JSON, NULL, meta->hints);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                         LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
@@ -784,7 +784,7 @@ next_entry:
             /* create metadata */
             meta = NULL;
             ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, &meta, mod, name, name_len, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, NULL,
+                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL,
                     LYD_HINT_DATA);
             LY_CHECK_GOTO(ret, cleanup);
 
@@ -800,7 +800,7 @@ next_entry:
             /* attr2 is always changed to the created attribute */
             ret = lyd_create_attr(node, NULL, lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name,
                     module_name_len, lydctx->jsonctx->value, lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic,
-                    LY_PREF_JSON, NULL, 0);
+                    LY_VALUE_JSON, NULL, 0);
             LY_CHECK_GOTO(ret, cleanup);
         }
         /* next member */
@@ -909,7 +909,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     /* create node */
     lydjson_get_node_prefix(&parent->node, prefix, prefix_len, &module_name, &module_name_len);
     ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name, module_name_len, value,
-            value_len, &dynamic, LY_PREF_JSON, NULL, type_hint, node_p);
+            value_len, &dynamic, LY_VALUE_JSON, NULL, type_hint, node_p);
     if (dynamic) {
         free((char *)value);
     }
@@ -1057,7 +1057,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
         if (snode->nodetype & LYD_NODE_TERM) {
             /* create terminal node */
             ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_PREF_JSON, NULL,
+                    lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL,
                     type_hints, node);
             LY_CHECK_RET(ret);
 

@@ -129,9 +129,9 @@ lyd_owner_module(const struct lyd_node *node)
     if (!node->schema) {
         opaq = (struct lyd_node_opaq *)node;
         switch (opaq->format) {
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             return ly_ctx_get_module_implemented_ns(LYD_CTX(node), opaq->name.module_ns);
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             return ly_ctx_get_module_implemented(LYD_CTX(node), opaq->name.module_name);
         default:
             return NULL;
@@ -393,7 +393,7 @@ lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const s
 }
 
 void
-ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
+ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
 {
     struct ly_set *ns_list;
     struct lysc_prefix *prefixes;
@@ -405,7 +405,7 @@ ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
     }
 
     switch (format) {
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         ns_list = prefix_data;
         for (i = 0; i < ns_list->count; ++i) {
             free(((struct lyxml_ns *)ns_list->objs[i])->prefix);
@@ -413,21 +413,21 @@ ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
         }
         ly_set_free(ns_list, free);
         break;
-    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_VALUE_SCHEMA_RESOLVED:
         prefixes = prefix_data;
         LY_ARRAY_FOR(prefixes, u) {
             free(prefixes[u].prefix);
         }
         LY_ARRAY_FREE(prefixes);
         break;
-    case LY_PREF_SCHEMA:
-    case LY_PREF_JSON:
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_JSON:
         break;
     }
 }
 
 LY_ERR
-ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *prefix_data,
+ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *prefix_data,
         void **prefix_data_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -440,10 +440,10 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void
     assert(!*prefix_data_p);
 
     switch (format) {
-    case LY_PREF_SCHEMA:
+    case LY_VALUE_SCHEMA:
         *prefix_data_p = (void *)prefix_data;
         break;
-    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_VALUE_SCHEMA_RESOLVED:
         /* copy all the value prefixes */
         orig_pref = (struct lysc_prefix *)prefix_data;
         LY_ARRAY_CREATE_GOTO(ctx, prefixes, LY_ARRAY_COUNT(orig_pref), ret, cleanup);
@@ -458,7 +458,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void
             LY_ARRAY_INCREMENT(prefixes);
         }
         break;
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         /* copy all the namespaces */
         LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
         *prefix_data_p = ns_list;
@@ -477,7 +477,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void
             LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         assert(!prefix_data);
         *prefix_data_p = NULL;
         break;
@@ -492,8 +492,8 @@ cleanup:
 }
 
 LY_ERR
-ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
-        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
+ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
@@ -506,16 +506,16 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
     ly_bool is_prefix;
 
     switch (format) {
-    case LY_PREF_SCHEMA:
+    case LY_VALUE_SCHEMA:
         /* copy all referenced modules as prefix - module pairs */
         if (!*prefix_data_p) {
             /* new prefix data */
             LY_ARRAY_CREATE_GOTO(ctx, prefixes, 0, ret, cleanup);
-            *format_p = LY_PREF_SCHEMA_RESOLVED;
+            *format_p = LY_VALUE_SCHEMA_RESOLVED;
             *prefix_data_p = prefixes;
         } else {
             /* reuse prefix data */
-            assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
+            assert(*format_p == LY_VALUE_SCHEMA_RESOLVED);
             prefixes = *prefix_data_p;
         }
 
@@ -529,7 +529,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
                 if (!mod) {
                     mod = ly_resolve_prefix(ctx, value_iter, substr_len, format, prefix_data);
                     if (mod) {
-                        assert(*format_p == LY_PREF_SCHEMA_RESOLVED);
+                        assert(*format_p == LY_VALUE_SCHEMA_RESOLVED);
                         /* store a new prefix - module pair */
                         LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
                         *prefix_data_p = prefixes;
@@ -542,16 +542,16 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
             }
         }
         break;
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         /* copy all referenced namespaces as prefix - namespace pairs */
         if (!*prefix_data_p) {
             /* new prefix data */
             LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
-            *format_p = LY_PREF_XML;
+            *format_p = LY_VALUE_XML;
             *prefix_data_p = ns_list;
         } else {
             /* reuse prefix data */
-            assert(*format_p == LY_PREF_XML);
+            assert(*format_p == LY_VALUE_XML);
             ns_list = *prefix_data_p;
         }
 
@@ -579,8 +579,8 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
             }
         }
         break;
-    case LY_PREF_SCHEMA_RESOLVED:
-    case LY_PREF_JSON:
+    case LY_VALUE_SCHEMA_RESOLVED:
+    case LY_VALUE_JSON:
         if (!*prefix_data_p) {
             /* new prefix data - simply copy all the prefix data */
             *format_p = format;
@@ -598,16 +598,16 @@ cleanup:
 }
 
 const char *
-ly_format2str(LY_PREFIX_FORMAT format)
+ly_format2str(LY_VALUE_FORMAT format)
 {
     switch (format) {
-    case LY_PREF_SCHEMA:
+    case LY_VALUE_SCHEMA:
         return "schema imports";
-    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_VALUE_SCHEMA_RESOLVED:
         return "schema stored mapping";
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         return "XML prefixes";
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         return "JSON module names";
     default:
         break;

@@ -3061,7 +3061,7 @@ yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, s
         LY_CHECK_GOTO(ret = lydict_insert_zc(ctx->xmlctx->ctx, id, &(*element)->stmt), cleanup);
 
         /* store prefix data for the statement */
-        LY_CHECK_GOTO(ret = ly_store_prefix_data(ctx->xmlctx->ctx, (*element)->stmt, strlen((*element)->stmt), LY_PREF_XML,
+        LY_CHECK_GOTO(ret = ly_store_prefix_data(ctx->xmlctx->ctx, (*element)->stmt, strlen((*element)->stmt), LY_VALUE_XML,
                 &ctx->xmlctx->ns, &(*element)->format, &(*element)->prefix_data), cleanup);
     } else {
         LY_CHECK_GOTO(ret = lydict_insert(ctx->xmlctx->ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, &(*element)->stmt), cleanup);
@@ -3136,7 +3136,7 @@ yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, s
             LY_CHECK_ERR_GOTO(!(*element)->arg, ret = LY_EMEM, cleanup);
 
             /* store prefix data for the argument as well */
-            LY_CHECK_GOTO(ret = ly_store_prefix_data(ctx->xmlctx->ctx, (*element)->arg, strlen((*element)->arg), LY_PREF_XML,
+            LY_CHECK_GOTO(ret = ly_store_prefix_data(ctx->xmlctx->ctx, (*element)->arg, strlen((*element)->arg), LY_VALUE_XML,
                     &ctx->xmlctx->ns, &(*element)->format, &(*element)->prefix_data), cleanup);
         }
 
@@ -3186,7 +3186,7 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subele
     LY_CHECK_RET(lydict_insert_zc(ctx->xmlctx->ctx, ext_name, &e->name));
 
     /* store prefix data for the name */
-    LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->name, strlen(e->name), LY_PREF_XML, &ctx->xmlctx->ns,
+    LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->name, strlen(e->name), LY_VALUE_XML, &ctx->xmlctx->ns,
             &e->format, &e->prefix_data));
 
     e->parent_stmt = subelem;
@@ -3242,7 +3242,7 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subele
         LY_CHECK_RET(!e->argument, LY_EMEM);
 
         /* store prefix data for the argument as well */
-        LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->argument, strlen(e->argument), LY_PREF_XML,
+        LY_CHECK_RET(ly_store_prefix_data(ctx->xmlctx->ctx, e->argument, strlen(e->argument), LY_VALUE_XML,
                 &ctx->xmlctx->ns, &e->format, &e->prefix_data));
 
         /* parser next */

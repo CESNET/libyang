@@ -235,7 +235,7 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, cons
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_PREFIX_FORMAT format,
+LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p);
 
 /**

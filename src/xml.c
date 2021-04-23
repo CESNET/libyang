@@ -1135,10 +1135,10 @@ lyxml_value_compare(const struct ly_ctx *ctx1, const char *value1, void *val_pre
         mod1 = mod2 = NULL;
         if (val_prefix_data1) {
             /* find module of the first prefix, if any */
-            mod1 = ly_resolve_prefix(ctx1, value1_iter, value1_len, LY_PREF_XML, val_prefix_data1);
+            mod1 = ly_resolve_prefix(ctx1, value1_iter, value1_len, LY_VALUE_XML, val_prefix_data1);
         }
         if (val_prefix_data2) {
-            mod2 = ly_resolve_prefix(ctx2, value2_iter, value2_len, LY_PREF_XML, val_prefix_data2);
+            mod2 = ly_resolve_prefix(ctx2, value2_iter, value2_len, LY_VALUE_XML, val_prefix_data2);
         }
         if (!mod1 || !mod2) {
             /* not a prefix or maps to different namespaces */

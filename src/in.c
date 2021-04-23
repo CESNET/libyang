@@ -495,7 +495,7 @@ cleanup:
 
 LY_ERR
 lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node)
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node)
 {
     ly_bool incomplete;
 
@@ -509,7 +509,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
-        const char *name, size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format,
+        const char *name, size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints)
 {
     ly_bool incomplete;

@@ -506,7 +506,7 @@ struct lysp_ext {
 struct lysp_stmt {
     const char *stmt;                /**< identifier of the statement */
     const char *arg;                 /**< statement's argument */
-    LY_PREFIX_FORMAT format;         /**< prefix format of the identifier/argument (::LY_PREF_XML is YIN format) */
+    LY_VALUE_FORMAT format;         /**< prefix format of the identifier/argument (::LY_VALUE_XML is YIN format) */
     void *prefix_data;               /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
 
     struct lysp_stmt *next;          /**< link to the next statement */
@@ -523,7 +523,7 @@ struct lysp_stmt {
 struct lysp_ext_instance {
     const char *name;                       /**< extension identifier, including possible prefix */
     const char *argument;                   /**< optional value of the extension's argument */
-    LY_PREFIX_FORMAT format;                /**< prefix format of the extension name/argument (::LY_PREF_XML is YIN format) */
+    LY_VALUE_FORMAT format;                /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
     void *prefix_data;                      /**< Format-specific data for prefix resolution
                                                  (see ly_resolve_prefix()) */
 
@@ -1379,7 +1379,7 @@ struct lysp_submodule {
 #define LYSP_MODULE_NAME(PMOD) (PMOD->is_submod ? ((struct lysp_submodule *)PMOD)->name : ((struct lysp_module *)PMOD)->mod->name)
 
 /**
- * @brief Compiled prefix data pair mapping of prefixes to modules. In case the format is ::LY_PREF_SCHEMA_RESOLVED,
+ * @brief Compiled prefix data pair mapping of prefixes to modules. In case the format is ::LY_VALUE_SCHEMA_RESOLVED,
  * the expected prefix data is a sized array of these structures.
  */
 struct lysc_prefix {
@@ -2192,7 +2192,7 @@ LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substm
  *
  * @param[in] ctx libyang context to use. May be NULL if @p ctx_node is set.
  * @param[in] ctx_node XPath schema context node. Use NULL for the root node.
- * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_PREF_JSON prefix format is expected.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_VALUE_JSON prefix format is expected.
  * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found atoms (schema nodes).
  * @return LY_SUCCESS on success, @p set is returned.
@@ -2221,7 +2221,7 @@ LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_mo
  *
  * @param[in] ctx libyang context to use for absolute @p xpath. May be NULL if @p ctx_node is set.
  * @param[in] ctx_node XPath schema context node for relative @p xpath. Use NULL for the root node.
- * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_PREF_JSON prefix format is expected.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LY_VALUE_JSON prefix format is expected.
  * @param[in] options Whether to apply some node access restrictions, see @ref findxpathoptions.
  * @param[out] set Set of found schema nodes.
  * @return LY_SUCCESS on success, @p set is returned.

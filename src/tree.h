@@ -230,14 +230,14 @@ typedef enum
 extern const char *ly_data_type2str[LY_DATA_TYPE_COUNT];
 
 /**
- * @brief All kinds of supported prefix mappings to modules.
+ * @brief All kinds of supported value formats and prefix mappings to modules.
  */
 typedef enum {
-    LY_PREF_SCHEMA,          /**< value prefixes map to YANG import prefixes */
-    LY_PREF_SCHEMA_RESOLVED, /**< value prefixes map to module structures directly */
-    LY_PREF_XML,             /**< value prefixes map to XML namespace prefixes */
-    LY_PREF_JSON             /**< value prefixes map to module names */
-} LY_PREFIX_FORMAT;
+    LY_VALUE_SCHEMA,          /**< YANG schema value, prefixes map to YANG import prefixes */
+    LY_VALUE_SCHEMA_RESOLVED, /**< resolved YANG schema value, prefixes map to module structures directly */
+    LY_VALUE_XML,             /**< XML data value, prefixes map to XML namespace prefixes */
+    LY_VALUE_JSON             /**< JSON data value, prefixes map to module names */
+} LY_VALUE_FORMAT;
 
 /** @} trees */
 

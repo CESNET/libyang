@@ -144,7 +144,7 @@ lysp_feature_find(const struct lysp_module *pmod, const char *name, size_t len, 
 
     if (prefixed && (ptr = ly_strnchr(name, ':', len))) {
         /* we have a prefixed feature */
-        mod = ly_resolve_prefix(pmod->mod->ctx, name, ptr - name, LY_PREF_SCHEMA, (void *)pmod);
+        mod = ly_resolve_prefix(pmod->mod->ctx, name, ptr - name, LY_VALUE_SCHEMA, (void *)pmod);
         LY_CHECK_RET(!mod, NULL);
 
         pmod = mod->parsed;
