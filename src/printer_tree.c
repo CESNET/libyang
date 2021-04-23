@@ -565,7 +565,6 @@ struct trt_fp_modify_ctx {
     struct trt_keyword_stmt (*get_rpcs)(struct trt_tree_ctx *);                         /**< Jump to the rpcs section. */
     struct trt_keyword_stmt (*get_notifications)(struct trt_tree_ctx *);                /**< Jump to the notifications section. */
     struct trt_keyword_stmt (*next_grouping)(struct trt_tree_ctx *);                    /**< Jump to the grouping section. */
-    struct trt_keyword_stmt (*next_yang_data)(struct trt_tree_ctx *);                   /**< Jump to the yang-data section. */
 };
 
 /**********************************************************************
@@ -683,17 +682,21 @@ struct trt_parent_cache {
  * @brief Main structure for browsing the libyang tree
  */
 struct trt_tree_ctx {
-    ly_bool lysc_tree;                  /**< The lysc nodes are used for browsing through the tree.
-                                             It is assumed that once set, it does not change.
-                                             If it is true then trt_tree_ctx.pn and
-                                             trt_tree_ctx.tpn are not used.
-                                             If it is false then trt_tree_ctx.cn is not used. */
-    trt_actual_section section;         /**< To which section pn points. */
-    const struct lysp_module *pmod;     /**< Parsed YANG schema tree. */
-    const struct lysc_module *cmod;     /**< Compiled YANG schema tree. */
-    const struct lysp_node *pn;         /**< Actual pointer to parsed node. */
-    const struct lysp_node *tpn;        /**< Pointer to actual top-node. */
-    const struct lysc_node *cn;         /**< Actual pointer to compiled node. */
+    ly_bool lysc_tree;                              /**< The lysc nodes are used for browsing through the tree.
+                                                         It is assumed that once set, it does not change.
+                                                         If it is true then trt_tree_ctx.pn and
+                                                         trt_tree_ctx.tpn are not used.
+                                                         If it is false then trt_tree_ctx.cn is not used. */
+    trt_actual_section section;                     /**< To which section pn points. */
+    const struct lysp_module *pmod;                 /**< Parsed YANG schema tree. */
+    const struct lysc_module *cmod;                 /**< Compiled YANG schema tree. */
+    const struct lysp_node *pn;                     /**< Actual pointer to parsed node. */
+    union {
+        const struct lysp_node *tpn;                /**< Pointer to actual top-node. */
+        const struct lysp_ext_instance *tpn_ext;    /**< Actual top-node is extension. Item trt_tree_ctx.section
+                                                         is set to TRD_SECT_YANG_DATA. */
+    };
+    const struct lysc_node *cn;                     /**< Actual pointer to compiled node. */
 };
 
 /**
@@ -2418,20 +2421,53 @@ tro_modi_get_notifications(struct trt_tree_ctx *tc)
 }
 
 /**
- * @brief Get next yang-data section if exists.
- *
- * Not implemented.
+ * @brief Get next yang-data section if it is possible.
  *
  * @param[in,out] tc is tree context.
+ * @param[in] u is index to the array of extensions (lysc_ext_instance
+ * or struct lysp_ext_instance).
  * @return Section representation if it exists.
  * @return Empty section representation otherwise.
  */
 static struct trt_keyword_stmt
-tro_modi_next_yang_data(struct trt_tree_ctx *tc)
+tro_modi_next_yang_data(struct trt_tree_ctx *tc, LY_ARRAY_COUNT_TYPE u)
 {
-    tc->section = TRD_SECT_YANG_DATA;
-    /* TODO: yang-data is not supported */
-    return TRP_EMPTY_KEYWORD_STMT;
+    assert(tc);
+    const void *node;
+    const char *yang_data_name;
+
+    if (tc->lysc_tree) {
+        struct lysc_ext_instance *exts;
+        struct lysc_ext_substmt *substmts;
+
+        exts = tc->cmod->exts;
+        substmts = exts[u].substmts;
+        if (!substmts) {
+            return TRP_EMPTY_KEYWORD_STMT;
+        }
+        node = *(const struct lysc_node **)substmts->storage;
+        yang_data_name = exts[u].argument;
+    } else {
+        struct lysp_ext_instance *exts;
+
+        exts = tc->pmod->exts;
+        node = exts[u].parsed;
+        yang_data_name = exts[u].argument;
+    }
+
+    if (tc->lysc_tree) {
+        tc->cn = node;
+    } else {
+        tc->tpn_ext = &tc->pmod->exts[u];
+        tc->pn = node;
+    }
+
+    if (node) {
+        tc->section = TRD_SECT_YANG_DATA;
+        return TRP_INIT_KEYWORD_STMT(TRD_KEYWORD_YANG_DATA, yang_data_name);
+    } else {
+        return TRP_EMPTY_KEYWORD_STMT;
+    }
 }
 
 /**
@@ -2769,6 +2805,44 @@ trop_read_if_sibling_exists(const struct trt_tree_ctx *tc)
     return tro_next_sibling(tc->pn, tc->lysc_tree) != NULL;
 }
 
+/**
+ * @brief Print all yang-data sections and print three dots instead
+ * of nodes.
+ * @param[in] exts is array of YANG extension instances from parsed
+ * module (@ref sizedarrays).
+ * @param[in] mll is maximum number of characters that can be printed
+ * on one line.
+ * @param[in,out] out is output handler.
+ */
+static void
+trop_yang_data_sections(const struct lysp_ext_instance *exts, size_t mll, struct ly_out *out)
+{
+    struct trt_keyword_stmt ks;
+    LY_ARRAY_COUNT_TYPE u;
+    struct trt_wrapper wr;
+
+    if (!exts) {
+        return;
+    }
+
+    ly_print_(out, "\n");
+    ks.type = TRD_KEYWORD_YANG_DATA;
+    wr = TRP_INIT_WRAPPER_BODY;
+
+    LY_ARRAY_FOR(exts, u) {
+        ly_print_(out, "\n");
+
+        /* yang-data <yang-data-name>: */
+        ks.str = exts[u].argument;
+        trp_print_keyword_stmt(ks, mll, 0, out);
+        ly_print_(out, "\n");
+
+        /*   ... */
+        trp_print_wrapper(wr, out);
+        ly_print_(out, "%s", TRD_NODE_NAME_TRIPLE_DOT);
+    }
+}
+
 /**********************************************************************
  * Modify trop getters
  *********************************************************************/
@@ -2787,7 +2861,7 @@ trop_modi_parent(struct trt_tree_ctx *tc)
 {
     assert(tc && tc->pn);
     /* If no parent exists, stay in actual node. */
-    if (tc->pn != tc->tpn) {
+    if ((tc->pn != tc->tpn) && (tc->pn->parent)) {
         tc->pn = tc->pn->parent;
         return 1;
     } else {
@@ -2839,26 +2913,31 @@ trop_modi_first_sibling(struct trt_tree_ctx *tc)
         switch (tc->section) {
         case TRD_SECT_MODULE:
             tc->pn = tc->pmod->data;
+            tc->tpn = tc->pn;
             break;
         case TRD_SECT_AUGMENT:
             tc->pn = (const struct lysp_node *)tc->pmod->augments;
+            tc->tpn = tc->pn;
             break;
         case TRD_SECT_RPCS:
             tc->pn = (const struct lysp_node *)tc->pmod->rpcs;
+            tc->tpn = tc->pn;
             break;
         case TRD_SECT_NOTIF:
             tc->pn = (const struct lysp_node *)tc->pmod->notifs;
+            tc->tpn = tc->pn;
             break;
         case TRD_SECT_GROUPING:
             tc->pn = (const struct lysp_node *)tc->pmod->groupings;
+            tc->tpn = tc->pn;
             break;
         case TRD_SECT_YANG_DATA:
-            /*TODO: yang-data is not supported now */
+            /* tpn in this case is of type lysp_ext_instance */
+            tc->pn = tc->tpn_ext->parsed;
             break;
+        default:
+            assert(0);
         }
-
-        /* update pointer to top-node */
-        tc->tpn = tc->pn;
     }
 }
 
@@ -2877,18 +2956,16 @@ static struct trt_node
 trop_modi_next_sibling(struct trt_parent_cache ca, struct trt_tree_ctx *tc)
 {
     const struct lysp_node *pn;
-    const struct lysp_node *tpn;
 
     assert(tc && tc->pn);
 
     pn = tro_next_sibling(tc->pn, tc->lysc_tree);
-    tpn = tc->tpn == tc->pn ? pn : tc->tpn;
 
-    /* if next sibling exists */
     if (pn) {
-        /* update trt_tree_ctx */
+        if ((tc->tpn == tc->pn) && (tc->section != TRD_SECT_YANG_DATA)) {
+            tc->tpn = pn;
+        }
         tc->pn = pn;
-        tc->tpn = tpn;
         return trop_read_node(ca, tc);
     } else {
         return TRP_EMPTY_NODE;
@@ -3043,7 +3120,7 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     const struct lysc_node *cn;
     struct trt_node ret;
 
-    assert(tc && tc->cn);
+    assert(tc && tc->cn && tc->cn->priv);
 
     cn = tc->cn;
     ret = TRP_EMPTY_NODE;
@@ -3160,7 +3237,7 @@ troc_modi_first_sibling(struct trt_tree_ctx *tc)
             tc->cn = (const struct lysc_node *)tc->cmod->notifs;
             break;
         case TRD_SECT_YANG_DATA:
-            /*TODO: yang-data is not supported now */
+            /* nothing to do */
             break;
         default:
             assert(0);
@@ -3604,7 +3681,8 @@ trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct 
     max_gap_before_type = trb_try_unified_indent(ca, pc, tc);
 
     if (!tc->lysc_tree) {
-        if ((tc->section == TRD_SECT_GROUPING) && (tc->tpn == tc->pn->parent)) {
+        if (((tc->section == TRD_SECT_GROUPING) && (tc->tpn == tc->pn->parent)) ||
+                (tc->section == TRD_SECT_YANG_DATA)) {
             ca.lys_config = 0x0;
         }
     }
@@ -3655,7 +3733,6 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .get_rpcs = tro_modi_get_rpcs,
         .get_notifications = tro_modi_get_notifications,
         .next_grouping = trop_modi_next_grouping,
-        .next_yang_data = tro_modi_next_yang_data
     };
 
     pc->fp.read = (struct trt_fp_read) {
@@ -3709,7 +3786,6 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
         .get_rpcs = tro_modi_get_rpcs,
         .get_notifications = tro_modi_get_notifications,
         .next_grouping = NULL,
-        .next_yang_data = tro_modi_next_yang_data
     };
 
     pc->fp.read = (struct trt_fp_read) {
@@ -3786,10 +3862,10 @@ trm_nodeid_target_is_local(const struct lysp_node_augment *pn, const struct lysp
 }
 
 /**
- * @brief Printing section 'module', 'rpcs' or 'notifications'.
+ * @brief Printing section module, rpcs, notifications or yang-data.
  *
  * First node must be the first child of 'module',
- * 'rpcs' or 'notifications'.
+ * 'rpcs', 'notifications' or 'yang-data'.
  *
  * @param[in] ks is section representation.
  * @param[in] pc contains mainly functions for printing.
@@ -3811,9 +3887,9 @@ trm_print_section_as_family_tree(struct trt_keyword_stmt ks, struct trt_printer_
 }
 
 /**
- * @brief Printing section 'augment', 'grouping' or 'yang-data'.
+ * @brief Printing section augment or grouping.
  *
- * First node is augment, grouping or yang-data itself.
+ * First node is 'augment' or 'grouping' itself.
  *
  * @param[in] ks is section representation.
  * @param[in] pc contains mainly functions for printing.
@@ -3979,10 +4055,44 @@ trm_print_groupings(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
  * @param[in,out] tc is the tree context.
  */
 static void
-trm_print_yang_data(struct trt_printer_ctx *UNUSED(pc), struct trt_tree_ctx *UNUSED(tc))
+trm_print_yang_data(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    /* TODO yang-data is not implemented */
-    return;
+    ly_bool once;
+    LY_ARRAY_COUNT_TYPE count;
+
+    count = LY_ARRAY_COUNT(tc->pmod->exts);
+    if (count == 0) {
+        return;
+    }
+
+    once = 1;
+    for (LY_ARRAY_COUNT_TYPE u = 0; u < count; ++u) {
+        struct trt_keyword_stmt ks;
+
+        /* Only lys_compile_extension_instance() can set item
+         * ::lysp_ext_instance.parsed.
+         */
+        if (!tc->pmod->exts[u].parsed) {
+            /* print at least the yang-data names */
+            trop_yang_data_sections(tc->pmod->exts, pc->max_line_length, pc->out);
+            continue;
+        }
+
+        ks = tro_modi_next_yang_data(tc, u);
+        if (TRP_KEYWORD_STMT_IS_EMPTY(ks)) {
+            break;
+        }
+
+        if (once) {
+            ly_print_(pc->out, "\n");
+            ly_print_(pc->out, "\n");
+            once = 0;
+        } else {
+            ly_print_(pc->out, "\n");
+        }
+
+        trm_print_section_as_family_tree(ks, pc, tc);
+    }
 }
 
 /**
