@@ -248,51 +248,6 @@ remove_nodelevel:
     LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 }
 
-/**
- * @brief Compile information in the import statement - make sure there is the target module
- * @param[in] ctx Compile context.
- * @param[in] imp_p The parsed import statement structure to fill the module to.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p)
-{
-    const struct lys_module *mod = NULL;
-    LY_ERR ret = LY_SUCCESS;
-
-    /* make sure that we have the parsed version (lysp_) of the imported module to import groupings or typedefs.
-     * The compiled version is needed only for augments, deviates and leafrefs, so they are checked (and added,
-     * if needed) when these nodes are finally being instantiated and validated at the end of schema compilation. */
-    if (!imp_p->module->parsed) {
-        /* try to use filepath if present */
-        if (imp_p->module->filepath) {
-            struct ly_in *in;
-            if (ly_in_new_filepath(imp_p->module->filepath, 0, &in)) {
-                LOGINT(ctx->ctx);
-            } else {
-                LY_CHECK_RET(lys_parse(ctx->ctx, in, !strcmp(&imp_p->module->filepath[strlen(imp_p->module->filepath - 4)],
-                        ".yin") ? LYS_IN_YIN : LYS_IN_YANG, NULL, &mod));
-                if (mod != imp_p->module) {
-                    LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
-                            imp_p->module->filepath, imp_p->module->name);
-                    mod = NULL;
-                }
-            }
-            ly_in_free(in, 1);
-        }
-        if (!mod) {
-            if (lys_load_module(ctx->ctx, imp_p->module->name, imp_p->module->revision, 0, NULL, ctx->unres,
-                    (struct lys_module **)&mod)) {
-                LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
-                        imp_p->module->name, ctx->cur_mod->name);
-                return LY_ENOTFOUND;
-            }
-        }
-    }
-
-    return ret;
-}
-
 LY_ERR
 lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         struct lysp_ident *identities_p, struct lysc_ident **identities)
@@ -1672,11 +1627,6 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
     mod_c->mod = mod;
-
-    /* process imports */
-    LY_ARRAY_FOR(sp->imports, u) {
-        LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), cleanup);
-    }
 
     /* identities */
     LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), cleanup);
