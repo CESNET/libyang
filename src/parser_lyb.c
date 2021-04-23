@@ -387,7 +387,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
-                ly_strlen(meta_value), &dynamic, LY_PREF_JSON, NULL, LYD_HINT_DATA);
+                ly_strlen(meta_value), &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA);
 
         /* free strings */
         free(meta_name);
@@ -422,7 +422,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_PREFIX_FORMAT format, void **prefix_data)
+lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_VALUE_FORMAT format, void **prefix_data)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t count, i;
@@ -430,7 +430,7 @@ lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_PREFIX_FORMAT format, void **
     struct lyxml_ns *ns = NULL;
 
     switch (format) {
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         /* read count */
         lyb_read(&count, 1, lybctx);
         if (!count) {
@@ -455,7 +455,7 @@ lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_PREFIX_FORMAT format, void **
 
         *prefix_data = set;
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         /* nothing stored */
         break;
     default:
@@ -491,7 +491,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
     struct lyd_attr *attr2;
     char *prefix = NULL, *module_name = NULL, *name = NULL, *value = NULL;
     ly_bool dynamic = 0;
-    LY_PREFIX_FORMAT format = 0;
+    LY_VALUE_FORMAT format = 0;
     void *val_prefix_data = NULL;
 
     /* read count */
@@ -723,7 +723,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
     const char *val_dict;
     ly_bool dynamic = 0;
-    LY_PREFIX_FORMAT format = 0;
+    LY_VALUE_FORMAT format = 0;
     void *val_prefix_data = NULL;
     uint32_t prev_lo, flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
@@ -805,7 +805,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         dynamic = 1;
 
         /* create node */
-        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, LY_PREF_JSON,
+        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, LY_VALUE_JSON,
                 NULL, LYD_HINT_DATA, &node);
         if (dynamic) {
             free(value);

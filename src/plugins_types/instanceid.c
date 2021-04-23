@@ -32,7 +32,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API const char *
-lyplg_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL;
@@ -42,7 +42,7 @@ lyplg_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT form
         return NULL;
     }
 
-    if ((format == LY_PREF_XML) || (format == LY_PREF_SCHEMA)) {
+    if ((format == LY_VALUE_XML) || (format == LY_VALUE_SCHEMA)) {
         /* everything is prefixed */
         LY_ARRAY_FOR(value->target, u) {
             ly_strcat(&result, "/%s:%s", lyplg_type_get_prefix(value->target[u].node->module, format, prefix_data),
@@ -89,7 +89,7 @@ lyplg_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT form
                 }
             }
         }
-    } else if (format == LY_PREF_JSON) {
+    } else if (format == LY_VALUE_JSON) {
         /* only the first node or the node changing module is prefixed */
         struct lys_module *mod = NULL;
         LY_ARRAY_FOR(value->target, u) {
@@ -152,7 +152,7 @@ lyplg_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT form
 
 API LY_ERR
 lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -176,7 +176,7 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     path = NULL;
 
     /* store JSON string value */
-    str = (char *)lyplg_type_print_instanceid(storage, LY_PREF_JSON, NULL, &dyn);
+    str = (char *)lyplg_type_print_instanceid(storage, LY_VALUE_JSON, NULL, &dyn);
     assert(str && dyn);
     LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->canonical), cleanup);
     storage->realtype = type;

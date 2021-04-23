@@ -829,7 +829,7 @@ yprc_dflt_value(struct lys_ypr_ctx *ctx, const struct lyd_value *value, struct l
     ly_bool dynamic;
     const char *str;
 
-    str = value->realtype->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
+    str = value->realtype->plugin->print(value, LY_VALUE_JSON, NULL, &dynamic);
     ypr_substmt(ctx, LY_STMT_DEFAULT, 0, str, exts);
     if (dynamic) {
         free((void *)str);

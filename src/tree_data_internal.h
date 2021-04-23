@@ -87,7 +87,7 @@ struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool *dynamic,
-        LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node);
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node);
 
 /**
  * @brief Create a term (leaf/leaf-list) node from a parsed value by duplicating it.
@@ -171,7 +171,7 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  */
 LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t pref_len,
         const char *module_key, size_t module_key_len, const char *value, size_t value_len, ly_bool *dynamic,
-        LY_PREFIX_FORMAT format, void *val_prefix_data, uint32_t hints, struct lyd_node **node);
+        LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints, struct lyd_node **node);
 
 /**
  * @brief Check the existence and create any non-existing implicit siblings, recursively for the created nodes.
@@ -240,7 +240,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format,
+        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, ly_bool clear_dlft, ly_bool *incomplete);
 
 /**
@@ -274,7 +274,7 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
         size_t name_len, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len,
-        const char *value, size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, void *val_prefix_data, uint32_t hints);
+        const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints);
 
 /**
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.
@@ -294,7 +294,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const char *value,
-        size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, ly_bool *incomplete);
 
 /**
@@ -328,7 +328,7 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
-        LY_PREFIX_FORMAT format, void *prefix_data);
+        LY_VALUE_FORMAT format, void *prefix_data);
 
 /**
  * @defgroup datahash Data nodes hash manipulation
@@ -429,7 +429,7 @@ LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_
  *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
  *      LY_PREF_JSON            - NULL
  */
-void ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data);
+void ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data);
 
 /**
  * @brief Duplicate prefix data.
@@ -440,7 +440,7 @@ void ly_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data);
  * @param[out] prefix_data_p Duplicated prefix data.
  * @return LY_ERR value.
  */
-LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *prefix_data, void **prefix_data_p);
+LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *prefix_data, void **prefix_data_p);
 
 /**
  * @brief Store used prefixes in a string.
@@ -457,8 +457,8 @@ LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, con
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
-        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
+LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 
 /**
  * @brief Get string name of the format.
@@ -466,6 +466,6 @@ LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t 
  * @param[in] format Format whose name to get.
  * @return Format string name.
  */
-const char *ly_format2str(LY_PREFIX_FORMAT format);
+const char *ly_format2str(LY_VALUE_FORMAT format);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

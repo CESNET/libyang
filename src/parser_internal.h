@@ -208,7 +208,7 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @param[in] hints Data parser's hint for the value's type.
  */
 LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node);
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node);
 
 /**
  * @brief Wrapper around ::lyd_create_meta() for data parsers.
@@ -229,6 +229,6 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  */
 LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
         const struct lys_module *mod, const char *name, size_t name_len, const char *value,
-        size_t value_len, ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints);
+        size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
 
 #endif /* LY_PARSER_INTERNAL_H_ */

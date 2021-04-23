@@ -151,7 +151,7 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
 
             /* evaluate when */
             memset(&xp_set, 0, sizeof xp_set);
-            ret = lyxp_eval(LYD_CTX(node), when->cond, schema->module, LY_PREF_SCHEMA_RESOLVED, when->prefixes,
+            ret = lyxp_eval(LYD_CTX(node), when->cond, schema->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
                     ctx_node, tree, &xp_set, LYXP_SCHEMA);
             lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
 
@@ -1105,7 +1105,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                     }
 
                     /* get canonical string value */
-                    str = val->realtype->plugin->print(val, LY_PREF_JSON, NULL, &dynamic);
+                    str = val->realtype->plugin->print(val, LY_VALUE_JSON, NULL, &dynamic);
                     hash = dict_hash_multi(hash, str, strlen(str));
                     if (dynamic) {
                         free((char *)str);
@@ -1292,7 +1292,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         memset(&xp_set, 0, sizeof xp_set);
 
         /* evaluate must */
-        LY_CHECK_RET(lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_PREF_SCHEMA_RESOLVED,
+        LY_CHECK_RET(lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
                 musts[u].prefixes, node, tree, &xp_set, LYXP_SCHEMA));
 
         /* check the result */

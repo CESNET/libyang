@@ -124,7 +124,7 @@ skip_attr:
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, NULL, meta, mod, name, name_len, xmlctx->value,
-                xmlctx->value_len, &xmlctx->dynamic, LY_PREF_XML, &xmlctx->ns, LYD_HINT_DATA);
+                xmlctx->value_len, &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* next attribute */
@@ -147,7 +147,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
     LY_ERR ret = LY_SUCCESS;
     const struct lyxml_ns *ns;
     void *val_prefix_data;
-    LY_PREFIX_FORMAT format;
+    LY_VALUE_FORMAT format;
     struct lyd_attr *attr2;
     const char *name, *prefix;
     size_t name_len, prefix_len;
@@ -183,7 +183,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
 
         /* get value prefixes */
         val_prefix_data = NULL;
-        LY_CHECK_GOTO(ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_PREF_XML,
+        LY_CHECK_GOTO(ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_VALUE_XML,
                 &xmlctx->ns, &format, &val_prefix_data), cleanup);
 
         /* attr2 is always changed to the created attribute */
@@ -248,7 +248,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns);
+            r = lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -346,7 +346,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
         if ((*snode)->nodetype & LYD_NODE_TERM) {
             /* value may not be valid in which case we parse it as an opaque node */
-            if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns)) {
+            if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns)) {
                 *snode = NULL;
             }
         } else {
@@ -408,7 +408,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     uint32_t prev_opts;
     struct lyd_node *node = NULL, *anchor;
     void *val_prefix_data = NULL;
-    LY_PREFIX_FORMAT format;
+    LY_VALUE_FORMAT format;
     uint32_t getnext_opts;
 
     assert(parent || first_p);
@@ -512,10 +512,10 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             xmlctx->dynamic = 0;
             xmlctx->value = "";
             xmlctx->value_len = 0;
-            format = LY_PREF_XML;
+            format = LY_VALUE_XML;
         } else {
             /* get value prefixes */
-            ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_PREF_XML,
+            ret = ly_store_prefix_data(xmlctx->ctx, xmlctx->value, xmlctx->value_len, LY_VALUE_XML,
                     &xmlctx->ns, &format, &val_prefix_data);
             LY_CHECK_GOTO(ret, error);
         }
@@ -536,7 +536,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* create node */
         LY_CHECK_GOTO(ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, xmlctx->value, xmlctx->value_len,
-                &xmlctx->dynamic, LY_PREF_XML, &xmlctx->ns, LYD_HINT_DATA, &node), error);
+                &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, &node), error);
         LOG_LOCSET(snode, node, NULL, NULL);
 
         if (parent && (node->schema->flags & LYS_KEY)) {
@@ -741,7 +741,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, ly_
 
     /* create node */
     rc = lyd_create_opaq(xmlctx->ctx, name, strlen(name), prefix, prefix_len, uri, strlen(uri), xmlctx->value,
-            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_PREF_XML, NULL, 0, envp);
+            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, 0, envp);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* assign atributes */
@@ -906,7 +906,7 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
     /* create node */
     assert(xmlctx->status == LYXML_ELEM_CONTENT);
     rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
-            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_PREF_XML, NULL, 0, &child);
+            xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, 0, &child);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* assign atributes */

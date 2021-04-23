@@ -551,7 +551,7 @@ struct lyd_value_subvalue {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
                                       (stored as ::lyd_value.realtype here, in subvalue structure */
     const char *original;        /**< Original value in the dictionary. */
-    LY_PREFIX_FORMAT format;     /**< Prefix format of the value. However, this information is also used to decide
+    LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
@@ -588,8 +588,8 @@ struct ly_opaq_name {
     const char *name;             /**< node name, without prefix if any was defined */
     const char *prefix;           /**< identifier used in the qualified name as the prefix, can be NULL */
     union {
-        const char *module_ns;    /**< format ::LY_PREF_XML - XML namespace of the node element */
-        const char *module_name;  /**< format ::LY_PREF_JSON - (inherited) name of the module of the element */
+        const char *module_ns;    /**< format ::LY_VALUE_XML - XML namespace of the node element */
+        const char *module_name;  /**< format ::LY_VALUE_JSON - (inherited) name of the module of the element */
     };
 };
 
@@ -601,7 +601,7 @@ struct lyd_attr {
     struct lyd_attr *next;          /**< pointer to the next attribute */
     struct ly_opaq_name name;       /**< attribute name with module information */
     const char *value;              /**< attribute value */
-    LY_PREFIX_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
+    LY_VALUE_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 };
@@ -848,7 +848,7 @@ struct lyd_node_opaq {
 
     struct ly_opaq_name name;       /**< node name with module information */
     const char *value;              /**< original value */
-    LY_PREFIX_FORMAT format;        /**< format of the node and any prefixes, ::LY_PREF_XML or ::LY_PREF_JSON */
+    LY_VALUE_FORMAT format;        /**< format of the node and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 

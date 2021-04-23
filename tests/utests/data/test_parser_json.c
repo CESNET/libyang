@@ -377,7 +377,7 @@ test_opaq(void **state)
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_PREF_JSON, "foo3", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo3", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
@@ -388,7 +388,7 @@ test_opaq(void **state)
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
@@ -399,19 +399,19 @@ test_opaq(void **state)
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":{\"val\":\"val_c\"}}]}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\"}]}";
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_PREF_JSON, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 }
@@ -458,10 +458,10 @@ test_rpc(void **state)
             1, LYS_CONTAINER, 0, 0, NULL, 0);
     node = lyd_child(node);
     /* z has no value */
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0, LY_PREF_JSON, "z", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0, LY_VALUE_JSON, "z", 0, 0, NULL,  0,  "");
     node = node->parent->next;
     /* l1 key c has invalid value so it is at the end */
-    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0x1, LY_PREF_JSON, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)node, 0x1, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
 
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);

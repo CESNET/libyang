@@ -97,7 +97,7 @@ check_char(const char **str, char c[], const char *full_str, struct ly_err_item 
  */
 static LY_ERR
 lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;

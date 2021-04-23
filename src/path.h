@@ -172,7 +172,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
         const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path);
+        LY_VALUE_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path);
 
 /**
  * @brief Compile predicate into ly_path_predicate structure. Only simple predicates (not leafref) are supported.
@@ -191,7 +191,7 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format,
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_VALUE_FORMAT format,
         void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type);
 
 /**

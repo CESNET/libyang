@@ -3724,7 +3724,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 
             /* it was already evaluated on schema, it must succeed */
             rc = ly_path_compile(set->ctx, lref->cur_mod, &sleaf->node, NULL, lref->path, LY_PATH_LREF_TRUE, oper,
-                    LY_PATH_TARGET_MANY, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
+                    LY_PATH_TARGET_MANY, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
             assert(!rc);
 
             /* get the target node */
@@ -5314,12 +5314,12 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_
         mod = NULL;
     } else {
         switch (set->format) {
-        case LY_PREF_SCHEMA:
-        case LY_PREF_SCHEMA_RESOLVED:
+        case LY_VALUE_SCHEMA:
+        case LY_VALUE_SCHEMA_RESOLVED:
             /* current module */
             mod = set->cur_mod;
             break;
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             /* inherit parent (context node) module */
             if (ctx_scnode) {
                 mod = ctx_scnode->module;
@@ -5327,7 +5327,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_
                 mod = NULL;
             }
             break;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             /* all nodes need to be prefixed */
             LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", *qname_len, *qname);
             return LY_EVALID;
@@ -5383,18 +5383,18 @@ moveto_node_check(const struct lyd_node *node, const struct lyd_node *ctx_node, 
 {
     if (!moveto_mod && (!node_name || strcmp(node_name, "*"))) {
         switch (set->format) {
-        case LY_PREF_SCHEMA:
-        case LY_PREF_SCHEMA_RESOLVED:
+        case LY_VALUE_SCHEMA:
+        case LY_VALUE_SCHEMA_RESOLVED:
             /* use current module */
             moveto_mod = set->cur_mod;
             break;
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             /* inherit module of the context node, if any */
             if (ctx_node) {
                 moveto_mod = ctx_node->schema->module;
             }
             break;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             /* not defined */
             LOGINT(set->ctx);
             return LY_EINVAL;
@@ -5444,18 +5444,18 @@ moveto_scnode_check(const struct lysc_node *node, const struct lysc_node *ctx_sc
 {
     if (!moveto_mod && (!node_name || strcmp(node_name, "*"))) {
         switch (set->format) {
-        case LY_PREF_SCHEMA:
-        case LY_PREF_SCHEMA_RESOLVED:
+        case LY_VALUE_SCHEMA:
+        case LY_VALUE_SCHEMA_RESOLVED:
             /* use current module */
             moveto_mod = set->cur_mod;
             break;
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             /* inherit module of the context node, if any */
             if (ctx_scnode) {
                 moveto_mod = ctx_scnode->module;
             }
             break;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             /* not defined */
             LOGINT(set->ctx);
             return LY_EINVAL;
@@ -6917,7 +6917,7 @@ eval_literal(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *se
  */
 static LY_ERR
 eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok_idx, const struct lysc_node *ctx_node,
-        const struct lys_module *cur_mod, const struct lysc_node *cur_node, LY_PREFIX_FORMAT format, void *prefix_data,
+        const struct lys_module *cur_mod, const struct lysc_node *cur_node, LY_VALUE_FORMAT format, void *prefix_data,
         struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -7023,19 +7023,19 @@ cleanup:
  */
 static LY_ERR
 eval_name_test_with_predicate_get_scnode(const struct ly_ctx *ctx, const struct lyd_node *node, const char *name,
-        uint16_t name_len, const struct lys_module *moveto_mod, enum lyxp_node_type root_type, LY_PREFIX_FORMAT format,
+        uint16_t name_len, const struct lys_module *moveto_mod, enum lyxp_node_type root_type, LY_VALUE_FORMAT format,
         const struct lysc_node **found)
 {
     const struct lysc_node *scnode;
     const struct lys_module *mod;
     uint32_t idx = 0;
 
-    assert((format == LY_PREF_JSON) || moveto_mod);
+    assert((format == LY_VALUE_JSON) || moveto_mod);
 
 continue_search:
     scnode = NULL;
     if (!node) {
-        if ((format == LY_PREF_JSON) && !moveto_mod) {
+        if ((format == LY_VALUE_JSON) && !moveto_mod) {
             /* search all modules for a single match */
             while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
                 scnode = lys_find_child(NULL, mod, name, name_len, 0, 0);
@@ -7054,7 +7054,7 @@ continue_search:
             scnode = lys_find_child(NULL, moveto_mod, name, name_len, 0, 0);
         }
     } else if (!*found || (lysc_data_parent(*found) != node->schema)) {
-        if ((format == LY_PREF_JSON) && !moveto_mod) {
+        if ((format == LY_VALUE_JSON) && !moveto_mod) {
             /* we must adjust the module to inherit the one from the context node */
             moveto_mod = node->schema->module;
         }
@@ -7135,7 +7135,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
     rc = moveto_resolve_model(&ncname, &ncname_len, set, NULL, &moveto_mod);
     LY_CHECK_GOTO(rc, cleanup);
 
-    if (((set->format == LY_PREF_JSON) || moveto_mod) && !attr_axis && !all_desc && (set->type == LYXP_SET_NODE_SET)) {
+    if (((set->format == LY_VALUE_JSON) || moveto_mod) && !attr_axis && !all_desc && (set->type == LYXP_SET_NODE_SET)) {
         /* find the matching schema node in some parent in the context */
         for (uint32_t i = 0; i < set->used; ++i) {
             if (eval_name_test_with_predicate_get_scnode(set->ctx, set->val.nodes[i].node, ncname, ncname_len,
@@ -8479,14 +8479,14 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 
 LY_ERR
 lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
         struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
     LY_ERR rc;
 
     LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
-    if (!cur_mod && ((format == LY_PREF_SCHEMA) || (format == LY_PREF_SCHEMA_RESOLVED))) {
+    if (!cur_mod && ((format == LY_VALUE_SCHEMA) || (format == LY_VALUE_SCHEMA_RESOLVED))) {
         LOGARG(NULL, "Current module must be set if schema format is used.");
         return LY_EINVAL;
     }
@@ -8755,14 +8755,14 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target)
 
 LY_ERR
 lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
         uint32_t options)
 {
     LY_ERR ret;
     uint16_t tok_idx = 0;
 
     LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
-    if (!cur_mod && ((format == LY_PREF_SCHEMA) || (format == LY_PREF_SCHEMA_RESOLVED))) {
+    if (!cur_mod && ((format == LY_VALUE_SCHEMA) || (format == LY_VALUE_SCHEMA_RESOLVED))) {
         LOGARG(NULL, "Current module must be set if schema format is used.");
         return LY_EINVAL;
     }

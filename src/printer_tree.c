@@ -3714,7 +3714,7 @@ trm_nodeid_target_is_local(const struct lysp_node_augment *pn, const struct lysp
 
     ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
     if (prefix) {
-        mod = ly_resolve_prefix(pmod->mod->ctx, prefix, prefix_len, LY_PREF_SCHEMA, pmod);
+        mod = ly_resolve_prefix(pmod->mod->ctx, prefix, prefix_len, LY_VALUE_SCHEMA, pmod);
         ret = mod->parsed == pmod;
     } else {
         ret = 1;

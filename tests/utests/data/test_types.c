@@ -480,7 +480,7 @@ test_identityref(void **state)
     tree = tree->next;
     TEST_PATTERN_1(tree, "ident", 1, IDENT, "types:gigabit-ethernet", "gigabit-ethernet");
     leaf = (struct lyd_node_term *)tree;
-    TEST_PRINTED_VALUE(&leaf->value, "t:gigabit-ethernet", LY_PREF_SCHEMA, mod_types->parsed);
+    TEST_PRINTED_VALUE(&leaf->value, "t:gigabit-ethernet", LY_VALUE_SCHEMA, mod_types->parsed);
     lyd_free_all(tree);
 
     CHECK_PARSE_LYD("<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</ident>", tree);
@@ -488,7 +488,7 @@ test_identityref(void **state)
     tree = tree->next;
     TEST_PATTERN_1(tree, "ident", 1, IDENT, "defs:fast-ethernet", "fast-ethernet");
     leaf = (struct lyd_node_term *)tree;
-    TEST_PRINTED_VALUE(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, mod_defs->parsed);
+    TEST_PRINTED_VALUE(&leaf->value, "d:fast-ethernet", LY_VALUE_SCHEMA, mod_defs->parsed);
     lyd_free_all(tree);
 
     /* invalid value */
@@ -582,8 +582,8 @@ test_instanceid(void **state)
 
     assert_int_equal(1, LY_ARRAY_COUNT(leaf->value.target[0].predicates));
     assert_null(leaf->value.target[1].predicates);
-    TEST_PRINTED_VALUE(&leaf->value, "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LY_PREF_SCHEMA, mod_types->parsed);
-    TEST_PRINTED_VALUE(&leaf->value, "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LY_PREF_JSON, NULL);
+    TEST_PRINTED_VALUE(&leaf->value, "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LY_VALUE_SCHEMA, mod_types->parsed);
+    TEST_PRINTED_VALUE(&leaf->value, "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LY_VALUE_JSON, NULL);
     lyd_free_all(tree);
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
@@ -980,7 +980,7 @@ test_union(void **state)
     TEST_PATTERN_1(tree, "un1", 0, UNION, "12", INT8, "12", 12);
     leaf = (struct lyd_node_term *)tree;
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 0);
-    TEST_PRINTED_VALUE(&leaf->value, "12", LY_PREF_SCHEMA, NULL);
+    TEST_PRINTED_VALUE(&leaf->value, "12", LY_VALUE_SCHEMA, NULL);
     lyd_free_all(tree);
 
     data = "<int8 xmlns=\"urn:tests:types\">12</int8><un1 xmlns=\"urn:tests:types\">2</un1>";
@@ -989,7 +989,7 @@ test_union(void **state)
     TEST_PATTERN_1(tree, "un1", 0, UNION, "2", STRING, "2");
     leaf = (struct lyd_node_term *)tree;
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 0);
-    TEST_PRINTED_VALUE(&leaf->value, "2", LY_PREF_SCHEMA, NULL);
+    TEST_PRINTED_VALUE(&leaf->value, "2", LY_VALUE_SCHEMA, NULL);
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</un1>";
@@ -998,8 +998,8 @@ test_union(void **state)
     TEST_PATTERN_1(tree, "un1", 0, UNION, "defs:fast-ethernet", IDENT, "defs:fast-ethernet", "fast-ethernet");
     leaf = (struct lyd_node_term *)tree;
     assert_int_equal(((struct ly_set *)leaf->value.subvalue->prefix_data)->count, 1);
-    TEST_PRINTED_VALUE(&leaf->value, "d:fast-ethernet", LY_PREF_SCHEMA, mod_defs->parsed);
-    TEST_PRINTED_VALUE(&leaf->value.subvalue->value, "d:fast-ethernet", LY_PREF_SCHEMA, mod_defs->parsed);
+    TEST_PRINTED_VALUE(&leaf->value, "d:fast-ethernet", LY_VALUE_SCHEMA, mod_defs->parsed);
+    TEST_PRINTED_VALUE(&leaf->value.subvalue->value, "d:fast-ethernet", LY_VALUE_SCHEMA, mod_defs->parsed);
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:superfast-ethernet</un1>";

@@ -232,7 +232,7 @@ LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_le
  * @return NULL otherwise.
  */
 const struct lys_module *lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, const void *prefix_data);
+        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data);
 
 /**
  * @brief Implement a module (just like ::lys_set_implemented()), but keep maintaining unresolved items.
@@ -257,7 +257,7 @@ LY_ERR lyplg_type_make_implemented(struct lys_module *mod, const char **features
  * @return Module's prefix to print.
  * @return NULL on error.
  */
-const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
+const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix_data);
 
 /**
  * @brief Store used prefixes in a string into an internal libyang structure used in ::lyd_value.
@@ -276,8 +276,8 @@ const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
-        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p);
+LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 /**
  * @brief Duplicate prefix data.
  *
@@ -289,7 +289,7 @@ LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, s
  * @param[out] dup Duplicated prefix data.
  * @return LY_ERR value.
  */
-LY_ERR lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *orig, void **dup);
+LY_ERR lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *orig, void **dup);
 
 /**
  * @brief Free internal prefix data.
@@ -299,7 +299,7 @@ LY_ERR lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT for
  * @param[in] format Format of the prefixes.
  * @param[in] prefix_data Format-specific data to free.
  */
-void lyplg_type_prefix_data_free(LY_PREFIX_FORMAT format, void *prefix_data);
+void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *prefix_data);
 
 /**
  * @brief Helper function to create internal schema path representation for instance-identifier value representation.
@@ -320,7 +320,7 @@ void lyplg_type_prefix_data_free(LY_PREFIX_FORMAT format, void *prefix_data);
  * @return LY_ERR value on error.
  */
 LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
         struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
 
 /**
@@ -377,7 +377,7 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  * @return LY_ERR value on error.
  */
 typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value,
-        size_t value_len, uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -418,7 +418,7 @@ typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const str
  *
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
- *            Only 2 formats are currently implemented: ::LY_PREFIX_XML and ::LY_PREFIX_JSON.
+ *            Only 2 formats are currently implemented: ::LY_VALUE_XML and ::LY_VALUE_JSON.
  * @param[in] prefix_data Format-specific data for processing prefixes. In case of using one of the built-in's print
  * callback (or ::lyplg_type_print_simple()), the argument is just simply passed in. If you need to handle prefixes
  * in the value on your own, there is ::lyplg_type_get_prefix() function to help.
@@ -428,7 +428,7 @@ typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const str
  *         can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*lyplg_type_print_clb)(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+typedef const char *(*lyplg_type_print_clb)(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
 /**
@@ -505,7 +505,7 @@ LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_
  * @brief Generic simple printer callback of the canonized value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic);
+const char *lyplg_type_print_simple(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic);
 
 /**
  * @brief Generic simple duplication callback.
@@ -534,7 +534,7 @@ void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesBinary */
@@ -552,7 +552,7 @@ LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type 
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -582,7 +582,7 @@ void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value);
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesBoolean */
@@ -600,7 +600,7 @@ LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesDecimal64 */
@@ -618,7 +618,7 @@ LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_ty
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -642,7 +642,7 @@ LY_ERR lyplg_type_compare_empty(const struct lyd_value *val1, const struct lyd_v
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesEnumeration */
@@ -660,7 +660,7 @@ LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *t
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -673,7 +673,7 @@ LY_ERR lyplg_type_compare_identityref(const struct lyd_value *val1, const struct
  * @brief Printer callback printing identityref value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+const char *lyplg_type_print_identityref(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
 /** @} pluginsTypesIdentityref */
@@ -691,7 +691,7 @@ const char *lyplg_type_print_identityref(const struct lyd_value *value, LY_PREFI
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -704,7 +704,7 @@ LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct 
  * @brief Printer callback printing the instance-identifier value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+const char *lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
 /**
@@ -741,7 +741,7 @@ void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *valu
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -749,7 +749,7 @@ LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *ty
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesInteger */
@@ -767,7 +767,7 @@ LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *t
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -780,7 +780,7 @@ LY_ERR lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd
  * @brief Printer callback printing the leafref value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_leafref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+const char *lyplg_type_print_leafref(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
 /**
@@ -817,7 +817,7 @@ void lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value);
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesString */
@@ -835,7 +835,7 @@ LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type 
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -848,7 +848,7 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  * @brief Printer callback printing the union value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+const char *lyplg_type_print_union(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
 /**
@@ -885,7 +885,7 @@ void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
  * Implementation of the ::lyplg_type_store_clb.
  */
 LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -898,7 +898,7 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  * @brief Printer callback printing the xpath1.0 value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_xpath10(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+const char *lyplg_type_print_xpath10(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
         ly_bool *dynamic);
 
 /**

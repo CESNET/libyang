@@ -395,7 +395,7 @@ error:
 static LY_ERR
 ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
         const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx, uint8_t lref,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, const struct lys_module **mod,
+        LY_VALUE_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, const struct lys_module **mod,
         const char **name, size_t *name_len)
 {
     LY_ERR ret;
@@ -436,22 +436,22 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
         LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);
     } else {
         switch (format) {
-        case LY_PREF_SCHEMA:
-        case LY_PREF_SCHEMA_RESOLVED:
+        case LY_VALUE_SCHEMA:
+        case LY_VALUE_SCHEMA_RESOLVED:
             if (!cur_mod) {
                 LOGINT_RET(ctx);
             }
             /* use current module */
             *mod = cur_mod;
             break;
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             if (!prev_ctx_node) {
                 LOGINT_RET(ctx);
             }
             /* inherit module of the previous node */
             *mod = prev_ctx_node->module;
             break;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             /* not really defined */
             LOGINT_RET(ctx);
         }
@@ -475,7 +475,7 @@ error:
 
 LY_ERR
 ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format,
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_VALUE_FORMAT format,
         void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -652,7 +652,7 @@ cleanup:
  */
 static LY_ERR
 ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct lysc_node *cur_node,
-        const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format, void *prefix_data,
+        const struct lyxp_expr *expr, uint16_t *tok_idx, LY_VALUE_FORMAT format, void *prefix_data,
         struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -784,7 +784,7 @@ cleanup:
 LY_ERR
 ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
         const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
-        LY_PREFIX_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path)
+        LY_VALUE_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t tok_idx = 0;

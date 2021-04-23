@@ -120,7 +120,7 @@ ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t pref
 }
 
 const struct lys_module *
-ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format,
+ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format,
         const void *prefix_data)
 {
     const struct lys_module *mod = NULL;
@@ -128,16 +128,16 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
     LY_CHECK_ARG_RET(ctx, prefix, prefix_len, NULL);
 
     switch (format) {
-    case LY_PREF_SCHEMA:
+    case LY_VALUE_SCHEMA:
         mod = ly_schema_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
-    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_VALUE_SCHEMA_RESOLVED:
         mod = ly_schema_resolved_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         mod = ly_xml_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
     }
@@ -147,20 +147,20 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
 
 API const struct lys_module *
 lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, const void *prefix_data)
+        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data)
 {
     if (prefix_len) {
         return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
     } else {
         switch (format) {
-        case LY_PREF_SCHEMA:
-        case LY_PREF_SCHEMA_RESOLVED:
+        case LY_VALUE_SCHEMA:
+        case LY_VALUE_SCHEMA_RESOLVED:
             /* use context node module, handles augments */
             return ctx_node->module;
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             /* use context node module (as specified) */
             return ctx_node->module;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             /* use the default namespace */
             return ly_xml_resolve_prefix(ctx, NULL, 0, prefix_data);
         }
@@ -236,21 +236,21 @@ ly_json_get_prefix(const struct lys_module *mod, void *UNUSED(prefix_data))
 }
 
 const char *
-ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
+ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix_data)
 {
     const char *prefix = NULL;
 
     switch (format) {
-    case LY_PREF_SCHEMA:
+    case LY_VALUE_SCHEMA:
         prefix = ly_schema_get_prefix(mod, prefix_data);
         break;
-    case LY_PREF_SCHEMA_RESOLVED:
+    case LY_VALUE_SCHEMA_RESOLVED:
         prefix = ly_schema_resolved_get_prefix(mod, prefix_data);
         break;
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         prefix = ly_xml_get_prefix(mod, prefix_data);
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         prefix = ly_json_get_prefix(mod, prefix_data);
         break;
     }
@@ -259,7 +259,7 @@ ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefi
 }
 
 API const char *
-lyplg_type_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
+lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix_data)
 {
     return ly_get_prefix(mod, format, prefix_data);
 }
@@ -279,7 +279,7 @@ lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *
 }
 
 API const char *
-lyplg_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(format),
+lyplg_type_print_simple(const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
         void *UNUSED(prefix_data), ly_bool *dynamic)
 {
     *dynamic = 0;
@@ -559,8 +559,8 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
 }
 
 API LY_ERR
-lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
-        const void *prefix_data, LY_PREFIX_FORMAT *format_p, void **prefix_data_p)
+lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p)
 {
     LY_CHECK_ARG_RET(ctx, value, format_p, prefix_data_p, LY_EINVAL);
 
@@ -569,7 +569,7 @@ lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t v
 }
 
 API LY_ERR
-lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *orig, void **dup)
+lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *orig, void **dup)
 {
     LY_CHECK_ARG_RET(NULL, dup, LY_EINVAL);
 
@@ -582,7 +582,7 @@ lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, co
 }
 
 API void
-lyplg_type_prefix_data_free(LY_PREFIX_FORMAT format, void *prefix_data)
+lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *prefix_data)
 {
     ly_free_prefix_data(format, prefix_data);
 }
@@ -674,7 +674,7 @@ lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_D
 
 API LY_ERR
 lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
         struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -686,12 +686,12 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     *err = NULL;
 
     switch (format) {
-    case LY_PREF_SCHEMA:
-    case LY_PREF_SCHEMA_RESOLVED:
-    case LY_PREF_XML:
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_SCHEMA_RESOLVED:
+    case LY_VALUE_XML:
         prefix_opt = LY_PATH_PREFIX_MANDATORY;
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
         break;
     }
@@ -774,11 +774,11 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     int rc;
 
     /* find all target data instances */
-    ret = lyxp_eval(lref->cur_mod->ctx, lref->path, lref->cur_mod, LY_PREF_SCHEMA_RESOLVED, lref->prefixes, node, tree,
+    ret = lyxp_eval(lref->cur_mod->ctx, lref->path, lref->cur_mod, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, tree,
             &set, 0);
     if (ret) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
+        val_str = lref->plugin->print(value, LY_VALUE_JSON, NULL, &dynamic);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
@@ -801,7 +801,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     }
     if (i == set.used) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
+        val_str = lref->plugin->print(value, LY_VALUE_JSON, NULL, &dynamic);
         if (set.used) {
             rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
         } else {

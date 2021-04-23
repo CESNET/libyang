@@ -151,9 +151,9 @@ node_prefix(const struct lyd_node *node)
         const struct lys_module *mod;
 
         switch (onode->format) {
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             return onode->name.module_name;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->name.module_ns);
             if (!mod) {
                 return NULL;
@@ -280,7 +280,7 @@ json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bool i
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_PREFIX_FORMAT format,
+json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_VALUE_FORMAT format,
         const struct ly_opaq_name *name, ly_bool is_attr)
 {
     const char *module_name = NULL, *name_str;
@@ -292,10 +292,10 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_PRE
         const struct lys_module *mod;
 
         switch (format) {
-        case LY_PREF_JSON:
+        case LY_VALUE_JSON:
             module_name = name->module_name;
             break;
-        case LY_PREF_XML:
+        case LY_VALUE_XML:
             mod = ly_ctx_get_module_implemented_ns(ctx->ctx, name->module_ns);
             if (mod) {
                 module_name = mod->name;
@@ -332,7 +332,7 @@ static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
     ly_bool dynamic = 0;
-    const char *value = val->realtype->plugin->print(val, LY_PREF_JSON, NULL, &dynamic);
+    const char *value = val->realtype->plugin->print(val, LY_VALUE_JSON, NULL, &dynamic);
 
     /* leafref is not supported */
     switch (val->realtype->basetype) {
@@ -459,7 +459,7 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bo
 
     if (node->schema && node->meta) {
         if (inner) {
-            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_PREF_JSON, NULL, 1));
+            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_VALUE_JSON, NULL, 1));
         } else {
             LY_CHECK_RET(json_print_member(ctx, node, 1));
         }
@@ -471,7 +471,7 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bo
         LEVEL_PRINTED;
     } else if (!node->schema && ((struct lyd_node_opaq *)node)->attr) {
         if (inner) {
-            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_PREF_JSON, NULL, 1));
+            LY_CHECK_RET(json_print_member2(ctx, NULL, LY_VALUE_JSON, NULL, 1));
         } else {
             LY_CHECK_RET(json_print_member2(ctx, node, ((struct lyd_node_opaq *)node)->format,
                     &((struct lyd_node_opaq *)node)->name, 1));

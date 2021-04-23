@@ -105,13 +105,13 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint
 }
 
 static const char *
-xml_print_ns_opaq(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, const struct ly_opaq_name *name, uint32_t prefix_opts)
+xml_print_ns_opaq(struct xmlpr_ctx *ctx, LY_VALUE_FORMAT format, const struct ly_opaq_name *name, uint32_t prefix_opts)
 {
     switch (format) {
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         return xml_print_ns(ctx, name->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
         break;
-    case LY_PREF_JSON:
+    case LY_VALUE_JSON:
         if (name->module_name) {
             const struct lys_module *mod = ly_ctx_get_module_latest(ctx->ctx, name->module_name);
             if (mod) {
@@ -131,24 +131,20 @@ xml_print_ns_opaq(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, const struct l
  * @brief Print prefix data.
  *
  * @param[in] ctx XML printer context.
- * @param[in] format Value prefix format.
- * @param[in] prefix_data Format-specific data to print:
- *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
- *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON            - NULL
+ * @param[in] format Value prefix format, only ::LY_VALUE_XML supported.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] prefix_opts Prefix options changing the meaning of parameters.
  * @return LY_ERR value.
  */
 static void
-xml_print_ns_prefix_data(struct xmlpr_ctx *ctx, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t prefix_opts)
+xml_print_ns_prefix_data(struct xmlpr_ctx *ctx, LY_VALUE_FORMAT format, void *prefix_data, uint32_t prefix_opts)
 {
     const struct ly_set *set;
     const struct lyxml_ns *ns;
     uint32_t i;
 
     switch (format) {
-    case LY_PREF_XML:
+    case LY_VALUE_XML:
         set = prefix_data;
         for (i = 0; i < set->count; ++i) {
             ns = set->objs[i];
@@ -200,7 +196,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     }
 #endif
     for (meta = node->meta; meta; meta = meta->next) {
-        const char *value = meta->value.realtype->plugin->print(&meta->value, LY_PREF_XML, &ns_list, &dynamic);
+        const char *value = meta->value.realtype->plugin->print(&meta->value, LY_VALUE_XML, &ns_list, &dynamic);
 
         /* print namespaces connected with the value's prefixes */
         for (uint32_t u = 0; u < ns_list.count; ++u) {
@@ -327,7 +323,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     const char *value;
 
     xml_print_node_open(ctx, &node->node);
-    value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LY_PREF_XML, &ns_list, &dynamic);
+    value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LY_VALUE_XML, &ns_list, &dynamic);
 
     /* print namespaces connected with the values's prefixes */
     for (uint32_t u = 0; u < ns_list.count; ++u) {

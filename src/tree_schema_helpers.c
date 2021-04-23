@@ -229,7 +229,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     *node = NULL;
     str = strchr(id, ':');
     if (str) {
-        mod = ly_resolve_prefix(start_module->mod->ctx, id, str - id, LY_PREF_SCHEMA, (void *)start_module);
+        mod = ly_resolve_prefix(start_module->mod->ctx, id, str - id, LY_VALUE_SCHEMA, (void *)start_module);
         local_module = mod ? mod->parsed : NULL;
         name = str + 1;
         *type = LY_TYPE_UNKNOWN;
@@ -1902,7 +1902,7 @@ lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_instance 
         return LY_SUCCESS;
     }
 
-    if (ext_p->format == LY_PREF_XML) {
+    if (ext_p->format == LY_VALUE_XML) {
         /* Schema was parsed from YIN and an argument is expected, ... */
         struct lysp_stmt *stmt = NULL;
 

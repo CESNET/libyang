@@ -36,7 +36,7 @@
 struct lyd_value_xpath10 {
     struct lyxp_expr *exp;
     const struct ly_ctx *ctx;
-    LY_PREFIX_FORMAT format;
+    LY_VALUE_FORMAT format;
     void *prefix_data;
 };
 
@@ -58,7 +58,7 @@ struct lyd_value_xpath10 {
  */
 static LY_ERR
 xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct ly_ctx *resolve_ctx,
-        LY_PREFIX_FORMAT resolve_format, const void *resolve_prefix_data, LY_PREFIX_FORMAT get_format,
+        LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data, LY_VALUE_FORMAT get_format,
         void *get_prefix_data, const char **prev_prefix, char **token_p, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -99,7 +99,7 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
                 /* remember prefix of a nametest */
                 *prev_prefix = prefix;
             }
-        } else if (is_nametest && (get_format == LY_PREF_XML) && (len == tok_len) && *prev_prefix) {
+        } else if (is_nametest && (get_format == LY_VALUE_XML) && (len == tok_len) && *prev_prefix) {
             /* nametest without a prefix, we must add it */
             mem = realloc(str, str_len + strlen(*prev_prefix) + 1 + len + 1);
             LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
@@ -138,7 +138,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-xpath10_print_value(const struct lyd_value_xpath10 *xp_val, LY_PREFIX_FORMAT format, void *prefix_data,
+xpath10_print_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data,
         char **str_value, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -199,7 +199,7 @@ cleanup:
 
 API LY_ERR
 lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
-        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -225,9 +225,9 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     ret = lyxp_expr_parse(ctx, storage->canonical, strlen(storage->canonical), 1, &xp_val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (format != LY_PREF_JSON) {
+    if (format != LY_VALUE_JSON) {
         /* generate canonical (JSON) value */
-        ret = xpath10_print_value(xp_val, LY_PREF_JSON, NULL, &canonical, err);
+        ret = xpath10_print_value(xp_val, LY_VALUE_JSON, NULL, &canonical, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* replace the canonical value */
@@ -244,12 +244,12 @@ cleanup:
 }
 
 API const char *
-lyplg_type_print_xpath10(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_xpath10(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     char *str_value;
     struct ly_err_item *err = NULL;
 
-    if (format == LY_PREF_JSON) {
+    if (format == LY_VALUE_JSON) {
         /* canonical */
         *dynamic = 0;
         return value->canonical;

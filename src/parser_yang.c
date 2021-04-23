@@ -856,7 +856,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, enum ly_stmt kw, char *word, 
         }
     }
 
-    stmt->format = LY_PREF_SCHEMA;
+    stmt->format = LY_VALUE_SCHEMA;
     stmt->prefix_data = ctx->parsed_mod;
     stmt->kw = kw;
 
@@ -905,7 +905,7 @@ parse_ext(struct lys_yang_parser_ctx *ctx, const char *ext_name, size_t ext_name
     }
 
     /* store the rest of information */
-    e->format = LY_PREF_SCHEMA;
+    e->format = LY_VALUE_SCHEMA;
     e->prefix_data = ctx->parsed_mod;
     e->parent_stmt = insubstmt;
     e->parent_stmt_index = insubstmt_index;
