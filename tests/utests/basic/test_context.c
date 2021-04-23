@@ -713,6 +713,49 @@ check_node_priv_parsed_not_set(struct lysc_node *node, void *UNUSED(data), ly_bo
     return LY_SUCCESS;
 }
 
+static void
+check_ext_instance_priv_parsed_is_set(struct lysc_ext_instance *ext)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    struct lysc_ext_substmt *substmts;
+    struct lysc_node *cnode;
+    const char **iter;
+    const char *check[] = {
+        "tmp_cont", "lf", NULL
+    };
+
+    LY_ARRAY_FOR(ext, u) {
+        substmts = ext[u].substmts;
+        LY_ARRAY_FOR(substmts, v) {
+            if (substmts && substmts[v].storage && LY_STMT_IS_NODE(substmts[v].stmt)) {
+                cnode = *(struct lysc_node **)substmts[v].storage;
+                iter = check;
+                assert_int_equal(LY_SUCCESS, lysc_tree_dfs_full(cnode, check_node_priv_parsed_is_set, &iter));
+            }
+        }
+    }
+}
+
+static void
+check_ext_instance_priv_parsed_not_set(struct lysc_ext_instance *ext)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    struct lysc_ext_substmt *substmts;
+    struct lysc_node *cnode;
+
+    LY_ARRAY_FOR(ext, u) {
+        substmts = ext[u].substmts;
+        LY_ARRAY_FOR(substmts, v) {
+            if (substmts && substmts[v].storage && LY_STMT_IS_NODE(substmts[v].stmt)) {
+                cnode = *(struct lysc_node **)substmts[v].storage;
+                if (cnode) {
+                    CHECK_POINTER((struct lysp_node *)cnode->priv, 0);
+                }
+            }
+        }
+    }
+}
+
 /**
  * @brief Testing of LY_CTX_SET_PRIV_PARSED.
  */
@@ -733,6 +776,19 @@ test_set_priv_parsed(void **state)
     schema_a = "module a {\n"
             "  namespace urn:tests:a;\n"
             "  prefix a;yang-version 1.1;\n"
+            "\n"
+            "  import ietf-restconf {\n"
+            "    prefix rc;\n"
+            "    revision-date 2017-01-26;\n"
+            "  }\n"
+            "\n"
+            "  rc:yang-data \"tmp\" {\n"
+            "    container tmp_cont {\n"
+            "      leaf lf {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
             "  container cont {\n"
             "    notification contnotif;\n"
             "    leaf-list contx {\n"
@@ -819,24 +875,29 @@ test_set_priv_parsed(void **state)
     const char *feats[] = {"f1", NULL};
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_SET_PRIV_PARSED, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, feats, NULL);
 
     print_message("[          ] create context\n");
     mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
     iter = check;
     assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_is_set, &iter));
+    check_ext_instance_priv_parsed_is_set(mod->compiled->exts);
 
     print_message("[          ] unset option\n");
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
     mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
     iter = check;
     assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_not_set, &iter));
+    check_ext_instance_priv_parsed_not_set(mod->compiled->exts);
 
     print_message("[          ] set option\n");
     assert_int_equal(LY_SUCCESS, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED));
     mod = ly_ctx_get_module(UTEST_LYCTX, "a", NULL);
     iter = check;
     assert_int_equal(LY_SUCCESS, lysc_module_dfs_full(mod, check_node_priv_parsed_is_set, &iter));
+    check_ext_instance_priv_parsed_is_set(mod->compiled->exts);
 }
 
 static void
