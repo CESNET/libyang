@@ -276,6 +276,7 @@ lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *origina
     const struct lyd_value_xpath10 *xp_val_orig = original->ptr;
 
     memset(dup, 0, sizeof *dup);
+    dup->realtype = original->realtype;
 
     ret = lydict_insert(ctx, original->canonical, 0, &dup->canonical);
     LY_CHECK_GOTO(ret, cleanup);
