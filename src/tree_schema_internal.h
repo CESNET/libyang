@@ -782,6 +782,7 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
  * @param[in] mod Module whose prefix to get.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data based on @p format:
+ *      LY_VALUE_CANON           - NULL
  *      LY_VALUE_SCHEMA          - const struct lysp_module * (module used for resolving imports to prefixes)
  *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
  *      LY_VALUE_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)

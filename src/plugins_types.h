@@ -349,26 +349,28 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
 /** @} plugintypestoreopts */
 
 /**
- * @brief Callback to store and canonize the given @p value according to the given @p type.
+ * @brief Callback to store the given @p value according to the given @p type.
  *
  * Value must always be correctly stored meaning all the other type callbacks (such as print or compare)
- * must function as expected.
+ * must function as expected. However, ::lyd_value.canonical can be left NULL and will be generated
+ * and stored on-demand. But if @p format is ::LY_VALUE_CANON (or another, which must be equal to the canonical
+ * value), the canonical value should be stored so that it does not have to be generated later.
  *
- * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
- * All store function have to free dynamically allocated value in case they dont used it.
- * Also, in case of any error store function have to call free on dynamically allocated value.
+ * Note that the @p value is not necessarily zero-terminated. The provided @p value_len is always correct.
+ * All store functions have to free a dynamically allocated @p value in all cases (even error).
  *
  * @param[in] ctx libyang Context
  * @param[in] type Type of the value being stored.
  * @param[in] value Lexical representation of the value to be stored.
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
- * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] value_len Length (number of bytes) of the given @p value.
  * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
- * @param[in] format Input format of the value.
+ * @param[in] format Input format of the value, see the description for details.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
- * @param[in] ctx_node The @p value schema context node.
- * @param[out] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
+ * @param[in] ctx_node Schema context node of @p value.
+ * @param[out] storage Storage for the value in the type's specific encoding. Except for canonical, all the members
+ * should be filled by the plugin (if it fills them at all).
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  *             error message is prepared instead. The error structure can be created by ::ly_err_new().
@@ -404,7 +406,7 @@ typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *ctx, const struct
  * @brief Callback for comparing 2 values of the same type.
  *
  * In case the value types (::lyd_value.realtype) are different, ::LY_ENOT must always be returned.
- * It can be assumed that the same libyang context (dictionary) was used for storing both values.
+ * It can be assumed that the same context (dictionary) was used for storing both values.
  *
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
@@ -414,26 +416,30 @@ typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *ctx, const struct
 typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
- * @brief Callback to getting the canonical value of the data stored in @p value.
+ * @brief Callback for getting the value of the data stored in @p value.
  *
+ * Canonical value (@p format of ::LY_VALUE_CANON) must always be a zero-terminated const string stored in
+ * the dictionary. The ::lyd_value._canonical member should be used for storing (caching) it.
+ *
+ * @param[in] ctx libyang context for storing the canonical value.
  * @param[in] value Value to print.
- * @param[in] format Format in which the data are supposed to be printed.
- *            Only 2 formats are currently implemented: ::LY_VALUE_XML and ::LY_VALUE_JSON.
+ * @param[in] format Format in which the data are supposed to be printed. Formats ::LY_VALUE_SCHEMA and
+ * ::LY_VALUE_SCHEMA_RESOLVED are not supported and should not be implemented.
  * @param[in] prefix_data Format-specific data for processing prefixes. In case of using one of the built-in's print
  * callback (or ::lyplg_type_print_simple()), the argument is just simply passed in. If you need to handle prefixes
  * in the value on your own, there is ::lyplg_type_get_prefix() function to help.
- * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
- *            for freeing it.
- * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
- *         can be responsible for freeing allocated memory.
+ * @param[out] dynamic Flag if the returned value is dynamically allocated. In such a case the caller is responsible
+ * for freeing it. Will not be set and should be ignored for @p format ::LY_VALUE_CANON.
+ * @param[out] value_len Optional returned value length in bytes. For strings it EXCLUDES the terminating zero.
+ * @return Pointer to @p value in the specified @p format. According to the returned @p dynamic flag, caller
+ * can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*lyplg_type_print_clb)(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic);
+typedef const char *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
- * @brief Callback to duplicate data in data structure. Note that callback is even responsible for
- * duplicating ::lyd_value.canonical.
+ * @brief Callback to duplicate data in data structure.
  *
  * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
  * @param[in] original Original data structure to be duplicated.
@@ -505,7 +511,8 @@ LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_
  * @brief Generic simple printer callback of the canonized value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_simple(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic);
+const char *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Generic simple duplication callback.
@@ -673,8 +680,8 @@ LY_ERR lyplg_type_compare_identityref(const struct lyd_value *val1, const struct
  * @brief Printer callback printing identityref value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_identityref(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic);
+const char *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
+        ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesIdentityref */
 
@@ -704,8 +711,8 @@ LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct 
  * @brief Printer callback printing the instance-identifier value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_instanceid(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic);
+const char *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
+        ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the instance-identifier values.
@@ -780,8 +787,8 @@ LY_ERR lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd
  * @brief Printer callback printing the leafref value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_leafref(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic);
+const char *lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
+        ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the leafref values.
@@ -848,8 +855,8 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  * @brief Printer callback printing the union value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_union(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic);
+const char *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
+        ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the union values.
@@ -898,8 +905,8 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  * @brief Printer callback printing the xpath1.0 value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_xpath10(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic);
+const char *lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the xpath1.0 values.

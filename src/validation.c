@@ -1105,7 +1105,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                     }
 
                     /* get canonical string value */
-                    str = val->realtype->plugin->print(val, LY_VALUE_JSON, NULL, &dynamic);
+                    str = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, NULL, &dynamic, NULL);
                     hash = dict_hash_multi(hash, str, strlen(str));
                     if (dynamic) {
                         free((char *)str);

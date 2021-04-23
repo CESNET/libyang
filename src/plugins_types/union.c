@@ -192,9 +192,18 @@ lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *v
 }
 
 API const char *
-lyplg_type_print_union(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic)
+lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    return value->subvalue->value.realtype->plugin->print(&value->subvalue->value, format, prefix_data, dynamic);
+    const void *ret;
+
+    ret = value->subvalue->value.realtype->plugin->print(ctx, &value->subvalue->value, format, prefix_data, dynamic, value_len);
+    if (!value->canonical && (format == LY_VALUE_CANON)) {
+        /* the canonical value is supposed to be stored now */
+        lydict_insert(ctx, value->subvalue->value.canonical, 0, (const char **)&value->canonical);
+    }
+
+    return ret;
 }
 
 API LY_ERR

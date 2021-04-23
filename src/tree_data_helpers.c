@@ -420,6 +420,7 @@ ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
         }
         LY_ARRAY_FREE(prefixes);
         break;
+    case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA:
     case LY_VALUE_JSON:
         break;
@@ -477,6 +478,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void 
             LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
         break;
+    case LY_VALUE_CANON:
     case LY_VALUE_JSON:
         assert(!prefix_data);
         *prefix_data_p = NULL;
@@ -579,6 +581,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
             }
         }
         break;
+    case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_JSON:
         if (!*prefix_data_p) {
@@ -601,6 +604,8 @@ const char *
 ly_format2str(LY_VALUE_FORMAT format)
 {
     switch (format) {
+    case LY_VALUE_CANON:
+        return "canonical";
     case LY_VALUE_SCHEMA:
         return "schema imports";
     case LY_VALUE_SCHEMA_RESOLVED:

@@ -663,7 +663,7 @@ lyd_create_term2(const struct lysc_node *schema, const struct lyd_value *val, st
     struct lysc_type *type;
 
     assert(schema->nodetype & LYD_NODE_TERM);
-    assert(val && val->canonical && val->realtype);
+    assert(val && val->realtype);
 
     term = calloc(1, sizeof *term);
     LY_CHECK_ERR_RET(!term, LOGMEM(schema->module->ctx), LY_EMEM);

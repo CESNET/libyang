@@ -451,6 +451,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             /* inherit module of the previous node */
             *mod = prev_ctx_node->module;
             break;
+        case LY_VALUE_CANON:
         case LY_VALUE_XML:
             /* not really defined */
             LOGINT_RET(ctx);

@@ -824,12 +824,13 @@ yprp_type(struct lys_ypr_ctx *ctx, const struct lysp_type *type)
 }
 
 static void
-yprc_dflt_value(struct lys_ypr_ctx *ctx, const struct lyd_value *value, struct lysc_ext_instance *exts)
+yprc_dflt_value(struct lys_ypr_ctx *ctx, const struct ly_ctx *ly_ctx, const struct lyd_value *value,
+        struct lysc_ext_instance *exts)
 {
     ly_bool dynamic;
     const char *str;
 
-    str = value->realtype->plugin->print(value, LY_VALUE_JSON, NULL, &dynamic);
+    str = value->realtype->plugin->print(ly_ctx, value, LY_VALUE_JSON, NULL, &dynamic, NULL);
     ypr_substmt(ctx, LY_STMT_DEFAULT, 0, str, exts);
     if (dynamic) {
         free((void *)str);
@@ -1487,7 +1488,7 @@ yprc_leaf(struct lys_ypr_ctx *ctx, const struct lysc_node *node)
     }
 
     if (leaf->dflt) {
-        yprc_dflt_value(ctx, leaf->dflt, leaf->exts);
+        yprc_dflt_value(ctx, node->module->ctx, leaf->dflt, leaf->exts);
     }
 
     yprc_node_common2(ctx, node, NULL);
@@ -1552,7 +1553,7 @@ yprc_leaflist(struct lys_ypr_ctx *ctx, const struct lysc_node *node)
         yprc_must(ctx, &llist->musts[u], NULL);
     }
     LY_ARRAY_FOR(llist->dflts, u) {
-        yprc_dflt_value(ctx, llist->dflts[u], llist->exts);
+        yprc_dflt_value(ctx, node->module->ctx, llist->dflts[u], llist->exts);
     }
 
     ypr_config(ctx, node->flags, node->exts, NULL);
