@@ -137,6 +137,7 @@ json_print_array_close(struct jsonpr_ctx *ctx)
 
 /**
  * @brief Get the node's module name to use as the @p node prefix in JSON.
+ *
  * @param[in] node Node to process.
  * @return The name of the module where the @p node belongs, it can be NULL in case the module name
  * cannot be determined (source format is XML and the refered namespace is unknown/not implemented in the current context).
