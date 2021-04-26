@@ -73,9 +73,7 @@ main(void)
     LYD_LIST_FOR_INST(data, data->schema, elem) {}
     LYD_LIST_FOR_INST_SAFE(data, data->schema, next, elem) {}
     (void)LYD_CTX(data);
-    (void)LYD_CANON_VALUE(lyd_child(data));
     (void)LYD_NAME(data);
-    (void)LYD_OPAQ_VALUE(opaq);
 
     /* tree_schema.h */
     LYSC_TREE_DFS_BEGIN(mod->compiled->data, scnode) {

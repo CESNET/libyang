@@ -331,13 +331,13 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
 
         LY_LIST_FOR(lyd_child(module), node) {
             if (!strcmp(node->schema->name, "name")) {
-                name = LYD_CANON_VALUE(node);
+                name = lyd_get_value(node);
             } else if (!strcmp(node->schema->name, "revision")) {
-                revision = LYD_CANON_VALUE(node);
+                revision = lyd_get_value(node);
             } else if (!strcmp(node->schema->name, "feature")) {
                 LY_CHECK_GOTO(ret = ly_set_add(&features, node, 0, NULL), cleanup);
             } else if (!strcmp(node->schema->name, "conformance-type") &&
-                    !strcmp(LYD_CANON_VALUE(node), "import")) {
+                    !strcmp(lyd_get_value(node), "import")) {
                 /* imported module - skip it, it will be loaded as a side effect
                  * of loading another module */
                 imported = 1;
@@ -354,7 +354,7 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
 
         /* Parse features into an array of strings */
         for (uint32_t u = 0; u < features.count; u++) {
-            feature_arr[u] = LYD_CANON_VALUE(features.dnodes[u]);
+            feature_arr[u] = lyd_get_value(features.dnodes[u]);
         }
         feature_arr[features.count] = NULL;
         ly_set_clean(&features, free);
@@ -419,9 +419,9 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
             /* Iterate over data */
             LY_LIST_FOR(lyd_child(module), node) {
                 if (!strcmp(node->schema->name, "name")) {
-                    name = LYD_CANON_VALUE(node);
+                    name = lyd_get_value(node);
                 } else if (!strcmp(node->schema->name, "revision")) {
-                    revision = LYD_CANON_VALUE(node);
+                    revision = lyd_get_value(node);
                 } else if (!strcmp(node->schema->name, "feature")) {
                     LY_CHECK_GOTO(ret = ly_set_add(&features, node, 0, NULL), cleanup);
                 }
@@ -432,7 +432,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
 
             /* Parse features into an array of strings */
             for (uint32_t u = 0; u < features.count; u++) {
-                feature_arr[u] = LYD_CANON_VALUE(features.dnodes[u]);
+                feature_arr[u] = lyd_get_value(features.dnodes[u]);
             }
             feature_arr[features.count] = NULL;
             ly_set_clean(&features, NULL);

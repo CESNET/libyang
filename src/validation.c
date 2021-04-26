@@ -87,7 +87,7 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
             } else {
                 /* generate value meta */
                 if (prev_inst) {
-                    value = strdup(LYD_CANON_VALUE(prev_inst));
+                    value = strdup(lyd_get_value(prev_inst));
                     LY_CHECK_ERR_GOTO(!value, LOGMEM(LYD_CTX(node)); ret = LY_EMEM, cleanup);
                 } else {
                     value = strdup("");

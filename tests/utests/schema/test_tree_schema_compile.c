@@ -2824,7 +2824,7 @@ test_deviation(void **state)
             "deviation /q:ql { deviate replace {type string;}}}", LYS_IN_YANG, NULL));
     assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
     assert_int_equal(LY_TYPE_STRING, leaf->dflt->realtype->basetype);
-    assert_non_null(leaf->dflt->canonical);
+    assert_non_null(leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_CANON, NULL, NULL, NULL));
     assert_string_equal("/e:d2[.='a']", leaf->dflt->canonical);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));

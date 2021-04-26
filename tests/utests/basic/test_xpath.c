@@ -151,7 +151,7 @@ test_hash(void **state)
     assert_string_equal(node->schema->name, "l1");
     node = lyd_child(node);
     assert_string_equal(node->schema->name, "a");
-    assert_string_equal(LYD_CANON_VALUE(node), "a3");
+    assert_string_equal(lyd_get_value(node), "a3");
 
     ly_set_free(set, NULL);
 
@@ -163,7 +163,7 @@ test_hash(void **state)
     assert_string_equal(node->schema->name, "ll");
     node = lyd_child(node);
     assert_string_equal(node->schema->name, "a");
-    assert_string_equal(LYD_CANON_VALUE(node), "val_b");
+    assert_string_equal(lyd_get_value(node), "val_b");
     node = node->next;
     assert_string_equal(node->schema->name, "b");
     assert_null(node->next);
@@ -182,7 +182,7 @@ test_hash(void **state)
 
     node = set->objs[0];
     assert_string_equal(node->schema->name, "ll2");
-    assert_string_equal(LYD_CANON_VALUE(node), "three");
+    assert_string_equal(lyd_get_value(node), "three");
 
     ly_set_free(set, NULL);
 

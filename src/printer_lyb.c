@@ -699,7 +699,7 @@ static LY_ERR
 lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     /* print the value */
-    return lyb_write_string(LYD_CANON_VALUE(term), 0, 0, out, lybctx);
+    return lyb_write_string(lyd_get_value(&term->node), 0, 0, out, lybctx);
 }
 
 /**
@@ -762,7 +762,7 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
         LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx->lybctx));
 
         /* metadata value */
-        LY_CHECK_RET(lyb_write_string(iter->value.canonical, 0, 0, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string(lyd_get_meta_value(iter), 0, 0, out, lybctx->lybctx));
 
         /* finish metadata subtree */
         LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx->lybctx));

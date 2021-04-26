@@ -54,10 +54,11 @@ struct lyd_node_term;
  * structure of the tree by having children nodes.
  * - ::lyd_node_term - represents data nodes corresponding to schema nodes matching ::LYD_NODE_TERM nodetypes. The terminal
  * nodes provide values of the particular configuration/status information. The values are represented as ::lyd_value
- * structure with string representation of the value (::lyd_value.canonical) and the type specific data stored in the
- * structure's union according to the real type of the value (::lyd_value.realtype). The string representation provides
- * canonical representation of the value in case the type has the canonical representation specified. Otherwise, it is the
- * original value or, in case the value can contain prefixes, the JSON format is used to make the value unambiguous.
+ * structure with string representation of the value (retrieved by ::lyd_get_value() and ::lyd_get_meta_value()) and
+ * the type specific data stored in the structure's union according to the real type of the value (::lyd_value.realtype).
+ * The string representation provides canonical representation of the value in case the type has the canonical
+ * representation specified. Otherwise, it is the original value or, in case the value can contain prefixes, the JSON
+ * format is used to make the value unambiguous.
  * - ::lyd_node_any - represents data nodes corresponding to schema nodes matching ::LYD_NODE_ANY nodetypes.
  *
  * Despite all the aforementioned structures and their members are available as part of the libyang API and callers can use
@@ -65,7 +66,7 @@ struct lyd_node_term;
  * and functions.
  * - ::lyd_child() (or ::lyd_child_no_keys()) and ::lyd_parent() to get the node's child/parent node.
  * - ::LYD_CTX to get libyang context from a data node.
- * - ::LYD_CANON_VALUE to get canonical string value from a terminal node.
+ * - ::lyd_get_value()/::lyd_get_meta_value() to get canonical string value from a terminal node/metadata instance.
  * - ::LYD_TREE_DFS_BEGIN and ::LYD_TREE_DFS_END to traverse the data tree (depth-first).
  * - ::LY_LIST_FOR and ::LY_ARRAY_FOR as described on @ref howtoStructures page.
  *
@@ -87,6 +88,8 @@ struct lyd_node_term;
  * - ::lyd_child_no_keys()
  * - ::lyd_parent()
  * - ::lyd_owner_module()
+ * - ::lyd_get_value()
+ * - ::lyd_get_meta_value()
  * - ::lyd_find_xpath()
  * - ::lyd_find_path()
  * - ::lyd_find_sibling_val()
@@ -499,8 +502,9 @@ typedef enum {
  * @brief YANG data representation
  */
 struct lyd_value {
-    const char *canonical;           /**< Canonical string representation of the value in the dictionary. It is never
-                                          NULL and in case of no canonical value, its JSON representation is used instead. */
+    const char *canonical;           /**< Should never be accessed directly, instead ::lyd_get_value() and ::lyd_get_meta_value()
+                                          should be used. Serves as a cache for the canonical value or the JSON
+                                          representation if no canonical value is defined. */
 
     union {
         int8_t boolean;              /**< 0 as false, 1 as true */
@@ -530,14 +534,6 @@ struct lyd_value {
                                           In general, this type is used to get free callback for this lyd_value structure, so it must reflect
                                           the type used to store data directly in the same lyd_value instance. */
 };
-
-/**
- * @brief Macro for getting the string canonical value from a term node.
- *
- * @param[in] node Term node with the value.
- * @return Canonical value.
- */
-#define LYD_CANON_VALUE(node) ((struct lyd_node_term *)(node))->value.canonical
 
 /**
  * @brief Special lyd_value structure for union.
@@ -857,14 +853,6 @@ struct lyd_node_opaq {
 };
 
 /**
- * @brief Macro for getting the value from an opaque node.
- *
- * @param[in] node Opaque node with the value.
- * @return Node value.
- */
-#define LYD_OPAQ_VALUE(node) ((struct lyd_node_opaq *)(node))->value
-
-/**
  * @brief Get the generic parent pointer of a data node.
  *
  * @param[in] node Node whose parent pointer to get.
@@ -971,6 +959,22 @@ struct lyd_node *lyd_first_sibling(const struct lyd_node *node);
  * @return -1 on error.
  */
 int lyd_lyb_data_length(const char *data);
+
+/**
+ * @brief Get the (canonical) value of a data node.
+ *
+ * @param[in] node Data node to use.
+ * @return Canonical value.
+ */
+const char *lyd_get_value(const struct lyd_node *node);
+
+/**
+ * @brief Get the (canonical) value of a metadata node.
+ *
+ * @param[in] meta Metadata node to use.
+ * @return Canonical value.
+ */
+const char *lyd_get_meta_value(const struct lyd_meta *meta);
 
 /**
  * @brief Get anydata string value.

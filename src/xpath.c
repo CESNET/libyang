@@ -197,10 +197,10 @@ print_set_debug(struct lyxp_set *set)
             case LYXP_NODE_ELEM:
                 if ((item->node->schema->nodetype == LYS_LIST) && (lyd_child(item->node)->schema->nodetype == LYS_LEAF)) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
-                            item->node->schema->name, LYD_CANON_VALUE(lyd_child(item->node)));
+                            item->node->schema->name, lyd_get_value(lyd_child(item->node)));
                 } else if (item->node->schema->nodetype == LYS_LEAFLIST) {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
-                            item->node->schema->name, LYD_CANON_VALUE(item->node));
+                            item->node->schema->name, lyd_get_value(item->node));
                 } else {
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s", i + 1, item->pos, item->node->schema->name);
                 }
@@ -210,7 +210,7 @@ print_set_debug(struct lyxp_set *set)
                     LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT <%s>", i + 1, item->pos,
                             item->node->schema->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
                 } else {
-                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT %s", i + 1, item->pos, LYD_CANON_VALUE(item->node));
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT %s", i + 1, item->pos, lyd_get_value(item->node));
                 }
                 break;
             case LYXP_NODE_META:
@@ -365,7 +365,7 @@ cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_
 
     case LYS_LEAF:
     case LYS_LEAFLIST:
-        value_str = LYD_CANON_VALUE(node);
+        value_str = lyd_get_value(node);
 
         /* print indent */
         LY_CHECK_RET(cast_string_realloc(LYD_CTX(node), indent * 2 + strlen(value_str) + 1, str, used, size));
@@ -523,7 +523,7 @@ cast_node_set_to_string(struct lyxp_set *set, char **str)
     case LYXP_NODE_TEXT:
         return cast_string_elem(set->val.nodes[0].node, 0, set->root_type, str);
     case LYXP_NODE_META:
-        *str = strdup(set->val.meta[0].meta->value.canonical);
+        *str = strdup(lyd_get_meta_value(set->val.meta[0].meta));
         if (!*str) {
             LOGMEM_RET(set->ctx);
         }
@@ -1583,10 +1583,10 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     set_init(trg, src);
     trg->type = src->type;
     if (src->type == LYXP_SET_NUMBER) {
-        trg->val.num = strtold(val.canonical, &ptr);
+        trg->val.num = strtold(type->plugin->print(src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), &ptr);
         LY_CHECK_ERR_RET(ptr[0], LOGINT(src->ctx), LY_EINT);
     } else {
-        trg->val.str = strdup(val.canonical);
+        trg->val.str = strdup(type->plugin->print(src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL));
     }
     type->plugin->free(src->ctx, &val);
     return LY_SUCCESS;
@@ -3759,7 +3759,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
                 assert(sleaf->type->basetype == LY_TYPE_INST);
                 if (ly_path_eval(leaf->value.target, set->tree, &node)) {
                     LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.",
-                            LYD_CANON_VALUE(leaf));
+                            lyd_get_value(&leaf->node));
                     return LY_EVALID;
                 }
             }
@@ -4084,7 +4084,7 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
     } else {
         uint64_t i;
 
-        val = meta->value.canonical;
+        val = lyd_get_meta_value(meta);
         for (i = 0; args[0]->val.str[i]; ++i) {
             if (tolower(args[0]->val.str[i]) != tolower(val[i])) {
                 set_fill_boolean(set, 0);
