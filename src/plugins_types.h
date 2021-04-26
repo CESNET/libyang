@@ -439,7 +439,21 @@ typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const stru
         LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
- * @brief Callback to duplicate data in data structure.
+ * @brief Callback for getting the value hash key. The only requirement is that for 2 equal values this key
+ * MUST be equal. If possible, for 2 non-equal values this key should not be equal.
+ *
+ * It should always be possible to return the canonical value.
+ *
+ * @param[in] value Value to get the hash key of.
+ * @param[out] dynamic Flag if the returned hash key is dynamically allocated. In such a case the caller is responsible
+ * for freeing it.
+ * @param[out] key_len Returned hash key length in bytes.
+ * @return Hash key.
+ */
+typedef const void *(*lyplg_type_hash_clb)(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
+
+/**
+ * @brief Callback to duplicate data in the data structure.
  *
  * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
  * @param[in] original Original data structure to be duplicated.
@@ -474,6 +488,7 @@ struct lyplg_type {
     lyplg_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
     lyplg_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
+    lyplg_type_hash_clb hash;           /**< hash callback to get the hash key of the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
 };
@@ -513,6 +528,12 @@ LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_
  */
 const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
+
+/**
+ * @brief Generic simple hash callback of the canonized value.
+ * Implementation of the ::lyplg_type_hash_clb.
+ */
+const void *lyplg_type_hash_simple(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
 
 /**
  * @brief Generic simple duplication callback.
@@ -791,6 +812,12 @@ const void *lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
+ * @brief Hash key callback for a leafref value.
+ * Implementation of ::lyplg_type_hash_clb.
+ */
+const void *lyplg_type_hash_leafref(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
+
+/**
  * @brief Duplication callback of the leafref values.
  * Implementation of the ::lyplg_type_dup_clb.
  */
@@ -857,6 +884,12 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  */
 const void *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
+
+/**
+ * @brief Hash key callback for a union value.
+ * Implementation of ::lyplg_type_hash_clb.
+ */
+const void *lyplg_type_hash_union(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
 
 /**
  * @brief Duplication callback of the union values.

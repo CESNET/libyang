@@ -21,6 +21,7 @@
 #include "compat.h"
 #include "hash_table.h"
 #include "log.h"
+#include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
@@ -29,6 +30,9 @@ LY_ERR
 lyd_hash(struct lyd_node *node)
 {
     struct lyd_node *iter;
+    const void *hash_key;
+    ly_bool dyn;
+    size_t key_len;
 
     if (!node->schema) {
         return LY_SUCCESS;
@@ -47,14 +51,24 @@ lyd_hash(struct lyd_node *node)
 
             /* list hash is made up from its keys */
             for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
-                const char *value = lyd_get_value(iter);
-                node->hash = dict_hash_multi(node->hash, value, strlen(value));
+                struct lyd_node_term *key = (struct lyd_node_term *)iter;
+
+                hash_key = key->value.realtype->plugin->hash(&key->value, &dyn, &key_len);
+                node->hash = dict_hash_multi(node->hash, hash_key, key_len);
+                if (dyn) {
+                    free((void *)hash_key);
+                }
             }
         }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        /* leaf-list adds its value */
-        const char *value = lyd_get_value(node);
-        node->hash = dict_hash_multi(node->hash, value, strlen(value));
+        /* leaf-list adds its hash key */
+        struct lyd_node_term *llist = (struct lyd_node_term *)node;
+
+        hash_key = llist->value.realtype->plugin->hash(&llist->value, &dyn, &key_len);
+        node->hash = dict_hash_multi(node->hash, hash_key, key_len);
+        if (dyn) {
+            free((void *)hash_key);
+        }
     }
 
     /* finish the hash */

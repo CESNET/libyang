@@ -297,6 +297,14 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
     return value->_canonical;
 }
 
+API const void *
+lyplg_type_hash_simple(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
+{
+    *dynamic = 0;
+    *key_len = strlen(value->_canonical);
+    return value->_canonical;
+}
+
 API LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {

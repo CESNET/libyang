@@ -1038,8 +1038,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     LY_ARRAY_COUNT_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash, i, size = 0;
-    ly_bool dynamic;
-    const char *str;
+    size_t key_len;
+    ly_bool dyn;
+    const void *hash_key;
     struct hash_table **uniqtables = NULL;
     struct lyd_value *val;
     struct ly_ctx *ctx = snode->module->ctx;
@@ -1104,11 +1105,11 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                         break;
                     }
 
-                    /* get canonical string value */
-                    str = val->realtype->plugin->print(ctx, val, LY_VALUE_JSON, NULL, &dynamic, NULL);
-                    hash = dict_hash_multi(hash, str, strlen(str));
-                    if (dynamic) {
-                        free((char *)str);
+                    /* get hash key */
+                    hash_key = val->realtype->plugin->hash(val, &dyn, &key_len);
+                    hash = dict_hash_multi(hash, hash_key, key_len);
+                    if (dyn) {
+                        free((void *)hash_key);
                     }
                 }
                 if (!val) {
