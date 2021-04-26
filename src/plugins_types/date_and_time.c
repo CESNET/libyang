@@ -113,46 +113,46 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     /* canonize */
     /* \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[\+\-]\d{2}:\d{2})
      * 2018-03-21T09:11:05(.55785...)(Z|+02:00) */
-    val_str = storage->canonical;
+    val_str = storage->_canonical;
 
     /* year */
-    ret = convert_number(&val_str, 4, storage->canonical, &tm.tm_year, err);
+    ret = convert_number(&val_str, 4, storage->_canonical, &tm.tm_year, err);
     LY_CHECK_GOTO(ret, cleanup);
     tm.tm_year -= 1900;
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, "-", storage->canonical, err), cleanup);
+    LY_CHECK_GOTO(ret = check_char(&val_str, "-", storage->_canonical, err), cleanup);
 
     /* month */
-    ret = convert_number(&val_str, 2, storage->canonical, &tm.tm_mon, err);
+    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_mon, err);
     LY_CHECK_GOTO(ret, cleanup);
     tm.tm_mon -= 1;
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, "-", storage->canonical, err), cleanup);
+    LY_CHECK_GOTO(ret = check_char(&val_str, "-", storage->_canonical, err), cleanup);
 
     /* day */
-    ret = convert_number(&val_str, 2, storage->canonical, &tm.tm_mday, err);
+    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_mday, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, "T", storage->canonical, err), cleanup);
+    LY_CHECK_GOTO(ret = check_char(&val_str, "T", storage->_canonical, err), cleanup);
 
     /* hours */
-    ret = convert_number(&val_str, 2, storage->canonical, &tm.tm_hour, err);
+    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_hour, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, ":", storage->canonical, err), cleanup);
+    LY_CHECK_GOTO(ret = check_char(&val_str, ":", storage->_canonical, err), cleanup);
 
     /* minutes */
-    ret = convert_number(&val_str, 2, storage->canonical, &tm.tm_min, err);
+    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_min, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, ":", storage->canonical, err), cleanup);
+    LY_CHECK_GOTO(ret = check_char(&val_str, ":", storage->_canonical, err), cleanup);
 
     /* seconds */
-    ret = convert_number(&val_str, 2, storage->canonical, &tm.tm_sec, err);
+    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_sec, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* do not move the pointer */
-    LY_CHECK_GOTO(ret = check_char(&val_str, ".Z+-", storage->canonical, err), cleanup);
+    LY_CHECK_GOTO(ret = check_char(&val_str, ".Z+-", storage->_canonical, err), cleanup);
     --val_str;
 
     /* validate using mktime() */
@@ -162,7 +162,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     /* ENOENT is set when "/etc/localtime" is missing but the function suceeeds */
     if (errno && (errno != ENOENT)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Checking date-and-time value \"%s\" failed (%s).",
-                storage->canonical, strerror(errno));
+                storage->_canonical, strerror(errno));
         goto cleanup;
     }
     /* we now have correctly filled the remaining values, use them */
@@ -174,13 +174,13 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     mktime(&tm);
     if (errno && (errno != ENOENT)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Checking date-and-time value \"%s\" failed (%s).",
-                storage->canonical, strerror(errno));
+                storage->_canonical, strerror(errno));
         goto cleanup;
     }
     /* detect changes in the filled values */
     if (memcmp(&tm, &tm2, 6 * sizeof(int))) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Checking date-and-time value \"%s\" failed, "
-                "canonical date and time is \"%04d-%02d-%02dT%02d:%02d:%02d\".", storage->canonical,
+                "canonical date and time is \"%04d-%02d-%02dT%02d:%02d:%02d\".", storage->_canonical,
                 tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
         goto cleanup;
     }
@@ -188,7 +188,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     /* tenth of a second */
     if (val_str[0] == '.') {
         ++val_str;
-        ret = convert_number(&val_str, 0, storage->canonical, &num, err);
+        ret = convert_number(&val_str, 0, storage->_canonical, &num, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -202,42 +202,42 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         /* timezone shift */
         if ((val_str[1] < '0') || (val_str[1] > '2')) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->canonical);
+                    val_str, storage->_canonical);
             goto cleanup;
         }
         if ((val_str[2] < '0') || ((val_str[1] == '2') && (val_str[2] > '3')) || (val_str[2] > '9')) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->canonical);
+                    val_str, storage->_canonical);
             goto cleanup;
         }
 
         if (val_str[3] != ':') {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->canonical);
+                    val_str, storage->_canonical);
             goto cleanup;
         }
 
         if ((val_str[4] < '0') || (val_str[4] > '5')) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->canonical);
+                    val_str, storage->_canonical);
             goto cleanup;
         }
         if ((val_str[5] < '0') || (val_str[5] > '9')) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->canonical);
+                    val_str, storage->_canonical);
             goto cleanup;
         }
 
         val_str += 6;
         break;
     default:
-        LY_CHECK_GOTO(ret = check_char(&val_str, "Z+-", storage->canonical, err), cleanup);
+        LY_CHECK_GOTO(ret = check_char(&val_str, "Z+-", storage->_canonical, err), cleanup);
     }
 
     /* no other characters expected */
     if (val_str[0]) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid character '%c' in date-and-time value \"%s\", "
-                "no characters expected.", val_str[0], storage->canonical);
+                "no characters expected.", val_str[0], storage->_canonical);
         goto cleanup;
     }
 

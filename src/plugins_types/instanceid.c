@@ -93,7 +93,7 @@ lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *va
         *dynamic = 1;
     } else if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
         /* generate canonical, only the first node or the node changing module is prefixed */
-        if (!value->canonical) {
+        if (!value->_canonical) {
             struct lys_module *mod = NULL;
             LY_ARRAY_FOR(value->target, u) {
                 if (mod != value->target[u].node->module) {
@@ -144,11 +144,11 @@ lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *va
                 }
             }
 
-            lydict_insert_zc(ctx, result, (const char **)&value->canonical);
+            lydict_insert_zc(ctx, result, (const char **)&value->_canonical);
         }
 
         /* use canonical */
-        result = (char *)value->canonical;
+        result = (char *)value->_canonical;
         if (dynamic) {
             *dynamic = 0;
         }
@@ -292,7 +292,7 @@ lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_val
 API LY_ERR
 lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
     dup->realtype = original->realtype;
     return ly_path_dup(ctx, original->target, &dup->target);
 }

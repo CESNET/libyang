@@ -46,7 +46,7 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
             storage, unres, err);
     LY_CHECK_RET(ret);
 
-    str = strdup(storage->canonical);
+    str = strdup(storage->_canonical);
     if (!str) {
         /* we can hardly allocate an error message */
         ret = LY_EMEM;
@@ -62,9 +62,9 @@ lyplg_type_store_hex_string(const struct ly_ctx *ctx, const struct lysc_type *ty
     }
 
     /* update the value correctly */
-    lydict_remove(ctx, storage->canonical);
-    storage->canonical = NULL;
-    LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->canonical), cleanup);
+    lydict_remove(ctx, storage->_canonical);
+    storage->_canonical = NULL;
+    LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, str, &storage->_canonical), cleanup);
 
     /* validation succeeded and we do not want to change how it is stored */
 

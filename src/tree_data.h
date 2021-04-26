@@ -502,7 +502,7 @@ typedef enum {
  * @brief YANG data representation
  */
 struct lyd_value {
-    const char *canonical;           /**< Should never be accessed directly, instead ::lyd_get_value() and ::lyd_get_meta_value()
+    const char *_canonical;          /**< Should never be accessed directly, instead ::lyd_get_value() and ::lyd_get_meta_value()
                                           should be used. Serves as a cache for the canonical value or the JSON
                                           representation if no canonical value is defined. */
 

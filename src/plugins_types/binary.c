@@ -109,10 +109,10 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     if (base64_count != 0) {
-        ret = lydict_insert(ctx, &value[base64_start], base64_end - base64_start, &storage->canonical);
+        ret = lydict_insert(ctx, &value[base64_start], base64_end - base64_start, &storage->_canonical);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
-        ret = lydict_insert(ctx, "", 0, &storage->canonical);
+        ret = lydict_insert(ctx, "", 0, &storage->_canonical);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
     storage->ptr = NULL;

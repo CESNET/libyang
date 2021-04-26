@@ -274,7 +274,7 @@ lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *
         return LY_ENOT;
     }
 
-    if (val1->canonical == val2->canonical) {
+    if (val1->_canonical == val2->_canonical) {
         return LY_SUCCESS;
     }
 
@@ -289,15 +289,15 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
         *dynamic = 0;
     }
     if (value_len) {
-        *value_len = strlen(value->canonical);
+        *value_len = strlen(value->_canonical);
     }
-    return value->canonical;
+    return value->_canonical;
 }
 
 API LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
     dup->ptr = original->ptr;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
@@ -306,8 +306,8 @@ lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original
 API void
 lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    lydict_remove(ctx, value->canonical);
-    value->canonical = NULL;
+    lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
 }
 
 API LY_ERR

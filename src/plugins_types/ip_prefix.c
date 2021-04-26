@@ -206,14 +206,14 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_CHECK_RET(ret);
 
     /* canonize */
-    ret = canonize_ipv4_prefix(storage->canonical, &canonical, err);
+    ret = canonize_ipv4_prefix(storage->_canonical, &canonical, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (strcmp(canonical, storage->canonical)) {
+    if (strcmp(canonical, storage->_canonical)) {
         /* some conversion took place, update the value */
-        lydict_remove(ctx, storage->canonical);
-        storage->canonical = NULL;
-        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->canonical), cleanup);
+        lydict_remove(ctx, storage->_canonical);
+        storage->_canonical = NULL;
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->_canonical), cleanup);
     } else {
         free(canonical);
     }
@@ -243,14 +243,14 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_CHECK_RET(ret);
 
     /* canonize */
-    ret = canonize_ipv6_prefix(storage->canonical, &canonical, err);
+    ret = canonize_ipv6_prefix(storage->_canonical, &canonical, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (strcmp(canonical, storage->canonical)) {
+    if (strcmp(canonical, storage->_canonical)) {
         /* some conversion took place, update the value */
-        lydict_remove(ctx, storage->canonical);
-        storage->canonical = NULL;
-        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->canonical), cleanup);
+        lydict_remove(ctx, storage->_canonical);
+        storage->_canonical = NULL;
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->_canonical), cleanup);
     } else {
         free(canonical);
     }

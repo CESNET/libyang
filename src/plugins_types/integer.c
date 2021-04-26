@@ -73,7 +73,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     }
 
     /* store everything */
-    ret = lydict_insert_zc(ctx, str, &storage->canonical);
+    ret = lydict_insert_zc(ctx, str, &storage->_canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* matters for big-endian */
@@ -146,7 +146,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     }
 
     /* store everything */
-    ret = lydict_insert_zc(ctx, str, &storage->canonical);
+    ret = lydict_insert_zc(ctx, str, &storage->_canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* matters for big-endian */
