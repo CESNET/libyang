@@ -342,10 +342,10 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  *
  * @{
  */
-#define LYPLG_TYPE_STORE_DYNAMIC   0x01 /**< String value was dynamically allocated and is supposed to be freed or
+#define LYPLG_TYPE_STORE_DYNAMIC   0x01 /**< Value was dynamically allocated in its exact size and is supposed to be freed or
                                              directly inserted into the context's dictionary (e.g. in case of canonization).
-                                             In any case, the caller of the callback does not free the provided string
-                                             value after calling the type's store callback with this option */
+                                             In any case, the caller of the callback does not free the provided
+                                             value after calling the type's store callback with this option. */
 #define LYPLG_TYPE_STORE_IMPLEMENT 0x02 /**< If a foreign module is needed to be implemented to successfully instantiate
                                              the value, make the module implemented. */
 /** @} plugintypestoreopts */
@@ -358,13 +358,13 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  * and stored on-demand. But if @p format is ::LY_VALUE_CANON (or another, which must be equal to the canonical
  * value), the canonical value should be stored so that it does not have to be generated later.
  *
- * Note that the @p value is not necessarily zero-terminated. The provided @p value_len is always correct.
- * All store functions have to free a dynamically allocated @p value in all cases (even error).
+ * Note that the @p value is not necessarily used whole (may not be zero-terminated if a string). The provided
+ * @p value_len is always correct. All store functions have to free a dynamically allocated @p value in all
+ * cases (even on error).
  *
  * @param[in] ctx libyang Context
  * @param[in] type Type of the value being stored.
- * @param[in] value Lexical representation of the value to be stored.
- *            It is never NULL, empty string is represented as "" with zero @p value_len.
+ * @param[in] value Value to be stored.
  * @param[in] value_len Length (number of bytes) of the given @p value.
  * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
  * @param[in] format Input format of the value, see the description for details.
