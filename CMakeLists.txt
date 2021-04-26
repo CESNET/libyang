@@ -102,7 +102,7 @@ set(type_plugins
     src/plugins_types/leafref.c
     src/plugins_types/string.c
     src/plugins_types/union.c
-    src/plugins_types/ip_address.c
+    src/plugins_types/ipv6_address.c
     src/plugins_types/ip_prefix.c
     src/plugins_types/date_and_time.c
     src/plugins_types/hex_string.c
