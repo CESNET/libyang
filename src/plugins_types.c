@@ -693,8 +693,8 @@ lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_D
 
 API LY_ERR
 lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
-        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err)
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node, struct lys_glob_unres *unres,
+        struct ly_path **path, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;

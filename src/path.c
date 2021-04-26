@@ -380,8 +380,8 @@ error:
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node.
- * @param[in] cur_mod Current module of the path (where the path is "instantiated"). Needed for ::LY_PREF_SCHEMA*.
- * @param[in] prev_ctx_node Previous context node. Needed for ::LY_PREF_JSON.
+ * @param[in] cur_mod Current module of the path (where the path is "instantiated"). Needed for ::LY_VALUE_SCHEMA*.
+ * @param[in] prev_ctx_node Previous context node. Needed for ::LY_VALUE_JSON.
  * @param[in] expr Parsed path.
  * @param[in] tok_idx Index in @p expr.
  * @param[in] lref Lref option.
