@@ -58,11 +58,11 @@ match:
     /* validation done */
 
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->canonical);
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
-        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->canonical);
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
     storage->enum_item = &type_enum->enums[u];

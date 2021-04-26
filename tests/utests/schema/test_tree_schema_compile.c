@@ -2846,13 +2846,13 @@ test_deviation(void **state)
     assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
     assert_int_equal(LY_TYPE_STRING, leaf->dflt->realtype->basetype);
     assert_non_null(leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_CANON, NULL, NULL, NULL));
-    assert_string_equal("/e:d2[.='a']", leaf->dflt->canonical);
+    assert_string_equal("/e:d2[.='a']", leaf->dflt->_canonical);
     assert_non_null(llist = (struct lysc_node_leaflist *)leaf->next);
     assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
     assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
-    assert_string_equal("/e:d[.='b']", llist->dflts[0]->canonical);
+    assert_string_equal("/e:d[.='b']", llist->dflts[0]->_canonical);
     assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
-    assert_string_equal("/e:d2[.='c']", llist->dflts[1]->canonical);
+    assert_string_equal("/e:d2[.='c']", llist->dflts[1]->_canonical);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module r {yang-version 1.1; namespace urn:r;prefix r;"
             "typedef mytype {type uint8; default 200;}"

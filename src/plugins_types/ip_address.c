@@ -81,13 +81,13 @@ lyplg_type_store_ip_address(const struct ly_ctx *ctx, const struct lysc_type *ty
             storage, unres, err);
     LY_CHECK_RET(ret);
 
-    if (strchr(storage->canonical, ':')) {
+    if (strchr(storage->_canonical, ':')) {
         /* canonize IPv6 address */
-        if ((ptr = strchr(storage->canonical, '%'))) {
+        if ((ptr = strchr(storage->_canonical, '%'))) {
             /* there is a zone index */
-            ipv6_addr = strndup(storage->canonical, ptr - storage->canonical);
+            ipv6_addr = strndup(storage->_canonical, ptr - storage->_canonical);
         } else {
-            ipv6_addr = (char *)storage->canonical;
+            ipv6_addr = (char *)storage->_canonical;
         }
 
         /* convert to canonical format */
@@ -97,7 +97,7 @@ lyplg_type_store_ip_address(const struct ly_ctx *ctx, const struct lysc_type *ty
         }
         LY_CHECK_GOTO(ret, cleanup);
 
-        if (strncmp(storage->canonical, result, strlen(result))) {
+        if (strncmp(storage->_canonical, result, strlen(result))) {
             /* some conversion took place */
             if (ptr) {
                 /* concatenate the zone, if any */
@@ -111,9 +111,9 @@ lyplg_type_store_ip_address(const struct ly_ctx *ctx, const struct lysc_type *ty
             }
 
             /* update the value */
-            lydict_remove(ctx, storage->canonical);
-            storage->canonical = NULL;
-            LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, result, &storage->canonical), cleanup);
+            lydict_remove(ctx, storage->_canonical);
+            storage->_canonical = NULL;
+            LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, result, &storage->_canonical), cleanup);
         } else {
             free(result);
         }

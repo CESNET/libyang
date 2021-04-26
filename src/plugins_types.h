@@ -72,7 +72,7 @@ struct lysc_type_leafref;
  * provided string representation of the value in specified format (XML and JSON supported). Valid value is stored in
  * ::lyd_value structure - its union allows to store data as one of the predefined type or in a custom form behind
  * the void *ptr member of ::lyd_value structure. The callback is also responsible for storing canonized string
- * representation of the value as ::lyd_value.canonical. If the type does not define canonical representation, the original
+ * representation of the value as ::lyd_value._canonical. If the type does not define canonical representation, the original
  * representation is stored. In case there are any differences between the representation in specific input types, the plugin
  * is supposed to store the value in JSON representation - typically, the difference is in prefix representation and JSON
  * format uses directly the module names as prefixes.
@@ -85,7 +85,7 @@ struct lysc_type_leafref;
  * the values is to compare their canonical string representations, the ::lyplg_type_compare_simple() function can be used.
  *
  * Data duplication is done with ::lyplg_type_dup_clb callbacks. Note that the callback is responsible even for duplicating
- * the ::lyd_value.canonical, so the callback must be always present (the canonical value is always present). If there is
+ * the ::lyd_value._canonical, so the callback must be always present (the canonical value is always present). If there is
  * nothing else to duplicate, the plugin can use the generic ::lyplg_type_dup_simple().
  *
  * The stored value can be printed into the required format via ::lyplg_type_print_clb implementation. Simple printing
@@ -352,7 +352,7 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  * @brief Callback to store the given @p value according to the given @p type.
  *
  * Value must always be correctly stored meaning all the other type callbacks (such as print or compare)
- * must function as expected. However, ::lyd_value.canonical can be left NULL and will be generated
+ * must function as expected. However, ::lyd_value._canonical can be left NULL and will be generated
  * and stored on-demand. But if @p format is ::LY_VALUE_CANON (or another, which must be equal to the canonical
  * value), the canonical value should be stored so that it does not have to be generated later.
  *
@@ -369,7 +369,7 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
  * @param[in] ctx_node Schema context node of @p value.
- * @param[out] storage Storage for the value in the type's specific encoding. Except for canonical, all the members
+ * @param[out] storage Storage for the value in the type's specific encoding. Except for _canonical, all the members
  * should be filled by the plugin (if it fills them at all).
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
@@ -498,7 +498,7 @@ struct lyplg_type_record {
  * @{
  *
  * Simple functions implementing @ref howtoPluginsTypes callbacks handling simply just the canonical string of the value
- * (::lyd_value.canonical).
+ * (::lyd_value._canonical).
  */
 
 /**
@@ -521,7 +521,7 @@ const char *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_v
 LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
- * @brief Generic cleanup callback freeing only the canonized value in ::lyd_value.canonical.
+ * @brief Generic cleanup callback freeing only the canonized value in ::lyd_value._canonical.
  * Simple implementation of the ::lyplg_type_free_clb.
  */
 void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);

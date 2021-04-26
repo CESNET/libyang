@@ -147,7 +147,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
 
     /* get JSON form since there is no canonical */
     str = identityref_print(storage, LY_VALUE_JSON, NULL);
-    ret = lydict_insert_zc(ctx, str, &storage->canonical);
+    ret = lydict_insert_zc(ctx, str, &storage->_canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     storage->realtype = type;
 
@@ -170,9 +170,9 @@ lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_
             *dynamic = 0;
         }
         if (value_len) {
-            *value_len = strlen(value->canonical);
+            *value_len = strlen(value->_canonical);
         }
-        return value->canonical;
+        return value->_canonical;
     }
 
     result = identityref_print(value, format, prefix_data);

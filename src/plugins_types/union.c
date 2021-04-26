@@ -126,7 +126,7 @@ cleanup:
         free(subvalue);
     } else {
         /* store it as union, the specific type is in the subvalue, but canonical value is the specific type value */
-        ret = lydict_insert(ctx, subvalue->value.canonical, 0, &storage->canonical);
+        ret = lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
         storage->subvalue = subvalue;
         storage->realtype = type;
@@ -173,8 +173,8 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     LY_CHECK_RET(ret);
 
     /* success, update the canonical value */
-    lydict_remove(ctx, storage->canonical);
-    LY_CHECK_RET(lydict_insert(ctx, subvalue->value.canonical, 0, &storage->canonical));
+    lydict_remove(ctx, storage->_canonical);
+    LY_CHECK_RET(lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical));
     return LY_SUCCESS;
 }
 
@@ -198,9 +198,9 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
     const void *ret;
 
     ret = value->subvalue->value.realtype->plugin->print(ctx, &value->subvalue->value, format, prefix_data, dynamic, value_len);
-    if (!value->canonical && (format == LY_VALUE_CANON)) {
+    if (!value->_canonical && (format == LY_VALUE_CANON)) {
         /* the canonical value is supposed to be stored now */
-        lydict_insert(ctx, value->subvalue->value.canonical, 0, (const char **)&value->canonical);
+        lydict_insert(ctx, value->subvalue->value._canonical, 0, (const char **)&value->_canonical);
     }
 
     return ret;
@@ -209,7 +209,7 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
 API LY_ERR
 lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_CHECK_RET(lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
 
     dup->subvalue = calloc(1, sizeof *dup->subvalue);
     LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);
@@ -228,7 +228,7 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
 API void
 lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    lydict_remove(ctx, value->canonical);
+    lydict_remove(ctx, value->_canonical);
     if (value->subvalue) {
         if (value->subvalue->value.realtype) {
             value->subvalue->value.realtype->plugin->free(ctx, &value->subvalue->value);

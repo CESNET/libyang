@@ -216,13 +216,13 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     storage->ptr = xp_val;
 
     /* store format-specific data and context for later prefix resolution */
-    ret = lyplg_type_prefix_data_new(ctx, storage->canonical, strlen(storage->canonical), format, prefix_data,
+    ret = lyplg_type_prefix_data_new(ctx, storage->_canonical, strlen(storage->_canonical), format, prefix_data,
             &xp_val->format, &xp_val->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
     xp_val->ctx = ctx;
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, storage->canonical, strlen(storage->canonical), 1, &xp_val->exp);
+    ret = lyxp_expr_parse(ctx, storage->_canonical, strlen(storage->_canonical), 1, &xp_val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format != LY_VALUE_JSON) {
@@ -231,9 +231,9 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
         LY_CHECK_GOTO(ret, cleanup);
 
         /* replace the canonical value */
-        lydict_remove(ctx, storage->canonical);
-        storage->canonical = NULL;
-        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->canonical), cleanup);
+        lydict_remove(ctx, storage->_canonical);
+        storage->_canonical = NULL;
+        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->_canonical), cleanup);
     }
 
 cleanup:
@@ -256,9 +256,9 @@ lyplg_type_print_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lyd_valu
             *dynamic = 0;
         }
         if (value_len) {
-            *value_len = strlen(value->canonical);
+            *value_len = strlen(value->_canonical);
         }
-        return value->canonical;
+        return value->_canonical;
     }
 
     if (xpath10_print_value(value->ptr, format, prefix_data, &str_value, &err)) {
@@ -284,7 +284,7 @@ lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *origina
     memset(dup, 0, sizeof *dup);
     dup->realtype = original->realtype;
 
-    ret = lydict_insert(ctx, original->canonical, 0, &dup->canonical);
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, cleanup);
 
     xp_val = calloc(1, sizeof *xp_val);
@@ -311,7 +311,7 @@ lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_xpath10 *xp_val = value->ptr;
 
-    lydict_remove(ctx, value->canonical);
+    lydict_remove(ctx, value->_canonical);
     if (xp_val) {
         lyxp_expr_free(ctx, xp_val->exp);
         lyplg_type_prefix_data_free(xp_val->format, xp_val->prefix_data);

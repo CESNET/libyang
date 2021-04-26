@@ -152,12 +152,12 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
         }
         buf[buf_index] = 0;
 
-        ret = lydict_insert_zc(ctx, buf, &storage->canonical);
+        ret = lydict_insert_zc(ctx, buf, &storage->_canonical);
         buf = NULL;
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         bits_items = NULL;
-        ret = lydict_insert(ctx, "", 0, &storage->canonical);
+        ret = lydict_insert(ctx, "", 0, &storage->_canonical);
         buf = NULL;
         LY_CHECK_GOTO(ret, cleanup);
     }
@@ -199,7 +199,7 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
         bits_items[u] = original->bits_items[u];
     }
 
-    ret = lydict_insert(ctx, original->canonical, strlen(original->canonical), &dup->canonical);
+    ret = lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     dup->bits_items = bits_items;
     dup->realtype = original->realtype;
@@ -217,8 +217,8 @@ lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
     LY_ARRAY_FREE(value->bits_items);
     value->bits_items = NULL;
 
-    lydict_remove(ctx, value->canonical);
-    value->canonical = NULL;
+    lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
 }
 
 /**

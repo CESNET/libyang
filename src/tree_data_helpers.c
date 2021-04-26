@@ -267,7 +267,7 @@ lyd_get_value(const struct lyd_node *node)
         return ((struct lyd_node_opaq *)node)->value;
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         const struct lyd_value *val = &((struct lyd_node_term *)node)->value;
-        return val->canonical ? val->canonical :
+        return val->_canonical ? val->_canonical :
                val->realtype->plugin->print(LYD_CTX(node), val, LY_VALUE_CANON, NULL, NULL, NULL);
     }
     return NULL;
@@ -280,7 +280,7 @@ lyd_get_meta_value(const struct lyd_meta *meta)
         return NULL;
     }
 
-    return meta->value.canonical ? meta->value.canonical :
+    return meta->value._canonical ? meta->value._canonical :
            meta->value.realtype->plugin->print(meta->annotation->module->ctx, &meta->value, LY_VALUE_CANON, NULL, NULL, NULL);
 }
 

@@ -86,7 +86,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
-    ret = lydict_insert(ctx, buf, strlen(buf), &storage->canonical);
+    ret = lydict_insert(ctx, buf, strlen(buf), &storage->_canonical);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     storage->dec64 = d;
     storage->realtype = type;
