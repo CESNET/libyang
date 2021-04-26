@@ -254,7 +254,7 @@ LY_ERR lyplg_type_make_implemented(struct lys_module *mod, const char **features
  * @param[in] mod Module whose prefix to get - the module somehow connected with the value to print.
  * @param[in] format Format of the prefix (::lyplg_type_print_clb's format parameter).
  * @param[in] prefix_data Format-specific data (::lyplg_type_print_clb's prefix_data parameter).
- * @return Module's prefix to print.
+ * @return Module prefix to print.
  * @return NULL on error.
  */
 const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix_data);
