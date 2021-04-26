@@ -243,6 +243,8 @@ struct lyd_node_term;
  * --------------
  * - ::lyd_new_inner()
  * - ::lyd_new_term()
+ * - ::lyd_new_term_bin()
+ * - ::lyd_new_term_canon()
  * - ::lyd_new_list()
  * - ::lyd_new_list2()
  * - ::lyd_new_any()
@@ -273,6 +275,8 @@ struct lyd_node_term;
  * - ::lyd_value_validate()
  *
  * - ::lyd_change_term()
+ * - ::lyd_change_term_bin()
+ * - ::lyd_change_term_canon()
  * - ::lyd_change_meta()
  *
  * - ::lyd_compare_single()
@@ -365,6 +369,8 @@ struct lyd_node_term;
  * in its new binary format specification according to its type. Following is the format for all types with explicit
  * support out-of-the-box (meaning that have a special type plugin). Any derived types inherit the format of its
  * closest type with explicit support (up to a built-in type).
+ *
+ * @subpage lybformat_ipv6_address
  */
 
 /**
@@ -1097,8 +1103,7 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
- * @param[in] val_str String form of the value of the node being created. In case of an instance-identifier or identityref
- * value, the JSON format is expected (module names instead of prefixes).
+ * @param[in] val_str String value of the node. If it varies based on the format, ::LY_VALUE_JSON is expected.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
  * taken into consideration. Otherwise, the output's data node is going to be created.
  * @param[out] node Optional created node.
@@ -1106,6 +1111,37 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
  */
 LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
         ly_bool output, struct lyd_node **node);
+
+/**
+ * @brief Create a new term node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] value Binary value of the node. To learn what exactly is expected see @ref howtoDataLYB.
+ * @param[in] value_len Length of @p value.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+        size_t value_len, ly_bool output, struct lyd_node **node);
+
+/**
+ * @brief Create a new term node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] val_str Canonical string value of the node. If it is not, it may lead to unexpected behavior.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_term_canon(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char *val_str, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new top-level term node defined in the given extension instance.
@@ -1259,15 +1295,20 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  * @{
  */
 
-#define LYD_NEW_PATH_UPDATE 0x01 /**< If the target node exists, is a leaf, and it is updated with a new value or its
-                                      default flag is changed, it is returned. If the target node exists and is not
-                                      a leaf or generally no change occurs in the @p parent tree, NULL is returned and
-                                      no error set. */
-#define LYD_NEW_PATH_OUTPUT 0x02 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only
-                                      output ones. */
-#define LYD_NEW_PATH_OPAQ   0x04 /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
-                                      in the path is not uniquely defined ((leaf-)list without a predicate) or has an
-                                      invalid value (leaf/leaf-list), it is created as opaque. */
+#define LYD_NEW_PATH_UPDATE 0x01    /**< If the target node exists, is a leaf, and it is updated with a new value or its
+                                        default flag is changed, it is returned. If the target node exists and is not
+                                        a leaf or generally no change occurs in the @p parent tree, NULL is returned and
+                                        no error set. */
+#define LYD_NEW_PATH_OUTPUT 0x02    /**< Changes the behavior to ignoring RPC/action input schema nodes and using only
+                                        output ones. */
+#define LYD_NEW_PATH_OPAQ   0x04    /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
+                                        in the path is not uniquely defined ((leaf-)list without a predicate) or has an
+                                        invalid value (leaf/leaf-list), it is created as opaque. */
+#define LYD_NEW_PATH_BIN_VALUE 0x08 /**< Interpret the provided leaf/leaf-list @p value as being in the binary
+                                        ::LY_VALUE_LYB format, to learn what exactly is expected see @ref howtoDataLYB. */
+#define LYD_NEW_PATH_CANON_VALUE 0x10   /**< Interpret the provided leaf/leaf-list @p value as being in the canonical
+                                            (or JSON if no defined) ::LY_VALUE_CANON format. If it is not, it may lead
+                                            to unexpected behavior. */
 
 /** @} pathoptions */
 
@@ -1289,7 +1330,8 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
+ * @param[in] value String value of the new leaf/leaf-list. If it varies based on the format, ::LY_VALUE_JSON is expected.
+ * For other node types, it should be NULL.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
  * @return LY_ERR value.
@@ -1307,8 +1349,10 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list (const char *) or anyxml/anydata (expected type depends on @p value_type).
- * For other node types, it is ignored.
+ * @param[in] value Value of the new leaf/leaf-list (const char *) in ::LY_VALUE_JSON format. If creating an
+ * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
+ * @param[in] value_len Length of @p value in bytes. May be 0 if @p value is a zero-terminated string. Ignored when
+ * creating anyxml/anydata nodes.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
@@ -1316,7 +1360,8 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node);
+        size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node);
 
 /**
  * @brief Create a new node defined in the given extension instance. In case of anyxml/anydata nodes, this function expects
@@ -1331,7 +1376,7 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ext Extension instance where the node being created is defined.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
+ * @param[in] value Value of the new leaf/leaf-list. For other node types, it should be NULL.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] node Optional first created node.
  * @return LY_ERR value.
@@ -1398,7 +1443,7 @@ LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *
         struct lyd_node **diff);
 
 /**
- * @brief Change the value of a term (leaf or leaf-list) node.
+ * @brief Change the value of a term (leaf or leaf-list) node to a string value.
  *
  * Node changed this way is always considered explicitly set, meaning its default flag
  * is always cleared.
@@ -1411,6 +1456,38 @@ LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
+
+/**
+ * @brief Change the value of a term (leaf or leaf-list) node to a binary value.
+ *
+ * Node changed this way is always considered explicitly set, meaning its default flag
+ * is always cleared.
+ *
+ * @param[in] term Term node to change.
+ * @param[in] value New value to set in binary format, see @ref howtoDataLYB.
+ * @param[in] value_len Length of @p value.
+ * @return LY_SUCCESS if value was changed,
+ * @return LY_EEXIST if value was the same and only the default flag was cleared,
+ * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ERR value on other errors.
+ */
+LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len);
+
+/**
+ * @brief Change the value of a term (leaf or leaf-list) node to a canonical string value.
+ *
+ * Node changed this way is always considered explicitly set, meaning its default flag
+ * is always cleared.
+ *
+ * @param[in] term Term node to change.
+ * @param[in] val_str New value to set in canonical (or JSON if no defined) format. If the value is not
+ * canonical, it may lead to unexpected behavior.
+ * @return LY_SUCCESS if value was changed,
+ * @return LY_EEXIST if value was the same and only the default flag was cleared,
+ * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ERR value on other errors.
+ */
+LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
 
 /**
  * @brief Change the value of a metadata instance.

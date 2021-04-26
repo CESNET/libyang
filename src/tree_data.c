@@ -160,14 +160,18 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
     struct ly_err_item *err = NULL;
     struct lysc_type *type;
     struct lyd_value val = {0};
-    ly_bool stored = 0;
+    ly_bool stored = 0, log = 1;
 
     LY_CHECK_ARG_RET(ctx, schema, value, LY_EINVAL);
 
+    if (!ctx) {
+        ctx = schema->module->ctx;
+        log = 0;
+    }
     type = ((struct lysc_node_leaf *)schema)->type;
 
     /* store */
-    rc = type->plugin->store(ctx ? ctx : schema->module->ctx, type, value, value_len, 0, LY_VALUE_JSON, NULL,
+    rc = type->plugin->store(ctx, type, value, value_len, 0, LY_VALUE_JSON, NULL,
             LYD_HINT_DATA, schema, &val, NULL, &err);
     if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
@@ -175,11 +179,11 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
 
     if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type->plugin->validate(ctx ? ctx : schema->module->ctx, type, ctx_node, ctx_node, &val, &err);
+        rc = type->plugin->validate(ctx, type, ctx_node, ctx_node, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {
-        if (ctx) {
+        if (log) {
             /* log error */
             if (err->path) {
                 LOG_LOCSET(NULL, NULL, err->path, NULL);
@@ -1046,14 +1050,28 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     return LY_SUCCESS;
 }
 
-API LY_ERR
-lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-        ly_bool output, struct lyd_node **node)
+/**
+ * @brief Create a new term node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node can be ::LYS_LEAF or ::LYS_LEAFLIST.
+ * @param[in] value Value of the node being created.
+ * @param[in] value_len Length of @p value.
+ * @param[in] format Format of @p value.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+_lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+        size_t value_len, LY_VALUE_FORMAT format, ly_bool output, struct lyd_node **node)
 {
     LY_ERR rc;
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
-    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
 
@@ -1064,7 +1082,7 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_TERM, output ? LYS_GETNEXT_OUTPUT : 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA, NULL, &ret);
+    rc = lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA, NULL, &ret);
     LY_CHECK_RET(rc);
     if (parent) {
         lyd_insert_node(parent, NULL, ret);
@@ -1074,6 +1092,27 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
         *node = ret;
     }
     return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
+        ly_bool output, struct lyd_node **node)
+{
+    return _lyd_new_term(parent, module, name, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_JSON, output, node);
+}
+
+API LY_ERR
+lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+        size_t value_len, ly_bool output, struct lyd_node **node)
+{
+    return _lyd_new_term(parent, module, name, value, value_len, LY_VALUE_LYB, output, node);
+}
+
+API LY_ERR
+lyd_new_term_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
+        ly_bool output, struct lyd_node **node)
+{
+    return _lyd_new_term(parent, module, name, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_CANON, output, node);
 }
 
 API LY_ERR
@@ -1157,86 +1196,6 @@ lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const voi
     *node = ret;
 
     return LY_SUCCESS;
-}
-
-/**
- * @brief Update node value.
- *
- * @param[in] node Node to update.
- * @param[in] value New value to set.
- * @param[in] value_type Type of @p value for any node.
- * @param[out] new_parent Set to @p node if the value was updated, otherwise set to NULL.
- * @param[out] new_node Set to @p node if the value was updated, otherwise set to NULL.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyd_new_path_update(struct lyd_node *node, const void *value, LYD_ANYDATA_VALUETYPE value_type,
-        struct lyd_node **new_parent, struct lyd_node **new_node)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *new_any;
-
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_NOTIF:
-    case LYS_RPC:
-    case LYS_ACTION:
-    case LYS_LIST:
-        /* if it exists, there is nothing to update */
-        *new_parent = NULL;
-        *new_node = NULL;
-        break;
-    case LYS_LEAFLIST:
-        if (!lysc_is_dup_inst_list(node->schema)) {
-            /* if it exists, there is nothing to update */
-            *new_parent = NULL;
-            *new_node = NULL;
-            break;
-        }
-    /* fallthrough */
-    case LYS_LEAF:
-        ret = lyd_change_term(node, value);
-        if ((ret == LY_SUCCESS) || (ret == LY_EEXIST)) {
-            /* there was an actual change (at least of the default flag) */
-            *new_parent = node;
-            *new_node = node;
-            ret = LY_SUCCESS;
-        } else if (ret == LY_ENOT) {
-            /* no change */
-            *new_parent = NULL;
-            *new_node = NULL;
-            ret = LY_SUCCESS;
-        } /* else error */
-        break;
-    case LYS_ANYDATA:
-    case LYS_ANYXML:
-        /* create a new any node */
-        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, 0, &new_any));
-
-        /* compare with the existing one */
-        if (lyd_compare_single(node, new_any, 0)) {
-            /* not equal, switch values (so that we can use generic node free) */
-            ((struct lyd_node_any *)new_any)->value = ((struct lyd_node_any *)node)->value;
-            ((struct lyd_node_any *)new_any)->value_type = ((struct lyd_node_any *)node)->value_type;
-            ((struct lyd_node_any *)node)->value.str = value;
-            ((struct lyd_node_any *)node)->value_type = value_type;
-
-            *new_parent = node;
-            *new_node = node;
-        } else {
-            /* they are equal */
-            *new_parent = NULL;
-            *new_node = NULL;
-        }
-        lyd_free_tree(new_any);
-        break;
-    default:
-        LOGINT(LYD_CTX(node));
-        ret = LY_EINT;
-        break;
-    }
-
-    return ret;
 }
 
 API LY_ERR
@@ -1450,8 +1409,23 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
     return LY_SUCCESS;
 }
 
-API LY_ERR
-lyd_change_term(struct lyd_node *term, const char *val_str)
+/**
+ * @brief Change the value of a term (leaf or leaf-list) node.
+ *
+ * Node changed this way is always considered explicitly set, meaning its default flag
+ * is always cleared.
+ *
+ * @param[in] term Term node to change.
+ * @param[in] value New value to set.
+ * @param[in] value_len Length of @p value.
+ * @param[in] format Format of @p value.
+ * @return LY_SUCCESS if value was changed,
+ * @return LY_EEXIST if value was the same and only the default flag was cleared,
+ * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ERR value on other errors.
+ */
+static LY_ERR
+_lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_VALUE_FORMAT format)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type *type;
@@ -1460,18 +1434,14 @@ lyd_change_term(struct lyd_node *term, const char *val_str)
     struct lyd_value val = {0};
     ly_bool dflt_change, val_change;
 
-    LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
+    assert(term && term->schema && (term->schema->nodetype & LYD_NODE_TERM));
 
-    if (!val_str) {
-        val_str = "";
-    }
     t = (struct lyd_node_term *)term;
     type = ((struct lysc_node_leaf *)term->schema)->type;
 
     /* parse the new value */
     LOG_LOCSET(term->schema, term, NULL, NULL);
-    ret = lyd_value_store(LYD_CTX(term), &val, type, val_str, strlen(val_str), NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
-            term->schema, NULL);
+    ret = lyd_value_store(LYD_CTX(term), &val, type, value, value_len, NULL, format, NULL, LYD_HINT_DATA, term->schema, NULL);
     LOG_LOCBACK(term->schema ? 1 : 0, 1, 0, 0);
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -1535,6 +1505,30 @@ cleanup:
 }
 
 API LY_ERR
+lyd_change_term(struct lyd_node *term, const char *val_str)
+{
+    LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
+
+    return _lyd_change_term(term, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_JSON);
+}
+
+API LY_ERR
+lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len)
+{
+    LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
+
+    return _lyd_change_term(term, value, value_len, LY_VALUE_LYB);
+}
+
+API LY_ERR
+lyd_change_term_canon(struct lyd_node *term, const char *val_str)
+{
+    LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
+
+    return _lyd_change_term(term, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_CANON);
+}
+
+API LY_ERR
 lyd_change_meta(struct lyd_meta *meta, const char *val_str)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1574,8 +1568,91 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Update node value.
+ *
+ * @param[in] node Node to update.
+ * @param[in] value New value to set.
+ * @param[in] value_len Length of @p value.
+ * @param[in] value_type Type of @p value for anydata/anyxml node.
+ * @param[in] format Format of @p value.
+ * @param[out] new_parent Set to @p node if the value was updated, otherwise set to NULL.
+ * @param[out] new_node Set to @p node if the value was updated, otherwise set to NULL.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const char *value, uint32_t options)
+lyd_new_path_update(struct lyd_node *node, const void *value, size_t value_len, LYD_ANYDATA_VALUETYPE value_type,
+        LY_VALUE_FORMAT format, struct lyd_node **new_parent, struct lyd_node **new_node)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_node *new_any;
+
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_LIST:
+        /* if it exists, there is nothing to update */
+        *new_parent = NULL;
+        *new_node = NULL;
+        break;
+    case LYS_LEAFLIST:
+        if (!lysc_is_dup_inst_list(node->schema)) {
+            /* if it exists, there is nothing to update */
+            *new_parent = NULL;
+            *new_node = NULL;
+            break;
+        }
+    /* fallthrough */
+    case LYS_LEAF:
+        ret = _lyd_change_term(node, value, value_len, format);
+        if ((ret == LY_SUCCESS) || (ret == LY_EEXIST)) {
+            /* there was an actual change (at least of the default flag) */
+            *new_parent = node;
+            *new_node = node;
+            ret = LY_SUCCESS;
+        } else if (ret == LY_ENOT) {
+            /* no change */
+            *new_parent = NULL;
+            *new_node = NULL;
+            ret = LY_SUCCESS;
+        } /* else error */
+        break;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        /* create a new any node */
+        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, 0, &new_any));
+
+        /* compare with the existing one */
+        if (lyd_compare_single(node, new_any, 0)) {
+            /* not equal, switch values (so that we can use generic node free) */
+            ((struct lyd_node_any *)new_any)->value = ((struct lyd_node_any *)node)->value;
+            ((struct lyd_node_any *)new_any)->value_type = ((struct lyd_node_any *)node)->value_type;
+            ((struct lyd_node_any *)node)->value.str = value;
+            ((struct lyd_node_any *)node)->value_type = value_type;
+
+            *new_parent = node;
+            *new_node = node;
+        } else {
+            /* they are equal */
+            *new_parent = NULL;
+            *new_node = NULL;
+        }
+        lyd_free_tree(new_any);
+        break;
+    default:
+        LOGINT(LYD_CTX(node));
+        ret = LY_EINT;
+        break;
+    }
+
+    return ret;
+}
+
+static LY_ERR
+lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const char *value, size_t value_len,
+        LY_VALUE_FORMAT format, uint32_t options)
 {
     LY_ERR r;
     struct ly_path_predicate *pred;
@@ -1610,13 +1687,9 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 return LY_EINVAL;
             } /* else creating an opaque list */
         } else if ((schema->nodetype == LYS_LEAFLIST) && (path[u].pred_type != LY_PATH_PREDTYPE_LEAFLIST)) {
-            if (!value) {
-                value = "";
-            }
-
             r = LY_SUCCESS;
             if (options & LYD_NEW_PATH_OPAQ) {
-                r = lyd_value_validate(NULL, schema, value, strlen(value), NULL, NULL, NULL);
+                r = lyd_value_validate(NULL, schema, value, value_len, NULL, NULL, NULL);
             }
             if (!r) {
                 /* store the new predicate so that it is used when searching for this instance */
@@ -1624,7 +1697,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 LY_ARRAY_NEW_RET(schema->module->ctx, path[u].predicates, pred, LY_EMEM);
 
                 LY_CHECK_RET(lyd_value_store(schema->module->ctx, &pred->value,
-                        ((struct lysc_node_leaflist *)schema)->type, value, strlen(value), NULL, LY_VALUE_JSON, NULL,
+                        ((struct lysc_node_leaflist *)schema)->type, value, value_len, NULL, format, NULL,
                         LYD_HINT_DATA, schema, NULL));
                 ++((struct lysc_type *)pred->value.realtype)->refcount;
             } /* else we have opaq flag and the value is not valid, leave no predicate and then create an opaque node */
@@ -1659,8 +1732,10 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
  * path or when the relative paths touches document root (top-level). In such cases the present extension instance replaces
  * searching for the appropriate module.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list (const char *) or anyxml/anydata (expected type depends on @p value_type).
- * For other node types, it is ignored.
+ * @param[in] value Value of the new leaf/leaf-list (const char *) in ::LY_VALUE_JSON format. If creating an
+ * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
+ * @param[in] value_len Length of @p value in bytes. May be 0 if @p value is a zero-terminated string. Ignored when
+ * creating anyxml/anydata nodes.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
@@ -1669,7 +1744,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
  */
 static LY_ERR
 lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, const char *path,
-        const void *value, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
+        const void *value, size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
         struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
@@ -1679,13 +1754,24 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     const struct lysc_node *schema;
     const struct lyd_value *val = NULL;
     LY_ARRAY_COUNT_TYPE path_idx = 0, orig_count = 0;
+    LY_VALUE_FORMAT format;
 
     assert(parent || ctx);
-    assert(path);
-    assert((path[0] == '/') || parent);
+    assert(path && ((path[0] == '/') || parent));
+    assert(!(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE));
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
+    }
+    if (value && !value_len) {
+        value_len = strlen(value);
+    }
+    if (options & LYD_NEW_PATH_BIN_VALUE) {
+        format = LY_VALUE_LYB;
+    } else if (options & LYD_NEW_PATH_CANON_VALUE) {
+        format = LY_VALUE_CANON;
+    } else {
+        format = LY_VALUE_JSON;
     }
 
     /* parse path */
@@ -1699,7 +1785,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
     /* check the compiled path before searching existing nodes, it may be shortened */
     orig_count = LY_ARRAY_COUNT(p);
-    LY_CHECK_GOTO(ret = lyd_new_path_check_find_lypath(p, path, value, options), cleanup);
+    LY_CHECK_GOTO(ret = lyd_new_path_check_find_lypath(p, path, value, value_len, format, options), cleanup);
 
     /* try to find any existing nodes in the path */
     if (parent) {
@@ -1716,7 +1802,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 }
 
                 /* update the existing node */
-                ret = lyd_new_path_update(node, value, value_type, &nparent, &nnode);
+                ret = lyd_new_path_update(node, value, value_len, value_type, format, &nparent, &nnode);
                 goto cleanup;
             } /* else we were not searching for the whole path */
         } else if (ret == LY_EINCOMPLETE) {
@@ -1771,13 +1857,13 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
                 r = LY_EVALID;
                 if (lysc_is_dup_inst_list(schema)) {
                     /* validate value */
-                    r = lyd_value_validate(NULL, schema, value ? value : "", value ? strlen(value) : 0, NULL, NULL, NULL);
+                    r = lyd_value_validate(NULL, schema, value ? value : "", value_len, NULL, NULL, NULL);
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf-list */
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value,
-                            value ? strlen(value) : 0, schema->module->name, strlen(schema->module->name), NULL, 0, NULL,
-                            LY_VALUE_JSON, NULL, LYD_NODEHINT_LEAFLIST, &node), cleanup);
+                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value, value_len,
+                            schema->module->name, strlen(schema->module->name), NULL, 0, NULL, format, NULL,
+                            LYD_NODEHINT_LEAFLIST, &node), cleanup);
                     break;
                 }
             }
@@ -1785,16 +1871,14 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             /* get value to set */
             if (p[path_idx].pred_type == LY_PATH_PREDTYPE_LEAFLIST) {
                 val = &p[path_idx].predicates[0].value;
-            } else if (!value) {
-                value = "";
             }
 
             /* create a leaf-list instance */
             if (val) {
                 LY_CHECK_GOTO(ret = lyd_create_term2(schema, &p[path_idx].predicates[0].value, &node), cleanup);
             } else {
-                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, strlen(value), NULL, LY_VALUE_JSON, NULL,
-                        LYD_HINT_DATA, NULL, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA,
+                        NULL, &node), cleanup);
             }
             break;
         case LYS_LEAF:
@@ -1808,24 +1892,19 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
 
             if (options & LYD_NEW_PATH_OPAQ) {
                 /* validate value */
-                r = lyd_value_validate(NULL, schema, value ? value : "", value ? strlen(value) : 0, NULL, NULL, NULL);
+                r = lyd_value_validate(NULL, schema, value ? value : "", value_len, NULL, NULL, NULL);
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
-                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value,
-                            value ? strlen(value) : 0, schema->module->name, strlen(schema->module->name), NULL, 0, NULL,
-                            LY_VALUE_JSON, NULL, 0, &node), cleanup);
+                    LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value, value_len,
+                            schema->module->name, strlen(schema->module->name), NULL, 0, NULL, format, NULL, 0, &node),
+                            cleanup);
                     break;
                 }
             }
 
-            /* get value to set */
-            if (!value) {
-                value = "";
-            }
-
             /* create a leaf instance */
-            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, strlen(value), NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
-                    NULL, &node), cleanup);
+            LY_CHECK_GOTO(ret = lyd_create_term(schema, value, value_len, NULL, format, NULL, LYD_HINT_DATA, NULL,
+                    &node), cleanup);
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
@@ -1879,16 +1958,20 @@ API LY_ERR
 lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, uint32_t options,
         struct lyd_node **node)
 {
-    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
-    return lyd_new_path_(parent, ctx, NULL, path, value, LYD_ANYDATA_STRING, options, node, NULL);
+    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
+            !(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE), LY_EINVAL);
+
+    return lyd_new_path_(parent, ctx, NULL, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
 
 API LY_ERR
 lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
+        size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node)
 {
-    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
-    return lyd_new_path_(parent, ctx, NULL, path, value, value_type, options, new_parent, new_node);
+    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
+            !(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE), LY_EINVAL);
+    return lyd_new_path_(parent, ctx, NULL, path, value, value_len, value_type, options, new_parent, new_node);
 }
 
 API LY_ERR
@@ -1897,8 +1980,9 @@ lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, c
 {
     const struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
 
-    LY_CHECK_ARG_RET(ctx, ext, path, (path[0] == '/') || parent, LY_EINVAL);
-    return lyd_new_path_(parent, ctx, ext, path, value, LYD_ANYDATA_STRING, options, node, NULL);
+    LY_CHECK_ARG_RET(ctx, ext, path, (path[0] == '/') || parent,
+            !(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE), LY_EINVAL);
+    return lyd_new_path_(parent, ctx, ext, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
 
 LY_ERR
@@ -2947,7 +3031,8 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
         }
         switch (opaq1->format) {
         case LY_VALUE_XML:
-            if (lyxml_value_compare(LYD_CTX(node1), opaq1->value, opaq1->val_prefix_data, LYD_CTX(node2), opaq2->value, opaq2->val_prefix_data)) {
+            if (lyxml_value_compare(LYD_CTX(node1), opaq1->value, opaq1->val_prefix_data, LYD_CTX(node2), opaq2->value,
+                    opaq2->val_prefix_data)) {
                 return LY_ENOT;
             }
             break;
