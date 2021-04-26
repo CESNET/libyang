@@ -923,10 +923,10 @@ LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
- * @brief Comparison callback checking the union value.
+ * @brief Comparison callback checking the xpath1.0 value.
  * Implementation of the ::lyplg_type_compare_clb.
  */
-LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2);
+LY_ERR lyplg_type_compare_xpath10(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
  * @brief Printer callback printing the xpath1.0 value.
