@@ -183,10 +183,8 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
         val->zone = NULL;
 
         /* get the IP terminated with zero */
-        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-            ((char *)value_str)[value_len] = '\0';
-            addr_no_zone = value_str;
-        } else if (value_str[value_len] != '\0') {
+        if (value_str[value_len] != '\0') {
+            assert(!(options & LYPLG_TYPE_STORE_DYNAMIC));
             addr_dyn = strndup(value_str, value_len);
             addr_no_zone = addr_dyn;
         } else {
@@ -221,7 +219,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
 cleanup:
     free(addr_dyn);
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
+        free((void *)value);
     }
 
     if (ret) {
