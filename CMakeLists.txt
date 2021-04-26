@@ -88,6 +88,26 @@ include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
 
+# type plugins are separate because they have their documentation generated
+set(type_plugins
+    src/plugins_types/binary.c
+    src/plugins_types/bits.c
+    src/plugins_types/boolean.c
+    src/plugins_types/decimal64.c
+    src/plugins_types/empty.c
+    src/plugins_types/enumeration.c
+    src/plugins_types/identityref.c
+    src/plugins_types/instanceid.c
+    src/plugins_types/integer.c
+    src/plugins_types/leafref.c
+    src/plugins_types/string.c
+    src/plugins_types/union.c
+    src/plugins_types/ip_address.c
+    src/plugins_types/ip_prefix.c
+    src/plugins_types/date_and_time.c
+    src/plugins_types/hex_string.c
+    src/plugins_types/xpath1.0.c)
+
 set(libsrc
     src/common.c
     src/log.c
@@ -127,30 +147,14 @@ set(libsrc
     src/printer_tree.c
     src/plugins.c
     src/plugins_types.c
-    src/plugins_types/binary.c
-    src/plugins_types/bits.c
-    src/plugins_types/boolean.c
-    src/plugins_types/decimal64.c
-    src/plugins_types/empty.c
-    src/plugins_types/enumeration.c
-    src/plugins_types/identityref.c
-    src/plugins_types/instanceid.c
-    src/plugins_types/integer.c
-    src/plugins_types/leafref.c
-    src/plugins_types/string.c
-    src/plugins_types/union.c
-    src/plugins_types/ip_address.c
-    src/plugins_types/ip_prefix.c
-    src/plugins_types/date_and_time.c
-    src/plugins_types/hex_string.c
-    src/plugins_types/xpath1.0.c
     src/plugins_exts.c
     src/plugins_exts/metadata.c
     src/plugins_exts/nacm.c
     src/plugins_exts/yangdata.c
     src/xml.c
     src/xpath.c
-    src/validation.c)
+    src/validation.c
+    ${type_plugins})
 
 set(headers
     src/libyang.h

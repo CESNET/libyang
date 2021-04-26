@@ -12,7 +12,7 @@ macro(LIBYANG_DOC)
         add_custom_target(doc
                 COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-        string(REPLACE ";" " " DOXY_HEADERS "${headers};${PROJECT_BINARY_DIR}/src/version.h")
+        string(REPLACE ";" " " DOXY_HEADERS "${headers};${PROJECT_BINARY_DIR}/src/version.h;${type_plugins}")
         configure_file(Doxyfile.in Doxyfile)
     endif()
 endmacro()
