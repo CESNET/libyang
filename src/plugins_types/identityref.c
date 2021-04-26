@@ -43,13 +43,13 @@ identityref_print(const struct lyd_value *value, LY_VALUE_FORMAT format, void *p
 }
 
 API LY_ERR
-lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
-    const char *id_name, *prefix = value;
+    const char *id_name, *prefix = value, *value_str = value;
     size_t id_len, prefix_len, str_len;
     char *str;
     const struct lys_module *mod = NULL;
@@ -63,13 +63,13 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
     /* locate prefix if any */
-    for (prefix_len = 0; (prefix_len < value_len) && (value[prefix_len] != ':'); ++prefix_len) {}
+    for (prefix_len = 0; (prefix_len < value_len) && (value_str[prefix_len] != ':'); ++prefix_len) {}
     if (prefix_len < value_len) {
-        id_name = &value[prefix_len + 1];
+        id_name = &value_str[prefix_len + 1];
         id_len = value_len - (prefix_len + 1);
     } else {
         prefix_len = 0;
-        id_name = value;
+        id_name = value_str;
         id_len = value_len;
     }
 
@@ -81,7 +81,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     mod = lyplg_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
+                "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value_str);
         goto cleanup;
     }
 
@@ -97,7 +97,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
         /* no match */
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - identity not found in module \"%s\".",
-                (int)value_len, value, mod->name);
+                (int)value_len, value_str, mod->name);
         goto cleanup;
     } else if (!mod->implemented) {
         /* non-implemented module */
@@ -107,7 +107,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                    (int)value_len, value, mod->name);
+                    (int)value_len, value_str, mod->name);
             goto cleanup;
         }
     }
@@ -133,11 +133,11 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
         if (u == 1) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity not derived from the base %s.",
-                    (int)value_len, value, str);
+                    (int)value_len, value_str, str);
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity not derived from all the bases %s.",
-                    (int)value_len, value, str);
+                    (int)value_len, value_str, str);
         }
         free(str);
         goto cleanup;
@@ -159,7 +159,7 @@ cleanup:
     return ret;
 }
 
-API const char *
+API const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {

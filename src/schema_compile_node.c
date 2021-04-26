@@ -2870,6 +2870,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 mod = cur_mod;
                 break;
             case LY_VALUE_JSON:
+            case LY_VALUE_LYB:
                 if (!ctx_node) {
                     LOGINT_RET(ctx->ctx);
                 }

@@ -282,7 +282,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in] ctx libyang context.
  * @param[in,out] val Storage for the value.
  * @param[in] type Type of the value.
- * @param[in] value String value to be parsed, must not be NULL.
+ * @param[in] value Value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] format Input format of @p value.
@@ -293,7 +293,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const char *value,
+LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
         size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, ly_bool *incomplete);
 
@@ -449,15 +449,15 @@ LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, cons
  * prefixes are simply added. This way it is possible to store prefix data for several strings together.
  *
  * @param[in] ctx libyang context.
- * @param[in] value Value string to be parsed.
- * @param[in] value_len Length of the @p value string.
+ * @param[in] value Value to be parsed.
+ * @param[in] value_len Length of the @p value.
  * @param[in] format Format of the prefixes in the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in,out] format_p Resulting format of the prefixes.
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 
 /**

@@ -55,7 +55,7 @@ static LY_ERR lyd_find_sibling_schema(const struct lyd_node *siblings, const str
         struct lyd_node **match);
 
 LY_ERR
-lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const char *value,
+lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
         size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, ly_bool *incomplete)
 {

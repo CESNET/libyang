@@ -120,7 +120,7 @@ ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t pref
 }
 
 const struct lys_module *
-ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format,
+ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_len, LY_VALUE_FORMAT format,
         const void *prefix_data)
 {
     const struct lys_module *mod = NULL;
@@ -139,6 +139,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_le
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
     }
@@ -160,6 +161,7 @@ lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx
             return ctx_node->module;
         case LY_VALUE_CANON:
         case LY_VALUE_JSON:
+        case LY_VALUE_LYB:
             /* use context node module (as specified) */
             return ctx_node->module;
         case LY_VALUE_XML:
@@ -254,6 +256,7 @@ ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         prefix = ly_json_get_prefix(mod, prefix_data);
         break;
     }
@@ -281,7 +284,7 @@ lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *
     return LY_ENOT;
 }
 
-API const char *
+API const void *
 lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
@@ -567,7 +570,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
 }
 
 API LY_ERR
-lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p)
 {
     LY_CHECK_ARG_RET(ctx, value, format_p, prefix_data_p, LY_EINVAL);
@@ -700,6 +703,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     case LY_VALUE_SCHEMA:
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_XML:
+    case LY_VALUE_LYB:
         prefix_opt = LY_PATH_PREFIX_MANDATORY;
         break;
     case LY_VALUE_JSON:

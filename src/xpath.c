@@ -5321,6 +5321,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_
             break;
         case LY_VALUE_CANON:
         case LY_VALUE_JSON:
+        case LY_VALUE_LYB:
             /* inherit parent (context node) module */
             if (ctx_scnode) {
                 mod = ctx_scnode->module;
@@ -5390,6 +5391,7 @@ moveto_node_check(const struct lyd_node *node, const struct lyd_node *ctx_node, 
             moveto_mod = set->cur_mod;
             break;
         case LY_VALUE_JSON:
+        case LY_VALUE_LYB:
             /* inherit module of the context node, if any */
             if (ctx_node) {
                 moveto_mod = ctx_node->schema->module;
@@ -5452,6 +5454,7 @@ moveto_scnode_check(const struct lysc_node *node, const struct lysc_node *ctx_sc
             moveto_mod = set->cur_mod;
             break;
         case LY_VALUE_JSON:
+        case LY_VALUE_LYB:
             /* inherit module of the context node, if any */
             if (ctx_scnode) {
                 moveto_mod = ctx_scnode->module;

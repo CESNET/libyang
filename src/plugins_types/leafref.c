@@ -31,7 +31,7 @@
 const struct lyplg_type_record plugins_leafref[];
 
 API LY_ERR
-lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -89,7 +89,7 @@ lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value 
     return val1->realtype->plugin->compare(val1, val2);
 }
 
-API const char *
+API const void *
 lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {

@@ -31,7 +31,7 @@
 #include "path.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
-API const char *
+API const void *
 lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
@@ -90,8 +90,9 @@ lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *va
                 }
             }
         }
+
         *dynamic = 1;
-    } else if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
+    } else if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
         /* generate canonical, only the first node or the node changing module is prefixed */
         if (!value->_canonical) {
             struct lys_module *mod = NULL;
@@ -164,7 +165,7 @@ lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *va
 }
 
 API LY_ERR
-lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {

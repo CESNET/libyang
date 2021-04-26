@@ -456,6 +456,7 @@ lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_VALUE_FORMAT format, void **p
         *prefix_data = set;
         break;
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         /* nothing stored */
         break;
     default:

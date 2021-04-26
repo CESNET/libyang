@@ -593,6 +593,7 @@ lyb_print_prefix_data(struct ly_out *out, LY_VALUE_FORMAT format, const void *pr
         }
         break;
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         /* nothing to print */
         break;
     default:
