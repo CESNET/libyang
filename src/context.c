@@ -389,21 +389,26 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
     struct ly_ctx *ctx_yl = NULL, *ctx_new = NULL;
+    ly_bool no_expl_compile = 0;
 
     /* create a seperate context in case it is LY_CTX_NO_YANGLIBRARY since it needs it for parsing */
     if (options & LY_CTX_NO_YANGLIBRARY) {
         LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, 0, &ctx_yl), cleanup);
         LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
     } else {
-        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_yl), cleanup);
-        ctx_new = ctx_yl;
+        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
     }
 
     /* parse yang library data tree */
-    LY_CHECK_GOTO(ret = parser_func(ctx_yl, input, format, 0, LYD_VALIDATE_PRESENT, &yltree), cleanup);
+    LY_CHECK_GOTO(ret = parser_func(ctx_yl ? ctx_yl : ctx_new, input, format, 0, LYD_VALIDATE_PRESENT, &yltree), cleanup);
+
+    /* redundant to compile modules one-by-one */
+    if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
+        ctx_new->flags |= LY_CTX_EXPLICIT_COMPILE;
+        no_expl_compile = 1;
+    }
 
     LY_CHECK_GOTO(ret = lyd_find_xpath(yltree, "/ietf-yang-library:yang-library/module-set[1]/module", &set), cleanup);
-
     if (set->count == 0) {
         /* perhaps a legacy data tree? */
         LY_CHECK_GOTO(ret = ly_ctx_new_yl_legacy(ctx_new, yltree), cleanup);
@@ -441,20 +446,31 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
             mod = ly_ctx_load_module(ctx_new, name, revision, feature_arr);
             free(feature_arr);
             if (!mod) {
-                LOGERR(NULL, LY_EINVAL, "Unable to load module specified by yang library data.");
+                LOGERR(NULL, LY_EINVAL, "Unable to load module %s@%s specified by yang library data.", name,
+                        revision ? revision : "<none>");
                 ret = LY_EINVAL;
                 goto cleanup;
             }
         }
     }
 
+    /* free data because their context may be recompiled */
+    lyd_free_all(yltree);
+    yltree = NULL;
+
+    /* compile */
+    LY_CHECK_GOTO(ret = ly_ctx_compile(ctx_new), cleanup);
+
+    if (no_expl_compile) {
+        /* unset flag */
+        ctx_new->flags &= ~LY_CTX_EXPLICIT_COMPILE;
+    }
+
 cleanup:
     lyd_free_all(yltree);
     ly_set_free(set, NULL);
     ly_set_erase(&features, NULL);
-    if (ctx_yl != ctx_new) {
-        ly_ctx_destroy(ctx_yl);
-    }
+    ly_ctx_destroy(ctx_yl);
     *ctx = ctx_new;
     if (ret) {
         ly_ctx_destroy(*ctx);

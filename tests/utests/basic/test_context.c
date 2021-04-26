@@ -658,23 +658,23 @@ test_ylmem(void **state)
 
     /* basic test with ietf-yang-library-only */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", yanglibrary_only, LYD_XML, 0, &ctx_test));
-    assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
+    assert_non_null(ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
     assert_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     ly_ctx_destroy(ctx_test);
 
     /* test loading module, should also import other module */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf, LYD_XML, 0, &ctx_test));
-    assert_int_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
+    assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     assert_int_equal(1, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01")->implemented);
-    assert_int_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
+    assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
     assert_int_equal(0, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14")->implemented);
     assert_int_equal(LY_ENOT, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
     ly_ctx_destroy(ctx_test);
 
     /* test loading module with feature if they are present */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, 0, &ctx_test));
-    assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
-    assert_ptr_not_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
+    assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
+    assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
     assert_int_equal(LY_SUCCESS, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
     ly_ctx_destroy(ctx_test);
 
