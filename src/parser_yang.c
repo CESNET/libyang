@@ -541,18 +541,19 @@ string_end:
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in] arg Type of YANG keyword argument expected.
- * @param[out] flags optional output argument to get flag of the argument's quoting (LYS_*QOUTED - see [schema node flags](@ref snodeflags))
+ * @param[out] flags optional output argument to get flag of the argument's quoting (LYS_*QUOTED - see
+ * [schema node flags](@ref snodeflags))
  * @param[out] word_p Pointer to the read string. Can return NULL if \p arg is #Y_MAYBE_STR_ARG.
  * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read string. If not needed,
  * set to NULL. Otherwise equal to \p word_p.
  * @param[out] word_len Length of the read string.
- *
  * @return LY_ERR values.
  */
 LY_ERR
 get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p,
         char **word_b, size_t *word_len)
 {
+    LY_ERR ret;
     size_t buf_len = 0;
     uint8_t prefix = 0;
 
@@ -571,25 +572,26 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
                 /* invalid - quotes cannot be in unquoted string and only optsep, ; or { can follow it */
                 LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, 1, ctx->in->current,
                         "unquoted string character, optsep, semicolon or opening brace");
-                return LY_EVALID;
+                ret = LY_EVALID;
+                goto error;
             }
             if (flags) {
                 (*flags) |= ctx->in->current[0] == '\'' ? LYS_SINGLEQUOTED : LYS_DOUBLEQUOTED;
             }
-            LY_CHECK_RET(read_qstring(ctx, arg, word_p, word_b, word_len, &buf_len));
+            LY_CHECK_GOTO(ret = read_qstring(ctx, arg, word_p, word_b, word_len, &buf_len), error);
             goto str_end;
         case '/':
             if (ctx->in->current[1] == '/') {
                 /* one-line comment */
                 MOVE_INPUT(ctx, 2);
-                LY_CHECK_RET(skip_comment(ctx, 1));
+                LY_CHECK_GOTO(ret = skip_comment(ctx, 1), error);
             } else if (ctx->in->current[1] == '*') {
                 /* block comment */
                 MOVE_INPUT(ctx, 2);
-                LY_CHECK_RET(skip_comment(ctx, 2));
+                LY_CHECK_GOTO(ret = skip_comment(ctx, 2), error);
             } else {
                 /* not a comment after all */
-                LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix));
+                LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
             }
             break;
         case ' ':
@@ -612,7 +614,8 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
         case '\r':
             if (ctx->in->current[1] != '\n') {
                 LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
-                return LY_EVALID;
+                ret = LY_EVALID;
+                goto error;
             }
             MOVE_INPUT(ctx, 1);
         /* fallthrough */
@@ -635,21 +638,24 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
             }
 
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, 1, ctx->in->current, "an argument");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto error;
         case '}':
             /* invalid - braces cannot be in unquoted string (opening braces terminates the string and can follow it) */
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, 1, ctx->in->current,
                     "unquoted string character, optsep, semicolon or opening brace");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto error;
         default:
-            LY_CHECK_RET(buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix));
+            LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
             break;
         }
     }
 
     /* unexpected end of loop */
     LOGVAL_PARSER(ctx, LY_VCODE_EOF);
-    return LY_EVALID;
+    ret = LY_EVALID;
+    goto error;
 
 str_end:
     /* terminating NULL byte for buf */
@@ -661,6 +667,11 @@ str_end:
     }
 
     return LY_SUCCESS;
+
+error:
+    free(*word_b);
+    *word_b = NULL;
+    return ret;
 }
 
 /**
