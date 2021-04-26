@@ -649,12 +649,6 @@ LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
-/**
- * @brief Comparison callback for built-in empty type.
- * Implementation of the ::lyplg_type_compare_clb.
- */
-LY_ERR lyplg_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2);
-
 /** @} pluginsTypesEmpty */
 
 /**

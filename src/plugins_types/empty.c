@@ -65,17 +65,6 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
-lyplg_type_compare_empty(const struct lyd_value *val1, const struct lyd_value *val2)
-{
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
-    /* empty has just one value, so empty data must be always the same */
-    return LY_SUCCESS;
-}
-
 /**
  * @brief Plugin information for empty type implementation.
  *
@@ -92,7 +81,7 @@ const struct lyplg_type_record plugins_empty[] = {
         .plugin.id = "libyang 2 - empty, version 1",
         .plugin.store = lyplg_type_store_empty,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_empty,
+        .plugin.compare = lyplg_type_compare_simple,
         .plugin.print = lyplg_type_print_simple,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
