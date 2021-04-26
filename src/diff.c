@@ -1435,8 +1435,8 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
                 sleaf = (struct lysc_node_leaf *)diff_match->schema;
             }
 
-            if (sleaf && sleaf->dflt &&
-                    !sleaf->dflt->realtype->plugin->compare(sleaf->dflt, &((struct lyd_node_term *)src_diff)->value)) {
+            if (sleaf && sleaf->dflt && !sleaf->dflt->realtype->plugin->compare(sleaf->dflt,
+                    &((struct lyd_node_term *)src_diff)->value)) {
                 /* we deleted it, so a default value was in-use, and it matches the created value -> operation NONE */
                 LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
             } else if (!lyd_compare_single(diff_match, src_diff, 0)) {

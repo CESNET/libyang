@@ -1042,7 +1042,8 @@ LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, 
  * key-less lists.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output, struct lyd_node **node, ...);
+LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...);
 
 /**
  * @brief Create a new top-level list node defined in the given extension instance.
