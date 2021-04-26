@@ -670,8 +670,8 @@ test_instanceid(void **state)
     CHECK_LYSC_NODE(leaf->value.target[0].node, NULL, 0, 0x85, 1, "list2", 1, LYS_LIST, 0, 0, NULL, 0);
     CHECK_LYSC_NODE(leaf->value.target[1].node, NULL, 0, 0x105, 1,  "id", 1, LYS_LEAF, 1, 0, NULL, 0);
     assert_non_null(leaf = lyd_target(leaf->value.target, tree));
-    assert_string_equal("a", leaf->value.canonical);
-    assert_string_equal("b", ((struct lyd_node_term *)leaf->next)->value.canonical);
+    assert_string_equal("a", lyd_get_value(&leaf->node));
+    assert_string_equal("b", lyd_get_value(leaf->next));
     lyd_free_all(tree);
 
     /* invalid value */

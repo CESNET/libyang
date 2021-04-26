@@ -426,12 +426,12 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
             struct lyd_node *node = (struct lyd_node *)set->objs[u];
             printf("  %s \"%s\"", lys_nodetype2str(node->schema->nodetype), node->schema->name);
             if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                printf(" (value: \"%s\")\n", ((struct lyd_node_term *)node)->value.canonical);
+                printf(" (value: \"%s\")\n", lyd_get_value(node));
             } else if (node->schema->nodetype == LYS_LIST) {
                 printf(" (");
                 for (struct lyd_node *key = ((struct lyd_node_inner *)node)->child; key && lysc_is_key(key->schema); key = key->next) {
                     printf("%s\"%s\": \"%s\";", (key != ((struct lyd_node_inner *)node)->child) ? " " : "",
-                            key->schema->name, ((struct lyd_node_term *)key)->value.canonical);
+                            key->schema->name, lyd_get_value(key));
                 }
                 printf(")\n");
             }

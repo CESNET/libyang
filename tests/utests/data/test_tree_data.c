@@ -383,8 +383,8 @@ test_target(void **state)
     const int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM | LYS_ORDBY_USER;
 
     CHECK_LYSC_NODE(term->schema, NULL, 0, flag, 1, "d", 0, LYS_LEAFLIST, 1, 0, NULL, 0);
-    assert_string_equal(LYD_CANON_VALUE(term), "b");
-    assert_string_equal(LYD_CANON_VALUE(term->prev), "b");
+    assert_string_equal(lyd_get_value(&term->node), "b");
+    assert_string_equal(lyd_get_value(term->prev), "b");
 
     lyd_free_all(tree);
     ly_path_free(UTEST_LYCTX, path);

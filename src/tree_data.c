@@ -104,7 +104,8 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
             LOGVAL(ctx, err->vecode, err->msg);
             ly_err_free(err);
         } else {
-            LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.", val->canonical);
+            LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.", type->plugin->print(ctx, val, LY_VALUE_CANON,
+                    NULL, NULL, NULL));
         }
         return ret;
     }
@@ -211,7 +212,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
 
         if (canonical) {
             /* return canonical value */
-            lydict_insert(ctx ? ctx : schema->module->ctx, val.canonical, 0, canonical);
+            lydict_insert(ctx, val.realtype->plugin->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), 0, canonical);
         }
     }
 
@@ -2986,7 +2987,7 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
             }
 
             /* different contexts */
-            if (strcmp(LYD_CANON_VALUE(node1), LYD_CANON_VALUE(node2))) {
+            if (strcmp(lyd_get_value(node1), lyd_get_value(node2))) {
                 return LY_ENOT;
             }
             return LY_SUCCESS;
@@ -3578,7 +3579,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
     char quot;
 
     for (key = lyd_child(node); key && (key->schema->flags & LYS_KEY); key = key->next) {
-        val = LYD_CANON_VALUE(key);
+        val = lyd_get_value(key);
         len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
         LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 
@@ -3609,7 +3610,7 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
     const char *val;
     char quot;
 
-    val = LYD_CANON_VALUE(node);
+    val = lyd_get_value(node);
     len = 4 + strlen(val) + 2; /* "[.='" + val + "']" */
     LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
 

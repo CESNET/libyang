@@ -47,13 +47,13 @@ lyd_hash(struct lyd_node *node)
 
             /* list hash is made up from its keys */
             for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
-                const char *value = LYD_CANON_VALUE(iter);
+                const char *value = lyd_get_value(iter);
                 node->hash = dict_hash_multi(node->hash, value, strlen(value));
             }
         }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
         /* leaf-list adds its value */
-        const char *value = LYD_CANON_VALUE(node);
+        const char *value = lyd_get_value(node);
         node->hash = dict_hash_multi(node->hash, value, strlen(value));
     }
 

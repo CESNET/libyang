@@ -256,6 +256,34 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
     }
 }
 
+API const char *
+lyd_get_value(const struct lyd_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        return ((struct lyd_node_opaq *)node)->value;
+    } else if (node->schema->nodetype & LYD_NODE_TERM) {
+        const struct lyd_value *val = &((struct lyd_node_term *)node)->value;
+        return val->canonical ? val->canonical :
+               val->realtype->plugin->print(LYD_CTX(node), val, LY_VALUE_CANON, NULL, NULL, NULL);
+    }
+    return NULL;
+}
+
+API const char *
+lyd_get_meta_value(const struct lyd_meta *meta)
+{
+    if (!meta) {
+        return NULL;
+    }
+
+    return meta->value.canonical ? meta->value.canonical :
+           meta->value.realtype->plugin->print(meta->annotation->module->ctx, &meta->value, LY_VALUE_CANON, NULL, NULL, NULL);
+}
+
 API LY_ERR
 lyd_any_value_str(const struct lyd_node *any, char **value_str)
 {

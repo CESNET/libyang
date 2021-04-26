@@ -212,21 +212,21 @@ test_path(void **state)
     assert_string_equal(root->schema->name, "c");
     assert_non_null(node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val", LYD_CANON_VALUE(node));
+    assert_string_equal("val", lyd_get_value(node));
 
     /* append another */
     ret = lyd_new_path2(root, NULL, "/a:c/x", "val2", 0, 0, &parent, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_ptr_equal(parent, node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val2", LYD_CANON_VALUE(node));
+    assert_string_equal("val2", lyd_get_value(node));
 
     /* and a last one */
     ret = lyd_new_path2(root, NULL, "x", "val3", 0, 0, &parent, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_ptr_equal(parent, node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val3", LYD_CANON_VALUE(node));
+    assert_string_equal("val3", lyd_get_value(node));
 
     lyd_free_tree(root);
 
@@ -258,7 +258,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val1", LYD_CANON_VALUE(node));
+    assert_string_equal("val1", lyd_get_value(node));
 
     ret = lyd_new_path2(root, NULL, "/a:c2/l3[1]", NULL, 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
@@ -316,7 +316,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(node->schema->name, "ll2");
-    assert_string_equal("val_first", LYD_CANON_VALUE(node));
+    assert_string_equal("val_first", lyd_get_value(node));
 
     ret = lyd_new_path2(root, NULL, "/a:ll2[1]", "", 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
@@ -366,19 +366,19 @@ test_path_ext(void **state)
     assert_string_equal(root->schema->name, "c");
     assert_non_null(node = lyd_child(root));
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("xxx", LYD_CANON_VALUE(node));
+    assert_string_equal("xxx", lyd_get_value(node));
 
     /* append y */
     ret = lyd_new_ext_path(root, &mod->compiled->exts[0], "/ext:c/y", "yyy", 0, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(node->schema->name, "y");
-    assert_string_equal("yyy", LYD_CANON_VALUE(node));
+    assert_string_equal("yyy", lyd_get_value(node));
 
     /* append z */
     ret = lyd_new_path(root, NULL, "ext:z", "zzz", 0, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(node->schema->name, "z");
-    assert_string_equal("zzz", LYD_CANON_VALUE(node));
+    assert_string_equal("zzz", lyd_get_value(node));
 
     lyd_free_tree(root);
 }
