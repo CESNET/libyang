@@ -800,12 +800,6 @@ lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_
 
     assert(!mod->implemented);
 
-    if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
-        /* do not compile the module yet */
-        mod->to_compile = 1;
-        return LY_SUCCESS;
-    }
-
     /* we have module from the current context */
     m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
     if (m) {
@@ -819,6 +813,12 @@ lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_
 
     /* enable features */
     LY_CHECK_RET(lys_enable_features(mod->parsed, features));
+
+    if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
+        /* do not compile the module yet */
+        mod->to_compile = 1;
+        return LY_SUCCESS;
+    }
 
     /* add the module into newly implemented module set */
     LY_CHECK_RET(ly_set_add(&unres->implementing, mod, 1, NULL));
