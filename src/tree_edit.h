@@ -58,7 +58,6 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] CTX libyang context for logging.
  * @param[in,out] ARRAY Pointer to the array to allocate/resize. The size of the allocated
  * space is counted from the type of the ARRAY, so do not provide placeholder void pointers.
- * @param[out] NEW_ITEM Returning pointer to the newly allocated record in the ARRAY.
  * @param[in] EACTION Action to perform in case of error (memory allocation failure).
  */
 #define LY_ARRAY_NEW(CTX, ARRAY, EACTION) \
