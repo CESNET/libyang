@@ -47,7 +47,7 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
         /* value_len is in bytes, but we need number of characters here */
         snprintf(buf, LY_NUMBER_MAXLEN, "%zu", char_count);
-        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err);
+        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, char_count, buf, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
