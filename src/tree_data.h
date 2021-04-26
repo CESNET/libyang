@@ -79,6 +79,7 @@ struct lyd_node_term;
  * - @subpage howtoDataWD
  * - @subpage howtoDataManipulation
  * - @subpage howtoDataPrinters
+ * - @subpage howtoDataLYB
  *
  * \note API for this group of functions is described in the [Data Instances module](@ref datatree).
  *
@@ -354,6 +355,16 @@ struct lyd_node_term;
  * - ::lyd_new_implicit_all()
  * - ::lyd_new_implicit_module()
  * - ::lyd_new_implicit_tree()
+ */
+
+/**
+ * @page howtoDataLYB LYB Binary Format
+ *
+ * LYB (LibYang Binary) is a proprietary libyang binary data and file format. Its primary purpose is efficient
+ * serialization (printing) and deserialization (parsing). With this goal in mind, every term node value is stored
+ * in its new binary format specification according to its type. Following is the format for all types with explicit
+ * support out-of-the-box (meaning that have a special type plugin). Any derived types inherit the format of its
+ * closest type with explicit support (up to a built-in type).
  */
 
 /**

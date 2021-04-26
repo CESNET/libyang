@@ -30,7 +30,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -42,7 +42,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
 
     *err = NULL;
 
-    if (!value || !value[0] || !value_len) {
+    if (!value || !((char *)value)[0] || !value_len) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL,  NULL, "Invalid empty decimal64 value.");
         goto cleanup;
     }

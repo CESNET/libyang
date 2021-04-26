@@ -787,6 +787,7 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
  *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
  *      LY_VALUE_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)
  *      LY_VALUE_JSON            - NULL
+ *      LY_VALUE_LYB             - NULL
  * @return Module prefix to print.
  * @return NULL on error.
  */
@@ -801,15 +802,17 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
  * @param[in] prefix Prefix to resolve.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of the prefix.
- * @param[in] prefix_data Format-specific data:
- *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
- *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON            - NULL
+ * @param[in] prefix_data Format-specific data based on @p format:
+ *      LY_VALUE_CANON           - NULL
+ *      LY_VALUE_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
+ *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
+ *      LY_VALUE_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_VALUE_JSON            - NULL
+ *      LY_VALUE_LYB             - NULL
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
-const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_len,
         LY_VALUE_FORMAT format, const void *prefix_data);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

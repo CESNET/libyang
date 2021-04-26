@@ -29,13 +29,14 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     size_t base64_start, base64_end, base64_count, base64_terminated, value_end;
+    const char *value_str = value;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
 
     LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
@@ -49,12 +50,12 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     /* validate characters and remember the number of octets for length validation */
     /* silently skip leading whitespaces */
     base64_start = 0;
-    while (base64_start < value_len && isspace(value[base64_start])) {
+    while (base64_start < value_len && isspace(value_str[base64_start])) {
         base64_start++;
     }
     /* silently skip trailing whitespace */
     value_end = value_len;
-    while (base64_start < value_end && isspace(value[value_end - 1])) {
+    while (base64_start < value_end && isspace(value_str[value_end - 1])) {
         value_end--;
     }
 
@@ -63,14 +64,14 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     base64_count = 0;
     while ((base64_end < value_len) &&
             /* check correct character in base64 */
-            ((('A' <= value[base64_end]) && (value[base64_end] <= 'Z')) ||
-            (('a' <= value[base64_end]) && (value[base64_end] <= 'z')) ||
-            (('0' <= value[base64_end]) && (value[base64_end] <= '9')) ||
-            ('+' == value[base64_end]) ||
-            ('/' == value[base64_end]) ||
-            ('\n' == value[base64_end]))) {
+            ((('A' <= value_str[base64_end]) && (value_str[base64_end] <= 'Z')) ||
+            (('a' <= value_str[base64_end]) && (value_str[base64_end] <= 'z')) ||
+            (('0' <= value_str[base64_end]) && (value_str[base64_end] <= '9')) ||
+            ('+' == value_str[base64_end]) ||
+            ('/' == value_str[base64_end]) ||
+            ('\n' == value_str[base64_end]))) {
 
-        if ('\n' != value[base64_end]) {
+        if ('\n' != value_str[base64_end]) {
             base64_count++;
         }
         base64_end++;
@@ -80,10 +81,10 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     base64_terminated = 0;
     while (((base64_end < value_len) && (base64_terminated < 2)) &&
             /* check padding on end of string */
-            (('=' == value[base64_end]) ||
-            ('\n' == value[base64_end]))) {
+            (('=' == value_str[base64_end]) ||
+            ('\n' == value_str[base64_end]))) {
 
-        if ('\n' != value[base64_end]) {
+        if ('\n' != value_str[base64_end]) {
             base64_terminated++;
         }
         base64_end++;
@@ -91,7 +92,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     /* check if value is valid base64 value */
     if (value_end != base64_end) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid Base64 character (%c).", value[base64_end]);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid Base64 character (%c).", value_str[base64_end]);
         goto cleanup;
     }
 
@@ -101,15 +102,15 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         goto cleanup;
     }
 
-    /* check if value meets the type requirments */
+    /* check if value meets the type requirements */
     if (type_bin->length) {
         const uint32_t value_length = ((base64_count + base64_terminated) / 4) * 3 - base64_terminated;
-        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value, err);
+        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value_str, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
     if (base64_count != 0) {
-        ret = lydict_insert(ctx, &value[base64_start], base64_end - base64_start, &storage->_canonical);
+        ret = lydict_insert(ctx, &value_str[base64_start], base64_end - base64_start, &storage->_canonical);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     } else {
         ret = lydict_insert(ctx, "", 0, &storage->_canonical);

@@ -30,7 +30,7 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 API LY_ERR
-lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -39,6 +39,7 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
     struct lysc_type_bitenum_item **bits_items = NULL;
     struct ly_set *items = NULL;
+    const char *value_str = value;
 
     uint32_t index_start;   /* start index of bit name */
     uint32_t index_end = 0; /* end index of bit name */
@@ -67,18 +68,18 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     while (index_end < value_len) {
         /* skip leading spaces */
         index_start = index_end;
-        while ((index_start < value_len) && isspace(value[index_start])) {
+        while ((index_start < value_len) && isspace(value_str[index_start])) {
             index_start++;
         }
 
         index_end = index_start;
         /* find end of word */
-        while ((index_end < value_len) && !isspace(value[index_end])) {
+        while ((index_end < value_len) && !isspace(value_str[index_end])) {
             index_end++;
         }
 
         /* check if name of bit is valid */
-        item = &value[index_start];
+        item = &value_str[index_start];
         item_len = index_end - index_start;
         if (item_len == 0) {
             /* loop read all bits names*/

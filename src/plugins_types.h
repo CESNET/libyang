@@ -268,15 +268,15 @@ const char *lyplg_type_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT 
  * prefixes are simply added. This way it is possible to store prefix data for several strings together.
  *
  * @param[in] ctx libyang context.
- * @param[in] value Value string to be parsed.
- * @param[in] value_len Length of the @p value string.
+ * @param[in] value Value to be parsed.
+ * @param[in] value_len Length of @p value.
  * @param[in] format Format of the prefixes in the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in,out] format_p Resulting format of the prefixes.
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 /**
  * @brief Duplicate prefix data.
@@ -378,7 +378,7 @@ void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
  * @return LY_EINCOMPLETE in case the ::lyplg_type_validate_clb should be called to finish value validation in data,
  * @return LY_ERR value on error.
  */
-typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value,
+typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
         size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -435,7 +435,7 @@ typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const str
  * can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const struct lyd_value *value,
+typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const struct lyd_value *value,
         LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
@@ -511,7 +511,7 @@ LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_
  * @brief Generic simple printer callback of the canonized value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
@@ -533,14 +533,14 @@ void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement binary built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement binary built-in type.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in binary type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -551,14 +551,14 @@ LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type 
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement bits built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement bits built-in type.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in bits type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -581,14 +581,14 @@ void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value);
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement boolean built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement boolean built-in type.
  */
 
 /**
  * @brief Validate and store value of the YANG built-in boolean type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -599,14 +599,14 @@ LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement decimal64 built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement decimal64 built-in type.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in decimal64 types.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -617,14 +617,14 @@ LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_ty
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement empty built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement empty built-in type.
  */
 
 /**
  * @brief Validate and store value of the YANG built-in empty type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -641,14 +641,14 @@ LY_ERR lyplg_type_compare_empty(const struct lyd_value *val1, const struct lyd_v
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement enumeration built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement enumeration built-in type.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in enumeration type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -659,14 +659,14 @@ LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *t
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement identityref built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement identityref built-in type.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in identiytref type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -680,8 +680,8 @@ LY_ERR lyplg_type_compare_identityref(const struct lyd_value *val1, const struct
  * @brief Printer callback printing identityref value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic, size_t *value_len);
+const void *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesIdentityref */
 
@@ -690,14 +690,14 @@ const char *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct 
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement instance-identifier built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement instance-identifier built-in type.
  */
 
 /**
  * @brief Validate and store value of the YANG built-in instance-identifier type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -711,8 +711,8 @@ LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct 
  * @brief Printer callback printing the instance-identifier value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic, size_t *value_len);
+const void *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the instance-identifier values.
@@ -740,14 +740,14 @@ void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *valu
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement integer built-in types.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement integer built-in types.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in signed integer types.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -755,7 +755,7 @@ LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *ty
  * @brief Validate and canonize value of the YANG built-in unsigned integer types.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -766,14 +766,14 @@ LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *t
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement leafref built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement leafref built-in type.
  */
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in leafref type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -787,8 +787,8 @@ LY_ERR lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd
  * @brief Printer callback printing the leafref value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic, size_t *value_len);
+const void *lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the leafref values.
@@ -816,14 +816,14 @@ void lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value);
  * @ingroup pluginsTypes
  * @{
  *
- * Callbacs used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement string built-in type.
+ * Callbacks used (besides the [simple callbacks](@ref pluginsTypesSimple)) to implement string built-in type.
  */
 
 /**
  * @brief Validate and store value of the YANG built-in string type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -841,7 +841,7 @@ LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type 
  * @brief Validate, canonize and store value of the YANG built-in union type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -855,8 +855,8 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  * @brief Printer callback printing the union value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data,
-        ly_bool *dynamic, size_t *value_len);
+const void *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Duplication callback of the union values.
@@ -891,7 +891,7 @@ void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
  * @brief Validate, canonize and store value of the ietf-yang-types xpath1.0 type.
  * Implementation of the ::lyplg_type_store_clb.
  */
-LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
+LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
@@ -905,7 +905,7 @@ LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_v
  * @brief Printer callback printing the xpath1.0 value.
  * Implementation of the ::lyplg_type_print_clb.
  */
-const char *lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+const void *lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**

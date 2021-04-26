@@ -453,7 +453,8 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             break;
         case LY_VALUE_CANON:
         case LY_VALUE_XML:
-            /* not really defined */
+        case LY_VALUE_LYB:
+            /* not really defined or accepted */
             LOGINT_RET(ctx);
         }
     }

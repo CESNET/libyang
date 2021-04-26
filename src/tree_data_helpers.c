@@ -451,6 +451,7 @@ ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
     case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA:
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         break;
     }
 }
@@ -508,6 +509,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void 
         break;
     case LY_VALUE_CANON:
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         assert(!prefix_data);
         *prefix_data_p = NULL;
         break;
@@ -522,7 +524,7 @@ cleanup:
 }
 
 LY_ERR
-ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_VALUE_FORMAT format,
+ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
         const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -612,6 +614,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_l
     case LY_VALUE_CANON:
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
         if (!*prefix_data_p) {
             /* new prefix data - simply copy all the prefix data */
             *format_p = format;
@@ -642,6 +645,8 @@ ly_format2str(LY_VALUE_FORMAT format)
         return "XML prefixes";
     case LY_VALUE_JSON:
         return "JSON module names";
+    case LY_VALUE_LYB:
+        return "LYB prefixes";
     default:
         break;
     }
