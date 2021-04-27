@@ -68,7 +68,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
 
     /* range of the number */
     if (type_num->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, str, err);
+        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, str, strlen(str), err);
         LY_CHECK_ERR_GOTO(ret != LY_SUCCESS, free(str), cleanup);
     }
 
@@ -141,7 +141,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
     /* range of the number */
     if (type_num->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, str, err);
+        ret = lyplg_type_validate_range(type->basetype, type_num->range, num, str, strlen(str), err);
         LY_CHECK_ERR_GOTO(ret != LY_SUCCESS, free(str), cleanup);
     }
 

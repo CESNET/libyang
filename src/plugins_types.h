@@ -1014,11 +1014,12 @@ LY_ERR lyplg_type_identity_isderived(struct lysc_ident *base, struct lysc_ident 
  * @param[in] range Range (length) restriction information.
  * @param[in] value Value to check. In case of basetypes using unsigned integer values, the value is actually cast to uint64_t.
  * @param[in] strval String representation of the @p value for error logging.
+ * @param[in] strval_len Length of @p strval.
  * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
 LY_ERR lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-        struct ly_err_item **err);
+        size_t strval_len, struct ly_err_item **err);
 
 /**
  * @brief Data type validator for pattern-restricted string values.
