@@ -30,7 +30,8 @@
 #include "compat.h"
 
 /**
- * @page lybformat_ipv6_address ietf-inet-types LYB ipv6-address(-no-zone)
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesIPv6Address ietf-inet-types LYB ipv6-address(-no-zone)
  *
  * | Size (B) | Mandatory | Meaning |
  * | :------  | :-------: | :-----: |
