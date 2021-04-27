@@ -257,31 +257,12 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
 }
 
 API const char *
-lyd_get_value(const struct lyd_node *node)
+lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
 {
-    if (!node) {
-        return NULL;
-    }
-
-    if (!node->schema) {
-        return ((struct lyd_node_opaq *)node)->value;
-    } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        const struct lyd_value *val = &((struct lyd_node_term *)node)->value;
-        return val->_canonical ? val->_canonical :
-               val->realtype->plugin->print(LYD_CTX(node), val, LY_VALUE_CANON, NULL, NULL, NULL);
-    }
-    return NULL;
-}
-
-API const char *
-lyd_get_meta_value(const struct lyd_meta *meta)
-{
-    if (!meta) {
-        return NULL;
-    }
-
-    return meta->value._canonical ? meta->value._canonical :
-           meta->value.realtype->plugin->print(meta->annotation->module->ctx, &meta->value, LY_VALUE_CANON, NULL, NULL, NULL);
+    return value->_canonical
+               ? value->_canonical
+               : (const char *)value->realtype->plugin->print(
+                     ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
 }
 
 API LY_ERR
