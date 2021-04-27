@@ -17,6 +17,7 @@ set(format_sources
 ly_add_utest(NAME int8   SOURCES types/int8.c)
 ly_add_utest(NAME string SOURCES types/string.c)
 ly_add_utest(NAME bits   SOURCES types/bits.c)
+ly_add_utest(NAME binary SOURCES types/binary.c)
 ly_add_utest(NAME inet_types   SOURCES types/inet_types.c)
 ly_add_utest(NAME yang_types   SOURCES types/yang_types.c)
 

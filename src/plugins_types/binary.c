@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
-
 #include "plugins_types.h"
 
 #include <ctype.h>
@@ -28,102 +26,374 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesBinary binary (built-in)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | binary value size | yes | `void *` | value in binary |
+ */
+
+/**
+ * @brief base64 encode table
+ */
+static const char b64_etable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/**
+ * @brief Encode binary value into a base64 string value.
+ *
+ * Reference https://tools.ietf.org/html/rfc4648#section-4
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] data Binary data value.
+ * @param[in] size Size of @p data.
+ * @param[out] str Encoded base64 string.
+ * @param[out] str_len Length of returned @p str.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+binary_base64_encode(const struct ly_ctx *ctx, const char *data, size_t size, char **str, size_t *str_len)
+{
+    uint32_t i;
+    char *ptr;
+
+    *str_len = (size + 2) / 3 * 4;
+    *str = malloc(*str_len + 1);
+    LY_CHECK_ERR_RET(!*str, LOGMEM(ctx), LY_EMEM);
+
+    ptr = *str;
+    for (i = 0; i < size - 2; i += 3) {
+        *ptr++ = b64_etable[(data[i] >> 2) & 0x3F];
+        *ptr++ = b64_etable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
+        *ptr++ = b64_etable[((data[i + 1] & 0xF) << 2) | ((int)(data[i + 2] & 0xC0) >> 6)];
+        *ptr++ = b64_etable[data[i + 2] & 0x3F];
+    }
+    if (i < size) {
+        *ptr++ = b64_etable[(data[i] >> 2) & 0x3F];
+        if (i == (size - 1)) {
+            *ptr++ = b64_etable[((data[i] & 0x3) << 4)];
+            *ptr++ = '=';
+        } else {
+            *ptr++ = b64_etable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
+            *ptr++ = b64_etable[((data[i + 1] & 0xF) << 2)];
+        }
+        *ptr++ = '=';
+    }
+    *ptr = '\0';
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief base64 decode table
+ */
+static const int b64_dtable[256] = {
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 62, 63, 62, 62, 63, 52, 53, 54, 55,
+    56, 57, 58, 59, 60, 61,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,
+    7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  0,
+    0,  0,  0, 63,  0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+};
+
+/**
+ * @brief Decode the binary value from a base64 string value.
+ *
+ * Reference https://tools.ietf.org/html/rfc4648#section-4
+ *
+ * @param[in] value Base64-encoded string value.
+ * @param[in] value_len Length of @p value.
+ * @param[out] data Decoded binary value.
+ * @param[out] size Size of @p data.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+binary_base64_decode(const char *value, size_t value_len, void **data, size_t *size)
+{
+    unsigned char *ptr = (unsigned char *)value;
+    uint32_t pad_chars, octet_count;
+    char *str;
+
+    if (!value_len || (ptr[value_len - 1] != '=')) {
+        pad_chars = 0;
+    } else if (ptr[value_len - 2] == '=') {
+        pad_chars = 1;
+    } else {
+        pad_chars = 2;
+    }
+
+    octet_count = ((value_len + 3) / 4 - (pad_chars ? 1 : 0)) * 4;
+    *size = octet_count / 4 * 3 + pad_chars;
+
+    str = malloc(*size + 1);
+    LY_CHECK_RET(!str, LY_EMEM);
+    str[*size] = '\0';
+
+    for (uint32_t i = 0, j = 0; i < octet_count; i += 4) {
+        int n = b64_dtable[ptr[i]] << 18 | b64_dtable[ptr[i + 1]] << 12 | b64_dtable[ptr[i + 2]] << 6 | b64_dtable[ptr[i + 3]];
+        str[j++] = n >> 16;
+        str[j++] = n >> 8 & 0xFF;
+        str[j++] = n & 0xFF;
+    }
+    if (pad_chars) {
+        int n = b64_dtable[ptr[octet_count]] << 18 | b64_dtable[ptr[octet_count + 1]] << 12;
+        str[*size - pad_chars] = n >> 16;
+
+        if (pad_chars == 2) {
+            n |= b64_dtable[ptr[octet_count + 2]] << 6;
+            n >>= 8 & 0xFF;
+            str[*size - pad_chars + 1] = n;
+        }
+    }
+
+    *data = str;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Validate a base64 string.
+ *
+ * @param[in] value Value to validate.
+ * @param[in] value_len Length of @p value.
+ * @param[in] type type of the value.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+binary_base64_validate(const char *value, size_t value_len, const struct lysc_type_bin *type, struct ly_err_item **err)
+{
+    uint32_t idx, pad;
+
+    /* check correct characters in base64 */
+    idx = 0;
+    while ((idx < value_len) &&
+            ((('A' <= value[idx]) && (value[idx] <= 'Z')) ||
+            (('a' <= value[idx]) && (value[idx] <= 'z')) ||
+            (('0' <= value[idx]) && (value[idx] <= '9')) ||
+            ('+' == value[idx]) || ('/' == value[idx]))) {
+        idx++;
+    }
+
+    /* find end of padding */
+    pad = 0;
+    while ((idx + pad < value_len) && (pad < 2) && (value[idx + pad] == '=')) {
+        pad++;
+    }
+
+    /* check if value is valid base64 value */
+    if (value_len != idx + pad) {
+        if (isprint(value[idx + pad])) {
+            return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid Base64 character '%c'.", value[idx + pad]);
+        } else {
+            return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid Base64 character 0x%x.", value[idx + pad]);
+        }
+    }
+
+    if (value_len & 3) {
+        /* base64 length must be multiple of 4 chars */
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Base64 encoded value length must be divisible by 4.");
+    }
+
+    /* length restriction of the binary value */
+    if (type->length) {
+        const uint32_t octet_count = ((idx + pad) / 4) * 3 - pad;
+        LY_CHECK_RET(lyplg_type_validate_range(LY_TYPE_BINARY, type->length, octet_count, value, value_len, err));
+    }
+
+    return LY_SUCCESS;
+}
+
 API LY_ERR
 lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
+        uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    size_t base64_start, base64_end, base64_count, base64_terminated, value_end;
-    const char *value_str = value;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
+    struct lyd_value_binary *val;
 
-    LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
 
-    *err = NULL;
+    if (format == LY_VALUE_LYB) {
+        /* allocate the value */
+        val = malloc(sizeof *val);
+        LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+
+        /* init storage */
+        storage->_canonical = NULL;
+        storage->bin = val;
+        storage->realtype = type;
+
+        /* store value */
+        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+            val->data = (void *)value;
+            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        } else {
+            val->data = malloc(value_len);
+            LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
+            memcpy(val->data, value, value_len);
+        }
+
+        /* store size */
+        val->size = value_len;
+
+        /* success */
+        goto cleanup;
+    }
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    LY_CHECK_GOTO(ret, cleanup);
 
-    /* validate characters and remember the number of octets for length validation */
-    /* silently skip leading whitespaces */
-    base64_start = 0;
-    while (base64_start < value_len && isspace(value_str[base64_start])) {
-        base64_start++;
-    }
-    /* silently skip trailing whitespace */
-    value_end = value_len;
-    while (base64_start < value_end && isspace(value_str[value_end - 1])) {
-        value_end--;
+    /* validate */
+    if (format != LY_VALUE_CANON) {
+        ret = binary_base64_validate(value, value_len, type_bin, err);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* find end of base64 value */
-    base64_end = base64_start;
-    base64_count = 0;
-    while ((base64_end < value_len) &&
-            /* check correct character in base64 */
-            ((('A' <= value_str[base64_end]) && (value_str[base64_end] <= 'Z')) ||
-            (('a' <= value_str[base64_end]) && (value_str[base64_end] <= 'z')) ||
-            (('0' <= value_str[base64_end]) && (value_str[base64_end] <= '9')) ||
-            ('+' == value_str[base64_end]) ||
-            ('/' == value_str[base64_end]) ||
-            ('\n' == value_str[base64_end]))) {
+    /* allocate the value */
+    val = malloc(sizeof *val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
-        if ('\n' != value_str[base64_end]) {
-            base64_count++;
-        }
-        base64_end++;
-    }
-
-    /* find end of padding */
-    base64_terminated = 0;
-    while (((base64_end < value_len) && (base64_terminated < 2)) &&
-            /* check padding on end of string */
-            (('=' == value_str[base64_end]) ||
-            ('\n' == value_str[base64_end]))) {
-
-        if ('\n' != value_str[base64_end]) {
-            base64_terminated++;
-        }
-        base64_end++;
-    }
-
-    /* check if value is valid base64 value */
-    if (value_end != base64_end) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid Base64 character (%c).", value_str[base64_end]);
-        goto cleanup;
-    }
-
-    if ((base64_count + base64_terminated) & 3) {
-        /* base64 length must be multiple of 4 chars */
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Base64 encoded value length must be divisible by 4.");
-        goto cleanup;
-    }
-
-    /* check if value meets the type requirements */
-    if (type_bin->length) {
-        const uint32_t value_length = ((base64_count + base64_terminated) / 4) * 3 - base64_terminated;
-        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value_str, value_len, err);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-
-    if (base64_count != 0) {
-        ret = lydict_insert(ctx, &value_str[base64_start], base64_end - base64_start, &storage->_canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    } else {
-        ret = lydict_insert(ctx, "", 0, &storage->_canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
-    storage->ptr = NULL;
+    /* init storage */
+    storage->_canonical = NULL;
+    storage->bin = val;
     storage->realtype = type;
+
+    /* get the binary value */
+    ret = binary_base64_decode(value, value_len, &val->data, &val->size);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* store canonical value, it always is */
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
 
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
+        free((void *)value);
+    }
+
+    if (ret) {
+        lyplg_type_free_binary(ctx, storage);
     }
     return ret;
+}
+
+API LY_ERR
+lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    struct lyd_value_binary *v1 = val1->bin, *v2 = val2->bin;
+
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    if ((v1->size != v2->size) || memcmp(v1->data, v2->data, v1->size)) {
+        return LY_ENOT;
+    }
+    return LY_SUCCESS;
+}
+
+API const void *
+lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+{
+    struct lyd_value_binary *val = value->bin;
+    char *ret;
+    size_t ret_len = 0;
+
+    if (format == LY_VALUE_LYB) {
+        *dynamic = 0;
+        if (value_len) {
+            *value_len = val->size;
+        }
+        return val->data;
+    }
+
+    /* generate canonical value if not already */
+    if (!value->_canonical) {
+        /* get the base64 string value */
+        if (binary_base64_encode(ctx, val->data, val->size, &ret, &ret_len)) {
+            return NULL;
+        }
+
+        /* store it */
+        if (lydict_insert_zc(ctx, ret, (const char **)&value->_canonical)) {
+            LOGMEM(ctx);
+            return NULL;
+        }
+    }
+
+    /* use the cached canonical value */
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = ret_len ? ret_len : strlen(value->_canonical);
+    }
+    return value->_canonical;
+}
+
+API const void *
+lyplg_type_hash_binary(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
+{
+    struct lyd_value_binary *val = value->bin;
+
+    /* return the value itself */
+    *dynamic = 0;
+    *key_len = val->size;
+    return val->data;
+}
+
+API LY_ERR
+lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    LY_ERR ret;
+    struct lyd_value_binary *orig_val = original->bin, *dup_val;
+
+    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
+    LY_CHECK_RET(ret);
+
+    dup_val = malloc(sizeof *dup_val);
+    if (!dup_val) {
+        lydict_remove(ctx, dup->_canonical);
+        return LY_EMEM;
+    }
+
+    dup_val->data = malloc(orig_val->size);
+    if (!dup_val->data) {
+        lydict_remove(ctx, dup->_canonical);
+        free(dup_val);
+        return LY_EMEM;
+    }
+    memcpy(dup_val->data, orig_val->data, orig_val->size);
+    dup_val->size = orig_val->size;
+
+    dup->bin = dup_val;
+    dup->realtype = original->realtype;
+    return LY_SUCCESS;
+}
+
+API void
+lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value)
+{
+    struct lyd_value_binary *val = value->bin;
+
+    lydict_remove(ctx, value->_canonical);
+    if (val) {
+        free(val->data);
+        free(val);
+    }
 }
 
 /**
@@ -142,11 +412,11 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.id = "libyang 2 - binary, version 1",
         .plugin.store = lyplg_type_store_binary,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
-        .plugin.hash = lyplg_type_hash_simple,
-        .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple,
+        .plugin.compare = lyplg_type_compare_binary,
+        .plugin.print = lyplg_type_print_binary,
+        .plugin.hash = lyplg_type_hash_binary,
+        .plugin.duplicate = lyplg_type_dup_binary,
+        .plugin.free = lyplg_type_free_binary,
     },
     {0}
 };

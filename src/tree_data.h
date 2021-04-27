@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -539,6 +539,7 @@ struct lyd_value {
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
         struct lyd_value_subvalue *subvalue; /** Union value with some metadata. */
+        struct lyd_value_binary *bin; /** Binary value */
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the ::lyd_value.realtype
              plugin's callbacks to work with the data.*/
@@ -555,10 +556,9 @@ struct lyd_value {
 /**
  * @brief Special lyd_value structure for union.
  *
- * Represents data with multiple types (union). Original value is stored in the main lyd_value:canonical_cache while
- * the ::lyd_value_subvalue.value contains representation according to one of the union's types.
- * The ::lyd_value_subvalue.prefix_data provides (possible) mappings from prefixes in the original value to YANG modules.
- * These prefixes are necessary to parse original value to the union's subtypes.
+ * Represents data with multiple types (union). The ::lyd_value_subvalue.value contains representation according to
+ * one of the union's types. The ::lyd_value_subvalue.prefix_data provides (possible) mappings from prefixes in
+ * the original value to YANG modules. These prefixes are necessary to parse original value to the union's subtypes.
  */
 struct lyd_value_subvalue {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
@@ -570,6 +570,16 @@ struct lyd_value_subvalue {
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
+};
+
+/**
+ * @brief Special lyd_value structure for binary.
+ *
+ * Represents an arbitrary binary value.
+ */
+struct lyd_value_binary {
+    void *data;     /**< binary value itself */
+    size_t size;    /**< size of the @p data value */
 };
 
 /**
