@@ -1851,7 +1851,7 @@ struct lysc_node_leaf {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lyd_value *dflt;          /**< default value */
+    struct lyd_value *dflt;          /**< default value, use ::lyd_value_get_canonical() to get the canonical string */
 };
 
 struct lysc_node_leaflist {
@@ -1881,7 +1881,8 @@ struct lysc_node_leaflist {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lyd_value **dflts;        /**< list ([sized array](@ref sizedarrays)) of default values */
+    struct lyd_value **dflts;        /**< list ([sized array](@ref sizedarrays)) of default values, use
+                                        ::lyd_value_get_canonical() to get the canonical strings */
 
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */

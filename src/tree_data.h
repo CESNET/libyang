@@ -980,8 +980,10 @@ int lyd_lyb_data_length(const char *data);
 /**
  * @brief Get the (canonical) value of a lyd_value.
  *
+ * Whenever possible, ::lyd_get_value() or ::lyd_get_meta_value() should be used instead.
+ *
  * @param[in] ctx Context for the value
- * @param[in] value value node to use.
+ * @param[in] value Value structure to use.
  * @return Canonical value.
  */
 const char *lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value);
@@ -1003,10 +1005,9 @@ lyd_get_value(const struct lyd_node *node)
         return ((struct lyd_node_opaq *)node)->value;
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         const struct lyd_value *value = &((struct lyd_node_term *)node)->value;
-        return value->_canonical
-            ? value->_canonical
-            : lyd_value_get_canonical(LYD_CTX(node), value);
+        return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
     }
+
     return NULL;
 }
 
@@ -1021,10 +1022,9 @@ lyd_get_meta_value(const struct lyd_meta *meta)
 {
     if (meta) {
         const struct lyd_value *value = &meta->value;
-        return value->_canonical
-            ? value->_canonical
-            : lyd_value_get_canonical(meta->annotation->module->ctx, value);
+        return value->_canonical ? value->_canonical : lyd_value_get_canonical(meta->annotation->module->ctx, value);
     }
+
     return NULL;
 }
 
