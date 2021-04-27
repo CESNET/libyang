@@ -917,6 +917,7 @@ parse_ext(struct lys_yang_parser_ctx *ctx, const char *ext_name, size_t ext_name
 
     /* store the rest of information */
     e->format = LY_VALUE_SCHEMA;
+    e->parsed = NULL;
     e->prefix_data = ctx->parsed_mod;
     e->parent_stmt = insubstmt;
     e->parent_stmt_index = insubstmt_index;

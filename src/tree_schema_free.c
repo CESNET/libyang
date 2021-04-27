@@ -52,10 +52,14 @@ void
 lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
+    struct lysp_node *node, *next_node;
 
     lydict_remove(ctx, ext->name);
     lydict_remove(ctx, ext->argument);
     ly_free_prefix_data(ext->format, ext->prefix_data);
+    LY_LIST_FOR_SAFE(ext->parsed, next_node, node) {
+        lysp_node_free(ctx, node);
+    }
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
         lysp_stmt_free(ctx, stmt);
