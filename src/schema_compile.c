@@ -574,12 +574,26 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                 case LY_STMT_NOTIFICATION:
                 case LY_STMT_RPC:
                 case LY_STMT_USES:
-                    r = lysp_stmt_parse(ctx, stmt, &parsed, NULL);
-                    LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
+                    if (!ext_p->parsed) {
+                        struct lysp_ext_instance *unconst_ext_p;
+                        r = lysp_stmt_parse(ctx, stmt, &parsed, NULL);
+                        LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
+                        unconst_ext_p = (struct lysp_ext_instance *)ext_p;
+                        unconst_ext_p->parsed = parsed;
+                    } else {
+                        struct lysp_node *node, *last_node;
+                        /* get last parsed node */
+                        LY_LIST_FOR(ext_p->parsed, node) {
+                            last_node = node;
+                        }
+                        /* create and link sibling */
+                        r = lysp_stmt_parse(ctx, stmt, &parsed, NULL);
+                        LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
+                        last_node->next = parsed;
+                    }
 
                     /* set storage as an alternative document root in the compile context */
                     r = lys_compile_node(ctx, parsed, NULL, 0, NULL);
-                    lysp_node_free(ctx->ctx, parsed);
                     LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
                     break;
                 case LY_STMT_DESCRIPTION:

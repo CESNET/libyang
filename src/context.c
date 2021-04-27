@@ -570,6 +570,38 @@ lysc_node_clear_priv_dfs_cb(struct lysc_node *node, void *UNUSED(data), ly_bool 
     return LY_SUCCESS;
 }
 
+static void
+lysc_node_clear_all_priv(struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    if (mod->compiled) {
+        /* set NULL for all ::lysc_node.priv pointers in module */
+        lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
+    }
+
+    /* only lys_compile_extension_instance()
+     * can set ::lysp_ext_instance.parsed
+     */
+    if (mod->parsed) {
+        struct lysp_ext_instance *exts_p;
+        exts_p = mod->parsed->exts;
+        LY_ARRAY_FOR(exts_p, u) {
+            if (exts_p[u].parsed) {
+                /* lys_compile_extension_instance() was called */
+                struct lysc_ext_substmt *substmts;
+                struct lysc_node *root;
+                /* set NULL for all ::lysc_node.priv pointers in extensions */
+                substmts = mod->compiled->exts[u].substmts;
+                LY_ARRAY_FOR(substmts, v) {
+                    root = *(struct lysc_node **)substmts[v].storage;
+                    lysc_tree_dfs_full(root, lysc_node_clear_priv_dfs_cb, NULL);
+                }
+            }
+        }
+    }
+}
+
 API LY_ERR
 ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
@@ -582,13 +614,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 
         index = 0;
         while ((mod = (struct lys_module *)ly_ctx_get_module_iter(ctx, &index))) {
-            /* ignore modules that didn't compile */
-            if (!mod->compiled) {
-                continue;
-            }
-
-            /* set NULL for all ::lysc_node.priv pointers in module */
-            lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
+            lysc_node_clear_all_priv(mod);
         }
     }
 

@@ -523,7 +523,9 @@ struct lysp_stmt {
 struct lysp_ext_instance {
     const char *name;                       /**< extension identifier, including possible prefix */
     const char *argument;                   /**< optional value of the extension's argument */
-    LY_VALUE_FORMAT format;                /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
+    LY_VALUE_FORMAT format;                 /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
+    struct lysp_node *parsed;               /**< Simply parsed (unresolved) YANG schema tree serving as a cache.
+                                                 Only lys_compile_extension_instance() can set this. */
     void *prefix_data;                      /**< Format-specific data for prefix resolution
                                                  (see ly_resolve_prefix()) */
 

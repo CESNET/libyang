@@ -3249,6 +3249,8 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subele
         LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     }
 
+    e->parsed = NULL;
+
     return LY_SUCCESS;
 }
 

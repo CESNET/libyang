@@ -97,6 +97,7 @@ lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum ly_
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->stmt, 0, &e->name));
     e->parent_stmt = insubstmt;
     e->parent_stmt_index = insubstmt_index;
+    e->parsed = NULL;
     /* TODO (duplicate) e->child = stmt->child; */
 
     /* get optional argument */
