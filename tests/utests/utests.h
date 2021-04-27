@@ -1069,8 +1069,12 @@ struct utest_context {
  *        Example CHECK_LYD_VALUE(node->value, BINARY, "aGVs\nbG8=");
  * @param[in] NODE           lyd_value variable
  * @param[in] CANNONICAL_VAL expected cannonical value
+ * @param[in] VALUE          expected value data
+ * @param[in] SIZE           expected value data size
 */
-#define CHECK_LYD_VALUE_BINARY(NODE, CANNONICAL_VAL) \
+#define CHECK_LYD_VALUE_BINARY(NODE, CANNONICAL_VAL, VALUE, SIZE) \
+    assert_int_equal((NODE).bin->size, SIZE); \
+    assert_int_equal(0, memcmp((NODE).bin->data, VALUE, SIZE)); \
     assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
