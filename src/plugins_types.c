@@ -518,7 +518,7 @@ lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, si
 
 API LY_ERR
 lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-        struct ly_err_item **err)
+        size_t strval_len, struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u;
     ly_bool is_length; /* length or range */
@@ -535,7 +535,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
-                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, strval);
+                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
                 /* inside the range */
@@ -547,7 +547,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
-                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, strval);
+                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             }
         } else {
@@ -557,7 +557,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, strval);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             } else if (value <= range->parts[u].max_64) {
                 /* inside the range */
@@ -568,7 +568,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, strval);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             }
         }

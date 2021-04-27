@@ -105,7 +105,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     /* check if value meets the type requirements */
     if (type_bin->length) {
         const uint32_t value_length = ((base64_count + base64_terminated) / 4) * 3 - base64_terminated;
-        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value_str, err);
+        ret = lyplg_type_validate_range(LY_TYPE_BINARY, type_bin->length, value_length, value_str, value_len, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 

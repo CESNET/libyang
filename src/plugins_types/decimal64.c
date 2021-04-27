@@ -82,7 +82,7 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
 
     /* range of the number */
     if (type_dec->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_dec->range, d, buf, err);
+        ret = lyplg_type_validate_range(type->basetype, type_dec->range, d, buf, strlen(buf), err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 
