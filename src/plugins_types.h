@@ -39,6 +39,7 @@ struct lysc_node;
 struct lysc_pattern;
 struct lysc_range;
 struct lysc_type;
+struct lysc_type_bits;
 struct lysc_type_leafref;
 
 /**
@@ -246,6 +247,27 @@ const struct lys_module *lyplg_type_identity_module(const struct ly_ctx *ctx, co
  * @return LY_ERR value.
  */
 LY_ERR lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+
+/**
+ * @brief Get the bitmap size of a bits value bitmap.
+ *
+ * Bitmap size is rounded up to the smallest integer size (1, 2, 4, or 8 bytes).
+ * If more than 8 bytes are needed to hold all the bit positions, no rounding is performed.
+ *
+ * @param[in] type Bits type.
+ * @return Bitmap size in bytes.
+ */
+size_t lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type);
+
+/**
+ * @brief Check whether a particular bit of a bitmap is set.
+ *
+ * @param[in] bitmap Bitmap to read from.
+ * @param[in] size Size of @p bitmap.
+ * @param[in] bit_position Bit position to check.
+ * @return Whether the bit is set or not.
+ */
+ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, size_t size, uint32_t bit_position);
 
 /**
  * @brief Get format-specific prefix for a module.
@@ -603,22 +625,35 @@ void lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value);
  */
 
 /**
- * @brief Validate, canonize and store value of the YANG built-in bits type.
- * Implementation of the ::lyplg_type_store_clb.
+ * @brief Implementation of the ::lyplg_type_store_clb for the built-in bits type.
  */
 LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
- * @brief Duplication callback of the bits values.
- * Implementation of the ::lyplg_type_dup_clb.
+ * @brief Implementation of the ::lyplg_type_compare_clb for the built-in bits type.
+ */
+LY_ERR lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of the ::lyplg_type_print_clb for the built-in bits type.
+ */
+const void *lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+
+/**
+ * @brief Implementation of the ::lyplg_type_hash_clb for the built-in bits type.
+ */
+const void *lyplg_type_hash_bits(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
+
+/**
+ * @brief Implementation of the ::lyplg_type_dup_clb for the built-in bits type.
  */
 LY_ERR lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
- * @brief Free value of the YANG built-in bits type.
- * Implementation of the ::lyplg_type_free_clb.
+ * @brief Implementation of the ::lyplg_type_free_clb for the built-in bits type.
  */
 void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value);
 

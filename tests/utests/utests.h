@@ -929,9 +929,9 @@ struct utest_context {
     { \
         const char *arr[] = { __VA_ARGS__ }; \
         LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).bits_items)); \
+        assert_int_equal(arr_size, LY_ARRAY_COUNT(((struct lyd_value_bits *)(NODE).ptr)->items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(arr[it], (NODE).bits_items[it]->name); \
+            assert_string_equal(arr[it], ((struct lyd_value_bits *)(NODE).ptr)->items[it]->name); \
         } \
     }
 
