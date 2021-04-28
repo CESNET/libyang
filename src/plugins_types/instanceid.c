@@ -183,7 +183,8 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     LY_CHECK_GOTO(ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
             unres, &path, err), cleanup);
 
-    /* store resolved schema path */
+    /* store resolved schema path and init storage */
+    storage->_canonical = NULL;
     storage->target = path;
     path = NULL;
     storage->realtype = type;
