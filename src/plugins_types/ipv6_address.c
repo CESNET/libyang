@@ -340,7 +340,7 @@ lyplg_type_dup_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *or
     LY_ERR ret;
     struct lyd_value_ipv6_address *orig_val = original->ptr, *dup_val;
 
-    ret = lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical);
+    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
     dup_val = malloc(sizeof *dup_val);

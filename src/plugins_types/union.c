@@ -215,7 +215,7 @@ lyplg_type_hash_union(const struct lyd_value *value, ly_bool *dynamic, size_t *k
 API LY_ERR
 lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical));
 
     dup->subvalue = calloc(1, sizeof *dup->subvalue);
     LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);

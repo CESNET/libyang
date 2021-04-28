@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "context.h"
 #include "hash_table.h"
@@ -369,6 +370,18 @@ char *ly_strnchr(const char *s, int c, size_t len);
  * respectively, to be less than, to match, or be greater than @p str.
  */
 int ly_strncmp(const char *refstr, const char *str, size_t str_len);
+
+/**
+ * @brief Similar to strlen(3) but accepts NULL and returns 0.
+ *
+ * @param[in] s String to examine.
+ * @return Length of @p s.
+ */
+static inline size_t
+ly_strlen(const char *s)
+{
+    return s ? strlen(s) : 0;
+}
 
 /**
  * @brief Get all possible value prefixes from an YANG value by iteratively returning specific substrings.
