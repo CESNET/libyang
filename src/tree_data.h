@@ -535,7 +535,7 @@ struct lyd_value {
         uint32_t uint32;             /**< 32-bit unsigned integer */
         uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
-        struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
+        struct lyd_value_bits *bits; /**< bits value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
         struct lyd_value_subvalue *subvalue; /** Union value with some metadata. */
@@ -570,6 +570,20 @@ struct lyd_value_subvalue {
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
+};
+
+/**
+ * @brief Special lyd_value structure for bits.
+ *
+ * Note that the allocate memory is rounded to bytes. Meaning that if a type defines a bit with the highest position
+ * 18, for example, only 3 bytes will be allocated and casting to a 4-byte type will not work!
+ */
+struct lyd_value_bits {
+    char *bitmap;                           /**< bitmap of size ::lyplg_type_bits_bitmap_size(), if its value is
+                                                cast to an integer type of the corresponding size, can be used
+                                                directly as a bitmap */
+    struct lysc_type_bitenum_item **items;  /**< list of set pointers to the specification of the set
+                                                bits ([sized array](@ref sizedarrays)) */
 };
 
 /**

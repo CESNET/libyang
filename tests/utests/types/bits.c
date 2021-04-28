@@ -586,13 +586,13 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("T0", "\n\t", BITS, "");
 
     TEST_ERROR_XML("T0", "twelvea");
-    CHECK_LOG_CTX("Invalid bit value \"twelvea\".",
+    CHECK_LOG_CTX("Invalid bit \"twelvea\".",
             "Schema location /T0:port, line number 1.");
     TEST_ERROR_XML("T0", "twelve t");
-    CHECK_LOG_CTX("Invalid bit value \"t\".",
+    CHECK_LOG_CTX("Invalid bit \"t\".",
             "Schema location /T0:port, line number 1.");
     TEST_ERROR_XML("T0", "ELEVEN");
-    CHECK_LOG_CTX("Invalid bit value \"ELEVEN\".",
+    CHECK_LOG_CTX("Invalid bit \"ELEVEN\".",
             "Schema location /T0:port, line number 1.");
 
     /* empty value  */
