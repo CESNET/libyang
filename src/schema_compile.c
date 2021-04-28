@@ -821,6 +821,9 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
             /* unimplemented module found */
             if (implement) {
                 LY_CHECK_RET(lys_set_implemented_r((struct lys_module *)mod, NULL, unres));
+                if (unres->recompile) {
+                    return LY_ERECOMPILE;
+                }
             } else {
                 *mod_p = mod;
                 break;
@@ -837,6 +840,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
  * @param[in] ctx Compile context.
  * @param[in] node Node to check.
  * @param[in,out] unres Global unres structure.
+ * @return LY_ERECOMPILE
  * @return LY_ERR value
  */
 static LY_ERR
@@ -967,6 +971,7 @@ cleanup:
  * @param[in] node Context node for the leafref.
  * @param[in] lref Leafref to check/resolve.
  * @param[in,out] unres Global unres structure.
+ * @return LY_ERECOMPILE if context recompilation is needed,
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -1185,6 +1190,8 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     uint32_t i;
 
     if (unres->recompile) {
+recompilation:
+        assert(unres->recompile);
         /* recompile all the modules and resolve the new unres instead (during recompilation) */
         unres->recompile = 0;
         return lys_recompile(ctx, 1);
@@ -1223,7 +1230,10 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
 
         LOG_LOCBACK(1, 0, 0, 0);
-        if (ret) {
+        if (ret == LY_ERECOMPILE) {
+            /* leafref caused a new module to be implemented, following leafrefs referencing the module would fail */
+            goto recompilation;
+        } else if (ret) {
             return ret;
         }
     }
@@ -1266,7 +1276,11 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 
         ret = lys_compile_unres_xpath(&cctx, node, unres);
         LOG_LOCBACK(1, 0, 0, 0);
-        LY_CHECK_RET(ret);
+        if (ret == LY_ERECOMPILE) {
+            goto recompilation;
+        } else if (ret) {
+            return ret;
+        }
 
         ly_set_rm_index(&unres->xpath, unres->xpath.count - 1, NULL);
     }
@@ -1285,14 +1299,18 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
             ret = lys_compile_unres_llist_dflts(&cctx, r->llist, r->dflt, r->dflts, unres);
         }
         LOG_LOCBACK(1, 0, 0, 0);
-        LY_CHECK_RET(ret && (ret != LY_ERECOMPILE), ret);
+        if (ret == LY_ERECOMPILE) {
+            goto recompilation;
+        } else if (ret) {
+            return ret;
+        }
 
         lysc_unres_dflt_free(ctx, r);
         ly_set_rm_index(&unres->dflts, unres->dflts.count - 1, NULL);
     }
 
-    /* some unres items may have been added or recompilation needed */
-    if (unres->leafrefs.count || unres->xpath.count || unres->dflts.count || unres->recompile) {
+    /* some unres items may have been added */
+    if (unres->leafrefs.count || unres->xpath.count || unres->dflts.count) {
         return lys_compile_unres_glob(ctx, unres);
     }
 

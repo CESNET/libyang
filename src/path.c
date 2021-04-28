@@ -24,6 +24,7 @@
 #include "compat.h"
 #include "log.h"
 #include "plugins_types.h"
+#include "schema_compile.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data_internal.h"
@@ -431,6 +432,9 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
             assert(unres);
             LY_CHECK_GOTO(ret = lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
+            if (unres->recompile) {
+                return LY_ERECOMPILE;
+            }
         }
 
         LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);

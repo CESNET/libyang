@@ -242,6 +242,7 @@ const struct lys_module *lyplg_type_identity_module(const struct ly_ctx *ctx, co
  * @param[in] mod Module to implement.
  * @param[in] features Array of features to enable.
  * @param[in,out] unres Global unres to add to.
+ * @return LY_ERECOMPILE if the context need to be recompiled, should be returned.
  * @return LY_ERR value.
  */
 LY_ERR lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
@@ -317,6 +318,7 @@ void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *prefix_data);
  * @param[out] path Pointer to store the created structure representing the schema path from the @p value.
  * @param[out] err Pointer to store the error information provided in case of failure.
  * @return LY_SUCCESS on success,
+ * @return LY_ERECOMPILE if the context need to be recompiled, should be returned.
  * @return LY_ERR value on error.
  */
 LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,

@@ -233,6 +233,7 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, cons
  * @param[in,out] unres Global unres structure of newly implemented modules.
  * @param[out] mod_p Module that is not implemented.
  * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE if @p implement is set.
  * @return LY_ERR on error.
  */
 LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *expr, LY_VALUE_FORMAT format,

@@ -168,6 +168,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in,out] unres Global unres structure for newly implemented modules, needed only if @p lref is ::LY_PATH_LREF_TRUE.
  * @param[out] path Compiled path.
+ * @return LY_ERECOMPILE, only if @p lref is ::LY_PATH_LREF_TRUE.
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,

@@ -1628,7 +1628,10 @@ test_type_leafref(void **state)
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref *)type)->realtype->basetype);
 
     /* leafref to imported (not yet implemented) module */
-    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module h {namespace urn:h;prefix h; leaf h  {type uint16;}}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module h-imp {namespace urn:h-imp;prefix h-imp;"
+            "leaf l {type string;}}", LYS_IN_YANG, NULL));
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module h {namespace urn:h;prefix h;import h-imp {prefix hi;}"
+            "leaf h {type uint16;}}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module i {namespace urn:i;prefix i;import h {prefix h;}"
             "leaf i {type leafref {path /h:h;}}}", LYS_IN_YANG, &mod));
     type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
