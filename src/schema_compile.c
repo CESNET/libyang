@@ -520,7 +520,7 @@ lys_compile_extension_instance_storage(enum ly_stmt stmt, struct lysc_ext_substm
 LY_ERR
 lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
 {
-    LY_ERR ret = LY_EVALID, r;
+    LY_ERR ret = LY_SUCCESS, r;
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
     void *parsed = NULL, **compiled = NULL;
@@ -538,6 +538,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
         if (u == LY_ARRAY_COUNT(ext->substmts)) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
                     stmt->stmt, ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
+            ret = LY_EVALID;
             goto cleanup;
         }
     }
@@ -590,6 +591,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                         /* single item */
                         if (*((const char **)ext->substmts[u].storage)) {
                             LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+                            ret = LY_EVALID;
                             goto cleanup;
                         }
                         str_p = (const char **)ext->substmts[u].storage;
@@ -629,6 +631,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                         /* single item */
                         if (*(struct lysc_type **)ext->substmts[u].storage) {
                             LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+                            ret = LY_EVALID;
                             goto cleanup;
                         }
                         compiled = ext->substmts[u].storage;
@@ -653,6 +656,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                 default:
                     LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" is not supported as an extension (found in \"%s%s%s\") substatement.",
                             stmt->stmt, ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
+                    ret = LY_EVALID;
                     goto cleanup;
                 }
             }
@@ -661,11 +665,10 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
         if (((ext->substmts[u].cardinality == LY_STMT_CARD_MAND) || (ext->substmts[u].cardinality == LY_STMT_CARD_SOME)) && !stmt_counter) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s%s%s\".",
                     ly_stmt2str(ext->substmts[u].stmt), ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
+            ret = LY_EVALID;
             goto cleanup;
         }
     }
-
-    ret = LY_SUCCESS;
 
 cleanup:
     ctx->ext = NULL;

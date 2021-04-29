@@ -606,7 +606,7 @@ static LY_ERR
 lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, ly_bool length_restr,
         uint8_t frdigits, struct lysc_range *base_range, struct lysc_range **range)
 {
-    LY_ERR ret = LY_EVALID;
+    LY_ERR ret = LY_SUCCESS;
     const char *expr;
     struct lysc_range_part *parts = NULL, *part;
     ly_bool range_expected = 0, uns;
@@ -624,11 +624,13 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected end of the expression after \"..\" (%s).",
                         length_restr ? "length" : "range", range_p->arg);
+                ret = LY_EVALID;
                 goto cleanup;
             } else if (!parts || (parts_done == LY_ARRAY_COUNT(parts))) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected end of the expression (%s).",
                         length_restr ? "length" : "range", range_p->arg);
+                ret = LY_EVALID;
                 goto cleanup;
             }
             parts_done++;
@@ -639,17 +641,19 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected data before min keyword (%.*s).", length_restr ? "length" : "range",
                         (int)(expr - range_p->arg.str), range_p->arg.str);
+                ret = LY_EVALID;
                 goto cleanup;
             }
             expr += ly_strlen_const("min");
 
             LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-            LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, base_range, NULL), cleanup);
+            LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, base_range, NULL), cleanup);
             part->max_64 = part->min_64;
         } else if (*expr == '|') {
             if (!parts || range_expected) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected beginning of the expression (%s).", length_restr ? "length" : "range", expr);
+                ret = LY_EVALID;
                 goto cleanup;
             }
             expr++;
@@ -663,6 +667,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             if (!parts || (LY_ARRAY_COUNT(parts) == parts_done)) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected \"..\" without a lower bound.", length_restr ? "length" : "range");
+                ret = LY_EVALID;
                 goto cleanup;
             }
             /* continue expecting the upper boundary */
@@ -671,11 +676,11 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             /* number */
             if (range_expected) {
                 part = &parts[LY_ARRAY_COUNT(parts) - 1];
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL, &expr), cleanup);
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL, &expr), cleanup);
                 range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
                         basetype, parts_done ? 0 : 1, length_restr, frdigits, NULL, &expr), cleanup);
                 part->max_64 = part->min_64;
             }
@@ -689,21 +694,23 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             if (*expr != '\0') {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid %s restriction - unexpected data after max keyword (%s).",
                         length_restr ? "length" : "range", expr);
+                ret = LY_EVALID;
                 goto cleanup;
             }
             if (range_expected) {
                 part = &parts[LY_ARRAY_COUNT(parts) - 1];
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, base_range, NULL), cleanup);
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, base_range, NULL), cleanup);
                 range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
+                LY_CHECK_GOTO(ret = range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_COUNT(parts) - 2].max_64 : 0,
                         basetype, parts_done ? 0 : 1, length_restr, frdigits, base_range, NULL), cleanup);
                 part->min_64 = part->max_64;
             }
         } else {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid %s restriction - unexpected data (%s).",
                     length_restr ? "length" : "range", expr);
+            ret = LY_EVALID;
             goto cleanup;
         }
     }
@@ -793,6 +800,7 @@ baseerror:
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                     "Invalid %s restriction - the derived restriction (%s) is not equally or more limiting.",
                     length_restr ? "length" : "range", range_p->arg);
+            ret = LY_EVALID;
             goto cleanup;
         }
     }
@@ -823,7 +831,6 @@ baseerror:
 
     (*range)->parts = parts;
     parts = NULL;
-    ret = LY_SUCCESS;
 cleanup:
     LY_ARRAY_FREE(parts);
 

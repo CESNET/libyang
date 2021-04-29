@@ -973,15 +973,15 @@ test_type_length(void **state)
 #endif
 
     /* invalid values */
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EDENIED, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - value \"-10\" does not fit the type limitations.", "/aa:l");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf l {type binary {length 18446744073709551616;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - invalid value \"18446744073709551616\".", "/bb:l");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;leaf l {type binary {length \"max .. 10\";}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - unexpected data after max keyword (.. 10).", "/cc:l");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;leaf l {type binary {length 50..10;}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;leaf l {type binary {length 50..10;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (10).", "/dd:l");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;leaf l {type binary {length \"50 | 10\";}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;leaf l {type binary {length \"50 | 10\";}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (10).", "/ee:l");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;leaf l {type binary {length \"x\";}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - unexpected data (x).", "/ff:l");
@@ -995,7 +995,7 @@ test_type_length(void **state)
     CHECK_LOG_CTX("Invalid length restriction - unexpected \"..\" without a lower bound.", "/jj:l");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;leaf l {type binary {length \"10 |\";}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - unexpected end of the expression (10 |).", "/kk:l");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kl {namespace urn:kl;prefix kl;leaf l {type binary {length \"10..20 | 15..30\";}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module kl {namespace urn:kl;prefix kl;leaf l {type binary {length \"10..20 | 15..30\";}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid length restriction - values are not in ascending order (15).", "/kl:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll {namespace urn:ll;prefix ll;typedef mytype {type binary {length 10;}}"
@@ -1361,11 +1361,11 @@ test_type_dec64(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ab {namespace urn:ab;prefix ab; typedef mytype {type decimal64;}leaf l {type mytype;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Missing fraction-digits substatement for decimal64 type mytype.", "/ab:l");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; leaf l {type decimal64 {fraction-digits 2;"
+    assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; leaf l {type decimal64 {fraction-digits 2;"
             "range '3.142';}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Range boundary \"3.142\" of decimal64 type exceeds defined number (2) of fraction digits.", "/bb:l");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; leaf l {type decimal64 {fraction-digits 2;"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; leaf l {type decimal64 {fraction-digits 2;"
             "range '4 | 3.14';}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (3.14).", "/cc:l");
 
