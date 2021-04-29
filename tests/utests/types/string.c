@@ -741,7 +741,7 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("T1", "abc-de", STRING, "abc-de");
     /* ERROR LENGTH  */
     TEST_ERROR_XML("T1", "p4a&lt;");
-    CHECK_LOG_CTX("Unsatisfied length - string length \"4\" is not allowed.",
+    CHECK_LOG_CTX("Unsatisfied length - string \"p4a<\" length is not allowed.",
             "Schema location /T1:port, line number 1.");
 
     /* TEST DEFAULT VALUE */
@@ -785,7 +785,7 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_SUCCESS_XML("T_UTF8", "€€€€€",    STRING, "€€€€€");
     TEST_ERROR_XML("T_UTF8", "€€€");
-    CHECK_LOG_CTX("Unsatisfied length - string length \"3\" is not allowed.",
+    CHECK_LOG_CTX("Unsatisfied length - string \"€€€\" length is not allowed.",
             "Schema location /T_UTF8:port, line number 1.");
     TEST_ERROR_XML("T_UTF8", "€€€€€€€€");
     CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not conform to \"[€]{5,7}\".",
@@ -869,7 +869,7 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("T1", "abc\\n-de", STRING, "abc\n-de");
     /* ERROR LENGTH  */
     TEST_ERROR_JSON("T1", "p4a\u042F");
-    CHECK_LOG_CTX("Unsatisfied length - string length \"4\" is not allowed.",
+    CHECK_LOG_CTX("Unsatisfied length - string \"p4aЯ\" length is not allowed.",
             "Schema location /T1:port, line number 1.");
 
     /* TEST DEFAULT VALUE */
@@ -907,7 +907,7 @@ test_data_json(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_SUCCESS_JSON("T_UTF8", "€€€€€",    STRING, "€€€€€");
     TEST_ERROR_JSON("T_UTF8", "€€€");
-    CHECK_LOG_CTX("Unsatisfied length - string length \"3\" is not allowed.",
+    CHECK_LOG_CTX("Unsatisfied length - string \"€€€\" length is not allowed.",
             "Schema location /T_UTF8:port, line number 1.");
     TEST_ERROR_JSON("T_UTF8", "€€€€€€€€");
     CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not conform to \"[€]{5,7}\".",
@@ -977,7 +977,7 @@ test_diff(void **state)
             "yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\" 555 555\">"
             "121</port>";
     CHECK_PARSE_LYD_PARAM(diff_expected, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, model_1);
-    CHECK_LOG_CTX("Unsatisfied length - string length \"3\" is not allowed.",
+    CHECK_LOG_CTX("Unsatisfied length - string \"121\" length is not allowed.",
             "Schema location /T_DIFF:port, line number 1.");
 
     /* diff from default value */

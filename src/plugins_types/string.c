@@ -42,12 +42,8 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     /* length restriction of the string */
     if (type_str->length) {
-        char buf[LY_NUMBER_MAXLEN];
-        size_t char_count = ly_utf8len(value, value_len);
-
         /* value_len is in bytes, but we need number of characters here */
-        snprintf(buf, LY_NUMBER_MAXLEN, "%zu", char_count);
-        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, char_count, buf, strlen(buf), err);
+        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     }
 

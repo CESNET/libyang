@@ -285,7 +285,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
 
 #define LY_ERRMSG_NOPATTERN /* LYVE_DATA */ "Unsatisfied pattern - \"%.*s\" does not conform to %s\"%s\"."
-#define LY_ERRMSG_NOLENGTH /* LYVE_DATA */ "Unsatisfied length - string length \"%.*s\" is not allowed."
+#define LY_ERRMSG_NOLENGTH /* LYVE_DATA */ "Unsatisfied length - string \"%.*s\" length is not allowed."
 #define LY_ERRMSG_NORANGE /* LYVE_DATA */ "Unsatisfied range - value \"%.*s\" is out of the allowed range."
 
 /* RFC 7950 section 15 errors */
