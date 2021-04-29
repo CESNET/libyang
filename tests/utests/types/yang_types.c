@@ -16,7 +16,8 @@
 #define  _UTEST_MAIN_
 #include "../utests.h"
 
-/* LOCAL INCLUDE HEADERS */
+#include <stdlib.h>
+
 #include "libyang.h"
 
 #define MODULE_CREATE_YIN(MOD_NAME, NODES) \
@@ -58,6 +59,39 @@
         assert_null(tree); \
     }
 
+static int
+setup(void **state)
+{
+    char *cur_tz;
+
+    *state = NULL;
+
+    /* backup timezone, if any */
+    cur_tz = getenv("TZ");
+    if (cur_tz) {
+        cur_tz = strdup(cur_tz);
+        *state = cur_tz;
+    }
+
+    /* set CET */
+    setenv("TZ", "CET+02:00", 1);
+
+    return 0;
+}
+
+static int
+teardown(void **state)
+{
+    char *prev_tz = *state;
+
+    if (prev_tz) {
+        /* restore TZ */
+        setenv("TZ", prev_tz, 1);
+        free(prev_tz);
+    }
+    return 0;
+}
+
 static void
 test_data_xml(void **state)
 {
@@ -74,21 +108,20 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     /* date-and-time */
-    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T23:15:15.88888Z");
-    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-08:59", STRING, "2005-05-31T23:15:15-08:59");
-    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-23:00", STRING, "2005-05-31T23:15:15-23:00");
+    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T21:15:15.88888-02:00");
+    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-08:59", STRING, "2005-06-01T06:14:15-02:00");
+    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-23:00", STRING, "2005-06-01T20:15:15-02:00");
 
     /* test 1 second before epoch (mktime returns -1, but it is a correct value), with and without DST */
-    TEST_SUCCESS_XML("a", "l", "1970-01-01T00:59:59Z", STRING, "1970-01-01T00:59:59Z");
-    TEST_SUCCESS_XML("a", "l", "1969-12-31T23:59:59Z", STRING, "1969-12-31T23:59:59Z");
+    TEST_SUCCESS_XML("a", "l", "1970-01-01T00:59:59-02:00", STRING, "1970-01-01T00:59:59-02:00");
+    TEST_SUCCESS_XML("a", "l", "1969-12-31T23:59:59-02:00", STRING, "1969-12-31T23:59:59-02:00");
+
+    /* canonize */
+    TEST_SUCCESS_XML("a", "l", "2005-02-29T23:15:15-02:00", STRING, "2005-03-01T23:15:15-02:00");
 
     TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00");
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
             "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
-            "Schema location /a:l, line number 1.");
-    TEST_ERROR_XML("a", "l", "2005-02-29T23:15:15-08:00");
-    CHECK_LOG_CTX("Checking date-and-time value \"2005-02-29T23:15:15-08:00\" failed, "
-            "canonical date and time is \"2005-03-01T23:15:15\".",
             "Schema location /a:l, line number 1.");
 
     /* phys-address */
@@ -167,5 +200,5 @@ main(void)
         UTEST(test_print),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup, teardown);
 }
