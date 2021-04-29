@@ -70,7 +70,7 @@ lyd_xml_ctx_free(struct lyd_ctx *lydctx)
 static LY_ERR
 lydxml_metadata(struct lyd_xml_ctx *lydctx, struct lyd_meta **meta)
 {
-    LY_ERR ret = LY_EVALID;
+    LY_ERR ret = LY_SUCCESS;
     const struct lyxml_ns *ns;
     struct lys_module *mod;
     const char *name;
@@ -84,6 +84,7 @@ lydxml_metadata(struct lyd_xml_ctx *lydctx, struct lyd_meta **meta)
             /* in XML, all attributes must be prefixed
              * TODO exception for NETCONF filters which are supposed to map to the ietf-netconf without prefix */
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
+                ret = LY_EVALID;
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Missing mandatory prefix for XML metadata \"%.*s\".",
                         (int)xmlctx->name_len, xmlctx->name);
                 goto cleanup;
@@ -99,6 +100,7 @@ skip_attr:
         /* get namespace of the attribute to find its annotation definition */
         ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
         if (!ns) {
+            ret = LY_ENOTFOUND;
             /* unknown namespace, XML error */
             LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
             goto cleanup;
@@ -107,6 +109,7 @@ skip_attr:
         if (!mod) {
             /* module is not implemented or not present in the schema */
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
+                ret = LY_ENOTFOUND;
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE,
                         "Unknown (or not implemented) YANG module with namespace \"%s\" for metadata \"%.*s%s%.*s\".",
                         ns->uri, (int)xmlctx->prefix_len, xmlctx->prefix, xmlctx->prefix_len ? ":" : "",
@@ -130,8 +133,6 @@ skip_attr:
         /* next attribute */
         LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
     }
-
-    ret = LY_SUCCESS;
 
 cleanup:
     if (ret) {
