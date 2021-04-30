@@ -370,7 +370,7 @@ struct lyd_node_term;
  * support out-of-the-box (meaning that have a special type plugin). Any derived types inherit the format of its
  * closest type with explicit support (up to a built-in type).
  *
- * @section howtoDataLYBTypes Specific storing of particular data type values
+ * @section howtoDataLYBTypes Format of specific data type values
  */
 
 /**
