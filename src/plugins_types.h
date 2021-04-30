@@ -685,8 +685,7 @@ LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type
  */
 
 /**
- * @brief Validate, canonize and store value of the YANG built-in decimal64 types.
- * Implementation of the ::lyplg_type_store_clb.
+ * @brief Implementation of ::lyplg_type_store_clb for the built-in decimal64 type.
  */
 LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
