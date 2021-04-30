@@ -770,42 +770,36 @@ const void *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct 
  */
 
 /**
- * @brief Validate and store value of the YANG built-in instance-identifier type.
- * Implementation of the ::lyplg_type_store_clb.
+ * @brief Implementation of ::lyplg_type_store_clb for the built-in instance-identifier type.
  */
 LY_ERR lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
- * @brief Comparison callback checking the instance-identifier value.
- * Implementation of the ::lyplg_type_compare_clb.
- */
-LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2);
-
-/**
- * @brief Printer callback printing the instance-identifier value.
- * Implementation of the ::lyplg_type_print_clb.
- */
-const void *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
-
-/**
- * @brief Duplication callback of the instance-identifier values.
- * Implementation of the ::lyplg_type_dup_clb.
- */
-LY_ERR lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
-
-/**
- * @brief Validate value of the YANG built-in instance-identifier type.
- * Implementation of the ::lyplg_type_validate_clb.
+ * @brief Implementation of ::lyplg_type_validate_clb for the built-in instance-identifier type.
  */
 LY_ERR lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
- * @brief Free value of the YANG built-in instance-identifier types.
- * Implementation of the ::lyplg_type_free_clb.
+ * @brief Implementation of ::lyplg_type_compare_clb for the built-in instance-identifier type.
+ */
+LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for the built-in instance-identifier type.
+ */
+const void *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+
+/**
+ * @brief Implementation of ::lyplg_type_dup_clb for the built-in instance-identifier type.
+ */
+LY_ERR lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+
+/**
+ * @brief Implementation of ::lyplg_type_free_clb for the built-in instance-identifier type.
  */
 void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value);
 
