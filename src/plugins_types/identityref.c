@@ -12,7 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
+#define _GNU_SOURCE /* asprintf, strdup */
+#include <sys/cdefs.h>
 
 #include "plugins_types.h"
 
@@ -29,101 +30,138 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
-static char *
-identityref_print(const struct lyd_value *value, LY_VALUE_FORMAT format, void *prefix_data)
-{
-    char *result = NULL;
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesIdentityref identityref (built-in)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | string length | yes | `char *` | string JSON format of the identityref |
+ */
 
-    if (asprintf(&result, "%s:%s", lyplg_type_get_prefix(value->ident->module, format, prefix_data),
-            value->ident->name) == -1) {
-        return NULL;
-    } else {
-        return result;
+/**
+ * @brief Print an identityref value in a specific format.
+ *
+ * @param[in] ident Identityref to print.
+ * @param[in] format Value format.
+ * @param[in] prefix_data Format-specific data for resolving prefixes.
+ * @param[out] str Printed identityref.
+ * @param[out] str_len Optional length of @p str.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+identityref_ident2str(const struct lysc_ident *ident, LY_VALUE_FORMAT format, void *prefix_data, char **str, size_t *str_len)
+{
+    int len;
+
+    len = asprintf(str, "%s:%s", lyplg_type_get_prefix(ident->module, format, prefix_data), ident->name);
+    if (len == -1) {
+        return LY_EMEM;
     }
+
+    if (str_len) {
+        *str_len = (size_t)len;
+    }
+    return LY_SUCCESS;
 }
 
-API LY_ERR
-lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+/**
+ * @brief Convert a string identityref value to matching identity.
+ *
+ * @param[in] value Identityref value.
+ * @param[in] value_len Length of @p value.
+ * @param[in] format Value format.
+ * @param[in] prefix_data Format-specific data for resolving prefixes.
+ * @param[in] ctx libyang context.
+ * @param[in] ctx_node Context node for resolving the prefixes.
+ * @param[out] ident Found identity.
+ * @param[out] err Error information on error.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+identityref_str2ident(const char *value, size_t value_len, LY_VALUE_FORMAT format, void *prefix_data,
+        const struct ly_ctx *ctx, const struct lysc_node *ctx_node, struct lysc_ident **ident, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
-    const char *id_name, *prefix = value, *value_str = value;
-    size_t id_len, prefix_len, str_len;
-    char *str;
-    const struct lys_module *mod = NULL;
+    const char *id_name, *prefix = value;
+    size_t id_len, prefix_len;
+    const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_ident *ident = NULL, *identities, *base;
-
-    *err = NULL;
-
-    /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    struct lysc_ident *id, *identities;
 
     /* locate prefix if any */
-    for (prefix_len = 0; (prefix_len < value_len) && (value_str[prefix_len] != ':'); ++prefix_len) {}
+    for (prefix_len = 0; (prefix_len < value_len) && (value[prefix_len] != ':'); ++prefix_len) {}
     if (prefix_len < value_len) {
-        id_name = &value_str[prefix_len + 1];
+        id_name = &value[prefix_len + 1];
         id_len = value_len - (prefix_len + 1);
     } else {
         prefix_len = 0;
-        id_name = value_str;
+        id_name = value;
         id_len = value_len;
     }
 
     if (!id_len) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty identityref value.");
-        goto cleanup;
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty identityref value.");
     }
 
     mod = lyplg_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
     if (!mod) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value_str);
-        goto cleanup;
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
     }
 
+    id = NULL;
     identities = mod->identities;
     LY_ARRAY_FOR(identities, u) {
-        ident = &identities[u]; /* shortcut */
-        if (!ly_strncmp(ident->name, id_name, id_len)) {
+        if (!ly_strncmp(identities[u].name, id_name, id_len)) {
             /* we have match */
+            id = &identities[u];
             break;
         }
     }
-    if (!identities || (u == LY_ARRAY_COUNT(identities))) {
+    if (!id) {
         /* no match */
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - identity not found in module \"%s\".",
-                (int)value_len, value_str, mod->name);
-        goto cleanup;
-    } else if (!mod->implemented) {
-        /* non-implemented module */
-        if (options & LYPLG_TYPE_STORE_IMPLEMENT) {
-            ret = lyplg_type_make_implemented((struct lys_module *)mod, NULL, unres);
-            LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-        } else {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                    "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                    (int)value_len, value_str, mod->name);
-            goto cleanup;
+                (int)value_len, value, mod->name);
+    }
+
+    *ident = id;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check that an identityref is derived from the type base.
+ *
+ * @param[in] ident Identityref.
+ * @param[in] type Identityref type.
+ * @param[in] value String value for logging.
+ * @param[in] value_len Length of @p value.
+ * @param[out] err Error information on error.
+ */
+static LY_ERR
+identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identityref *type, const char *value,
+        size_t value_len, struct ly_err_item **err)
+{
+    LY_ERR ret;
+    size_t str_len;
+    char *str;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_ident *base;
+
+    /* check that the identity matches some of the type's base identities */
+    LY_ARRAY_FOR(type->bases, u) {
+        if (!lyplg_type_identity_isderived(type->bases[u], ident)) {
+            /* we have match */
+            break;
         }
     }
 
-    /* check that the identity matches some of the type's base identities */
-    LY_ARRAY_FOR(type_ident->bases, u) {
-        if (!lyplg_type_identity_isderived(type_ident->bases[u], ident)) {
-            /* we have match */
-            break;
-        }
-    }
-    if (u == LY_ARRAY_COUNT(type_ident->bases)) {
+    /* it does not, generate a nice error */
+    if (u == LY_ARRAY_COUNT(type->bases)) {
         str = NULL;
         str_len = 1;
-        LY_ARRAY_FOR(type_ident->bases, u) {
-            base = type_ident->bases[u];
+        LY_ARRAY_FOR(type->bases, u) {
+            base = type->bases[u];
             str_len += (u ? 2 : 0) + 1 + strlen(base->module->name) + 1 + strlen(base->name) + 1;
             str = ly_realloc(str, str_len);
             sprintf(str + (u ? strlen(str) : 0), "%s\"%s:%s\"", u ? ", " : "", base->module->name, base->name);
@@ -133,29 +171,89 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
         if (u == 1) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity not derived from the base %s.",
-                    (int)value_len, value_str, str);
+                    (int)value_len, value, str);
         } else {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                     "Invalid identityref \"%.*s\" value - identity not derived from all the bases %s.",
-                    (int)value_len, value_str, str);
+                    (int)value_len, value, str);
         }
         free(str);
-        goto cleanup;
+        return ret;
     }
 
-    storage->ident = ident;
+    return LY_SUCCESS;
+}
 
-    /* get JSON form since there is no canonical */
-    str = identityref_print(storage, LY_VALUE_JSON, NULL);
-    ret = lydict_insert_zc(ctx, str, &storage->_canonical);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+API LY_ERR
+lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
+    char *canon;
+    struct lysc_ident *ident;
+
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
+
+    /* check hints */
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* find a matching identity */
+    ret = identityref_str2ident(value, value_len, format, prefix_data, ctx, ctx_node, &ident, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* handle identity in a non-implemented module */
+    if (!ident->module->implemented) {
+        if (options & LYPLG_TYPE_STORE_IMPLEMENT) {
+            ret = lyplg_type_make_implemented(ident->module, NULL, unres);
+            LY_CHECK_GOTO(ret, cleanup);
+        } else {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                    "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
+                    (int)value_len, (char *)value, ident->module->name);
+            goto cleanup;
+        }
+    }
+
+    /* check that the identity is derived form all the bases */
+    ret = identityref_check_base(ident, type_ident, value, value_len, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* init storage */
+    storage->_canonical = NULL;
+    storage->ident = ident;
     storage->realtype = type;
+
+    /* store canonical value */
+    if (format == LY_VALUE_CANON) {
+        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+            ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+            LY_CHECK_GOTO(ret, cleanup);
+        } else {
+            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    } else {
+        /* JSON format with prefix is the canonical one */
+        ret = identityref_ident2str(ident, LY_VALUE_JSON, NULL, &canon, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        ret = lydict_insert_zc(ctx, canon, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
 
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
+        free((void *)value);
     }
 
+    if (ret) {
+        lyplg_type_free_simple(ctx, storage);
+    }
     return ret;
 }
 
@@ -163,9 +261,9 @@ API const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    char *result;
+    char *ret;
 
-    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
+    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
         if (dynamic) {
             *dynamic = 0;
         }
@@ -175,12 +273,12 @@ lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_
         return value->_canonical;
     }
 
-    result = identityref_print(value, format, prefix_data);
-    *dynamic = 1;
-    if (value_len) {
-        *value_len = strlen(result);
+    /* print the value in the specific format */
+    if (identityref_ident2str(value->ident, format, prefix_data, &ret, value_len)) {
+        return NULL;
     }
-    return result;
+    *dynamic = 1;
+    return ret;
 }
 
 API LY_ERR
