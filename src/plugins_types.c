@@ -702,18 +702,17 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
 
     LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
 
+    *path = NULL;
     *err = NULL;
 
     switch (format) {
-    case LY_VALUE_CANON:
-        LOGARG(ctx, format);
-        return LY_EINVAL;
     case LY_VALUE_SCHEMA:
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_XML:
-    case LY_VALUE_LYB:
         prefix_opt = LY_PATH_PREFIX_MANDATORY;
         break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_LYB:
     case LY_VALUE_JSON:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
         break;
