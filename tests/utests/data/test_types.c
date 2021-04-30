@@ -461,9 +461,9 @@ test_empty(void **state)
     lyd_free_all(tree);
 
     /* invalid value */
-    TEST_TYPE_ERROR("empty", "x", "Invalid empty value \"x\".", "1");
+    TEST_TYPE_ERROR("empty", "x", "Invalid empty value length 1.", "1");
 
-    TEST_TYPE_ERROR("empty", " ", "Invalid empty value \" \".", "1");
+    TEST_TYPE_ERROR("empty", " ", "Invalid empty value length 1.", "1");
 }
 
 static void

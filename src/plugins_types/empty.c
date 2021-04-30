@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
-
 #include "plugins_types.h"
 
 #include <stdint.h>
@@ -27,6 +25,15 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesEmpty empty (built-in)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | 0        | yes | `void` | none |
+ */
+
 API LY_ERR
 lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
@@ -35,32 +42,41 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
 {
     LY_ERR ret = LY_SUCCESS;
 
-    *err = NULL;
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    LY_CHECK_GOTO(ret, cleanup);
 
+    /* validation */
     if (value_len) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value \"%.*s\".", (int)value_len,
-                (char *)value);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value length %zu.", value_len);
         goto cleanup;
     }
 
-    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
-        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    } else {
-        ret = lydict_insert(ctx, "", value_len, &storage->_canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
+    /* init storage */
+    storage->_canonical = NULL;
     storage->ptr = NULL;
     storage->realtype = type;
 
+    /* store canonical value */
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        ret = lydict_insert(ctx, "", value_len, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
+        free((void *)value);
+    }
+
+    if (ret) {
+        lyplg_type_free_simple(ctx, storage);
     }
     return ret;
 }
