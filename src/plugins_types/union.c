@@ -209,7 +209,7 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
 API const void *
 lyplg_type_hash_union(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
 {
-    return value->subvalue->value.realtype->plugin->hash(value, dynamic, key_len);
+    return value->subvalue->value.realtype->plugin->hash(&value->subvalue->value, dynamic, key_len);
 }
 
 API LY_ERR

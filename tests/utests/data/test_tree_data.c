@@ -41,10 +41,23 @@ setup(void **state)
             "anydata any {config false;}"
             "}";
 
+    const char *schema3 = "module c {yang-version 1.1; namespace \"http://example.com/main\";prefix m;"
+            "import \"ietf-inet-types\" {prefix inet;}"
+            "typedef optional-ip-address {type union {"
+            "   type inet:ip-address;"
+            "   type string {pattern \"\";}"
+            "}}"
+            "container cont {"
+            "   list nexthop {min-elements 1; key \"gateway\";"
+            "       leaf gateway {type optional-ip-address;}"
+            "   }"
+            "}}";
+
     UTEST_SETUP;
 
     UTEST_ADD_MODULE(schema1, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema3, LYS_IN_YANG, NULL, NULL);
 
     return 0;
 }
@@ -457,6 +470,24 @@ test_first_sibling(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_find_path(void **state)
+{
+    struct lyd_node *root;
+    const struct lys_module *mod;
+
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "c");
+    assert_non_null(mod);
+
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(NULL, mod, "cont", 0, &root));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(root, NULL, "/c:cont/nexthop[gateway='10.0.0.1']", NULL, LYD_NEW_PATH_UPDATE, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(root, NULL, "/c:cont/nexthop[gateway='2100::1']", NULL, LYD_NEW_PATH_UPDATE, NULL));
+
+    assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='10.0.0.1']", 0, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='2100::1']", 0, NULL));
+    lyd_free_all(root);
+}
+
 int
 main(void)
 {
@@ -467,6 +498,7 @@ main(void)
         UTEST(test_target, setup),
         UTEST(test_list_pos, setup),
         UTEST(test_first_sibling, setup),
+        UTEST(test_find_path, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
