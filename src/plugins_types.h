@@ -719,12 +719,17 @@ LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *
  */
 
 /**
- * @brief Validate, canonize and store value of the YANG built-in enumeration type.
- * Implementation of the ::lyplg_type_store_clb.
+ * @brief Implementation of ::lyplg_type_store_clb for the built-in enumeration type.
  */
 LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for the built-in enumeration type.
+ */
+const void *lyplg_type_print_enum(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesEnumeration */
 
