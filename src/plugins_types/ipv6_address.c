@@ -150,7 +150,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate the value */
-    val = malloc(sizeof *val);
+    val = calloc(1, sizeof *val);
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
     /* init storage */
