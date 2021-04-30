@@ -4252,8 +4252,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
 
     /* compile the path */
     ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, NULL, expr, LY_PATH_LREF_FALSE,
-            output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, LY_VALUE_JSON,
-            (void *)LYD_CTX(ctx_node), NULL, &lypath);
+            output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, NULL, &lypath);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate the path */
