@@ -1735,6 +1735,11 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     /* finish compilation for all unresolved module items in the context */
     LY_CHECK_GOTO(ret = lys_compile_unres_mod(&ctx), cleanup);
 
+    /* call the callback for new compiled module */
+    if (mod->ctx->compiled_clb) {
+        mod->ctx->compiled_clb(mod, mod->ctx->compiled_clb_data);
+    }
+
 cleanup:
     LOG_LOCBACK(0, 0, 1, 0);
     lys_compile_unres_mod_erase(&ctx, ret);

@@ -627,6 +627,26 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->imp_clb;
 }
 
+API ly_module_compiled_clb
+ly_ctx_get_module_compiled_clb(const struct ly_ctx *ctx, void **user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    if (user_data) {
+        *user_data = ctx->compiled_clb_data;
+    }
+    return ctx->compiled_clb;
+}
+
+API void
+ly_ctx_set_module_compiled_clb(struct ly_ctx *ctx, ly_module_compiled_clb clb, void *user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, );
+
+    ctx->compiled_clb = clb;
+    ctx->compiled_clb_data = user_data;
+}
+
 API const struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {

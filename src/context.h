@@ -408,6 +408,33 @@ ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **use
 void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
 
 /**
+ * @brief Callback called for each (re)compiled module in a context.
+ *
+ * @param[in] mod Implemented and compiled module.
+ * @param[in] user_data Arbitrary user data.
+ */
+typedef void (*ly_module_compiled_clb)(const struct lys_module *mod, void *user_data);
+
+/**
+ * @brief Get callback for compiled or recompiled modules in a context.
+ *
+ * @param[in] ctx Context to read from.
+ * @param[out] user_data Optional pointer for the set user data.
+ * @return Callback or NULL if not set.
+ */
+ly_module_compiled_clb ly_ctx_get_module_compiled_clb(const struct ly_ctx *ctx, void **user_data);
+
+/**
+ * @brief Set callback called for each compiled or recompiled module in a context. It can be used
+ * when ::lysc_node.priv pointers are being used and need to be set for every compiled module.
+ *
+ * @param[in] ctx Context that will use the callback.
+ * @param[in] clb Callback for the compiled modules.
+ * @param[in] user data Arbitrary user data passed to @p clb.
+ */
+void ly_ctx_set_module_compiled_clb(struct ly_ctx *ctx, ly_module_compiled_clb clb, void *user_data);
+
+/**
  * @brief Get YANG module of the given name and revision.
  *
  * @param[in] ctx Context to work in.

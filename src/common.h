@@ -300,8 +300,12 @@ struct ly_ctx {
     struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
     struct ly_set list;               /**< set of loaded YANG schemas */
+
     ly_module_imp_clb imp_clb;        /**< Optional callback for retrieving missing included or imported models in a custom way. */
     void *imp_clb_data;               /**< Optional private data for ::ly_ctx.imp_clb */
+    ly_module_compiled_clb compiled_clb; /**< Optional callback called for every compiled module. */
+    void *compiled_clb_data;          /**< Optional private data for ::ly_ctx.compiled_clb */
+
     uint16_t change_count;            /**< Count of changes of the context, on some changes it could be incremented more times */
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
