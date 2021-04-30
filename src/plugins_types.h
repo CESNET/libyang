@@ -1067,7 +1067,7 @@ LY_ERR lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t
  * @return LY_SUCCESS if @p derived IS based on the @p base identity.
  * @return LY_ENOTFOUND if @p derived IS NOT not based on the @p base identity.
  */
-LY_ERR lyplg_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *derived);
+LY_ERR lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_ident *derived);
 
 /**
  * @brief Data type validator for a range/length-restricted values.

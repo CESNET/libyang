@@ -770,7 +770,7 @@ lyplg_type_make_implemented(struct lys_module *mod, const char **features, struc
 }
 
 API LY_ERR
-lyplg_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
+lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_ident *der)
 {
     LY_ARRAY_COUNT_TYPE u;
 
