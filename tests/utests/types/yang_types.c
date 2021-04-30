@@ -100,11 +100,7 @@ test_data_xml(void **state)
     /* xml test */
     schema = MODULE_CREATE_YANG("a",
             "leaf l {type yang:date-and-time;}"
-            "leaf l2 {type yang:phys-address;}"
-            "leaf l3 {type yang:mac-address;}"
-            "leaf l4 {type yang:hex-string;}"
-            "leaf l5 {type yang:uuid;}"
-            "leaf l6 {type yang:xpath1.0;}");
+            "leaf l2 {type yang:xpath1.0;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     /* date-and-time */
@@ -124,34 +120,21 @@ test_data_xml(void **state)
             "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
             "Schema location /a:l, line number 1.");
 
-    /* phys-address */
-    TEST_SUCCESS_XML("a", "l2", "aa:bb:cc:dd", STRING, "aa:bb:cc:dd");
-    TEST_SUCCESS_XML("a", "l2", "AA:BB:1D:2F:CA:52", STRING, "aa:bb:1d:2f:ca:52");
-
-    /* mac-address */
-    TEST_SUCCESS_XML("a", "l3", "12:34:56:78:9A:BC", STRING, "12:34:56:78:9a:bc");
-
-    /* hex-string */
-    TEST_SUCCESS_XML("a", "l4", "AB:CD:eF:fE:dc:Ba:Ab", STRING, "ab:cd:ef:fe:dc:ba:ab");
-
-    /* uuid */
-    TEST_SUCCESS_XML("a", "l5", "12AbCDef-3456-58cd-9ABC-8796cdACdfEE", STRING, "12abcdef-3456-58cd-9abc-8796cdacdfee");
-
     /* xpath1.0 */
-    TEST_SUCCESS_XML("a\" xmlns:aa=\"urn:tests:a", "l6", "/aa:l6[. = '4']", STRING, "/a:l6[. = '4']");
+    TEST_SUCCESS_XML("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']", STRING, "/a:l2[. = '4']");
     TEST_SUCCESS_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
-            "xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores", "l6",
+            "xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores", "l2",
             "/yl:yang-library/yl:datastore/yl:name = 'ds:running'", STRING,
             "/ietf-yang-library:yang-library/ietf-yang-library:datastore/ietf-yang-library:name = 'ietf-datastores:running'");
-    TEST_SUCCESS_XML("a", "l6", "/l6[. = '4']", STRING, "/l6[. = '4']");
+    TEST_SUCCESS_XML("a", "l2", "/l2[. = '4']", STRING, "/l2[. = '4']");
 
-    TEST_ERROR_XML("a", "l6", "/a:l6[. = '4']");
-    CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location /a:l6, line number 1.");
-    TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l6",
+    TEST_ERROR_XML("a", "l2", "/a:l2[. = '4']");
+    CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location /a:l2, line number 1.");
+    TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l2",
             "/yl:yang-library/yl:datastore/yl::name");
-    CHECK_LOG_CTX("Storing value \"/yl:yang-library/yl:datastore/yl::name\" failed.", "Schema location /a:l6, line number 1.",
+    CHECK_LOG_CTX("Storing value \"/yl:yang-library/yl:datastore/yl::name\" failed.", "Schema location /a:l2, line number 1.",
             "Invalid character ':'[34] of expression '/yl:yang-library/yl:datastore/yl::name'.",
-            "Schema location /a:l6, line number 1.");
+            "Schema location /a:l2, line number 1.");
 }
 
 static void

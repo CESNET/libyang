@@ -61,7 +61,6 @@ extern const struct lyplg_type_record plugins_ip_prefix[];
  * ietf-yang-types
  */
 extern const struct lyplg_type_record plugins_date_and_time[];
-extern const struct lyplg_type_record plugins_hex_string[];
 extern const struct lyplg_type_record plugins_xpath10[];
 
 /*
@@ -425,7 +424,6 @@ lyplg_init(void)
 
     /* ietf-yang-types */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_date_and_time), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_hex_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_xpath10), error);
 
     /* internal extensions */
