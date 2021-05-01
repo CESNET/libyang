@@ -11,14 +11,13 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _GNU_SOURCE /* asprintf */
-#define _POSIX_C_SOURCE 200809L /* strdup */
-
+#define _GNU_SOURCE /* asprintf, strdup */
 #if defined (__NetBSD__) || defined (__OpenBSD__)
 /* realpath */
 #define _XOPEN_SOURCE 1
 #define _XOPEN_SOURCE_EXTENDED 1
 #endif
+#include <sys/cdefs.h>
 
 #include "context.h"
 

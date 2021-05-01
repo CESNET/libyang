@@ -11,8 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _POSIX_C_SOURCE 200809L /* strdup */
-#define _GNU_SOURCE /* asprintf */
+#define _GNU_SOURCE /* asprintf, strdup */
+#include <sys/cdefs.h>
 
 #include "diff.h"
 
