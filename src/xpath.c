@@ -11,11 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _GNU_SOURCE
-#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
-
-/* needed by libmath functions isfinite(), isinf(), isnan(), signbit(), ... */
-#define _ISOC99_SOURCE
+#define _GNU_SOURCE /* asprintf, strdup */
+#include <sys/cdefs.h>
 
 #include "xpath.h"
 

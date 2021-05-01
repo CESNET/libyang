@@ -12,11 +12,16 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
+#define _GNU_SOURCE /* asprintf, strdup */
+#include <sys/cdefs.h>
 
 #include "plugins_types.h"
 
 #include <arpa/inet.h>
+#if defined (__FreeBSD__) || defined (__NetBSD__) || defined (__OpenBSD__)
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
