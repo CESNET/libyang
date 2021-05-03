@@ -263,7 +263,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lyd_valu
 
     if (xpath10_print_value(value->ptr, format, prefix_data, &str_value, &err)) {
         if (err) {
-            LOGVAL(NULL, err->vecode, err->msg);
+            LOGVAL_ERRITEM(NULL, err);
             ly_err_free(err);
         }
         *dynamic = 0;

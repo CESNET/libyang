@@ -81,7 +81,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         }
     } else if (ret) {
         if (err) {
-            LOGVAL(ctx, err->vecode, err->msg);
+            LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
         } else {
             LOGVAL(ctx, LYVE_OTHER, "Storing value \"%.*s\" failed.", (int)value_len, value);
@@ -104,7 +104,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     ret = type->plugin->validate(ctx, type, ctx_node, tree, val, &err);
     if (ret) {
         if (err) {
-            LOGVAL(ctx, err->vecode, err->msg);
+            LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
         } else {
             LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.", type->plugin->print(ctx, val, LY_VALUE_CANON,
@@ -143,7 +143,7 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
         if (ctx) {
             /* log only in case the ctx was provided as input parameter */
             LOG_LOCSET(NULL, NULL, err->path, NULL);
-            LOGVAL(ctx, err->vecode, err->msg);
+            LOGVAL_ERRITEM(ctx, err);
             LOG_LOCBACK(0, 0, 1, 0);
         }
         ly_err_free(err);
@@ -195,7 +195,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
             } else {
                 LOG_LOCSET(schema, NULL, NULL, NULL);
             }
-            LOGVAL(ctx, err->vecode, err->msg);
+            LOGVAL_ERRITEM(ctx, err);
             if (err->path) {
                 LOG_LOCBACK(0, 0, 1, 0);
             } else if (ctx_node) {
