@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
-
 #include "plugins_types.h"
 
 #include <stdint.h>
@@ -27,6 +25,15 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesString string (built-in)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | string length | yes | `char *` | string itself |
+ */
+
 API LY_ERR
 lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
@@ -36,37 +43,47 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
+
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* length restriction of the string */
     if (type_str->length) {
         /* value_len is in bytes, but we need number of characters here */
         ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* pattern restrictions */
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    LY_CHECK_GOTO(ret, cleanup);
 
-    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
-        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    } else {
-        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    }
+    /* init storage */
+    storage->_canonical = NULL;
     storage->ptr = NULL;
     storage->realtype = type;
 
-cleanup:
+    /* store canonical value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
+cleanup:
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        free((void *)value);
+    }
+
+    if (ret) {
+        lyplg_type_free_simple(ctx, storage);
+    }
     return ret;
 }
 
