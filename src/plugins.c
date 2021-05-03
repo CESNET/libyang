@@ -54,7 +54,7 @@ extern const struct lyplg_type_record plugins_union[];
 /*
  * ietf-inet-types
  */
-extern const struct lyplg_type_record plugins_ip_address[];
+extern const struct lyplg_type_record plugins_ipv6_address[];
 extern const struct lyplg_type_record plugins_ipv4_prefix[];
 extern const struct lyplg_type_record plugins_ipv6_prefix[];
 
@@ -420,7 +420,7 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
 
     /* ietf-inet-types */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ip_address), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_prefix), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_prefix), error);
 
