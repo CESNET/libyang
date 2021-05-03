@@ -385,6 +385,19 @@ char *ly_strnchr(const char *s, int c, size_t len);
 int ly_strncmp(const char *refstr, const char *str, size_t str_len);
 
 /**
+ * @brief Similar functionality to strtoul() except number length in the string
+ * must be specified and the whole number must be parsed for success.
+ *
+ * @param[in] nptr Number string.
+ * @param[in] len Number string length starting at @p nptr.
+ * @param[out] ret Parsed number.
+ * @return LY_EDENIED on overflow.
+ * @return LY_EVALID on encountering a non-digit character.
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR ly_strntou8(const char *nptr, size_t len, uint8_t *ret);
+
+/**
  * @brief Similar to strlen(3) but accepts NULL and returns 0.
  *
  * @param[in] s String to examine.
