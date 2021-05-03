@@ -174,6 +174,17 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
     ly_log_location(NULL, NULL, NULL, NULL, LINE, 0); \
     ly_vlog(CTX, CODE, ##__VA_ARGS__)
 
+/**
+ * @brief Print Validation error from struct ly_err_item.
+ *
+ * String ::ly_err_item.msg cannot be used directly because it may contain the % character,
+ * which is incorrectly interpreted in this situation as a conversion specification.
+ *
+ * @param[in] CTX libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] ERRITEM pointer to ly_err_item that contains an error message.
+ */
+#define LOGVAL_ERRITEM(CTX, ERRITEM) ly_vlog(CTX, ERRITEM->vecode, "%s", ERRITEM->msg)
+
 #define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
 #define LOGINT_RET(CTX) LOGINT(CTX); return LY_EINT
 #define LOGARG_RET(CTX) LOGARG(CTX); return LY_EINVAL
