@@ -105,10 +105,10 @@ void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnod
 /**
  * @brief Revert the specific logger's location data by number of changes made by ::ly_log_location().
  *
- * @param[in] scnode_steps Number of items in ::log_location.scnodes to forget.
- * @param[in] dnode_steps Number of items in ::log_location.dnodes to forget.
- * @param[in] path_steps Number of path strings in ::log_location.paths to forget.
- * @param[in] in_steps Number of input handlers ::log_location.inputs to forget.
+ * @param[in] scnode_steps Number of items in ::ly_log_location_s.scnodes to forget.
+ * @param[in] dnode_steps Number of items in ::ly_log_location_s.dnodes to forget.
+ * @param[in] path_steps Number of path strings in ::ly_log_location_s.paths to forget.
+ * @param[in] in_steps Number of input handlers ::ly_log_location_s.inputs to forget.
  */
 void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps);
 
@@ -340,7 +340,9 @@ struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, cons
  * @param[in] CTX libyang context.
  * @param[in] STRING string to store.
  * @param[in] LEN length of the string in WORD to store.
- * @param[in,out] DYNAMIC Set to 1 if STR is dynamically allocated, 0 otherwise. If set to 1, zerocopy version of lydict_insert is used.
+ * @param[in,out] DYNAMIC Set to 1 if @p STRING is dynamically allocated, 0 otherwise.
+ * If set to 1, zerocopy version of lydict_insert is used.
+ * @param[out] TARGET pointer is set to @p STRING value stored in the dictionary.
  */
 #define INSERT_STRING_RET(CTX, STRING, LEN, DYNAMIC, TARGET) \
     if (DYNAMIC) { \
@@ -372,10 +374,10 @@ void *ly_realloc(void *ptr, size_t size);
 char *ly_strnchr(const char *s, int c, size_t len);
 
 /**
- * @brief Compare NULL-terminated @p refstr with @str_len bytes from @p str.
+ * @brief Compare NULL-terminated @p refstr with @p str_len bytes from @p str.
  *
- * @param[in] refstr NULL-terminated string which must match @str_len bytes from @str followed by NULL-byte.
- * @param[in] str String to compare
+ * @param[in] refstr NULL-terminated string which must match @p str_len bytes from @p str followed by NULL-byte.
+ * @param[in] str String to compare.
  * @param[in] str_len Number of bytes to take into comparison from @p str.
  * @return An integer less than, equal to, or greater than zero if @p refstr matches,
  * respectively, to be less than, to match, or be greater than @p str.
@@ -536,7 +538,7 @@ LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base
  * @param[out] prefix Node's prefix, NULL if there is not any.
  * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
  * @param[out] name Node's name.
- * @param[out] nam_len Length of the node's name.
+ * @param[out] name_len Length of the node's name.
  * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
  */
 LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
