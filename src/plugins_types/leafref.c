@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
-
 #include "plugins_types.h"
 
 #include <assert.h>
@@ -28,7 +26,14 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
-const struct lyplg_type_record plugins_leafref[];
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesLeafref leafref (built-in)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------: | :-------: | :--: | :-----: |
+ * | exact same format as the leafref target ||||
+ */
 
 API LY_ERR
 lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
@@ -61,7 +66,7 @@ API LY_ERR
 lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
     char *errmsg = NULL;
 
@@ -75,12 +80,11 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
     /* check leafref target existence */
     if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, errmsg);
-        if (errmsg != NULL) {
-            free(errmsg);
-        }
+        free(errmsg);
+        return ret;
     }
 
-    return ret;
+    return LY_SUCCESS;
 }
 
 API LY_ERR
@@ -111,10 +115,7 @@ lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *origina
 API void
 lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    if (value->realtype->plugin != &plugins_leafref[0].plugin) {
-        /* leafref's realtype is again leafref only in case of incomplete store */
-        value->realtype->plugin->free(ctx, value);
-    }
+    value->realtype->plugin->free(ctx, value);
 }
 
 /**
