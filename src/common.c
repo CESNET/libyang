@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,6 +65,44 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
     } else {
         return rc ? rc : 1;
     }
+}
+
+#define LY_OVERFLOW_ADD(MAX, X, Y) ((X > MAX - Y) ? 1 : 0)
+
+#define LY_OVERFLOW_MUL(MAX, X, Y) ((X > MAX / Y) ? 1 : 0)
+
+LY_ERR
+ly_strntou8(const char *nptr, size_t len, uint8_t *ret)
+{
+    uint8_t num = 0, dig, dec_pow;
+
+    if (len > 3) {
+        /* overflow for sure */
+        return LY_EDENIED;
+    }
+
+    dec_pow = 1;
+    for ( ; len && isdigit(nptr[len - 1]); --len) {
+        dig = nptr[len - 1] - 48;
+
+        if (LY_OVERFLOW_MUL(UINT8_MAX, dig, dec_pow)) {
+            return LY_EDENIED;
+        }
+        dig *= dec_pow;
+
+        if (LY_OVERFLOW_ADD(UINT8_MAX, num, dig)) {
+            return LY_EDENIED;
+        }
+        num += dig;
+
+        dec_pow *= 10;
+    }
+
+    if (len) {
+        return LY_EVALID;
+    }
+    *ret = num;
+    return LY_SUCCESS;
 }
 
 uint32_t
