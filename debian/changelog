@@ -1,0 +1,108 @@
+libyang2 (2.0.0~-1) unstable; urgency=medium
+
+  * Initial pre-release of libyang2
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 04 May 2021 22:20:03 +0200
+
+libyang (1.0.225-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 08 Mar 2021 15:39:56 +0100
+
+libyang (1.0.215-1) unstable; urgency=medium
+
+  * Remove C++ symbols file, it's mostly impossible to maintain
+  * Update the libyang1 symbols file with the new symbol
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 02 Mar 2021 14:27:37 +0100
+
+libyang (1.0.184-2) unstable; urgency=medium
+
+  * Move the C++ symbols file to be amd64 only (Closes: #969073)
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 04 Sep 2020 10:16:16 +0200
+
+libyang (1.0.184-1) unstable; urgency=medium
+
+  * Remove upstream patches merged upstream
+  * Update changelog for 1.0.184-1~1.gbp418b5c release
+  * Update symbols files for libyang_1.0.184
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 21 Jul 2020 16:36:41 +0200
+
+libyang (1.0.176-3) unstable; urgency=medium
+
+  * Add upstream patch for 'data tree BUGFIX hash canonical values for leaves'
+
+ -- Ondřej Surý <ondrej@debian.org>  Sun, 19 Jul 2020 11:00:20 +0200
+
+libyang (1.0.176-2) unstable; urgency=medium
+
+  * Make the C++ symbols human readable
+  * Mark symbols missing on Debian jessie as optional
+  * Renamed yang-tools package to libyang-tools
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 15 Jul 2020 09:35:56 +0200
+
+libyang (1.0.176-1) unstable; urgency=medium
+
+  * New upstream release
+  * Add SymbolsHelper-Confirmed header
+  * Update symbols files for libyang 1.0.176
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 08 Jun 2020 11:21:04 +0200
+
+libyang (1.0.167-1) experimental; urgency=medium
+
+  [ David Lamparter ]
+  * major version bump (0.16 -> 1.0)
+
+  [ Ondřej Surý ]
+  * Add d/gbp.conf
+  * Add README.source on how to work with upstream repository
+  * Rediff patches
+  * Drop the python bindings
+  * Use pkg-kde-tools to regenerate symbols
+  * Lower the dh_compat level to 10
+  * Add lintian-overrides for the plugins
+  * Move the maintainer notes to README.source
+  * Add myself to uploaders
+  * Add extensions to the libyang1.symbols file
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 22 May 2020 10:54:51 +0200
+
+libyang (0.16.105-3) unstable; urgency=medium
+
+  * work around parallel build issues with python bindings (build only change)
+
+ -- David Lamparter <equinox-debian@diac24.net>  Mon, 20 Jan 2020 17:20:21 +0100
+
+libyang (0.16.105-2) unstable; urgency=medium
+
+  * fix CVE-2019-19333 & CVE-2019-19334 (Closes: #946217)
+  * fix cache corruption crash (upstream bug 752)
+  * fix some gcc & swig version dependent build failures (Closes: #925764)
+
+ -- David Lamparter <equinox-debian@diac24.net>  Sun, 22 Dec 2019 14:27:01 +0100
+
+libyang (0.16.105-1) unstable; urgency=medium
+
+  * upstream 0.16.105 (0.16-r3) release
+
+ -- David Lamparter <equinox-debian@diac24.net>  Wed, 23 Jan 2019 01:32:43 +0100
+
+libyang (0.16.52-2) unstable; urgency=medium
+
+  * use correct DEB_HOST_GNU_TYPE to fix i386 build
+  * mark non-libyang C++ symbols as optional (fixes build on several arch)
+  * pull in 2 upstraem fixes to get build working on big-endian
+
+ -- David Lamparter <equinox-debian@diac24.net>  Thu, 06 Dec 2018 13:33:08 +0100
+
+libyang (0.16.52-1) unstable; urgency=medium
+
+  * Initial release.
+  * Closes: #913219
+
+ -- David Lamparter <equinox-debian@diac24.net>  Sun, 18 Nov 2018 19:30:04 +0100
