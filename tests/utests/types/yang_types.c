@@ -59,39 +59,6 @@
         assert_null(tree); \
     }
 
-static int
-setup(void **state)
-{
-    char *cur_tz;
-
-    *state = NULL;
-
-    /* backup timezone, if any */
-    cur_tz = getenv("TZ");
-    if (cur_tz) {
-        cur_tz = strdup(cur_tz);
-        *state = cur_tz;
-    }
-
-    /* set CET */
-    setenv("TZ", "CET+02:00", 1);
-
-    return 0;
-}
-
-static int
-teardown(void **state)
-{
-    char *prev_tz = *state;
-
-    if (prev_tz) {
-        /* restore TZ */
-        setenv("TZ", prev_tz, 1);
-        free(prev_tz);
-    }
-    return 0;
-}
-
 static void
 test_data_xml(void **state)
 {
@@ -183,5 +150,5 @@ main(void)
         UTEST(test_print),
     };
 
-    return cmocka_run_group_tests(tests, setup, teardown);
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

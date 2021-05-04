@@ -21,6 +21,7 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include <cmocka.h>
 
@@ -94,6 +95,8 @@ struct utest_context {
 
     struct ly_in *in;    /**< Input handler */
     struct ly_out *out;  /**< Outpu handler */
+
+    char *orig_tz;       /**< Original "TZ" environment variable value */
 };
 
 /**
@@ -1266,6 +1269,8 @@ _utest_logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 static int
 utest_setup(void **state)
 {
+    char *cur_tz;
+
     /* setup the logger */
     ly_set_log_clb(_utest_logger, 1);
     ly_log_options(LY_LOLOG | LY_LOSTORE);
@@ -1279,6 +1284,15 @@ utest_setup(void **state)
 
     /* clean all errors from the setup - usually warnings regarding the plugins directories */
     UTEST_LOG_CLEAN;
+
+    /* backup timezone, if any */
+    cur_tz = getenv("TZ");
+    if (cur_tz) {
+        current_utest_context->orig_tz = strdup(cur_tz);
+    }
+
+    /* set CET */
+    setenv("TZ", "CET+02:00", 1);
 
     return 0;
 }
@@ -1302,10 +1316,16 @@ utest_teardown(void **state)
     /* libyang context */
     ly_ctx_destroy(current_utest_context->ctx);
 
+    if (current_utest_context->orig_tz) {
+        /* restore TZ */
+        setenv("TZ", current_utest_context->orig_tz, 1);
+    }
+
     /* utest context */
     ly_in_free(current_utest_context->in, 0);
     free(current_utest_context->err_msg);
     free(current_utest_context->err_path);
+    free(current_utest_context->orig_tz);
     free(current_utest_context);
     current_utest_context = NULL;
 
