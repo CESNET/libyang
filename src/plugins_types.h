@@ -536,38 +536,33 @@ struct lyplg_type_record {
  * @ingroup pluginsTypes
  * @{
  *
- * Simple functions implementing @ref howtoPluginsTypes callbacks handling simply just the canonical string of the value
- * (::lyd_value._canonical).
+ * Simple functions implementing @ref howtoPluginsTypes callbacks handling types that allocate no dynamic
+ * value and always generate their canonical value (::lyd_value._canonical).
  */
 
 /**
- * @brief Generic simple comparison callback checking the canonical value.
- * Implementation of the ::lyplg_type_compare_clb.
+ * @brief Implementation of ::lyplg_type_compare_clb for a generic simple type.
  */
 LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
- * @brief Generic simple printer callback of the canonized value.
- * Implementation of the ::lyplg_type_print_clb.
+ * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.
  */
 const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
- * @brief Generic simple hash callback of the canonized value.
- * Implementation of the ::lyplg_type_hash_clb.
+ * @brief Implementation of ::lyplg_type_hash_clb for a generic simple type.
  */
 const void *lyplg_type_hash_simple(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
 
 /**
- * @brief Generic simple duplication callback.
- * Implementation of the ::lyplg_type_dup_clb.
+ * @brief Implementation of ::lyplg_type_dup_clb for a generic simple type.
  */
 LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
- * @brief Generic cleanup callback freeing only the canonized value in ::lyd_value._canonical.
- * Simple implementation of the ::lyplg_type_free_clb.
+ * @brief Implementation of ::lyplg_type_free_clb for a generic simple type.
  */
 void lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value);
 
