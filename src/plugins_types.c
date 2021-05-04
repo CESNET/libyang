@@ -459,8 +459,8 @@ decimal:
         memset(&valcopy[len], '0', fraction_digits);
     }
 
-    ret_val = lyplg_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807),
-            valcopy, len, &d, err);
+    ret_val = lyplg_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1),
+            INT64_C(9223372036854775807), valcopy, size - 1, &d, err);
     if (!ret_val && ret) {
         *ret = d;
     }
