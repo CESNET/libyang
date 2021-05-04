@@ -904,48 +904,41 @@ LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type 
  */
 
 /**
- * @brief Validate, canonize and store value of the YANG built-in union type.
- * Implementation of the ::lyplg_type_store_clb.
+ * @brief Implementation of ::lyplg_type_store_clb for the built-in union type.
  */
 LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
- * @brief Comparison callback checking the union value.
- * Implementation of the ::lyplg_type_compare_clb.
+ * @brief Implementation of ::lyplg_type_compare_clb for the built-in union type.
  */
 LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
- * @brief Printer callback printing the union value.
- * Implementation of the ::lyplg_type_print_clb.
+ * @brief Implementation of ::lyplg_type_print_clb for the built-in union type.
  */
 const void *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
- * @brief Hash key callback for a union value.
- * Implementation of ::lyplg_type_hash_clb.
+ * @brief Implementation of ::lyplg_type_hash_clb for the built-in union type.
  */
 const void *lyplg_type_hash_union(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len);
 
 /**
- * @brief Duplication callback of the union values.
- * Implementation of the ::lyplg_type_dup_clb.
+ * @brief Implementation of ::lyplg_type_dup_clb for the built-in union type.
  */
 LY_ERR lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
- * @brief Validate value of the YANG built-in union type.
- * Implementation of the ::lyplg_type_validate_clb.
+ * @brief Implementation of ::lyplg_type_validate_clb for the built-in union type.
  */
 LY_ERR lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
- * @brief Free value of the YANG built-in union types.
- * Implementation of the ::lyplg_type_free_clb.
+ * @brief Implementation of ::lyplg_type_free_clb for the built-in union type.
  */
 void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
 

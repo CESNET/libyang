@@ -538,7 +538,7 @@ struct lyd_value {
         struct lyd_value_bits *bits; /**< bits value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
-        struct lyd_value_subvalue *subvalue; /** Union value with some metadata. */
+        struct lyd_value_union *subvalue; /** Union value with some metadata. */
         struct lyd_value_binary *bin; /** Binary value */
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the ::lyd_value.realtype
@@ -556,14 +556,15 @@ struct lyd_value {
 /**
  * @brief Special lyd_value structure for union.
  *
- * Represents data with multiple types (union). The ::lyd_value_subvalue.value contains representation according to
- * one of the union's types. The ::lyd_value_subvalue.prefix_data provides (possible) mappings from prefixes in
+ * Represents data with multiple types (union). The ::lyd_value_union.value contains representation according to
+ * one of the union's types. The ::lyd_value_union.prefix_data provides (possible) mappings from prefixes in
  * the original value to YANG modules. These prefixes are necessary to parse original value to the union's subtypes.
  */
-struct lyd_value_subvalue {
+struct lyd_value_union {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
-                                      (stored as ::lyd_value.realtype here, in subvalue structure */
-    const char *original;        /**< Original value in the dictionary. */
+                                      (stored as ::lyd_value.realtype here) */
+    void *original;              /**< Original value. */
+    size_t orig_len;             /**< Original value length. */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
