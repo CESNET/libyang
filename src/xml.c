@@ -344,7 +344,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
 #define BUFSIZE_STEP 128
 
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
-    const char *in = xmlctx->in->current, *start;
+    const char *in = xmlctx->in->current, *start, *in_aux;
     char *buf = NULL;
     size_t offset;   /* read offset in input buffer */
     size_t len;      /* length of the output string (write offset in output buffer) */
@@ -478,7 +478,10 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
             }
 
             /* continue */
-            ++offset;
+            in_aux = &in[offset];
+            LY_CHECK_ERR_GOTO(ly_getutf8(&in_aux, &n, &u),
+                    LOGVAL(ctx, LY_VCODE_INCHAR, in[offset]), error);
+            offset += u;
         }
     }
 
