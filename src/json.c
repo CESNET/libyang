@@ -425,6 +425,9 @@ invalid_character:
             }
         }
 
+        LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(jsonctx->ctx, LYVE_SEMANTICS,
+                "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit."), LY_EVALID);
+
         /* allocate buffer for the result (add terminating NULL-byte */
         num = malloc(num_len + 1);
         LY_CHECK_ERR_RET(!num, LOGMEM(jsonctx->ctx), LY_EMEM);
