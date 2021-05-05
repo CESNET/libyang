@@ -293,4 +293,3 @@ libyang.so.2 libyang2 #MINVER#
  lysp_node_notifs@Base 2.0.0~
  lysp_node_typedefs@Base 2.0.0~
  lyxp_get_expr@Base 2.0.0~
- strnstr@Base 2.0.0~
