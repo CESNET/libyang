@@ -416,6 +416,9 @@ invalid_character:
                 /* moving decimal point before the decimal value requires additional zero(s)
                  * (decimal point is already count in exponent value) */
                 num_len = exponent + labs(dp_position) + 1;
+            } else if (dp_position == 0) {
+                /* moving the decimal point exactly to the beginning will cause a zero character to be added. */
+                num_len = exponent + 1;
             } else {
                 /* moving decimal point just inside the decimal value does not make any change in length */
                 num_len = exponent;

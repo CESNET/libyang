@@ -142,6 +142,15 @@ test_number(void **state)
     assert_int_equal(1, jsonctx->dynamic);
     lyjson_ctx_free(jsonctx);
 
+    str = "12.1e3";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("12100", jsonctx->value);
+    assert_int_equal(5, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
     /* negative exp fraction number */
     str = "1.1e-3";
     assert_non_null(ly_in_memory(in, str));
@@ -149,6 +158,24 @@ test_number(void **state)
     assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
     assert_string_equal("0.0011", jsonctx->value);
     assert_int_equal(6, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
+    str = "12.4e-3";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("0.0124", jsonctx->value);
+    assert_int_equal(6, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
+    str = "12.4e-2";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("0.124", jsonctx->value);
+    assert_int_equal(5, jsonctx->value_len);
     assert_int_equal(1, jsonctx->dynamic);
     lyjson_ctx_free(jsonctx);
 
@@ -162,6 +189,15 @@ test_number(void **state)
     assert_int_equal(1, jsonctx->dynamic);
     lyjson_ctx_free(jsonctx);
 
+    str = "-44.11e3";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("-44110", jsonctx->value);
+    assert_int_equal(6, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
     /* negative exp negative fraction number */
     str = "-3.14e-3";
     assert_non_null(ly_in_memory(in, str));
@@ -169,6 +205,24 @@ test_number(void **state)
     assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
     assert_string_equal("-0.00314", jsonctx->value);
     assert_int_equal(8, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
+    str = "-98.7e-3";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("-0.0987", jsonctx->value);
+    assert_int_equal(7, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
+    str = "-98.7e-2";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("-0.987", jsonctx->value);
+    assert_int_equal(6, jsonctx->value_len);
     assert_int_equal(1, jsonctx->dynamic);
     lyjson_ctx_free(jsonctx);
 
