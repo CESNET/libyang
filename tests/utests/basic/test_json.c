@@ -132,6 +132,10 @@ test_number(void **state)
     assert_int_equal(1, jsonctx->dynamic);
     lyjson_ctx_free(jsonctx);
 
+    str = "1E1000";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+
     /* exp fraction number */
     str = "1.1e3";
     assert_non_null(ly_in_memory(in, str));
