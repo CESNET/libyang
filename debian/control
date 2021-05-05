@@ -47,11 +47,12 @@ Description: parser toolkit for IETF YANG data modeling - development files
  This package contains the C headers, a pkgconfig file, and .so entry point
  for libyang.
 
-Package: libyang-tools
+Package: libyang2-tools
 Depends: libyang2 (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Conflicts: libyang-tools
+Breaks: libyang-tools (<< ${source:Version})
+Replaces: libyang-tools (<< ${source:Version})
 Section: devel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - executable tools
@@ -59,3 +60,12 @@ Description: parser toolkit for IETF YANG data modeling - executable tools
  during the creation of IETF YANG schemas.  The tools are not generally
  useful for normal operation where libyang primarily processes configuration
  data, not schemas.
+
+Package: libyang-tools
+Depends: libyang2-tools (>= ${source:Version}),
+         ${misc:Depends}
+Section: oldlibs
+Architecture: all
+Description: parser toolkit for IETF YANG data modeling [dummy package]
+ This is empty dependency package to pull the executable tools.  It's
+ safe to remove.
