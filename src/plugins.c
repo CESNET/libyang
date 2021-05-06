@@ -57,6 +57,7 @@ extern const struct lyplg_type_record plugins_union[];
 extern const struct lyplg_type_record plugins_ipv4_address[];
 extern const struct lyplg_type_record plugins_ipv4_address_no_zone[];
 extern const struct lyplg_type_record plugins_ipv6_address[];
+extern const struct lyplg_type_record plugins_ipv6_address_no_zone[];
 extern const struct lyplg_type_record plugins_ipv4_prefix[];
 extern const struct lyplg_type_record plugins_ipv6_prefix[];
 
@@ -425,6 +426,7 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_prefix), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_prefix), error);
 
