@@ -1,6 +1,7 @@
 include(CheckSymbolExists)
 include(TestBigEndian)
 
+# defines "compatsrc" with source(s) of this small library
 macro(USE_COMPAT)
     # compatibility checks
     set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
@@ -18,9 +19,8 @@ macro(USE_COMPAT)
 
     TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 
-    # header and object file
+    # header and source file (adding the source directly allows for hiding its symbols)
     configure_file(${PROJECT_SOURCE_DIR}/compat/compat.h.in ${PROJECT_BINARY_DIR}/compat/compat.h @ONLY)
     include_directories(${PROJECT_BINARY_DIR}/compat)
-    add_library(compat OBJECT ${PROJECT_SOURCE_DIR}/compat/compat.c)
-    set_property(TARGET compat PROPERTY POSITION_INDEPENDENT_CODE ON)
+    set(compatsrc ${PROJECT_SOURCE_DIR}/compat/compat.c)
 endmacro()

@@ -262,11 +262,11 @@ if(ENABLE_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-    add_library(yang STATIC ${libsrc} $<TARGET_OBJECTS:compat>)
+    add_library(yang STATIC ${libsrc} ${compatsrc})
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-    add_library(yangobj OBJECT ${libsrc})
-    add_library(yang SHARED $<TARGET_OBJECTS:yangobj> $<TARGET_OBJECTS:compat>)
+    add_library(yangobj OBJECT ${libsrc} ${compatsrc})
+    add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
 
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
