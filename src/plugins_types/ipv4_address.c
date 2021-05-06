@@ -36,7 +36,7 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesIPv4Address ipv4-address(-no-zone) (ietf-inet-types)
+ * @subsection howtoDataLYBTypesIPv4Address ipv4-address (ietf-inet-types)
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
@@ -140,24 +140,16 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
 
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (!strcmp(type->plugin->id, "libyang 2 - ipv4-address-no-zone, version 1")) {
-            if (value_len != 4) {
-                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address-no-zone value size %zu "
-                        "(expected 4).", value_len);
+        if (value_len < 4) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address value size %zu "
+                    "(expected at least 4).", value_len);
+            goto cleanup;
+        }
+        for (i = 4; i < value_len; ++i) {
+            if (!isalnum(value_str[i])) {
+                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address zone character 0x%x.",
+                        value_str[i]);
                 goto cleanup;
-            }
-        } else {
-            if (value_len < 4) {
-                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address value size %zu "
-                        "(expected at least 4).", value_len);
-                goto cleanup;
-            }
-            for (i = 4; i < value_len; ++i) {
-                if (!isalnum(value_str[i])) {
-                    ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address zone character 0x%x.",
-                            value_str[i]);
-                    goto cleanup;
-                }
             }
         }
 
@@ -213,16 +205,14 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     ret = ipv4address_str2ip(value, value_len, options, ctx, &val->addr, &val->zone, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (format == LY_VALUE_CANON) {
-        /* store canonical value */
-        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-            ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
-            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-            LY_CHECK_GOTO(ret, cleanup);
-        } else {
-            ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
+    /* store canonical value */
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
 cleanup:
@@ -383,7 +373,7 @@ lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Plugin information for ip-address type implementation.
+ * @brief Plugin information for ipv4-address type implementation.
  *
  * Note that external plugins are supposed to use:
  *
@@ -396,20 +386,6 @@ const struct lyplg_type_record plugins_ipv4_address[] = {
         .name = "ipv4-address",
 
         .plugin.id = "libyang 2 - ipv4-address, version 1",
-        .plugin.store = lyplg_type_store_ipv4_address,
-        .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_ipv4_address,
-        .plugin.print = lyplg_type_print_ipv4_address,
-        .plugin.hash = lyplg_type_hash_ipv4_address,
-        .plugin.duplicate = lyplg_type_dup_ipv4_address,
-        .plugin.free = lyplg_type_free_ipv4_address
-    },
-    {
-        .module = "ietf-inet-types",
-        .revision = "2013-07-15",
-        .name = "ipv4-address-no-zone",
-
-        .plugin.id = "libyang 2 - ipv4-address-no-zone, version 1",
         .plugin.store = lyplg_type_store_ipv4_address,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address,
