@@ -724,10 +724,9 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             continue;
         }
 
-        if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) ||
-                !lysc_node_when(xp_scnode->scnode)) {
+        if ((xp_scnode->type != LYXP_NODE_ELEM) || !lysc_node_when(xp_scnode->scnode)) {
             /* no when to check */
-            xp_scnode->in_ctx = LYXP_SET_SCNODE_ATOM;
+            xp_scnode->in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
             continue;
         }
 
@@ -762,7 +761,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
                     } else {
                         /* no when, nothing to check */
-                        tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM;
+                        tmp_set.val.scnodes[j].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
                     }
                 }
 
@@ -913,9 +912,13 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
                         schema->name);
                 LY_CHECK_GOTO(ret, cleanup);
 
-                /* check dummy node accessing */
-                if (schema == node) {
-                    LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node.");
+                /* check dummy node children/value accessing */
+                if (lysc_data_parent(schema) == node) {
+                    LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node children.");
+                    ret = LY_EVALID;
+                    goto cleanup;
+                } else if ((schema == node) && (tmp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL)) {
+                    LOGVAL(ctx->ctx, LYVE_SEMANTICS, "When condition is accessing its own conditional node value.");
                     ret = LY_EVALID;
                     goto cleanup;
                 }

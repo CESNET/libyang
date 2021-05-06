@@ -545,8 +545,9 @@ lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *c
     (*set)->size = xp_set.used;
 
     for (i = 0; i < xp_set.used; ++i) {
-        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx >= LYXP_SET_SCNODE_ATOM)) {
-            assert((xp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM) ||
+        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx >= LYXP_SET_SCNODE_ATOM_NODE)) {
+            assert((xp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_NODE) ||
+                    (xp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL) ||
                     (xp_set.val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX));
             ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, 1, NULL);
             LY_CHECK_GOTO(ret, cleanup);

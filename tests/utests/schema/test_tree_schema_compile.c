@@ -3229,7 +3229,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node.", "Schema location /a:val.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location /a:val.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3245,7 +3245,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node.", "Schema location /a:val.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location /a:val.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3260,7 +3260,59 @@ test_when(void **state)
             "    container cont;\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node.", "Schema location /a:cont/val.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location /a:cont/val.");
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
+            "    namespace urn:a;\n"
+            "    prefix a;\n"
+            "    augment /cont {\n"
+            "        when \"aug-cont/aug-l\";\n"
+            "        container aug-cont {\n"
+            "            leaf aug-l {\n"
+            "                type int64;\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "    container cont;\n"
+            "}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition is accessing its own conditional node children.", "Schema location /a:cont/aug-cont.");
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module b {\n"
+            "    namespace urn:b;\n"
+            "    prefix b;\n"
+            "    container c {\n"
+            "        list l {\n"
+            "            key name;\n"
+            "            leaf name {\n"
+            "                type string;\n"
+            "            }\n"
+            "\n"
+            "            container cond-data {\n"
+            "                when \"/c/l2[name = current()/../name]/val = 'value'\";\n"
+            "                leaf cond-leaf {\n"
+            "                    type string;\n"
+            "                    default \"default_val\";\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "        list l2 {\n"
+            "            key name;\n"
+            "            leaf name {\n"
+            "                type string;\n"
+            "            }\n"
+            "\n"
+            "            container c2 {\n"
+            "                leaf val {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}",
+            LYS_IN_YANG, NULL));
 }
 
 int

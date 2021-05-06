@@ -939,15 +939,16 @@ set_fill_set(struct lyxp_set *trg, const struct lyxp_set *src)
  * @brief Clear context of all schema nodes.
  *
  * @param[in] set Set to clear.
+ * @param[in] new_ctx New context state for all the nodes currently in the context.
  */
 static void
-set_scnode_clear_ctx(struct lyxp_set *set)
+set_scnode_clear_ctx(struct lyxp_set *set, int32_t new_ctx)
 {
     uint32_t i;
 
     for (i = 0; i < set->used; ++i) {
         if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
-            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+            set->val.scnodes[i].in_ctx = new_ctx;
         } else if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START) {
             set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         }
@@ -1127,6 +1128,9 @@ lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
         if (j < orig_used) {
             /* node is there, but update its status if needed */
             if (set1->val.scnodes[j].in_ctx == LYXP_SET_SCNODE_START_USED) {
+                set1->val.scnodes[j].in_ctx = set2->val.scnodes[i].in_ctx;
+            } else if ((set1->val.scnodes[j].in_ctx == LYXP_SET_SCNODE_ATOM_NODE) &&
+                    (set2->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_VAL)) {
                 set1->val.scnodes[j].in_ctx = set2->val.scnodes[i].in_ctx;
             }
         } else {
@@ -3409,7 +3413,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -3454,7 +3458,7 @@ xpath_boolean(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_se
     LY_ERR rc;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -3492,7 +3496,7 @@ xpath_ceiling(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_se
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -3537,7 +3541,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, u
                 }
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -3597,7 +3601,7 @@ xpath_contains(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -3634,7 +3638,7 @@ xpath_count(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
         if (args[0]->type != LYXP_SET_SCNODE_SET) {
             LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return rc;
     }
 
@@ -3666,7 +3670,7 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, 
     }
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
 
         LY_CHECK_RET(lyxp_set_scnode_insert_node(set, set->cur_scnode, LYXP_NODE_ELEM, NULL));
     } else {
@@ -3714,7 +3718,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
                         __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         if (sleaf && (sleaf->type->basetype == LY_TYPE_LEAFREF)) {
             lref = (struct lysc_type_leafref *)sleaf->type;
             oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
@@ -3802,7 +3806,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", func, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -3938,7 +3942,7 @@ xpath_enum_value(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"enumeration\".", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -3973,7 +3977,7 @@ static LY_ERR
 xpath_false(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4027,12 +4031,13 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
     if (options & LYXP_SCNODE_ALL) {
         if ((args[0]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
             } else if (!warn_is_string_type(sleaf->type)) {
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4114,7 +4119,7 @@ static LY_ERR
 xpath_last(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4149,7 +4154,7 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *se
     (void)options;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4220,7 +4225,7 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uin
     const char *name = NULL;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4302,7 +4307,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
     (void)options;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return LY_SUCCESS;
     }
 
@@ -4374,7 +4379,7 @@ static LY_ERR
 xpath_node(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4405,14 +4410,16 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyxp_se
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
-        if (arg_count && (args[0]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+        if (arg_count && (args[0]->type == LYXP_SET_SCNODE_SET) &&
+                (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
+                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
+                        sleaf->name);
             } else if (!warn_is_string_type(sleaf->type)) {
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4489,7 +4496,7 @@ static LY_ERR
 xpath_not(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4519,7 +4526,7 @@ xpath_number(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, u
     LY_ERR rc;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return LY_SUCCESS;
     }
 
@@ -4549,7 +4556,7 @@ static LY_ERR
 xpath_position(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -4603,7 +4610,7 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4670,7 +4677,7 @@ xpath_round(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"decimal64\".", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4723,7 +4730,7 @@ xpath_starts_with(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyx
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4757,7 +4764,7 @@ xpath_string(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, u
     LY_ERR rc;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return LY_SUCCESS;
     }
 
@@ -4804,7 +4811,7 @@ xpath_string_length(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
                 LOGWRN(set->ctx, "Argument #0 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4867,7 +4874,7 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set
                 LOGWRN(set->ctx, "Argument #3 of %s is node \"%s\", not of numeric type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -4952,7 +4959,7 @@ xpath_substring_after(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -5005,7 +5012,7 @@ xpath_substring_before(struct lyxp_set **args, uint16_t UNUSED(arg_count), struc
                 LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -5058,7 +5065,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *s
                 }
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -5111,7 +5118,7 @@ xpath_text(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
     uint32_t i;
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return LY_SUCCESS;
     }
 
@@ -5188,7 +5195,7 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_
                 LOGWRN(set->ctx, "Argument #3 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
             }
         }
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         return rc;
     }
 
@@ -5257,7 +5264,7 @@ static LY_ERR
 xpath_true(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         return LY_SUCCESS;
     }
 
@@ -5353,7 +5360,7 @@ moveto_root(struct lyxp_set *set, uint32_t options)
     }
 
     if (options & LYXP_SCNODE_ALL) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         LY_CHECK_RET(lyxp_set_scnode_insert_node(set, NULL, set->root_type, NULL));
     } else {
         set->type = LYXP_SET_NODE_SET;
@@ -5685,7 +5692,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
             /* remember context node */
             set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
         }
 
         start_parent = set->val.scnodes[i].scnode;
@@ -5859,7 +5866,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod,
             /* remember context node */
             set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
         }
 
         /* TREE DFS */
@@ -6280,7 +6287,7 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
             /* remember context node */
             set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
         }
 
         start_parent = set->val.scnodes[i].scnode;
@@ -6435,7 +6442,7 @@ moveto_scnode_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
             /* remember context node */
             set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
         } else {
-            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+            set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
         }
 
         node = set->val.scnodes[i].scnode;
@@ -6849,7 +6856,7 @@ only_parse:
         /* restore the state as it was before the predicate */
         for (i = 0; i < set->used; ++i) {
             if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
-                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM;
+                set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
             } else if (set->val.scnodes[i].in_ctx == pred_in_ctx) {
                 set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
             }
@@ -7169,7 +7176,7 @@ moveto:
     /* move to the attribute(s), data node(s), or schema node(s) */
     if (attr_axis) {
         if (set && (options & LYXP_SCNODE_ALL)) {
-            set_scnode_clear_ctx(set);
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         } else {
             if (all_desc) {
                 rc = moveto_attr_alldesc(set, moveto_mod, ncname_dict, options);
@@ -7190,7 +7197,7 @@ moveto:
             LY_CHECK_GOTO(rc, cleanup);
 
             for (i = set->used - 1; i > -1; --i) {
-                if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM) {
+                if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM_NODE) {
                     break;
                 }
             }
@@ -7257,7 +7264,7 @@ eval_node_type_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
     if (set) {
         assert(exp->tok_len[*tok_idx] == 4);
         if (set->type == LYXP_SET_SCNODE_SET) {
-            set_scnode_clear_ctx(set);
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
             /* just for the debug message below */
             set = NULL;
         } else {
@@ -7652,7 +7659,7 @@ eval_function_call(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_s
         if (options & LYXP_SCNODE_ALL) {
             /* merge all nodes from arg evaluations */
             for (i = 0; i < arg_count; ++i) {
-                set_scnode_clear_ctx(args[i]);
+                set_scnode_clear_ctx(args[i], LYXP_SET_SCNODE_ATOM_NODE);
                 lyxp_set_scnode_merge(set, args[i]);
             }
         }
@@ -7783,7 +7790,7 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
         /* Literal */
         if (!set || (options & LYXP_SCNODE_ALL)) {
             if (set) {
-                set_scnode_clear_ctx(set);
+                set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
             }
             eval_literal(exp, tok_idx, NULL);
         } else {
@@ -7797,7 +7804,7 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
         /* Number */
         if (!set || (options & LYXP_SCNODE_ALL)) {
             if (set) {
-                set_scnode_clear_ctx(set);
+                set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
             }
             rc = eval_number(NULL, exp, tok_idx, NULL);
         } else {
@@ -8006,7 +8013,7 @@ eval_multiplicative_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_
         if (options & LYXP_SCNODE_ALL) {
             warn_operands(set->ctx, set, &set2, 1, exp->expr, exp->tok_pos[this_op - 1]);
             lyxp_set_scnode_merge(set, &set2);
-            set_scnode_clear_ctx(set);
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
             rc = moveto_op_math(set, &set2, &exp->expr[exp->tok_pos[this_op]]);
             LY_CHECK_GOTO(rc, cleanup);
@@ -8074,7 +8081,7 @@ eval_additive_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repe
         if (options & LYXP_SCNODE_ALL) {
             warn_operands(set->ctx, set, &set2, 1, exp->expr, exp->tok_pos[this_op - 1]);
             lyxp_set_scnode_merge(set, &set2);
-            set_scnode_clear_ctx(set);
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
             rc = moveto_op_math(set, &set2, &exp->expr[exp->tok_pos[this_op]]);
             LY_CHECK_GOTO(rc, cleanup);
@@ -8144,7 +8151,7 @@ eval_relational_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t re
         if (options & LYXP_SCNODE_ALL) {
             warn_operands(set->ctx, set, &set2, 1, exp->expr, exp->tok_pos[this_op - 1]);
             lyxp_set_scnode_merge(set, &set2);
-            set_scnode_clear_ctx(set);
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
             rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], options);
             LY_CHECK_GOTO(rc, cleanup);
@@ -8213,7 +8220,7 @@ eval_equality_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repe
             warn_equality_value(exp, set, *tok_idx - 1, this_op - 1, *tok_idx - 1);
             warn_equality_value(exp, &set2, this_op - 1, this_op - 1, *tok_idx - 1);
             lyxp_set_scnode_merge(set, &set2);
-            set_scnode_clear_ctx(set);
+            set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
             rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], options);
             LY_CHECK_GOTO(rc, cleanup);
@@ -8257,7 +8264,7 @@ eval_and_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, s
 
     /* cast to boolean, we know that will be the final result */
     if (set && (options & LYXP_SCNODE_ALL)) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
     } else {
         lyxp_set_cast(set, LYXP_SET_BOOLEAN);
     }
@@ -8282,7 +8289,7 @@ eval_and_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, s
 
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SCNODE_SET) {
-            set_scnode_clear_ctx(&set2);
+            set_scnode_clear_ctx(&set2, LYXP_SET_SCNODE_ATOM_NODE);
             lyxp_set_scnode_merge(set, &set2);
         } else {
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN);
@@ -8327,7 +8334,7 @@ eval_or_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, st
 
     /* cast to boolean, we know that will be the final result */
     if (set && (options & LYXP_SCNODE_ALL)) {
-        set_scnode_clear_ctx(set);
+        set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
     } else {
         lyxp_set_cast(set, LYXP_SET_BOOLEAN);
     }
@@ -8354,7 +8361,7 @@ eval_or_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, st
 
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SCNODE_SET) {
-            set_scnode_clear_ctx(&set2);
+            set_scnode_clear_ctx(&set2, LYXP_SET_SCNODE_ATOM_NODE);
             lyxp_set_scnode_merge(set, &set2);
         } else {
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN);
