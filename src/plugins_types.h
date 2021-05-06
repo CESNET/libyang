@@ -476,6 +476,27 @@ typedef LY_ERR (*lyplg_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_
 typedef void (*lyplg_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
+ * @brief Callback for obtaining the extra space required in lyd_value for
+ * values stored by ::lyplg_type_store_clb.
+ *
+ * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
+ * @param[in] type Type of the value.
+ * @return value to add to lyd_value allocation size.
+ */
+typedef uint16_t (*lyplg_type_extra_clb)(const struct lysc_type *type);
+
+/**
+ * @brief MACRO for calculating the extra value for lyplg_type_extra_clb to return
+ *
+ * @param[in] value_size the total size of the value you need to store.
+ * @return the value to return from your callback.
+ */
+#define LYPLG_TYPE_EXTRA_CALC_EXTRA(value_size)                         \
+    ((value_size) < (sizeof(struct lyd_value) - 2 * sizeof(void *))     \
+     ? (sizeof(struct lyd_value) - 2 * sizeof(void *))                  \
+     : ((value_size) - (sizeof(struct lyd_value) - 2 * sizeof(void *))))
+
+/**
  * @brief Hold type-specific functions for various operations with the data values.
  *
  * libyang includes set of plugins for all the built-in types. They are, by default, inherited to the derived types.
@@ -493,7 +514,10 @@ struct lyplg_type {
     lyplg_type_hash_clb hash;           /**< hash callback to get the hash key of the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
+    lyplg_type_extra_clb extra;         /**< optional function to get extra needed value space */
 };
+
+#define LYPLG_TYPE_VALUE_EXTRA(type) ((type)->plugin && (type)->plugin->extra ? (type)->plugin->extra(type) : 0)
 
 struct lyplg_type_record {
     /* plugin identification */
@@ -905,6 +929,12 @@ LY_ERR lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_typ
  * Implementation of the ::lyplg_type_free_clb.
  */
 void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value);
+
+/**
+ * @brief Extra callback for the union value.
+ * Implementation of the ::lyplg_type_extra_clb.
+ */
+uint16_t lyplg_type_extra_union(const struct lysc_type *type);
 
 /** @} pluginsTypesUnion */
 

@@ -1107,7 +1107,7 @@ lys_compile_unres_leaf_dlft(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, s
     }
 
     /* allocate the default value */
-    leaf->dflt = calloc(1, sizeof *leaf->dflt);
+    leaf->dflt = calloc(1, sizeof(*leaf->dflt) + LYPLG_TYPE_VALUE_EXTRA(leaf->type));
     LY_CHECK_ERR_RET(!leaf->dflt, LOGMEM(ctx->ctx), LY_EMEM);
 
     /* store the default value */
@@ -1136,6 +1136,7 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
 {
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE orig_count, u, v;
+    size_t valsize;
 
     assert(dflt || dflts);
 
@@ -1146,16 +1147,17 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
     LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, orig_count + (dflts ? LY_ARRAY_COUNT(dflts) : 1), LY_EMEM);
 
     /* fill each new default value */
+    valsize = sizeof(**llist->dflts) + LYPLG_TYPE_VALUE_EXTRA(llist->type);
     if (dflts) {
         LY_ARRAY_FOR(dflts, u) {
-            llist->dflts[orig_count + u] = calloc(1, sizeof **llist->dflts);
+            llist->dflts[orig_count + u] = calloc(1, valsize);
             ret = lys_compile_unres_dflt(ctx, &llist->node, llist->type, dflts[u].str, dflts[u].mod,
                     llist->dflts[orig_count + u], unres);
             LY_CHECK_ERR_RET(ret, free(llist->dflts[orig_count + u]), ret);
             LY_ARRAY_INCREMENT(llist->dflts);
         }
     } else {
-        llist->dflts[orig_count] = calloc(1, sizeof **llist->dflts);
+        llist->dflts[orig_count] = calloc(1, valsize);
         ret = lys_compile_unres_dflt(ctx, &llist->node, llist->type, dflt->str, dflt->mod,
                 llist->dflts[orig_count], unres);
         LY_CHECK_ERR_RET(ret, free(llist->dflts[orig_count]), ret);

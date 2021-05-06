@@ -642,10 +642,12 @@ lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_
 {
     LY_ERR ret;
     struct lyd_node_term *term;
+    struct lysc_type *type;
 
     assert(schema->nodetype & LYD_NODE_TERM);
 
-    term = calloc(1, sizeof *term);
+    type = ((struct lysc_node_leaf *)schema)->type;
+    term = calloc(1, sizeof(*term) + LYPLG_TYPE_VALUE_EXTRA(type));
     LY_CHECK_ERR_RET(!term, LOGMEM(schema->module->ctx), LY_EMEM);
 
     term->schema = schema;
@@ -653,7 +655,7 @@ lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_
     term->flags = LYD_NEW;
 
     LOG_LOCSET(schema, NULL, NULL, NULL);
-    ret = lyd_value_store(schema->module->ctx, &term->value, ((struct lysc_node_leaf *)term->schema)->type, value,
+    ret = lyd_value_store(schema->module->ctx, &term->value, type, value,
             value_len, dynamic, format, prefix_data, hints, schema, incomplete);
     LOG_LOCBACK(1, 0, 0, 0);
     LY_CHECK_ERR_RET(ret, free(term), ret);
@@ -673,14 +675,14 @@ lyd_create_term2(const struct lysc_node *schema, const struct lyd_value *val, st
     assert(schema->nodetype & LYD_NODE_TERM);
     assert(val && val->realtype);
 
-    term = calloc(1, sizeof *term);
+    type = ((struct lysc_node_leaf *)schema)->type;
+    term = calloc(1, sizeof(*term) + LYPLG_TYPE_VALUE_EXTRA(type));
     LY_CHECK_ERR_RET(!term, LOGMEM(schema->module->ctx), LY_EMEM);
 
     term->schema = schema;
     term->prev = &term->node;
     term->flags = LYD_NEW;
 
-    type = ((struct lysc_node_leaf *)schema)->type;
     ret = type->plugin->duplicate(schema->module->ctx, val, &term->value);
     if (ret) {
         LOGERR(schema->module->ctx, ret, "Value duplication failed.");

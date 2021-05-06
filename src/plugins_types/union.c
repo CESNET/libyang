@@ -92,7 +92,7 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     *err = NULL;
 
     /* prepare subvalue storage */
-    subvalue = calloc(1, sizeof *subvalue);
+    subvalue = calloc(1, sizeof *subvalue + lyplg_type_extra_union(type));
     if (!subvalue) {
         ret = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
         goto cleanup_value;
@@ -217,7 +217,7 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
 {
     LY_CHECK_RET(lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical));
 
-    dup->subvalue = calloc(1, sizeof *dup->subvalue);
+    dup->subvalue = calloc(1, sizeof *dup->subvalue + LYPLG_TYPE_VALUE_EXTRA(original->subvalue->value.realtype));
     LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);
     LY_CHECK_RET(original->subvalue->value.realtype->plugin->duplicate(ctx, &original->subvalue->value, &dup->subvalue->value));
 
@@ -246,6 +246,22 @@ lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
     }
 }
 
+API uint16_t
+lyplg_type_extra_union(const struct lysc_type *type)
+{
+    struct lysc_type **types = ((const struct lysc_type_union *)type)->types;
+    LY_ARRAY_COUNT_TYPE u;
+    uint16_t e, extra = 0;
+
+    LY_CHECK_RET2(type->basetype != LY_TYPE_UNION, 0);
+
+    for (u = 0; u < LY_ARRAY_COUNT(types); ++u)
+        if ((e = LYPLG_TYPE_VALUE_EXTRA(types[u])) > extra)
+            extra = e;
+
+    return extra;
+}
+
 /**
  * @brief Plugin information for union type implementation.
  *
@@ -266,7 +282,8 @@ const struct lyplg_type_record plugins_union[] = {
         .plugin.print = lyplg_type_print_union,
         .plugin.hash = lyplg_type_hash_union,
         .plugin.duplicate = lyplg_type_dup_union,
-        .plugin.free = lyplg_type_free_union
+        .plugin.free = lyplg_type_free_union,
+        .plugin.extra = lyplg_type_extra_union,
     },
     {0}
 };

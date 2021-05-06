@@ -517,12 +517,20 @@ typedef enum {
 
 /**
  * @brief YANG data representation
+ *
+ * NOTE: do not embed this structure as it may become variably sized.
  */
 struct lyd_value {
     const char *_canonical;          /**< Should never be accessed directly, instead ::lyd_get_value() and ::lyd_get_meta_value()
                                           should be used. Serves as a cache for the canonical value or the JSON
                                           representation if no canonical value is defined. */
-
+    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+                                         in the schema node of the data node since the type's store plugin can use other types/plugins for
+                                         storing data. Speaking about built-in types, this is the case of leafref which stores data as its
+                                         target type. In contrast, union type also uses its subtype's callbacks, but inside an internal data
+                                         stored in subvalue member of ::lyd_value structure, so here is the pointer to the union type.
+                                         In general, this type is used to get free callback for this lyd_value structure, so it must reflect
+                                         the type used to store data directly in the same lyd_value instance. */
     union {
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
@@ -539,17 +547,10 @@ struct lyd_value {
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
         struct lyd_value_subvalue *subvalue; /** Union value with some metadata. */
+        uint8_t data[0];             /**< generic data */
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the ::lyd_value.realtype
              plugin's callbacks to work with the data.*/
-
-    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
-                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
-                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
-                                          target type. In contrast, union type also uses its subtype's callbacks, but inside an internal data
-                                          stored in subvalue member of ::lyd_value structure, so here is the pointer to the union type.
-                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
-                                          the type used to store data directly in the same lyd_value instance. */
 };
 
 /**
@@ -559,10 +560,10 @@ struct lyd_value {
  * the ::lyd_value_subvalue.value contains representation according to one of the union's types.
  * The ::lyd_value_subvalue.prefix_data provides (possible) mappings from prefixes in the original value to YANG modules.
  * These prefixes are necessary to parse original value to the union's subtypes.
+ *
+ * NOTE: do not embed this structure as it may become variably sized (from lyd_value).
  */
 struct lyd_value_subvalue {
-    struct lyd_value value;      /**< representation of the value according to the selected union's subtype
-                                      (stored as ::lyd_value.realtype here, in subvalue structure */
     const char *original;        /**< Original value in the dictionary. */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
@@ -570,6 +571,8 @@ struct lyd_value_subvalue {
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
+    struct lyd_value value;      /**< representation of the value according to the selected union's subtype
+                                    (stored as ::lyd_value.realtype here, in subvalue structure */
 };
 
 /**
