@@ -1053,6 +1053,11 @@ test_leaf(void **state)
     assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
     CHECK_LOG_CTX("Missing mandatory keyword \"type\" as a child of \"leaf\".", "Line number 1.");
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
+
+    in.current = "l { type iid { path qpud wrong {";
+    assert_int_equal(LY_EVALID, parse_leaf(YCTX, NULL, (struct lysp_node **)&l));
+    CHECK_LOG_CTX("Invalid character sequence \"wrong\", expected a keyword.", "Line number 1.");
+    lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 }
 
 static void
