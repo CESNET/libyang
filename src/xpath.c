@@ -46,6 +46,8 @@
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx);
 static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype,
         struct lyxp_set *set, uint32_t options);
+static LY_ERR moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_set *set,
+        const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod);
 
 /**
  * @brief Print the type of an XPath \p set.
@@ -3781,8 +3783,11 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
     struct lyd_meta *meta;
-    struct lyd_value data = {0}, *val;
-    struct ly_err_item *err = NULL;
+    struct lyd_value *val;
+    const struct lys_module *mod;
+    const char *id_name;
+    uint16_t id_len;
+    struct lysc_ident *id;
     LY_ERR rc = LY_SUCCESS;
     ly_bool found;
 
@@ -3817,6 +3822,31 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
     LY_CHECK_RET(rc);
 
+    /* parse the identity */
+    id_name = args[1]->val.str;
+    id_len = strlen(id_name);
+    rc = moveto_resolve_model(&id_name, &id_len, set, set->cur_node ? set->cur_node->schema : NULL, &mod);
+    LY_CHECK_RET(rc);
+    if (!mod) {
+        LOGVAL(set->ctx, LYVE_XPATH, "Identity \"%.*s\" without a prefix.", (int)id_len, id_name);
+        return LY_EVALID;
+    }
+
+    /* find the identity */
+    found = 0;
+    LY_ARRAY_FOR(mod->identities, u) {
+        if (!ly_strncmp(mod->identities[u].name, id_name, id_len)) {
+            /* we have match */
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        LOGVAL(set->ctx, LYVE_XPATH, "Identity \"%.*s\" not found in module \"%s\".", (int)id_len, id_name, mod->name);
+        return LY_EVALID;
+    }
+    id = &mod->identities[u];
+
     set_fill_boolean(set, 0);
     found = 0;
     for (i = 0; i < args[0]->used; ++i) {
@@ -3832,10 +3862,6 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
                 /* uninteresting */
                 continue;
             }
-
-            /* store args[1] as ident */
-            rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
-                    0, set->format, set->prefix_data, LYD_HINT_DATA, leaf->schema, &data, NULL, &err);
         } else {
             meta = args[0]->val.meta[i].meta;
             val = &meta->value;
@@ -3843,35 +3869,18 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
                 /* uninteresting */
                 continue;
             }
-
-            /* store args[1] as ident */
-            rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str), 0,
-                    set->format, set->prefix_data, LYD_HINT_DATA, meta->parent->schema, &data, NULL, &err);
         }
 
-        if (err) {
-            ly_err_print(set->ctx, err);
-            ly_err_free(err);
-        }
-        LY_CHECK_RET(rc);
-
-        /* finally check the identity itself */
-        if (self_match && (data.ident == val->ident)) {
+        /* check the identity itself */
+        if (self_match && (id == val->ident)) {
             set_fill_boolean(set, 1);
             found = 1;
         }
-        if (!found) {
-            LY_ARRAY_FOR(data.ident->derived, u) {
-                if (data.ident->derived[u] == val->ident) {
-                    set_fill_boolean(set, 1);
-                    found = 1;
-                    break;
-                }
-            }
+        if (!found && !lyplg_type_identity_isderived(id, val->ident)) {
+            set_fill_boolean(set, 1);
+            found = 1;
         }
 
-        /* free temporary value */
-        val->realtype->plugin->free(set->ctx, &data);
         if (found) {
             break;
         }

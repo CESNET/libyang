@@ -1,4 +1,4 @@
-/*
+/**
  * @file test_xpath.c
  * @author: Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for XPath evaluation
@@ -29,6 +29,14 @@ const char *schema_a =
         "    prefix a;\n"
         "    yang-version 1.1;\n"
         "\n"
+        "    identity id_a;\n"
+        "    identity id_b {\n"
+        "        base id_a;\n"
+        "    }\n"
+        "    identity id_c {\n"
+        "        base id_b;\n"
+        "    }\n"
+        "\n"
         "    list l1 {\n"
         "        key \"a b\";\n"
         "        leaf a {\n"
@@ -46,6 +54,11 @@ const char *schema_a =
         "    }\n"
         "    leaf foo2 {\n"
         "        type uint8;\n"
+        "    }\n"
+        "    leaf foo3 {\n"
+        "        type identityref {\n"
+        "            base id_a;\n"
+        "        }\n"
         "    }\n"
         "    container c {\n"
         "        leaf x {\n"
@@ -300,13 +313,13 @@ test_atomize(void **state)
 
     /* some random paths just making sure the API function works */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*", 0, &set));
-    assert_int_equal(4, set->count);
+    assert_int_equal(5, set->count);
 
     ly_set_free(set, NULL);
 
     /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "//.", 0, &set));
-    assert_in_range(set->count, 16, UINT32_MAX);
+    assert_in_range(set->count, 17, UINT32_MAX);
 
     ly_set_free(set, NULL);
 
@@ -336,6 +349,28 @@ test_canonize(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_derived_from(void **state)
+{
+    const char *data =
+            "<foo3 xmlns=\"urn:tests:a\">id_c</foo3>";
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo3[derived-from(., 'a:id_b')]", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo3[derived-from(., 'a:id_a')]", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -344,6 +379,7 @@ main(void)
         UTEST(test_toplevel, setup),
         UTEST(test_atomize, setup),
         UTEST(test_canonize, setup),
+        UTEST(test_derived_from, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
