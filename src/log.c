@@ -626,11 +626,10 @@ lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR er
 }
 
 /**
- * @brief Exact same functionality as ::ly_err_print() but has variable arguments so va_start() can
- * be used and an empty va_list created.
+ * @brief Exact same functionality as ::ly_err_print() but has variable arguments so log_vprintf() can be called.
  */
 static void
-_ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem, ...)
+_ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem, const char *format, ...)
 {
     va_list ap;
     char *path_dup = NULL;
@@ -643,17 +642,14 @@ _ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem, ...)
         LY_CHECK_ERR_RET(!path_dup, LOGMEM(ctx), );
     }
 
-    va_start(ap, eitem);
-    log_vprintf(ctx, eitem->level, eitem->no, eitem->vecode, eitem->path, eitem->msg, ap);
+    va_start(ap, format);
+    log_vprintf(ctx, eitem->level, eitem->no, eitem->vecode, path_dup, format, ap);
     va_end(ap);
-
-    if (path_dup) {
-        eitem->path = path_dup;
-    }
 }
 
 API void
 ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
-    _ly_err_print(ctx, eitem);
+    /* String ::ly_err_item.msg cannot be used directly because it may contain the % character */
+    _ly_err_print(ctx, eitem, "%s", eitem->msg);
 }
