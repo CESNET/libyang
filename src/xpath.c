@@ -3715,6 +3715,24 @@ xpath_derived_from_ident_cmp(struct lys_ident *ident, const char *ident_str)
     return 0;
 }
 
+static int
+xpath_derived_from_ident_cmp_r(struct lys_ident *ident, const char *ident_str)
+{
+    uint32_t i;
+
+    for (i = 0; i < ident->base_size; ++i) {
+        if (!xpath_derived_from_ident_cmp(ident->base[i], ident_str)) {
+            return 0;
+        }
+
+        if (!xpath_derived_from_ident_cmp_r(ident->base[i], ident_str)) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 /**
  * @brief Execute the YANG 1.1 derived-from(node-set, string) function. Returns LYXP_SET_BOOLEAN depending
  *        on whether the first argument nodes contain a node of an identity derived from the second
@@ -3732,7 +3750,7 @@ static int
 xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *cur_node, struct lys_module *local_mod,
                    struct lyxp_set *set, int options)
 {
-    uint32_t i, j;
+    uint32_t i;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
     lyd_val *val;
@@ -3787,14 +3805,8 @@ xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct ly
                 }
             }
             if (val) {
-                for (j = 0; j < val->ident->base_size; ++j) {
-                    if (!xpath_derived_from_ident_cmp(val->ident->base[j], args[1]->val.str)) {
-                        set_fill_boolean(set, 1);
-                        break;
-                    }
-                }
-
-                if (j < val->ident->base_size) {
+                if (!xpath_derived_from_ident_cmp_r(val->ident, args[1]->val.str)) {
+                    set_fill_boolean(set, 1);
                     break;
                 }
             }
@@ -3821,7 +3833,7 @@ static int
 xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *cur_node,
                            struct lys_module *local_mod, struct lyxp_set *set, int options)
 {
-    uint32_t i, j;
+    uint32_t i;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
     lyd_val *val;
@@ -3881,14 +3893,8 @@ xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), s
                     break;
                 }
 
-                for (j = 0; j < val->ident->base_size; ++j) {
-                    if (!xpath_derived_from_ident_cmp(val->ident->base[j], args[1]->val.str)) {
-                        set_fill_boolean(set, 1);
-                        break;
-                    }
-                }
-
-                if (j < val->ident->base_size) {
+                if (!xpath_derived_from_ident_cmp_r(val->ident, args[1]->val.str)) {
+                    set_fill_boolean(set, 1);
                     break;
                 }
             }
