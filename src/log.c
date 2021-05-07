@@ -419,6 +419,25 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         return;
     }
 
+    if (no == LY_EMEM) {
+        /* just print it, anything else would most likely fail anyway */
+        if (ly_log_opts & LY_LOLOG) {
+            if (log_clb) {
+                log_clb(level, LY_EMEM_MSG, path);
+            } else {
+                fprintf(stderr, "libyang[%d]: ", level);
+                vfprintf(stderr, format, args);
+                if (path) {
+                    fprintf(stderr, " (path: %s)\n", path);
+                } else {
+                    fprintf(stderr, "\n");
+                }
+            }
+        }
+        free(path);
+        return;
+    }
+
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
     if ((level < LY_LLVRB) && ctx && (ly_log_opts & LY_LOSTORE)) {
         assert(format);
