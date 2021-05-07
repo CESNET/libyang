@@ -575,10 +575,12 @@ lysc_node_clear_all_priv(struct lys_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u, v;
 
-    if (mod->compiled) {
-        /* set NULL for all ::lysc_node.priv pointers in module */
-        lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
+    if (!mod->compiled) {
+        return;
     }
+
+    /* set NULL for all ::lysc_node.priv pointers in module */
+    lysc_module_dfs_full(mod, lysc_node_clear_priv_dfs_cb, NULL);
 
     /* only lys_compile_extension_instance()
      * can set ::lysp_ext_instance.parsed
