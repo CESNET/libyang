@@ -50,7 +50,7 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
     char *ret;
 
     /* allocate the value */
-    ret = malloc(LY_NUMBER_MAXLEN);
+    ret = calloc(1, LY_NUMBER_MAXLEN);
     LY_CHECK_RET(!ret, LY_EMEM);
 
     if (num) {

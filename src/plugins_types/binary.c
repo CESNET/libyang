@@ -220,7 +220,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
 
     if (format == LY_VALUE_LYB) {
         /* allocate the value */
-        val = malloc(sizeof *val);
+        val = calloc(1, sizeof *val);
         LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
         /* init storage */
@@ -256,7 +256,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     }
 
     /* allocate the value */
-    val = malloc(sizeof *val);
+    val = calloc(1, sizeof *val);
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
     /* init storage */
@@ -364,7 +364,7 @@ lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
-    dup_val = malloc(sizeof *dup_val);
+    dup_val = calloc(1, sizeof *dup_val);
     if (!dup_val) {
         lydict_remove(ctx, dup->_canonical);
         return LY_EMEM;
