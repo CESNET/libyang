@@ -173,6 +173,46 @@ lyplg_type_compare_decimal64(const struct lyd_value *val1, const struct lyd_valu
     return LY_SUCCESS;
 }
 
+static int
+lyplg_type_sort_decimal64(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    uint8_t e1 = ((struct lysc_type_dec *)val1->realtype)->fraction_digits;
+    uint8_t e2 = ((struct lysc_type_dec *)val2->realtype)->fraction_digits;
+
+    int64_t val1int = val1->dec64 / (10 * e1);
+    int64_t val2int = val2->dec64 / (10 * e2);
+
+    if (val1int < val2int) {
+        return -1;
+    } else if (val1int > val2int) {
+        return 1;
+    }
+
+    int64_t val1frac = val1->dec64 - (val1int * 10 * e1);
+    int64_t val2frac = val2->dec64 - (val2int * 10 * e2);
+
+    /* make them both the same magnitude */
+    if (e1 < 18) {
+        val1frac *= 10 * (18 - e1);
+    }
+    if (e2 < 18) {
+        val2frac *= 10 * (18 - e2);
+    }
+
+    if (val1frac < val2frac) {
+        return -1;
+    } else if (val1frac > val2frac) {
+        return 1;
+    }
+    return 0;
+}
+
 API const void *
 lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -212,6 +252,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_decimal64,
+        .plugin.sort = lyplg_type_sort_decimal64,
         .plugin.print = lyplg_type_print_decimal64,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

@@ -151,6 +151,26 @@ lyplg_type_compare_ipv4_address_no_zone(const struct lyd_value *val1, const stru
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for the ipv4-address-no-zone ietf-inet-types type.
+ */
+static int
+lyplg_type_sort_ipv4_address_no_zone(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    if (val1->uint32 < val2->uint32) {
+        return -1;
+    } else if (val1->uint32 > val2->uint32) {
+        return 1;
+    }
+    return 0;
+}
+
+/**
  * @brief Implementation of ::lyplg_type_print_clb for the ipv4-address-no-zone ietf-inet-types type.
  */
 static const void *
@@ -216,6 +236,7 @@ const struct lyplg_type_record plugins_ipv4_address_no_zone[] = {
         .plugin.store = lyplg_type_store_ipv4_address_no_zone,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address_no_zone,
+        .plugin.sort = lyplg_type_sort_ipv4_address_no_zone,
         .plugin.print = lyplg_type_print_ipv4_address_no_zone,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

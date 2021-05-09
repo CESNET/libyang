@@ -360,6 +360,7 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .plugin.store = lyplg_type_store_instanceid,
         .plugin.validate = lyplg_type_validate_instanceid,
         .plugin.compare = lyplg_type_compare_instanceid,
+        .plugin.sort = lyplg_type_sort_simple,
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
         .plugin.free = lyplg_type_free_instanceid

@@ -391,6 +391,21 @@ LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t
 void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
 
 /**
+ * @brief Check the inputs to see if the sort compare can be handled up-front
+ *
+ * This should be the first thing called in a callback's sort compare function. If it returns LY_SUCCESS then
+ * the callee should return result to the caller. Typically this function is dealing with dissimilar types
+ * between 'val1' and 'val2' values.
+ *
+ * @param[in/out] val1 First value to compare (may update).
+ * @param[in/out] val2 Second value to compare (may update)
+ * @param[out] result Value to return from callback if LY_SUCCESS is returned.
+ * @return LY_SUCCESS - comparison is done, return result from the callback.
+ * @return LY_EINCOMPLETE - continue doing comparison as types are directly comparable.
+ */
+LY_ERR lyplg_type_initial_sort(const struct lyd_value **val1, const struct lyd_value **val2, int *result);
+
+/**
  * @defgroup plugintypestoreopts Plugins: Type store callback options.
  *
  * Options applicable to ::lyplg_type_store_clb().
@@ -473,6 +488,20 @@ typedef LY_ERR (*lyplg_type_validate_clb)(const struct ly_ctx *ctx, const struct
 typedef LY_ERR (*lyplg_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
+ * @brief Callback for comparing 2 values for sorting
+ *
+ * In case the value types (::lyd_value.realtype) are different, ::LY_ENOT must always be returned.
+ * It can be assumed that the same context (dictionary) was used for storing both values.
+ *
+ * Input values are expected to be the same or comparable types (e.g., both integers) and valid.
+ *
+ * @param[in] val1 First value to compare.
+ * @param[in] val2 Second value to compare.
+ * @return -1 if val1 < val2, 0 if val1 == val2, 1 if val1 > val2.
+ */
+typedef int (*lyplg_type_sort_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
  * @brief Callback for getting the value of the data stored in @p value.
  *
  * Canonical value (@p format of ::LY_VALUE_CANON) must always be a zero-terminated const string stored in
@@ -530,6 +559,7 @@ struct lyplg_type {
     lyplg_type_store_clb store;         /**< store and canonize the value in the type-specific way */
     lyplg_type_validate_clb validate;   /**< optional, validate the value in the type-specific way in data */
     lyplg_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
+    lyplg_type_sort_clb sort;           /**< sorting callback to compare 2 values of the same type */
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
@@ -562,6 +592,11 @@ struct lyplg_type_record {
  * @brief Implementation of ::lyplg_type_compare_clb for a generic simple type.
  */
 LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of ::lyplg_type_sort_clb for a generic simple type.
+ */
+int lyplg_type_sort_simple(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.

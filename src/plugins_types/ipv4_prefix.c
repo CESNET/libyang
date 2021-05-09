@@ -221,6 +221,35 @@ lyplg_type_compare_ipv4_prefix(const struct lyd_value *val1, const struct lyd_va
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for the ipv6-prefix ietf-inet-types type.
+ */
+static int
+lyplg_type_sort_ipv4_prefix(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    const struct lyd_value_ipv4_prefix *v1;
+    const struct lyd_value_ipv4_prefix *v2;
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    /* count on host bits being set to zero */
+    if ((result = memcmp(&v1->addr, &v2->addr, sizeof v1->addr))) {
+        return result;
+    }
+    if (v1->prefix < v2->prefix) {
+        return -1;
+    } else if (v1->prefix > v2->prefix) {
+        return 1;
+    }
+    return 0;
+}
+
+/**
  * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv4-prefix type.
  */
 static const void *
@@ -327,6 +356,7 @@ const struct lyplg_type_record plugins_ipv4_prefix[] = {
         .plugin.store = lyplg_type_store_ipv4_prefix,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_prefix,
+        .plugin.sort = lyplg_type_sort_ipv4_prefix,
         .plugin.print = lyplg_type_print_ipv4_prefix,
         .plugin.duplicate = lyplg_type_dup_ipv4_prefix,
         .plugin.free = lyplg_type_free_ipv4_prefix

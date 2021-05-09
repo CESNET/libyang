@@ -284,6 +284,21 @@ lyplg_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *
     return LY_ENOT;
 }
 
+API int
+lyplg_type_sort_simple(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    if (val1->_canonical == val2->_canonical) {
+        return 0;
+    }
+    return strcmp(val1->_canonical, val2->_canonical);
+}
+
 API const void *
 lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -747,6 +762,54 @@ API void
 lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
 {
     ly_path_free(ctx, path);
+}
+
+static inline int
+is_int_type(const struct lysc_type *realtype)
+{
+    switch (realtype->basetype) {
+    case LY_TYPE_UINT8:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_UINT64:
+    case LY_TYPE_INT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_INT64:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+API LY_ERR
+lyplg_type_initial_sort(const struct lyd_value **val1, const struct lyd_value **val2, int *result)
+{
+    const struct lysc_type *rt1 = (*val1)->realtype, *rt2 = (*val2)->realtype;
+
+    if (rt1->basetype == LY_TYPE_UNION) {
+        *val1 = &(*val1)->subvalue->value;
+        rt1 = (*val1)->realtype;
+    }
+    if (rt2->basetype == LY_TYPE_UNION) {
+        *val2 = &(*val2)->subvalue->value;
+        rt2 = (*val2)->realtype;
+    }
+
+    if ((rt1 != rt2) && !(is_int_type(rt1) && is_int_type(rt2))) {
+        /* sort by type */
+        if (rt1->basetype == rt2->basetype) {
+            *result = strcmp(rt1->plugin->id, rt2->plugin->id);
+        } else if (rt1->basetype < rt2->basetype) {
+            *result = -1;
+        } else {
+            *result = 1;
+        }
+        return LY_SUCCESS;
+    }
+
+    /* caller should finish the compare */
+    return LY_EINCOMPLETE;
 }
 
 API LY_ERR

@@ -116,6 +116,35 @@ cleanup:
     return ret;
 }
 
+static LY_ERR
+lyplg_type_compare_enum(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+    if (val1->enum_item->value != val2->enum_item->value) {
+        return LY_ENOT;
+    }
+    return LY_SUCCESS;
+}
+
+static int
+lyplg_type_sort_enum(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    if (val1->enum_item->value < val2->enum_item->value) {
+        return -1;
+    } else if (val1->enum_item->value > val2->enum_item->value) {
+        return 1;
+    }
+    return 0;
+}
+
 API const void *
 lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -154,7 +183,8 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .plugin.id = "libyang 2 - enumeration, version 1",
         .plugin.store = lyplg_type_store_enum,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
+        .plugin.compare = lyplg_type_compare_enum,
+        .plugin.sort = lyplg_type_sort_enum,
         .plugin.print = lyplg_type_print_enum,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

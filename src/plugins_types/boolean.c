@@ -118,6 +118,22 @@ lyplg_type_compare_boolean(const struct lyd_value *val1, const struct lyd_value 
     return LY_SUCCESS;
 }
 
+static int
+lyplg_type_sort_boolean(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    if (val1->boolean == val2->boolean) {
+        return 0;
+    }
+
+    return val1->boolean ? 1 : -1;
+}
+
 API const void *
 lyplg_type_print_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -157,6 +173,7 @@ const struct lyplg_type_record plugins_boolean[] = {
         .plugin.store = lyplg_type_store_boolean,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_boolean,
+        .plugin.sort = lyplg_type_sort_boolean,
         .plugin.print = lyplg_type_print_boolean,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

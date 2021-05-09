@@ -57,14 +57,8 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
     }
 
     /* store canonical value */
-    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
-        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        LY_CHECK_GOTO(ret, cleanup);
-    } else {
-        ret = lydict_insert(ctx, "", value_len, &storage->_canonical);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
+    ret = lydict_insert(ctx, "", value_len, &storage->_canonical);
+    LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {

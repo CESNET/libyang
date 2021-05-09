@@ -397,6 +397,89 @@ lyplg_type_compare_uint(const struct lyd_value *val1, const struct lyd_value *va
     return LY_SUCCESS;
 }
 
+static inline uint64_t
+lyplg_type_get_value(const struct lyd_value *val, int *is_signed)
+{
+    switch (val->realtype->basetype) {
+    case LY_TYPE_UINT8:
+        *is_signed = 0;
+        return val->uint8;
+    case LY_TYPE_UINT16:
+        *is_signed = 0;
+        return val->uint16;
+    case LY_TYPE_UINT32:
+        *is_signed = 0;
+        return val->uint32;
+    case LY_TYPE_UINT64:
+        *is_signed = 0;
+        return val->uint64;
+    case LY_TYPE_INT8:
+        *is_signed = 1;
+        return val->int8;
+    case LY_TYPE_INT16:
+        *is_signed = 1;
+        return val->int16;
+    case LY_TYPE_INT32:
+        *is_signed = 1;
+        return val->int32;
+    case LY_TYPE_INT64:
+        *is_signed = 1;
+        return val->int64;
+    default:
+        ly_log(NULL, LY_LLERR, LY_EINVAL, "%s: non-integer type", __func__);
+        return 0;
+    }
+}
+
+static int
+lyplg_type_sort_integers(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    int64_t inum;
+    int is_signed1, is_signed2;
+
+    uint64_t num1 = lyplg_type_get_value(val1, &is_signed1);
+    uint64_t num2 = lyplg_type_get_value(val2, &is_signed2);
+
+    if (is_signed1 != is_signed2) {
+        if (is_signed1) {
+            inum = (int64_t)num1;
+            if (inum < 0) {
+                return -1;
+            }
+            if (num2 > 0x7fffffffffffffffUL) {
+                return -1;
+            }
+            if (inum < (int64_t)num2) {
+                return -1;
+            }
+            if (inum > (int64_t)num2) {
+                return 1;
+            }
+            return 0;
+        }
+        inum = (int64_t)num2;
+        if (inum < 0) {
+            return 1;
+        }
+        if (num1 > 0x7fffffffffffffffUL) {
+            return 1;
+        }
+        if ((int64_t)num1 < inum) {
+            return -1;
+        } else if ((int64_t)num1 > inum) {
+            return 1;
+        }
+        return 0;
+    }
+    if (num1 < num2) {
+        return -1;
+    }
+    if (num1 > num2) {
+        return 1;
+    }
+    return 0;
+}
+
 API const void *
 lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -448,6 +531,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -460,6 +544,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -472,6 +557,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -484,6 +570,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -496,6 +583,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -508,6 +596,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -520,6 +609,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -532,6 +622,7 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
+        .plugin.sort = lyplg_type_sort_integers,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

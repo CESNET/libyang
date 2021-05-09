@@ -234,6 +234,35 @@ lyplg_type_compare_ipv4_address(const struct lyd_value *val1, const struct lyd_v
 }
 
 /**
+ * @brief Implementation of ::lyplg_type_sort_clb for the ipv4-address ietf-inet-types type.
+ */
+static int
+lyplg_type_sort_ipv4_address(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    const struct lyd_value_ipv4_address *v1;
+    const struct lyd_value_ipv4_address *v2;
+    const char *z1, *z2;
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    if ((result = memcmp(&v1->addr, &v2->addr, sizeof v1->addr))) {
+        return result;
+    }
+    z1 = v1->zone ? v1->zone : "";
+    z2 = v2->zone ? v2->zone : "";
+    if (v1->zone == v2->zone) {
+        return 0;
+    }
+    return strcmp(z1, z2);
+}
+
+/**
  * @brief Implementation of ::lyplg_type_print_clb for the ipv4-address ietf-inet-types type.
  */
 static const void *
@@ -371,6 +400,7 @@ const struct lyplg_type_record plugins_ipv4_address[] = {
         .plugin.store = lyplg_type_store_ipv4_address,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address,
+        .plugin.sort = lyplg_type_sort_ipv4_address,
         .plugin.print = lyplg_type_print_ipv4_address,
         .plugin.duplicate = lyplg_type_dup_ipv4_address,
         .plugin.free = lyplg_type_free_ipv4_address

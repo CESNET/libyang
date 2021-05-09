@@ -292,6 +292,37 @@ lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *
     return LY_SUCCESS;
 }
 
+static int
+lyplg_type_sort_binary(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    const struct lyd_value_binary *v1;
+    const struct lyd_value_binary *v2;
+    size_t minsize;
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    /* just do something deterministic -- should not happen */
+    if (val1->realtype != val2->realtype) {
+        return val1->realtype < val2->realtype ? -1 : 1;
+    }
+
+    minsize = v1->size < v2->size ? v1->size : v2->size;
+    if ((result = memcmp(v1->data, v2->data, minsize))) {
+        return result;
+    } else if (v1->size == v2->size) {
+        return 0;
+    } else if (minsize == v1->size) {
+        return -1;
+    }
+    return 1;
+}
+
 API const void *
 lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
@@ -393,6 +424,7 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.store = lyplg_type_store_binary,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_binary,
+        .plugin.sort = lyplg_type_sort_binary,
         .plugin.print = lyplg_type_print_binary,
         .plugin.duplicate = lyplg_type_dup_binary,
         .plugin.free = lyplg_type_free_binary,

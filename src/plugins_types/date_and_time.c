@@ -290,6 +290,47 @@ lyplg_type_compare_date_and_time(const struct lyd_value *val1, const struct lyd_
     return LY_ENOT;
 }
 
+static int
+lyplg_type_sort_date_and_time(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    const struct lyd_value_date_and_time *v1;
+    const struct lyd_value_date_and_time *v2;
+    int result;
+
+    if (lyplg_type_initial_sort(&val1, &val2, &result) == LY_SUCCESS) {
+        return result;
+    }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    if (v1->time < v2->time) {
+        return -1;
+    } else if (v1->time > v2->time) {
+        return 1;
+    }
+
+    uint8_t *s1 = (uint8_t *)(v1->fractions_s ? v1->fractions_s : "");
+    uint8_t *s2 = (uint8_t *)(v2->fractions_s ? v2->fractions_s : "");
+
+    for ( ; *s1 && *s2; s1++, s2++) {
+        if (*s1 == *s2) {
+            continue;
+        }
+        if (*s1 < *s2) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
+    if (*s1) {
+        return 1;
+    } else if (*s2) {
+        return -1;
+    }
+    return 0;
+}
+
 /**
  * @brief Implementation of ::lyplg_type_print_clb for ietf-yang-types date-and-time type.
  */
@@ -418,6 +459,7 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.store = lyplg_type_store_date_and_time,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,
+        .plugin.sort = lyplg_type_sort_date_and_time,
         .plugin.print = lyplg_type_print_date_and_time,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
         .plugin.free = lyplg_type_free_date_and_time
