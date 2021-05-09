@@ -1075,6 +1075,24 @@ LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *
 LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
         const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
 
+#define LYPLG_VALUE_INLINE_ALLOC(type_val, value)                  \
+    ((sizeof(*type_val) <= sizeof((value)->space))                 \
+     ? ((type_val) = memset((value)->space, 0, sizeof(*type_val))) \
+     : ((type_val) = ((value)->allocd = calloc(1, sizeof(*type_val)))))
+
+#define LYPLG_VALUE_INLINE_GET(type_val, value)      \
+    ((sizeof(*type_val) <= sizeof((value)->space))   \
+     ? ((type_val) = ((void *)((value)->space)))     \
+     : ((type_val) = (((value)->allocd))))
+
+#define LYPLG_VALUE_INLINE_GETR(value, type)   \
+    ((sizeof(type) <= sizeof((value)->space))      \
+     ? ((type *)((value)->space))                  \
+     : ((type *)((value)->allocd)))
+
+#define LYPLG_VALUE_INLINE_FREE(type_val) \
+        do { if (sizeof(*type_val) > sizeof(((struct lyd_value *)0)->space)) free(type_val); } while(0)
+
 /** @} pluginsTypes */
 
 #ifdef __cplusplus

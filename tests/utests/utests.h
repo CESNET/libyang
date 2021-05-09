@@ -932,9 +932,9 @@ struct utest_context {
     { \
         const char *arr[] = { __VA_ARGS__ }; \
         LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT(((struct lyd_value_bits *)(NODE).ptr)->items)); \
+        assert_int_equal(arr_size, LY_ARRAY_COUNT(LYPLG_VALUE_INLINE_GETR(&(NODE), struct lyd_value_bits)->items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(arr[it], ((struct lyd_value_bits *)(NODE).ptr)->items[it]->name); \
+            assert_string_equal(arr[it], LYPLG_VALUE_INLINE_GETR(&(NODE), struct lyd_value_bits)->items[it]->name); \
         } \
     }
 
@@ -1076,8 +1076,8 @@ struct utest_context {
  * @param[in] SIZE           expected value data size
 */
 #define CHECK_LYD_VALUE_BINARY(NODE, CANNONICAL_VAL, VALUE, SIZE) \
-    assert_int_equal((NODE).bin->size, SIZE); \
-    assert_int_equal(0, memcmp((NODE).bin->data, VALUE, SIZE)); \
+    assert_int_equal(LYPLG_VALUE_INLINE_GETR(&(NODE), struct lyd_value_binary)->size, SIZE); \
+    assert_int_equal(0, memcmp(LYPLG_VALUE_INLINE_GETR(&(NODE), struct lyd_value_binary)->data, VALUE, SIZE)); \
     assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \

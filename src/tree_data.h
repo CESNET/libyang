@@ -515,6 +515,12 @@ typedef enum {
 
 /** @} */
 
+/*
+ * The total inline space reserved in lyd_value for type specific values.
+ * If the type specific value is larger than this it will malloc.
+ */
+#define LYD_VALUE_SPACE_MAX 24
+
 /**
  * @brief YANG data representation
  */
@@ -523,6 +529,13 @@ struct lyd_value {
                                           should be used. Serves as a cache for the canonical value or the JSON
                                           representation if no canonical value is defined. */
 
+    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+                                         in the schema node of the data node since the type's store plugin can use other types/plugins for
+                                         storing data. Speaking about built-in types, this is the case of leafref which stores data as its
+                                         target type. In contrast, union type also uses its subtype's callbacks, but inside an internal data
+                                         stored in subvalue member of ::lyd_value structure, so here is the pointer to the union type.
+                                         In general, this type is used to get free callback for this lyd_value structure, so it must reflect
+                                         the type used to store data directly in the same lyd_value instance. */
     union {
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
@@ -535,22 +548,13 @@ struct lyd_value {
         uint32_t uint32;             /**< 32-bit unsigned integer */
         uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
-        struct lyd_value_bits *bits; /**< bits value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
         struct lyd_value_union *subvalue; /** Union value with some metadata. */
-        struct lyd_value_binary *bin; /** Binary value */
-        void *ptr;                   /**< generic data type structure used to store the data */
+        void *allocd;                 /**< generic data type structure used to store the data */
+        uint8_t space[LYD_VALUE_SPACE_MAX]; /**< space */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the ::lyd_value.realtype
              plugin's callbacks to work with the data.*/
-
-    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
-                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
-                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
-                                          target type. In contrast, union type also uses its subtype's callbacks, but inside an internal data
-                                          stored in subvalue member of ::lyd_value structure, so here is the pointer to the union type.
-                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
-                                          the type used to store data directly in the same lyd_value instance. */
 };
 
 /**

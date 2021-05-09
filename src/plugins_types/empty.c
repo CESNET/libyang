@@ -56,8 +56,6 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
     }
 
     /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
     storage->realtype = type;
 
     /* store canonical value */

@@ -309,7 +309,7 @@ API LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
-    dup->ptr = original->ptr;
+    memcpy(dup->space, original->space, sizeof(dup->space));
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 }

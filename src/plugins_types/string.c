@@ -62,8 +62,6 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
     storage->realtype = type;
 
     /* store canonical value */

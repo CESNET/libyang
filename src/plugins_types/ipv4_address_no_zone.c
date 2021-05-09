@@ -74,8 +74,6 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
         }
 
         /* init storage */
-        storage->_canonical = NULL;
-        storage->ptr = NULL;
         storage->realtype = type;
 
         /* store IP address as uint32_t value */
@@ -101,8 +99,6 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     LY_CHECK_GOTO(ret, cleanup);
 
     /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
     storage->realtype = type;
 
     /* we always need a dynamic value */
@@ -120,9 +116,14 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     }
 
     /* store canonical value */
-    ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
-    options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-    LY_CHECK_GOTO(ret, cleanup);
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
 
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {

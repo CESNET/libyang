@@ -113,24 +113,14 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
             goto cleanup;
         }
 
+        LYPLG_VALUE_INLINE_ALLOC(val, storage);
+        LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+
         /* init storage */
-        storage->_canonical = NULL;
-        storage->ptr = NULL;
         storage->realtype = type;
 
-        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-            /* use the value directly */
-            storage->ptr = (void *)value;
-            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        } else {
-            /* allocate the value */
-            val = calloc(1, sizeof *val);
-            LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-            storage->ptr = val;
-
-            /* store IP address */
-            memcpy(&val->addr, value, sizeof val->addr);
-        }
+        /* store IP address */
+        memcpy(val, value, sizeof(*val));
 
         /* success */
         goto cleanup;
@@ -152,12 +142,10 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate the value */
-    val = calloc(1, sizeof *val);
+    LYPLG_VALUE_INLINE_ALLOC(val, storage);
     LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
     /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = val;
     storage->realtype = type;
 
     /* get the network-byte order address */
@@ -193,7 +181,10 @@ cleanup:
 static LY_ERR
 lyplg_type_compare_ipv6_address_no_zone(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_ipv6_address_no_zone *v1 = val1->ptr, *v2 = val2->ptr;
+    struct lyd_value_ipv6_address_no_zone *v1, *v2;
+
+    LYPLG_VALUE_INLINE_GET(v1, val1);
+    LYPLG_VALUE_INLINE_GET(v2, val2);
 
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
@@ -212,8 +203,10 @@ static const void *
 lyplg_type_print_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
-    struct lyd_value_ipv6_address_no_zone *val = value->ptr;
+    struct lyd_value_ipv6_address_no_zone *val;
     char *ret;
+
+    LYPLG_VALUE_INLINE_GET(val, value);
 
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
@@ -270,19 +263,20 @@ static LY_ERR
 lyplg_type_dup_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    struct lyd_value_ipv6_address_no_zone *orig_val = original->ptr, *dup_val;
+    struct lyd_value_ipv6_address_no_zone *orig_val, *dup_val;
+
+    LYPLG_VALUE_INLINE_GET(orig_val, original);
 
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
-    dup_val = calloc(1, sizeof *dup_val);
+    LYPLG_VALUE_INLINE_ALLOC(dup_val, dup);
     if (!dup_val) {
         lydict_remove(ctx, dup->_canonical);
         return LY_EMEM;
     }
     memcpy(&dup_val->addr, &orig_val->addr, sizeof orig_val->addr);
 
-    dup->ptr = dup_val;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 }
@@ -293,10 +287,12 @@ lyplg_type_dup_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd_v
 static void
 lyplg_type_free_ipv6_address_no_zone(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_ipv6_address *val = value->ptr;
+    struct lyd_value_ipv6_address_no_zone *val;
+
+    LYPLG_VALUE_INLINE_GET(val, value);
 
     lydict_remove(ctx, value->_canonical);
-    free(val);
+    LYPLG_VALUE_INLINE_FREE(val);
 }
 
 /**
