@@ -257,6 +257,19 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lyplg_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    if (val1->ident == val2->ident) {
+        return LY_SUCCESS;
+    }
+    return LY_ENOT;
+}
+
 API const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
@@ -279,19 +292,6 @@ lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_
     }
     *dynamic = 1;
     return ret;
-}
-
-API LY_ERR
-lyplg_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
-{
-    if (val1->realtype != val2->realtype) {
-        return LY_ENOT;
-    }
-
-    if (val1->ident == val2->ident) {
-        return LY_SUCCESS;
-    }
-    return LY_ENOT;
 }
 
 /**
