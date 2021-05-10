@@ -124,7 +124,7 @@ lyplg_type_store_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lys
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
         } else {
             /* allocate the value */
-            val = malloc(sizeof *val);
+            val = calloc(1, sizeof *val);
             LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
             storage->ptr = val;
 
@@ -275,7 +275,7 @@ lyplg_type_dup_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd_v
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
-    dup_val = malloc(sizeof *dup_val);
+    dup_val = calloc(1, sizeof *dup_val);
     if (!dup_val) {
         lydict_remove(ctx, dup->_canonical);
         return LY_EMEM;

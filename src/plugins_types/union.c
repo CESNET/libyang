@@ -185,7 +185,7 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
         subvalue->orig_len = value_len;
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
     } else {
-        subvalue->original = malloc(value_len);
+        subvalue->original = calloc(1, value_len);
         LY_CHECK_ERR_GOTO(!subvalue->original, ret = LY_EMEM, cleanup);
         memcpy(subvalue->original, value, value_len);
         subvalue->orig_len = value_len;
@@ -326,7 +326,7 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
     ret = orig_val->value.realtype->plugin->duplicate(ctx, &orig_val->value, &dup_val->value);
     LY_CHECK_GOTO(ret, cleanup);
 
-    dup_val->original = malloc(orig_val->orig_len);
+    dup_val->original = calloc(1, orig_val->orig_len);
     LY_CHECK_ERR_GOTO(!dup_val->original, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     memcpy(dup_val->original, orig_val->original, orig_val->orig_len);
     dup_val->orig_len = orig_val->orig_len;
