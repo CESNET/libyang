@@ -160,6 +160,42 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lyplg_type_compare_decimal64(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    /* if type is the same, the fraction digits are, too */
+    if (val1->dec64 != val2->dec64) {
+        return LY_ENOT;
+    }
+    return LY_SUCCESS;
+}
+
+API const void *
+lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+{
+    if (format == LY_VALUE_LYB) {
+        *dynamic = 0;
+        if (value_len) {
+            *value_len = sizeof value->dec64;
+        }
+        return &value->dec64;
+    }
+
+    /* use the cached canonical value */
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = strlen(value->_canonical);
+    }
+    return value->_canonical;
+}
+
 /**
  * @brief Plugin information for decimal64 type implementation.
  *
@@ -176,8 +212,8 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.id = "libyang 2 - decimal64, version 1",
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_decimal64,
+        .plugin.print = lyplg_type_print_decimal64,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
