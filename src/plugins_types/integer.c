@@ -30,14 +30,6 @@
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
 /**
- * @brief LYB value size of each integer type.
- */
-static size_t integer_lyb_size[] = {
-    [LY_TYPE_INT8] = 1, [LY_TYPE_INT16] = 2, [LY_TYPE_INT32] = 4, [LY_TYPE_INT64] = 8,
-    [LY_TYPE_UINT8] = 1, [LY_TYPE_UINT16] = 2, [LY_TYPE_UINT32] = 4, [LY_TYPE_UINT64] = 8
-};
-
-/**
  * @page howtoDataLYB LYB Binary Format
  * @subsection howtoDataLYBTypesInteger (u)int(8/16/32/64) (built-in)
  *
@@ -45,6 +37,14 @@ static size_t integer_lyb_size[] = {
  * | :------  | :-------: | :--: | :-----: |
  * | 1/2/4/8 | yes | pointer to the specific integer type | integer value |
  */
+
+/**
+ * @brief LYB value size of each integer type.
+ */
+static size_t integer_lyb_size[] = {
+    [LY_TYPE_INT8] = 1, [LY_TYPE_INT16] = 2, [LY_TYPE_INT32] = 4, [LY_TYPE_INT64] = 8,
+    [LY_TYPE_UINT8] = 1, [LY_TYPE_UINT16] = 2, [LY_TYPE_UINT32] = 4, [LY_TYPE_UINT64] = 8
+};
 
 API LY_ERR
 lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
@@ -174,6 +174,74 @@ cleanup:
 }
 
 API LY_ERR
+lyplg_type_compare_int(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    switch (val1->realtype->basetype) {
+    case LY_TYPE_INT8:
+        if (val1->int8 != val2->int8) {
+            return LY_ENOT;
+        }
+        break;
+    case LY_TYPE_INT16:
+        if (val1->int16 != val2->int16) {
+            return LY_ENOT;
+        }
+        break;
+    case LY_TYPE_INT32:
+        if (val1->int32 != val2->int32) {
+            return LY_ENOT;
+        }
+        break;
+    case LY_TYPE_INT64:
+        if (val1->int64 != val2->int64) {
+            return LY_ENOT;
+        }
+        break;
+    default:
+        break;
+    }
+    return LY_SUCCESS;
+}
+
+API const void *
+lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+{
+    if (format == LY_VALUE_LYB) {
+        *dynamic = 0;
+        if (value_len) {
+            *value_len = integer_lyb_size[value->realtype->basetype];
+        }
+        switch (value->realtype->basetype) {
+        case LY_TYPE_INT8:
+            return &value->int8;
+        case LY_TYPE_INT16:
+            return &value->int16;
+        case LY_TYPE_INT32:
+            return &value->int32;
+        case LY_TYPE_INT64:
+            return &value->int64;
+        default:
+            break;
+        }
+        return NULL;
+    }
+
+    /* use the cached canonical value */
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = strlen(value->_canonical);
+    }
+    return value->_canonical;
+}
+
+API LY_ERR
 lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
@@ -299,6 +367,74 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lyplg_type_compare_uint(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    switch (val1->realtype->basetype) {
+    case LY_TYPE_UINT8:
+        if (val1->uint8 != val2->uint8) {
+            return LY_ENOT;
+        }
+        break;
+    case LY_TYPE_UINT16:
+        if (val1->uint16 != val2->uint16) {
+            return LY_ENOT;
+        }
+        break;
+    case LY_TYPE_UINT32:
+        if (val1->uint32 != val2->uint32) {
+            return LY_ENOT;
+        }
+        break;
+    case LY_TYPE_UINT64:
+        if (val1->uint64 != val2->uint64) {
+            return LY_ENOT;
+        }
+        break;
+    default:
+        break;
+    }
+    return LY_SUCCESS;
+}
+
+API const void *
+lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+{
+    if (format == LY_VALUE_LYB) {
+        *dynamic = 0;
+        if (value_len) {
+            *value_len = integer_lyb_size[value->realtype->basetype];
+        }
+        switch (value->realtype->basetype) {
+        case LY_TYPE_UINT8:
+            return &value->uint8;
+        case LY_TYPE_UINT16:
+            return &value->uint16;
+        case LY_TYPE_UINT32:
+            return &value->uint32;
+        case LY_TYPE_UINT64:
+            return &value->uint64;
+        default:
+            break;
+        }
+        return NULL;
+    }
+
+    /* use the cached canonical value */
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = strlen(value->_canonical);
+    }
+    return value->_canonical;
+}
+
 /**
  * @brief Plugin information for integer types implementation.
  *
@@ -315,8 +451,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_uint,
+        .plugin.print = lyplg_type_print_uint,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -328,8 +464,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_uint,
+        .plugin.print = lyplg_type_print_uint,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -341,8 +477,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_uint,
+        .plugin.print = lyplg_type_print_uint,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -354,8 +490,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_uint,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_uint,
+        .plugin.print = lyplg_type_print_uint,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -367,8 +503,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_int,
+        .plugin.print = lyplg_type_print_int,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -380,8 +516,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_int,
+        .plugin.print = lyplg_type_print_int,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -393,8 +529,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_int,
+        .plugin.print = lyplg_type_print_int,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
@@ -406,8 +542,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.id = "libyang 2 - integers, version 1",
         .plugin.store = lyplg_type_store_int,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_int,
+        .plugin.print = lyplg_type_print_int,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

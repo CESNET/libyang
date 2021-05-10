@@ -838,11 +838,33 @@ LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *ty
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
+ * @brief Implementation of ::lyplg_type_compare_clb for the built-in signed integer types.
+ */
+LY_ERR lyplg_type_compare_int(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for the built-in signed integer types.
+ */
+const void *lyplg_type_print_int(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+
+/**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in unsigned integer types.
  */
 LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+
+/**
+ * @brief Implementation of ::lyplg_type_compare_clb for the built-in unsigned integer types.
+ */
+LY_ERR lyplg_type_compare_uint(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for the built-in unsigned integer types.
+ */
+const void *lyplg_type_print_uint(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesInteger */
 
