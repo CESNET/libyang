@@ -95,7 +95,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
                 break;
             case LY_PATH_PREDTYPE_LIST:
                 /* key-predicate */
-                strval = pred->value.realtype->plugin->print(path[u].node->module->ctx, &pred->value, format, prefix_data,
+                strval = lyplg_type_print(pred->value.realtype, path[u].node->module->ctx, &pred->value, format, prefix_data,
                         &d, NULL);
 
                 /* default quote */
@@ -116,7 +116,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
                 break;
             case LY_PATH_PREDTYPE_LEAFLIST:
                 /* leaf-list-predicate */
-                strval = pred->value.realtype->plugin->print(path[u].node->module->ctx, &pred->value, format, prefix_data,
+                strval = lyplg_type_print(pred->value.realtype, path[u].node->module->ctx, &pred->value, format, prefix_data,
                         &d, NULL);
 
                 /* default quote */
@@ -270,13 +270,13 @@ lyplg_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_val
                 case LY_PATH_PREDTYPE_LIST:
                     /* key-predicate */
                     if ((pred1->key != pred2->key) ||
-                            ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                            lyplg_type_compare(((struct lysc_node_leaf *)pred1->key)->type, &pred1->value, &pred2->value)) {
                         return LY_ENOT;
                     }
                     break;
                 case LY_PATH_PREDTYPE_LEAFLIST:
                     /* leaf-list predicate */
-                    if (((struct lysc_node_leaflist *)s1->node)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                    if (lyplg_type_compare(((struct lysc_node_leaflist *)s1->node)->type, &pred1->value, &pred2->value)) {
                         return LY_ENOT;
                     }
                 }

@@ -70,7 +70,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
         *incomplete = 0;
     }
 
-    ret = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
+    ret = lyplg_type_store(type, ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, val, NULL, &err);
     if (dynamic) {
         *dynamic = 0;
     }
@@ -101,13 +101,13 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
 
     assert(type->plugin->validate);
 
-    ret = type->plugin->validate(ctx, type, ctx_node, tree, val, &err);
+    ret = lyplg_type_validate(type, ctx, type, ctx_node, tree, val, &err);
     if (ret) {
         if (err) {
             LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
         } else {
-            LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.", type->plugin->print(ctx, val, LY_VALUE_CANON,
+            LOGVAL(ctx, LYVE_OTHER, "Resolving value \"%s\" failed.", lyplg_type_print(type, ctx, val, LY_VALUE_CANON,
                     NULL, NULL, NULL));
         }
         return ret;
@@ -133,7 +133,7 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
     }
 
     type = ((struct lysc_node_leaf *)node)->type;
-    rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data,
+    rc = lyplg_type_store(type, ctx ? ctx : node->module->ctx, type, value, value_len, 0, format, prefix_data,
             LYD_HINT_SCHEMA, node, &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success since we do not provide the context tree and call validation with
@@ -150,7 +150,7 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
     }
 
     if (!rc) {
-        type->plugin->free(ctx ? ctx : node->module->ctx, &storage);
+        lyplg_type_free(type, ctx ? ctx : node->module->ctx, &storage);
     }
     return rc;
 }
@@ -174,7 +174,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
     type = ((struct lysc_node_leaf *)schema)->type;
 
     /* store */
-    rc = type->plugin->store(ctx, type, value, value_len, 0, LY_VALUE_JSON, NULL,
+    rc = lyplg_type_store(type, ctx, type, value, value_len, 0, LY_VALUE_JSON, NULL,
             LYD_HINT_DATA, schema, &val, NULL, &err);
     if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
@@ -182,7 +182,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
 
     if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type->plugin->validate(ctx, type, ctx_node, ctx_node, &val, &err);
+        rc = lyplg_type_validate(type, ctx, type, ctx_node, ctx_node, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {
@@ -219,13 +219,13 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
 
         if (canonical) {
             /* return canonical value */
-            lydict_insert(ctx, val.realtype->plugin->print(ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), 0, canonical);
+            lydict_insert(ctx, lyplg_type_print(val.realtype, ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), 0, canonical);
         }
     }
 
     if (stored) {
         /* free value */
-        type->plugin->free(ctx ? ctx : schema->module->ctx, &val);
+        lyplg_type_free(type, ctx ? ctx : schema->module->ctx, &val);
     }
     return rc;
 }
@@ -250,9 +250,9 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     LY_CHECK_RET(ret);
 
     /* compare values */
-    ret = type->plugin->compare(&node->value, &val);
+    ret = lyplg_type_compare(type, &node->value, &val);
 
-    type->plugin->free(ctx, &val);
+    lyplg_type_free(type, ctx, &val);
     return ret;
 }
 
@@ -274,7 +274,7 @@ lyd_is_default(const struct lyd_node *node)
         }
 
         /* compare with the default value */
-        if (leaf->type->plugin->compare(&term->value, leaf->dflt)) {
+        if (lyplg_type_compare(leaf->type, &term->value, leaf->dflt)) {
             return 0;
         }
     } else {
@@ -285,7 +285,7 @@ lyd_is_default(const struct lyd_node *node)
 
         LY_ARRAY_FOR(llist->dflts, u) {
             /* compare with each possible default value */
-            if (llist->type->plugin->compare(&term->value, llist->dflts[u])) {
+            if (lyplg_type_compare(llist->type, &term->value, llist->dflts[u])) {
                 return 0;
             }
         }
@@ -681,7 +681,7 @@ lyd_create_term2(const struct lysc_node *schema, const struct lyd_value *val, st
     term->flags = LYD_NEW;
 
     type = ((struct lysc_node_leaf *)schema)->type;
-    ret = type->plugin->duplicate(schema->module->ctx, val, &term->value);
+    ret = lyplg_type_duplicate(type, schema->module->ctx, val, &term->value);
     if (ret) {
         LOGERR(schema->module->ctx, ret, "Value duplication failed.");
         free(term);
@@ -1449,9 +1449,9 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compare original and new value */
-    if (type->plugin->compare(&t->value, &val)) {
+    if (lyplg_type_compare(type, &t->value, &val)) {
         /* values differ, switch them */
-        type->plugin->free(LYD_CTX(term), &t->value);
+        lyplg_type_free(type, LYD_CTX(term), &t->value);
         t->value = val;
         memset(&val, 0, sizeof val);
         val_change = 1;
@@ -1502,7 +1502,7 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
 
 cleanup:
     if (val.realtype) {
-        type->plugin->free(LYD_CTX(term), &val);
+        lyplg_type_free(type, LYD_CTX(term), &val);
     }
     return ret;
 }
@@ -3071,7 +3071,7 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
 
             /* same contexts */
             if (LYD_CTX(node1) == LYD_CTX(node2)) {
-                return term1->value.realtype->plugin->compare(&term1->value, &term2->value);
+                return lyplg_type_compare(term1->value.realtype, &term1->value, &term2->value);
             }
 
             /* different contexts */
@@ -3211,7 +3211,7 @@ lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
         return LY_ENOT;
     }
 
-    return meta1->value.realtype->plugin->compare(&meta1->value, &meta2->value);
+    return lyplg_type_compare(meta1->value.realtype, &meta1->value, &meta2->value);
 }
 
 /**
@@ -3308,7 +3308,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
         struct lyd_node_term *orig = (struct lyd_node_term *)node;
 
         term->hash = orig->hash;
-        LY_CHECK_ERR_GOTO(orig->value.realtype->plugin->duplicate(LYD_CTX(node), &orig->value, &term->value),
+        LY_CHECK_ERR_GOTO(lyplg_type_duplicate(orig->value.realtype, LYD_CTX(node), &orig->value, &term->value),
                 LOGERR(LYD_CTX(node), LY_EINT, "Value duplication failed."); ret = LY_EINT, error);
     } else if (dup->schema->nodetype & LYD_NODE_INNER) {
         struct lyd_node_inner *orig = (struct lyd_node_inner *)node;
@@ -3484,7 +3484,7 @@ lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct l
     mt = calloc(1, sizeof *mt);
     LY_CHECK_ERR_RET(!mt, LOGMEM(LYD_CTX(node)), LY_EMEM);
     mt->annotation = meta->annotation;
-    ret = meta->value.realtype->plugin->duplicate(LYD_CTX(node), &meta->value, &mt->value);
+    ret = lyplg_type_duplicate(meta->value.realtype, LYD_CTX(node), &meta->value, &mt->value);
     LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(node), LY_EINT, "Value duplication failed."), finish);
     LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), meta->name, 0, &mt->name), finish);
 
@@ -3542,8 +3542,8 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
             /* update value (or only LYD_DEFAULT flag) only if flag set or the source node is not default */
             if ((options & LYD_MERGE_DEFAULTS) || !(sibling_src->flags & LYD_DEFAULT)) {
                 type = ((struct lysc_node_leaf *)match_trg->schema)->type;
-                type->plugin->free(LYD_CTX(match_trg), &((struct lyd_node_term *)match_trg)->value);
-                LY_CHECK_RET(type->plugin->duplicate(LYD_CTX(match_trg), &((struct lyd_node_term *)sibling_src)->value,
+                lyplg_type_free(type, LYD_CTX(match_trg), &((struct lyd_node_term *)match_trg)->value);
+                LY_CHECK_RET(lyplg_type_duplicate(type, LYD_CTX(match_trg), &((struct lyd_node_term *)sibling_src)->value,
                         &((struct lyd_node_term *)match_trg)->value));
 
                 /* copy flags and add LYD_NEW */

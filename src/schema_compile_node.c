@@ -3143,7 +3143,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 
         /* ignore default values of the key */
         if (key->dflt) {
-            key->dflt->realtype->plugin->free(ctx->ctx, key->dflt);
+            lyplg_type_free(key->dflt->realtype, ctx->ctx, key->dflt);
             lysc_type_free(ctx->ctx, (struct lysc_type *)key->dflt->realtype);
             free(key->dflt);
             key->dflt = NULL;

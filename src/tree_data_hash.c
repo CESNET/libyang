@@ -53,7 +53,7 @@ lyd_hash(struct lyd_node *node)
             for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
                 struct lyd_node_term *key = (struct lyd_node_term *)iter;
 
-                hash_key = key->value.realtype->plugin->print(NULL, &key->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
+                hash_key = lyplg_type_hash(key->value.realtype, &key->value, &dyn, &key_len);
                 node->hash = dict_hash_multi(node->hash, hash_key, key_len);
                 if (dyn) {
                     free((void *)hash_key);
@@ -64,7 +64,7 @@ lyd_hash(struct lyd_node *node)
         /* leaf-list adds its hash key */
         struct lyd_node_term *llist = (struct lyd_node_term *)node;
 
-        hash_key = llist->value.realtype->plugin->print(NULL, &llist->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
+        hash_key = lyplg_type_hash(llist->value.realtype, &llist->value, &dyn, &key_len);
         node->hash = dict_hash_multi(node->hash, hash_key, key_len);
         if (dyn) {
             free((void *)hash_key);

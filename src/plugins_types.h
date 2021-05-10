@@ -23,6 +23,7 @@
 #include "tree.h"
 
 #include "tree_edit.h"
+#include "tree_schema.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -515,6 +516,69 @@ struct lyplg_type_record {
     /* runtime data */
     struct lyplg_type plugin; /**< data to utilize plugin implementation */
 };
+
+/**
+ * @defgroup pluginsTypesFunctionality Plugins: Front-end access to plugin callbacks
+ * @ingroup pluginsTypes
+ * @{
+ *
+ * Use these functions to get at the plugin functionality, do not call the plugin callbacks directly.
+ */
+
+static inline LY_ERR
+lyplg_type_store(const struct lysc_type *rt, const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+{
+    return rt->plugin->store(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node, storage, unres, err);
+}
+
+static inline LY_ERR
+lyplg_type_validate(const struct lysc_type *rt, const struct ly_ctx *ctx, const struct lysc_type *type,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
+{
+    return rt->plugin->validate(ctx, type, ctx_node, tree, storage, err);
+}
+
+static inline LY_ERR
+lyplg_type_compare(const struct lysc_type *rt, const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    return rt->plugin->compare(val1, val2);
+}
+
+static inline const void *
+lyplg_type_print(const struct lysc_type *rt, const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len)
+{
+    return rt->plugin->print(ctx, value, format, prefix_data, dynamic, value_len);
+}
+
+static inline const void *
+lyplg_type_hash(const struct lysc_type *rt, const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
+{
+#if 0
+    if (rt->plugin->hash) {
+        return rt->plugin->hash(value, dynamic, key_len);
+    }
+#endif
+    return rt->plugin->print(NULL, value, LY_VALUE_LYB, NULL, dynamic, key_len);
+}
+
+static inline LY_ERR
+lyplg_type_duplicate(const struct lysc_type *rt, const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    return rt->plugin->duplicate(ctx, original, dup);
+}
+
+static inline void
+lyplg_type_free(const struct lysc_type *rt, const struct ly_ctx *ctx, struct lyd_value *value)
+{
+    if (rt->plugin->free) {
+        return rt->plugin->free(ctx, value);
+    }
+}
+
+/** @} pluginsTypesFunctionality */
 
 /**
  * @defgroup pluginsTypesSimple Plugins: Simple Types Callbacks

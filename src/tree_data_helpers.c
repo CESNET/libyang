@@ -262,7 +262,7 @@ lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
     LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
 
     return value->_canonical ? value->_canonical :
-           (const char *)value->realtype->plugin->print(ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+           (const char *)lyplg_type_print(value->realtype, ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
 }
 
 API LY_ERR

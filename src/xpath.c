@@ -1573,7 +1573,7 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     }
 
     /* ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(src->ctx, type, str, strlen(str), LYPLG_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
+    rc = lyplg_type_store(type, src->ctx, type, str, strlen(str), LYPLG_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
             LYD_HINT_DATA, xp_node->node->schema, &val, NULL, &err);
     ly_err_free(err);
     if (rc) {
@@ -1586,12 +1586,12 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
     set_init(trg, src);
     trg->type = src->type;
     if (src->type == LYXP_SET_NUMBER) {
-        trg->val.num = strtold(type->plugin->print(src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), &ptr);
+        trg->val.num = strtold(lyplg_type_print(type, src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), &ptr);
         LY_CHECK_ERR_RET(ptr[0], LOGINT(src->ctx), LY_EINT);
     } else {
-        trg->val.str = strdup(type->plugin->print(src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL));
+        trg->val.str = strdup(lyplg_type_print(type, src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL));
     }
-    type->plugin->free(src->ctx, &val);
+    lyplg_type_free(type, src->ctx, &val);
     return LY_SUCCESS;
 
 fill:
@@ -3348,7 +3348,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint16_t 
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            rc = type->plugin->store(set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
+            rc = lyplg_type_store(type, set->ctx, type, value, strlen(value), 0, set->format, set->prefix_data,
                     LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;
@@ -3365,7 +3365,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint16_t 
                         (exp->tok_pos[last_equal_exp] - exp->tok_pos[equal_exp]) + exp->tok_len[last_equal_exp],
                         exp->expr + exp->tok_pos[equal_exp]);
             } else {
-                type->plugin->free(set->ctx, &storage);
+                lyplg_type_free(type, set->ctx, &storage);
             }
         }
         free(value);

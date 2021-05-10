@@ -196,7 +196,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     }
 #endif
     for (meta = node->meta; meta; meta = meta->next) {
-        const char *value = meta->value.realtype->plugin->print(LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list,
+        const char *value = lyplg_type_print(meta->value.realtype, LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list,
                 &dynamic, NULL);
 
         /* print namespaces connected with the value's prefixes */
@@ -324,7 +324,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     const char *value;
 
     xml_print_node_open(ctx, &node->node);
-    value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(LYD_CTX(node), &node->value, LY_VALUE_XML,
+    value = lyplg_type_print(((struct lysc_node_leaf *)node->schema)->type, LYD_CTX(node), &node->value, LY_VALUE_XML,
             &ns_list, &dynamic, NULL);
 
     /* print namespaces connected with the values's prefixes */

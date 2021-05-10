@@ -972,7 +972,7 @@ uniquecheck:
                 val2 = slist->uniques[u][v]->dflt;
             }
 
-            if (!val1 || !val2 || val1->realtype->plugin->compare(val1, val2)) {
+            if (!val1 || !val2 || lyplg_type_compare(val1->realtype, val1, val2)) {
                 /* values differ or either one is not set */
                 break;
             }
@@ -1106,7 +1106,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                     }
 
                     /* get hash key */
-                    hash_key = val->realtype->plugin->print(NULL, val, LY_VALUE_LYB, NULL, &dyn, &key_len);
+                    hash_key = lyplg_type_hash(val->realtype, val, &dyn, &key_len);
                     hash = dict_hash_multi(hash, hash_key, key_len);
                     if (dyn) {
                         free((void *)hash_key);

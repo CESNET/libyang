@@ -62,7 +62,7 @@ lyd_free_meta(struct lyd_meta *meta, ly_bool siblings)
         iter = iter->next;
 
         lydict_remove(meta->annotation->module->ctx, meta->name);
-        meta->value.realtype->plugin->free(meta->annotation->module->ctx, &meta->value);
+        lyplg_type_free(meta->value.realtype, meta->annotation->module->ctx, &meta->value);
         free(meta);
     }
 }
@@ -176,7 +176,7 @@ lyd_free_subtree(struct lyd_node *node, ly_bool top)
         /* only frees the value this way */
         lyd_any_copy_value(node, NULL, 0);
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &((struct lyd_node_term *)node)->value);
+        lyplg_type_free(((struct lysc_node_leaf *)node->schema)->type, LYD_CTX(node), &((struct lyd_node_term *)node)->value);
     }
 
     if (!node->schema) {

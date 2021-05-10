@@ -1067,7 +1067,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
                 case LY_PATH_PREDTYPE_LEAFLIST:
                     /* key-predicate or leaf-list-predicate */
                     (*dup)[u].predicates[v].key = pred->key;
-                    pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].predicates[v].value);
+                    lyplg_type_duplicate(pred->value.realtype, ctx, &pred->value, &(*dup)[u].predicates[v].value);
                     ++((struct lysc_type *)pred->value.realtype)->refcount;
                     break;
                 case LY_PATH_PREDTYPE_NONE:
@@ -1098,7 +1098,7 @@ ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_ty
         case LY_PATH_PREDTYPE_LIST:
         case LY_PATH_PREDTYPE_LEAFLIST:
             if (predicates[u].value.realtype) {
-                predicates[u].value.realtype->plugin->free(ctx, &predicates[u].value);
+                lyplg_type_free(predicates[u].value.realtype, ctx, &predicates[u].value);
                 lysc_type_free((struct ly_ctx *)ctx, (struct lysc_type *)predicates[u].value.realtype);
             }
             break;

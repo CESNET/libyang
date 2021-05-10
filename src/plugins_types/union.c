@@ -69,16 +69,16 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
         value_len = subvalue->orig_len;
     }
 
-    ret = type->plugin->store(ctx, type, value, value_len, 0, subvalue->format, subvalue->prefix_data, subvalue->hints,
+    ret = lyplg_type_store(type, ctx, type, value, value_len, 0, subvalue->format, subvalue->prefix_data, subvalue->hints,
             subvalue->ctx_node, &subvalue->value, unres, err);
     LY_CHECK_RET((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), ret);
 
     if (resolve && (ret == LY_EINCOMPLETE)) {
         /* we need the value resolved */
-        ret = subvalue->value.realtype->plugin->validate(ctx, type, ctx_node, tree, &subvalue->value, err);
+        ret = lyplg_type_validate(subvalue->value.realtype, ctx, type, ctx_node, tree, &subvalue->value, err);
         if (ret) {
             /* resolve failed, we need to free the stored value */
-            type->plugin->free(ctx, &subvalue->value);
+            lyplg_type_free(type, ctx, &subvalue->value);
         }
     }
 
@@ -239,7 +239,7 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     }
 
     /* resolve the stored value */
-    if (!val->value.realtype->plugin->validate(ctx, type, ctx_node, tree, &val->value, err)) {
+    if (!lyplg_type_validate(val->value.realtype, ctx, type, ctx_node, tree, &val->value, err)) {
         /* resolve successful */
         return LY_SUCCESS;
     }
@@ -282,7 +282,7 @@ lyplg_type_compare_union(const struct lyd_value *val1, const struct lyd_value *v
     if (val1->subvalue->value.realtype != val2->subvalue->value.realtype) {
         return LY_ENOT;
     }
-    return val1->subvalue->value.realtype->plugin->compare(&val1->subvalue->value, &val2->subvalue->value);
+    return lyplg_type_compare(val1->subvalue->value.realtype, &val1->subvalue->value, &val2->subvalue->value);
 }
 
 API const void *
@@ -291,7 +291,7 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
 {
     const void *ret;
 
-    ret = value->subvalue->value.realtype->plugin->print(ctx, &value->subvalue->value, format, prefix_data, dynamic, value_len);
+    ret = lyplg_type_print(value->subvalue->value.realtype, ctx, &value->subvalue->value, format, prefix_data, dynamic, value_len);
     if (!value->_canonical && (format == LY_VALUE_CANON)) {
         /* the canonical value is supposed to be stored now */
         lydict_insert(ctx, value->subvalue->value._canonical, 0, (const char **)&value->_canonical);
@@ -317,7 +317,7 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
     LY_CHECK_ERR_GOTO(!dup_val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     dup->subvalue = dup_val;
 
-    ret = orig_val->value.realtype->plugin->duplicate(ctx, &orig_val->value, &dup_val->value);
+    ret = lyplg_type_duplicate(orig_val->value.realtype, ctx, &orig_val->value, &dup_val->value);
     LY_CHECK_GOTO(ret, cleanup);
 
     dup_val->original = calloc(1, orig_val->orig_len);
@@ -344,7 +344,7 @@ lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
     lydict_remove(ctx, value->_canonical);
     if (val) {
         if (val->value.realtype) {
-            val->value.realtype->plugin->free(ctx, &val->value);
+            lyplg_type_free(val->value.realtype, ctx, &val->value);
         }
         lyplg_type_prefix_data_free(val->format, val->prefix_data);
         free(val->original);

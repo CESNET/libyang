@@ -791,7 +791,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
             &set, 0);
     if (ret) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+        val_str = lyplg_type_print((const struct lysc_type *)lref, lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
@@ -805,13 +805,13 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
             continue;
         }
 
-        if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+        if (!lyplg_type_compare((const struct lysc_type *)lref, &((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
             break;
         }
     }
     if (i == set.used) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+        val_str = lyplg_type_print((const struct lysc_type *)lref, lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (set.used) {
             rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
         } else {

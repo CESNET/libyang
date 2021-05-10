@@ -46,7 +46,7 @@ lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
     assert(type_lr->realtype);
 
     /* store the value as the real type of the leafref target */
-    ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options, format, prefix_data,
+    ret = lyplg_type_store(type_lr->realtype, ctx, type_lr->realtype, value, value_len, options, format, prefix_data,
             hints, ctx_node, storage, unres, err);
     if (ret == LY_EINCOMPLETE) {
         /* it is irrelevant whether the target type needs some resolving */
@@ -90,26 +90,26 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
 API LY_ERR
 lyplg_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    return val1->realtype->plugin->compare(val1, val2);
+    return lyplg_type_compare(val1->realtype, val1, val2);
 }
 
 API const void *
 lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    return value->realtype->plugin->print(ctx, value, format, prefix_data, dynamic, value_len);
+    return lyplg_type_print(value->realtype, ctx, value, format, prefix_data, dynamic, value_len);
 }
 
 API LY_ERR
 lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    return original->realtype->plugin->duplicate(ctx, original, dup);
+    return lyplg_type_duplicate(original->realtype, ctx, original, dup);
 }
 
 API void
 lyplg_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    value->realtype->plugin->free(ctx, value);
+    lyplg_type_free(value->realtype, ctx, value);
 }
 
 /**

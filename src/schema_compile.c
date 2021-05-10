@@ -1075,7 +1075,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     struct ly_err_item *err = NULL;
 
     options = (ctx->ctx->flags & LY_CTX_REF_IMPLEMENTED) ? LYPLG_TYPE_STORE_IMPLEMENT : 0;
-    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
+    ret = lyplg_type_store(type, ctx->ctx, type, dflt, strlen(dflt), options, LY_VALUE_SCHEMA, (void *)dflt_pmod,
             LYD_HINT_SCHEMA, node, storage, unres, &err);
     if (ret == LY_ERECOMPILE) {
         /* fine, but we need to recompile */
@@ -1184,10 +1184,10 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
         /* configuration data values must be unique - so check the default values */
         for (u = orig_count; u < LY_ARRAY_COUNT(llist->dflts); ++u) {
             for (v = 0; v < u; ++v) {
-                if (!llist->dflts[u]->realtype->plugin->compare(llist->dflts[u], llist->dflts[v])) {
+                if (!lyplg_type_compare(llist->dflts[u]->realtype, llist->dflts[u], llist->dflts[v])) {
                     lysc_update_path(ctx, llist->parent ? llist->parent->module : NULL, llist->name);
                     LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Configuration leaf-list has multiple defaults of the same value \"%s\".",
-                            llist->dflts[u]->realtype->plugin->print(ctx->ctx, llist->dflts[u], LY_VALUE_CANON, NULL, NULL, NULL));
+                            lyplg_type_print(llist->dflts[u]->realtype, ctx->ctx, llist->dflts[u], LY_VALUE_CANON, NULL, NULL, NULL));
                     lysc_update_path(ctx, NULL, NULL);
                     return LY_EVALID;
                 }
