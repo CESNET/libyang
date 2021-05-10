@@ -264,112 +264,138 @@ test_value_prefix_next(void **UNUSED(state))
 {
     const char *next;
     ly_bool is_prefix;
+    uint32_t bytes;
 
-    assert_int_equal(0, ly_value_prefix_next(NULL, NULL, &is_prefix, &next));
-    assert_int_equal(0, ly_value_prefix_next("", NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(NULL, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(0, bytes);
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next("", NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(0, bytes);
 
     /* prefix */
     next = "pref:";
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(1, is_prefix);
 
     /* no-prefix */
     next = "node";
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 
     /* no-prefix */
     next = "::::";
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 
     /* no-prefix */
     next = "//a/:";
-    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(5, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 
     /* no-prefix */
     next = "//a//";
-    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(5, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 
     /* prefix, prefix */
     next = "pref1:pref2:";
-    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(5, bytes);
     assert_string_equal(next, "pref2:");
     assert_int_equal(1, is_prefix);
-    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(5, bytes);
     assert_null(next);
     assert_int_equal(1, is_prefix);
 
     /* prefix, no-prefix */
     next = "pref:node";
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_string_equal(next, "node");
     assert_int_equal(1, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 
     /* no-prefix, prefix */
     next = "/pref:";
-    assert_int_equal(1, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(1, bytes);
     assert_string_equal(next, "pref:");
     assert_int_equal(0, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(1, is_prefix);
 
     /* no-prefix, prefix */
     next = "//pref:";
-    assert_int_equal(2, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(2, bytes);
     assert_string_equal(next, "pref:");
     assert_int_equal(0, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(1, is_prefix);
 
     /* no-prefix, prefix, no-prefix */
     next = "/pref:node";
-    assert_int_equal(1, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(1, bytes);
     assert_string_equal(next, "pref:node");
     assert_int_equal(0, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_string_equal(next, "node");
     assert_int_equal(1, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 
     /* prefix, no-prefix, prefix */
     next = "pref:node pref:";
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_string_equal(next, "node pref:");
     assert_int_equal(1, is_prefix);
-    assert_int_equal(5, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(5, bytes);
     assert_string_equal(next, "pref:");
     assert_int_equal(0, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(1, is_prefix);
 
     /* prefix, no-prefix, prefix, no-prefix */
     next = "pref:node /pref:node";
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_string_equal(next, "node /pref:node");
     assert_int_equal(1, is_prefix);
-    assert_int_equal(6, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(6, bytes);
     assert_string_equal(next, "pref:node");
     assert_int_equal(0, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_string_equal(next, "node");
     assert_int_equal(1, is_prefix);
-    assert_int_equal(4, ly_value_prefix_next(next, NULL, &is_prefix, &next));
+    assert_int_equal(LY_SUCCESS, ly_value_prefix_next(next, NULL, &bytes, &is_prefix, &next));
+    assert_int_equal(4, bytes);
     assert_null(next);
     assert_int_equal(0, is_prefix);
 }

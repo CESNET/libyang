@@ -79,7 +79,8 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
 
     str_begin = token;
 
-    while ((len = ly_value_prefix_next(str_begin, token + tok_len, &is_prefix, &str_next))) {
+    while (!(ret = ly_value_prefix_next(str_begin, token + tok_len, &len, &is_prefix, &str_next)) && len) {
+
         if (is_prefix) {
             /* resolve the module in the original format */
             mod = lyplg_type_identity_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);

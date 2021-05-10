@@ -432,13 +432,14 @@ ly_strlen(const char *s)
  *
  * @param[in] str_begin Begin of the input string.
  * @param[in] str_end Length of the @p str_begin. If set to NULL then the @p str_begin must be NULL-terminated string.
+ * @param[out] len Number of bytes (length) of the found prefix/substring starting at @p str_begin.
  * @param[out] is_prefix Type of substring found. Set to True for prefix, otherwise False.
  * @param[out] str_next Remaining string starting after prefix/substring and ending with @p str_end.
  * If the @p is_prefix is set to True then the colon character is skipped.
  * If no string remains, it is set to NULL.
- * @return Number of bytes (length) of the found prefix/substring starting at @p str_begin.
+ * @return LY_ERR value.
  */
-uint32_t ly_value_prefix_next(const char *str_begin, const char *str_end, ly_bool *is_prefix, const char **str_next);
+LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, ly_bool *is_prefix, const char **str_next);
 
 /**
  * @brief Wrapper around strlen() to handle NULL strings.

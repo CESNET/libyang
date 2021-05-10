@@ -101,22 +101,22 @@ ly_strntou8(const char *nptr, size_t len, uint8_t *ret)
     return LY_SUCCESS;
 }
 
-uint32_t
-ly_value_prefix_next(const char *str_begin, const char *str_end, ly_bool *is_prefix, const char **str_next)
+LY_ERR
+ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t *len, ly_bool *is_prefix, const char **str_next)
 {
     const char *stop, *prefix;
-    size_t bytes;
+    size_t bytes_read;
     uint32_t c;
     ly_bool prefix_found;
-    uint32_t ret;
+    LY_ERR ret = LY_SUCCESS;
 
-    assert(is_prefix && str_next);
+    assert(len && is_prefix && str_next);
 
 #define IS_AT_END(PTR, STR_END) (STR_END ? PTR == STR_END : !(*PTR))
 
     *str_next = NULL;
     *is_prefix = 0;
-    ret = 0;
+    *len = 0;
 
     if (!str_begin || !(*str_begin) || (str_begin == str_end)) {
         return ret;
@@ -128,21 +128,21 @@ ly_value_prefix_next(const char *str_begin, const char *str_end, ly_bool *is_pre
 
     do {
         /* look for the beginning of the YANG value */
-        for (ly_getutf8(&stop, &c, &bytes);
-                !is_xmlqnamestartchar(c) && !IS_AT_END(stop, str_end);
-                ly_getutf8(&stop, &c, &bytes)) {}
+        do {
+            LY_CHECK_RET(ly_getutf8(&stop, &c, &bytes_read));
+        } while (!is_xmlqnamestartchar(c) && !IS_AT_END(stop, str_end));
 
         if (IS_AT_END(stop, str_end)) {
             break;
         }
 
         /* maybe the prefix was found */
-        prefix = stop - bytes;
+        prefix = stop - bytes_read;
 
         /* look for the the end of the prefix */
-        for (ly_getutf8(&stop, &c, &bytes);
-                is_xmlqnamechar(c) && !IS_AT_END(stop, str_end);
-                ly_getutf8(&stop, &c, &bytes)) {}
+        do {
+            LY_CHECK_RET(ly_getutf8(&stop, &c, &bytes_read));
+        } while (is_xmlqnamechar(c) && !IS_AT_END(stop, str_end));
 
         prefix_found = c == ':' ? 1 : 0;
 
@@ -153,14 +153,14 @@ ly_value_prefix_next(const char *str_begin, const char *str_end, ly_bool *is_pre
         /* prefix found at the beginning of the input string */
         *is_prefix = 1;
         *str_next = IS_AT_END(stop, str_end) ? NULL : stop;
-        ret = (stop - bytes) - str_begin;
+        *len = (stop - bytes_read) - str_begin;
     } else if ((str_begin != prefix) && (prefix_found)) {
         /* there is a some string before prefix */
         *str_next = prefix;
-        ret = prefix - str_begin;
+        *len = prefix - str_begin;
     } else {
         /* no prefix found */
-        ret = stop - str_begin;
+        *len = stop - str_begin;
     }
 
 #undef IS_AT_END
