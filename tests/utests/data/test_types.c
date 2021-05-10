@@ -350,6 +350,7 @@ test_enums(void **state)
     TEST_TYPE_ERROR("enums", "black", "Invalid enumeration value \"black\".", "1");
 }
 
+#if 0
 static void
 test_binary(void **state)
 {
@@ -402,6 +403,8 @@ test_binary(void **state)
     /* M */
     TEST_TYPE_ERROR("binary", "TQ==", "This base64 value must be of length 5.", "1");
 }
+
+#endif
 
 static void
 test_boolean(void **state)
@@ -458,9 +461,9 @@ test_empty(void **state)
     lyd_free_all(tree);
 
     /* invalid value */
-    TEST_TYPE_ERROR("empty", "x", "Invalid empty value \"x\".", "1");
+    TEST_TYPE_ERROR("empty", "x", "Invalid empty value length 1.", "1");
 
-    TEST_TYPE_ERROR("empty", " ", "Invalid empty value \" \".", "1");
+    TEST_TYPE_ERROR("empty", " ", "Invalid empty value length 1.", "1");
 }
 
 static void
@@ -1045,7 +1048,7 @@ main(void)
         /* UTEST(test_string, setup),*/
         /* UTEST(test_bits, setup), */
         UTEST(test_enums, setup),
-        UTEST(test_binary, setup),
+        /* UTEST(test_binary, setup), */
         UTEST(test_boolean, setup),
         UTEST(test_empty, setup),
         UTEST(test_identityref, setup),

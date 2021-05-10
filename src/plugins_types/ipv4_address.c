@@ -1,7 +1,7 @@
 /**
- * @file ipv6_address.c
+ * @file ipv4_address.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief ietf-inet-types ipv6-address type plugin.
+ * @brief ietf-inet-types ipv4-address type plugin.
  *
  * Copyright (c) 2019-2021 CESNET, z.s.p.o.
  *
@@ -36,23 +36,23 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesIPv6Address ipv6-address (ietf-inet-types)
+ * @subsection howtoDataLYBTypesIPv4Address ipv4-address (ietf-inet-types)
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 16       | yes       | `struct in6_addr *` | IPv6 address in network-byte order |
- * | string length | no        | `char *` | IPv6 address zone string |
+ * | 4       | yes       | `struct in_addr *` | IPv4 address in network-byte order |
+ * | string length | no        | `char *` | IPv4 address zone string |
  */
 
 /**
- * @brief Stored value structure for ipv6-address
+ * @brief Stored value structure for ipv4-address
  */
-struct lyd_value_ipv6_address {
-    struct in6_addr addr;
+struct lyd_value_ipv4_address {
+    struct in_addr addr;
     const char *zone;
 };
 
-static void lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value);
+static void lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Convert IP address with optional zone to network-byte order.
@@ -67,15 +67,15 @@ static void lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_va
  * @return LY_ERR value.
  */
 static LY_ERR
-ipv6address_str2ip(const char *value, size_t value_len, uint32_t options, const struct ly_ctx *ctx,
-        struct in6_addr *addr, const char **zone, struct ly_err_item **err)
+ipv4address_str2ip(const char *value, size_t value_len, uint32_t options, const struct ly_ctx *ctx,
+        struct in_addr *addr, const char **zone, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *addr_no_zone;
     char *zone_ptr = NULL, *addr_dyn = NULL;
     size_t zone_len;
 
-    /* store zone and get the string IPv6 address without it */
+    /* store zone and get the string IPv4 address without it */
     if ((zone_ptr = ly_strnchr(value, '%', value_len))) {
         /* there is a zone index */
         zone_len = value_len - (zone_ptr - value) - 1;
@@ -104,9 +104,9 @@ ipv6address_str2ip(const char *value, size_t value_len, uint32_t options, const 
         }
     }
 
-    /* store the IPv6 address in network-byte order */
-    if (!inet_pton(AF_INET6, addr_no_zone, addr)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to convert IPv6 address \"%s\".", addr_no_zone);
+    /* store the IPv4 address in network-byte order */
+    if (!inet_pton(AF_INET, addr_no_zone, addr)) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to convert IPv4 address \"%s\".", addr_no_zone);
         goto cleanup;
     }
 
@@ -121,10 +121,10 @@ cleanup:
 }
 
 /**
- * @brief Implementation of ::lyplg_type_store_clb for the ipv6-address ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_store_clb for the ipv4-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -132,7 +132,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     LY_ERR ret = LY_SUCCESS;
     const char *value_str = value;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
-    struct lyd_value_ipv6_address *val;
+    struct lyd_value_ipv4_address *val;
     size_t i;
 
     /* zero storage so we can always free it */
@@ -140,14 +140,14 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
 
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (value_len < 16) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-address value size %zu "
-                    "(expected at least 16).", value_len);
+        if (value_len < 4) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address value size %zu "
+                    "(expected at least 4).", value_len);
             goto cleanup;
         }
-        for (i = 16; i < value_len; ++i) {
+        for (i = 4; i < value_len; ++i) {
             if (!isalnum(value_str[i])) {
-                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-address zone character 0x%x.",
+                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-address zone character 0x%x.",
                         value_str[i]);
                 goto cleanup;
             }
@@ -166,8 +166,8 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
         memcpy(&val->addr, value, sizeof val->addr);
 
         /* store zone, if any */
-        if (value_len > 16) {
-            ret = lydict_insert(ctx, value + 16, value_len - 16, &val->zone);
+        if (value_len > 4) {
+            ret = lydict_insert(ctx, value + 4, value_len - 4, &val->zone);
             LY_CHECK_GOTO(ret, cleanup);
         } else {
             val->zone = NULL;
@@ -202,19 +202,17 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
     storage->realtype = type;
 
     /* get the network-byte order address */
-    ret = ipv6address_str2ip(value, value_len, options, ctx, &val->addr, &val->zone, err);
+    ret = ipv4address_str2ip(value, value_len, options, ctx, &val->addr, &val->zone, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (format == LY_VALUE_CANON) {
-        /* store canonical value */
-        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-            ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
-            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-            LY_CHECK_GOTO(ret, cleanup);
-        } else {
-            ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
+    /* store canonical value */
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
 cleanup:
@@ -223,18 +221,18 @@ cleanup:
     }
 
     if (ret) {
-        lyplg_type_free_ipv6_address(ctx, storage);
+        lyplg_type_free_ipv4_address(ctx, storage);
     }
     return ret;
 }
 
 /**
- * @brief Implementation of ::lyplg_type_compare_clb for the ipv6-address ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_compare_clb for the ipv4-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_compare_ipv6_address(const struct lyd_value *val1, const struct lyd_value *val2)
+lyplg_type_compare_ipv4_address(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_ipv6_address *v1 = val1->ptr, *v2 = val2->ptr;
+    struct lyd_value_ipv4_address *v1 = val1->ptr, *v2 = val2->ptr;
 
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
@@ -248,13 +246,13 @@ lyplg_type_compare_ipv6_address(const struct lyd_value *val1, const struct lyd_v
 }
 
 /**
- * @brief Implementation of ::lyplg_type_print_clb for the ipv6-address ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_print_clb for the ipv4-address ietf-inet-types type.
  */
 static const void *
-lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
-    struct lyd_value_ipv6_address *val = value->ptr;
+    struct lyd_value_ipv4_address *val = value->ptr;
     size_t zone_len;
     char *ret;
 
@@ -287,13 +285,13 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
     if (!value->_canonical) {
         /* '%' + zone */
         zone_len = val->zone ? strlen(val->zone) + 1 : 0;
-        ret = malloc(INET6_ADDRSTRLEN + zone_len);
+        ret = malloc(INET_ADDRSTRLEN + zone_len);
         LY_CHECK_RET(!ret, NULL);
 
         /* get the address in string */
-        if (!inet_ntop(AF_INET6, &val->addr, ret, INET6_ADDRSTRLEN)) {
+        if (!inet_ntop(AF_INET, &val->addr, ret, INET_ADDRSTRLEN)) {
             free(ret);
-            LOGERR(ctx, LY_EVALID, "Failed to get IPv6 address in string (%s).", strerror(errno));
+            LOGERR(ctx, LY_EVALID, "Failed to get IPv4 address in string (%s).", strerror(errno));
             return NULL;
         }
 
@@ -320,23 +318,23 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
 }
 
 /**
- * @brief Implementation of ::lyplg_type_hash_clb for the ipv6-address ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_hash_clb for the ipv4-address ietf-inet-types type.
  */
 static const void *
-lyplg_type_hash_ipv6_address(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
+lyplg_type_hash_ipv4_address(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
 {
     /* simply use the (dynamic or const) LYB value */
-    return lyplg_type_print_ipv6_address(NULL, value, LY_VALUE_LYB, NULL, dynamic, key_len);
+    return lyplg_type_print_ipv4_address(NULL, value, LY_VALUE_LYB, NULL, dynamic, key_len);
 }
 
 /**
- * @brief Implementation of ::lyplg_type_dup_clb for the ipv6-address ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_dup_clb for the ipv4-address ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_dup_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+lyplg_type_dup_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    struct lyd_value_ipv6_address *orig_val = original->ptr, *dup_val;
+    struct lyd_value_ipv4_address *orig_val = original->ptr, *dup_val;
 
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
@@ -360,12 +358,12 @@ lyplg_type_dup_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *or
 }
 
 /**
- * @brief Implementation of ::lyplg_type_free_clb for the ipv6-address ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_free_clb for the ipv4-address ietf-inet-types type.
  */
 static void
-lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value)
+lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_ipv6_address *val = value->ptr;
+    struct lyd_value_ipv4_address *val = value->ptr;
 
     lydict_remove(ctx, value->_canonical);
     if (val) {
@@ -375,26 +373,26 @@ lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Plugin information for ipv6-address type implementation.
+ * @brief Plugin information for ipv4-address type implementation.
  *
  * Note that external plugins are supposed to use:
  *
  *   LYPLG_TYPES = {
  */
-const struct lyplg_type_record plugins_ipv6_address[] = {
+const struct lyplg_type_record plugins_ipv4_address[] = {
     {
         .module = "ietf-inet-types",
         .revision = "2013-07-15",
-        .name = "ipv6-address",
+        .name = "ipv4-address",
 
-        .plugin.id = "libyang 2 - ipv6-address, version 1",
-        .plugin.store = lyplg_type_store_ipv6_address,
+        .plugin.id = "libyang 2 - ipv4-address, version 1",
+        .plugin.store = lyplg_type_store_ipv4_address,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_ipv6_address,
-        .plugin.print = lyplg_type_print_ipv6_address,
-        .plugin.hash = lyplg_type_hash_ipv6_address,
-        .plugin.duplicate = lyplg_type_dup_ipv6_address,
-        .plugin.free = lyplg_type_free_ipv6_address
+        .plugin.compare = lyplg_type_compare_ipv4_address,
+        .plugin.print = lyplg_type_print_ipv4_address,
+        .plugin.hash = lyplg_type_hash_ipv4_address,
+        .plugin.duplicate = lyplg_type_dup_ipv4_address,
+        .plugin.free = lyplg_type_free_ipv4_address
     },
     {0}
 };

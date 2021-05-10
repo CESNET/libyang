@@ -459,8 +459,8 @@ decimal:
         memset(&valcopy[len], '0', fraction_digits);
     }
 
-    ret_val = lyplg_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807),
-            valcopy, len, &d, err);
+    ret_val = lyplg_type_parse_int("decimal64", LY_BASE_DEC, INT64_C(-9223372036854775807) - INT64_C(1),
+            INT64_C(9223372036854775807), valcopy, size - 1, &d, err);
     if (!ret_val && ret) {
         *ret = d;
     }
@@ -518,7 +518,7 @@ lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, si
 
 API LY_ERR
 lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-        struct ly_err_item **err)
+        size_t strval_len, struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u;
     ly_bool is_length; /* length or range */
@@ -535,7 +535,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
-                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, strval);
+                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
                 /* inside the range */
@@ -547,7 +547,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
-                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, strval);
+                            is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             }
         } else {
@@ -557,7 +557,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, strval);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             } else if (value <= range->parts[u].max_64) {
                 /* inside the range */
@@ -568,7 +568,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
                 } else {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, strval);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
             }
         }
@@ -702,18 +702,17 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
 
     LY_CHECK_ARG_RET(ctx, ctx, value, ctx_node, path, err, LY_EINVAL);
 
+    *path = NULL;
     *err = NULL;
 
     switch (format) {
-    case LY_VALUE_CANON:
-        LOGARG(ctx, format);
-        return LY_EINVAL;
     case LY_VALUE_SCHEMA:
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_XML:
-    case LY_VALUE_LYB:
         prefix_opt = LY_PATH_PREFIX_MANDATORY;
         break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_LYB:
     case LY_VALUE_JSON:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
         break;
@@ -770,7 +769,7 @@ lyplg_type_make_implemented(struct lys_module *mod, const char **features, struc
 }
 
 API LY_ERR
-lyplg_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
+lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_ident *der)
 {
     LY_ARRAY_COUNT_TYPE u;
 

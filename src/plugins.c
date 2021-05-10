@@ -54,14 +54,17 @@ extern const struct lyplg_type_record plugins_union[];
 /*
  * ietf-inet-types
  */
-extern const struct lyplg_type_record plugins_ip_address[];
-extern const struct lyplg_type_record plugins_ip_prefix[];
+extern const struct lyplg_type_record plugins_ipv4_address[];
+extern const struct lyplg_type_record plugins_ipv4_address_no_zone[];
+extern const struct lyplg_type_record plugins_ipv6_address[];
+extern const struct lyplg_type_record plugins_ipv6_address_no_zone[];
+extern const struct lyplg_type_record plugins_ipv4_prefix[];
+extern const struct lyplg_type_record plugins_ipv6_prefix[];
 
 /*
  * ietf-yang-types
  */
 extern const struct lyplg_type_record plugins_date_and_time[];
-extern const struct lyplg_type_record plugins_hex_string[];
 extern const struct lyplg_type_record plugins_xpath10[];
 
 /*
@@ -420,12 +423,15 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
 
     /* ietf-inet-types */
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ip_address), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ip_prefix), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_prefix), error);
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv6_prefix), error);
 
     /* ietf-yang-types */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_date_and_time), error);
-    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_hex_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_xpath10), error);
 
     /* internal extensions */

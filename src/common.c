@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,12 +47,8 @@ ly_realloc(void *ptr, size_t size)
 char *
 ly_strnchr(const char *s, int c, size_t len)
 {
-    for ( ; *s != (char)c; ++s, --len) {
-        if ((*s == '\0') || (!len)) {
-            return NULL;
-        }
-    }
-    return (char *)s;
+    for ( ; len && (*s != (char)c); ++s, --len) {}
+    return len ? (char *)s : NULL;
 }
 
 int
@@ -64,6 +61,44 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
     } else {
         return rc ? rc : 1;
     }
+}
+
+#define LY_OVERFLOW_ADD(MAX, X, Y) ((X > MAX - Y) ? 1 : 0)
+
+#define LY_OVERFLOW_MUL(MAX, X, Y) ((X > MAX / Y) ? 1 : 0)
+
+LY_ERR
+ly_strntou8(const char *nptr, size_t len, uint8_t *ret)
+{
+    uint8_t num = 0, dig, dec_pow;
+
+    if (len > 3) {
+        /* overflow for sure */
+        return LY_EDENIED;
+    }
+
+    dec_pow = 1;
+    for ( ; len && isdigit(nptr[len - 1]); --len) {
+        dig = nptr[len - 1] - 48;
+
+        if (LY_OVERFLOW_MUL(UINT8_MAX, dig, dec_pow)) {
+            return LY_EDENIED;
+        }
+        dig *= dec_pow;
+
+        if (LY_OVERFLOW_ADD(UINT8_MAX, num, dig)) {
+            return LY_EDENIED;
+        }
+        num += dig;
+
+        dec_pow *= 10;
+    }
+
+    if (len) {
+        return LY_EVALID;
+    }
+    *ret = num;
+    return LY_SUCCESS;
 }
 
 uint32_t
@@ -293,7 +328,7 @@ ly_utf8len(const char *str, size_t bytes)
     size_t len = 0;
     const char *ptr = str;
 
-    while (*ptr && (size_t)(ptr - str) < bytes) {
+    while (((size_t)(ptr - str) < bytes) && *ptr) {
         ++len;
         ptr += utf8_char_length_table[((unsigned char)(*ptr))];
     }
@@ -402,60 +437,81 @@ ly_strcat(char **dest, const char *format, ...)
 LY_ERR
 ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret)
 {
-    char *strptr;
+    LY_ERR rc = LY_SUCCESS;
+    char *ptr, *str;
     int64_t i;
 
     LY_CHECK_ARG_RET(NULL, val_str, val_str[0], val_len, LY_EINVAL);
 
-    /* convert to 64-bit integer, all the redundant characters are handled */
-    errno = 0;
-    strptr = NULL;
+    /* duplicate the value */
+    str = strndup(val_str, val_len);
+    LY_CHECK_RET(!str, LY_EMEM);
 
-    /* parse the value */
-    i = strtoll(val_str, &strptr, base);
-    if (errno || (strptr == val_str)) {
-        return LY_EVALID;
+    /* parse the value to avoid accessing following bytes */
+    errno = 0;
+    i = strtoll(str, &ptr, base);
+    if (errno || (ptr == str)) {
+        /* invalid string */
+        rc = LY_EVALID;
     } else if ((i < min) || (i > max)) {
-        return LY_EDENIED;
-    } else if (strptr && *strptr) {
-        while (isspace(*strptr)) {
-            ++strptr;
+        /* invalid number */
+        rc = LY_EDENIED;
+    } else if (*ptr) {
+        while (isspace(*ptr)) {
+            ++ptr;
         }
-        if (*strptr && (strptr < val_str + val_len)) {
-            return LY_EVALID;
+        if (*ptr) {
+            /* invalid characters after some number */
+            rc = LY_EVALID;
         }
     }
 
-    *ret = i;
-    return LY_SUCCESS;
+    /* cleanup */
+    free(str);
+    if (!rc) {
+        *ret = i;
+    }
+    return rc;
 }
 
 LY_ERR
 ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret)
 {
-    char *strptr;
+    LY_ERR rc = LY_SUCCESS;
+    char *ptr, *str;
     uint64_t u;
 
-    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], val_len, LY_EINVAL);
 
+    /* duplicate the value to avoid accessing following bytes */
+    str = strndup(val_str, val_len);
+    LY_CHECK_RET(!str, LY_EMEM);
+
+    /* parse the value */
     errno = 0;
-    strptr = NULL;
-    u = strtoull(val_str, &strptr, base);
-    if (errno || (strptr == val_str)) {
-        return LY_EVALID;
-    } else if ((u > max) || (u && (val_str[0] == '-'))) {
-        return LY_EDENIED;
-    } else if (strptr && *strptr) {
-        while (isspace(*strptr)) {
-            ++strptr;
+    u = strtoull(str, &ptr, base);
+    if (errno || (ptr == str)) {
+        /* invalid string */
+        rc = LY_EVALID;
+    } else if ((u > max) || (u && (str[0] == '-'))) {
+        /* invalid number */
+        rc = LY_EDENIED;
+    } else if (*ptr) {
+        while (isspace(*ptr)) {
+            ++ptr;
         }
-        if (*strptr && (strptr < val_str + val_len)) {
-            return LY_EVALID;
+        if (*ptr) {
+            /* invalid characters after some number */
+            rc = LY_EVALID;
         }
     }
 
-    *ret = u;
-    return LY_SUCCESS;
+    /* cleanup */
+    free(str);
+    if (!rc) {
+        *ret = u;
+    }
+    return rc;
 }
 
 /**

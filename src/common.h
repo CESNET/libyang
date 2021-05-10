@@ -285,8 +285,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
 
 #define LY_ERRMSG_NOPATTERN /* LYVE_DATA */ "Unsatisfied pattern - \"%.*s\" does not conform to %s\"%s\"."
-#define LY_ERRMSG_NOLENGTH /* LYVE_DATA */ "Unsatisfied length - string length \"%s\" is not allowed."
-#define LY_ERRMSG_NORANGE /* LYVE_DATA */ "Unsatisfied range - value \"%s\" is out of the allowed range."
+#define LY_ERRMSG_NOLENGTH /* LYVE_DATA */ "Unsatisfied length - string \"%.*s\" length is not allowed."
+#define LY_ERRMSG_NORANGE /* LYVE_DATA */ "Unsatisfied range - value \"%.*s\" is out of the allowed range."
 
 /* RFC 7950 section 15 errors */
 #define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
@@ -383,6 +383,19 @@ char *ly_strnchr(const char *s, int c, size_t len);
  * respectively, to be less than, to match, or be greater than @p str.
  */
 int ly_strncmp(const char *refstr, const char *str, size_t str_len);
+
+/**
+ * @brief Similar functionality to strtoul() except number length in the string
+ * must be specified and the whole number must be parsed for success.
+ *
+ * @param[in] nptr Number string.
+ * @param[in] len Number string length starting at @p nptr.
+ * @param[out] ret Parsed number.
+ * @return LY_EDENIED on overflow.
+ * @return LY_EVALID on encountering a non-digit character.
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR ly_strntou8(const char *nptr, size_t len, uint8_t *ret);
 
 /**
  * @brief Similar to strlen(3) but accepts NULL and returns 0.

@@ -318,7 +318,7 @@ test_node_leaflist(void **state)
     CHECK_LOG_CTX("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.", "/aa:ll");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {yang-version 1.1;namespace urn:bb;prefix bb;leaf-list ll {type empty; default x;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value \"x\".).", "Schema location /bb:ll.");
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location /bb:ll.");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;"
             "leaf-list ll {config false;type string; default one;default two;default one;}}", LYS_IN_YANG, &mod));
@@ -1843,7 +1843,7 @@ test_type_empty(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "leaf l {type empty; default x;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value \"x\".).", "Schema location /aa:l.");
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location /aa:l.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;typedef mytype {type empty; default x;}"
             "leaf l {type mytype;}}", LYS_IN_YANG, NULL));

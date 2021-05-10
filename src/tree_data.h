@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -370,7 +370,7 @@ struct lyd_node_term;
  * support out-of-the-box (meaning that have a special type plugin). Any derived types inherit the format of its
  * closest type with explicit support (up to a built-in type).
  *
- * @section howtoDataLYBTypes Specific storing of particular data type values
+ * @section howtoDataLYBTypes Format of specific data type values
  */
 
 /**
@@ -535,10 +535,11 @@ struct lyd_value {
         uint32_t uint32;             /**< 32-bit unsigned integer */
         uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
-        struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
+        struct lyd_value_bits *bits; /**< bits value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
-        struct lyd_value_subvalue *subvalue; /** Union value with some metadata. */
+        struct lyd_value_union *subvalue; /** Union value with some metadata. */
+        struct lyd_value_binary *bin; /** Binary value */
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the ::lyd_value.realtype
              plugin's callbacks to work with the data.*/
@@ -555,21 +556,45 @@ struct lyd_value {
 /**
  * @brief Special lyd_value structure for union.
  *
- * Represents data with multiple types (union). Original value is stored in the main lyd_value:canonical_cache while
- * the ::lyd_value_subvalue.value contains representation according to one of the union's types.
- * The ::lyd_value_subvalue.prefix_data provides (possible) mappings from prefixes in the original value to YANG modules.
- * These prefixes are necessary to parse original value to the union's subtypes.
+ * Represents data with multiple types (union). The ::lyd_value_union.value contains representation according to
+ * one of the union's types. The ::lyd_value_union.prefix_data provides (possible) mappings from prefixes in
+ * the original value to YANG modules. These prefixes are necessary to parse original value to the union's subtypes.
  */
-struct lyd_value_subvalue {
+struct lyd_value_union {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
-                                      (stored as ::lyd_value.realtype here, in subvalue structure */
-    const char *original;        /**< Original value in the dictionary. */
+                                      (stored as ::lyd_value.realtype here) */
+    void *original;              /**< Original value. */
+    size_t orig_len;             /**< Original value length. */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
+};
+
+/**
+ * @brief Special lyd_value structure for bits.
+ *
+ * Note that the allocate memory is rounded to bytes. Meaning that if a type defines a bit with the highest position
+ * 18, for example, only 3 bytes will be allocated and casting to a 4-byte type will not work!
+ */
+struct lyd_value_bits {
+    char *bitmap;                           /**< bitmap of size ::lyplg_type_bits_bitmap_size(), if its value is
+                                                cast to an integer type of the corresponding size, can be used
+                                                directly as a bitmap */
+    struct lysc_type_bitenum_item **items;  /**< list of set pointers to the specification of the set
+                                                bits ([sized array](@ref sizedarrays)) */
+};
+
+/**
+ * @brief Special lyd_value structure for binary.
+ *
+ * Represents an arbitrary binary value.
+ */
+struct lyd_value_binary {
+    void *data;     /**< binary value itself */
+    size_t size;    /**< size of the @p data value */
 };
 
 /**

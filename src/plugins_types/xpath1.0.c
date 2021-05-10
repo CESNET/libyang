@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
-
 #include "plugins_types.h"
 
 #include <assert.h>
@@ -29,6 +27,15 @@
 
 /* internal header */
 #include "xpath.h"
+
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesXpath10 xpath1.0 (ietf-yang-types)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | string length | yes | `char *` | string JSON format of the XPath expression |
+ */
 
 /**
  * @brief Stored value structure for xpath1.0
@@ -199,44 +206,76 @@ cleanup:
 
 API LY_ERR
 lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_value_xpath10 *xp_val;
-    char *canonical;
+    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
+    struct lyd_value_xpath10 *val;
+    char *canon;
 
-    /* store as a string */
-    ret = lyplg_type_store_string(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node,
-            storage, unres, err);
-    LY_CHECK_RET(ret);
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
 
-    xp_val = calloc(1, sizeof *xp_val);
-    LY_CHECK_ERR_GOTO(!xp_val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    storage->ptr = xp_val;
+    /* check hints */
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* length restriction of the string */
+    if (type_str->length) {
+        /* value_len is in bytes, but we need number of characters here */
+        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_str->length, ly_utf8len(value, value_len), value, value_len, err);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    /* pattern restrictions */
+    ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* init storage */
+    storage->_canonical = NULL;
+    storage->ptr = NULL;
+    storage->realtype = type;
+
+    /* allocate value */
+    val = calloc(1, sizeof *val);
+    LY_CHECK_ERR_GOTO(!val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+    storage->ptr = val;
 
     /* store format-specific data and context for later prefix resolution */
-    ret = lyplg_type_prefix_data_new(ctx, storage->_canonical, strlen(storage->_canonical), format, prefix_data,
-            &xp_val->format, &xp_val->prefix_data);
+    ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &val->format, &val->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
-    xp_val->ctx = ctx;
+    val->ctx = ctx;
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, storage->_canonical, strlen(storage->_canonical), 1, &xp_val->exp);
+    ret = lyxp_expr_parse(ctx, value, value_len, 1, &val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if (format != LY_VALUE_JSON) {
-        /* generate canonical (JSON) value */
-        ret = xpath10_print_value(xp_val, LY_VALUE_JSON, NULL, &canonical, err);
+    /* store canonical value */
+    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
+        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+            ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+            LY_CHECK_GOTO(ret, cleanup);
+        } else {
+            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    } else {
+        /* JSON format with prefix is the canonical one */
+        ret = xpath10_print_value(val, LY_VALUE_JSON, NULL, &canon, err);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* replace the canonical value */
-        lydict_remove(ctx, storage->_canonical);
-        storage->_canonical = NULL;
-        LY_CHECK_GOTO(ret = lydict_insert_zc(ctx, canonical, &storage->_canonical), cleanup);
+        ret = lydict_insert_zc(ctx, canon, &storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
 cleanup:
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        free((void *)value);
+    }
+
     if (ret) {
         lyplg_type_free_xpath10(ctx, storage);
     }
@@ -244,13 +283,13 @@ cleanup:
 }
 
 API const void *
-lyplg_type_print_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
-    char *str_value;
+    char *ret;
     struct ly_err_item *err = NULL;
 
-    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON)) {
+    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
         /* canonical */
         if (dynamic) {
             *dynamic = 0;
@@ -261,42 +300,45 @@ lyplg_type_print_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lyd_valu
         return value->_canonical;
     }
 
-    if (xpath10_print_value(value->ptr, format, prefix_data, &str_value, &err)) {
+    /* print in the specific format */
+    if (xpath10_print_value(value->ptr, format, prefix_data, &ret, &err)) {
         if (err) {
-            LOGVAL_ERRITEM(NULL, err);
+            LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
         }
-        *dynamic = 0;
         return NULL;
     }
 
     *dynamic = 1;
-    return str_value;
+    if (value_len) {
+        *value_len = strlen(ret);
+    }
+    return ret;
 }
 
 API LY_ERR
 lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_value_xpath10 *xp_val;
-    const struct lyd_value_xpath10 *xp_val_orig = original->ptr;
+    struct lyd_value_xpath10 *orig_val = original->ptr, *dup_val;
 
+    /* init dup value */
     memset(dup, 0, sizeof *dup);
     dup->realtype = original->realtype;
 
-    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
+    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_GOTO(ret, cleanup);
 
-    xp_val = calloc(1, sizeof *xp_val);
-    LY_CHECK_ERR_GOTO(!xp_val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    xp_val->ctx = ctx;
-    dup->ptr = xp_val;
+    dup_val = calloc(1, sizeof *dup_val);
+    LY_CHECK_ERR_GOTO(!dup_val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+    dup_val->ctx = ctx;
+    dup->ptr = dup_val;
 
-    ret = lyxp_expr_dup(ctx, xp_val_orig->exp, &xp_val->exp);
+    ret = lyxp_expr_dup(ctx, orig_val->exp, &dup_val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
-    xp_val->format = xp_val_orig->format;
-    ret = lyplg_type_prefix_data_dup(ctx, xp_val_orig->format, xp_val_orig->prefix_data, &xp_val->prefix_data);
+    dup_val->format = orig_val->format;
+    ret = lyplg_type_prefix_data_dup(ctx, orig_val->format, orig_val->prefix_data, &dup_val->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
@@ -309,14 +351,14 @@ cleanup:
 API void
 lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_xpath10 *xp_val = value->ptr;
+    struct lyd_value_xpath10 *val = value->ptr;
 
     lydict_remove(ctx, value->_canonical);
-    if (xp_val) {
-        lyxp_expr_free(ctx, xp_val->exp);
-        lyplg_type_prefix_data_free(xp_val->format, xp_val->prefix_data);
+    if (val) {
+        lyxp_expr_free(ctx, val->exp);
+        lyplg_type_prefix_data_free(val->format, val->prefix_data);
 
-        free(xp_val);
+        free(val);
     }
 }
 

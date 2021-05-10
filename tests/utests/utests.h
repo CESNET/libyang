@@ -21,6 +21,7 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include <cmocka.h>
 
@@ -94,6 +95,8 @@ struct utest_context {
 
     struct ly_in *in;    /**< Input handler */
     struct ly_out *out;  /**< Outpu handler */
+
+    char *orig_tz;       /**< Original "TZ" environment variable value */
 };
 
 /**
@@ -929,9 +932,9 @@ struct utest_context {
     { \
         const char *arr[] = { __VA_ARGS__ }; \
         LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT((NODE).bits_items)); \
+        assert_int_equal(arr_size, LY_ARRAY_COUNT(((struct lyd_value_bits *)(NODE).ptr)->items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(arr[it], (NODE).bits_items[it]->name); \
+            assert_string_equal(arr[it], ((struct lyd_value_bits *)(NODE).ptr)->items[it]->name); \
         } \
     }
 
@@ -1069,8 +1072,12 @@ struct utest_context {
  *        Example CHECK_LYD_VALUE(node->value, BINARY, "aGVs\nbG8=");
  * @param[in] NODE           lyd_value variable
  * @param[in] CANNONICAL_VAL expected cannonical value
+ * @param[in] VALUE          expected value data
+ * @param[in] SIZE           expected value data size
 */
-#define CHECK_LYD_VALUE_BINARY(NODE, CANNONICAL_VAL) \
+#define CHECK_LYD_VALUE_BINARY(NODE, CANNONICAL_VAL, VALUE, SIZE) \
+    assert_int_equal((NODE).bin->size, SIZE); \
+    assert_int_equal(0, memcmp((NODE).bin->data, VALUE, SIZE)); \
     assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
     assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
     assert_non_null((NODE).realtype); \
@@ -1262,6 +1269,8 @@ _utest_logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 static int
 utest_setup(void **state)
 {
+    char *cur_tz;
+
     /* setup the logger */
     ly_set_log_clb(_utest_logger, 1);
     ly_log_options(LY_LOLOG | LY_LOSTORE);
@@ -1275,6 +1284,15 @@ utest_setup(void **state)
 
     /* clean all errors from the setup - usually warnings regarding the plugins directories */
     UTEST_LOG_CLEAN;
+
+    /* backup timezone, if any */
+    cur_tz = getenv("TZ");
+    if (cur_tz) {
+        current_utest_context->orig_tz = strdup(cur_tz);
+    }
+
+    /* set CET */
+    setenv("TZ", "CET+02:00", 1);
 
     return 0;
 }
@@ -1298,10 +1316,16 @@ utest_teardown(void **state)
     /* libyang context */
     ly_ctx_destroy(current_utest_context->ctx);
 
+    if (current_utest_context->orig_tz) {
+        /* restore TZ */
+        setenv("TZ", current_utest_context->orig_tz, 1);
+    }
+
     /* utest context */
     ly_in_free(current_utest_context->in, 0);
     free(current_utest_context->err_msg);
     free(current_utest_context->err_path);
+    free(current_utest_context->orig_tz);
     free(current_utest_context);
     current_utest_context = NULL;
 

@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
-
 #include "plugins_types.h"
 
 #include <inttypes.h>
@@ -29,71 +27,135 @@
 #include "compat.h"
 #include "plugins_internal.h" /* LY_TYPE_*_STR */
 
-API LY_ERR
-lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
+/**
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesDecimal64 decimal64 (built-in)
+ *
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | 8        | yes | `int64_t *` | value represented without floating point |
+ */
+
+/**
+ * @brief Convert decimal64 number to canonical string.
+ *
+ * @param[in] num Decimal64 number stored in int64.
+ * @param[in] type Decimal64 type with fraction digits.
+ * @param[out] str Canonical string value.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
 {
-    LY_ERR ret = LY_SUCCESS;
-    int64_t d;
-    struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
-    char buf[LY_NUMBER_MAXLEN];
+    char *ret;
 
-    *err = NULL;
+    /* allocate the value */
+    ret = calloc(1, LY_NUMBER_MAXLEN);
+    LY_CHECK_RET(!ret, LY_EMEM);
 
-    if (!value || !((char *)value)[0] || !value_len) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL,  NULL, "Invalid empty decimal64 value.");
-        goto cleanup;
-    }
-
-    /* check hints */
-    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-
-    ret = lyplg_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    /* prepare canonized value */
-    if (d) {
-        int count = sprintf(buf, "%" PRId64 " ", d);
-        if (((d > 0) && ((count - 1) <= type_dec->fraction_digits)) ||
-                ((count - 2) <= type_dec->fraction_digits)) {
+    if (num) {
+        int count = sprintf(ret, "%" PRId64 " ", num);
+        if (((num > 0) && ((count - 1) <= type->fraction_digits)) || ((count - 2) <= type->fraction_digits)) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
              * to fraction-digits value)
-             * for (num<0) - extra character for '-' sign */
-            count = sprintf(buf, "%0*" PRId64 " ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
+             * for (num < 0) - extra character for '-' sign */
+            count = sprintf(ret, "%0*" PRId64 " ", (num > 0) ? (type->fraction_digits + 1) : (type->fraction_digits + 2), num);
         }
-        for (uint8_t i = type_dec->fraction_digits, j = 1; i > 0; i--) {
-            if (j && (i > 1) && (buf[count - 2] == '0')) {
+        for (uint8_t i = type->fraction_digits, j = 1; i > 0; i--) {
+            if (j && (i > 1) && (ret[count - 2] == '0')) {
                 /* we have trailing zero to skip */
-                buf[count - 1] = '\0';
+                ret[count - 1] = '\0';
             } else {
                 j = 0;
-                buf[count - 1] = buf[count - 2];
+                ret[count - 1] = ret[count - 2];
             }
             count--;
         }
-        buf[count - 1] = '.';
+        ret[count - 1] = '.';
     } else {
         /* zero */
-        sprintf(buf, "0.0");
+        sprintf(ret, "0.0");
     }
 
-    /* range of the number */
-    if (type_dec->range) {
-        ret = lyplg_type_validate_range(type->basetype, type_dec->range, d, buf, err);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    *str = ret;
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
+        uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
+{
+    struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
+    LY_ERR ret = LY_SUCCESS;
+    int64_t num;
+    char *canon;
+
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
+
+    if (format == LY_VALUE_LYB) {
+        /* validation */
+        if (value_len != 8) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB decimal64 value size %zu (expected 8).",
+                    value_len);
+            goto cleanup;
+        }
+
+        /* we have the decimal64 number */
+        num = *(int64_t *)value;
+    } else {
+        /* check hints */
+        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* parse decimal64 value */
+        ret = lyplg_type_parse_dec64(type_dec->fraction_digits, value, value_len, &num, err);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
-    ret = lydict_insert(ctx, buf, strlen(buf), &storage->_canonical);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    storage->dec64 = d;
+    /* init storage */
+    storage->_canonical = NULL;
+    storage->dec64 = num;
     storage->realtype = type;
+
+    /* we need canonical value for hash */
+    if (format == LY_VALUE_CANON) {
+        /* store canonical value */
+        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+            ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+            LY_CHECK_GOTO(ret, cleanup);
+        } else {
+            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    } else {
+        /* generate canonical value */
+        ret = decimal64_num2str(num, type_dec, &canon);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* store it */
+        ret = lydict_insert_zc(ctx, canon, (const char **)&storage->_canonical);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    if (type_dec->range) {
+        /* check range of the number */
+        ret = lyplg_type_validate_range(type->basetype, type_dec->range, num, storage->_canonical,
+                strlen(storage->_canonical), err);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
 
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        free((char *)value);
+        free((void *)value);
+    }
+
+    if (ret) {
+        lyplg_type_free_simple(ctx, storage);
     }
     return ret;
 }

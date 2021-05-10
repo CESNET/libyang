@@ -51,6 +51,7 @@ setup(void **state)
             "   list nexthop {min-elements 1; key \"gateway\";"
             "       leaf gateway {type optional-ip-address;}"
             "   }"
+            "   leaf-list pref {type inet:ipv6-prefix;}"
             "}}";
 
     UTEST_SETUP;
@@ -482,9 +483,11 @@ test_find_path(void **state)
     assert_int_equal(LY_SUCCESS, lyd_new_inner(NULL, mod, "cont", 0, &root));
     assert_int_equal(LY_SUCCESS, lyd_new_path(root, NULL, "/c:cont/nexthop[gateway='10.0.0.1']", NULL, LYD_NEW_PATH_UPDATE, NULL));
     assert_int_equal(LY_SUCCESS, lyd_new_path(root, NULL, "/c:cont/nexthop[gateway='2100::1']", NULL, LYD_NEW_PATH_UPDATE, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(root, NULL, "/c:cont/pref[.='fc00::/64']", NULL, 0, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='10.0.0.1']", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/nexthop[gateway='2100::1']", 0, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_find_path(root, "/c:cont/pref[.='fc00::/64']", 0, NULL));
     lyd_free_all(root);
 }
 

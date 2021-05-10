@@ -12,16 +12,19 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
+#define _GNU_SOURCE /* asprintf, strdup */
+#include <sys/cdefs.h>
 
 #include "plugins_types.h"
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "libyang.h"
 
@@ -29,225 +32,401 @@
 #include "compat.h"
 
 /**
- * @brief Convert string to a number.
+ * @page howtoDataLYB LYB Binary Format
+ * @subsection howtoDataLYBTypesDateAndTime date-and-time (ietf-yang-types)
  *
- * @param[in,out] str String to convert, the parsed number are skipped.
- * @param[in] len Expected length of the number. 0 to parse at least 1 character.
- * @param[in] full_str Full string for error generation.
- * @param[out] num Converted number.
- * @param[out] err Error information on error.
+ * | Size (B) | Mandatory | Type | Meaning |
+ * | :------  | :-------: | :--: | :-----: |
+ * | 8        | yes | `time_t *` | UNIX timestamp |
+ * | string length | no | `char *` | string with the fraction digits of a second |
+ */
+
+static void lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_value *value);
+
+/**
+ * @brief Stored value structure for date-and-time
+ */
+struct lyd_value_date_and_time {
+    time_t time;        /**< UNIX timestamp */
+    char *fractions_s;  /**< fractions of a second */
+};
+
+/**
+ * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
+ *
+ * @param[in] value Valid string value.
+ * @param[out] time UNIX timestamp.
+ * @param[out] fractions_s Fractions of a second, set to NULL if none.
  * @return LY_ERR value.
  */
 static LY_ERR
-convert_number(const char **str, int len, const char *full_str, int *num, struct ly_err_item **err)
+dat_str2time(const char *value, time_t *time, char **fractions_s)
 {
-    char *ptr;
+    struct tm tm = {0};
+    uint32_t i, frac_len;
+    const char *frac;
+    int64_t shift, shift_m;
+    time_t t;
 
-    *num = strtoul(*str, &ptr, 10);
-    if ((len && (ptr - *str != len)) || (!len && (ptr == *str))) {
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid character '%c' in date-and-time value \"%s\", "
-                "a digit expected.", ptr[0], full_str);
+    tm.tm_year = atoi(&value[0]) - 1900;
+    tm.tm_mon = atoi(&value[5]) - 1;
+    tm.tm_mday = atoi(&value[8]);
+    tm.tm_hour = atoi(&value[11]);
+    tm.tm_min = atoi(&value[14]);
+    tm.tm_sec = atoi(&value[17]);
+
+    t = timegm(&tm);
+    i = 19;
+
+    /* fractions of a second */
+    if (value[i] == '.') {
+        ++i;
+        frac = &value[i];
+        for (frac_len = 0; isdigit(frac[frac_len]); ++frac_len) {}
+
+        i += frac_len;
+
+        /* skip trailing zeros */
+        for ( ; frac_len && (frac[frac_len - 1] == '0'); --frac_len) {}
+
+        if (!frac_len) {
+            /* only zeros, ignore */
+            frac = NULL;
+        }
+    } else {
+        frac = NULL;
     }
 
-    *str = ptr;
+    /* apply offset */
+    if ((value[i] == 'Z') || (value[i] == 'z')) {
+        /* zero shift */
+        shift = 0;
+    } else {
+        shift = strtol(&value[i], NULL, 10);
+        shift = shift * 60 * 60; /* convert from hours to seconds */
+        shift_m = strtol(&value[i + 4], NULL, 10) * 60; /* includes conversion from minutes to seconds */
+        /* correct sign */
+        if (shift < 0) {
+            shift_m *= -1;
+        }
+        /* connect hours and minutes of the shift */
+        shift = shift + shift_m;
+    }
+
+    /* we have to shift to the opposite way to correct the time */
+    t -= shift;
+
+    *time = t;
+    if (frac) {
+        *fractions_s = strndup(frac, frac_len);
+        LY_CHECK_RET(!*fractions_s, LY_EMEM);
+    } else {
+        *fractions_s = NULL;
+    }
     return LY_SUCCESS;
 }
 
 /**
- * @brief Check a single character.
+ * @brief Convert UNIX timestamp and fractions of a second into canonical date-and-time string value.
  *
- * @param[in,out] str String to check, the parsed character is skipped.
- * @param[in] c Array of possible characters.
- * @param[in] full_str Full string for error generation.
- * @param[out] err Error information on error.
+ * @param[in] time UNIX timestamp.
+ * @param[in] fractions_s Fractions of a second, if any.
+ * @param[out] str Canonical string value.
  * @return LY_ERR value.
  */
 static LY_ERR
-check_char(const char **str, char c[], const char *full_str, struct ly_err_item **err)
+dat_time2str(time_t time, const char *fractions_s, char **str)
 {
-    LY_ERR ret;
-    uint32_t i;
-    char *exp_str;
+    struct tm tm;
+    char zoneshift[7];
+    int32_t zonediff_h, zonediff_m;
 
-    for (i = 0; c[i]; ++i) {
-        if ((*str)[0] == c[i]) {
-            break;
-        }
-    }
-    if (!c[i]) {
-        /* "'c'" + (" or 'c'")* + \0 */
-        exp_str = malloc(3 + (i - 1) * 7 + 1);
-        sprintf(exp_str, "'%c'", c[0]);
-        for (i = 1; c[i]; ++i) {
-            sprintf(exp_str + strlen(exp_str), " or '%c'", c[i]);
-        }
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid character '%c' in date-and-time value \"%s\", "
-                "%s expected.", (*str)[0], full_str, exp_str);
-        free(exp_str);
-        return ret;
+    /* initialize the local timezone */
+    tzset();
+
+    /* convert */
+    if (!localtime_r(&time, &tm)) {
+        return LY_ESYS;
     }
 
-    ++(*str);
+    /* get timezone offset */
+    if (tm.tm_gmtoff == 0) {
+        /* time is Zulu (UTC) */
+        zonediff_h = 0;
+        zonediff_m = 0;
+    } else {
+        /* timezone offset */
+        zonediff_h = tm.tm_gmtoff / 60 / 60;
+        zonediff_m = tm.tm_gmtoff / 60 % 60;
+    }
+    sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
+
+    /* print */
+    if (asprintf(str, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
+            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+            fractions_s ? "." : "", fractions_s ? fractions_s : "", zoneshift) == -1) {
+        return LY_EMEM;
+    }
+
     return LY_SUCCESS;
 }
 
 /**
- * @brief Validate, canonize and store value of the ietf-yang-types date-and-time type.
- * Implementation of the ::lyplg_type_store_clb.
+ * @brief Implementation of ::lyplg_type_store_clb for ietf-yang-types date-and-time type.
  */
 static LY_ERR
 lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+        uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
+        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
+        struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct tm tm = {0}, tm2;
-    int num;
-    const char *val_str;
+    struct lysc_type_str *type_dat = (struct lysc_type_str *)type;
+    struct lyd_value_date_and_time *val;
+    uint32_t i;
+    char c;
 
-    /* store as a string */
-    ret = lyplg_type_store_string(ctx, type, value, value_len, options, format, prefix_data, hints, ctx_node,
-            storage, unres, err);
-    LY_CHECK_RET(ret);
+    /* clear storage */
+    memset(storage, 0, sizeof *storage);
 
-    /* canonize */
-    /* \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[\+\-]\d{2}:\d{2})
-     * 2018-03-21T09:11:05(.55785...)(Z|+02:00) */
-    val_str = storage->_canonical;
+    if (format == LY_VALUE_LYB) {
+        /* validation */
+        if (value_len < 8) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB date-and-time value size %zu "
+                    "(expected at least 8).", value_len);
+            goto cleanup;
+        }
+        for (i = 8; i < value_len; ++i) {
+            c = ((char *)value)[i];
+            if (!isdigit(c)) {
+                ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB date-and-time character '%c' "
+                        "(expected a digit).", c);
+                goto cleanup;
+            }
+        }
 
-    /* year */
-    ret = convert_number(&val_str, 4, storage->_canonical, &tm.tm_year, err);
-    LY_CHECK_GOTO(ret, cleanup);
-    tm.tm_year -= 1900;
+        /* allocate the value */
+        val = calloc(1, sizeof *val);
+        LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, "-", storage->_canonical, err), cleanup);
+        /* init storage */
+        storage->_canonical = NULL;
+        storage->ptr = val;
+        storage->realtype = type;
 
-    /* month */
-    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_mon, err);
-    LY_CHECK_GOTO(ret, cleanup);
-    tm.tm_mon -= 1;
+        /* store timestamp */
+        memcpy(&val->time, value, sizeof val->time);
 
-    LY_CHECK_GOTO(ret = check_char(&val_str, "-", storage->_canonical, err), cleanup);
+        /* store fractions of second */
+        if (value_len > 8) {
+            val->fractions_s = strndup(((char *)value) + 8, value_len - 8);
+            LY_CHECK_ERR_GOTO(!val->fractions_s, ret = LY_EMEM, cleanup);
+        }
 
-    /* day */
-    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_mday, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    LY_CHECK_GOTO(ret = check_char(&val_str, "T", storage->_canonical, err), cleanup);
-
-    /* hours */
-    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_hour, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    LY_CHECK_GOTO(ret = check_char(&val_str, ":", storage->_canonical, err), cleanup);
-
-    /* minutes */
-    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_min, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    LY_CHECK_GOTO(ret = check_char(&val_str, ":", storage->_canonical, err), cleanup);
-
-    /* seconds */
-    ret = convert_number(&val_str, 2, storage->_canonical, &tm.tm_sec, err);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* do not move the pointer */
-    LY_CHECK_GOTO(ret = check_char(&val_str, ".Z+-", storage->_canonical, err), cleanup);
-    --val_str;
-
-    /* validate using mktime() */
-    tm2 = tm;
-    errno = 0;
-    mktime(&tm);
-    /* ENOENT is set when "/etc/localtime" is missing but the function suceeeds */
-    if (errno && (errno != ENOENT)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Checking date-and-time value \"%s\" failed (%s).",
-                storage->_canonical, strerror(errno));
-        goto cleanup;
-    }
-    /* we now have correctly filled the remaining values, use them */
-    memcpy(((char *)&tm2) + (6 * sizeof(int)), ((char *)&tm) + (6 * sizeof(int)), sizeof(struct tm) - (6 * sizeof(int)));
-    /* back it up again */
-    tm = tm2;
-    /* let mktime() correct date & time with having the other values correct now */
-    errno = 0;
-    mktime(&tm);
-    if (errno && (errno != ENOENT)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Checking date-and-time value \"%s\" failed (%s).",
-                storage->_canonical, strerror(errno));
-        goto cleanup;
-    }
-    /* detect changes in the filled values */
-    if (memcmp(&tm, &tm2, 6 * sizeof(int))) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Checking date-and-time value \"%s\" failed, "
-                "canonical date and time is \"%04d-%02d-%02dT%02d:%02d:%02d\".", storage->_canonical,
-                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        /* success */
         goto cleanup;
     }
 
-    /* tenth of a second */
-    if (val_str[0] == '.') {
-        ++val_str;
-        ret = convert_number(&val_str, 0, storage->_canonical, &num, err);
+    /* check hints */
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* length restriction, there can be only ASCII chars */
+    if (type_dat->length) {
+        ret = lyplg_type_validate_range(LY_TYPE_STRING, type_dat->length, value_len, value, value_len, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    switch (val_str[0]) {
-    case 'Z':
-        /* done */
-        ++val_str;
-        break;
-    case '+':
-    case '-':
-        /* timezone shift */
-        if ((val_str[1] < '0') || (val_str[1] > '2')) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->_canonical);
-            goto cleanup;
-        }
-        if ((val_str[2] < '0') || ((val_str[1] == '2') && (val_str[2] > '3')) || (val_str[2] > '9')) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->_canonical);
-            goto cleanup;
-        }
+    /* date-and-time pattern */
+    ret = lyplg_type_validate_patterns(type_dat->patterns, value, value_len, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
-        if (val_str[3] != ':') {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->_canonical);
-            goto cleanup;
-        }
+    /* allocate the value */
+    val = calloc(1, sizeof *val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
 
-        if ((val_str[4] < '0') || (val_str[4] > '5')) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->_canonical);
-            goto cleanup;
-        }
-        if ((val_str[5] < '0') || (val_str[5] > '9')) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".",
-                    val_str, storage->_canonical);
-            goto cleanup;
-        }
+    /* init storage */
+    storage->_canonical = NULL;
+    storage->ptr = val;
+    storage->realtype = type;
 
-        val_str += 6;
-        break;
-    default:
-        LY_CHECK_GOTO(ret = check_char(&val_str, "Z+-", storage->_canonical, err), cleanup);
+    /* pattern validation succeeded, convert to UNIX time and fractions of second */
+    ret = dat_str2time(value, &val->time, &val->fractions_s);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (format == LY_VALUE_CANON) {
+        /* store canonical value */
+        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+            ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
+            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+            LY_CHECK_GOTO(ret, cleanup);
+        } else {
+            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
     }
-
-    /* no other characters expected */
-    if (val_str[0]) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid character '%c' in date-and-time value \"%s\", "
-                "no characters expected.", val_str[0], storage->_canonical);
-        goto cleanup;
-    }
-
-    /* validation succeeded and we do not want to change how it is stored */
 
 cleanup:
+    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        free((void *)value);
+    }
+
     if (ret) {
-        type->plugin->free(ctx, storage);
+        lyplg_type_free_date_and_time(ctx, storage);
     }
     return ret;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_compare_clb for ietf-yang-types date-and-time type.
+ */
+static LY_ERR
+lyplg_type_compare_date_and_time(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    struct lyd_value_date_and_time *v1 = val1->ptr, *v2 = val2->ptr;
+
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    /* compare timestamp */
+    if (v1->time != v2->time) {
+        return LY_ENOT;
+    }
+
+    /* compare second fractions */
+    if ((!v1->fractions_s && !v2->fractions_s) ||
+            (v1->fractions_s && v2->fractions_s && !strcmp(v1->fractions_s, v2->fractions_s))) {
+        return LY_SUCCESS;
+    }
+    return LY_ENOT;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for ietf-yang-types date-and-time type.
+ */
+static const void *
+lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+{
+    struct lyd_value_date_and_time *val = value->ptr;
+    char *ret;
+
+    if (format == LY_VALUE_LYB) {
+        if (val->fractions_s) {
+            ret = malloc(8 + strlen(val->fractions_s));
+            LY_CHECK_ERR_RET(!ret, LOGMEM(ctx), NULL);
+
+            *dynamic = 1;
+            if (value_len) {
+                *value_len = 8 + strlen(val->fractions_s);
+            }
+            memcpy(ret, &val->time, sizeof val->time);
+            memcpy(ret + 8, val->fractions_s, strlen(val->fractions_s));
+        } else {
+            *dynamic = 0;
+            if (value_len) {
+                *value_len = 8;
+            }
+            ret = (char *)&val->time;
+        }
+        return ret;
+    }
+
+    /* generate canonical value if not already */
+    if (!value->_canonical) {
+        /* get the canonical value */
+        if (dat_time2str(val->time, val->fractions_s, &ret)) {
+            return NULL;
+        }
+
+        /* store it */
+        if (lydict_insert_zc(ctx, ret, (const char **)&value->_canonical)) {
+            LOGMEM(ctx);
+            return NULL;
+        }
+    }
+
+    /* use the cached canonical value */
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = strlen(value->_canonical);
+    }
+    return value->_canonical;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_hash_clb for ietf-yang-types date-and-time type.
+ */
+static const void *
+lyplg_type_hash_date_and_time(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
+{
+    struct lyd_value_date_and_time *val = value->ptr;
+
+    if (!val->fractions_s) {
+        /* we can use the timestamp */
+        *dynamic = 0;
+        *key_len = 8;
+        return &val->time;
+    }
+
+    /* simply use the (dynamic) LYB value */
+    return lyplg_type_print_date_and_time(NULL, value, LY_VALUE_LYB, NULL, dynamic, key_len);
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_dup_clb for ietf-yang-types date-and-time type.
+ */
+static LY_ERR
+lyplg_type_dup_date_and_time(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    LY_ERR ret;
+    struct lyd_value_date_and_time *orig_val = original->ptr, *dup_val;
+
+    memset(dup, 0, sizeof *dup);
+
+    /* optional canonical value */
+    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
+    LY_CHECK_GOTO(ret, error);
+
+    /* allocate value */
+    dup_val = calloc(1, sizeof *dup_val);
+    LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
+    dup->ptr = dup_val;
+
+    /* copy timestamp */
+    dup_val->time = orig_val->time;
+
+    /* duplicate second fractions */
+    if (orig_val->fractions_s) {
+        dup_val->fractions_s = strdup(orig_val->fractions_s);
+        LY_CHECK_ERR_GOTO(!dup_val->fractions_s, ret = LY_EMEM, error);
+    }
+
+    dup->ptr = dup_val;
+    dup->realtype = original->realtype;
+    return LY_SUCCESS;
+
+error:
+    lyplg_type_free_date_and_time(ctx, dup);
+    return ret;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_free_clb for ietf-yang-types date-and-time type.
+ */
+static void
+lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_value *value)
+{
+    struct lyd_value_date_and_time *val = value->ptr;
+
+    lydict_remove(ctx, value->_canonical);
+    if (val) {
+        free(val->fractions_s);
+        free(val);
+    }
 }
 
 /**
@@ -266,11 +445,11 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.id = "libyang 2 - date-and-time, version 1",
         .plugin.store = lyplg_type_store_date_and_time,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
-        .plugin.hash = lyplg_type_hash_simple,
-        .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.compare = lyplg_type_compare_date_and_time,
+        .plugin.print = lyplg_type_print_date_and_time,
+        .plugin.hash = lyplg_type_hash_date_and_time,
+        .plugin.duplicate = lyplg_type_dup_date_and_time,
+        .plugin.free = lyplg_type_free_date_and_time
     },
     {0}
 };
