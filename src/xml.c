@@ -1115,8 +1115,12 @@ lyxml_value_compare(const struct ly_ctx *ctx1, const char *value1, void *val_pre
     for (value1_iter = value1, value2_iter = value2;
             value1_iter && value2_iter;
             value1_iter = value1_next, value2_iter = value2_next) {
-        value1_len = ly_value_prefix_next(value1_iter, NULL, &is_prefix1, &value1_next);
-        value2_len = ly_value_prefix_next(value2_iter, NULL, &is_prefix2, &value2_next);
+        if ((ret = ly_value_prefix_next(value1_iter, NULL, &value1_len, &is_prefix1, &value1_next))) {
+            break;
+        }
+        if ((ret = ly_value_prefix_next(value2_iter, NULL, &value2_len, &is_prefix2, &value2_next))) {
+            break;
+        }
 
         if (is_prefix1 != is_prefix2) {
             ret = LY_ENOT;

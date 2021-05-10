@@ -535,7 +535,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         /* add all used prefixes */
         value_end = value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
-            substr_len = ly_value_prefix_next(value_iter, value_end, &is_prefix, &value_next);
+            LY_CHECK_GOTO(ret = ly_value_prefix_next(value_iter, value_end, &substr_len, &is_prefix, &value_next), cleanup);
             if (is_prefix) {
                 /* we have a possible prefix. Do we already have the prefix? */
                 mod = ly_resolve_prefix(ctx, value_iter, substr_len, *format_p, *prefix_data_p);
@@ -571,7 +571,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         /* add all used prefixes */
         value_end = value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
-            substr_len = ly_value_prefix_next(value_iter, value_end, &is_prefix, &value_next);
+            LY_CHECK_GOTO(ret = ly_value_prefix_next(value_iter, value_end, &substr_len, &is_prefix, &value_next), cleanup);
             if (is_prefix) {
                 /* we have a possible prefix. Do we already have the prefix? */
                 ns = lyxml_ns_get(ns_list, value_iter, substr_len);
