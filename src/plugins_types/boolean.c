@@ -109,6 +109,41 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lyplg_type_compare_boolean(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->realtype != val2->realtype) {
+        return LY_ENOT;
+    }
+
+    if (val1->boolean != val2->boolean) {
+        return LY_ENOT;
+    }
+    return LY_SUCCESS;
+}
+
+API const void *
+lyplg_type_print_boolean(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
+{
+    if (format == LY_VALUE_LYB) {
+        *dynamic = 0;
+        if (value_len) {
+            *value_len = sizeof value->boolean;
+        }
+        return &value->boolean;
+    }
+
+    /* use the cached canonical value */
+    if (dynamic) {
+        *dynamic = 0;
+    }
+    if (value_len) {
+        *value_len = strlen(value->_canonical);
+    }
+    return value->_canonical;
+}
+
 /**
  * @brief Plugin information for boolean type implementation.
  *
@@ -125,8 +160,8 @@ const struct lyplg_type_record plugins_boolean[] = {
         .plugin.id = "libyang 2 - boolean, version 1",
         .plugin.store = lyplg_type_store_boolean,
         .plugin.validate = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.print = lyplg_type_print_simple,
+        .plugin.compare = lyplg_type_compare_boolean,
+        .plugin.print = lyplg_type_print_boolean,
         .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
