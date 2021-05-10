@@ -697,6 +697,17 @@ LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_ty
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
+/**
+ * @brief Implementation of ::lyplg_type_compare_clb for the built-in decimal64 type.
+ */
+LY_ERR lyplg_type_compare_decimal64(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for the built-in decimal64 type.
+ */
+const void *lyplg_type_print_decimal64(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+
 /** @} pluginsTypesDecimal64 */
 
 /**
