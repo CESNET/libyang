@@ -453,7 +453,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.print = lyplg_type_print_uint,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -466,7 +465,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.print = lyplg_type_print_uint,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -479,7 +477,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.print = lyplg_type_print_uint,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -492,7 +489,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_uint,
         .plugin.print = lyplg_type_print_uint,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -505,7 +501,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.print = lyplg_type_print_int,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -518,7 +513,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.print = lyplg_type_print_int,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -531,7 +525,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.print = lyplg_type_print_int,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     }, {
@@ -544,7 +537,6 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_int,
         .plugin.print = lyplg_type_print_int,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     },

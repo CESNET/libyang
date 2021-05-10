@@ -286,19 +286,6 @@ lyplg_type_print_ipv4_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
 }
 
 /**
- * @brief Implementation of ::lyplg_type_hash_clb for the ietf-inet-types ipv4-prefix type.
- */
-static const void *
-lyplg_type_hash_ipv4_prefix(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    struct lyd_value_ipv4_prefix *val = value->ptr;
-
-    *dynamic = 0;
-    *key_len = sizeof *val;
-    return val;
-}
-
-/**
  * @brief Implementation of ::lyplg_type_dup_clb for the ietf-inet-types ipv4-prefix type.
  */
 static LY_ERR
@@ -350,7 +337,6 @@ const struct lyplg_type_record plugins_ipv4_prefix[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_prefix,
         .plugin.print = lyplg_type_print_ipv4_prefix,
-        .plugin.hash = lyplg_type_hash_ipv4_prefix,
         .plugin.duplicate = lyplg_type_dup_ipv4_prefix,
         .plugin.free = lyplg_type_free_ipv4_prefix
     },

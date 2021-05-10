@@ -214,7 +214,6 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_decimal64,
         .plugin.print = lyplg_type_print_decimal64,
-        .plugin.hash = lyplg_type_hash_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple
     },

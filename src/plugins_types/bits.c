@@ -440,18 +440,6 @@ lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, L
     return value->_canonical;
 }
 
-API const void *
-lyplg_type_hash_bits(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    struct lysc_type_bits *type_bits = (struct lysc_type_bits *)value->realtype;
-    struct lyd_value_bits *val = value->ptr;
-
-    /* return the bitmap */
-    *dynamic = 0;
-    *key_len = lyplg_type_bits_bitmap_size(type_bits);
-    return val->bitmap;
-}
-
 API LY_ERR
 lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
@@ -523,7 +511,6 @@ const struct lyplg_type_record plugins_bits[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_bits,
         .plugin.print = lyplg_type_print_bits,
-        .plugin.hash = lyplg_type_hash_bits,
         .plugin.duplicate = lyplg_type_dup_bits,
         .plugin.free = lyplg_type_free_bits
     },
