@@ -358,25 +358,6 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
 }
 
 /**
- * @brief Implementation of ::lyplg_type_hash_clb for ietf-yang-types date-and-time type.
- */
-static const void *
-lyplg_type_hash_date_and_time(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    struct lyd_value_date_and_time *val = value->ptr;
-
-    if (!val->fractions_s) {
-        /* we can use the timestamp */
-        *dynamic = 0;
-        *key_len = 8;
-        return &val->time;
-    }
-
-    /* simply use the (dynamic) LYB value */
-    return lyplg_type_print_date_and_time(NULL, value, LY_VALUE_LYB, NULL, dynamic, key_len);
-}
-
-/**
  * @brief Implementation of ::lyplg_type_dup_clb for ietf-yang-types date-and-time type.
  */
 static LY_ERR
@@ -447,7 +428,6 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,
         .plugin.print = lyplg_type_print_date_and_time,
-        .plugin.hash = lyplg_type_hash_date_and_time,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
         .plugin.free = lyplg_type_free_date_and_time
     },

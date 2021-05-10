@@ -320,16 +320,6 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
 }
 
 /**
- * @brief Implementation of ::lyplg_type_hash_clb for the ipv6-address ietf-inet-types type.
- */
-static const void *
-lyplg_type_hash_ipv6_address(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    /* simply use the (dynamic or const) LYB value */
-    return lyplg_type_print_ipv6_address(NULL, value, LY_VALUE_LYB, NULL, dynamic, key_len);
-}
-
-/**
  * @brief Implementation of ::lyplg_type_dup_clb for the ipv6-address ietf-inet-types type.
  */
 static LY_ERR
@@ -392,7 +382,6 @@ const struct lyplg_type_record plugins_ipv6_address[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_address,
         .plugin.print = lyplg_type_print_ipv6_address,
-        .plugin.hash = lyplg_type_hash_ipv6_address,
         .plugin.duplicate = lyplg_type_dup_ipv6_address,
         .plugin.free = lyplg_type_free_ipv6_address
     },

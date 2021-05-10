@@ -1106,7 +1106,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                     }
 
                     /* get hash key */
-                    hash_key = val->realtype->plugin->hash(val, &dyn, &key_len);
+                    hash_key = val->realtype->plugin->print(NULL, val, LY_VALUE_LYB, NULL, &dyn, &key_len);
                     hash = dict_hash_multi(hash, hash_key, key_len);
                     if (dyn) {
                         free((void *)hash_key);

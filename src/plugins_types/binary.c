@@ -344,17 +344,6 @@ lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value,
     return value->_canonical;
 }
 
-API const void *
-lyplg_type_hash_binary(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    struct lyd_value_binary *val = value->bin;
-
-    /* return the value itself */
-    *dynamic = 0;
-    *key_len = val->size;
-    return val->data;
-}
-
 API LY_ERR
 lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
@@ -414,7 +403,6 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_binary,
         .plugin.print = lyplg_type_print_binary,
-        .plugin.hash = lyplg_type_hash_binary,
         .plugin.duplicate = lyplg_type_dup_binary,
         .plugin.free = lyplg_type_free_binary,
     },

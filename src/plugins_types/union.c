@@ -300,12 +300,6 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
     return ret;
 }
 
-API const void *
-lyplg_type_hash_union(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    return value->subvalue->value.realtype->plugin->hash(&value->subvalue->value, dynamic, key_len);
-}
-
 API LY_ERR
 lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
@@ -377,7 +371,6 @@ const struct lyplg_type_record plugins_union[] = {
         .plugin.validate = lyplg_type_validate_union,
         .plugin.compare = lyplg_type_compare_union,
         .plugin.print = lyplg_type_print_union,
-        .plugin.hash = lyplg_type_hash_union,
         .plugin.duplicate = lyplg_type_dup_union,
         .plugin.free = lyplg_type_free_union
     },

@@ -288,19 +288,6 @@ lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
 }
 
 /**
- * @brief Implementation of ::lyplg_type_hash_clb for the ietf-inet-types ipv6-prefix type.
- */
-static const void *
-lyplg_type_hash_ipv6_prefix(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    struct lyd_value_ipv6_prefix *val = value->ptr;
-
-    *dynamic = 0;
-    *key_len = sizeof *val;
-    return val;
-}
-
-/**
  * @brief Implementation of ::lyplg_type_dup_clb for the ietf-inet-types ipv6-prefix type.
  */
 static LY_ERR
@@ -352,7 +339,6 @@ const struct lyplg_type_record plugins_ipv6_prefix[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_prefix,
         .plugin.print = lyplg_type_print_ipv6_prefix,
-        .plugin.hash = lyplg_type_hash_ipv6_prefix,
         .plugin.duplicate = lyplg_type_dup_ipv6_prefix,
         .plugin.free = lyplg_type_free_ipv6_prefix
     },

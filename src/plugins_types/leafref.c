@@ -100,12 +100,6 @@ lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value
     return value->realtype->plugin->print(ctx, value, format, prefix_data, dynamic, value_len);
 }
 
-API const void *
-lyplg_type_hash_leafref(const struct lyd_value *value, ly_bool *dynamic, size_t *key_len)
-{
-    return value->realtype->plugin->hash(value, dynamic, key_len);
-}
-
 API LY_ERR
 lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
@@ -136,7 +130,6 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.validate = lyplg_type_validate_leafref,
         .plugin.compare = lyplg_type_compare_leafref,
         .plugin.print = lyplg_type_print_leafref,
-        .plugin.hash = lyplg_type_hash_leafref,
         .plugin.duplicate = lyplg_type_dup_leafref,
         .plugin.free = lyplg_type_free_leafref
     },
