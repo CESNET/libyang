@@ -606,7 +606,10 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
     /* parse and store all namespaces */
     prev_input = xmlctx->in->current;
     is_ns = 1;
-    while ((xmlctx->in->current[0] != '\0') && !ly_getutf8(&xmlctx->in->current, &c, &parsed) && is_xmlqnamestartchar(c)) {
+    while ((xmlctx->in->current[0] != '\0') && !(ret = ly_getutf8(&xmlctx->in->current, &c, &parsed))) {
+        if (!is_xmlqnamestartchar(c)) {
+            break;
+        }
         xmlctx->in->current -= parsed;
 
         /* parse attribute name */
