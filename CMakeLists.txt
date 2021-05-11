@@ -212,7 +212,7 @@ option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 
 set(LYD_VALUE_SIZE "24" CACHE STRING "Maximum size in bytes of data node values that do not need to be allocated dynamically, minimum is 8")
-if(NOT LYD_VALUE_SIZE GREATER_EQUAL 8)
+if(LYD_VALUE_SIZE LESS 8)
     message(FATAL_ERROR "Data node value size \"${LYD_VALUE_SIZE}\" is not valid.")
 endif()
 set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
