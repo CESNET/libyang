@@ -324,7 +324,7 @@ lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, c
     /* consume leading whitespaces */
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
-    if (!value || !value[0] || !value_len) {
+    if (!value || !value_len || !value[0]) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty %s value.", datatype);
     }
 
@@ -349,7 +349,7 @@ lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *
     /* consume leading whitespaces */
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
-    if (!value || !value[0] || !value_len) {
+    if (!value || !value_len || !value[0]) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty %s value.", datatype);
     }
 
