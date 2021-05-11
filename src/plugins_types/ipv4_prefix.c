@@ -125,8 +125,11 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
     struct lyd_value_ipv4_prefix *val;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -141,20 +144,8 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
             goto cleanup;
         }
 
-        /* store/allocate value */
-        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-            val = (void *)value;
-            options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        } else {
-            val = calloc(1, sizeof *val);
-            LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-            memcpy(val, value, value_len);
-        }
-
-        /* init storage */
-        storage->_canonical = NULL;
-        storage->ptr = val;
-        storage->realtype = type;
+        /* store addr + prefix */
+        memcpy(val, value, value_len);
 
         /* zero host */
         ipv4prefix_zero_host(&val->addr, val->prefix);
@@ -177,15 +168,6 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     /* pattern restrictions */
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
-
-    /* allocate the value */
-    val = calloc(1, sizeof *val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = val;
-    storage->realtype = type;
 
     /* get the mask in network-byte order */
     ret = ipv4prefix_str2ip(value, value_len, &val->addr, &val->prefix, err);
@@ -223,11 +205,14 @@ cleanup:
 static LY_ERR
 lyplg_type_compare_ipv4_prefix(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_ipv4_prefix *v1 = val1->ptr, *v2 = val2->ptr;
+    struct lyd_value_ipv4_prefix *v1, *v2;
 
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
     }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
 
     if (memcmp(v1, v2, sizeof *v1)) {
         return LY_ENOT;
@@ -242,8 +227,10 @@ static const void *
 lyplg_type_print_ipv4_prefix(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
-    struct lyd_value_ipv4_prefix *val = value->ptr;
+    struct lyd_value_ipv4_prefix *val;
     char *ret;
+
+    LYD_VALUE_GET(value, val);
 
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
@@ -292,19 +279,20 @@ static LY_ERR
 lyplg_type_dup_ipv4_prefix(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    struct lyd_value_ipv4_prefix *orig_val = original->ptr, *dup_val;
+    struct lyd_value_ipv4_prefix *orig_val, *dup_val;
 
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
-    dup_val = calloc(1, sizeof *dup_val);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
     if (!dup_val) {
         lydict_remove(ctx, dup->_canonical);
         return LY_EMEM;
     }
+
+    LYD_VALUE_GET(original, orig_val);
     memcpy(dup_val, orig_val, sizeof *orig_val);
 
-    dup->ptr = dup_val;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 }
@@ -315,8 +303,11 @@ lyplg_type_dup_ipv4_prefix(const struct ly_ctx *ctx, const struct lyd_value *ori
 static void
 lyplg_type_free_ipv4_prefix(const struct ly_ctx *ctx, struct lyd_value *value)
 {
+    struct lyd_value_ipv4_prefix *val;
+
     lydict_remove(ctx, value->_canonical);
-    free(value->ptr);
+    LYD_VALUE_GET(value, val);
+    LYPLG_TYPE_VAL_INLINE_DESTROY(val);
 }
 
 /**

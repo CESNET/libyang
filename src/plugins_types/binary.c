@@ -215,19 +215,13 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
     struct lyd_value_binary *val;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
-        /* allocate the value */
-        val = calloc(1, sizeof *val);
-        LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-        /* init storage */
-        storage->_canonical = NULL;
-        storage->bin = val;
-        storage->realtype = type;
-
         /* store value */
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
             val->data = (void *)value;
@@ -254,15 +248,6 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         ret = binary_base64_validate(value, value_len, type_bin, err);
         LY_CHECK_GOTO(ret, cleanup);
     }
-
-    /* allocate the value */
-    val = calloc(1, sizeof *val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->bin = val;
-    storage->realtype = type;
 
     /* get the binary value */
     ret = binary_base64_decode(value, value_len, &val->data, &val->size);
@@ -292,11 +277,14 @@ cleanup:
 API LY_ERR
 lyplg_type_compare_binary(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_binary *v1 = val1->bin, *v2 = val2->bin;
+    struct lyd_value_binary *v1, *v2;
 
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
     }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
 
     if ((v1->size != v2->size) || memcmp(v1->data, v2->data, v1->size)) {
         return LY_ENOT;
@@ -308,9 +296,11 @@ API const void *
 lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
-    struct lyd_value_binary *val = value->bin;
+    struct lyd_value_binary *val;
     char *ret;
     size_t ret_len = 0;
+
+    LYD_VALUE_GET(value, val);
 
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
@@ -348,27 +338,27 @@ API LY_ERR
 lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    struct lyd_value_binary *orig_val = original->bin, *dup_val;
+    struct lyd_value_binary *orig_val, *dup_val;
 
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
-    dup_val = calloc(1, sizeof *dup_val);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
     if (!dup_val) {
         lydict_remove(ctx, dup->_canonical);
         return LY_EMEM;
     }
 
+    LYD_VALUE_GET(original, orig_val);
     dup_val->data = malloc(orig_val->size);
     if (!dup_val->data) {
         lydict_remove(ctx, dup->_canonical);
-        free(dup_val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(dup_val);
         return LY_EMEM;
     }
     memcpy(dup_val->data, orig_val->data, orig_val->size);
     dup_val->size = orig_val->size;
 
-    dup->bin = dup_val;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 }
@@ -376,12 +366,13 @@ lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original
 API void
 lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_binary *val = value->bin;
+    struct lyd_value_binary *val;
 
     lydict_remove(ctx, value->_canonical);
+    LYD_VALUE_GET(value, val);
     if (val) {
         free(val->data);
-        free(val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(val);
     }
 }
 

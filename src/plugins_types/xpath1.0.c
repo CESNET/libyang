@@ -43,8 +43,8 @@
 struct lyd_value_xpath10 {
     struct lyxp_expr *exp;
     const struct ly_ctx *ctx;
-    LY_VALUE_FORMAT format;
     void *prefix_data;
+    LY_VALUE_FORMAT format;
 };
 
 /**
@@ -216,8 +216,11 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     struct lyd_value_xpath10 *val;
     char *canon;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -233,16 +236,6 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     /* pattern restrictions */
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
-    storage->realtype = type;
-
-    /* allocate value */
-    val = calloc(1, sizeof *val);
-    LY_CHECK_ERR_GOTO(!val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    storage->ptr = val;
 
     /* store format-specific data and context for later prefix resolution */
     ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &val->format, &val->prefix_data);
@@ -287,8 +280,11 @@ API const void *
 lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
+    struct lyd_value_xpath10 *val;
     char *ret;
     struct ly_err_item *err = NULL;
+
+    LYD_VALUE_GET(value, val);
 
     if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
         /* canonical */
@@ -302,7 +298,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
     }
 
     /* print in the specific format */
-    if (xpath10_print_value(value->ptr, format, prefix_data, &ret, &err)) {
+    if (xpath10_print_value(val, format, prefix_data, &ret, &err)) {
         if (err) {
             LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
@@ -321,7 +317,7 @@ API LY_ERR
 lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_value_xpath10 *orig_val = original->ptr, *dup_val;
+    struct lyd_value_xpath10 *orig_val, *dup_val;
 
     /* init dup value */
     memset(dup, 0, sizeof *dup);
@@ -330,17 +326,17 @@ lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *origina
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_GOTO(ret, cleanup);
 
-    dup_val = calloc(1, sizeof *dup_val);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
     LY_CHECK_ERR_GOTO(!dup_val, LOGMEM(ctx); ret = LY_EMEM, cleanup);
     dup_val->ctx = ctx;
-    dup->ptr = dup_val;
 
+    LYD_VALUE_GET(original, orig_val);
     ret = lyxp_expr_dup(ctx, orig_val->exp, &dup_val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
-    dup_val->format = orig_val->format;
     ret = lyplg_type_prefix_data_dup(ctx, orig_val->format, orig_val->prefix_data, &dup_val->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
+    dup_val->format = orig_val->format;
 
 cleanup:
     if (ret) {
@@ -352,14 +348,15 @@ cleanup:
 API void
 lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_xpath10 *val = value->ptr;
+    struct lyd_value_xpath10 *val;
 
     lydict_remove(ctx, value->_canonical);
+    LYD_VALUE_GET(value, val);
     if (val) {
         lyxp_expr_free(ctx, val->exp);
         lyplg_type_prefix_data_free(val->format, val->prefix_data);
 
-        free(val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(val);
     }
 }
 

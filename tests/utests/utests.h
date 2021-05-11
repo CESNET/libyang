@@ -932,9 +932,11 @@ struct utest_context {
     { \
         const char *arr[] = { __VA_ARGS__ }; \
         LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
-        assert_int_equal(arr_size, LY_ARRAY_COUNT(((struct lyd_value_bits *)(NODE).ptr)->items)); \
+        struct lyd_value_bits *_val; \
+        LYD_VALUE_GET(&(NODE), _val); \
+        assert_int_equal(arr_size, LY_ARRAY_COUNT(_val->items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(arr[it], ((struct lyd_value_bits *)(NODE).ptr)->items[it]->name); \
+            assert_string_equal(arr[it], _val->items[it]->name); \
         } \
     }
 
@@ -1076,12 +1078,16 @@ struct utest_context {
  * @param[in] SIZE           expected value data size
 */
 #define CHECK_LYD_VALUE_BINARY(NODE, CANNONICAL_VAL, VALUE, SIZE) \
-    assert_int_equal((NODE).bin->size, SIZE); \
-    assert_int_equal(0, memcmp((NODE).bin->data, VALUE, SIZE)); \
-    assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
-    assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
-    assert_non_null((NODE).realtype); \
-    assert_int_equal(LY_TYPE_BINARY, (NODE).realtype->basetype);
+    { \
+        struct lyd_value_binary *_val; \
+        LYD_VALUE_GET(&(NODE), _val); \
+        assert_int_equal(_val->size, SIZE); \
+        assert_int_equal(0, memcmp(_val->data, VALUE, SIZE)); \
+        assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
+        assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
+        assert_non_null((NODE).realtype); \
+        assert_int_equal(LY_TYPE_BINARY, (NODE).realtype->basetype); \
+    }
 
 /**
  * @brief Internal macro. Assert that lyd_value structure members are correct. Lyd value is type BOOL.

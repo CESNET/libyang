@@ -297,8 +297,11 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
     struct lyd_value_bits *val;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -307,15 +310,6 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
                     value_len, lyplg_type_bits_bitmap_size(type_bits));
             goto cleanup;
         }
-
-        /* allocate the value */
-        val = calloc(1, sizeof *val);
-        LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-        /* init storage */
-        storage->_canonical = NULL;
-        storage->ptr = val;
-        storage->realtype = type;
 
         /* store value (bitmap) */
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
@@ -338,15 +332,6 @@ lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, co
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
-
-    /* allocate the value */
-    val = calloc(1, sizeof *val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = val;
-    storage->realtype = type;
 
     /* allocate the bitmap */
     val->bitmap = malloc(lyplg_type_bits_bitmap_size(type_bits));
@@ -387,12 +372,15 @@ cleanup:
 API LY_ERR
 lyplg_type_compare_bits(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_bits *v1 = val1->ptr, *v2 = val2->ptr;
+    struct lyd_value_bits *v1, *v2;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)val1->realtype;
 
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
     }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
 
     if (memcmp(v1->bitmap, v2->bitmap, lyplg_type_bits_bitmap_size(type_bits))) {
         return LY_ENOT;
@@ -405,8 +393,10 @@ lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, L
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)value->realtype;
-    struct lyd_value_bits *val = value->ptr;
+    struct lyd_value_bits *val;
     char *ret;
+
+    LYD_VALUE_GET(value, val);
 
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
@@ -446,7 +436,7 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
     LY_ERR ret;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)original->realtype;
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_value_bits *orig_val = original->ptr, *dup_val;
+    struct lyd_value_bits *orig_val, *dup_val;
 
     memset(dup, 0, sizeof *dup);
 
@@ -455,9 +445,10 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
     LY_CHECK_GOTO(ret, error);
 
     /* allocate value */
-    dup_val = calloc(1, sizeof *dup_val);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
     LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
-    dup->ptr = dup_val;
+
+    LYD_VALUE_GET(original, orig_val);
 
     /* duplicate bitmap */
     dup_val->bitmap = malloc(lyplg_type_bits_bitmap_size(type_bits));
@@ -471,7 +462,6 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
         dup_val->items[u] = orig_val->items[u];
     }
 
-    dup->ptr = dup_val;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 
@@ -483,13 +473,14 @@ error:
 API void
 lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_bits *val = value->ptr;
+    struct lyd_value_bits *val;
 
     lydict_remove(ctx, value->_canonical);
+    LYD_VALUE_GET(value, val);
     if (val) {
         free(val->bitmap);
         LY_ARRAY_FREE(val->items);
-        free(val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(val);
     }
 }
 

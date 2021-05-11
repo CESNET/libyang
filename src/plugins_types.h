@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "config.h"
 #include "log.h"
 #include "plugins.h"
 #include "tree.h"
@@ -168,6 +169,38 @@ struct lysc_type_leafref;
 #define LYPLG_TYPES \
     uint32_t plugins_types_apiver__ = LYPLG_TYPE_API_VERSION; \
     const struct lyplg_type_record plugins_types__[]
+
+/**
+ * @brief Check whether specific type value needs to be allocated dynamically.
+ *
+ * @param[in] type_val Pointer to specific type value storage.
+ */
+#define LYPLG_TYPE_VAL_IS_DYN(type_val) \
+    (sizeof *(type_val) > LYD_VALUE_FIXED_MEM_SIZE)
+
+/**
+ * @brief Prepare value memory for storing a specific type value, may be allocated dynamically.
+ *
+ * Must be called for values larger than 8 bytes.
+ * To be used in ::lyplg_type_store_clb.
+ *
+ * @param[in] storage Pointer to the value storage to use (struct ::lyd_value *).
+ * @param[in,out] type_val Pointer to specific type value structure.
+ */
+#define LYPLG_TYPE_VAL_INLINE_PREPARE(storage, type_val) \
+    (LYPLG_TYPE_VAL_IS_DYN(type_val) \
+     ? ((type_val) = ((storage)->dyn_mem = calloc(1, sizeof *(type_val)))) \
+     : ((type_val) = memset((storage)->fixed_mem, 0, sizeof *(type_val))))
+
+/**
+ * @brief Destroy a prepared value.
+ *
+ * Must be called for values prepared with ::LYPLG_TYPE_VAL_INLINE_PREPARE.
+ *
+ * @param[in] type_val Pointer to specific type value structure.
+ */
+#define LYPLG_TYPE_VAL_INLINE_DESTROY(type_val) \
+    do { if (LYPLG_TYPE_VAL_IS_DYN(type_val)) free(type_val); } while(0)
 
 /**
  * @brief Create and fill error structure.

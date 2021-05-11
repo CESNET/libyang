@@ -43,8 +43,9 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -60,11 +61,6 @@ lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, 
     /* pattern restrictions */
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
-    storage->realtype = type;
 
     /* store canonical value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {

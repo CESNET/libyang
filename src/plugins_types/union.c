@@ -144,13 +144,16 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
-    struct lyd_value_union *subvalue = NULL;
+    struct lyd_value_union *subvalue;
     uint32_t type_idx;
 
     *err = NULL;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, subvalue);
+    LY_CHECK_ERR_GOTO(!subvalue, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* basic validation */
@@ -166,18 +169,6 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
             goto cleanup;
         }
     }
-
-    /* prepare subvalue */
-    subvalue = calloc(1, sizeof *subvalue);
-    if (!subvalue) {
-        ret = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
-        goto cleanup;
-    }
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->subvalue = subvalue;
-    storage->realtype = type;
 
     /* remember the original value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
@@ -339,9 +330,10 @@ cleanup:
 API void
 lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_union *val = value->subvalue;
+    struct lyd_value_union *val;
 
     lydict_remove(ctx, value->_canonical);
+    LYD_VALUE_GET(value, val);
     if (val) {
         if (val->value.realtype) {
             val->value.realtype->plugin->free(ctx, &val->value);
@@ -349,7 +341,7 @@ lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
         lyplg_type_prefix_data_free(val->format, val->prefix_data);
         free(val->original);
 
-        free(val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(val);
     }
 }
 

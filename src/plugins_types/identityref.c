@@ -194,8 +194,9 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     char *canon;
     struct lysc_ident *ident;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -222,10 +223,8 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     ret = identityref_check_base(ident, type_ident, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* init storage */
-    storage->_canonical = NULL;
+    /* store value */
     storage->ident = ident;
-    storage->realtype = type;
 
     /* store canonical value */
     if (format == LY_VALUE_CANON) {

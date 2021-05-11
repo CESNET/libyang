@@ -45,8 +45,9 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_ARRAY_COUNT_TYPE u;
     ly_bool found = 0;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -91,10 +92,8 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
         }
     }
 
-    /* init storage */
-    storage->_canonical = NULL;
+    /* store value */
     storage->enum_item = &type_enum->enums[u];
-    storage->realtype = type;
 
     /* store canonical value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {

@@ -58,8 +58,9 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     char *canon;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -115,9 +116,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* init storage */
-    storage->_canonical = NULL;
-    /* matters for big-endian */
+    /* set the value, matters for big-endian */
     switch (type->basetype) {
     case LY_TYPE_INT8:
         storage->int8 = num;
@@ -134,7 +133,6 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     default:
         break;
     }
-    storage->realtype = type;
 
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
@@ -253,8 +251,9 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     char *canon;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -309,9 +308,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* init storage */
-    storage->_canonical = NULL;
-    /* matters for big-endian */
+    /* store value, matters for big-endian */
     switch (type->basetype) {
     case LY_TYPE_UINT8:
         storage->uint8 = num;
@@ -328,7 +325,6 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
     default:
         break;
     }
-    storage->realtype = type;
 
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
