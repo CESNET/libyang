@@ -85,7 +85,8 @@ struct ly_out;
                                                       specified. */
 #define LYD_PRINT_WD_TRIM       0x10             /**< Trim mode avoids printing the nodes with the value equal to their
                                                       default value */
-#define LYD_PRINT_WD_ALL        0x20             /**< With this option, theInclude implicit default nodes */
+#define LYD_PRINT_WD_ALL        0x20             /**< With this option, all the nodes are printed as none of them are
+                                                      considered default */
 #define LYD_PRINT_WD_ALL_TAG    0x40             /**< Same as ::LYD_PRINT_WD_ALL but also adds attribute 'default' with value 'true' to
                                                       all nodes that has its default value. The 'default' attribute has namespace:
                                                       urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
