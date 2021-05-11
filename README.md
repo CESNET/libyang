@@ -35,7 +35,7 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
 * C compiler
 * cmake >= 2.8.12
-* libpcre2 >= 10.30 (including devel package)
+* libpcre2 >= 10.21 (including devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
 
@@ -180,22 +180,6 @@ well as its man page are installed together with the library itself.
 
 There is also [README](./tools/lint/examples/README.md) describing some examples of
 using `yanglint`.
-
-libyang supports YANG extensions via a plugin mechanism. Some of the plugins (for
-NACM or Metadata) are available out of the box and installed together with libyang.
-However, when libyang is not installed and `yanglint(1)` is used from the build
-directory, the plugins are not available. There are two options:
-
-1. Install libyang.
-```
-# make install
-```
-
-2. Set environment variable `LIBYANG_EXTENSIONS_PLUGINS_DIR` to contain path to the
-   built extensions plugin (`./src/extensions` from the build directory).
-```
-$ LIBYANG_EXTENSIONS_PLUGINS_DIR="`pwd`/src/extensions" ./yanglint
-```
 
 ## Tests
 
