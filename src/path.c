@@ -551,7 +551,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                     expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
                     LYD_HINT_DATA, key, NULL);
             LOG_LOCBACK(key ? 1 : 0, 0, 0, 0);
-            LY_CHECK_GOTO(ret, cleanup);
+            LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
             ++(*tok_idx);
 
             /* "allocate" the type to avoid problems when freeing the value after the type was freed */
@@ -603,7 +603,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
                 expr->expr + expr->tok_pos[*tok_idx] + 1, expr->tok_len[*tok_idx] - 2, NULL, format, prefix_data,
                 LYD_HINT_DATA, ctx_node, NULL);
         LOG_LOCBACK(ctx_node ? 1 : 0, 0, 0, 0);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_ERR_GOTO(ret, p->value.realtype = NULL, cleanup);
         ++(*tok_idx);
 
         /* "allocate" the type to avoid problems when freeing the value after the type was freed */
@@ -1111,6 +1111,10 @@ void
 ly_path_free(const struct ly_ctx *ctx, struct ly_path *path)
 {
     LY_ARRAY_COUNT_TYPE u;
+
+    if (!path) {
+        return;
+    }
 
     LY_ARRAY_FOR(path, u) {
         ly_path_predicates_free(ctx, path[u].pred_type, path[u].predicates);

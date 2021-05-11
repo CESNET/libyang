@@ -737,6 +737,7 @@ cleanup:
     lyxp_expr_free(ctx, exp);
     if (ret) {
         ly_path_free(ctx, *path);
+        *path = NULL;
     }
 
     return ret;
