@@ -1,5 +1,5 @@
 /*
- * @file test_parser_yang.c
+ * @file test_tree_schema_compile.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from parser_yang.c
  *

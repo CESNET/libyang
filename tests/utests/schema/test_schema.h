@@ -1,5 +1,5 @@
 /*
- * @file macros.h
+ * @file test_schema.h
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief macros for schema tests
  *

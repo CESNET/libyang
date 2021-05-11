@@ -1,5 +1,5 @@
 /**
- * @file test_error.c
+ * @file test_pattern.c
  * @author Radek Iša <isa@cesnet.cz>
  * @brief test for int8 values
  *

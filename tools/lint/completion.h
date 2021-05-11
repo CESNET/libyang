@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file completion.h
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang's yanglint tool auto completion header
  *

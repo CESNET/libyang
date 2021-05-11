@@ -1,5 +1,5 @@
 /**
- * @file plugins/simple.c
+ * @file simple.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Simple testing plugins implementation
  *

@@ -1,5 +1,5 @@
 /*
- * @file json.c
+ * @file test_json.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for a generic JSON parser
  *
