@@ -578,11 +578,11 @@ struct lyd_value_union {
                                       (stored as ::lyd_value.realtype here) */
     void *original;              /**< Original value. */
     size_t orig_len;             /**< Original value length. */
+    uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
-    uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     const struct lysc_node *ctx_node;   /**< Context schema node. */
 };
 
@@ -652,9 +652,9 @@ struct lyd_attr {
     struct lyd_attr *next;          /**< pointer to the next attribute */
     struct ly_opaq_name name;       /**< attribute name with module information */
     const char *value;              /**< attribute value */
+    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     LY_VALUE_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
-    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 };
 
 #define LYD_NODE_INNER (LYS_CONTAINER|LYS_LIST|LYS_RPC|LYS_ACTION|LYS_NOTIF) /**< Schema nodetype mask for lyd_node_inner */
@@ -899,9 +899,9 @@ struct lyd_node_opaq {
 
     struct ly_opaq_name name;       /**< node name with module information */
     const char *value;              /**< original value */
+    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
     LY_VALUE_FORMAT format;        /**< format of the node and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
-    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
 
     struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
     const struct ly_ctx *ctx;       /**< libyang context */
