@@ -306,9 +306,14 @@ find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
 
-# install files
+# generated header list
+foreach(h IN LISTS gen_headers)
+    list(APPEND g_headers ${PROJECT_BINARY_DIR}/${h})
+endforeach()
+
+# install all library files
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${headers} ${CMAKE_CURRENT_BINARY_DIR}/${gen_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
+install(FILES ${headers} ${g_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
