@@ -61,9 +61,13 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
+    struct lyd_value_ipv4_address_no_zone *val;
 
-    /* zero storage so we can always free it */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -73,13 +77,8 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
             goto cleanup;
         }
 
-        /* init storage */
-        storage->_canonical = NULL;
-        storage->ptr = NULL;
-        storage->realtype = type;
-
-        /* store IP address as uint32_t value */
-        memcpy(&storage->uint32, value, 4);
+        /* store IP address */
+        memcpy(&val->addr, value, 4);
 
         /* success */
         goto cleanup;
@@ -100,11 +99,6 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
-    storage->realtype = type;
-
     /* we always need a dynamic value */
     if (!(options & LYPLG_TYPE_STORE_DYNAMIC)) {
         value = strndup(value, value_len);
@@ -114,7 +108,7 @@ lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lys
     }
 
     /* get the network-byte order address */
-    if (!inet_pton(AF_INET, value, &storage->uint32)) {
+    if (!inet_pton(AF_INET, value, &val->addr)) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to convert IPv4 address \"%s\".", (char *)value);
         goto cleanup;
     }
@@ -141,11 +135,16 @@ cleanup:
 static LY_ERR
 lyplg_type_compare_ipv4_address_no_zone(const struct lyd_value *val1, const struct lyd_value *val2)
 {
+    struct lyd_value_ipv4_address_no_zone *v1, *v2;
+
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
     }
 
-    if (val1->uint32 != val2->uint32) {
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
+
+    if (memcmp(&v1->addr, &v2->addr, sizeof v1->addr)) {
         return LY_ENOT;
     }
     return LY_SUCCESS;
@@ -158,14 +157,17 @@ static const void *
 lyplg_type_print_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
+    struct lyd_value_ipv4_address_no_zone *val;
     char *ret;
+
+    LYD_VALUE_GET(value, val);
 
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
         if (value_len) {
             *value_len = 4;
         }
-        return &value->uint32;
+        return &val->addr;
     }
 
     /* generate canonical value if not already (loaded from LYB) */
@@ -174,7 +176,7 @@ lyplg_type_print_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lyd
         LY_CHECK_RET(!ret, NULL);
 
         /* get the address in string */
-        if (!inet_ntop(AF_INET, &value->uint32, ret, INET_ADDRSTRLEN)) {
+        if (!inet_ntop(AF_INET, &val->addr, ret, INET_ADDRSTRLEN)) {
             free(ret);
             LOGERR(ctx, LY_EVALID, "Failed to get IPv4 address in string (%s).", strerror(errno));
             return NULL;

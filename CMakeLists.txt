@@ -85,9 +85,6 @@ set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 
-configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
-
 # type plugins are separate because they have their documentation generated
 set(type_plugins
     src/plugins_types/binary.c
@@ -210,6 +207,10 @@ endif()
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 
+set(LYD_VALUE_SIZE "24" CACHE STRING "Maximum size in bytes of data node values that do not need to be allocated dynamically, minimum is 8")
+if(NOT LYD_VALUE_SIZE GREATER_EQUAL 8)
+    message(FATAL_ERROR "Data node value size \"${LYD_VALUE_SIZE}\" is not valid.")
+endif()
 set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
@@ -250,6 +251,10 @@ endif()
 # by default build shared library
 # static build requires static libpcre2 library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
+
+# generate files
+configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
 
 #
 # targets

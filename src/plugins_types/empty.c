@@ -42,8 +42,9 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
 {
     LY_ERR ret = LY_SUCCESS;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -54,11 +55,6 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value length %zu.", value_len);
         goto cleanup;
     }
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = NULL;
-    storage->realtype = type;
 
     /* store canonical value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {

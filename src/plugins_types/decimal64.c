@@ -93,8 +93,9 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
     int64_t num;
     char *canon;
 
-    /* clear storage */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -116,12 +117,10 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* init storage */
-    storage->_canonical = NULL;
+    /* store value */
     storage->dec64 = num;
-    storage->realtype = type;
 
-    /* we need canonical value for hash */
+    /* we need canonical value for the range check */
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {

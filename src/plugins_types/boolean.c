@@ -44,6 +44,10 @@ lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
     LY_ERR ret = LY_SUCCESS;
     int8_t i;
 
+    /* init storage */
+    memset(storage, 0, sizeof *storage);
+    storage->realtype = type;
+
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (value_len != 1) {
@@ -52,13 +56,9 @@ lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
             goto cleanup;
         }
 
-        /* cast the value */
+        /* store value */
         i = *(int8_t *)value;
-
-        /* init storage and set the value */
-        storage->_canonical = NULL;
         storage->boolean = i ? 1 : 0;
-        storage->realtype = type;
 
         /* store canonical value */
         ret = lydict_insert(ctx, i ? "true" : "false", 0, &storage->_canonical);
@@ -72,7 +72,7 @@ lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* validate and get the value */
+    /* validate and store the value */
     if ((value_len == ly_strlen_const("true")) && !strncmp(value, "true", ly_strlen_const("true"))) {
         i = 1;
     } else if ((value_len == ly_strlen_const("false")) && !strncmp(value, "false", ly_strlen_const("false"))) {
@@ -82,11 +82,7 @@ lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
                 (char *)value);
         goto cleanup;
     }
-
-    /* init storage and set the value */
-    storage->_canonical = NULL;
     storage->boolean = i;
-    storage->realtype = type;
 
     /* store canonical value, it always is */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {

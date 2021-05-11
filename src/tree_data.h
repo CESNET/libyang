@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "config.h"
 #include "log.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -522,6 +523,13 @@ struct lyd_value {
     const char *_canonical;          /**< Should never be accessed directly, instead ::lyd_get_value() and ::lyd_get_meta_value()
                                           should be used. Serves as a cache for the canonical value or the JSON
                                           representation if no canonical value is defined. */
+    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
+                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
+                                          target type. In contrast, union type also uses its subtype's callbacks, but inside an internal data
+                                          stored in subvalue member of ::lyd_value structure, so here is the pointer to the union type.
+                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
+                                          the type used to store data directly in the same lyd_value instance. */
 
     union {
         int8_t boolean;              /**< 0 as false, 1 as true */
@@ -535,23 +543,28 @@ struct lyd_value {
         uint32_t uint32;             /**< 32-bit unsigned integer */
         uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
-        struct lyd_value_bits *bits; /**< bits value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         struct ly_path *target;      /**< Instance-identifier target path. */
         struct lyd_value_union *subvalue; /** Union value with some metadata. */
-        struct lyd_value_binary *bin; /** Binary value */
-        void *ptr;                   /**< generic data type structure used to store the data */
+
+        void *dyn_mem;               /**< pointer to generic data type value stored in dynamic memory */
+        uint8_t fixed_mem[LYD_VALUE_FIXED_MEM_SIZE]; /**< fixed-size buffer for a generic data type value */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the ::lyd_value.realtype
              plugin's callbacks to work with the data.*/
-
-    const struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
-                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
-                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
-                                          target type. In contrast, union type also uses its subtype's callbacks, but inside an internal data
-                                          stored in subvalue member of ::lyd_value structure, so here is the pointer to the union type.
-                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
-                                          the type used to store data directly in the same lyd_value instance. */
 };
+
+/**
+ * @brief Get the value in format specific to the type.
+ *
+ * Should be used for any types that do not have their specific representation in the ::lyd_value union.
+ *
+ * @param[in] value Pointer to the value structure to read from (struct ::lyd_value *).
+ * @param[out] type_val Pointer to the type-specific value structure.
+ */
+#define LYD_VALUE_GET(value, type_val) \
+    ((sizeof *(type_val) > LYD_VALUE_FIXED_MEM_SIZE) \
+     ? ((type_val) = (((value)->dyn_mem))) \
+     : ((type_val) = ((void *)((value)->fixed_mem))))
 
 /**
  * @brief Special lyd_value structure for union.

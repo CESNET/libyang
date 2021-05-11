@@ -135,8 +135,11 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     struct lyd_value_ipv4_address *val;
     size_t i;
 
-    /* zero storage so we can always free it */
+    /* init storage */
     memset(storage, 0, sizeof *storage);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
+    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
+    storage->realtype = type;
 
     if (format == LY_VALUE_LYB) {
         /* validation */
@@ -152,15 +155,6 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
                 goto cleanup;
             }
         }
-
-        /* allocate the value */
-        val = calloc(1, sizeof *val);
-        LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-        /* init storage */
-        storage->_canonical = NULL;
-        storage->ptr = val;
-        storage->realtype = type;
 
         /* store IP address */
         memcpy(&val->addr, value, sizeof val->addr);
@@ -191,15 +185,6 @@ lyplg_type_store_ipv4_address(const struct ly_ctx *ctx, const struct lysc_type *
     /* pattern restrictions */
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
-
-    /* allocate the value */
-    val = calloc(1, sizeof *val);
-    LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
-
-    /* init storage */
-    storage->_canonical = NULL;
-    storage->ptr = val;
-    storage->realtype = type;
 
     /* get the network-byte order address */
     ret = ipv4address_str2ip(value, value_len, options, ctx, &val->addr, &val->zone, err);
@@ -232,11 +217,14 @@ cleanup:
 static LY_ERR
 lyplg_type_compare_ipv4_address(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_ipv4_address *v1 = val1->ptr, *v2 = val2->ptr;
+    struct lyd_value_ipv4_address *v1, *v2;
 
     if (val1->realtype != val2->realtype) {
         return LY_ENOT;
     }
+
+    LYD_VALUE_GET(val1, v1);
+    LYD_VALUE_GET(val2, v2);
 
     /* zones are NULL or in the dictionary */
     if (memcmp(&v1->addr, &v2->addr, sizeof v1->addr) || (v1->zone != v2->zone)) {
@@ -252,9 +240,11 @@ static const void *
 lyplg_type_print_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
-    struct lyd_value_ipv4_address *val = value->ptr;
+    struct lyd_value_ipv4_address *val;
     size_t zone_len;
     char *ret;
+
+    LYD_VALUE_GET(value, val);
 
     if (format == LY_VALUE_LYB) {
         if (!val->zone) {
@@ -324,25 +314,26 @@ static LY_ERR
 lyplg_type_dup_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
-    struct lyd_value_ipv4_address *orig_val = original->ptr, *dup_val;
+    struct lyd_value_ipv4_address *orig_val, *dup_val;
 
     ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
     LY_CHECK_RET(ret);
 
-    dup_val = calloc(1, sizeof *dup_val);
+    LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
     if (!dup_val) {
         lydict_remove(ctx, dup->_canonical);
         return LY_EMEM;
     }
+
+    LYD_VALUE_GET(original, orig_val);
     memcpy(&dup_val->addr, &orig_val->addr, sizeof orig_val->addr);
     ret = lydict_insert(ctx, orig_val->zone, 0, &dup_val->zone);
     if (ret) {
         lydict_remove(ctx, dup->_canonical);
-        free(dup_val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(dup_val);
         return ret;
     }
 
-    dup->ptr = dup_val;
     dup->realtype = original->realtype;
     return LY_SUCCESS;
 }
@@ -353,12 +344,13 @@ lyplg_type_dup_ipv4_address(const struct ly_ctx *ctx, const struct lyd_value *or
 static void
 lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lyd_value_ipv4_address *val = value->ptr;
+    struct lyd_value_ipv4_address *val;
 
     lydict_remove(ctx, value->_canonical);
+    LYD_VALUE_GET(value, val);
     if (val) {
         lydict_remove(ctx, val->zone);
-        free(val);
+        LYPLG_TYPE_VAL_INLINE_DESTROY(val);
     }
 }
 
