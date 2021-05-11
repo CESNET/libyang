@@ -414,6 +414,10 @@ test_opaq(void **state)
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
+
+    /* empty name */
+    PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "A JSON object member name cannot be a zero-length string.", "Line number 1.");
 }
 
 static void

@@ -1217,6 +1217,13 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         /* parse as an opaq node */
         assert((lydctx->parse_opts & LYD_PARSE_OPAQ) || (lydctx->int_opts));
 
+        /* opaq node cannot have an empty string as the name. */
+        if (name_len == 0) {
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "A JSON object member name cannot be a zero-length string.");
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+
         /* move to the second item in the name/X pair */
         ret = lyjson_ctx_next(lydctx->jsonctx, &status);
         LY_CHECK_GOTO(ret, cleanup);
