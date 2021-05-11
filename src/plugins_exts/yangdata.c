@@ -1,5 +1,5 @@
 /**
- * @file plugins_exts_yangdata.c
+ * @file yangdata.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang extension plugin - yang-data (RFC 8040)
  *

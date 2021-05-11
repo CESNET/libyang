@@ -1,5 +1,5 @@
 /**
- * @file plugins_exts_nacm.c
+ * @file metadata.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang extension plugin - Metadata (RFC 7952)
  *

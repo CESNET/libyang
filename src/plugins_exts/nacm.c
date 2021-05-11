@@ -1,5 +1,5 @@
 /**
- * @file plugins_exts_nacm.c
+ * @file nacm.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang extension plugin - NACM (RFC 6536)
  *

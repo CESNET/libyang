@@ -1,5 +1,5 @@
 /*
- * @file test_parser_xml.c
+ * @file test_parser_json.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from parser_xml.c
  *

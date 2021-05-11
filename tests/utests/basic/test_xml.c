@@ -1,5 +1,5 @@
 /*
- * @file xml.c
+ * @file test_xml.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from xml.c
  *

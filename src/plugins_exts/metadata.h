@@ -1,5 +1,5 @@
 /**
- * @file plugins_exts_metadata.h
+ * @file metadata.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief ietf-yang-metadata API
  *

@@ -1,5 +1,5 @@
 /*
- * @file hash_table.c
+ * @file test_hash_table.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from hash_table.c
  *

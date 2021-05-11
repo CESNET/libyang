@@ -1,5 +1,5 @@
 /**
- * @file test_tree_schema.c
+ * @file test_tree_data.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for functions from tress_data.c
  *

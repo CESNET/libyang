@@ -1,5 +1,5 @@
 /**
- * @file plugins/invalid.c
+ * @file invalid.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Invalid testing plugins implementation
  *
