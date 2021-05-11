@@ -377,6 +377,7 @@ const struct lyplg_type_record plugins_xpath10[] = {
         .plugin.store = lyplg_type_store_xpath10,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_xpath10,
         .plugin.duplicate = lyplg_type_dup_xpath10,
         .plugin.free = lyplg_type_free_xpath10

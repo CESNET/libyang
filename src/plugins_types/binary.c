@@ -393,6 +393,7 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.store = lyplg_type_store_binary,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_binary,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_binary,
         .plugin.duplicate = lyplg_type_dup_binary,
         .plugin.free = lyplg_type_free_binary,

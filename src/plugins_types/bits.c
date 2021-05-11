@@ -501,6 +501,7 @@ const struct lyplg_type_record plugins_bits[] = {
         .plugin.store = lyplg_type_store_bits,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_bits,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_bits,
         .plugin.duplicate = lyplg_type_dup_bits,
         .plugin.free = lyplg_type_free_bits

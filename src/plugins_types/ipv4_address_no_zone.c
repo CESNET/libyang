@@ -216,6 +216,7 @@ const struct lyplg_type_record plugins_ipv4_address_no_zone[] = {
         .plugin.store = lyplg_type_store_ipv4_address_no_zone,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv4_address_no_zone,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_ipv4_address_no_zone,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

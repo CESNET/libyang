@@ -129,6 +129,7 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.store = lyplg_type_store_leafref,
         .plugin.validate = lyplg_type_validate_leafref,
         .plugin.compare = lyplg_type_compare_leafref,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_leafref,
         .plugin.duplicate = lyplg_type_dup_leafref,
         .plugin.free = lyplg_type_free_leafref

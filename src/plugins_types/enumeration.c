@@ -155,6 +155,7 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .plugin.store = lyplg_type_store_enum,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_simple,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_enum,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

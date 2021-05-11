@@ -418,6 +418,7 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.store = lyplg_type_store_date_and_time,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_date_and_time,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
         .plugin.free = lyplg_type_free_date_and_time

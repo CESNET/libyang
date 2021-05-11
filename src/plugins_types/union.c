@@ -362,6 +362,7 @@ const struct lyplg_type_record plugins_union[] = {
         .plugin.store = lyplg_type_store_union,
         .plugin.validate = lyplg_type_validate_union,
         .plugin.compare = lyplg_type_compare_union,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_union,
         .plugin.duplicate = lyplg_type_dup_union,
         .plugin.free = lyplg_type_free_union

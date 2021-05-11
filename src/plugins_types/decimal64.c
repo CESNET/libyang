@@ -212,6 +212,7 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.store = lyplg_type_store_decimal64,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_decimal64,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_decimal64,
         .plugin.duplicate = lyplg_type_dup_simple,
         .plugin.free = lyplg_type_free_simple

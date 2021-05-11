@@ -373,6 +373,7 @@ const struct lyplg_type_record plugins_ipv6_address[] = {
         .plugin.store = lyplg_type_store_ipv6_address,
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_ipv6_address,
+        .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_ipv6_address,
         .plugin.duplicate = lyplg_type_dup_ipv6_address,
         .plugin.free = lyplg_type_free_ipv6_address
