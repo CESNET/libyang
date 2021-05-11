@@ -178,6 +178,10 @@ set(headers
     src/tree_data.h
     src/tree_schema.h)
 
+set(gen_headers
+    src/version.h
+    src/config.h)
+
 # source files to be covered by the 'format' target
 set(format_sources
     compat/*
@@ -302,8 +306,9 @@ find_package(PCRE2 10.21 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
 
+# install files
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/version.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
+install(FILES ${headers} ${CMAKE_CURRENT_BINARY_DIR}/${gen_headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
