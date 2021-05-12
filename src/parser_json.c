@@ -953,6 +953,54 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
 }
 
 /**
+ * @brief Move to the second item in the name/X pair and parse opaq node from the input.
+ *
+ * This function is basically the wrapper of the ::lydjson_parse_opaq().
+ * In addition, it calls the ::json_ctx_next() and prepares the status_inner_p parameter
+ * for ::lydjson_parse_opaq().
+ *
+ * @param[in] lydctx JSON data parser context.
+ * @param[in] name Name of the opaq node to create.
+ * @param[in] name_len Length of the @p name string.
+ * @param[in] prefix Prefix of the opaq node to create.
+ * @param[in] prefix_len Length of the @p prefx string.
+ * @param[in] parent Data parent of the opaq node to create, can be NULL in case of top level,
+ * but must be set if @p first is not.
+ * @param[in,out] status_p Pointer to the current status of the parser context,
+ * since the function manipulates with the context and process the input, the status can be updated.
+ * @param[in,out] first_p First top-level/parent sibling, must be set if @p parent is not.
+ * @param[out] node_p Pointer to the created opaq node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydjson_ctx_next_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len,
+        const char *prefix, size_t prefix_len, struct lyd_node_inner *parent, enum LYJSON_PARSER_STATUS *status_p,
+        struct lyd_node **first_p, struct lyd_node **node_p)
+{
+    enum LYJSON_PARSER_STATUS status_inner = 0;
+
+    /* move to the second item in the name/X pair */
+    LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_p));
+
+    if (*status_p == LYJSON_ARRAY) {
+        /* move into the array */
+        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, &status_inner));
+    } else {
+        /* just a flag to pass correct parameters into lydjson_parse_opaq() */
+        status_inner = LYJSON_ERROR;
+    }
+
+    if (status_inner == LYJSON_ERROR) {
+        status_inner = *status_p;
+    }
+
+    /* parse opaq node from the input */
+    LY_CHECK_RET(lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_p, &status_inner, first_p, node_p));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Process the attribute container (starting by @)
  *
  * @param[in] lydctx JSON data parser context.
@@ -976,7 +1024,6 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
         enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR ret = LY_SUCCESS;
-    enum LYJSON_PARSER_STATUS status_inner;
 
     /* parse as an attribute to a node */
     if (!attr_node && snode) {
@@ -994,25 +1041,13 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
          * and it is supposed to be converted to a metadata */
         uint32_t prev_opts;
 
-        /* move into metadata */
-        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_p));
-
-        if (*status_p == LYJSON_ARRAY) {
-            /* move into the array */
-            LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, &status_inner));
-        } else {
-            /* just a flag to pass correct parameters into lydjson_parse_opaq() */
-            status_inner = LYJSON_ERROR;
-        }
-
         /* backup parser options to parse unknown metadata as opaq nodes and try to resolve them later */
         prev_opts = lydctx->parse_opts;
         lydctx->parse_opts &= ~LYD_PARSE_STRICT;
         lydctx->parse_opts |= LYD_PARSE_OPAQ;
 
-        ret = lydjson_parse_opaq(lydctx, prefix ? prefix - 1 : name - 1, prefix ? prefix_len + name_len + 2 : name_len + 1,
-                NULL, 0, (struct lyd_node_inner *)parent, status_p, status_inner == LYJSON_ERROR ? status_p : &status_inner,
-                first_p, node_p);
+        ret = lydjson_ctx_next_parse_opaq(lydctx, prefix ? prefix - 1 : name - 1, prefix ? prefix_len + name_len + 2 : name_len + 1,
+                NULL, 0, (struct lyd_node_inner *)parent, status_p, first_p, node_p);
 
         /* restore the parser options */
         lydctx->parse_opts = prev_opts;
@@ -1163,7 +1198,6 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 {
     LY_ERR ret = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(lydctx->jsonctx, 0);
-    enum LYJSON_PARSER_STATUS status_inner = 0;
     const char *name, *prefix = NULL;
     size_t name_len, prefix_len = 0;
     ly_bool is_meta = 0;
@@ -1224,21 +1258,9 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
             goto cleanup;
         }
 
-        /* move to the second item in the name/X pair */
-        ret = lyjson_ctx_next(lydctx->jsonctx, &status);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        if (status == LYJSON_ARRAY) {
-            /* move into the array */
-            ret = lyjson_ctx_next(lydctx->jsonctx, &status_inner);
-            LY_CHECK_GOTO(ret, cleanup);
-        } else {
-            /* just a flag to pass correct parameters into lydjson_parse_opaq() */
-            status_inner = LYJSON_ERROR;
-        }
-
-        ret = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, (struct lyd_node_inner *)parent, &status,
-                status_inner == LYJSON_ERROR ? &status : &status_inner, first_p, &node);
+        /* move to the second item in the name/X pair and parse opaq */
+        ret = lydjson_ctx_next_parse_opaq(lydctx, name, name_len, prefix, prefix_len,
+                (struct lyd_node_inner *)parent, &status, first_p, &node);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* parse as a standard lyd_node but it can still turn out to be an opaque node */
