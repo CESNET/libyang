@@ -12,6 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE /* strdup */
+#include <sys/cdefs.h>
+
 #include "plugins_types.h"
 
 #include <stdint.h>
@@ -173,14 +176,16 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     /* remember the original value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         subvalue->original = (void *)value;
-        subvalue->orig_len = value_len;
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-    } else {
+    } else if (value_len) {
         subvalue->original = calloc(1, value_len);
         LY_CHECK_ERR_GOTO(!subvalue->original, ret = LY_EMEM, cleanup);
         memcpy(subvalue->original, value, value_len);
-        subvalue->orig_len = value_len;
+    } else {
+        subvalue->original = strdup("");
+        LY_CHECK_ERR_GOTO(!subvalue->original, ret = LY_EMEM, cleanup);
     }
+    subvalue->orig_len = value_len;
 
     /* store format-specific data for later prefix resolution */
     ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &subvalue->format,
@@ -311,9 +316,14 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
     ret = orig_val->value.realtype->plugin->duplicate(ctx, &orig_val->value, &dup_val->value);
     LY_CHECK_GOTO(ret, cleanup);
 
-    dup_val->original = calloc(1, orig_val->orig_len);
-    LY_CHECK_ERR_GOTO(!dup_val->original, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    memcpy(dup_val->original, orig_val->original, orig_val->orig_len);
+    if (orig_val->orig_len) {
+        dup_val->original = calloc(1, orig_val->orig_len);
+        LY_CHECK_ERR_GOTO(!dup_val->original, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        memcpy(dup_val->original, orig_val->original, orig_val->orig_len);
+    } else {
+        dup_val->original = strdup("");
+        LY_CHECK_ERR_GOTO(!dup_val->original, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+    }
     dup_val->orig_len = orig_val->orig_len;
 
     dup_val->format = orig_val->format;
