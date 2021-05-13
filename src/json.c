@@ -321,6 +321,29 @@ lyjson_string(struct lyjson_ctx *jsonctx)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Allocate buffer for number in string format.
+ *
+ * @param[in] jsonctx JSON context.
+ * @param[in] num_len Required space in bytes for a number.
+ * Terminating null byte is added by default.
+ * @param[out] buffer Output allocated buffer.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyjson_get_buffer_for_number(struct lyjson_ctx *jsonctx, size_t num_len, char **buffer)
+{
+    *buffer = NULL;
+
+    LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(jsonctx->ctx, LYVE_SEMANTICS,
+            "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit."), LY_EVALID);
+
+    /* allocate buffer for the result (add terminating NULL-byte) */
+    *buffer = malloc(num_len + 1);
+    LY_CHECK_ERR_RET(!(*buffer), LOGMEM(jsonctx->ctx), LY_EMEM);
+    return LY_SUCCESS;
+}
+
 static LY_ERR
 lyjson_number(struct lyjson_ctx *jsonctx)
 {
@@ -425,12 +448,7 @@ invalid_character:
             }
         }
 
-        LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(jsonctx->ctx, LYVE_SEMANTICS,
-                "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit."), LY_EVALID);
-
-        /* allocate buffer for the result (add terminating NULL-byte */
-        num = malloc(num_len + 1);
-        LY_CHECK_ERR_RET(!num, LOGMEM(jsonctx->ctx), LY_EMEM);
+        LY_CHECK_RET(lyjson_get_buffer_for_number(jsonctx, num_len, &num));
 
         /* compose the resulting vlaue */
         i = 0;
