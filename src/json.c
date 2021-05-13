@@ -412,6 +412,15 @@ invalid_character:
             return LY_EVALID;
         }
 
+        if (!e_val) {
+            /* exponent is zero, so just cut the part with the exponent */
+            num_len = exponent;
+            LY_CHECK_RET(lyjson_get_buffer_for_number(jsonctx, num_len, &num));
+            memcpy(num, in, num_len);
+            num[num_len] = '\0';
+            goto store_exp_number;
+        }
+
         dec_point = ly_strnchr(in, '.', exponent);
         if (!dec_point) {
             /* value is integer, we are just ... */
@@ -492,6 +501,7 @@ invalid_character:
         /* terminating NULL byte */
         num[i] = '\0';
 
+store_exp_number:
         /* store the modified number */
         lyjson_ctx_set_value(jsonctx, num, num_len, 1);
     } else {
