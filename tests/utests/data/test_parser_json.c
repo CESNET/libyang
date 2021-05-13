@@ -140,6 +140,10 @@ test_leaf(void **state)
     /* missing namespace for meatadata*/
     PARSER_CHECK_ERROR("{\"a:foo\" : \"value\", \"@a:foo\" : { \"hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Metadata in JSON must be namespace-qualified, missing prefix for \"hint\".", "Schema location /a:foo, line number 1.");
+
+    /* reverse solidus in JSON object member name */
+    data = "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}";
+    assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
 }
 
 static void
