@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in_internal.h"
@@ -1198,19 +1199,29 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 {
     LY_ERR ret = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(lydctx->jsonctx, 0);
-    const char *name, *prefix = NULL;
+    const char *name, *prefix = NULL, *expected = NULL;
     size_t name_len, prefix_len = 0;
     ly_bool is_meta = 0;
     const struct lysc_node *snode = NULL;
     struct lyd_node *node = NULL, *attr_node = NULL;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
-    const char *expected = NULL;
+    char *value = NULL;
 
     assert(parent || first_p);
     assert(status == LYJSON_OBJECT);
 
+    /* Duplicate ::lyjson_ctx.value because it can be dynamically allocated and later
+     * ::lyjson_ctx_next() will release it although this string is needed for the ::lydjson_parse_opaq().
+     */
+    value = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
+    if (!value) {
+        LOGMEM(lydctx->jsonctx->ctx);
+        ret = LY_EMEM;
+        goto cleanup;
+    }
+
     /* process the node name */
-    lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
+    lydjson_parse_name(value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
 
     if (!is_meta || name_len || prefix_len) {
         /* get the schema node */
@@ -1357,6 +1368,7 @@ representation_error:
     ret = LY_EVALID;
 
 cleanup:
+    free(value);
     lyd_free_tree(node);
     return ret;
 }
