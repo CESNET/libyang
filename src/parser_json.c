@@ -632,7 +632,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         } else {
             /* remove the opaq attr */
             if (attr == (*first_p)) {
-                *first_p = attr->next;
+                *first_p = start = attr->next;
             }
             lyd_free_tree(attr);
         }
