@@ -507,7 +507,7 @@ static LY_ERR
 lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *node, *attr, *next, *start = *first_p, *meta_iter;
+    struct lyd_node *node, *attr, *next, *meta_iter;
     uint64_t instance = 0;
     const char *prev = NULL;
     uint32_t log_location_items = 0;
@@ -538,8 +538,8 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             instance++;
         }
 
-        /* find the correspnding data node */
-        LY_LIST_FOR(start, node) {
+        /* find the corresponding data node */
+        LY_LIST_FOR(*first_p, node) {
             if (!node->schema) {
                 /* opaq node - we are going to put into it just a generic attribute. */
                 if (strcmp(&meta_container->name.name[1], ((struct lyd_node_opaq *)node)->name.name)) {
@@ -632,7 +632,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         } else {
             /* remove the opaq attr */
             if (attr == (*first_p)) {
-                *first_p = start = attr->next;
+                *first_p = attr->next;
             }
             lyd_free_tree(attr);
         }
