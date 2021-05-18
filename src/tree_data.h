@@ -2230,7 +2230,7 @@ LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name
 LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
 
 /**
- * @brief Search in given data for a node uniquely identifier by a path.
+ * @brief Search in given data for a node uniquely identified by a path.
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth
  * of the path used.
