@@ -44,14 +44,6 @@
 static void lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
- * @brief Stored value structure for date-and-time
- */
-struct lyd_value_date_and_time {
-    time_t time;        /**< UNIX timestamp */
-    char *fractions_s;  /**< fractions of a second */
-};
-
-/**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
  *
  * @param[in] value Valid string value.

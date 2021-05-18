@@ -43,13 +43,6 @@
  * | 16       | yes       | `struct in6_addr *` | IPv6 address in network-byte order |
  */
 
-/**
- * @brief Stored value structure for ipv6-address-no-zone
- */
-struct lyd_value_ipv6_address_no_zone {
-    struct in6_addr addr;
-};
-
 static void lyplg_type_free_ipv6_address_no_zone(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**

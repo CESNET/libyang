@@ -43,14 +43,6 @@
  * | 1 | yes | `uint8_t *` | prefix length up to 128 |
  */
 
-/**
- * @brief Stored value structure for ipv6-prefix
- */
-struct lyd_value_ipv6_prefix {
-    struct in6_addr addr;
-    uint8_t prefix;
-};
-
 static void lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**

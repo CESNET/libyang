@@ -44,13 +44,6 @@
  */
 
 /**
- * @brief Stored value structure for ipv4-address-no-zone
- */
-struct lyd_value_ipv4_address_no_zone {
-    struct in_addr addr;
-};
-
-/**
  * @brief Implementation of ::lyplg_type_store_clb for the ipv4-address-no-zone ietf-inet-types type.
  */
 static LY_ERR

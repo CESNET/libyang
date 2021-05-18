@@ -44,14 +44,6 @@
  * | string length | no        | `char *` | IPv6 address zone string |
  */
 
-/**
- * @brief Stored value structure for ipv6-address
- */
-struct lyd_value_ipv6_address {
-    struct in6_addr addr;
-    const char *zone;
-};
-
 static void lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**

@@ -44,14 +44,6 @@
  * | string length | no        | `char *` | IPv4 address zone string |
  */
 
-/**
- * @brief Stored value structure for ipv4-address
- */
-struct lyd_value_ipv4_address {
-    struct in_addr addr;
-    const char *zone;
-};
-
 static void lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**

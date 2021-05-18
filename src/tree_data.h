@@ -1,6 +1,7 @@
 /**
  * @file tree_data.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
  * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
@@ -15,8 +16,14 @@
 #ifndef LY_TREE_DATA_H_
 #define LY_TREE_DATA_H_
 
+#include <arpa/inet.h>
+#if defined (__FreeBSD__) || defined (__NetBSD__) || defined (__OpenBSD__)
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "config.h"
 #include "log.h"
@@ -568,7 +575,7 @@ struct lyd_value {
      : ((type_val) = ((void *)((value)->fixed_mem))))
 
 /**
- * @brief Special lyd_value structure for union.
+ * @brief Special lyd_value structure for built-in union values.
  *
  * Represents data with multiple types (union). The ::lyd_value_union.value contains representation according to
  * one of the union's types. The ::lyd_value_union.prefix_data provides (possible) mappings from prefixes in
@@ -588,10 +595,7 @@ struct lyd_value_union {
 };
 
 /**
- * @brief Special lyd_value structure for bits.
- *
- * Note that the allocate memory is rounded to bytes. Meaning that if a type defines a bit with the highest position
- * 18, for example, only 3 bytes will be allocated and casting to a 4-byte type will not work!
+ * @brief Special lyd_value structure for built-in bits values.
  */
 struct lyd_value_bits {
     char *bitmap;                           /**< bitmap of size ::lyplg_type_bits_bitmap_size(), if its value is
@@ -602,13 +606,65 @@ struct lyd_value_bits {
 };
 
 /**
- * @brief Special lyd_value structure for binary.
- *
- * Represents an arbitrary binary value.
+ * @brief Special lyd_value structure for built-in binary values.
  */
 struct lyd_value_binary {
     void *data;     /**< binary value itself */
     size_t size;    /**< size of the @p data value */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-inet-types ipv4-address-no-zone values.
+ */
+struct lyd_value_ipv4_address_no_zone {
+    struct in_addr addr;    /**< IPv4 address in binary */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-inet-types ipv4-address values.
+ */
+struct lyd_value_ipv4_address {
+    struct in_addr addr;    /**< IPv4 address in binary */
+    const char *zone;       /**< Optional address zone */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-inet-types ipv4-prefix values.
+ */
+struct lyd_value_ipv4_prefix {
+    struct in_addr addr;    /**< IPv4 host address in binary */
+    uint8_t prefix;         /**< prefix length (0 - 32) */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-inet-types ipv6-address-no-zone values.
+ */
+struct lyd_value_ipv6_address_no_zone {
+    struct in6_addr addr;   /**< IPv6 address in binary */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-inet-types ipv6-address values.
+ */
+struct lyd_value_ipv6_address {
+    struct in6_addr addr;   /**< IPv6 address in binary */
+    const char *zone;       /**< Optional address zone */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-inet-types ipv6-prefix values.
+ */
+struct lyd_value_ipv6_prefix {
+    struct in6_addr addr;   /**< IPv6 host address in binary */
+    uint8_t prefix;         /**< prefix length (0 - 128) */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-yang-types date-and-time values.
+ */
+struct lyd_value_date_and_time {
+    time_t time;        /**< UNIX timestamp */
+    char *fractions_s;  /**< Optional fractions of a second */
 };
 
 /**
