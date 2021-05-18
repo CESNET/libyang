@@ -29,7 +29,7 @@ Description: parser toolkit for IETF YANG data modeling - runtime
  to use in processing configurations.
 
 Package: libyang2-dev
-Depends: libpcre3-dev,
+Depends: libpcre2-dev,
          libyang2 (= ${binary:Version}),
          ${misc:Depends}
 Conflicts: libyang-dev
