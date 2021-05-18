@@ -293,6 +293,7 @@ lydxml_data_skip(struct lyxml_ctx *xmlctx)
 
     /* remember current number of parents */
     parents_count = xmlctx->elements.count;
+    assert(parents_count);
 
     /* skip after the content */
     while (xmlctx->status != LYXML_ELEM_CONTENT) {
@@ -301,7 +302,7 @@ lydxml_data_skip(struct lyxml_ctx *xmlctx)
     LY_CHECK_RET(lyxml_ctx_next(xmlctx));
 
     /* skip all children elements, recursively, if any */
-    while (parents_count < xmlctx->elements.count) {
+    while (parents_count <= xmlctx->elements.count) {
         LY_CHECK_RET(lyxml_ctx_next(xmlctx));
     }
 

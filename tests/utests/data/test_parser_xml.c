@@ -726,6 +726,32 @@ test_netconf_reply_or_notification(void **state)
     /* TODO */
 }
 
+static void
+test_data_skip(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    /* add invalid data to a module that is not implemented */
+    data = "<foo xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\"><u/></foo>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(_UC->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_null(tree);
+
+    /* add invalid data to a module that is implemented */
+    data = "<fooX xmlns=\"urn:tests:a\"><u/><list><value/></list></fooX>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(_UC->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_null(tree);
+
+    /* first invalid, next valid */
+    data = "<fooX xmlns=\"urn:tests:a\"><u/></fooX>  <foo xmlns=\"urn:tests:a\">foo value</foo>";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "foo", 1, LYS_LEAF, 0, 0, NULL, 0);
+    leaf = (struct lyd_node_term *)tree;
+    CHECK_LYD_VALUE(leaf->value, STRING, "foo value");
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -742,6 +768,7 @@ main(void)
         UTEST(test_netconf_rpc, setup),
         UTEST(test_netconf_action, setup),
         UTEST(test_netconf_reply_or_notification, setup),
+        UTEST(test_data_skip, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
