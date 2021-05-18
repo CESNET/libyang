@@ -3783,24 +3783,13 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
 static LY_ERR
 lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
-    const struct lyd_node *first, *iter;
     size_t len;
-    uint64_t pos;
+    uint32_t pos;
     char *val = NULL;
     LY_ERR rc;
 
-    if (node->parent) {
-        first = node->parent->child;
-    } else {
-        for (first = node; first->prev->next; first = first->prev) {}
-    }
-    pos = 1;
-    for (iter = first; iter != node; iter = iter->next) {
-        if (iter->schema == node->schema) {
-            ++pos;
-        }
-    }
-    if (asprintf(&val, "%" PRIu64, pos) == -1) {
+    pos = lyd_list_pos(node);
+    if (asprintf(&val, "%" PRIu32, pos) == -1) {
         return LY_EMEM;
     }
 
