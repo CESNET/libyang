@@ -3358,8 +3358,8 @@ error:
 }
 
 static LY_ERR
-lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inner *parent, struct lyd_node **dup_parent,
-        struct lyd_node_inner **local_parent)
+lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inner *parent, uint32_t options,
+        struct lyd_node **dup_parent, struct lyd_node_inner **local_parent)
 {
     const struct lyd_node_inner *orig_parent, *iter;
     ly_bool repeat = 1;
@@ -3374,7 +3374,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inne
             repeat = 0;
         } else {
             iter = NULL;
-            LY_CHECK_RET(lyd_dup_r((struct lyd_node *)orig_parent, NULL, (struct lyd_node **)&iter, 0,
+            LY_CHECK_RET(lyd_dup_r((struct lyd_node *)orig_parent, NULL, (struct lyd_node **)&iter, options,
                     (struct lyd_node **)&iter));
         }
         if (!*local_parent) {
@@ -3419,7 +3419,8 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t opt
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
     if (options & LYD_DUP_WITH_PARENTS) {
-        LY_CHECK_GOTO(rc = lyd_dup_get_local_parent(node, parent, &top, &local_parent), error);
+        LY_CHECK_GOTO(rc = lyd_dup_get_local_parent(node, parent, options & (LYD_DUP_WITH_FLAGS | LYD_DUP_NO_META),
+                &top, &local_parent), error);
     } else {
         local_parent = parent;
     }
