@@ -3513,28 +3513,49 @@ finish:
  * @param[in,out] first_trg First target sibling, is updated if top-level.
  * @param[in] parent_trg Target parent.
  * @param[in,out] sibling_src Source sibling to merge, set to NULL if spent.
+ * @param[in] merge_cb Optional merge callback.
+ * @param[in] cb_data Arbitrary callback data.
  * @param[in] options Merge options.
+ * @param[in,out] dup_inst Duplicate instance cache for all @p first_trg siblings.
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, const struct lyd_node **sibling_src_p,
-        uint16_t options)
+        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, struct lyd_dup_inst **dup_inst)
 {
-    LY_ERR ret;
     const struct lyd_node *child_src, *tmp, *sibling_src;
     struct lyd_node *match_trg, *dup_src, *elem;
     struct lysc_type *type;
+    struct lyd_dup_inst *child_dup_inst = NULL;
+    LY_ERR ret;
+    ly_bool first_inst = 0;
 
     sibling_src = *sibling_src_p;
-    if (sibling_src->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+    if (!sibling_src->schema) {
+        /* try to find the same opaque node */
+        lyd_find_sibling_opaq_next(*first_trg, LYD_NAME(sibling_src), &match_trg);
+    } else if (sibling_src->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* try to find the exact instance */
-        ret = lyd_find_sibling_first(*first_trg, sibling_src, &match_trg);
+        lyd_find_sibling_first(*first_trg, sibling_src, &match_trg);
     } else {
         /* try to simply find the node, there cannot be more instances */
-        ret = lyd_find_sibling_val(*first_trg, sibling_src->schema, NULL, 0, &match_trg);
+        lyd_find_sibling_val(*first_trg, sibling_src->schema, NULL, 0, &match_trg);
     }
 
-    if (!ret) {
+    if (match_trg) {
+        /* update match as needed */
+        LY_CHECK_RET(lyd_dup_inst_next(&match_trg, *first_trg, dup_inst));
+    } else {
+        /* first instance of this node */
+        first_inst = 1;
+    }
+
+    if (match_trg) {
+        /* call callback */
+        if (merge_cb) {
+            LY_CHECK_RET(merge_cb(match_trg, sibling_src, cb_data));
+        }
+
         /* node found, make sure even value matches for all node types */
         if ((match_trg->schema->nodetype == LYS_LEAF) && lyd_compare_single(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
             /* since they are different, they cannot both be default */
@@ -3557,12 +3578,19 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
 
             /* copy flags and add LYD_NEW */
             match_trg->flags = sibling_src->flags | LYD_NEW;
-        } else {
-            /* check descendants, recursively */
-            LY_LIST_FOR_SAFE(lyd_child_no_keys(sibling_src), tmp, child_src) {
-                LY_CHECK_RET(lyd_merge_sibling_r(lyd_node_child_p(match_trg), match_trg, &child_src, options));
+        }
+
+        /* check descendants, recursively */
+        ret = LY_SUCCESS;
+        LY_LIST_FOR_SAFE(lyd_child_no_keys(sibling_src), tmp, child_src) {
+            ret = lyd_merge_sibling_r(lyd_node_child_p(match_trg), match_trg, &child_src, merge_cb, cb_data, options,
+                    &child_dup_inst);
+            if (ret) {
+                break;
             }
         }
+        lyd_dup_inst_free(child_dup_inst);
+        LY_CHECK_RET(ret);
     } else {
         /* node not found, merge it */
         if (options & LYD_MERGE_DESTRUCT) {
@@ -3580,17 +3608,31 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
             LYD_TREE_DFS_END(dup_src, elem);
         }
 
+        /* insert */
         lyd_insert_node(parent_trg, first_trg, dup_src);
+
+        if (first_inst) {
+            /* remember not to find this instance next time */
+            LY_CHECK_RET(lyd_dup_inst_next(&dup_src, *first_trg, dup_inst));
+        }
+
+        /* call callback, no source node */
+        if (merge_cb) {
+            LY_CHECK_RET(merge_cb(dup_src, NULL, cb_data));
+        }
     }
 
     return LY_SUCCESS;
 }
 
 static LY_ERR
-lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t options, ly_bool nosiblings)
+lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct lys_module *mod,
+        lyd_merge_cb merge_cb, void *cb_data, uint16_t options, ly_bool nosiblings)
 {
     const struct lyd_node *sibling_src, *tmp;
+    struct lyd_dup_inst *dup_inst = NULL;
     ly_bool first;
+    LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
 
@@ -3605,8 +3647,16 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t opti
     }
 
     LY_LIST_FOR_SAFE(source, tmp, sibling_src) {
+        if (mod && (lyd_owner_module(sibling_src) != mod)) {
+            /* skip data nodes from different modules */
+            continue;
+        }
+
         first = (sibling_src == source) ? 1 : 0;
-        LY_CHECK_RET(lyd_merge_sibling_r(target, NULL, &sibling_src, options));
+        ret = lyd_merge_sibling_r(target, NULL, &sibling_src, merge_cb, cb_data, options, &dup_inst);
+        if (ret) {
+            break;
+        }
         if (first && !sibling_src) {
             /* source was spent (unlinked), move to the next node */
             source = tmp;
@@ -3622,19 +3672,27 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t opti
         lyd_free_siblings((struct lyd_node *)source);
     }
 
-    return LY_SUCCESS;
+    lyd_dup_inst_free(dup_inst);
+    return ret;
 }
 
 API LY_ERR
 lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, uint16_t options)
 {
-    return lyd_merge(target, source, options, 1);
+    return lyd_merge(target, source, NULL, NULL, NULL, options, 1);
 }
 
 API LY_ERR
 lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint16_t options)
 {
-    return lyd_merge(target, source, options, 0);
+    return lyd_merge(target, source, NULL, NULL, NULL, options, 0);
+}
+
+API LY_ERR
+lyd_merge_module(struct lyd_node **target, const struct lyd_node *source, const struct lys_module *mod,
+        lyd_merge_cb merge_cb, void *cb_data, uint16_t options)
+{
+    return lyd_merge(target, source, mod, merge_cb, cb_data, options, 0);
 }
 
 static LY_ERR

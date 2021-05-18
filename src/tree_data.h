@@ -294,6 +294,7 @@ struct lyd_node_term;
  *
  * - ::lyd_merge_tree()
  * - ::lyd_merge_siblings()
+ * - ::lyd_merge_module()
  *
  * - ::lyd_unlink_tree()
  *
@@ -1830,7 +1831,7 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  * @ingroup datatree
  * @defgroup mergeoptions Data merge options.
  *
- * Various options to change ::lyd_merge_tree() and ::lyd_merge_siblings() behavior.
+ * Various options to change ::lyd_merge_tree(), ::lyd_merge_siblings(), and ::lyd_merge_module() behavior.
  *
  * Default behavior:
  * - source data tree is not modified in any way,
@@ -1888,6 +1889,35 @@ LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, u
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
+
+/**
+ * @brief Callback for matching merge nodes.
+ *
+ * @param[in] trg_node Target data node.
+ * @param[in] src_node Source data node, is NULL if it was actually duplicated (no target node found) and
+ * its copy is @p trg_node.
+ * @param[in] cb_data Arbitrary callback data.
+ * @return LY_ERR value.
+ */
+typedef LY_ERR (*lyd_merge_cb)(struct lyd_node *trg_node, const struct lyd_node *src_node, void *cb_data);
+
+/**
+ * @brief Merge all the nodes of a module from source data tree into the target data tree. Merge may not be
+ * complete until validation called on the resulting data tree (data from more cases may be present, default
+ * and non-default values).
+ *
+ * @param[in,out] target Target data tree to merge into, must be a top-level tree.
+ * @param[in] source Source data tree to merge, must be a top-level tree.
+ * @param[in] mod Module, whose source data only to consider, NULL for all modules.
+ * @param[in] diff_cb Optional diff callback that will be called for every merged node, before merging its descendants.
+ * If a subtree is being added into target (no matching node found), callback is called only once with the subtree root.
+ * @param[in] cb_data Arbitrary callback data.
+ * @param[in] options Bitmask of option flags, see @ref mergeoptions.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_merge_module(struct lyd_node **target, const struct lyd_node *source, const struct lys_module *mod,
+        lyd_merge_cb merge_cb, void *cb_data, uint16_t options);
 
 /**
  * @ingroup datatree

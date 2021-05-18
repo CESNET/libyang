@@ -404,6 +404,165 @@ test_list2(void **state)
 }
 
 static void
+test_dup_inst_list(void **state)
+{
+    const char *sch =
+            "module merge {\n"
+            "    namespace \"http://test/merge\";\n"
+            "    prefix merge;\n"
+            "\n"
+            "    container inner1 {\n"
+            "        config false;\n"
+            "        list b-list1 {\n"
+            "            leaf p1 {\n"
+            "                type uint8;\n"
+            "            }\n"
+            "            leaf p2 {\n"
+            "                type string;\n"
+            "            }\n"
+            "            container inner2 {\n"
+            "                leaf p4 {\n"
+            "                    type string;\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
+
+    const char *trg =
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "  </b-list1>\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>a</p2>\n"
+            "    <inner2>\n"
+            "      <p4>val</p4>\n"
+            "    </inner2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
+    const char *src =
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "  </b-list1>\n"
+            "  <b-list1>\n"
+            "    <p1>2</p1>\n"
+            "    <p2>a</p2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
+    const char *result =
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>b</p2>\n"
+            "  </b-list1>\n"
+            "  <b-list1>\n"
+            "    <p1>1</p1>\n"
+            "    <p2>a</p2>\n"
+            "    <inner2>\n"
+            "      <p4>val</p4>\n"
+            "    </inner2>\n"
+            "  </b-list1>\n"
+            "  <b-list1>\n"
+            "    <p1>2</p1>\n"
+            "    <p2>a</p2>\n"
+            "  </b-list1>\n"
+            "</inner1>\n";
+    struct lyd_node *source, *target;
+
+    UTEST_ADD_MODULE(sch, LYS_IN_YANG, NULL, NULL);
+
+    LYD_TREE_CREATE(src, source);
+    LYD_TREE_CREATE(trg, target);
+
+    /* merge them */
+    assert_int_equal(lyd_merge_siblings(&target, source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+
+    /* check the result */
+    LYD_TREE_CHECK_CHAR(target, result, 0);
+
+    lyd_free_all(source);
+    lyd_free_all(target);
+}
+
+static void
+test_dup_inst_llist(void **state)
+{
+    const char *sch =
+            "module merge {\n"
+            "    namespace \"http://test/merge\";\n"
+            "    prefix merge;\n"
+            "\n"
+            "    container inner1 {\n"
+            "        config false;\n"
+            "        leaf-list b-llist1 {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "}\n";
+
+    const char *trg =
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>b</b-llist1>\n"
+            "  <b-llist1>c</b-llist1>\n"
+            "  <b-llist1>d</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>b</b-llist1>\n"
+            "  <b-llist1>c</b-llist1>\n"
+            "  <b-llist1>d</b-llist1>\n"
+            "</inner1>\n";
+    const char *src =
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-llist1>d</b-llist1>\n"
+            "  <b-llist1>c</b-llist1>\n"
+            "  <b-llist1>b</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>f</b-llist1>\n"
+            "  <b-llist1>f</b-llist1>\n"
+            "</inner1>\n";
+    const char *result =
+            "<inner1 xmlns=\"http://test/merge\">\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>b</b-llist1>\n"
+            "  <b-llist1>c</b-llist1>\n"
+            "  <b-llist1>d</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>b</b-llist1>\n"
+            "  <b-llist1>c</b-llist1>\n"
+            "  <b-llist1>d</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>a</b-llist1>\n"
+            "  <b-llist1>f</b-llist1>\n"
+            "  <b-llist1>f</b-llist1>\n"
+            "</inner1>\n";
+    struct lyd_node *source, *target;
+
+    UTEST_ADD_MODULE(sch, LYS_IN_YANG, NULL, NULL);
+
+    LYD_TREE_CREATE(src, source);
+    LYD_TREE_CREATE(trg, target);
+
+    /* merge them */
+    assert_int_equal(lyd_merge_siblings(&target, source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+
+    /* check the result */
+    LYD_TREE_CHECK_CHAR(target, result, 0);
+
+    lyd_free_all(source);
+    lyd_free_all(target);
+}
+
+static void
 test_case(void **state)
 {
     const char *sch =
@@ -584,6 +743,8 @@ main(void)
         UTEST(test_container),
         UTEST(test_list),
         UTEST(test_list2),
+        UTEST(test_dup_inst_list),
+        UTEST(test_dup_inst_llist),
         UTEST(test_case),
         UTEST(test_dflt),
         UTEST(test_dflt2),
