@@ -35,9 +35,7 @@ elseif ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
   set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
 elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
   set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
-else ()
-  message(FATAL_ERROR "Unknown CMAKE_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\".")
-endif ()
+endif()
 
 # check the supported platform
 if(NOT UNIX)
