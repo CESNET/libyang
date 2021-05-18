@@ -44,7 +44,7 @@
  */
 
 /**
- * @brief Stored value structure for ipv4-address
+ * @brief Stored value structure for ipv4-address-no-zone
  */
 struct lyd_value_ipv4_address_no_zone {
     struct in_addr addr;
