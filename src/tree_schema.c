@@ -130,7 +130,11 @@ struct stmt_info_s stmt_attr_info[] = {
 API const char *
 ly_stmt2str(enum ly_stmt stmt)
 {
-    return stmt_attr_info[stmt].name;
+    if (stmt == LY_STMT_EXTENSION_INSTANCE) {
+        return "extension instance";
+    } else {
+        return stmt_attr_info[stmt].name;
+    }
 }
 
 const char * const ly_devmod_list[] = {
