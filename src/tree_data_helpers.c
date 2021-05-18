@@ -37,6 +37,76 @@
 #include "validation.h"
 #include "xml.h"
 
+/**
+ * @brief Find an entry in duplicate instance cache for an instance. Create it if it does not exist.
+ *
+ * @param[in] first_inst Instance of the cache entry.
+ * @param[in,out] dup_inst_cache Duplicate instance cache.
+ * @return Instance cache entry.
+ */
+static struct lyd_dup_inst *
+lyd_dup_inst_get(const struct lyd_node *first_inst, struct lyd_dup_inst **dup_inst_cache)
+{
+    struct lyd_dup_inst *item;
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(*dup_inst_cache, u) {
+        if ((*dup_inst_cache)[u].inst_set->dnodes[0] == first_inst) {
+            return &(*dup_inst_cache)[u];
+        }
+    }
+
+    /* it was not added yet, add it now */
+    LY_ARRAY_NEW_RET(LYD_CTX(first_inst), *dup_inst_cache, item, NULL);
+
+    return item;
+}
+
+LY_ERR
+lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct lyd_dup_inst **dup_inst_cache)
+{
+    struct lyd_dup_inst *dup_inst;
+
+    if (!*inst || !lysc_is_dup_inst_list((*inst)->schema)) {
+        /* no match or not dup-inst list, inst is unchanged */
+        return LY_SUCCESS;
+    }
+
+    /* there can be more exact same instances and we must make sure we do not match a single node more times */
+    dup_inst = lyd_dup_inst_get(*inst, dup_inst_cache);
+    LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(siblings)), LY_EMEM);
+
+    if (!dup_inst->used) {
+        /* we did not cache these instances yet, do so */
+        lyd_find_sibling_dup_inst_set(siblings, *inst, &dup_inst->inst_set);
+        assert(dup_inst->inst_set->count && (dup_inst->inst_set->dnodes[0] == *inst));
+    }
+
+    if (dup_inst->used == dup_inst->inst_set->count) {
+        /* we have used all the instances */
+        *inst = NULL;
+    } else {
+        assert(dup_inst->used < dup_inst->inst_set->count);
+
+        /* use another instance */
+        *inst = dup_inst->inst_set->dnodes[dup_inst->used];
+        ++dup_inst->used;
+    }
+
+    return LY_SUCCESS;
+}
+
+void
+lyd_dup_inst_free(struct lyd_dup_inst *dup_inst)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(dup_inst, u) {
+        ly_set_free(dup_inst[u].inst_set, NULL);
+    }
+    LY_ARRAY_FREE(dup_inst);
+}
+
 struct lyd_node *
 lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,
         const struct lysc_node *parent, const struct lysc_module *module)

@@ -538,47 +538,6 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
 }
 
 /**
- * @brief Find an entry in duplicate instance cache for an instance. Create it if it does not exist.
- *
- * @param[in] first_inst Instance of the cache entry.
- * @param[in,out] dup_inst_cache Duplicate instance cache.
- * @return Instance cache entry.
- */
-static struct lyd_diff_dup_inst *
-lyd_diff_dup_inst_get(const struct lyd_node *first_inst, struct lyd_diff_dup_inst **dup_inst_cache)
-{
-    struct lyd_diff_dup_inst *item;
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(*dup_inst_cache, u) {
-        if ((*dup_inst_cache)[u].inst_set->dnodes[0] == first_inst) {
-            return &(*dup_inst_cache)[u];
-        }
-    }
-
-    /* it was not added yet, add it now */
-    LY_ARRAY_NEW_RET(LYD_CTX(first_inst), *dup_inst_cache, item, NULL);
-
-    return item;
-}
-
-/**
- * @brief Free duplicate instance cache.
- *
- * @param[in] dup_inst Duplicate instance cache to free.
- */
-static void
-lyd_diff_dup_inst_free(struct lyd_diff_dup_inst *dup_inst)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(dup_inst, u) {
-        ly_set_free(dup_inst[u].inst_set, NULL);
-    }
-    LY_ARRAY_FREE(dup_inst);
-}
-
-/**
  * @brief Find a matching instance of a node in a data tree.
  *
  * @param[in] siblings Siblings to search in.
@@ -590,10 +549,8 @@ lyd_diff_dup_inst_free(struct lyd_diff_dup_inst *dup_inst)
  */
 static LY_ERR
 lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *target, ly_bool defaults,
-        struct lyd_diff_dup_inst **dup_inst_cache, struct lyd_node **match)
+        struct lyd_dup_inst **dup_inst_cache, struct lyd_node **match)
 {
-    struct lyd_diff_dup_inst *dup_inst;
-
     if (target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* try to find the exact instance */
         lyd_find_sibling_first(siblings, target, match);
@@ -602,28 +559,8 @@ lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *targ
         lyd_find_sibling_val(siblings, target->schema, NULL, 0, match);
     }
 
-    if (*match && lysc_is_dup_inst_list(target->schema)) {
-        /* there can be more exact same instances and we must make sure we do not match a single node more times */
-        dup_inst = lyd_diff_dup_inst_get(*match, dup_inst_cache);
-        LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(target)), LY_EMEM);
-
-        if (!dup_inst->used) {
-            /* we did not cache these instances yet, do so */
-            lyd_find_sibling_dup_inst_set(siblings, target, &dup_inst->inst_set);
-            assert(dup_inst->inst_set->count && (dup_inst->inst_set->dnodes[0] == *match));
-        }
-
-        if (dup_inst->used == dup_inst->inst_set->count) {
-            /* we have used all the instances */
-            *match = NULL;
-        } else {
-            assert(dup_inst->used < dup_inst->inst_set->count);
-
-            /* use another instance */
-            *match = dup_inst->inst_set->dnodes[dup_inst->used];
-            ++dup_inst->used;
-        }
-    }
+    /* update match as needed */
+    LY_CHECK_RET(lyd_dup_inst_next(match, siblings, dup_inst_cache));
 
     if (*match && ((*match)->flags & LYD_DEFAULT) && !defaults) {
         /* ignore default nodes */
@@ -681,7 +618,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     const struct lyd_node *iter_first, *iter_second;
     struct lyd_node *match_second, *match_first;
     struct lyd_diff_userord *userord = NULL;
-    struct lyd_diff_dup_inst *dup_inst_first = NULL, *dup_inst_second = NULL;
+    struct lyd_dup_inst *dup_inst_first = NULL, *dup_inst_second = NULL;
     LY_ARRAY_COUNT_TYPE u;
     enum lyd_diff_op op;
     const char *orig_default;
@@ -808,8 +745,8 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     }
 
 cleanup:
-    lyd_diff_dup_inst_free(dup_inst_first);
-    lyd_diff_dup_inst_free(dup_inst_second);
+    lyd_dup_inst_free(dup_inst_first);
+    lyd_dup_inst_free(dup_inst_second);
     LY_ARRAY_FOR(userord, u) {
         LY_ARRAY_FREE(userord[u].inst);
     }
@@ -1004,14 +941,14 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
  */
 static LY_ERR
 lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, const struct lyd_node *diff_node,
-        lyd_diff_cb diff_cb, void *cb_data, struct lyd_diff_dup_inst **dup_inst)
+        lyd_diff_cb diff_cb, void *cb_data, struct lyd_dup_inst **dup_inst)
 {
     LY_ERR ret;
     struct lyd_node *match, *diff_child;
     const char *str_val, *meta_str;
     enum lyd_diff_op op;
     struct lyd_meta *meta;
-    struct lyd_diff_dup_inst *child_dup_inst = NULL;
+    struct lyd_dup_inst *child_dup_inst = NULL;
     const struct ly_ctx *ctx = LYD_CTX(diff_node);
 
     /* read all the valid attributes */
@@ -1149,7 +1086,7 @@ next_iter_r:
         }
     }
 
-    lyd_diff_dup_inst_free(child_dup_inst);
+    lyd_dup_inst_free(child_dup_inst);
     return ret;
 }
 
@@ -1158,7 +1095,7 @@ lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const
         lyd_diff_cb diff_cb, void *cb_data)
 {
     const struct lyd_node *root;
-    struct lyd_diff_dup_inst *dup_inst = NULL;
+    struct lyd_dup_inst *dup_inst = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(diff, root) {
@@ -1174,7 +1111,7 @@ lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const
         }
     }
 
-    lyd_diff_dup_inst_free(dup_inst);
+    lyd_dup_inst_free(dup_inst);
     return ret;
 }
 
@@ -1668,12 +1605,12 @@ lyd_diff_is_redundant(struct lyd_node *diff)
  */
 static LY_ERR
 lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, lyd_diff_cb diff_cb, void *cb_data,
-        struct lyd_diff_dup_inst **dup_inst, uint16_t options, struct lyd_node **diff)
+        struct lyd_dup_inst **dup_inst, uint16_t options, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *child, *diff_node = NULL;
     enum lyd_diff_op src_op, cur_op;
-    struct lyd_diff_dup_inst *child_dup_inst = NULL;
+    struct lyd_dup_inst *child_dup_inst = NULL;
 
     /* get source node operation */
     LY_CHECK_RET(lyd_diff_get_op(src_diff, &src_op));
@@ -1732,7 +1669,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
                     break;
                 }
             }
-            lyd_diff_dup_inst_free(child_dup_inst);
+            lyd_dup_inst_free(child_dup_inst);
             LY_CHECK_RET(ret);
         }
     } else {
@@ -1774,7 +1711,7 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
     const struct lyd_node *src_root;
-    struct lyd_diff_dup_inst *dup_inst = NULL;
+    struct lyd_dup_inst *dup_inst = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(src_diff, src_root) {
@@ -1788,7 +1725,7 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
     }
 
 cleanup:
-    lyd_diff_dup_inst_free(dup_inst);
+    lyd_dup_inst_free(dup_inst);
     return ret;
 }
 
@@ -1797,14 +1734,14 @@ lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, 
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
     LY_ERR ret;
-    struct lyd_diff_dup_inst *dup_inst = NULL;
+    struct lyd_dup_inst *dup_inst = NULL;
 
     if (!src_sibling) {
         return LY_SUCCESS;
     }
 
     ret = lyd_diff_merge_r(src_sibling, diff_parent, diff_cb, cb_data, &dup_inst, options, diff_first);
-    lyd_diff_dup_inst_free(dup_inst);
+    lyd_dup_inst_free(dup_inst);
     return ret;
 }
 

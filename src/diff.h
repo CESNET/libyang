@@ -31,14 +31,6 @@ struct lyd_diff_userord {
 };
 
 /**
- * @brief Internal structure for remembering "used" instances of lists with duplicate instances allowed.
- */
-struct lyd_diff_dup_inst {
-    struct ly_set *inst_set;
-    uint32_t used;
-};
-
-/**
  * @brief Diff operations.
  */
 enum lyd_diff_op {

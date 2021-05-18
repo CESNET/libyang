@@ -33,6 +33,33 @@ struct lysc_module;
 #define LY_LYB_SUFFIX_LEN 4
 
 /**
+ * @brief Internal structure for remembering "used" instances of lists with duplicate instances allowed.
+ */
+struct lyd_dup_inst {
+    struct ly_set *inst_set;
+    uint32_t used;
+};
+
+/**
+ * @brief Update a found inst using a duplicate instance cache. Needs to be called for every "used"
+ * (that should not be considered next time) instance.
+ *
+ * @param[in,out] inst Found instance, is updated so that the same instance is not returned twice.
+ * @param[in] siblings Siblings where @p inst was found.
+ * @param[in,out] dup_inst_cache Duplicate instance cache.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings,
+        struct lyd_dup_inst **dup_inst_cache);
+
+/**
+ * @brief Free duplicate instance cache.
+ *
+ * @param[in] dup_inst Duplicate instance cache to free.
+ */
+void lyd_dup_inst_free(struct lyd_dup_inst *dup_inst);
+
+/**
  * @brief Check whether a node to be deleted is the root node, move it if it is.
  *
  * @param[in] root Root sibling.
