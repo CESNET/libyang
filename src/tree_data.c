@@ -3818,7 +3818,7 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
     if (buffer) {
-        LY_CHECK_ARG_RET(node->schema->module->ctx, buflen > 1, NULL);
+        LY_CHECK_ARG_RET(LYD_CTX(node), buflen > 1, NULL);
         is_static = 1;
     } else {
         buflen = 0;
