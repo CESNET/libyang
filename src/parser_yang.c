@@ -4452,85 +4452,6 @@ error:
 }
 
 static int
-yang_check_deviate_config(struct lys_node *node)
-{
-    struct ly_ctx *ctx = node->module->ctx;
-    struct lys_node *parent = lys_parent(node);
-
-    /* from rfc7950#page-86: All key leafs in a list MUST have the same value
-     * for their "config" as the list itself.
-     */
-    if (lys_is_key((struct lys_node_leaf *)node, NULL) &&
-            ((parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK))) {
-        LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-        LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "The deviate statement causes a violation of \"config\" rules in"
-                " a key leaf. The \"config\" value in the key leaf must be the same as in the list to which belongs.");
-        return EXIT_FAILURE;
-    }
-
-    /* from rfc7950#page-135: If the parent node is a case node,
-     * the value is the same as the case node's parent choice node.
-     */
-    if (node->nodetype == LYS_CASE) {
-        assert(parent && (parent->nodetype == LYS_CHOICE));
-        if ((parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
-            LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
-                    "The deviate statement causes a violation of \"config\" rules in a case node. "
-                    "The \"config\" value in the case must be the same as in the choice to which belongs.");
-            return EXIT_FAILURE;
-        }
-    }
-
-    /* from rfc7950#page-135: If a node has "config" set to "false",
-     * no node underneath it can have "config" set to "true".
-     */
-    if (parent && (node->flags & LYS_CONFIG_W) && (parent->flags & LYS_CONFIG_R)) {
-        LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-        LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
-                "The deviate statement causes a violation of \"config\" nesting rules. The config for node \"%s\" is"
-                " \"true\" while for its parent \"%s\" is \"false\".", node->name, parent->name);
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-static int
-yang_check_deviate_inherit_config_r(struct lys_node *node)
-{
-    struct lys_node *child;
-
-    /* check node */
-    if (yang_check_deviate_config(node)) {
-        return EXIT_FAILURE;
-    }
-
-    /* recursive check and inherit (operations ignore config so it can be skipped) */
-    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA | LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
-        LY_TREE_FOR(node->child, child) {
-            if (child->flags & LYS_CONFIG_SET) {
-                /* keep the explicit config, but check it is fine because it may depend on the parent config */
-                if (yang_check_deviate_config(child)) {
-                    return EXIT_FAILURE;
-                }
-            } else {
-                /* inherit config from the parent */
-                child->flags &= ~LYS_CONFIG_MASK;
-                child->flags |= (node->flags & LYS_CONFIG_MASK);
-
-                /* recursive call */
-                if (yang_check_deviate_inherit_config_r(child)) {
-                    return EXIT_FAILURE;
-                }
-            }
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-static int
 yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct lys_deviate *deviate,
                    struct lys_node *dev_target, struct ly_set *dflt_check)
 {
@@ -4603,7 +4524,7 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
         assert(dev_target->flags ^ LYS_CONFIG_MASK);
 
         /* check and inherit new config to all the children */
-        if (yang_check_deviate_inherit_config_r(dev_target)) {
+        if (lyp_deviate_inherit_config_r(dev_target)) {
             goto error;
         }
     }

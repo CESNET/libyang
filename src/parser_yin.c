@@ -2370,6 +2370,17 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                     /* ... and replace it with the value specified in deviation */
                     dev_target->flags |= d->flags & LYS_CONFIG_MASK;
+
+                    /* "config" is explicitely set in the node */
+                    dev_target->flags |= LYS_CONFIG_SET;
+
+                    /* "config" must be set to either "yes" or "no" */
+                    assert(dev_target->flags ^ LYS_CONFIG_MASK);
+
+                    /* check and inherit new config to all the children */
+                    if (lyp_deviate_inherit_config_r(dev_target)) {
+                        goto error;
+                    }
                 }
 
                 if (lyp_yin_parse_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_CONFIG, 0, unres)) {
