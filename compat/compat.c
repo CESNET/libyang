@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief compatibility functions
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -11,17 +11,21 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "compat.h"
-
 #define _POSIX_C_SOURCE 200809L /* fdopen, _POSIX_PATH_MAX, strdup */
 #define _ISOC99_SOURCE /* vsnprintf */
 
+#include "compat.h"
+
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #ifndef HAVE_VDPRINTF
@@ -76,6 +80,49 @@ vasprintf(char **strp, const char *fmt, va_list ap)
 
 #endif
 
+#ifndef HAVE_GETLINE
+ssize_t
+getline(char **lineptr, size_t *n, FILE *stream)
+{
+    static char line[256];
+    char *ptr;
+    ssize_t len;
+
+    if (!lineptr || !n) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (ferror(stream) || feof(stream)) {
+        return -1;
+    }
+
+    if (!fgets(line, 256, stream)) {
+        return -1;
+    }
+
+    ptr = strchr(line, '\n');
+    if (ptr) {
+        *ptr = '\0';
+    }
+
+    len = strlen(line);
+
+    if (len + 1 < 256) {
+        ptr = realloc(*lineptr, 256);
+        if (!ptr) {
+            return -1;
+        }
+        *lineptr = ptr;
+        *n = 256;
+    }
+
+    strcpy(*lineptr, line);
+    return len;
+}
+
+#endif
+
 #ifndef HAVE_STRNDUP
 char *
 strndup(const char *s, size_t n)
@@ -123,45 +170,12 @@ strnstr(const char *s, const char *find, size_t slen)
 
 #endif
 
-#ifndef HAVE_GETLINE
-ssize_t
-getline(char **lineptr, size_t *n, FILE *stream)
+#ifndef HAVE_STRCHRNUL
+char *
+strchrnul(const char *s, int c)
 {
-    static char line[256];
-    char *ptr;
-    ssize_t len;
-
-    if (!lineptr || !n) {
-        errno = EINVAL;
-        return -1;
-    }
-
-    if (ferror(stream) || feof(stream)) {
-        return -1;
-    }
-
-    if (!fgets(line, 256, stream)) {
-        return -1;
-    }
-
-    ptr = strchr(line, '\n');
-    if (ptr) {
-        *ptr = '\0';
-    }
-
-    len = strlen(line);
-
-    if (len + 1 < 256) {
-        ptr = realloc(*lineptr, 256);
-        if (!ptr) {
-            return -1;
-        }
-        *lineptr = ptr;
-        *n = 256;
-    }
-
-    strcpy(*lineptr, line);
-    return len;
+    char *p = strchr(s, c);
+    return p ? p : (char *)s + strlen(s);
 }
 
 #endif
@@ -181,6 +195,55 @@ get_current_dir_name(void)
     }
 
     return retval;
+}
+
+#endif
+
+#ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
+int
+pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime)
+{
+    int64_t nsec_diff;
+    int32_t diff;
+    struct timespec cur, dur;
+    int rc;
+
+    /* try to acquire the lock and, if we fail, sleep for 5ms. */
+    while ((rc = pthread_mutex_trylock(mutex)) == EBUSY) {
+        /* get real time */
+#ifdef CLOCK_REALTIME
+        clock_gettime(CLOCK_REALTIME, &cur);
+#else
+        struct timeval tv;
+
+        gettimeofday(&tv, NULL);
+        cur.tv_sec = (time_t)tv.tv_sec;
+        cur.tv_nsec = 1000L * (long)tv.tv_usec;
+#endif
+
+        /* get time diff */
+        nsec_diff = 0;
+        nsec_diff += (((int64_t)abstime->tv_sec) - ((int64_t)cur.tv_sec)) * 1000000000L;
+        nsec_diff += ((int64_t)abstime->tv_nsec) - ((int64_t)cur.tv_nsec);
+        diff = (nsec_diff ? nsec_diff / 1000000L : 0);
+
+        if (diff < 1) {
+            /* timeout */
+            break;
+        } else if (diff < 5) {
+            /* sleep until timeout */
+            dur.tv_sec = 0;
+            dur.tv_nsec = (long)diff * 1000000;
+        } else {
+            /* sleep 5 ms */
+            dur.tv_sec = 0;
+            dur.tv_nsec = 5000000;
+        }
+
+        nanosleep(&dur, NULL);
+    }
+
+    return rc;
 }
 
 #endif

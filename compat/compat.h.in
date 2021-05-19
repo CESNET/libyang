@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief compatibility functions header
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 #define _COMPAT_H_
 
 #include <limits.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <time.h>
 
 #ifndef __WORDSIZE
 #  if defined __x86_64__ && !defined __ILP32__
@@ -49,10 +51,13 @@
 #cmakedefine HAVE_VDPRINTF
 #cmakedefine HAVE_ASPRINTF
 #cmakedefine HAVE_VASPRINTF
+#cmakedefine HAVE_GETLINE
 #cmakedefine HAVE_STRNDUP
 #cmakedefine HAVE_STRNSTR
-#cmakedefine HAVE_GETLINE
+#cmakedefine HAVE_STRDUPA
+#cmakedefine HAVE_STRCHRNUL
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
+#cmakedefine HAVE_PTHREAD_MUTEX_TIMEDLOCK
 
 #ifndef bswap64
 #define bswap64(val) \
@@ -75,6 +80,34 @@
 # define htole64(x) (x)
 #endif
 
+#cmakedefine HAVE_STDATOMIC
+
+#ifdef HAVE_STDATOMIC
+# include <stdatomic.h>
+
+# define ATOMIC_T atomic_uint_fast32_t
+# define ATOMIC_T_MAX UINT_FAST32_MAX
+
+# define ATOMIC_STORE_RELAXED(var, x) atomic_store_explicit(&(var), x, memory_order_relaxed)
+# define ATOMIC_LOAD_RELAXED(var) atomic_load_explicit(&(var), memory_order_relaxed)
+# define ATOMIC_INC_RELAXED(var) atomic_fetch_add_explicit(&(var), 1, memory_order_relaxed)
+# define ATOMIC_ADD_RELAXED(var, x) atomic_fetch_add_explicit(&(var), x, memory_order_relaxed)
+# define ATOMIC_DEC_RELAXED(var) atomic_fetch_sub_explicit(&(var), 1, memory_order_relaxed)
+# define ATOMIC_SUB_RELAXED(var, x) atomic_fetch_sub_explicit(&(var), x, memory_order_relaxed)
+#else
+# include <stdint.h>
+
+# define ATOMIC_T uint32_t
+# define ATOMIC_T_MAX UINT32_MAX
+
+# define ATOMIC_STORE_RELAXED(var, x) ((var) = (x))
+# define ATOMIC_LOAD_RELAXED(var) (var)
+# define ATOMIC_INC_RELAXED(var) __sync_fetch_and_add(&(var), 1)
+# define ATOMIC_ADD_RELAXED(var, x) __sync_fetch_and_add(&(var), x)
+# define ATOMIC_DEC_RELAXED(var) __sync_fetch_and_sub(&(var), 1)
+# define ATOMIC_SUB_RELAXED(var, x) __sync_fetch_and_sub(&(var), x)
+#endif
+
 #ifndef HAVE_VDPRINTF
 int vdprintf(int fd, const char *format, va_list ap);
 #endif
@@ -87,6 +120,10 @@ int asprintf(char **strp, const char *fmt, ...);
 int vasprintf(char **strp, const char *fmt, va_list ap);
 #endif
 
+#ifndef HAVE_GETLINE
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+#endif
+
 #ifndef HAVE_STRNDUP
 char *strndup(const char *s, size_t n);
 #endif
@@ -95,12 +132,27 @@ char *strndup(const char *s, size_t n);
 char *strnstr(const char *s, const char *find, size_t slen);
 #endif
 
-#ifndef HAVE_GETLINE
-ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+#ifndef HAVE_STRDUPA
+#define strdupa(s) (             \
+{                                \
+    char *buf;                   \
+    size_t len = strlen(s);      \
+    buf = alloca(len + 1);       \
+    buf[len] = '\0';             \
+    (char *)memcpy(buf, s, len); \
+})
+#endif
+
+#ifndef HAVE_STRCHRNUL
+char *strchrnul(const char *s, int c);
 #endif
 
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 char *get_current_dir_name(void);
+#endif
+
+#ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
+int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime);
 #endif
 
 #endif /* _COMPAT_H_ */
