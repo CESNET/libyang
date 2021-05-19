@@ -11,12 +11,16 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
+
+#define _GNU_SOURCE /* asprintf, strdup */
+#include <sys/cdefs.h>
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "common.h"
 #include "compat.h"
@@ -703,4 +707,154 @@ ly_format2str(LY_VALUE_FORMAT format)
     }
 
     return NULL;
+}
+
+API LY_ERR
+ly_time_str2time(const char *value, time_t *time, char **fractions_s)
+{
+    struct tm tm = {0};
+    uint32_t i, frac_len;
+    const char *frac;
+    int64_t shift, shift_m;
+    time_t t;
+
+    LY_CHECK_ARG_RET(NULL, value, time, LY_EINVAL);
+
+    tm.tm_year = atoi(&value[0]) - 1900;
+    tm.tm_mon = atoi(&value[5]) - 1;
+    tm.tm_mday = atoi(&value[8]);
+    tm.tm_hour = atoi(&value[11]);
+    tm.tm_min = atoi(&value[14]);
+    tm.tm_sec = atoi(&value[17]);
+
+    t = timegm(&tm);
+    i = 19;
+
+    /* fractions of a second */
+    if (value[i] == '.') {
+        ++i;
+        frac = &value[i];
+        for (frac_len = 0; isdigit(frac[frac_len]); ++frac_len) {}
+
+        i += frac_len;
+
+        /* skip trailing zeros */
+        for ( ; frac_len && (frac[frac_len - 1] == '0'); --frac_len) {}
+
+        if (!frac_len) {
+            /* only zeros, ignore */
+            frac = NULL;
+        }
+    } else {
+        frac = NULL;
+    }
+
+    /* apply offset */
+    if ((value[i] == 'Z') || (value[i] == 'z')) {
+        /* zero shift */
+        shift = 0;
+    } else {
+        shift = strtol(&value[i], NULL, 10);
+        shift = shift * 60 * 60; /* convert from hours to seconds */
+        shift_m = strtol(&value[i + 4], NULL, 10) * 60; /* includes conversion from minutes to seconds */
+        /* correct sign */
+        if (shift < 0) {
+            shift_m *= -1;
+        }
+        /* connect hours and minutes of the shift */
+        shift = shift + shift_m;
+    }
+
+    /* we have to shift to the opposite way to correct the time */
+    t -= shift;
+
+    *time = t;
+    if (fractions_s) {
+        if (frac) {
+            *fractions_s = strndup(frac, frac_len);
+            LY_CHECK_RET(!*fractions_s, LY_EMEM);
+        } else {
+            *fractions_s = NULL;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+ly_time_time2str(time_t time, const char *fractions_s, char **str)
+{
+    struct tm tm;
+    char zoneshift[7];
+    int32_t zonediff_h, zonediff_m;
+
+    LY_CHECK_ARG_RET(NULL, str, LY_EINVAL);
+
+    /* initialize the local timezone */
+    tzset();
+
+    /* convert */
+    if (!localtime_r(&time, &tm)) {
+        return LY_ESYS;
+    }
+
+    /* get timezone offset */
+    if (tm.tm_gmtoff == 0) {
+        /* time is Zulu (UTC) */
+        zonediff_h = 0;
+        zonediff_m = 0;
+    } else {
+        /* timezone offset */
+        zonediff_h = tm.tm_gmtoff / 60 / 60;
+        zonediff_m = tm.tm_gmtoff / 60 % 60;
+    }
+    sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
+
+    /* print */
+    if (asprintf(str, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
+            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+            fractions_s ? "." : "", fractions_s ? fractions_s : "", zoneshift) == -1) {
+        return LY_EMEM;
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+ly_time_str2ts(const char *value, struct timespec *ts)
+{
+    LY_ERR rc;
+    char *fractions_s, frac_buf[10] = {'0'};
+    int frac_len;
+
+    LY_CHECK_ARG_RET(NULL, value, ts, LY_EINVAL);
+
+    rc = ly_time_str2time(value, &ts->tv_sec, &fractions_s);
+    LY_CHECK_RET(rc);
+
+    /* convert fractions of a second to nanoseconds */
+    if (fractions_s) {
+        frac_len = strlen(fractions_s);
+        memcpy(frac_buf, fractions_s, frac_len > 9 ? 9 : frac_len);
+        ts->tv_nsec = atol(frac_buf);
+        free(fractions_s);
+    } else {
+        ts->tv_nsec = 0;
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+ly_time_ts2str(const struct timespec *ts, char **str)
+{
+    char frac_buf[10];
+
+    LY_CHECK_ARG_RET(NULL, ts, str, LY_EINVAL);
+
+    /* convert nanoseconds to fractions of a second */
+    if (ts->tv_nsec) {
+        sprintf(frac_buf, "%09ld", ts->tv_nsec);
+    }
+
+    return ly_time_time2str(ts->tv_sec, ts->tv_nsec ? frac_buf : NULL, str);
 }

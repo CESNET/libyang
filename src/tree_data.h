@@ -40,6 +40,7 @@ struct ly_set;
 struct lyd_node;
 struct lyd_node_opaq;
 struct lyd_node_term;
+struct timespec;
 
 /**
  * @page howtoData Data Instances
@@ -2301,6 +2302,44 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
  * @return LY_ERR on other errors.
  */
 LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
+
+/**
+ * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
+ *
+ * @param[in] value Valid string date-and-time value.
+ * @param[out] time UNIX timestamp.
+ * @param[out] fractions_s Optional fractions of a second, set to NULL if none.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_time_str2time(const char *value, time_t *time, char **fractions_s);
+
+/**
+ * @brief Convert UNIX timestamp and fractions of a second into canonical date-and-time string value.
+ *
+ * @param[in] time UNIX timestamp.
+ * @param[in] fractions_s Fractions of a second, if any.
+ * @param[out] str String date-and-time value.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_time_time2str(time_t time, const char *fractions_s, char **str);
+
+/**
+ * @brief Convert date-and-time from string to timespec.
+ *
+ * @param[in] value Valid string date-and-time value.
+ * @param[out] ts Timespec.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
+
+/**
+ * @brief Convert timespec into date-and-time string value.
+ *
+ * @param[in] ts Timespec.
+ * @param[out] str String date-and-time value.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
 
 #ifdef __cplusplus
 }
