@@ -2318,7 +2318,7 @@ LY_ERR ly_time_str2time(const char *value, time_t *time, char **fractions_s);
  *
  * @param[in] time UNIX timestamp.
  * @param[in] fractions_s Fractions of a second, if any.
- * @param[out] str String date-and-time value.
+ * @param[out] str String date-and-time value in the local timezone.
  * @return LY_ERR value.
  */
 LY_ERR ly_time_time2str(time_t time, const char *fractions_s, char **str);
@@ -2336,7 +2336,7 @@ LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
  * @brief Convert timespec into date-and-time string value.
  *
  * @param[in] ts Timespec.
- * @param[out] str String date-and-time value.
+ * @param[out] str String date-and-time value in the local timezone.
  * @return LY_ERR value.
  */
 LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
