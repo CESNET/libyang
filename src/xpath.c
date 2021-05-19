@@ -1102,7 +1102,7 @@ set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
         }
     }
 
-    free(set2->val.snodes);
+    set_free_content(set2);
     memset(set2, 0, sizeof *set2);
 }
 
@@ -9180,6 +9180,7 @@ finish:
         free(set->val.snodes);
         memset(set, 0, sizeof *set);
     }
+    set_free_content(&tmp_set);
     free(path);
     return ret;
 }
