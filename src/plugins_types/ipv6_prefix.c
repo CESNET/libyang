@@ -140,6 +140,8 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
             storage->dyn_mem = (void *)value;
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+
+            LYD_VALUE_GET(storage, val);
         } else {
             LYPLG_TYPE_VAL_INLINE_PREPARE(storage, val);
             LY_CHECK_ERR_GOTO(!val, ret = LY_EMEM, cleanup);
