@@ -7,9 +7,7 @@ Source: libyang-%{version}.tar.gz
 License: BSD-3-Clause
 
 BuildRequires:  cmake
-BuildRequires:  doxygen
 BuildRequires:  gcc
-BuildRequires:  libcmocka-devel
 BuildRequires:  make
 BuildRequires:  pcre2-devel
 

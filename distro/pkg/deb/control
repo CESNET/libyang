@@ -6,7 +6,6 @@ Priority: optional
 Standards-Version: 4.5.0
 Build-Depends: cmake,
                debhelper (>= 10),
-               libcmocka-dev <!nocheck>,
                libpcre2-dev,
                pkg-config
 Vcs-Browser: https://github.com/CESNET/libyang/tree/libyang2
