@@ -137,7 +137,7 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
         }
 
         /* store/allocate value */
-        if (options & LYPLG_TYPE_STORE_DYNAMIC) {
+        if ((options & LYPLG_TYPE_STORE_DYNAMIC) && LYPLG_TYPE_VAL_IS_DYN(val)) {
             storage->dyn_mem = (void *)value;
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
 
