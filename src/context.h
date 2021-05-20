@@ -184,6 +184,8 @@ struct ly_ctx;
 #define LY_CTX_PREFER_SEARCHDIRS 0x20 /**< When searching for schema, prefer searchdirs instead of user callback. */
 #define LY_CTX_SET_PRIV_PARSED 0x40 /**< For all compiled nodes, their private objects (::lysc_node.priv) are used
                                         by libyang as a reference to the corresponding parsed node (::lysp_node).
+                                        The exception are \"case\" statements, which are ommitted (shorthand),
+                                        in that case the private objects are set to NULL.
                                         So if this option is set, the user must not change private objects.
                                         Setting this option by ::ly_ctx_set_options() may result in context recompilation.
                                         Resetting this option by ::ly_ctx_unset_options() cause that private

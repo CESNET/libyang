@@ -431,13 +431,43 @@ node_case(void **state)
             "  choice my_choice {\n"
             "    case my_case;\n"
             "  }\n"
+            "  choice shorthand {\n"
+            "    container cont1;\n"
+            "    container cont2 {\n"
+            "      container cont3;\n"
+            "    }\n"
+            "  }\n"
+            "  container top {\n"
+            "    choice shorthand1 {\n"
+            "      container cont1;\n"
+            "    }\n"
+            "    choice shorthand2 {\n"
+            "      container cont2 {\n"
+            "        container cont3;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
             "}\n";
 
     /* from pyang */
     expect =
             "module: a08\n"
             "  +--rw (my_choice)?\n"
-            "     +--:(my_case)\n";
+            "  |  +--:(my_case)\n"
+            "  +--rw (shorthand)?\n"
+            "  |  +--:(cont1)\n"
+            "  |  |  +--rw cont1\n"
+            "  |  +--:(cont2)\n"
+            "  |     +--rw cont2\n"
+            "  |        +--rw cont3\n"
+            "  +--rw top\n"
+            "     +--rw (shorthand1)?\n"
+            "     |  +--:(cont1)\n"
+            "     |     +--rw cont1\n"
+            "     +--rw (shorthand2)?\n"
+            "        +--:(cont2)\n"
+            "           +--rw cont2\n"
+            "              +--rw cont3\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
