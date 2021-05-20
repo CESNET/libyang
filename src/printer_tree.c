@@ -3301,16 +3301,15 @@ trb_calc_btw_opts_type(struct trt_node_name name, int16_t max_len4all)
  * But difference is that take @p max_gap_before_type which will be
  * used to set the unified alignment.
  *
+ * @param[in] node to print.
  * @param[in] max_gap_before_type is number of indent before \<type\>.
  * @param[in] wr is wrapper for printing indentation before node.
- * @param[in] ca contains inherited data from ancestors.
  * @param[in] pc contains mainly functions for printing.
  * @param[in] tc is tree context.
  */
 static void
-trb_print_entire_node(uint32_t max_gap_before_type, struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct trt_wrapper wr, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    struct trt_node node = pc->fp.read.node(ca, tc);
     struct trt_indent_in_node ind = trp_default_indent_in_node(node);
 
     if ((max_gap_before_type > 0) && (node.type.type != TRD_TYPE_EMPTY)) {
@@ -3459,7 +3458,8 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
         /* print linebreak before printing actual node */
         ly_print_(pc->out, "\n");
         /* print node */
-        trb_print_entire_node(max_gap_before_type, wr, ca, pc, tc);
+        node = pc->fp.read.node(ca, tc);
+        trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
 
         new_ca = tro_parent_cache_for_child(ca, tc);
         /* go to the actual node's child or stay in actual node */
@@ -3517,6 +3517,7 @@ static void
 trb_print_parents(const struct lysc_node *node, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_wrapper wr;
+    struct trt_node print_node;
 
     assert(pc && tc && tc->section == TRD_SECT_MODULE);
 
@@ -3532,7 +3533,8 @@ trb_print_parents(const struct lysc_node *node, struct trt_printer_ctx *pc, stru
 
     /* print node */
     ly_print_(pc->out, "\n");
-    trb_print_entire_node(0, wr, TRP_EMPTY_PARENT_CACHE, pc, tc);
+    print_node = pc->fp.read.node(TRP_EMPTY_PARENT_CACHE, tc);
+    trb_print_entire_node(print_node, 0, wr, pc, tc);
 }
 
 /**
@@ -3590,6 +3592,7 @@ trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
  * the caller. Root node will also be printed. Behind last printed node
  * is no linebreak.
  *
+ * @param[in] node is root of the subtree.
  * @param[in] max_gap_before_type is result from
  * ::trb_try_unified_indent() function for root node.
  * Set parameter to 0 if distance does not matter.
@@ -3601,16 +3604,12 @@ trb_tree_ctx_set_child(struct trt_tree_ctx *tc)
  * @param[in,out] tc is context of tree printer.
  */
 static void
-trb_print_subtree_nodes(uint32_t max_gap_before_type, struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type, struct trt_wrapper wr,
+        struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_parent_cache new_ca;
-    struct trt_node node;
 
-    if (!trb_tree_ctx_get_node(tc)) {
-        return;
-    }
-
-    trb_print_entire_node(max_gap_before_type, wr, ca, pc, tc);
+    trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
     /* go to the actual node's child */
     new_ca = tro_parent_cache_for_child(ca, tc);
     node = pc->fp.modify.next_child(ca, tc);
@@ -3665,6 +3664,7 @@ static void
 trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     struct trt_parent_cache ca;
+    struct trt_node node;
     uint32_t total_parents;
     uint32_t max_gap_before_type;
 
@@ -3685,7 +3685,8 @@ trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct 
 
     for (uint32_t i = 0; i < total_parents; i++) {
         ly_print_(pc->out, "\n");
-        trb_print_subtree_nodes(max_gap_before_type, wr, ca, pc, tc);
+        node = pc->fp.read.node(ca, tc);
+        trb_print_subtree_nodes(node, max_gap_before_type, wr, ca, pc, tc);
         pc->fp.modify.next_sibling(ca, tc);
     }
 }
