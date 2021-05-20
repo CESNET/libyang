@@ -657,17 +657,17 @@ fill_context(int argc, char *argv[], struct context *c)
         }
     }
 
+    if (c->schema_out_format == LYS_OUT_TREE) {
+        /* print tree from lysc_nodes */
+        ly_ctx_set_options(c->ctx, LY_CTX_SET_PRIV_PARSED);
+    }
+
     /* process input files provided as standalone command line arguments,
      * schema modules are parsed and inserted into the context,
      * data files are just checked and prepared into internal structures for further processing */
     ret = fill_context_inputs(argc, argv, c);
     if (ret) {
         return ret;
-    }
-
-    if (c->schema_out_format == LYS_OUT_TREE) {
-        /* print tree from lysc_nodes */
-        ly_ctx_set_options(c->ctx, LY_CTX_SET_PRIV_PARSED);
     }
 
     /* the second batch of checks */
