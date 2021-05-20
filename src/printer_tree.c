@@ -2488,6 +2488,28 @@ tro_read_module_name(const struct trt_tree_ctx *tc)
     return ret;
 }
 
+/**
+ * @brief Create implicit "case" node as parent of @p node.
+ * @param[in] node child of implicit case node.
+ * @return The case node ready to print.
+ */
+static struct trt_node
+tro_create_implicit_case_node(struct trt_node node)
+{
+    struct trt_node ret;
+
+    ret.status = node.status;
+    ret.flags = TRD_FLAGS_TYPE_EMPTY;
+    ret.name.type = TRD_NODE_CASE;
+    ret.name.module_prefix = node.name.module_prefix;
+    ret.name.str = node.name.str;
+    ret.type = TRP_EMPTY_TRT_TYPE;
+    ret.iffeatures = node.iffeatures;
+    ret.last_one = node.last_one;
+
+    return ret;
+}
+
 /**********************************************************************
  * Definition of trop reading functions
  *********************************************************************/
@@ -3423,6 +3445,54 @@ trb_try_unified_indent(struct trt_parent_cache ca, struct trt_printer_ctx *pc, s
 }
 
 /**
+ * @brief Check if there is no case statement
+ * under the choice statement.
+ *
+ * It can return true only if the Parsed schema tree
+ * is used for browsing.
+ *
+ * @param[in] tc is tree context.
+ * @return 1 if implicit case statement is present otherwise 0.
+ */
+static ly_bool
+trb_need_implicit_node_case(struct trt_tree_ctx *tc)
+{
+    return !tc->lysc_tree && tc->pn->parent &&
+           (tc->pn->parent->nodetype & LYS_CHOICE) &&
+           (tc->pn->nodetype & (LYS_ANYDATA | LYS_CHOICE | LYS_CONTAINER |
+           LYS_LEAF | LYS_LEAFLIST));
+}
+
+static void trb_print_subtree_nodes(struct trt_node node, uint32_t max_gap_before_type,
+        struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc);
+
+/**
+ * @brief Print implicit case node and his subtree.
+ *
+ * @param[in] node is child of implicit case.
+ * @param[in] wr is wrapper for printing identation before node.
+ * @param[in] ca contains inherited data from ancestors.
+ * @param[in] pc contains mainly functions for printing.
+ * @param[in] tc is tree context. Its settings should be the same as
+ * before the function call.
+ */
+static void
+trb_print_implicit_node_case_subtree(struct trt_node node, struct trt_wrapper wr,
+        struct trt_parent_cache ca, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+{
+    struct trt_node case_node;
+    struct trt_wrapper wr_case_child;
+
+    case_node = tro_create_implicit_case_node(node);
+    ly_print_(pc->out, "\n");
+    trb_print_entire_node(case_node, 0, wr, pc, tc);
+    wr_case_child = pc->fp.read.if_sibling_exists(tc) ?
+            trp_wrapper_set_mark(wr) : trp_wrapper_set_shift(wr);
+    ly_print_(pc->out, "\n");
+    trb_print_subtree_nodes(node, 0, wr_case_child, ca, pc, tc);
+}
+
+/**
  * @brief For the current node: recursively print all of its child
  * nodes and all of its siblings, including their children.
  *
@@ -3455,22 +3525,28 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
     do {
         struct trt_parent_cache new_ca;
         struct trt_node node;
-        /* print linebreak before printing actual node */
-        ly_print_(pc->out, "\n");
-        /* print node */
         node = pc->fp.read.node(ca, tc);
-        trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
 
-        new_ca = tro_parent_cache_for_child(ca, tc);
-        /* go to the actual node's child or stay in actual node */
-        node = pc->fp.modify.next_child(ca, tc);
-        child_flag = !trp_node_is_empty(node);
+        if (!trb_need_implicit_node_case(tc)) {
+            /* normal behavior */
+            ly_print_(pc->out, "\n");
+            trb_print_entire_node(node, max_gap_before_type, wr, pc, tc);
+            new_ca = tro_parent_cache_for_child(ca, tc);
+            /* go to the actual node's child or stay in actual node */
+            node = pc->fp.modify.next_child(ca, tc);
+            child_flag = !trp_node_is_empty(node);
 
-        if (child_flag) {
-            /* print all childs - recursive call */
-            trb_print_nodes(wr, new_ca, pc, tc);
-            /* get back from child node to actual node */
-            pc->fp.modify.parent(tc);
+            if (child_flag) {
+                /* print all childs - recursive call */
+                trb_print_nodes(wr, new_ca, pc, tc);
+                /* get back from child node to actual node */
+                pc->fp.modify.parent(tc);
+            }
+        } else {
+            /* The case statement is omitted (shorthand).
+             * Print implicit case node and his subtree.
+             */
+            trb_print_implicit_node_case_subtree(node, wr, ca, pc, tc);
         }
 
         /* go to the actual node's sibling */
