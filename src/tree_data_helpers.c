@@ -784,7 +784,7 @@ API LY_ERR
 ly_time_time2str(time_t time, const char *fractions_s, char **str)
 {
     struct tm tm;
-    char zoneshift[7];
+    char zoneshift[8];
     int32_t zonediff_h, zonediff_m;
 
     LY_CHECK_ARG_RET(NULL, str, LY_EINVAL);
