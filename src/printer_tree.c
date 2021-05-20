@@ -3136,9 +3136,10 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
 {
     (void) ca;
     const struct lysc_node *cn;
+    const struct lysc_node *child;
     struct trt_node ret;
 
-    assert(tc && tc->cn && tc->cn->priv);
+    assert(tc && tc->cn);
 
     cn = tc->cn;
     ret = TRP_EMPTY_NODE;
@@ -3161,11 +3162,25 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     /* set node's name */
     ret.name.str = cn->name;
 
-    /* <type> */
-    ret.type = trop_resolve_type(TRP_TREE_CTX_GET_LYSP_NODE(cn));
+    if (tc->cn->priv) {
+        /* <type> */
+        ret.type = trop_resolve_type(TRP_TREE_CTX_GET_LYSP_NODE(cn));
 
-    /* <iffeature> */
-    ret.iffeatures = trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(cn));
+        /* <iffeature> */
+        ret.iffeatures = trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(cn));
+    } else {
+        /* only the case node can have the priv pointer set to NULL */
+        assert(tc->cn->nodetype & LYS_CASE);
+
+        /* <type> */
+        ret.type = TRP_EMPTY_TRT_TYPE;
+
+        /* copy <iffeature> from child */
+        child = lysc_node_child(cn);
+        ret.iffeatures = child ?
+                trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(child)) :
+                0;
+    }
 
     ret.last_one = !tro_next_sibling(cn, tc->lysc_tree);
 

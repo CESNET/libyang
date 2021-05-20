@@ -3292,6 +3292,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p_next = child_p->next;
     struct lysp_node_case *cs_p;
+    struct lysc_node *compiled_case;
 
     if (child_p->nodetype == LYS_CASE) {
         /* standard case under choice */
@@ -3311,7 +3312,16 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
 
 free_fake_node:
         /* free the fake parsed node and correct pointers back */
+
         cs_p->child = NULL;
+        if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
+            /* compiled node cannot point to the implicit case node */
+            /* get last case node */
+            compiled_case = ((struct lysc_node_choice *)node)->cases->prev;
+            assert(compiled_case->priv == cs_p);
+            /* must be set to NULL */
+            compiled_case->priv = NULL;
+        }
         lysp_node_free(ctx->ctx, (struct lysp_node *)cs_p);
         child_p->next = child_p_next;
     }
