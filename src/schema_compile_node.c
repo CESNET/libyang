@@ -3292,7 +3292,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p_next = child_p->next;
     struct lysp_node_case *cs_p;
-    struct lysc_node *compiled_case;
+    struct lysc_node_case *compiled_case;
 
     if (child_p->nodetype == LYS_CASE) {
         /* standard case under choice */
@@ -3313,15 +3313,24 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
 free_fake_node:
         /* free the fake parsed node and correct pointers back */
 
-        cs_p->child = NULL;
+        /* get last case node */
+        compiled_case = (struct lysc_node_case *)((struct lysc_node_choice *)node)->cases->prev;
+
         if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
-            /* compiled node cannot point to the implicit case node */
-            /* get last case node */
-            compiled_case = ((struct lysc_node_choice *)node)->cases->prev;
+            /* Compiled case node cannot point to his corresponding parsed node
+             * because it exists temporarily. Therefore, it must be set to NULL.
+             */
             assert(compiled_case->priv == cs_p);
-            /* must be set to NULL */
             compiled_case->priv = NULL;
         }
+
+        /* The status is copied from his child and not from his parent as usual. */
+        if (compiled_case->child) {
+            compiled_case->flags &= ~LYS_STATUS_MASK;
+            compiled_case->flags |= LYS_STATUS_MASK & compiled_case->child->flags;
+        }
+
+        cs_p->child = NULL;
         lysp_node_free(ctx->ctx, (struct lysp_node *)cs_p);
         child_p->next = child_p_next;
     }
