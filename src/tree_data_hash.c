@@ -50,7 +50,7 @@ lyd_hash(struct lyd_node *node)
             struct lyd_node_inner *list = (struct lyd_node_inner *)node;
 
             /* list hash is made up from its keys */
-            for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
+            for (iter = list->child; iter && iter->schema && (iter->schema->flags & LYS_KEY); iter = iter->next) {
                 struct lyd_node_term *key = (struct lyd_node_term *)iter;
 
                 hash_key = key->value.realtype->plugin->print(NULL, &key->value, LY_VALUE_LYB, NULL, &dyn, &key_len);
