@@ -37,6 +37,7 @@ static void
 base_sections(void **state)
 {
     TEST_LOCAL_SETUP;
+    const struct lys_module *modxx;
 
     orig =
             "module a01xx {\n"
@@ -47,7 +48,7 @@ base_sections(void **state)
             "  container d;\n"
             "}\n";
 
-    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &modxx);
 
     /* module with import statement */
     orig =
@@ -128,6 +129,21 @@ base_sections(void **state)
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* from pyang */
+    expect =
+            "module: a01xx\n"
+            "  +--rw c\n"
+            "  |  +--rw x:e\n"
+            "  +--rw d\n"
+            "     +--rw x:f\n";
+
+    TEST_LOCAL_PRINT(modxx, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
 
     TEST_LOCAL_TEARDOWN;

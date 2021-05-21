@@ -357,7 +357,8 @@ typedef enum {
  */
 struct trt_node_name {
     trt_node_type type;         /**< Type of the node relevant for printing. */
-    const char *module_prefix;  /**< Prefix defined in the module where the node is defined. */
+    const char *module_prefix;  /**< If the node is augmented into the tree from another module,
+                                     so this is the prefix of that module. */
     const char *str;            /**< Name of the node. */
 };
 
@@ -2812,7 +2813,10 @@ trop_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     /* set type of the node */
     ret.name.type = trop_resolve_node_type(pn, ca.last_list);
 
-    /* TODO: ret.name.module_prefix is not supported right now. */
+    /* The parsed tree is not compiled, so no node can be augmented
+     * from another module. This means that nodes from the parsed tree
+     * will never have the prefix.
+     */
     ret.name.module_prefix = NULL;
 
     /* set node's name */
@@ -3144,6 +3148,29 @@ troc_resolve_node_type(uint16_t nodetype, uint16_t flags)
 }
 
 /**
+ * @brief Resolve prefix (<prefix>:<name>) of node that has been
+ * placed from another module via an augment statement.
+ *
+ * @param[in] cn is current compiled node.
+ * @param[in] current_compiled_module is module whose nodes are
+ * currently being printed.
+ * @return Prefix of foreign module or NULL.
+ */
+static const char *
+troc_resolve_node_prefix(const struct lysc_node *cn, const struct lysc_module *current_compiled_module)
+{
+    const struct lys_module *node_module;
+    const char *ret = NULL;
+
+    node_module = cn->module;
+    if (node_module->compiled != current_compiled_module) {
+        ret = node_module->prefix;
+    }
+
+    return ret;
+}
+
+/**
  * @brief Transformation of current lysc_node to struct trt_node.
  * @param[in] ca is not used.
  * @param[in] tc is context of the tree.
@@ -3172,8 +3199,8 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     /* set type of the node */
     ret.name.type = troc_resolve_node_type(cn->nodetype, cn->flags);
 
-    /* TODO: ret.name.module_prefix is not supported right now. */
-    ret.name.module_prefix = NULL;
+    /* <prefix> */
+    ret.name.module_prefix = troc_resolve_node_prefix(cn, tc->cmod);
 
     /* set node's name */
     ret.name.str = cn->name;
