@@ -1481,7 +1481,7 @@ transition_between_rpc_and_notif(void **state)
             "  }\n"
             "}\n";
 
-    /* from pyang but edited -> n1 node is moved to n2 */
+    /* from pyang */
     expect =
             "module: a24\n"
             "  +--rw top\n"
@@ -1749,7 +1749,8 @@ yang_data(void **state)
             "  container mont;\n"
             "}\n";
 
-    /* from pyang but with these adjustments:
+    /* from pyang (--tree-print-yang-data --tree-print-groupings -p "...")
+     * but with these adjustments:
      *  - <flags> is always '--' for yang-data nodes
      *  - yang-data tmp3 has two 'uses' nodes
      *  - grouping g2 has ':' character at the end
@@ -1788,7 +1789,8 @@ yang_data(void **state)
 
     ly_out_reset(UTEST_OUT);
 
-    /* from pyang but with these adjustments:
+    /* from pyang (--tree-print-yang-data -p "...")
+     * but with these adjustments:
      *  <flags> is always '--' for yang-data nodes
      */
     expect =
