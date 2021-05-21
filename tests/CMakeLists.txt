@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.8.12)
-
 # Correct RPATH usage on OS X
 set(CMAKE_MACOSX_RPATH TRUE)
 
@@ -17,10 +15,11 @@ function(ly_add_utest)
     cmake_parse_arguments(ADDTEST "" "NAME;WRAP" "SOURCES" ${ARGN})
     set(TEST_NAME utest_${ADDTEST_NAME})
 
-    add_executable(${TEST_NAME} ${TEST_SOURCES} $<TARGET_OBJECTS:yangobj>)
     foreach(TEST_SOURCE ${ADDTEST_SOURCES})
-        target_sources(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE})
+        list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE})
     endforeach()
+
+    add_executable(${TEST_NAME} ${TEST_SOURCES} $<TARGET_OBJECTS:yangobj>)
 
     # Set common attributes of all tests
     set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
