@@ -26,6 +26,7 @@
 #include "libyang.h"
 
 #include "common.h"
+#include "out.h"
 #include "tools/config.h"
 
 /**
@@ -733,6 +734,10 @@ main_ni(int argc, char *argv[])
                 for (uint32_t u = 0; u < c.schema_modules.count; ++u) {
                     ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format,
                             c.line_length, c.schema_print_options);
+                    /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
+                    if ((c.schema_out_format == LYS_OUT_TREE) && (u + 1 < c.schema_modules.count)) {
+                        ly_print(c.out, "\n");
+                    }
                     if (ret) {
                         YLMSG_E("Unable to print module %s.\n", ((struct lys_module *)c.schema_modules.objs[u])->name);
                         goto cleanup;
