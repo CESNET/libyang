@@ -93,8 +93,9 @@ cmd_print_modules(int argc, char **argv, struct ly_out *out, struct ly_ctx **ctx
     LY_ERR erc;
     char *name, *revision;
     ly_bool search_submodul;
+    const int stop = argc - optind;
 
-    for (int i = 0; i < argc - optind; i++) {
+    for (int i = 0; i < stop; i++) {
         name = argv[optind + i];
         /* get revision */
         revision = strchr(name, '@');
@@ -113,6 +114,10 @@ cmd_print_modules(int argc, char **argv, struct ly_out *out, struct ly_ctx **ctx
         }
 
         if (erc == LY_SUCCESS) {
+            /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
+            if ((format == LYS_OUT_TREE) && (i + 1 < stop)) {
+                ly_print(out, "\n");
+            }
             continue;
         } else if (erc == LY_ENOTFOUND) {
             if (revision) {
