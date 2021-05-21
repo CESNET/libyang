@@ -3532,6 +3532,7 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
             /* last item */
             dist_aux->next = ordered->dist; /* ring list */
             ordered->dist_last = dist_aux;
+            dist_iter->next = dist_aux;
             break;
         }
     }
