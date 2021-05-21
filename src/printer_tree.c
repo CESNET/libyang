@@ -696,7 +696,19 @@ struct trt_tree_ctx {
 };
 
 /**
+ * @brief Check if lysp node is available from
+ * the current compiled node.
+ *
+ * Use only if trt_tree_ctx.lysc_tree is set to true.
+ */
+#define TRP_TREE_CTX_LYSP_NODE_PRESENT(CN) \
+    (CN->priv)
+
+/**
  * @brief Get lysp_node from trt_tree_ctx.cn.
+ *
+ * Use only if :TRP_TREE_CTX_LYSP_NODE_PRESENT returns true
+ * for that node.
  */
 #define TRP_TREE_CTX_GET_LYSP_NODE(CN) \
     ((const struct lysp_node *)CN->priv)
@@ -2305,10 +2317,12 @@ tro_print_features_names(const struct trt_tree_ctx *tc, struct ly_out *out)
 {
     const struct lysp_qname *iffs;
 
-    iffs = tc->lysc_tree ?
-            TRP_TREE_CTX_GET_LYSP_NODE(tc->cn)->iffeatures :
-            tc->pn->iffeatures;
-
+    if (tc->lysc_tree) {
+        assert(TRP_TREE_CTX_LYSP_NODE_PRESENT(tc->cn));
+        iffs = TRP_TREE_CTX_GET_LYSP_NODE(tc->cn)->iffeatures;
+    } else {
+        iffs = tc->pn->iffeatures;
+    }
     LY_ARRAY_COUNT_TYPE i;
 
     LY_ARRAY_FOR(iffs, i) {
@@ -2337,9 +2351,12 @@ tro_print_keys(const struct trt_tree_ctx *tc, struct ly_out *out)
 {
     const struct lysp_node_list *list;
 
-    list = tc->lysc_tree ?
-            (const struct lysp_node_list *)TRP_TREE_CTX_GET_LYSP_NODE(tc->cn) :
-            (const struct lysp_node_list *)tc->pn;
+    if (tc->lysc_tree) {
+        assert(TRP_TREE_CTX_LYSP_NODE_PRESENT(tc->cn));
+        list = (const struct lysp_node_list *)TRP_TREE_CTX_GET_LYSP_NODE(tc->cn);
+    } else {
+        list = (const struct lysp_node_list *)tc->pn;
+    }
     assert(list->nodetype & LYS_LIST);
 
     if (trg_charptr_has_data(list->key)) {
@@ -3162,14 +3179,14 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
     /* set node's name */
     ret.name.str = cn->name;
 
-    if (tc->cn->priv) {
+    if (TRP_TREE_CTX_LYSP_NODE_PRESENT(cn)) {
         /* <type> */
         ret.type = trop_resolve_type(TRP_TREE_CTX_GET_LYSP_NODE(cn));
 
         /* <iffeature> */
         ret.iffeatures = trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(cn));
     } else {
-        /* only the case node can have the priv pointer set to NULL */
+        /* only the implicit case node doesn't have access to lysp node */
         assert(tc->cn->nodetype & LYS_CASE);
 
         /* <type> */
