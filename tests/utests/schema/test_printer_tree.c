@@ -428,11 +428,15 @@ node_case(void **state)
             "  yang-version 1.1;\n"
             "  namespace \"x:y\";\n"
             "  prefix x;\n"
+            "\n"
+            "  feature foo;\n"
             "  choice my_choice {\n"
             "    case my_case;\n"
             "  }\n"
             "  choice shorthand {\n"
-            "    container cont1;\n"
+            "    container cont1 {\n"
+            "      if-feature \"foo\";\n"
+            "    }\n"
             "    container cont2 {\n"
             "      container cont3;\n"
             "    }\n"
@@ -456,7 +460,7 @@ node_case(void **state)
             "  |  +--:(my_case)\n"
             "  +--rw (shorthand)?\n"
             "  |  +--:(cont1)\n"
-            "  |  |  +--rw cont1\n"
+            "  |  |  +--rw cont1 {foo}?\n"
             "  |  +--:(cont2)\n"
             "  |     +--rw cont2\n"
             "  |        +--rw cont3\n"
@@ -469,7 +473,9 @@ node_case(void **state)
             "           +--rw cont2\n"
             "              +--rw cont3\n";
 
-    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    const char *feats[] = {"foo", NULL};
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, feats, &mod);
     TEST_LOCAL_PRINT(mod, 72);
     assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
     assert_string_equal(printed, expect);

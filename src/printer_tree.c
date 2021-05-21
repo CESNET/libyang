@@ -2521,7 +2521,7 @@ tro_create_implicit_case_node(struct trt_node node)
     ret.name.module_prefix = node.name.module_prefix;
     ret.name.str = node.name.str;
     ret.type = TRP_EMPTY_TRT_TYPE;
-    ret.iffeatures = node.iffeatures;
+    ret.iffeatures = 0;
     ret.last_one = node.last_one;
 
     return ret;
@@ -3153,7 +3153,6 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
 {
     (void) ca;
     const struct lysc_node *cn;
-    const struct lysc_node *child;
     struct trt_node ret;
 
     assert(tc && tc->cn);
@@ -3192,11 +3191,8 @@ troc_read_node(struct trt_parent_cache ca, const struct trt_tree_ctx *tc)
         /* <type> */
         ret.type = TRP_EMPTY_TRT_TYPE;
 
-        /* copy <iffeature> from child */
-        child = lysc_node_child(cn);
-        ret.iffeatures = child ?
-                trop_node_has_iffeature(TRP_TREE_CTX_GET_LYSP_NODE(child)) :
-                0;
+        /* <iffeature> */
+        ret.iffeatures = 0;
     }
 
     ret.last_one = !tro_next_sibling(cn, tc->lysc_tree);
