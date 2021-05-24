@@ -1019,22 +1019,7 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                 ++col;
             }
 
-            /* first node */
-            if (first) {
-                if (!col) {
-                    LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL);
-                    goto error;
-                }
-
-                cur_mod = ly_ctx_get_module(ctx, str, NULL, 0);
-                if (!cur_mod) {
-                    LOGVAL(ctx, LYE_PATH_INMOD, LY_VLOG_STR, str);
-                    goto error;
-                }
-
-                first = 0;
-            }
-
+            /* special node test */
             if (((col ? col[0] : str[0]) == '.') || ((col ? col[0] : str[0]) == '*')) {
                 free(str);
                 str = NULL;
@@ -1049,7 +1034,24 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                 if (ly_path_data2schema_copy_token(ctx, exp, *cur_exp, out, out_used)) {
                     goto error;
                 }
+                first = 0;
                 break;
+            }
+
+            /* first node */
+            if (first) {
+                if (!col) {
+                    LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL);
+                    goto error;
+                }
+
+                cur_mod = ly_ctx_get_module(ctx, str, NULL, 0);
+                if (!cur_mod) {
+                    LOGVAL(ctx, LYE_PATH_INMOD, LY_VLOG_STR, str);
+                    goto error;
+                }
+
+                first = 0;
             }
 
             /* create schema path for this data node */
