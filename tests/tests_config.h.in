@@ -1,9 +1,9 @@
 /**
- * @file config.h
+ * @file tests_config.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief cmocka tests configuration header.
  *
- * Copyright (c) 2015 - 2098 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -13,8 +13,6 @@
  */
 #ifndef LYTEST_CONFIG_H_
 #define LYTEST_CONFIG_H_
-
-#define UNUSED(x) @COMPILER_UNUSED_ATTR@
 
 #define TESTS_SRC "@CMAKE_CURRENT_SOURCE_DIR@"
 #define TESTS_BIN "@CMAKE_CURRENT_BINARY_DIR@"
