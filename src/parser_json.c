@@ -807,6 +807,7 @@ next_entry:
         /* next member */
         ret = lyjson_ctx_next(lydctx->jsonctx, &status);
         LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_GOTO((status != LYJSON_OBJECT) && (status != LYJSON_OBJECT_CLOSED), representation_error);
     }
 
     if (nodetype == LYS_LEAFLIST) {
