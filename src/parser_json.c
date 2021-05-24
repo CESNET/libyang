@@ -723,7 +723,7 @@ next_entry:
     case LYS_ANYXML:
         expected = "@name/object";
 
-        LY_CHECK_GOTO(status != LYJSON_OBJECT && (nodetype != LYS_LEAFLIST || status != LYJSON_NULL), representation_error);
+        LY_CHECK_GOTO(status != LYJSON_OBJECT, representation_error);
         break;
     case LYS_CONTAINER:
     case LYS_LIST:
