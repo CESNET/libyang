@@ -1966,7 +1966,7 @@ typedef LY_ERR (*lyd_merge_cb)(struct lyd_node *trg_node, const struct lyd_node 
  * @param[in,out] target Target data tree to merge into, must be a top-level tree.
  * @param[in] source Source data tree to merge, must be a top-level tree.
  * @param[in] mod Module, whose source data only to consider, NULL for all modules.
- * @param[in] diff_cb Optional diff callback that will be called for every merged node, before merging its descendants.
+ * @param[in] merge_cb Optional merge callback that will be called for every merged node, before merging its descendants.
  * If a subtree is being added into target (no matching node found), callback is called only once with the subtree root.
  * @param[in] cb_data Arbitrary callback data.
  * @param[in] options Bitmask of option flags, see @ref mergeoptions.
