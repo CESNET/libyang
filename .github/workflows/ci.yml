@@ -162,7 +162,7 @@ jobs:
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure
 
-      - name: Uploade to Codecov.io
+      - name: Upload to Codecov.io
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: bash <(curl -s https://codecov.io/bash)
