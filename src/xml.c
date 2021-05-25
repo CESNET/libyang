@@ -960,7 +960,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
     *len = 0;
 
     if (bt_count > LY_RECURSION_LIMIT) {
-        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "Recursion limit %d reached", LY_RECURSION_LIMIT);
+        LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Recursion limit %d reached", LY_RECURSION_LIMIT);
         return NULL;
     }
 
