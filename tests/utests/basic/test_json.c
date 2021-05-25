@@ -132,6 +132,24 @@ test_number(void **state)
     assert_int_equal(1, jsonctx->dynamic);
     lyjson_ctx_free(jsonctx);
 
+    str = "15E-2";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("0.15", jsonctx->value);
+    assert_int_equal(4, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
+    str = "-15E-2";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    assert_int_equal(LYJSON_NUMBER, lyjson_ctx_status(jsonctx, 0));
+    assert_string_equal("-0.15", jsonctx->value);
+    assert_int_equal(5, jsonctx->value_len);
+    assert_int_equal(1, jsonctx->dynamic);
+    lyjson_ctx_free(jsonctx);
+
     str = "15E-3";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_SUCCESS, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
