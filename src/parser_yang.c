@@ -1538,7 +1538,7 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
     enum int_log_opts prev_ilo;
     int rc, i, j;
     unsigned int u;
-    const char *orig_dflt;
+    const char *orig_dflt, *ptr;
 
     u = strlen(value);
     if (dev_target->nodetype == LYS_CHOICE) {
@@ -1574,21 +1574,25 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
         if (deviate->mod == LY_DEVIATE_DEL) {
             orig_dflt = NULL;
             if (leaf->dflt) {
-                /* transform back into the original value */
-                ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                orig_dflt = transform_json2schema(leaf->module, leaf->dflt);
-                ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-                if (!orig_dflt) {
-                    orig_dflt = lydict_insert(ctx, leaf->dflt, 0);
+                if (leaf->type.base == LY_TYPE_IDENT) {
+                    /* skip prefixes, cannot be compared reliably */
+                    if ((ptr = strchr(leaf->dflt, ':'))) {
+                        orig_dflt = ptr + 1;
+                    } else {
+                        orig_dflt = leaf->dflt;
+                    }
+                    if ((ptr = strchr(value, ':'))) {
+                        value = ptr + 1;
+                    }
+                } else {
+                    orig_dflt = leaf->dflt;
                 }
             }
-            if (!orig_dflt || !ly_strequal(orig_dflt, value, 1)) {
+            if (!orig_dflt || !ly_strequal(orig_dflt, value, 0)) {
                 LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
                 LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
-                lydict_remove(ctx, orig_dflt);
                 goto error;
             }
-            lydict_remove(ctx, orig_dflt);
 
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
