@@ -35,6 +35,14 @@ struct lys_glob_unres;
 #define LY_PCRE2_MSG_LIMIT 256
 
 /**
+ * @brief The maximum depth at which the last nested block is located.
+ * Designed to protect against corrupted input that causes a stack-overflow error.
+ * For yang language and json format, the block is bounded by "{ }".
+ * For the xml format, the opening and closing element tag is considered as the block.
+ */
+#define LY_MAX_BLOCK_DEPTH 500
+
+/**
  * @brief Informational structure for YANG statements
  */
 struct stmt_info_s {
@@ -153,6 +161,7 @@ struct lys_yang_parser_ctx {
     struct lys_glob_unres *unres;   /**< global unres structure */
     struct ly_in *in;               /**< input handler for the parser */
     uint64_t indent;                /**< current position on the line for YANG indentation */
+    uint32_t depth;                 /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
 };
 
 /**

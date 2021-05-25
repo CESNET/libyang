@@ -59,6 +59,7 @@ struct lyjson_ctx {
     const char *value;      /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
     size_t value_len;       /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
     ly_bool dynamic;        /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
+    uint32_t depth;         /* current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
 
     struct {
         enum LYJSON_PARSER_STATUS status;
@@ -66,6 +67,7 @@ struct lyjson_ctx {
         const char *value;
         size_t value_len;
         ly_bool dynamic;
+        uint32_t depth;
         const char *input;
     } backup;
 };

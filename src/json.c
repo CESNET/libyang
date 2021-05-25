@@ -545,6 +545,8 @@ lyjson_object(struct lyjson_ctx *jsonctx)
     LY_CHECK_RET(skip_ws(jsonctx));
 
     if (*jsonctx->in->current == '}') {
+        assert(jsonctx->depth);
+        jsonctx->depth--;
         /* empty object */
         ly_in_skip(jsonctx->in, 1);
         lyjson_ctx_set_value(jsonctx, NULL, 0, 0);
@@ -626,6 +628,12 @@ lyjson_value(struct lyjson_ctx *jsonctx)
         LY_CHECK_RET(lyjson_array(jsonctx));
 
     } else if (*jsonctx->in->current == '{') {
+        jsonctx->depth++;
+        if (jsonctx->depth > LY_MAX_BLOCK_DEPTH) {
+            LOGERR(jsonctx->ctx, LY_EINVAL,
+                    "The maximum number of block nestings has been exceeded.");
+            return LY_EINVAL;
+        }
         /* object */
         ly_in_skip(jsonctx->in, 1);
         LY_CHECK_RET(lyjson_object(jsonctx));
@@ -697,6 +705,7 @@ lyjson_ctx_backup(struct lyjson_ctx *jsonctx)
     jsonctx->backup.value_len = jsonctx->value_len;
     jsonctx->backup.input = jsonctx->in->current;
     jsonctx->backup.dynamic = jsonctx->dynamic;
+    jsonctx->backup.depth = jsonctx->depth;
     jsonctx->dynamic = 0;
 }
 
@@ -712,6 +721,7 @@ lyjson_ctx_restore(struct lyjson_ctx *jsonctx)
     jsonctx->value_len = jsonctx->backup.value_len;
     jsonctx->in->current = jsonctx->backup.input;
     jsonctx->dynamic = jsonctx->backup.dynamic;
+    jsonctx->depth = jsonctx->backup.depth;
     jsonctx->backup.dynamic = 0;
 }
 
@@ -768,6 +778,10 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
             ret = lyjson_value(jsonctx);
         }
     } else if (((prev == LYJSON_OBJECT) && (*jsonctx->in->current == '}')) || ((prev == LYJSON_ARRAY) && (*jsonctx->in->current == ']'))) {
+        if (*jsonctx->in->current == '}') {
+            assert(jsonctx->depth);
+            jsonctx->depth--;
+        }
         ly_in_skip(jsonctx->in, 1);
         JSON_POP_STATUS_RET(jsonctx);
         JSON_PUSH_STATUS_RET(jsonctx, prev + 1);
