@@ -15,7 +15,7 @@ include(CheckSymbolExists)
 include(UseCompat)
 include(ABICheck)
 include(SourceFormat)
-include(Doc)
+include(GenDoc)
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
@@ -169,6 +169,18 @@ set(gen_headers
     src/version.h
     src/config.h)
 
+# files to generate doxgen from
+set(doxy_files
+    doc/build.dox
+    doc/transition.dox
+    ${headers}
+    ${PROJECT_BINARY_DIR}/src/version.h
+    ${type_plugins})
+
+# project (doxygen) logo
+set(project_logo
+    doc/logo.png)
+
 # source files to be covered by the 'format' target
 set(format_sources
     compat/*
@@ -181,7 +193,7 @@ set(format_sources
 #
 
 if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
-    libyang_doc()
+    gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
     return()
 endif()
 
@@ -358,7 +370,7 @@ endif()
 add_subdirectory(tools)
 
 # generate doxygen documentation for libyang API
-libyang_doc()
+gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
 
 # generate API/ABI report
 if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
