@@ -751,7 +751,18 @@ keyword_start:
     word_start = ctx->in->current;
     *kw = lysp_match_kw(ctx->in, &ctx->indent);
 
-    if ((*kw == LY_STMT_SYNTAX_SEMICOLON) || (*kw == LY_STMT_SYNTAX_LEFT_BRACE) || (*kw == LY_STMT_SYNTAX_RIGHT_BRACE)) {
+    if (*kw == LY_STMT_SYNTAX_SEMICOLON) {
+        goto success;
+    } else if (*kw == LY_STMT_SYNTAX_LEFT_BRACE) {
+        ctx->depth++;
+        if (ctx->depth > LY_MAX_BLOCK_DEPTH) {
+            LOGERR(ctx->parsed_mod->mod->ctx, LY_EINVAL,
+                    "The maximum number of block nestings has been exceeded.");
+            return LY_EINVAL;
+        }
+        goto success;
+    } else if (*kw == LY_STMT_SYNTAX_RIGHT_BRACE) {
+        ctx->depth--;
         goto success;
     }
 
