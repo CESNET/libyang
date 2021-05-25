@@ -24,17 +24,17 @@ endif()
 # normalize build type string
 string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
 if ("${BUILD_TYPE_UPPER}" STREQUAL "RELEASE")
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
-  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO")
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBUG")
-  set(CMAKE_BUILD_TYPE "RelWithDebug" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
-  set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
-elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
-  set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
+elseif("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
+elseif("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO")
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build Type" FORCE)
+elseif("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBUG")
+    set(CMAKE_BUILD_TYPE "RelWithDebug" CACHE STRING "Build Type" FORCE)
+elseif("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
+    set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
+elseif("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
+    set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
 endif()
 
 # check the supported platform
@@ -67,6 +67,7 @@ set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
 set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
+set(CMAKE_C_FLAGS_RELEASE        "-DNDEBUG -O2")
 set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
 set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
@@ -169,7 +170,7 @@ set(gen_headers
     src/version.h
     src/config.h)
 
-# files to generate doxgen from
+# files to generate doxygen from
 set(doxy_files
     doc/build.dox
     doc/transition.dox
@@ -192,11 +193,6 @@ set(format_sources
 #
 # options
 #
-
-if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
-    gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
-    return()
-endif()
 
 if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
     option(ENABLE_BUILD_TESTS "Build tests" ON)
@@ -259,6 +255,12 @@ option(ENABLE_STATIC "Build static (.a) library" OFF)
 # generate files
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
+
+# DOC-only target with no extra dependencies
+if("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
+    gen_doc("${doxy_files}" ${LIBYANG_VERSION} ${LIBYANG_DESCRIPTION} ${project_logo})
+    return()
+endif()
 
 #
 # targets
