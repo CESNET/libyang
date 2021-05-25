@@ -183,7 +183,8 @@ set(project_logo
 
 # source files to be covered by the 'format' target
 set(format_sources
-    compat/*
+    compat/*.c
+    compat/*.h
     src/*.c
     src/*.h
     src/plugins_exts/*
