@@ -164,7 +164,7 @@ extern "C" {
  * The ARRAY is again a sized-array to go through, the INDEX is a variable (LY_ARRAY_COUNT_TYPE) for storing iterating ARRAY's index
  * to access the items of ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_INDEX macro.
  */
-#define LY_ARRAY_FOR(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_FOR_ITER, LY_ARRAY_FOR_INDEX)(ARRAY, __VA_ARGS__)
+#define LY_ARRAY_FOR(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_FOR_ITER, LY_ARRAY_FOR_INDEX, LY_UNDEF)(ARRAY, __VA_ARGS__)
 
 /**
  * @brief Macro to iterate via all sibling elements without affecting the list itself
