@@ -233,7 +233,7 @@ LY_ERR lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports
  * @param[in] stmt Statement name for error message.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, const char *stmt);
+LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, const char *stmt);
 
 /**
  * @brief Check names of typedefs in the parsed module to detect collisions.
