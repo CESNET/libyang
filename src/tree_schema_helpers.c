@@ -58,7 +58,7 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
 }
 
 LY_ERR
-lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, const char *stmt)
+lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, const char *stmt)
 {
     struct tm tm, tm_;
     char *r;
