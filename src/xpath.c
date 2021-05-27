@@ -43,7 +43,7 @@
 #include "tree_schema_internal.h"
 #include "xml.h"
 
-static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx);
+static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth);
 static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype,
         struct lyxp_set *set, uint32_t options);
 static LY_ERR moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_set *set,
@@ -1943,10 +1943,11 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t tok_idx, uint16_t repeat_op_idx)
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_predicate(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_predicate(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     LY_ERR rc;
 
@@ -1954,7 +1955,7 @@ reparse_predicate(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
     LY_CHECK_RET(rc);
     ++(*tok_idx);
 
-    rc = reparse_or_expr(ctx, exp, tok_idx);
+    rc = reparse_or_expr(ctx, exp, tok_idx, depth);
     LY_CHECK_RET(rc);
 
     rc = lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_BRACK2);
@@ -1974,10 +1975,11 @@ reparse_predicate(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression \p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR (LY_EINCOMPLETE on forward reference)
  */
 static LY_ERR
-reparse_relative_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_relative_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     LY_ERR rc;
 
@@ -2033,7 +2035,7 @@ step:
 reparse_predicate:
             /* Predicate* */
             while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_BRACK1)) {
-                rc = reparse_predicate(ctx, exp, tok_idx);
+                rc = reparse_predicate(ctx, exp, tok_idx, depth);
                 LY_CHECK_RET(rc);
             }
             break;
@@ -2054,10 +2056,11 @@ reparse_predicate:
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression \p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     LY_ERR rc;
 
@@ -2077,7 +2080,7 @@ reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, 
         case LYXP_TOKEN_AT:
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            rc = reparse_relative_location_path(ctx, exp, tok_idx);
+            rc = reparse_relative_location_path(ctx, exp, tok_idx, depth);
             LY_CHECK_RET(rc);
         /* fall through */
         default:
@@ -2088,7 +2091,7 @@ reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, 
         /* '//' RelativeLocationPath */
         ++(*tok_idx);
 
-        rc = reparse_relative_location_path(ctx, exp, tok_idx);
+        rc = reparse_relative_location_path(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
     }
 
@@ -2103,10 +2106,11 @@ reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, 
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     int8_t min_arg_count = -1;
     uint32_t arg_count, max_arg_count = 0;
@@ -2276,14 +2280,14 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
     LY_CHECK_RET(rc);
     if (exp->tokens[*tok_idx] != LYXP_TOKEN_PAR2) {
         ++arg_count;
-        rc = reparse_or_expr(ctx, exp, tok_idx);
+        rc = reparse_or_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
     }
     while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_COMMA)) {
         ++(*tok_idx);
 
         ++arg_count;
-        rc = reparse_or_expr(ctx, exp, tok_idx);
+        rc = reparse_or_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
     }
 
@@ -2312,10 +2316,11 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     LY_ERR rc;
 
@@ -2328,7 +2333,7 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
         /* '(' Expr ')' Predicate* */
         ++(*tok_idx);
 
-        rc = reparse_or_expr(ctx, exp, tok_idx);
+        rc = reparse_or_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
 
         rc = lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_PAR2);
@@ -2342,19 +2347,19 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
     case LYXP_TOKEN_NAMETEST:
     case LYXP_TOKEN_NODETYPE:
         /* RelativeLocationPath */
-        rc = reparse_relative_location_path(ctx, exp, tok_idx);
+        rc = reparse_relative_location_path(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
         break;
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
-        rc = reparse_function_call(ctx, exp, tok_idx);
+        rc = reparse_function_call(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
         goto predicate;
         break;
     case LYXP_TOKEN_OPER_PATH:
     case LYXP_TOKEN_OPER_RPATH:
         /* AbsoluteLocationPath */
-        rc = reparse_absolute_location_path(ctx, exp, tok_idx);
+        rc = reparse_absolute_location_path(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
         break;
     case LYXP_TOKEN_LITERAL:
@@ -2377,7 +2382,7 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
 predicate:
     /* Predicate* */
     while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_BRACK1)) {
-        rc = reparse_predicate(ctx, exp, tok_idx);
+        rc = reparse_predicate(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
     }
 
@@ -2387,7 +2392,7 @@ predicate:
         /* '/' or '//' */
         ++(*tok_idx);
 
-        rc = reparse_relative_location_path(ctx, exp, tok_idx);
+        rc = reparse_relative_location_path(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
     }
 
@@ -2403,10 +2408,11 @@ predicate:
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     uint16_t prev_exp;
     LY_ERR rc;
@@ -2421,7 +2427,7 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *to
 
     /* PathExpr */
     prev_exp = *tok_idx;
-    rc = reparse_path_expr(ctx, exp, tok_idx);
+    rc = reparse_path_expr(ctx, exp, tok_idx, depth);
     LY_CHECK_RET(rc);
 
     /* ('|' PathExpr)* */
@@ -2429,7 +2435,7 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *to
         exp_repeat_push(exp, prev_exp, LYXP_EXPR_UNION);
         ++(*tok_idx);
 
-        rc = reparse_path_expr(ctx, exp, tok_idx);
+        rc = reparse_path_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
     }
 
@@ -2450,10 +2456,11 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *to
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_additive_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_additive_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     uint16_t prev_add_exp, prev_mul_exp;
     LY_ERR rc;
@@ -2470,7 +2477,7 @@ reparse_additive_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
 reparse_multiplicative_expr:
         /* UnaryExpr */
         prev_mul_exp = *tok_idx;
-        rc = reparse_unary_expr(ctx, exp, tok_idx);
+        rc = reparse_unary_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
 
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
@@ -2479,7 +2486,7 @@ reparse_multiplicative_expr:
             exp_repeat_push(exp, prev_mul_exp, LYXP_EXPR_MULTIPLICATIVE);
             ++(*tok_idx);
 
-            rc = reparse_unary_expr(ctx, exp, tok_idx);
+            rc = reparse_unary_expr(ctx, exp, tok_idx, depth);
             LY_CHECK_RET(rc);
         }
     }
@@ -2501,10 +2508,11 @@ reparse_multiplicative_expr:
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_equality_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_equality_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     uint16_t prev_eq_exp, prev_rel_exp;
     LY_ERR rc;
@@ -2520,7 +2528,7 @@ reparse_equality_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
 reparse_additive_expr:
         /* AdditiveExpr */
         prev_rel_exp = *tok_idx;
-        rc = reparse_additive_expr(ctx, exp, tok_idx);
+        rc = reparse_additive_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
 
         /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
@@ -2528,7 +2536,7 @@ reparse_additive_expr:
             exp_repeat_push(exp, prev_rel_exp, LYXP_EXPR_RELATIONAL);
             ++(*tok_idx);
 
-            rc = reparse_additive_expr(ctx, exp, tok_idx);
+            rc = reparse_additive_expr(ctx, exp, tok_idx, depth);
             LY_CHECK_RET(rc);
         }
     }
@@ -2545,13 +2553,17 @@ reparse_additive_expr:
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] depth Current number of nested expressions.
  * @return LY_ERR
  */
 static LY_ERR
-reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx)
+reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth)
 {
     uint16_t prev_or_exp, prev_and_exp;
     LY_ERR rc;
+
+    ++depth;
+    LY_CHECK_ERR_RET(depth > LYXP_MAX_BLOCK_DEPTH, LOGVAL(ctx, LY_VCODE_XP_DEPTH), LY_EINVAL);
 
     prev_or_exp = *tok_idx;
     goto reparse_equality_expr;
@@ -2564,7 +2576,7 @@ reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_i
 reparse_equality_expr:
         /* EqualityExpr */
         prev_and_exp = *tok_idx;
-        rc = reparse_equality_expr(ctx, exp, tok_idx);
+        rc = reparse_equality_expr(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
 
         /* ('and' EqualityExpr)* */
@@ -2572,7 +2584,7 @@ reparse_equality_expr:
             exp_repeat_push(exp, prev_and_exp, LYXP_EXPR_AND);
             ++(*tok_idx);
 
-            rc = reparse_equality_expr(ctx, exp, tok_idx);
+            rc = reparse_equality_expr(ctx, exp, tok_idx, depth);
             LY_CHECK_RET(rc);
         }
     }
@@ -2945,7 +2957,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
         LY_CHECK_ERR_GOTO(!expr->repeat, LOGMEM(ctx); ret = LY_EMEM, error);
 
         /* fill repeat */
-        LY_CHECK_ERR_GOTO(reparse_or_expr(ctx, expr, &tok_idx), ret = LY_EVALID, error);
+        LY_CHECK_ERR_GOTO(reparse_or_expr(ctx, expr, &tok_idx, 0), ret = LY_EVALID, error);
         if (expr->used > tok_idx) {
             LOGVAL(ctx, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                     &expr->expr[expr->tok_pos[tok_idx]]);

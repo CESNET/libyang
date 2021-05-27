@@ -87,6 +87,9 @@ struct lyd_node;
 #define LYXP_STRING_CAST_SIZE_START 64
 #define LYXP_STRING_CAST_SIZE_STEP 16
 
+/* Maximum number of nested expressions. */
+#define LYXP_MAX_BLOCK_DEPTH 100
+
 /**
  * @brief Tokens that can be in an XPath expression.
  */
