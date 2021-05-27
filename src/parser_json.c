@@ -864,6 +864,52 @@ lydjson_maintain_children(struct lyd_node_inner *parent, struct lyd_node **first
     }
 }
 
+/**
+ * @brief Wrapper for ::lyd_create_opaq().
+ *
+ * @param[in] lydctx JSON data parser context.
+ * @param[in] name Name of the opaq node to create.
+ * @param[in] name_len Length of the @p name string.
+ * @param[in] prefix Prefix of the opaq node to create.
+ * @param[in] prefix_len Length of the @p prefx string.
+ * @param[in] parent Data parent of the opaq node to create, can be NULL in case of top level,
+ * but must be set if @p first is not.
+ * @param[in,out] status_inner_p In case of processing JSON array, this parameter points to a standalone
+ * context status of the array content. Otherwise, it is supposed to be the same as @p status_p.
+ * @param[out] node_p Pointer to the created opaq node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len,
+        struct lyd_node_inner *parent, enum LYJSON_PARSER_STATUS *status_inner_p, struct lyd_node **node_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *value = NULL, *module_name;
+    size_t value_len = 0, module_name_len = 0;
+    ly_bool dynamic = 0;
+    uint32_t type_hint = 0;
+
+    if ((*status_inner_p != LYJSON_OBJECT) && (*status_inner_p != LYJSON_OBJECT_EMPTY)) {
+        /* prepare for creating opaq node with a value */
+        value = lydctx->jsonctx->value;
+        value_len = lydctx->jsonctx->value_len;
+        dynamic = lydctx->jsonctx->dynamic;
+        lydctx->jsonctx->dynamic = 0;
+
+        LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
+    }
+
+    /* create node */
+    lydjson_get_node_prefix(&parent->node, prefix, prefix_len, &module_name, &module_name_len);
+    ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name, module_name_len, value,
+            value_len, &dynamic, LY_VALUE_JSON, NULL, type_hint, node_p);
+    if (dynamic) {
+        free((char *)value);
+    }
+
+    return ret;
+}
+
 static LY_ERR lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_set *parsed);
 
@@ -893,28 +939,8 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
         enum LYJSON_PARSER_STATUS *status_inner_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *value = NULL, *module_name;
-    size_t value_len = 0, module_name_len = 0;
-    ly_bool dynamic = 0;
-    uint32_t type_hint = 0;
 
-    if ((*status_inner_p != LYJSON_OBJECT) && (*status_inner_p != LYJSON_OBJECT_EMPTY)) {
-        /* prepare for creating opaq node with a value */
-        value = lydctx->jsonctx->value;
-        value_len = lydctx->jsonctx->value_len;
-        dynamic = lydctx->jsonctx->dynamic;
-        lydctx->jsonctx->dynamic = 0;
-
-        LY_CHECK_RET(lydjson_value_type_hint(lydctx, status_inner_p, &type_hint));
-    }
-
-    /* create node */
-    lydjson_get_node_prefix(&parent->node, prefix, prefix_len, &module_name, &module_name_len);
-    ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name, module_name_len, value,
-            value_len, &dynamic, LY_VALUE_JSON, NULL, type_hint, node_p);
-    if (dynamic) {
-        free((char *)value);
-    }
+    ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p);
     LY_CHECK_RET(ret);
 
     if ((*status_p == LYJSON_OBJECT) || (*status_p == LYJSON_OBJECT_EMPTY)) {
