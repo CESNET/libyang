@@ -2,6 +2,7 @@
 
 [![BSD license](https://img.shields.io/badge/License-BSD-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build](https://github.com/CESNET/libyang/workflows/libyang%20CI/badge.svg)](https://github.com/CESNET/libyang/actions?query=workflow%3A%22libyang+CI%22)
+[![Docs](https://img.shields.io/badge/docs-link-blue)](https://netopeer.liberouter.org/doc/libyang/)
 [![codecov.io](https://codecov.io/github/CESNET/libyang/coverage.svg?branch=master)](https://codecov.io/github/CESNET/libyang?branch=master)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
@@ -60,18 +61,6 @@ $ cmake ..
 $ make
 # make install
 ```
-
-### Documentation
-
-The library documentation can be generated directly from the source codes using
-Doxygen tool:
-```
-$ make doc
-$ google-chrome ../doc/html/index.html
-```
-
-The documentation is also built hourly and available at
-[netopeer.liberouter.org](https://netopeer.liberouter.org/doc/libyang/master/).
 
 ### Useful CMake Options
 
