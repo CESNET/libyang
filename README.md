@@ -14,6 +14,12 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 If you are interested in future plans announcements, please subscribe to the
 [Future Plans issue](https://github.com/CESNET/libyang/issues/880).
 
+## Migration from libyang version 1 or older
+
+Look into the documentation and the section `Transition Manual`. That should help with basic migration and the
+ability to compile a project. But to actually make use of the new features, it is required to read through
+the whole documentation and the API.
+
 ## Provided Features
 
 * Parsing (and validating) schemas in YANG format.
