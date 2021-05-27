@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
         with:
-          ref: libyang2
+          ref: devel
 
       - name: Download Coverity Build Tool
         shell: bash

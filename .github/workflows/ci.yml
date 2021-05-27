@@ -2,10 +2,12 @@ name: libyang CI
 on:
   push:
     branches:
-      - libyang2
+      - master
+      - devel
   pull_request:
     branches:
-      - libyang2
+      - master
+      - devel
 
 jobs:
   build:
