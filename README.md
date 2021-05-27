@@ -11,6 +11,11 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 [Netopeer2](https://github.com/CESNET/Netopeer2), [sysrepo](https://github.com/sysrepo/sysrepo) and
 [FRRouting](https://github.com/frrouting/frr) projects.
 
+## Deprecation Notice
+
+libyang version 1 is deprecated and while still being supported, no new features or complex bugfixes
+will be implemented. It is recommended to switch to using version 2.
+
 ## Provided Features
 
 * Parsing (and validating) schemas in YANG format.
