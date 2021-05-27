@@ -32,16 +32,6 @@ will be implemented. It is recommended to switch to using version 2.
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
-## Branches
-
-The project uses 2 main branches `master` and `devel`. Other branches should not be cloned. In `master` there are files of the
-last official *release*. Any latest improvements and changes, which were tested at least briefly are found in `devel`. On every
-new *release*, `devel` is merged into `master`.
-
-This means that when only stable official releases are to be used, either `master` can be used or specific *releases* downloaded.
-If all the latest bugfixes should be applied, `devel` branch is the  one to be used. Note that whenever **a new issue is created**
-and it occurs on the `master` branch, the **first response will likely be** to use `devel` before any further provided support.
-
 ## Packages
 
 We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros.
