@@ -9,10 +9,28 @@ on:
       - master
       - devel
 
+env:
+  COVERITY_PROJECT: CESNET%2Flibyang
+
 jobs:
+  git-branch:
+    name: Get git branch
+    runs-on: ubuntu-18.04
+    outputs:
+      branch-name: ${{ steps.get-git-branch.outputs.branch-name }}
+    steps:
+      - id: get-git-branch
+        run: |
+          if ${{ github.event_name == 'push' }}
+            then export GIT_BRANCH=`echo ${{ github.ref }} | cut -d'/' -f 3`
+          else
+            export GIT_BRANCH=${{ github.base_ref }}
+          fi
+          echo "::set-output name=branch-name::$GIT_BRANCH"
   build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    needs: git-branch
     strategy:
       fail-fast: false
       matrix:
@@ -24,7 +42,10 @@ jobs:
             cc: "gcc",
             options: "-DENABLE_BUILD_TESTS=ON",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev shunit2"
+            packages: "libcmocka-dev shunit2",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
           }
           - {
             name: "Release, Ubuntu 18.04, clang",
@@ -33,7 +54,10 @@ jobs:
             cc: "clang",
             options: "-DENABLE_BUILD_TESTS=ON",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev shunit2"
+            packages: "libcmocka-dev shunit2",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
           }
           - {
             name: "Debug, Ubuntu 18.04, gcc",
@@ -42,7 +66,10 @@ jobs:
             cc: "gcc",
             options: "",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev valgrind shunit2"
+            packages: "libcmocka-dev valgrind shunit2",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
           }
           - {
             name: "Debug, Ubuntu 18.04, clang",
@@ -51,7 +78,10 @@ jobs:
             cc: "clang",
             options: "",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev valgrind shunit2"
+            packages: "libcmocka-dev valgrind shunit2",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
           }
           - {
             name: "Release, macOS 10.15, clang",
@@ -60,7 +90,10 @@ jobs:
             cc: "clang",
             options: "-DENABLE_BUILD_TESTS=ON",
             packager: "brew",
-            packages: "cmocka shunit2"
+            packages: "cmocka shunit2",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
           }
           - {
             name: "ASAN and UBSAN",
@@ -69,13 +102,60 @@ jobs:
             cc: "clang",
             options: "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -DENABLE_BUILD_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF",
             packager: "sudo apt-get",
-            packages: "libcmocka-dev"
+            packages: "libcmocka-dev",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
+          }
+          - {
+            name: "ABI Check",
+            os: "ubuntu-latest",
+            build-type: "ABICheck",
+            cc: "gcc",
+            options: "",
+            packages: "libcmocka-dev abi-dumper abi-compliance-checker",
+            snaps: "core universal-ctags",
+            make-prepend: "",
+            make-target: "abi-check"
+          }
+          - {
+            name: "Coverity",
+            os: "ubuntu-latest",
+            build-type: "Debug",
+            cc: "clang",
+            options: "",
+            packages: "",
+            snaps: "",
+            make-prepend: "cov-build --dir cov-int",
+            make-target: ""
+          }
+          - {
+            name: "Codecov",
+            os: "ubuntu-latest",
+            build-type: "Debug",
+            cc: "gcc",
+            options: "-DENABLE_COVERAGE=ON",
+            packages: "libcmocka-dev lcov",
+            snaps: "",
+            make-prepend: "",
+            make-target: ""
           }
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Uncrustify
+      - name: Deps-packages
+        shell: bash
+        run: |
+          ${{ matrix.config.packager }} update
+          if ${{ matrix.config.packages != '' }}
+            then ${{ matrix.config.packager }} install ${{ matrix.config.packages }}
+          fi
+          if ${{ matrix.config.snaps != '' }}
+            then sudo snap install ${{ matrix.config.snaps }}
+          fi
+
+      - name: Deps-uncrustify
         shell: bash
         working-directory: ${{ github.workspace }}
         run: |
@@ -88,11 +168,22 @@ jobs:
           sudo make install
         if: ${{ matrix.config.name == 'Debug, Ubuntu 18.04, gcc' }}
 
-      - name: Dependencies
+      - name: Deps-coverity
         shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
-          ${{ matrix.config.packager }} update
-          ${{ matrix.config.packager }} install ${{ matrix.config.packages }}
+          wget -q https://scan.coverity.com/download/linux64 --post-data "token=$TOKEN&project=$COVERITY_PROJECT" -O coverity-tools.tar.gz
+          mkdir coverity-tools
+          tar xzf coverity-tools.tar.gz --strip 1 -C coverity-tools
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+        if: ${{ matrix.config.name == 'Coverity' }}
+
+      - name: Deps-coverity-fix-permissions
+        run: |
+          chmod go-w $HOME
+          sudo chmod -R go-w /usr/share
+        if: ${{ matrix.config.name == 'Coverity' }}
 
       - name: Configure
         shell: bash
@@ -105,66 +196,34 @@ jobs:
       - name: Build
         shell: bash
         working-directory: ${{ github.workspace }}/build
-        run: make
+        run: |
+          export LC_ALL=C.UTF-8
+          export PATH=/snap/bin:${{ github.workspace }}/coverity-tools/bin:$PATH
+          ${{ matrix.config.make-prepend }} make ${{ matrix.config.make-target }}
 
       - name: Test
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure
 
-  abi:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Dependencies
-        shell: bash
-        run: |
-          sudo apt-get install abi-dumper abi-compliance-checker
-          sudo snap install core universal-ctags
-
-      - name: Configure
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir build
-          cd build
-          CC=gcc cmake -DCMAKE_BUILD_TYPE=ABICheck ..
-
-      - name: Build
+      - name: Upload to Coverity.com
         shell: bash
         working-directory: ${{ github.workspace }}/build
-        run: LC_ALL=C.UTF-8 PATH=/snap/bin:$PATH make abi-check
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Dependencies
-        shell: bash
         run: |
-          sudo apt-get install libcmocka-dev lcov
-
-      - name: Configure
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir build
-          cd build
-          CC=gcc cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON ..
-
-      - name: Build
-        shell: bash
-        working-directory: ${{ github.workspace }}/build
-        run: make
-
-      - name: Test
-        shell: bash
-        working-directory: ${{ github.workspace }}/build
-        run: ctest --output-on-failure
+          tar czvf libyang.tgz cov-int
+          curl \
+            --form token=$TOKEN \
+            --form email=mvasko@cesnet.cz \
+            --form file=libyang.tgz \
+            --form version="`./yanglint -v | cut -d\" \" -f2`" \
+            --form description="libyang YANG library" \
+            https://scan.coverity.com/builds?project=$COVERITY_PROJECT
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+        if: ${{ matrix.config.name == 'Coverity' && github.event_name == 'push' && needs.git-branch.outputs.branch-name == 'devel' }}
 
       - name: Upload to Codecov.io
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: bash <(curl -s https://codecov.io/bash)
+        if: ${{ matrix.config.name == 'Codecov' && github.event_name == 'push' }}
