@@ -5,6 +5,7 @@
 [![Docs](https://img.shields.io/badge/docs-link-blue)](https://netopeer.liberouter.org/doc/libyang/)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 [![codecov.io](https://codecov.io/github/CESNET/libyang/coverage.svg?branch=master)](https://codecov.io/github/CESNET/libyang?branch=master)
+[![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/libyang.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:libyang)
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
 
 libyang is a YANG data modelling language parser and toolkit written (and
