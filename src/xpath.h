@@ -326,6 +326,7 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
 #define LYXP_SCNODE_SCHEMA  LYS_FIND_XP_SCHEMA  /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
 #define LYXP_SCNODE_OUTPUT  LYS_FIND_XP_OUTPUT  /**< Search RPC/action output nodes instead of input ones. */
 #define LYXP_SCNODE_ALL     0x1C    /**< mask for all the LYXP_* values */
+#define LYXP_SKIP_EXPR      0x20    /**< The rest of the expression will not be evaluated (lazy evaluation) */
 
 /**
  * @brief Cast XPath set to another type.

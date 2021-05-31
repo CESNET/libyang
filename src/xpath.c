@@ -5376,9 +5376,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_
 static LY_ERR
 moveto_root(struct lyxp_set *set, uint32_t options)
 {
-    if (!set) {
-        return LY_SUCCESS;
-    }
+    assert(!(options & LYXP_SKIP_EXPR));
 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
@@ -5530,7 +5528,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const cha
     const struct lyd_node *siblings, *sub, *ctx_node;
     LY_ERR rc;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -5599,7 +5597,7 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
 
     assert(scnode && (!(scnode->nodetype & (LYS_LIST | LYS_LEAFLIST)) || predicates));
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         goto cleanup;
     }
 
@@ -5686,7 +5684,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     const struct lysc_node *iter, *start_parent;
     const struct lys_module *mod;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -5783,7 +5781,7 @@ moveto_node_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod, c
     struct lyxp_set ret_set;
     LY_ERR rc;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -5868,7 +5866,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod,
     const struct lysc_node *next, *elem, *start;
     LY_ERR rc;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -5957,14 +5955,15 @@ skip_children:
  * @param[in,out] set Set to use.
  * @param[in] mod Matching metadata module, NULL for any.
  * @param[in] ncname Matching metadata name in the dictionary, NULL for any.
+ * @param[in] options XPath options.
  * @return LY_ERR
  */
 static LY_ERR
-moveto_attr(struct lyxp_set *set, const struct lys_module *mod, const char *ncname)
+moveto_attr(struct lyxp_set *set, const struct lys_module *mod, const char *ncname, uint32_t options)
 {
     struct lyd_meta *sub;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -6070,7 +6069,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
     struct lyxp_set *set_all_desc = NULL;
     LY_ERR rc;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -6215,7 +6214,7 @@ moveto_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
     struct lyxp_set ret_set;
     LY_ERR rc;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -6275,7 +6274,7 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
     const struct lysc_node *iter, *start_parent;
     const struct lys_module *mod;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -6362,7 +6361,7 @@ moveto_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
     struct lyd_node *node, *new_node;
     enum lyxp_node_type new_type;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -6439,7 +6438,7 @@ moveto_scnode_parent(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
     const struct lysc_node *node, *new_node;
     enum lyxp_node_type new_type;
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         return LY_SUCCESS;
     }
 
@@ -6765,7 +6764,7 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @param[in] parent_pos_pred Whether parent predicate was a positional one.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
@@ -6781,13 +6780,13 @@ eval_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
     struct lyd_node *orig_parent;
 
     /* '[' */
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
 only_parse:
-        rc = eval_expr_select(exp, tok_idx, 0, NULL, options);
+        rc = eval_expr_select(exp, tok_idx, 0, set, options | LYXP_SKIP_EXPR);
         LY_CHECK_RET(rc);
     } else if (set->type == LYXP_SET_NODE_SET) {
         /* we (possibly) need the set sorted, it can affect the result (if the predicate result is a number) */
@@ -6902,7 +6901,7 @@ only_parse:
 
     /* ']' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
@@ -7129,7 +7128,7 @@ continue_search:
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] attr_axis Whether to search attributes or standard nodes.
  * @param[in] all_desc Whether to search all the descendants or children only.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7146,11 +7145,11 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
     enum ly_path_pred_type pred_type = 0;
     LY_ERR rc = LY_SUCCESS;
 
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
-    if (!set) {
+    if (options & LYXP_SKIP_EXPR) {
         goto moveto;
     }
 
@@ -7196,18 +7195,18 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
 moveto:
     /* move to the attribute(s), data node(s), or schema node(s) */
     if (attr_axis) {
-        if (set && (options & LYXP_SCNODE_ALL)) {
+        if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
             set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
         } else {
             if (all_desc) {
                 rc = moveto_attr_alldesc(set, moveto_mod, ncname_dict, options);
             } else {
-                rc = moveto_attr(set, moveto_mod, ncname_dict);
+                rc = moveto_attr(set, moveto_mod, ncname_dict, options);
             }
             LY_CHECK_GOTO(rc, cleanup);
         }
     } else {
-        if (set && (options & LYXP_SCNODE_ALL)) {
+        if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
             int64_t i;
 
             if (all_desc) {
@@ -7250,7 +7249,7 @@ moveto:
     }
 
 cleanup:
-    if (set) {
+    if (!(options & LYXP_SKIP_EXPR)) {
         lydict_remove(set->ctx, ncname_dict);
         ly_path_predicates_free(set->ctx, pred_type, predicates);
     }
@@ -7268,7 +7267,7 @@ cleanup:
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] attr_axis Whether to search attributes or standard nodes.
  * @param[in] all_desc Whether to search all the descendants or children only.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7282,12 +7281,11 @@ eval_node_type_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
     (void)attr_axis;
     (void)all_desc;
 
-    if (set) {
+    if (!(options & LYXP_SKIP_EXPR)) {
         assert(exp->tok_len[*tok_idx] == 4);
         if (set->type == LYXP_SET_SCNODE_SET) {
             set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
-            /* just for the debug message below */
-            set = NULL;
+            options |= LYXP_SKIP_EXPR;
         } else {
             if (!strncmp(&exp->expr[exp->tok_pos[*tok_idx]], "node", 4)) {
                 rc = xpath_node(NULL, 0, set, options);
@@ -7298,19 +7296,19 @@ eval_node_type_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
             LY_CHECK_RET(rc);
         }
     }
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* '(' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR1);
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* ')' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR2);
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
@@ -7333,7 +7331,7 @@ eval_node_type_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] all_desc Whether to search all the descendants or children only.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (YL_EINCOMPLETE on unresolved when)
  */
@@ -7353,7 +7351,7 @@ eval_relative_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, ly_b
             assert(exp->tok_len[*tok_idx] == 2);
             all_desc = 1;
         }
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
@@ -7362,7 +7360,7 @@ step:
         if (exp->tokens[*tok_idx] == LYXP_TOKEN_AT) {
             attr_axis = 1;
 
-            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                     lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
         } else {
@@ -7373,7 +7371,7 @@ step:
         switch (exp->tokens[*tok_idx]) {
         case LYXP_TOKEN_DOT:
             /* evaluate '.' */
-            if (set && (options & LYXP_SCNODE_ALL)) {
+            if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
                 rc = moveto_scnode_self(set, all_desc, options);
             } else {
                 rc = moveto_self(set, all_desc, options);
@@ -7386,13 +7384,13 @@ step:
 
         case LYXP_TOKEN_DDOT:
             /* evaluate '..' */
-            if (set && (options & LYXP_SCNODE_ALL)) {
+            if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
                 rc = moveto_scnode_parent(set, all_desc, options);
             } else {
                 rc = moveto_parent(set, all_desc, options);
             }
             LY_CHECK_RET(rc);
-            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                     lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
             break;
@@ -7410,7 +7408,7 @@ step:
             break;
 
         default:
-            LOGINT_RET(set ? set->ctx : NULL);
+            LOGINT_RET(set->ctx);
         }
     } while (!exp_check_token2(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH));
 
@@ -7424,7 +7422,7 @@ step:
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7433,7 +7431,7 @@ eval_absolute_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, stru
 {
     ly_bool all_desc;
 
-    if (set) {
+    if (!(options & LYXP_SKIP_EXPR)) {
         /* no matter what tokens follow, we need to be at the root */
         LY_CHECK_RET(moveto_root(set, options));
     }
@@ -7442,7 +7440,7 @@ eval_absolute_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, stru
     if (exp->tok_len[*tok_idx] == 1) {
         /* evaluate '/' - deferred */
         all_desc = 0;
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
@@ -7465,7 +7463,7 @@ eval_absolute_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, stru
         /* '//' RelativeLocationPath */
         /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
@@ -7482,7 +7480,7 @@ eval_absolute_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, stru
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7495,7 +7493,7 @@ eval_function_call(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_s
     uint16_t arg_count = 0, i;
     struct lyxp_set **args = NULL, **args_aux;
 
-    if (set) {
+    if (!(options & LYXP_SKIP_EXPR)) {
         /* FunctionName */
         switch (exp->tok_len[*tok_idx]) {
         case 3:
@@ -7614,19 +7612,19 @@ eval_function_call(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_s
         }
     }
 
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* '(' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR1);
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
     /* ( Expr ( ',' Expr )* )? */
     if (exp->tokens[*tok_idx] != LYXP_TOKEN_PAR2) {
-        if (set) {
+        if (!(options & LYXP_SKIP_EXPR)) {
             args = malloc(sizeof *args);
             LY_CHECK_ERR_GOTO(!args, LOGMEM(set->ctx); rc = LY_EMEM, cleanup);
             arg_count = 1;
@@ -7639,16 +7637,16 @@ eval_function_call(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_s
             rc = eval_expr_select(exp, tok_idx, 0, args[0], options);
             LY_CHECK_GOTO(rc, cleanup);
         } else {
-            rc = eval_expr_select(exp, tok_idx, 0, NULL, options);
+            rc = eval_expr_select(exp, tok_idx, 0, set, options | LYXP_SKIP_EXPR);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
     while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_COMMA)) {
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        if (set) {
+        if (!(options & LYXP_SKIP_EXPR)) {
             ++arg_count;
             args_aux = realloc(args, arg_count * sizeof *args);
             LY_CHECK_ERR_GOTO(!args_aux, arg_count--; LOGMEM(set->ctx); rc = LY_EMEM, cleanup);
@@ -7662,18 +7660,18 @@ eval_function_call(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_s
             rc = eval_expr_select(exp, tok_idx, 0, args[arg_count - 1], options);
             LY_CHECK_GOTO(rc, cleanup);
         } else {
-            rc = eval_expr_select(exp, tok_idx, 0, NULL, options);
+            rc = eval_expr_select(exp, tok_idx, 0, set, options | LYXP_SKIP_EXPR);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
 
     /* ')' */
     assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR2);
-    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
     ++(*tok_idx);
 
-    if (set) {
+    if (!(options & LYXP_SKIP_EXPR)) {
         /* evaluate function */
         rc = xpath_func(args, arg_count, set, options);
 
@@ -7746,7 +7744,7 @@ eval_number(struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, 
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7761,7 +7759,7 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
         /* '(' Expr ')' */
 
         /* '(' */
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
@@ -7771,7 +7769,7 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
 
         /* ')' */
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_PAR2);
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
@@ -7790,11 +7788,7 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
 
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
-        if (!set) {
-            rc = eval_function_call(exp, tok_idx, NULL, options);
-        } else {
-            rc = eval_function_call(exp, tok_idx, set, options);
-        }
+        rc = eval_function_call(exp, tok_idx, set, options);
         LY_CHECK_RET(rc);
 
         parent_pos_pred = 1;
@@ -7809,8 +7803,8 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
 
     case LYXP_TOKEN_LITERAL:
         /* Literal */
-        if (!set || (options & LYXP_SCNODE_ALL)) {
-            if (set) {
+        if ((options & LYXP_SKIP_EXPR) || (options & LYXP_SCNODE_ALL)) {
+            if (!(options & LYXP_SKIP_EXPR)) {
                 set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
             }
             eval_literal(exp, tok_idx, NULL);
@@ -7823,8 +7817,8 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
 
     case LYXP_TOKEN_NUMBER:
         /* Number */
-        if (!set || (options & LYXP_SCNODE_ALL)) {
-            if (set) {
+        if ((options & LYXP_SKIP_EXPR) || (options & LYXP_SCNODE_ALL)) {
+            if (!(options & LYXP_SKIP_EXPR)) {
                 set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
             }
             rc = eval_number(NULL, exp, tok_idx, NULL);
@@ -7860,7 +7854,7 @@ predicate:
             all_desc = 1;
         }
 
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
@@ -7879,7 +7873,7 @@ predicate:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7903,12 +7897,12 @@ eval_union_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat,
     /* ('|' PathExpr)* */
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_UNI);
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        if (!set) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_UNION, NULL, options);
+        if (options & LYXP_SKIP_EXPR) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_UNION, set, options);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -7940,7 +7934,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -7957,7 +7951,7 @@ eval_unary_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat,
     for (i = 0; i < repeat; ++i) {
         assert(!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_MATH) && (exp->expr[exp->tok_pos[*tok_idx]] == '-'));
 
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
     }
@@ -7965,7 +7959,7 @@ eval_unary_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat,
     rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_UNARY, set, options);
     LY_CHECK_RET(rc);
 
-    if (set && (repeat % 2)) {
+    if (!(options & LYXP_SKIP_EXPR) && (repeat % 2)) {
         if (options & LYXP_SCNODE_ALL) {
             warn_operands(set->ctx, set, NULL, 1, exp->expr, exp->tok_pos[this_op]);
         } else {
@@ -7988,7 +7982,7 @@ eval_unary_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat,
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -8016,12 +8010,12 @@ eval_multiplicative_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_
         this_op = *tok_idx;
 
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_MATH);
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        if (!set) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_MULTIPLICATIVE, NULL, options);
+        if (options & LYXP_SKIP_EXPR) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_MULTIPLICATIVE, set, options);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -8057,7 +8051,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -8088,8 +8082,8 @@ eval_additive_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repe
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        if (!set) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_ADDITIVE, NULL, options);
+        if (options & LYXP_SKIP_EXPR) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_ADDITIVE, set, options);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -8127,7 +8121,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -8154,12 +8148,12 @@ eval_relational_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t re
         this_op = *tok_idx;
 
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_COMP);
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        if (!set) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_RELATIONAL, NULL, options);
+        if (options & LYXP_SKIP_EXPR) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_RELATIONAL, set, options);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -8194,7 +8188,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -8221,12 +8215,12 @@ eval_equality_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repe
         this_op = *tok_idx;
 
         assert((exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_EQUAL) || (exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_NEQUAL));
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        if (!set) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_EQUALITY, NULL, options);
+        if (options & LYXP_SKIP_EXPR) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_EQUALITY, set, options);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -8262,7 +8256,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -8284,7 +8278,7 @@ eval_and_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, s
     LY_CHECK_GOTO(rc, cleanup);
 
     /* cast to boolean, we know that will be the final result */
-    if (set && (options & LYXP_SCNODE_ALL)) {
+    if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
     } else {
         lyxp_set_cast(set, LYXP_SET_BOOLEAN);
@@ -8293,13 +8287,13 @@ eval_and_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, s
     /* ('and' EqualityExpr)* */
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_LOG);
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || !set->val.bln ? "skipped" : "parsed"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, ((options & LYXP_SKIP_EXPR) || !set->val.bln ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         /* lazy evaluation */
-        if (!set || ((set->type == LYXP_SET_BOOLEAN) && !set->val.bln)) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_AND, NULL, options);
+        if ((options & LYXP_SKIP_EXPR) || ((set->type == LYXP_SET_BOOLEAN) && !set->val.bln)) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_AND, set, options | LYXP_SKIP_EXPR);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -8332,7 +8326,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] repeat How many times this expression is repeated.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
@@ -8354,7 +8348,7 @@ eval_or_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, st
     LY_CHECK_GOTO(rc, cleanup);
 
     /* cast to boolean, we know that will be the final result */
-    if (set && (options & LYXP_SCNODE_ALL)) {
+    if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
     } else {
         lyxp_set_cast(set, LYXP_SET_BOOLEAN);
@@ -8363,13 +8357,13 @@ eval_or_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repeat, st
     /* ('or' AndExpr)* */
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*tok_idx] == LYXP_TOKEN_OPER_LOG);
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || set->val.bln ? "skipped" : "parsed"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, ((options & LYXP_SKIP_EXPR) || set->val.bln ? "skipped" : "parsed"),
                 lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
         /* lazy evaluation */
-        if (!set || ((set->type == LYXP_SET_BOOLEAN) && set->val.bln)) {
-            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_OR, NULL, options);
+        if ((options & LYXP_SKIP_EXPR) || ((set->type == LYXP_SET_BOOLEAN) && set->val.bln)) {
+            rc = eval_expr_select(exp, tok_idx, LYXP_EXPR_OR, set, options | LYXP_SKIP_EXPR);
             LY_CHECK_GOTO(rc, cleanup);
             continue;
         }
@@ -8402,7 +8396,7 @@ cleanup:
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in] etype Expression type to evaluate.
- * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
