@@ -2355,7 +2355,7 @@ resolve_json_nodeid(const char *nodeid, const struct ly_ctx *ctx, const struct l
     } else {
         if (!mod_name) {
             str = strndup(nodeid, (name + nam_len) - nodeid);
-            LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_STR, nodeid);
+            LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_STR, str);
             free(str);
             return NULL;
         }
