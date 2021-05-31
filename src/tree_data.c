@@ -824,7 +824,7 @@ lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, con
 
     assert(ctx && name && name_len && format);
 
-    if (!value_len) {
+    if (!value_len && (!dynamic || !*dynamic)) {
         value = "";
     }
 
