@@ -215,7 +215,7 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
         len += cur_len;
     }
 
-    ((char *)*str)[len] = '\0';
+    (*str)[len] = '\0';
     return LY_SUCCESS;
 }
 
