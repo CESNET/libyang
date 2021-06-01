@@ -726,7 +726,7 @@ lyxp_set_free_content(struct lyxp_set *set)
     set->size = 0;
     set->ht = NULL;
     set->ctx_pos = 0;
-    set->ctx_pos = 0;
+    set->ctx_size = 0;
 }
 
 /**
