@@ -3679,7 +3679,7 @@ static LY_ERR
 xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uint32_t options)
 {
     if (arg_count || args) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGCOUNT, arg_count, "current()");
+        LOGVAL(set->ctx, LY_VCODE_XP_INARGCOUNT, arg_count, LY_PRI_LENSTR("current()"));
         return LY_EVALID;
     }
 
