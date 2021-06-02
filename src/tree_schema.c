@@ -832,7 +832,7 @@ lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_
     mod->implemented = 1;
 
     /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, 0, unres));
+    LY_CHECK_RET(lys_compile(mod, 0, 0, unres));
 
     /* new module is implemented and compiled */
     unres->full_compilation = 0;

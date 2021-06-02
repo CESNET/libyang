@@ -1554,7 +1554,7 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
         }
 
         /* recompile */
-        ret = lys_compile(mod, 0, &unres);
+        ret = lys_compile(mod, 0, 1, &unres);
         if (ret) {
             if (!log) {
                 LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
@@ -1610,7 +1610,7 @@ lys_has_compiled_import_r(struct lys_module *mod)
 }
 
 LY_ERR
-lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unres)
+lys_compile(struct lys_module *mod, uint32_t options, ly_bool recompile, struct lys_glob_unres *unres)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c = NULL;
@@ -1625,12 +1625,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
 
     /* if some previous module was not fully compiled, it is forbidden to compile another one (even though it
      * may be okay in some cases) */
-    assert(!unres->recompile);
-
-    if (!mod->implemented) {
-        /* just imported modules are not compiled */
-        return LY_SUCCESS;
-    }
+    assert(mod->implemented && !unres->recompile);
 
     sp = mod->parsed;
 
@@ -1642,20 +1637,26 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     ctx.path[0] = '/';
     ctx.unres = unres;
 
-    /* augments and deviations */
-    LY_CHECK_GOTO(ret = lys_precompile_augments_deviations(&ctx), cleanup);
+    /* skip compilation tasks that need to be performed only once for implemented modules */
+    if (!recompile) {
+        /* identities */
+        LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), cleanup);
 
-    if (!unres->recompile && !unres->full_compilation) {
-        /* check whether this module may reference any already-compiled modules */
-        if (lys_has_compiled_import_r(mod)) {
-            /* it may and we need even disabled nodes in those modules, recompile them */
-            unres->recompile = 1;
+        /* augments and deviations */
+        LY_CHECK_GOTO(ret = lys_precompile_augments_deviations(&ctx), cleanup);
+
+        if (!unres->recompile && !unres->full_compilation) {
+            /* check whether this module may reference any already-compiled modules */
+            if (lys_has_compiled_import_r(mod)) {
+                /* it may and we need even disabled nodes in those modules, recompile them */
+                unres->recompile = 1;
+            }
         }
-    }
 
-    if (unres->recompile) {
-        /* we need the context recompiled */
-        goto cleanup;
+        if (unres->recompile) {
+            /* we need the context recompiled */
+            goto cleanup;
+        }
     }
 
     /* now the actual compilation will take place */
@@ -1663,9 +1664,6 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
     mod_c->mod = mod;
-
-    /* identities */
-    LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), cleanup);
 
     /* compile augments and deviations of our module from other modules so they can be applied during compilation */
     LY_CHECK_GOTO(ret = lys_precompile_own_augments(&ctx), cleanup);

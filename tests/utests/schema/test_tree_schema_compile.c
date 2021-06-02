@@ -76,7 +76,7 @@ test_module(void **state)
 
     str = "module test {namespace urn:test; prefix t;"
             "feature f1;feature f2 {if-feature f1;}}";
-    assert_int_equal(LY_EINVAL, lys_compile(NULL, 0, NULL));
+    assert_int_equal(LY_EINVAL, lys_compile(NULL, 0, 0, NULL));
     CHECK_LOG("Invalid argument mod (lys_compile()).", NULL);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_SUCCESS, lys_create_module(UTEST_LYCTX, in, LYS_IN_YANG, 0, NULL, NULL, NULL, &unres, &mod));
@@ -84,12 +84,8 @@ test_module(void **state)
     lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
-    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0, &unres));
-    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
-    assert_null(mod->compiled);
     mod->implemented = 1;
-    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0, &unres));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0, 0, &unres));
     assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
     lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
     assert_non_null(mod->compiled);
@@ -2956,7 +2952,7 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa2 {namespace urn:aa2;prefix aa2;import a {prefix a;}"
             "deviation /a:top/a:a {deviate not-supported;}"
             "deviation /a:top/a:a {deviate add {default error;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Multiple deviations of \"/a:top/a:a\" with one of them being \"not-supported\".", "/");
+    CHECK_LOG_CTX("Multiple deviations of \"/a:top/a:a\" with one of them being \"not-supported\".", "/aa2:{deviation='/a:top/a:a'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;import a {prefix a;}"
             "deviation a:top/a:a {deviate not-supported;}}", LYS_IN_YANG, &mod));

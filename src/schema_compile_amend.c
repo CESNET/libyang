@@ -2058,6 +2058,7 @@ LY_ERR
 lys_precompile_own_deviations(struct lysc_ctx *ctx)
 {
     LY_ARRAY_COUNT_TYPE u, v, w;
+    struct lys_module *orig_cur_mod;
     const struct lys_module *dev_mod;
     struct lysc_deviation *dev;
     struct lysp_deviate *d;
@@ -2098,8 +2099,15 @@ lys_precompile_own_deviations(struct lysc_ctx *ctx)
             }
         }
         if (not_supported && (LY_ARRAY_COUNT(dev->devs) > 1)) {
+            orig_cur_mod = ctx->cur_mod;
+            ctx->cur_mod = dev->dev_pmods[u]->mod;
+            lysc_update_path(ctx, NULL, "{deviation}");
+            lysc_update_path(ctx, NULL, dev->nodeid->expr);
             LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                     "Multiple deviations of \"%s\" with one of them being \"not-supported\".", dev->nodeid->expr);
+            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(ctx, NULL, NULL);
+            ctx->cur_mod = orig_cur_mod;
             return LY_EVALID;
         }
 

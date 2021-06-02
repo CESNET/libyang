@@ -281,10 +281,11 @@ LY_ERR lys_recompile(struct ly_ctx *ctx, ly_bool log);
  * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
  * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] recompile Whether @p mod is compiled for the first time or only recompiled.
  * @param[in,out] unres Global unres structure for newly implemented modules. If `recompile` was set, @p mod
  * was actually not compiled because there is at least one compiled imported module that must be recompiled first.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-LY_ERR lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unres);
+LY_ERR lys_compile(struct lys_module *mod, uint32_t options, ly_bool recompile, struct lys_glob_unres *unres);
 
 #endif /* LY_SCHEMA_COMPILE_H_ */

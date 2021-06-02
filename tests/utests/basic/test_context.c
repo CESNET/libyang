@@ -273,7 +273,7 @@ test_models(void **state)
     assert_int_equal(LY_SUCCESS, lys_create_module(UTEST_LYCTX, in, LYS_IN_YANG, 0, NULL, NULL, NULL, &unres, &mod1));
     ly_in_free(in, 0);
     mod1->implemented = 1;
-    assert_int_equal(LY_SUCCESS, lys_compile(mod1, 0, &unres));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod1, 0, 0, &unres));
     assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
     lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
     assert_non_null(mod1->compiled);
