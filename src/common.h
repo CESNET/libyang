@@ -448,7 +448,7 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
 #define ly_strlen(STR) (STR ? strlen(STR) : 0)
 
 /**
- * @brief Compile-time strlen() for string contants.
+ * @brief Compile-time strlen() for string constants.
  *
  * Use to avoid magic numbers usage
  */
