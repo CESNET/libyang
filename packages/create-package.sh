@@ -50,6 +50,6 @@ fi
 cat ../$package.spec | sed -e '1,/%changelog/d' >>$package.spec
 
 # download source and update to opensuse build
-wget "https://github.com/CESNET/libyang/archive/master.tar.gz" -O master.tar.gz
+wget "https://github.com/CESNET/libyang/archive/libyang1.tar.gz" -O libyang1.tar.gz
 osc addremove
 osc commit -m travis-update

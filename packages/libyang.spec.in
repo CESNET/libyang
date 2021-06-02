@@ -3,7 +3,7 @@ Version: @LIBYANG_VERSION@
 Release: 0
 Summary: Libyang library
 Url: https://github.com/CESNET/libyang
-Source: %{url}/archive/master.tar.gz
+Source: %{url}/archive/libyang1.tar.gz
 Source1: @PACKAGE@.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
@@ -87,7 +87,7 @@ Helper Tools and examples for libyang library.
 @LIBYANG_DESCRIPTION@
 
 %prep
-%setup -n @PACKAGE@-master
+%setup -n @PACKAGE@-libyang1
 mkdir build
 
 %build

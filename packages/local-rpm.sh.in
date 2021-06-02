@@ -2,10 +2,10 @@
 
 LOCAL_LC_TIME=$LC_TIME
 export LC_TIME="en_US.UTF-8"
-cd "@PROJECT_SOURCE_DIR@" && tar --exclude="@EXCLUDE_BUILD_DIR@" --exclude=./.git* -zcvf "@PROJECT_BINARY_DIR@/master.tar.gz" . --transform 's/./@PACKAGE@-master/'
+cd "@PROJECT_SOURCE_DIR@" && tar --exclude="@EXCLUDE_BUILD_DIR@" --exclude=./.git* -zcvf "@PROJECT_BINARY_DIR@/libyang1.tar.gz" . --transform 's/./@PACKAGE@-libyang1/'
 cd @PROJECT_BINARY_DIR@
 mkdir -p rpms/{BUILD,RPMS,SOURCES,SPECS,SRPMS,tmp}
-mv master.tar.gz rpms/SOURCES
+mv libyang1.tar.gz rpms/SOURCES
 sed -e '7d' build-packages/@PACKAGE@.spec > rpms/SPECS/@PACKAGE@.spec
 git log -1 --date=format:'%a %b %d %Y' --pretty=format:"* %ad  %aN <%aE>" 2>/dev/null >>rpms/SPECS/@PACKAGE@.spec || printf "* `date +"%a %b %d %Y"`  ${USER} <${USER}@`hostname`>" >>rpms/SPECS/@PACKAGE@.spec
 echo " @LIBYANG_VERSION@" >>rpms/SPECS/@PACKAGE@.spec
