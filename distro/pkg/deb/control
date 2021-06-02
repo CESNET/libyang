@@ -8,8 +8,8 @@ Build-Depends: cmake,
                debhelper (>= 10),
                libpcre2-dev,
                pkg-config
-Vcs-Browser: https://github.com/CESNET/libyang/tree/libyang2
-Vcs-Git: https://github.com/CESNET/libyang.git -b libyang2
+Vcs-Browser: https://github.com/CESNET/libyang/tree/master
+Vcs-Git: https://github.com/CESNET/libyang.git
 
 Package: libyang2
 Depends: ${misc:Depends},
