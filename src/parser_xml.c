@@ -413,7 +413,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     struct lyd_attr *attr = NULL;
     const struct lysc_node *snode;
     struct lys_module *mod;
-    uint32_t prev_opts;
+    uint32_t prev_parse_opts, prev_int_opts;
     struct lyd_node *node = NULL, *anchor;
     void *val_prefix_data = NULL;
     LY_VALUE_FORMAT format;
@@ -638,16 +638,27 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             /* parser next */
             LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
 
-            /* parse any data tree with correct options */
-            prev_opts = lydctx->parse_opts;
+            /* update options so that generic data can be parsed */
+            prev_parse_opts = lydctx->parse_opts;
             lydctx->parse_opts &= ~LYD_PARSE_STRICT;
             lydctx->parse_opts |= LYD_PARSE_OPAQ;
+            prev_int_opts = lydctx->int_opts;
+            lydctx->int_opts |= LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF;
+
+            /* parse any data tree */
             anchor = NULL;
             while (xmlctx->status == LYXML_ELEMENT) {
                 ret = lydxml_subtree_r(lydctx, NULL, &anchor, NULL);
-                LY_CHECK_ERR_GOTO(ret, lydctx->parse_opts = prev_opts, error);
+                if (ret) {
+                    break;
+                }
             }
-            lydctx->parse_opts = prev_opts;
+
+            /* restore options */
+            lydctx->parse_opts = prev_parse_opts;
+            lydctx->int_opts = prev_int_opts;
+
+            LY_CHECK_GOTO(ret, error);
 
             /* create node */
             ret = lyd_create_any(snode, anchor, LYD_ANYDATA_DATATREE, 1, &node);
