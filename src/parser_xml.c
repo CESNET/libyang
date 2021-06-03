@@ -373,6 +373,12 @@ restore:
         xmlctx->name_len = pname_len;
         xmlctx->in->current = prev_current;
     } else if ((*snode)->nodetype & LYD_NODE_INNER) {
+        /* skip attributes */
+        while (xmlctx->status == LYXML_ATTRIBUTE) {
+            LY_CHECK_RET(lyxml_ctx_next(xmlctx));
+            LY_CHECK_RET(lyxml_ctx_next(xmlctx));
+        }
+
         /* if there is a non-WS value, it cannot be parsed as an inner node */
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (!xmlctx->ws_only) {
