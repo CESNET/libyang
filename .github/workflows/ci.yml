@@ -9,9 +9,6 @@ on:
       - master
       - devel
 
-env:
-  COVERITY_PROJECT: CESNET%2Flibyang
-
 jobs:
   git-branch:
     name: Get git branch
@@ -119,30 +116,6 @@ jobs:
             make-prepend: "",
             make-target: "abi-check"
           }
-          - {
-            name: "Coverity",
-            os: "ubuntu-latest",
-            build-type: "Debug",
-            cc: "clang",
-            options: "",
-            packager: "sudo apt-get",
-            packages: "",
-            snaps: "",
-            make-prepend: "cov-build --dir cov-int",
-            make-target: ""
-          }
-          - {
-            name: "Codecov",
-            os: "ubuntu-latest",
-            build-type: "Debug",
-            cc: "gcc",
-            options: "-DENABLE_COVERAGE=ON",
-            packager: "sudo apt-get",
-            packages: "libcmocka-dev lcov",
-            snaps: "",
-            make-prepend: "",
-            make-target: ""
-          }
 
     steps:
       - uses: actions/checkout@v2
@@ -171,17 +144,6 @@ jobs:
           sudo make install
         if: ${{ matrix.config.name == 'Debug, Ubuntu 18.04, gcc' }}
 
-      - name: Deps-coverity
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          wget -q https://scan.coverity.com/download/linux64 --post-data "token=$TOKEN&project=$COVERITY_PROJECT" -O coverity-tools.tar.gz
-          mkdir coverity-tools
-          tar xzf coverity-tools.tar.gz --strip 1 -C coverity-tools
-        env:
-          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
-        if: ${{ matrix.config.name == 'Coverity' }}
-
       - name: Configure
         shell: bash
         working-directory: ${{ github.workspace }}
@@ -202,25 +164,3 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure
-
-      - name: Upload to Coverity.com
-        shell: bash
-        working-directory: ${{ github.workspace }}/build
-        run: |
-          tar czvf libyang.tgz cov-int
-          curl \
-            --form token=$TOKEN \
-            --form email=mvasko@cesnet.cz \
-            --form file=libyang.tgz \
-            --form version="`./yanglint -v | cut -d\" \" -f2`" \
-            --form description="libyang YANG library" \
-            https://scan.coverity.com/builds?project=$COVERITY_PROJECT
-        env:
-          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
-        if: ${{ matrix.config.name == 'Coverity' && github.event_name == 'push' && needs.git-branch.outputs.branch-name == 'devel' }}
-
-      - name: Upload to Codecov.io
-        shell: bash
-        working-directory: ${{ github.workspace }}/build
-        run: bash <(curl -s https://codecov.io/bash)
-        if: ${{ matrix.config.name == 'Codecov' && github.event_name == 'push' }}
