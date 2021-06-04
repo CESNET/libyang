@@ -81,8 +81,6 @@ jobs:
         if: ${{ matrix.config.name == 'Coverity' }}
 
       - name: Deps-coverity-perm-fix
-        shell: bash
-        working-directory: ${{ github.workspace }}
         run: |
           chmod go-w $HOME
           sudo chmod -R go-w /usr/share
