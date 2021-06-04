@@ -15,6 +15,16 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 If you are interested in future plans announcements, please subscribe to the
 [Future Plans issue](https://github.com/CESNET/libyang/issues/880).
 
+## Branches
+
+The project uses 2 main branches `master` and `devel`. Other branches should not be cloned. In `master` there are files of the
+last official *release*. Any latest improvements and changes, which were tested at least briefly are found in `devel`. On every
+new *release*, `devel` is merged into `master`.
+
+This means that when only stable official releases are to be used, either `master` can be used or specific *releases* downloaded.
+If all the latest bugfixes should be applied, `devel` branch is the  one to be used. Note that whenever **a new issue is created**
+and it occurs on the `master` branch, the **first response will likely be** to use `devel` before any further provided support.
+
 ## Migration from libyang version 1 or older
 
 Look into the documentation and the section `Transition Manual`. That should help with basic migration and the
