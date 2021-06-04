@@ -80,6 +80,14 @@ jobs:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
         if: ${{ matrix.config.name == 'Coverity' }}
 
+      - name: Deps-coverity-perm-fix
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod go-w $HOME
+          sudo chmod -R go-w /usr/share
+        if: ${{ matrix.config.name == 'Coverity' }}
+
       - name: Configure
         shell: bash
         working-directory: ${{ github.workspace }}
