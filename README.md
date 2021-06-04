@@ -209,9 +209,11 @@ $ make test
 
 ### Code Coverage
 
-Based on the tests run, it is possible to generate code coverage report via the
-make's `coverage` target:
+Based on the tests run, it is possible to generate code coverage report. But
+it must be enabled and these commands are needed to generate the report:
 ```
+$ cmake -DENABLE_COVERAGE=ON ..
+$ make
 $ make coverage
 ```
 

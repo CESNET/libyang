@@ -16,6 +16,7 @@ include(UseCompat)
 include(ABICheck)
 include(SourceFormat)
 include(GenDoc)
+include(GenCoverage)
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
@@ -215,42 +216,29 @@ set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE 
 set(PLUGINS_DIR_EXTENSIONS "${PLUGINS_DIR}/extensions" CACHE STRING "Directory with libyang user extensions plugins")
 set(PLUGINS_DIR_TYPES "${PLUGINS_DIR}/types" CACHE STRING "Directory with libyang user types plugins")
 
-if(ENABLE_COVERAGE)
-    if(NOT ENABLE_BUILD_TESTS)
-        message(WARNING "you cannot generage coverage when tests are disabled. Enable test by additing parameter -DENABLE_BUILD_TESTS=ON or run cmake in some debug mode")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_GCOV NAMES gcov)
-    if(NOT PATH_GCOV)
-        message(WARNING "'gcov' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_LCOV NAMES lcov)
-    if(NOT PATH_LCOV)
-        message(WARNING "'lcov' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_GENHTML NAMES genhtml)
-    if(NOT PATH_GENHTML)
-        message(WARNING "'genhtml' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    if(NOT CMAKE_COMPILER_IS_GNUCC)
-        message(WARNING "Compiler is not gcc! Coverage may break the tests!")
-    endif()
-
-    if(ENABLE_COVERAGE)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
-    endif()
-endif()
-
 # by default build shared library
 # static build requires static libpcre2 library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
+
+#
+# checks
+#
+if(ENABLE_BUILD_TESTS)
+    find_package(CMocka 1.0.0)
+    if(NOT CMOCKA_FOUND)
+        message(STATUS "Disabling tests because of missing CMocka")
+        set(ENABLE_BUILD_TESTS OFF)
+    endif()
+endif(ENABLE_BUILD_TESTS)
+
+if(ENABLE_COVERAGE)
+    gen_coverage_enable(${ENABLE_BUILD_TESTS})
+endif()
+
+if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+    # enable before adding tests to let them detect that format checking is available - one of the tests is format checking
+    source_format_enable()
+endif()
 
 # generate files
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
@@ -325,8 +313,8 @@ if(PKG_CONFIG_FOUND)
     # check that pkg-config includes the used path
     execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
     if(RETURN EQUAL 0)
-	string(STRIP "${PC_PATH}" PC_PATH)
-	set(PC_PATH "${PC_PATH}:$ENV{PKG_CONFIG_PATH}")
+    string(STRIP "${PC_PATH}" PC_PATH)
+    set(PC_PATH "${PC_PATH}:$ENV{PKG_CONFIG_PATH}")
         string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" SUBSTR "${PC_PATH}")
         string(LENGTH "${SUBSTR}" SUBSTR_LEN)
         if(SUBSTR_LEN EQUAL 0)
@@ -335,28 +323,14 @@ if(PKG_CONFIG_FOUND)
     endif()
 endif()
 
-if(ENABLE_BUILD_TESTS)
-    find_package(CMocka 1.0.0)
-endif(ENABLE_BUILD_TESTS)
-
-if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
-    # enable before adding tests to let them detect that format checking is available - one of the tests is format checking
-    source_format_enable()
-endif()
-
 # tests
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)
 endif()
 
 if(ENABLE_BUILD_TESTS)
-    if(CMOCKA_FOUND)
-        enable_testing()
-        add_subdirectory(tests)
-    else()
-        message(STATUS "Disabling tests because of missing CMocka")
-        set(ENABLE_BUILD_TESTS OFF)
-    endif()
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 if(ENABLE_FUZZ_TARGETS)
@@ -368,6 +342,9 @@ if(ENABLE_FUZZ_TARGETS)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
     endif()
 endif()
+
+# create coverage target for generating coverage reports
+gen_coverage("utest_.*" "utest_.*_valgrind")
 
 # tools - yanglint, yangre
 add_subdirectory(tools)
