@@ -223,6 +223,21 @@ option(ENABLE_STATIC "Build static (.a) library" OFF)
 #
 # checks
 #
+if(ENABLE_VALGRIND_TESTS AND ENABLE_STATIC)
+    message(WARNING "Can't run C valgrind tests on a static build")
+    set(ENABLE_VALGRIND_TESTS OFF)
+endif()
+
+if(ENABLE_VALGRIND_TESTS)
+    find_program(VALGRIND_FOUND valgrind)
+    if(NOT VALGRIND_FOUND)
+        message(WARNING "valgrind executable not found! Disabling memory leaks tests.")
+        set(ENABLE_VALGRIND_TESTS OFF)
+    else()
+        set(ENABLE_BUILD_TESTS ON)
+    endif()
+endif()
+
 if(ENABLE_BUILD_TESTS)
     find_package(CMocka 1.0.0)
     if(NOT CMOCKA_FOUND)
@@ -324,10 +339,6 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 # tests
-if(ENABLE_VALGRIND_TESTS)
-    set(ENABLE_BUILD_TESTS ON)
-endif()
-
 if(ENABLE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
