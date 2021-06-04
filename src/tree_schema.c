@@ -4723,6 +4723,8 @@ lys_enable_deviations(struct lys_module *module)
     const char *ptr;
     struct unres_schema *unres;
 
+    module = lys_main_module(module);
+
     if (module->deviated) {
         unres = calloc(1, sizeof *unres);
         LY_CHECK_ERR_RETURN(!unres, LOGMEM(module->ctx), );
@@ -4763,6 +4765,8 @@ lys_disable_deviations(struct lys_module *module)
     const struct lys_module *mod;
     const char *ptr;
     struct unres_schema *unres;
+
+    module = lys_main_module(module);
 
     if (module->deviated) {
         unres = calloc(1, sizeof *unres);
