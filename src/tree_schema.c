@@ -1467,11 +1467,10 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
 cleanup:
     if (ret) {
         lys_compile_unres_glob_revert(ctx, &unres);
+    } else if (module) {
+        *module = mod;
     }
     lys_compile_unres_glob_erase(ctx, &unres);
-    if (ret && module) {
-        *module = NULL;
-    }
     return ret;
 }
 
