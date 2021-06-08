@@ -2176,12 +2176,14 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lysp_module *mod_p;
+    struct lysp_module *orig_pmod;
     struct lys_module *mod;
     struct lysp_submodule *submod;
     struct lysp_node_augment *aug;
     uint32_t idx;
     struct ly_set mod_set = {0}, set = {0};
 
+    orig_pmod = ctx->pmod;
     mod_p = ctx->cur_mod->parsed;
 
     LY_LIST_FOR(mod_p->augments, aug) {
@@ -2221,6 +2223,8 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     /* the same for augments and deviations in submodules */
     LY_ARRAY_FOR(mod_p->includes, v) {
         submod = mod_p->includes[v].submodule;
+        ctx->pmod = (struct lysp_module *)submod;
+
         LY_LIST_FOR(submod->augments, aug) {
             lysc_update_path(ctx, NULL, "{augment}");
             lysc_update_path(ctx, NULL, aug->nodeid);
@@ -2283,6 +2287,7 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     }
 
 cleanup:
+    ctx->pmod = orig_pmod;
     ly_set_erase(&set, NULL);
     ly_set_erase(&mod_set, NULL);
     return ret;
