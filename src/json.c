@@ -322,6 +322,61 @@ lyjson_string(struct lyjson_ctx *jsonctx)
 }
 
 /**
+ * @brief Calculate how many @p c characters there are in a row.
+ *
+ * @param[in] str Count from this position.
+ * @param[in] end Position after the last checked character.
+ * @param[in] c Checked character.
+ * @param[in] backwards Set to 1, if to proceed from end-1 to str.
+ * @return Number of characters in a row.
+ */
+static uint32_t
+lyjson_count_in_row(const char *str, const char *end, char c, ly_bool backwards)
+{
+    uint32_t cnt;
+
+    assert(str && end);
+
+    if (str >= end) {
+        return 0;
+    }
+
+    if (!backwards) {
+        for (cnt = 0; (str != end) && (*str == c); ++str, ++cnt) {}
+    } else {
+        --end;
+        --str;
+        for (cnt = 0; (str != end) && (*end == c); --end, ++cnt) {}
+    }
+
+    return cnt;
+}
+
+/**
+ * @brief Check if the number can be shortened to zero.
+ *
+ * The input number must be syntactically valid.
+ *
+ * @param[in] in Start of input string;
+ * @param[in] end End of input string;
+ * @return 1 if number is zero, otherwise 0.
+ */
+static ly_bool
+lyjson_number_is_zero(const char *in, const char *end)
+{
+    assert(end >= in);
+
+    if ((in[0] == '-') || (in[0] == '+')) {
+        in++;
+    }
+    if ((in[0] == '0') && (in[1] == '.')) {
+        in += 2;
+    }
+
+    return lyjson_count_in_row(in, end, '0', 0) == end - in;
+}
+
+/**
  * @brief Allocate buffer for number in string format.
  *
  * @param[in] jsonctx JSON context.
@@ -331,25 +386,264 @@ lyjson_string(struct lyjson_ctx *jsonctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyjson_get_buffer_for_number(struct lyjson_ctx *jsonctx, size_t num_len, char **buffer)
+lyjson_get_buffer_for_number(const struct ly_ctx *ctx, uint32_t num_len, char **buffer)
 {
     *buffer = NULL;
 
-    LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(jsonctx->ctx, LYVE_SEMANTICS,
+    LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(ctx, LYVE_SEMANTICS,
             "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit."), LY_EVALID);
 
-    /* allocate buffer for the result (add terminating NULL-byte) */
+    /* allocate buffer for the result (add NULL-byte) */
     *buffer = malloc(num_len + 1);
-    LY_CHECK_ERR_RET(!(*buffer), LOGMEM(jsonctx->ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!(*buffer), LOGMEM(ctx), LY_EMEM);
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Copy the 'numeric part' (@p num) except its decimal point
+ * (@p dec_point) and insert the new decimal point (@p dp_position)
+ * only if it is to be placed in the 'numeric part' range (@p num).
+ *
+ * @param[in] num Begin of the 'numeric part'.
+ * @param[in] num_len Length of the 'numeric part'.
+ * @param[in] dec_point Pointer to the old decimal point.
+ * If it has a NULL value, it is ignored.
+ * @param[in] dp_position Position of the new decimal point.
+ * If it has a negative value, it is ignored.
+ * @param[out] dst Memory into which the copied result is written.
+ * @return Number of characters written to the @p dst.
+ */
+static uint32_t
+lyjson_exp_number_copy_num_part(const char *num, uint32_t num_len,
+        char *dec_point, int32_t dp_position, char *dst)
+{
+    int32_t dec_point_idx;
+    int32_t n, d;
+
+    assert(num && dst);
+
+    dec_point_idx = dec_point ? dec_point - num : INT32_MAX;
+    assert((dec_point_idx >= 0) && (dec_point_idx != dp_position));
+
+    for (n = 0, d = 0; (uint32_t)n < num_len; n++) {
+        if (n == dec_point_idx) {
+            continue;
+        } else if (d == dp_position) {
+            dst[d++] = '.';
+            dst[d++] = num[n];
+        } else {
+            dst[d++] = num[n];
+        }
+    }
+
+    return d;
+}
+
+/**
+ * @brief Convert JSON number with exponent into the representation
+ * used by YANG.
+ *
+ * The input numeric string must be syntactically valid. Also, before
+ * calling this function, checks should be performed using the
+ * ::lyjson_number_is_zero().
+ *
+ * @param[in] ctx Context for the error message.
+ * @param[in] in Beginning of the string containing the number.
+ * @param[in] exponent Pointer to the letter E/e.
+ * @param[in] total_len Total size of the input number.
+ * @param[out] res Conversion result.
+ * @param[out] res_len Length of the result.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent,
+        size_t total_len, char **res, size_t *res_len)
+{
+
+#define MAYBE_WRITE_MINUS(ARRAY, INDEX, FLAG) \
+        if (FLAG) { \
+            ARRAY[INDEX++] = '-'; \
+        }
+
+/* Length of leading zero followed by the decimal point. */
+#define LEADING_ZERO 1
+
+/* Flags for the ::lyjson_count_in_row() */
+#define FORWARD 0
+#define BACKWARD 1
+
+    /* Buffer where the result is stored. */
+    char *buf;
+    /* Size without space for terminating NULL-byte. */
+    uint32_t buf_len;
+    /* Index to buf. */
+    uint32_t i = 0;
+    /* A 'numeric part' doesn't contain a minus sign or an leading zero.
+     * For example, in 0.45, there is the leading zero.
+     */
+    const char *num;
+    /* Length of the 'numeric part' ends before E/e. */
+    uint32_t num_len;
+    /* Position of decimal point in the num. */
+    char *dec_point;
+    /* Final position of decimal point in the buf. */
+    int32_t dp_position;
+    /* Exponent as integer. */
+    long int e_val;
+    /* Byte for the decimal point. */
+    int8_t dot;
+    /* Required additional byte for the minus sign. */
+    uint8_t minus;
+    /* The number of zeros. */
+    long zeros;
+    /* If the number starts with leading zero followed by the decimal point. */
+    ly_bool leading_zero;
+
+    assert(ctx && in && exponent && res && res_len && (total_len > 2));
+    assert((in < exponent) && ((*exponent == 'e') || (*exponent == 'E')));
+
+    /* Convert exponent. */
+    errno = 0;
+    e_val = strtol(exponent + 1, NULL, LY_BASE_DEC);
+    if (errno) {
+        LOGVAL(ctx, LYVE_SEMANTICS,
+                "Exponent out-of-bounds in a JSON Number value (%.*s).",
+                total_len, in);
+        return LY_EVALID;
+    }
+
+    minus = in[0] == '-';
+    if (in[minus] == '0') {
+        assert(in[minus + 1] == '.');
+        leading_zero = 1;
+        /* The leading zero has been found, it will be skipped. */
+        num = &in[minus + 1];
+    } else {
+        leading_zero = 0;
+        /* Set to the first number. */
+        num = &in[minus];
+    }
+    num_len = exponent - num;
+
+    /* Find the location of the decimal points. */
+    dec_point = ly_strnchr(num, '.', num_len);
+    dp_position = dec_point ?
+            dec_point - num + e_val :
+            num_len + e_val;
+
+    /* Remove zeros after the decimal point from the end of
+     * the 'numeric part' because these are useless.
+     * (For example, in 40.001000 these are the last 3).
+     */
+    num_len -= dp_position > 0 ?
+            lyjson_count_in_row(num + dp_position - 1, exponent, '0', BACKWARD) :
+            lyjson_count_in_row(num, exponent, '0', BACKWARD);
+
+    /* Decide what to do with the dot from the 'numeric part'. */
+    if (dec_point && ((int32_t)(num_len - 1) == dp_position)) {
+        /* Decimal point in the last place is useless. */
+        dot = -1;
+    } else if (dec_point) {
+        /* Decimal point is shifted. */
+        dot = 0;
+    } else {
+        /* Additional byte for the decimal point is requred. */
+        dot = 1;
+    }
+
+    /* Final composition of the result. */
+    if (dp_position <= 0) {
+        /* Adding decimal point before the integer with adding additional zero(s). */
+
+        zeros = labs(dp_position);
+        buf_len = minus + LEADING_ZERO + dot + zeros + num_len;
+        LY_CHECK_RET(lyjson_get_buffer_for_number(ctx, buf_len, &buf));
+        MAYBE_WRITE_MINUS(buf, i, minus);
+        buf[i++] = '0';
+        buf[i++] = '.';
+        memset(buf + i, '0', zeros);
+        i += zeros;
+        dp_position = -1;
+        lyjson_exp_number_copy_num_part(num, num_len, dec_point, dp_position, buf + i);
+    } else if (leading_zero && (dp_position < (ssize_t)num_len)) {
+        /* Insert decimal point between the integer's digits. */
+
+        /* Set a new range of 'numeric part'. Old decimal point is skipped. */
+        num++;
+        num_len--;
+        dp_position--;
+        /* Get the number of useless zeros between the old
+         * and new decimal point. For example, in the number 0.005E1,
+         * there is one useless zero.
+         */
+        zeros = lyjson_count_in_row(num, num + dp_position + 1, '0', FORWARD);
+        /* If the new decimal point will be in the place of the first non-zero subnumber. */
+        if (zeros == (dp_position + 1)) {
+            /* keep one zero as leading zero */
+            zeros--;
+            /* new decimal point will be behind the leading zero */
+            dp_position = 1;
+            dot = 1;
+        } else {
+            dot = 0;
+        }
+        buf_len = minus + dot + (num_len - zeros);
+        LY_CHECK_RET(lyjson_get_buffer_for_number(ctx, buf_len, &buf));
+        MAYBE_WRITE_MINUS(buf, i, minus);
+        /* Skip useless zeros and copy. */
+        lyjson_exp_number_copy_num_part(num + zeros, num_len - zeros, NULL, dp_position, buf + i);
+    } else if (dp_position < (ssize_t)num_len) {
+        /* Insert decimal point between the integer's digits. */
+
+        buf_len = minus + dot + num_len;
+        LY_CHECK_RET(lyjson_get_buffer_for_number(ctx, buf_len, &buf));
+        MAYBE_WRITE_MINUS(buf, i, minus);
+        lyjson_exp_number_copy_num_part(num, num_len, dec_point, dp_position, buf + i);
+    } else if (leading_zero) {
+        /* Adding decimal point after the decimal value make the integer result. */
+
+        /* Set a new range of 'numeric part'. Old decimal point is skipped. */
+        num++;
+        num_len--;
+        /* Get the number of useless zeros. */
+        zeros = lyjson_count_in_row(num, num + num_len, '0', FORWARD);
+        buf_len = minus + dp_position - zeros;
+        LY_CHECK_RET(lyjson_get_buffer_for_number(ctx, buf_len, &buf));
+        MAYBE_WRITE_MINUS(buf, i, minus);
+        /* Skip useless zeros and copy. */
+        i += lyjson_exp_number_copy_num_part(num + zeros, num_len - zeros, NULL, dp_position, buf + i);
+        /* Add multiples of ten behind the 'numeric part'. */
+        memset(buf + i, '0', buf_len - i);
+    } else {
+        /* Adding decimal point after the decimal value make the integer result. */
+
+        buf_len = minus + dp_position;
+        LY_CHECK_RET(lyjson_get_buffer_for_number(ctx, buf_len, &buf));
+        MAYBE_WRITE_MINUS(buf, i, minus);
+        i += lyjson_exp_number_copy_num_part(num, num_len, dec_point, dp_position, buf + i);
+        /* Add multiples of ten behind the 'numeric part'. */
+        memset(buf + i, '0', buf_len - i);
+    }
+
+    buf[buf_len] = '\0';
+    *res = buf;
+    *res_len = buf_len;
+
+#undef MAYBE_WRITE_MINUS
+#undef LEADING_ZERO
+#undef FORWARD
+#undef BACKWARD
+
     return LY_SUCCESS;
 }
 
 static LY_ERR
 lyjson_number(struct lyjson_ctx *jsonctx)
 {
-    size_t offset = 0, exponent = 0;
-    const char *in = jsonctx->in->current;
+    size_t offset = 0, num_len;
+    const char *in = jsonctx->in->current, *exponent = NULL;
     uint8_t minus = 0;
+    char *num;
 
     if (in[offset] == '-') {
         ++offset;
@@ -384,7 +678,8 @@ invalid_character:
     }
 
     if ((in[offset] == 'e') || (in[offset] == 'E')) {
-        exponent = offset++;
+        exponent = &in[offset];
+        ++offset;
         if ((in[offset] == '+') || (in[offset] == '-')) {
             ++offset;
         }
@@ -396,117 +691,16 @@ invalid_character:
         }
     }
 
-    if (exponent) {
-        /* convert JSON number with exponent into the representation used by YANG */
-        long int  e_val;
-        char *ptr, *dec_point, *num;
-        const char *e_ptr = &in[exponent + 1];
-        size_t num_len, i;
-        int64_t dp_position; /* final position of the deciaml point */
-
-        errno = 0;
-        e_val = strtol(e_ptr, &ptr, LY_BASE_DEC);
-        if (errno) {
-            LOGVAL(jsonctx->ctx, LYVE_SEMANTICS, "Exponent out-of-bounds in a JSON Number value (%.*s).",
-                    (int)(offset - minus - (e_ptr - in)), e_ptr);
-            return LY_EVALID;
-        }
-
-        if (!e_val) {
-            /* exponent is zero, so just cut the part with the exponent */
-            num_len = exponent;
-            LY_CHECK_RET(lyjson_get_buffer_for_number(jsonctx, num_len, &num));
-            memcpy(num, in, num_len);
-            num[num_len] = '\0';
-            goto store_exp_number;
-        }
-
-        dec_point = ly_strnchr(in, '.', exponent);
-        if (!dec_point) {
-            /* value is integer, we are just ... */
-            if (e_val >= 0) {
-                /* adding zeros at the end */
-                num_len = exponent + e_val;
-                dp_position = num_len; /* decimal point is behind the actual value */
-            } else if ((size_t)labs(e_val) < (exponent - minus)) {
-                /* adding decimal point between the integer's digits */
-                num_len = exponent + 1;
-                dp_position = exponent + e_val;
-            } else {
-                /* adding decimal point before the integer with adding leading zero(s) */
-                num_len = labs(e_val) + 2 + minus;
-                dp_position = exponent + e_val;
-            }
-            dp_position -= minus;
-        } else {
-            /* value is decimal, we are moving the decimal point */
-            dp_position = dec_point - in + e_val - minus;
-            if (dp_position > (ssize_t)exponent) {
-                /* moving decimal point after the decimal value make the integer result */
-                num_len = dp_position;
-            } else if (dp_position < 0) {
-                /* moving decimal point before the decimal value requires additional zero(s)
-                 * (decimal point is already count in exponent value) */
-                num_len = exponent + labs(dp_position) + 1;
-            } else if (dp_position == 0) {
-                /* moving the decimal point exactly to the beginning will cause a zero character to be added. */
-                num_len = exponent + 1;
-            } else {
-                /* moving decimal point just inside the decimal value does not make any change in length */
-                num_len = exponent;
-            }
-        }
-
-        LY_CHECK_RET(lyjson_get_buffer_for_number(jsonctx, num_len, &num));
-
-        /* compose the resulting vlaue */
-        i = 0;
-        if (minus) {
-            num[i++] = '-';
-        }
-        /* add leading zeros */
-        if (dp_position <= 0) {
-            num[i++] = '0';
-            num[i++] = '.';
-            for ( ; dp_position; dp_position++) {
-                num[i++] = '0';
-            }
-        }
-        /* copy the value */
-        ly_bool dp_placed;
-        size_t j;
-        for (dp_placed = dp_position ? 0 : 1, j = minus; j < exponent; j++) {
-            if (in[j] == '.') {
-                continue;
-            }
-            if (!dp_placed) {
-                if (!dp_position) {
-                    num[i++] = '.';
-                    dp_placed = 1;
-                } else {
-                    dp_position--;
-                    if (in[j] == '0') {
-                        num_len--;
-                        continue;
-                    }
-                }
-            }
-
-            num[i++] = in[j];
-        }
-        /* trailing zeros */
-        while (dp_position--) {
-            num[i++] = '0';
-        }
-        /* terminating NULL byte */
-        num[i] = '\0';
-
-store_exp_number:
-        /* store the modified number */
+    if (lyjson_number_is_zero(in, exponent ? exponent : &in[offset])) {
+        lyjson_ctx_set_value(jsonctx, in, minus + 1, 0);
+    } else if (exponent && lyjson_number_is_zero(exponent + 1, &in[offset])) {
+        lyjson_ctx_set_value(jsonctx, in, exponent - in, 0);
+    } else if (exponent) {
+        LY_CHECK_RET(lyjson_exp_number(jsonctx->ctx, in, exponent, offset, &num, &num_len));
         lyjson_ctx_set_value(jsonctx, num, num_len, 1);
     } else {
         /* store the number */
-        lyjson_ctx_set_value(jsonctx, jsonctx->in->current, offset, 0);
+        lyjson_ctx_set_value(jsonctx, in, offset, 0);
     }
     ly_in_skip(jsonctx->in, offset);
 
