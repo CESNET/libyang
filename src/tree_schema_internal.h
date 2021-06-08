@@ -566,9 +566,8 @@ LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, l
  * @param[out] submodule Parsed submodule.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
-        struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
-        void *check_data, struct lysp_submodule **submodule);
+LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+        lys_custom_check custom_check, void *check_data, struct lysp_submodule **submodule);
 
 /**
  * @brief Fill filepath value if available in input handler @p in

@@ -647,8 +647,8 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_check_data check_data = {0};
 
-    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
-            &filepath, &format));
+    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
+            revision, &filepath, &format));
     if (!filepath) {
         if (required) {
             LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
@@ -731,17 +731,15 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
         /* module not present in the context, get the input data and parse it */
         if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-            if (ctx->imp_clb) {
-                if (ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data,
-                        &format, &module_data, &module_data_free) == LY_SUCCESS) {
-                    LY_CHECK_RET(ly_in_new_memory(module_data, &in));
-                    check_data.name = name;
-                    check_data.revision = revision;
-                    lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data, features, unres, mod);
-                    ly_in_free(in, 0);
-                    if (module_data_free) {
-                        module_data_free((void *)module_data, ctx->imp_clb_data);
-                    }
+            if (ctx->imp_clb && !ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data,
+                    &module_data_free)) {
+                LY_CHECK_RET(ly_in_new_memory(module_data, &in));
+                check_data.name = name;
+                check_data.revision = revision;
+                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, unres, mod);
+                ly_in_free(in, 0);
+                if (module_data_free) {
+                    module_data_free((void *)module_data, ctx->imp_clb_data);
                 }
             }
             if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
