@@ -517,42 +517,6 @@ lys_check_features(struct lysp_module *pmod)
 }
 
 LY_ERR
-lys_enable_features(struct lysp_module *pmod, const char **features)
-{
-    uint32_t i = 0;
-    struct lysp_feature *f = 0;
-
-    if (!features || !features[0]) {
-        /* keep all features disabled */
-        return LY_SUCCESS;
-    }
-
-    if (!strcmp(features[0], "*")) {
-        /* enable all features */
-        while ((f = lysp_feature_next(f, pmod, &i))) {
-            f->flags |= LYS_FENABLED;
-        }
-    } else {
-        /* enable selected features */
-        for (i = 0; features[i]; ++i) {
-            /* find the feature */
-            f = lysp_feature_find(pmod, features[i], strlen(features[i]), 0);
-            if (!f) {
-                LOGERR(pmod->mod->ctx, LY_ENOTFOUND, "Feature \"%s\" not found in module \"%s\".", features[i],
-                        pmod->mod->name);
-                return LY_ENOTFOUND;
-            }
-
-            /* enable feature */
-            f->flags |= LYS_FENABLED;
-        }
-    }
-
-    /* check final features if-feature state */
-    return lys_check_features(pmod);
-}
-
-LY_ERR
 lys_set_features(struct lysp_module *pmod, const char **features)
 {
     uint32_t i = 0, j;
@@ -696,18 +660,4 @@ lys_compile_feature_iffeatures(struct lysp_module *pmod)
     }
 
     return LY_SUCCESS;
-}
-
-void
-lys_free_feature_iffeatures(struct lysp_module *pmod)
-{
-    struct lysp_feature *f = NULL;
-    uint32_t idx = 0;
-
-    while ((f = lysp_feature_next(f, pmod, &idx))) {
-        FREE_ARRAY(pmod->mod->ctx, f->iffeatures_c, lysc_iffeature_free);
-        f->iffeatures_c = NULL;
-        LY_ARRAY_FREE(f->depfeatures);
-        f->depfeatures = NULL;
-    }
 }

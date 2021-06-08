@@ -1547,9 +1547,6 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
             lysc_module_free(mod->compiled);
             mod->compiled = NULL;
         }
-
-        /* free precompiled iffeatures */
-        lys_free_feature_iffeatures(mod->parsed);
     }
 
     /* recompile all the modules */
@@ -1761,7 +1758,6 @@ cleanup:
     LOG_LOCBACK(0, 0, 1, 0);
     lys_compile_unres_mod_erase(&ctx, ret);
     if (ret) {
-        lys_precompile_augments_deviations_revert(ctx.ctx, mod);
         lysc_module_free(mod_c);
         mod->compiled = NULL;
     }
