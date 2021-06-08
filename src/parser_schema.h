@@ -113,7 +113,7 @@ LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, cons
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] data The string containing the dumped data model in the specified format.
- * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
@@ -130,7 +130,7 @@ LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
  *            in the specified format.
- * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
@@ -144,7 +144,7 @@ LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struc
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] path Path to the file with the model in the specified format.
- * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
