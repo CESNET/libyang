@@ -431,7 +431,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             }
 
             assert(unres);
-            LY_CHECK_GOTO(ret = lys_set_implemented_r((struct lys_module *)*mod, NULL, unres), error);
+            LY_CHECK_GOTO(ret = lys_implement((struct lys_module *)*mod, NULL, unres), error);
             if (unres->recompile) {
                 return LY_ERECOMPILE;
             }

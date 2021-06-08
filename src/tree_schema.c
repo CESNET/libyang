@@ -798,11 +798,15 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
 }
 
 LY_ERR
-lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
+lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
+    LY_ERR ret;
     struct lys_module *m;
 
-    assert(!mod->implemented);
+    if (mod->implemented) {
+        /* nothing to do */
+        return LY_SUCCESS;
+    }
 
     /* we have module from the current context */
     m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
@@ -815,8 +819,11 @@ lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_
         return LY_EDENIED;
     }
 
-    /* enable features */
-    LY_CHECK_RET(lys_enable_features(mod->parsed, features));
+    /* set features */
+    ret = lys_set_features(mod->parsed, features);
+    if (ret && (ret != LY_EEXIST)) {
+        return ret;
+    }
 
     if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
         /* do not compile the module yet */
@@ -869,7 +876,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
     }
 
     /* implement this module and any other required modules, recursively */
-    ret = lys_set_implemented_r(mod, features, &unres);
+    ret = lys_implement(mod, features, &unres);
 
     /* the first module being implemented is finished, resolve global unres, consolidate the set */
     if (!ret) {
@@ -894,8 +901,10 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
     LY_ARRAY_FOR(pmod->imports, u) {
         imp = &pmod->imports[u];
         if (!imp->module) {
-            LY_CHECK_RET(lys_load_module(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, 0, NULL,
-                    pctx->unres, &imp->module));
+            LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, pctx->unres, &imp->module));
+            if (PARSER_CTX(pctx)->flags & LY_CTX_ALL_IMPLEMENTED) {
+                LY_CHECK_RET(lys_implement(imp->module, NULL, pctx->unres));
+            }
         }
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
@@ -1214,11 +1223,11 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
 }
 
 LY_ERR
-lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool need_implemented,
+lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-        void *check_data, const char **features, struct lys_glob_unres *unres, struct lys_module **module)
+        void *check_data, struct lys_glob_unres *unres, struct lys_module **module)
 {
-    struct lys_module *mod = NULL, *latest, *mod_dup, *mod_impl;
+    struct lys_module *mod = NULL, *latest, *mod_dup;
     struct lysp_submodule *submod;
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;
@@ -1227,18 +1236,11 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
     struct lys_parser_ctx *pctx = NULL;
     char *filename, *rev, *dot;
     size_t len;
-    ly_bool implement;
 
-    assert(ctx && in && (!features || need_implemented) && unres);
+    assert(ctx && in && unres);
 
     if (module) {
         *module = NULL;
-    }
-
-    if (ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
-        implement = 1;
-    } else {
-        implement = need_implemented;
     }
 
     mod = calloc(1, sizeof *mod);
@@ -1295,29 +1297,7 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
 
     /* check whether it is not already in the context in the same revision */
     mod_dup = (struct lys_module *)ly_ctx_get_module(ctx, mod->name, mod->revision);
-    if (implement) {
-        mod_impl = ly_ctx_get_module_implemented(ctx, mod->name);
-        if (mod_impl && (mod_impl != mod_dup)) {
-            LOGERR(ctx, LY_EDENIED, "Module \"%s@%s\" is already implemented in the context.", mod_impl->name,
-                    mod_impl->revision ? mod_impl->revision : "<none>");
-            ret = LY_EDENIED;
-            goto free_mod_cleanup;
-        }
-    }
     if (mod_dup) {
-        if (implement) {
-            if (!mod_dup->implemented) {
-                /* just implement it */
-                LY_CHECK_GOTO(ret = lys_set_implemented_r(mod_dup, features, unres), free_mod_cleanup);
-                goto free_mod_cleanup;
-            }
-
-            /* nothing to do */
-            LOGVRB("Module \"%s@%s\" is already implemented in the context.", mod_dup->name,
-                    mod_dup->revision ? mod_dup->revision : "<none>");
-            goto free_mod_cleanup;
-        }
-
         /* nothing to do */
         LOGVRB("Module \"%s@%s\" is already present in the context.", mod_dup->name,
                 mod_dup->revision ? mod_dup->revision : "<none>");
@@ -1402,11 +1382,6 @@ lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    if (implement) {
-        /* implement (compile) */
-        LY_CHECK_GOTO(ret = lys_set_implemented_r(mod, features, unres), cleanup);
-    }
-
     /* success */
     goto cleanup;
 
@@ -1463,6 +1438,7 @@ API LY_ERR
 lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, const struct lys_module **module)
 {
     LY_ERR ret;
+    struct lys_module *mod;
     struct lys_glob_unres unres = {0};
 
     if (module) {
@@ -1476,7 +1452,12 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
     /* remember input position */
     in->func_start = in->current;
 
-    ret = lys_create_module(ctx, in, format, 1, NULL, NULL, features, &unres, (struct lys_module **)module);
+    /* parse */
+    ret = lys_parse_in(ctx, in, format, NULL, NULL, &unres, &mod);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* implement */
+    ret = lys_implement(mod, features, &unres);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* resolve global unres */

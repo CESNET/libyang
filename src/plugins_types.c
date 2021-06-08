@@ -751,7 +751,7 @@ lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
 API LY_ERR
 lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
-    LY_CHECK_RET(lys_set_implemented_r(mod, features, unres));
+    LY_CHECK_RET(lys_implement(mod, features, unres));
 
     if (unres->recompile) {
         return LY_ERECOMPILE;

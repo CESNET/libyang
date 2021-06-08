@@ -293,21 +293,18 @@ LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct
 LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len);
 
 /**
- * @brief Find and load a module of the given name.
+ * @brief Find source data for a specific module, parse it, and add into the context.
  *
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
  * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
- * @param[in] need_implemented Whether the module should be implemented. If revision is NULL and this flag is set,
- * the implemented module in the context is returned despite it might not be of the latest revision, because in this
- * case the module of the latest revision can not be made implemented.
- * @param[in] features All the features to enable if implementing the module.
- * @param[in] unres Global unres structure for all newly implemented modules.
+ * @param[in,out] unres Global unres structure.
  * @param[out] mod Created module structure.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
  */
-LY_ERR lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
-        const char **features, struct lys_glob_unres *unres, struct lys_module **mod);
+LY_ERR lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_glob_unres *unres,
+        struct lys_module **mod);
 
 /**
  * @brief Parse included submodules into the simply parsed YANG module.
@@ -527,37 +524,33 @@ struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
 /**
- * @brief Implement a module (just like ::lys_set_implemented()), can be called recursively.
+ * @brief Implement a module, can be called recursively.
  *
  * @param[in] mod Module to implement.
- * @param[in] features Array of features to enable.
+ * @param[in] features Features to set, see ::lys_set_features().
  * @param[in,out] unres Global unres to add to.
- * @return LY_ERR value.
+ * @return LY_ERECOMPILE if unres->recompile dep set needs to be recompiled.
+ * @return LY_ERR on error.
  */
-LY_ERR lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+LY_ERR lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
 
 typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
         void *check_data);
 
 /**
- * @brief Create a new module.
- *
- * It is parsed, opionally compiled, added into the context, and the latest_revision flag is updated.
+ * @brief Parse a module and add it into the context.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] need_implemented Whether module needs to be implemented and compiled.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
- * @param[in] features Array of features to enable ended with NULL. NULL for all features disabled and '*' for all enabled.
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] module Created module.
  * @return LY_ERR value.
  */
-LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool need_implemented,
-        lys_custom_check custom_check, void *check_data, const char **features, struct lys_glob_unres *unres,
-        struct lys_module **module);
+LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, lys_custom_check custom_check,
+        void *check_data, struct lys_glob_unres *unres, struct lys_module **module);
 
 /**
  * @brief Parse submodule.

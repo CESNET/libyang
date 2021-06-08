@@ -618,17 +618,13 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 }
 
 /**
- * @brief Load the (sub)module into the context.
+ * @brief Parse a (sub)module from a local file and add into the context.
  *
  * This function does not check the presence of the (sub)module in context, it should be done before calling this function.
- *
- * module_name and submodule_name are alternatives - only one of the
  *
  * @param[in] ctx libyang context where to work.
  * @param[in] name Name of the (sub)module to load.
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
- * @param[in] features Array of enabled features ended with NULL.
- * @param[in] need_implemented Whether the (sub)module is needed implemented or not.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
  * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
@@ -636,12 +632,13 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
- * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE if unres->recompile dep set needs to be recompiled, @p result is set.
+ * @return LY_ERR on error.
  */
 static LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
-        ly_bool need_implemented, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
-        struct lys_glob_unres *unres, void **result)
+lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_parser_ctx *main_ctx,
+        const char *main_name, ly_bool required, struct lys_glob_unres *unres, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -673,8 +670,7 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
         ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
                 (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_create_module(ctx, in, format, need_implemented, lysp_load_module_check, &check_data, features, unres,
-                (struct lys_module **)&mod);
+        ret = lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, unres, (struct lys_module **)&mod);
 
     }
     ly_in_free(in, 1);
@@ -690,26 +686,18 @@ cleanup:
 }
 
 LY_ERR
-lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
-        const char **features, struct lys_glob_unres *unres, struct lys_module **mod)
+lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_glob_unres *unres,
+        struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
-    struct lys_module *ctx_latest = NULL, *m;
+    struct lys_module *ctx_latest = NULL;
     struct ly_in *in;
-    LY_ERR ret;
-    ly_bool implement;
 
     assert(mod && unres);
-
-    if (ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
-        implement = 1;
-    } else {
-        implement = need_implemented;
-    }
 
     /*
      * try to get the module from the context
@@ -719,30 +707,21 @@ lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_b
             /* get the specific revision */
             *mod = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
         } else {
-            if (implement) {
-                /* prefer the implemented module instead of the latest one */
-                *mod = (struct lys_module *)ly_ctx_get_module_implemented(ctx, name);
-            }
-            if (!*mod) {
-                /* get the requested module of the latest revision in the context */
-                *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
-                if (*mod && ((*mod)->latest_revision == 1)) {
-                    /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
-                    ctx_latest = *mod;
-                    *mod = NULL;
-                }
+            /* get the requested module of the latest revision in the context */
+            *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
+            if (*mod && ((*mod)->latest_revision == 1)) {
+                /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
+                ctx_latest = *mod;
+                *mod = NULL;
             }
         }
     }
 
-    /* check collision with other implemented revision */
-    if (implement) {
-        m = ly_ctx_get_module_implemented(ctx, name);
-        if (m && (!*mod || (*mod && (m != *mod)))) {
-            LOGVAL(ctx, LYVE_REFERENCE, "Module \"%s\" is already present in other implemented revision.", name);
-            *mod = NULL;
-            return LY_EDENIED;
-        }
+    /* we have module from the current context, circular check */
+    if (*mod && (*mod)->parsed->parsing) {
+        LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
+        *mod = NULL;
+        return LY_EVALID;
     }
 
     /*
@@ -772,8 +751,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, features, implement, NULL, NULL, ctx_latest ? 0 : 1, unres,
-                        (void **)mod);
+                lys_parse_localfile(ctx, name, revision, NULL, NULL, ctx_latest ? 0 : 1, unres, (void **)mod);
             }
             if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
@@ -792,39 +770,8 @@ search_file:
         }
 
         if (!*mod) {
-            LOGVAL(ctx, LYVE_REFERENCE, "%s \"%s\" module failed.", implement ? "Loading" : "Importing", name);
+            LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
             return LY_EVALID;
-        }
-    } else {
-        /* we have module from the current context, circular check */
-        if ((*mod)->parsed->parsing) {
-            LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
-            *mod = NULL;
-            return LY_EVALID;
-        }
-    }
-
-    /*
-     * module found, make sure it is implemented if should be
-     */
-    if (implement) {
-        if (!(*mod)->implemented) {
-            /* implement */
-            ret = lys_set_implemented_r(*mod, features, unres);
-            if (ret) {
-                *mod = NULL;
-                return ret;
-            }
-        } else if (features) {
-            /* set features if different */
-            ret = lys_set_features((*mod)->parsed, features);
-            if (!ret) {
-                /* context need to be recompiled so that feature changes are properly applied */
-                unres->recompile = 1;
-            } else if (ret != LY_EEXIST) {
-                /* error */
-                return ret;
-            } /* else no feature changes */
         }
     }
 
@@ -1014,8 +961,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, inc->name,
-                        inc->rev[0] ? inc->rev : NULL, NULL, 0, pctx,
+                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx,
                         pctx->parsed_mod->mod->name, 1, NULL, (void **)&submod);
 
                 /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
