@@ -2272,7 +2272,7 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
 
             if (!mod->implemented) {
                 /* implement (compile) the target module with our augments/deviations */
-                LY_CHECK_GOTO(ret = lys_set_implemented_r(mod, NULL, ctx->unres), cleanup);
+                LY_CHECK_GOTO(ret = lys_implement(mod, NULL, ctx->unres), cleanup);
             } else if (!ctx->unres->full_compilation) {
                 /* target module was already compiled, we need to recompile it */
                 ctx->unres->recompile = 1;

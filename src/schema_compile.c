@@ -836,7 +836,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
         if (!mod->implemented) {
             /* unimplemented module found */
             if (implement) {
-                LY_CHECK_RET(lys_set_implemented_r((struct lys_module *)mod, NULL, unres));
+                LY_CHECK_RET(lys_implement((struct lys_module *)mod, NULL, unres));
                 if (unres->recompile) {
                     return LY_ERECOMPILE;
                 }
