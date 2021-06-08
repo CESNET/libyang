@@ -259,6 +259,9 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
         }
     }
 
+    /* go to main module if in submodule */
+    local_module = local_module->mod->parsed;
+
     /* search in top-level typedefs */
     if (local_module->typedefs) {
         LY_ARRAY_FOR(local_module->typedefs, u) {
@@ -270,7 +273,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
         }
     }
 
-    /* search in submodules' typedefs */
+    /* search in all submodules' typedefs */
     LY_ARRAY_FOR(local_module->includes, u) {
         typedefs = local_module->includes[u].submodule->typedefs;
         LY_ARRAY_FOR(typedefs, v) {
