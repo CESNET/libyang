@@ -33,17 +33,6 @@ struct lysp_qname;
 LY_ERR lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_bool *enabled);
 
 /**
- * @brief Enable features in a parsed module with their consolidation and checking that they really
- * can be enabled and have all their if-features true.
- *
- * @param[in] pmod Parsed module to modify.
- * @param[in] features Array of features ended with NULL to enable. NULL for all features disabled, '*' for all enabled.
- * @return LY_SUCCESS on success.
- * @return LY_ERR on error.
- */
-LY_ERR lys_enable_features(struct lysp_module *pmod, const char **features);
-
-/**
  * @brief Set the specified features of a parsed module, with all the checks.
  *
  * @param[in] pmod Parsed module to modify.
@@ -64,12 +53,5 @@ LY_ERR lys_set_features(struct lysp_module *pmod, const char **features);
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_feature_iffeatures(struct lysp_module *pmod);
-
-/**
- * @brief Free all auxiliary if-feature structures in a parsed module used for compilation.
- *
- * @param[in] pmod Module to update.
- */
-void lys_free_feature_iffeatures(struct lysp_module *pmod);
 
 #endif /* LY_SCHEMA_FEATURES_H_ */
