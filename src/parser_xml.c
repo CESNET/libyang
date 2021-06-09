@@ -340,65 +340,61 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
         return LY_SUCCESS;
     }
 
-    if ((*snode)->nodetype & (LYD_NODE_TERM | LYS_LIST)) {
-        /* backup parser */
-        prev_status = xmlctx->status;
-        pprefix = xmlctx->prefix;
-        pprefix_len = xmlctx->prefix_len;
-        pname = xmlctx->name;
-        pname_len = xmlctx->name_len;
-        prev_current = xmlctx->in->current;
-        if ((xmlctx->status == LYXML_ELEM_CONTENT) && xmlctx->dynamic) {
-            /* it was backed up, do not free */
-            xmlctx->dynamic = 0;
-        }
+    if (!((*snode)->nodetype & (LYD_NODE_TERM | LYD_NODE_INNER))) {
+        /* nothing to check */
+        return LY_SUCCESS;
+    }
 
-        /* skip attributes */
-        while (xmlctx->status == LYXML_ATTRIBUTE) {
-            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
-            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
-        }
+    /* backup parser */
+    prev_status = xmlctx->status;
+    pprefix = xmlctx->prefix;
+    pprefix_len = xmlctx->prefix_len;
+    pname = xmlctx->name;
+    pname_len = xmlctx->name_len;
+    prev_current = xmlctx->in->current;
+    if ((xmlctx->status == LYXML_ELEM_CONTENT) && xmlctx->dynamic) {
+        /* it was backed up, do not free */
+        xmlctx->dynamic = 0;
+    }
 
-        if ((*snode)->nodetype & LYD_NODE_TERM) {
-            /* value may not be valid in which case we parse it as an opaque node */
-            if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns)) {
-                *snode = NULL;
-            }
-        } else {
-            /* skip content */
-            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
+    /* skip attributes */
+    while (xmlctx->status == LYXML_ATTRIBUTE) {
+        LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
+        LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
+    }
 
-            if (lydxml_check_list(xmlctx, *snode)) {
-                /* invalid list, parse as opaque if it missing/has invalid some keys */
-                *snode = NULL;
-            }
+    if ((*snode)->nodetype & LYD_NODE_TERM) {
+        /* value may not be valid in which case we parse it as an opaque node */
+        if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns)) {
+            *snode = NULL;
         }
+    } else if ((*snode)->nodetype == LYS_LIST) {
+        /* skip content */
+        LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), restore);
 
-restore:
-        /* restore parser */
-        if (xmlctx->dynamic) {
-            free((char *)xmlctx->value);
+        if (lydxml_check_list(xmlctx, *snode)) {
+            /* invalid list, parse as opaque if it missing/has invalid some keys */
+            *snode = NULL;
         }
-        xmlctx->status = prev_status;
-        xmlctx->prefix = pprefix;
-        xmlctx->prefix_len = pprefix_len;
-        xmlctx->name = pname;
-        xmlctx->name_len = pname_len;
-        xmlctx->in->current = prev_current;
-    } else if ((*snode)->nodetype & LYD_NODE_INNER) {
-        /* skip attributes */
-        while (xmlctx->status == LYXML_ATTRIBUTE) {
-            LY_CHECK_RET(lyxml_ctx_next(xmlctx));
-            LY_CHECK_RET(lyxml_ctx_next(xmlctx));
-        }
-
+    } else {
         /* if there is a non-WS value, it cannot be parsed as an inner node */
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (!xmlctx->ws_only) {
             *snode = NULL;
         }
-
     }
+
+restore:
+    /* restore parser */
+    if (xmlctx->dynamic) {
+        free((char *)xmlctx->value);
+    }
+    xmlctx->status = prev_status;
+    xmlctx->prefix = pprefix;
+    xmlctx->prefix_len = pprefix_len;
+    xmlctx->name = pname;
+    xmlctx->name_len = pname_len;
+    xmlctx->in->current = prev_current;
 
     return ret;
 }
