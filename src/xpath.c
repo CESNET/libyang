@@ -12,7 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _GNU_SOURCE /* asprintf, strdup */
+#if defined (__NetBSD__) || defined (__OpenBSD__)
 #include <sys/cdefs.h>
+#endif
 
 #include "xpath.h"
 

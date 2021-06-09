@@ -13,7 +13,9 @@
  */
 
 #define _GNU_SOURCE /* strdup */
+#if defined (__NetBSD__) || defined (__OpenBSD__)
 #include <sys/cdefs.h>
+#endif
 
 #include "plugins_types.h"
 

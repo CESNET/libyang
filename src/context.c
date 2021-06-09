@@ -16,8 +16,8 @@
 /* realpath */
 #define _XOPEN_SOURCE 1
 #define _XOPEN_SOURCE_EXTENDED 1
-#endif
 #include <sys/cdefs.h>
+#endif
 
 #include "context.h"
 

@@ -13,7 +13,9 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
+#if defined (__NetBSD__) || defined (__OpenBSD__)
 #include <sys/cdefs.h>
+#endif
 
 #include <assert.h>
 #include <ctype.h>
