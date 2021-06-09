@@ -286,6 +286,12 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Skip an element with all its descendants.
+ *
+ * @param[in] xmlctx XML parser context.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lydxml_data_skip(struct lyxml_ctx *xmlctx)
 {
@@ -313,6 +319,13 @@ lydxml_data_skip(struct lyxml_ctx *xmlctx)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check that the current element can be parsed as a data node.
+ *
+ * @param[in] lydctx XML data parser context.
+ * @param[in,out] snode Found schema node, set to NULL if data node cannot be created.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snode)
 {
