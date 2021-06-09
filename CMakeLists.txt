@@ -223,8 +223,9 @@ option(ENABLE_STATIC "Build static (.a) library" OFF)
 #
 # checks
 #
-if(ENABLE_VALGRIND_TESTS AND ENABLE_STATIC)
-    message(WARNING "Can't run C valgrind tests on a static build")
+if(ENABLE_STATIC)
+    message(STATUS "Disabling tests for static build")
+    set(ENABLE_BUILD_TESTS OFF)
     set(ENABLE_VALGRIND_TESTS OFF)
 endif()
 
@@ -277,18 +278,18 @@ if(ENABLE_STATIC)
     add_definitions(-DSTATIC)
     set(CMAKE_EXE_LINKER_FLAGS -static)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+    set(CMAKE_LINK_SEARCH_START_STATIC TRUE)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
     add_library(yang STATIC ${libsrc} ${compatsrc})
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc} ${compatsrc})
+    set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
     add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
 
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
-
-    set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
