@@ -1519,64 +1519,20 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lys_recompile(struct ly_ctx *ctx, ly_bool log)
-{
-    uint32_t idx;
-    struct lys_module *mod;
-    struct lys_glob_unres unres = {0};
-    LY_ERR ret = LY_SUCCESS;
-    uint32_t prev_lo = 0;
-
-    /* we are always recompiling all the modules */
-    unres.full_compilation = 1;
-
-    if (!log) {
-        /* recompile, must succeed because the modules were already compiled; hide messages because any
-         * warnings were already printed, are not really relevant, and would hide the real error */
-        prev_lo = ly_log_options(0);
-    }
-
-    /* free all the modules */
-    for (idx = 0; idx < ctx->list.count; ++idx) {
-        mod = ctx->list.objs[idx];
-        if (mod->compiled) {
-            assert(mod->implemented);
-
-            /* free the module */
-            lysc_module_free(mod->compiled);
-            mod->compiled = NULL;
-        }
-    }
-
-    /* recompile all the modules */
-    for (idx = 0; idx < ctx->list.count; ++idx) {
-        mod = ctx->list.objs[idx];
-        if (!mod->implemented || mod->compiled) {
-            /* nothing to do */
-            continue;
-        }
-
-        /* (re)compile the module */
-        LY_CHECK_GOTO(ret = lys_compile(mod, 0, &unres), cleanup);
-    }
-
-    /* resolve global unres */
-    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
-
-cleanup:
-    if (!log) {
-        ly_log_options(prev_lo);
-        if (ret) {
-            LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
-        }
-    }
-    lys_compile_unres_glob_erase(ctx, &unres, 0);
-    return ret;
-}
-
-LY_ERR
-lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unres)
+/**
+ * @brief Compile schema into a validated schema linking all the references.
+ *
+ * Implemented flag of @p mod must be set meaning this function should be called only if the module
+ * is being recompiled, otherwise call ::lys_implement().
+ *
+ * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
+ * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
+ * @param[in,out] unres Global unres structure to add to.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_compile(struct lys_module *mod, struct lys_glob_unres *unres)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c = NULL;
@@ -1596,7 +1552,6 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
     ctx.ctx = mod->ctx;
     ctx.cur_mod = mod;
     ctx.pmod = sp;
-    ctx.options = options;
     ctx.path_len = 1;
     ctx.path[0] = '/';
     ctx.unres = unres;
@@ -1701,6 +1656,62 @@ cleanup:
     return ret;
 }
 
+LY_ERR
+lys_recompile(struct ly_ctx *ctx, ly_bool log)
+{
+    uint32_t idx;
+    struct lys_module *mod;
+    struct lys_glob_unres unres = {0};
+    LY_ERR ret = LY_SUCCESS;
+    uint32_t prev_lo = 0;
+
+    /* we are always recompiling all the modules */
+    unres.full_compilation = 1;
+
+    if (!log) {
+        /* recompile, must succeed because the modules were already compiled; hide messages because any
+         * warnings were already printed, are not really relevant, and would hide the real error */
+        prev_lo = ly_log_options(0);
+    }
+
+    /* free all the modules */
+    for (idx = 0; idx < ctx->list.count; ++idx) {
+        mod = ctx->list.objs[idx];
+        if (mod->compiled) {
+            assert(mod->implemented);
+
+            /* free the module */
+            lysc_module_free(mod->compiled);
+            mod->compiled = NULL;
+        }
+    }
+
+    /* recompile all the modules */
+    for (idx = 0; idx < ctx->list.count; ++idx) {
+        mod = ctx->list.objs[idx];
+        if (!mod->implemented || mod->compiled) {
+            /* nothing to do */
+            continue;
+        }
+
+        /* (re)compile the module */
+        LY_CHECK_GOTO(ret = lys_compile(mod, &unres), cleanup);
+    }
+
+    /* resolve global unres */
+    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
+
+cleanup:
+    if (!log) {
+        ly_log_options(prev_lo);
+        if (ret) {
+            LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
+        }
+    }
+    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    return ret;
+}
+
 /**
  * @brief Check whether a module does not have any (recursive) compiled import.
  *
@@ -1788,7 +1799,7 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
     }
 
     /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, 0, unres));
+    LY_CHECK_RET(lys_compile(mod, unres));
 
     /* new module is implemented and compiled */
     unres->full_compilation = 0;
