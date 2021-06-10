@@ -894,10 +894,8 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
     LY_ARRAY_FOR(pmod->imports, u) {
         imp = &pmod->imports[u];
         if (!imp->module) {
-            LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, pctx->unres, &imp->module));
-            if (PARSER_CTX(pctx)->flags & LY_CTX_ALL_IMPLEMENTED) {
-                LY_CHECK_RET(lys_implement(imp->module, NULL, pctx->unres));
-            }
+            LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL,
+                    pctx->new_mods, &imp->module));
         }
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
@@ -1218,7 +1216,7 @@ lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
 LY_ERR
 lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-        void *check_data, struct lys_glob_unres *unres, struct lys_module **module)
+        void *check_data, struct ly_set *new_mods, struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
     struct lysp_submodule *submod;
@@ -1230,7 +1228,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     char *filename, *rev, *dot;
     size_t len;
 
-    assert(ctx && in && unres);
+    assert(ctx && in && new_mods);
 
     if (module) {
         *module = NULL;
@@ -1243,11 +1241,11 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     /* parse */
     switch (format) {
     case LYS_IN_YIN:
-        ret = yin_parse_module(&yinctx, in, mod, unres);
+        ret = yin_parse_module(&yinctx, in, mod, new_mods);
         pctx = (struct lys_parser_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
-        ret = yang_parse_module(&yangctx, in, mod, unres);
+        ret = yang_parse_module(&yangctx, in, mod, new_mods);
         pctx = (struct lys_parser_ctx *)yangctx;
         break;
     default:
@@ -1348,7 +1346,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */
-    LY_CHECK_GOTO(ret = ly_set_add(&unres->creating, mod, 1, NULL), free_mod_cleanup);
+    LY_CHECK_GOTO(ret = ly_set_add(new_mods, mod, 1, NULL), free_mod_cleanup);
 
     /* add into context */
     ret = ly_set_add(&ctx->list, mod, 1, NULL);
@@ -1446,7 +1444,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
     in->func_start = in->current;
 
     /* parse */
-    ret = lys_parse_in(ctx, in, format, NULL, NULL, &unres, &mod);
+    ret = lys_parse_in(ctx, in, format, NULL, NULL, &unres.creating, &mod);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* implement */

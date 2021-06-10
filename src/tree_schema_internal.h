@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -147,7 +147,7 @@ struct lys_parser_ctx {
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct lys_glob_unres *unres;   /**< global unres structure */
+    struct ly_set *new_mods;        /**< all modules added to context */
 };
 
 /**
@@ -158,7 +158,7 @@ struct lys_yang_parser_ctx {
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct lys_glob_unres *unres;   /**< global unres structure */
+    struct ly_set *new_mods;        /**< all modules added to context */
     struct ly_in *in;               /**< input handler for the parser */
     uint64_t indent;                /**< current position on the line for YANG indentation */
     uint32_t depth;                 /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
@@ -177,7 +177,7 @@ struct lys_yin_parser_ctx {
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
     struct lysp_module *parsed_mod;/**< (sub)module being parsed */
-    struct lys_glob_unres *unres;   /**< global unres structure */
+    struct ly_set *new_mods;        /**< all modules added to context */
     struct lyxml_ctx *xmlctx;      /**< context for xml parser */
 };
 
@@ -298,12 +298,12 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
  * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
- * @param[in,out] unres Global unres structure.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] mod Created module structure.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_glob_unres *unres,
+LY_ERR lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
         struct lys_module **mod);
 
 /**
@@ -545,12 +545,13 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] module Created module.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error, @p new_mods may be modified.
  */
 LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, lys_custom_check custom_check,
-        void *check_data, struct lys_glob_unres *unres, struct lys_module **module);
+        void *check_data, struct ly_set *new_mods, struct lys_module **module);
 
 /**
  * @brief Parse submodule.

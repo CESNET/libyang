@@ -629,16 +629,15 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
  * @param[in] main_name Main module name in case of loading submodule.
  * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
  * backup and it is actually ok if the input data are not found. However, parser reports errors even in this case.
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
  * @return LY_SUCCESS on success.
- * @return LY_ERECOMPILE if unres->recompile dep set needs to be recompiled, @p result is set.
  * @return LY_ERR on error.
  */
 static LY_ERR
 lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_parser_ctx *main_ctx,
-        const char *main_name, ly_bool required, struct lys_glob_unres *unres, void **result)
+        const char *main_name, ly_bool required, struct ly_set *new_mods, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -670,7 +669,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
         ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
                 (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, unres, (struct lys_module **)&mod);
+        ret = lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, (struct lys_module **)&mod);
 
     }
     ly_in_free(in, 1);
@@ -686,7 +685,7 @@ cleanup:
 }
 
 LY_ERR
-lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_glob_unres *unres,
+lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
         struct lys_module **mod)
 {
     const char *module_data = NULL;
@@ -697,7 +696,7 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
     struct lys_module *ctx_latest = NULL;
     struct ly_in *in;
 
-    assert(mod && unres);
+    assert(mod && new_mods);
 
     /*
      * try to get the module from the context
@@ -736,7 +735,7 @@ search_clb:
                 LY_CHECK_RET(ly_in_new_memory(module_data, &in));
                 check_data.name = name;
                 check_data.revision = revision;
-                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, unres, mod);
+                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
                 ly_in_free(in, 0);
                 if (module_data_free) {
                     module_data_free((void *)module_data, ctx->imp_clb_data);
@@ -749,7 +748,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_parse_localfile(ctx, name, revision, NULL, NULL, ctx_latest ? 0 : 1, unres, (void **)mod);
+                lys_parse_localfile(ctx, name, revision, NULL, NULL, ctx_latest ? 0 : 1, new_mods, (void **)mod);
             }
             if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;

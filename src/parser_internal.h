@@ -91,11 +91,11 @@ LY_ERR yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx 
  * @param[in] in Input structure.
  * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
- * @param[in,out] unres Global unres structure.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @return LY_ERR values.
  */
 LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod,
-        struct lys_glob_unres *unres);
+        struct ly_set *new_mods);
 
 /**
  * @brief Parse module from YIN data.
@@ -104,11 +104,11 @@ LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in,
  * @param[in] in Input structure.
  * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
- * @param[in,out] unres Global unres structure.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod,
-        struct lys_glob_unres *unres);
+        struct ly_set *new_mods);
 
 /**
  * @brief Parse submodule from YIN data.
