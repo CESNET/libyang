@@ -1486,35 +1486,40 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
 }
 
 /**
- * @brief Compile identites in the current module and all its submodules.
+ * @brief Compile identites in a module and all its submodules.
  *
- * @param[in] ctx Compile context.
+ * @param[in] mod Module to process.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_identities(struct lysc_ctx *ctx)
+lys_compile_identities(struct lys_module *mod)
 {
-    LY_ERR ret = LY_SUCCESS;
+    struct lysc_ctx ctx = {0};
     struct lysp_submodule *submod;
     struct lysp_module *orig_pmod = ctx->pmod;
     LY_ARRAY_COUNT_TYPE u;
 
-    if (ctx->cur_mod->parsed->identities) {
-        LY_CHECK_GOTO(ret = lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities,
-                &ctx->cur_mod->identities), cleanup);
+    /* prepare context */
+    ctx.ctx = mod->ctx;
+    ctx.cur_mod = mod;
+    ctx.pmod = mod->parsed;
+    ctx.path_len = 1;
+    ctx.path[0] = '/';
+
+    if (mod->parsed->identities) {
+        LY_CHECK_RET(lys_compile_identities_derived(&ctx, mod->parsed->identities, &mod->identities));
     }
-    lysc_update_path(ctx, NULL, "{submodule}");
-    LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, u) {
-        submod = ctx->cur_mod->parsed->includes[u].submodule;
+    lysc_update_path(&ctx, NULL, "{submodule}");
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        submod = mod->parsed->includes[u].submodule;
         if (submod->identities) {
-            ctx->pmod = (struct lysp_module *)submod;
-            lysc_update_path(ctx, NULL, submod->name);
-            ret = lys_compile_identities_derived(ctx, submod->identities, &ctx->cur_mod->identities);
-            lysc_update_path(ctx, NULL, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
+            ctx.pmod = (struct lysp_module *)submod;
+            lysc_update_path(&ctx, NULL, submod->name);
+            LY_CHECK_RET(lys_compile_identities_derived(&ctx, submod->identities, &mod->identities));
+            lysc_update_path(&ctx, NULL, NULL);
         }
     }
-    lysc_update_path(ctx, NULL, NULL);
+    lysc_update_path(&ctx, NULL, NULL);
 
 cleanup:
     ctx->pmod = orig_pmod;
@@ -1543,6 +1548,8 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
     for (idx = 0; idx < ctx->list.count; ++idx) {
         mod = ctx->list.objs[idx];
         if (mod->compiled) {
+            assert(mod->implemented);
+
             /* free the module */
             lysc_module_free(mod->compiled);
             mod->compiled = NULL;
@@ -1579,42 +1586,16 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
 cleanup:
     if (!log) {
         ly_log_options(prev_lo);
+        if (ret) {
+            LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
+        }
     }
-    lys_compile_unres_glob_erase(ctx, &unres);
+    lys_compile_unres_glob_erase(ctx, &unres, 0);
     return ret;
 }
 
-/**
- * @brief Check whether a module does not have any (recursive) compiled import.
- *
- * @param[in] mod Module to examine.
- * @return Whether the module has a compiled imported module.
- */
-static ly_bool
-lys_has_compiled_import_r(struct lys_module *mod)
-{
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(mod->parsed->imports, u) {
-        if (!mod->parsed->imports[u].module->implemented) {
-            continue;
-        }
-
-        if (mod->parsed->imports[u].module->compiled) {
-            return 1;
-        }
-
-        /* recursive */
-        if (lys_has_compiled_import_r(mod->parsed->imports[u].module)) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 LY_ERR
-lys_compile(struct lys_module *mod, uint32_t options, ly_bool recompile, struct lys_glob_unres *unres)
+lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unres)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c = NULL;
@@ -1641,29 +1622,6 @@ lys_compile(struct lys_module *mod, uint32_t options, ly_bool recompile, struct 
     ctx.path[0] = '/';
     ctx.unres = unres;
 
-    /* skip compilation tasks that need to be performed only once for implemented modules */
-    if (!recompile) {
-        /* identities */
-        LY_CHECK_GOTO(ret = lys_compile_identities(&ctx), cleanup);
-
-        /* augments and deviations */
-        LY_CHECK_GOTO(ret = lys_precompile_augments_deviations(&ctx), cleanup);
-
-        if (!unres->recompile && !unres->full_compilation) {
-            /* check whether this module may reference any already-compiled modules */
-            if (lys_has_compiled_import_r(mod)) {
-                /* it may and we need even disabled nodes in those modules, recompile them */
-                unres->recompile = 1;
-            }
-        }
-
-        if (unres->recompile) {
-            /* we need the context recompiled */
-            goto cleanup;
-        }
-    }
-
-    /* now the actual compilation will take place */
     ++mod->ctx->change_count;
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
@@ -1762,4 +1720,99 @@ cleanup:
         mod->compiled = NULL;
     }
     return ret;
+}
+
+/**
+ * @brief Check whether a module does not have any (recursive) compiled import.
+ *
+ * @param[in] mod Module to examine.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE on required recompilation.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_has_compiled_import_r(struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(mod->parsed->imports, u) {
+        if (!mod->parsed->imports[u].module->implemented) {
+            continue;
+        }
+
+        if (mod->parsed->imports[u].module->compiled) {
+            return LY_ERECOMPILE;
+        }
+
+        /* recursive */
+        LY_CHECK_RET(lys_has_compiled_import_r(mod->parsed->imports[u].module));
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
+{
+    LY_ERR ret;
+    struct lys_module *m;
+
+    assert(!mod->implemented);
+
+    /* we have module from the current context */
+    m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
+    if (m) {
+        assert(m != mod);
+
+        /* check collision with other implemented revision */
+        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s%s%s\" is present in the context in other implemented revision (%s).",
+                mod->name, mod->revision ? "@" : "", mod->revision ? mod->revision : "", m->revision ? m->revision : "none");
+        return LY_EDENIED;
+    }
+
+    /* set features */
+    ret = lys_set_features(mod->parsed, features);
+    if (ret && (ret != LY_EEXIST)) {
+        return ret;
+    }
+
+    /* compile identities */
+    LY_CHECK_RET(lys_compile_identities(mod));
+
+    /* mark target modules with our augments and deviations */
+    ret = lys_precompile_augments_deviations(mod, unres);
+    LY_CHECK_RET(ret && (ret != LY_ERECOMPILE), ret);
+
+    /*
+     * mark the module implemented, which means
+     * 1) to (re)compile it only ::lys_compile() call is needed
+     * 2) its compilation will never cause new modules to be implemented (::lys_compile() does not return ::LY_ERECOMPILE)
+     *    but there can be some unres items added that do
+     */
+    mod->implemented = 1;
+
+    /* add the module into newly implemented module set */
+    LY_CHECK_RET(ly_set_add(&unres->implementing, mod, 1, NULL));
+
+    if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
+        /* do not actually compile the module yet */
+        mod->to_compile = 1;
+        return LY_SUCCESS;
+    } else if (ret == LY_ERECOMPILE) {
+        /* we cannot compile the module yet */
+        return ret;
+    }
+
+    if (!unres->full_compilation) {
+        /* check whether this module may reference any already-compiled modules */
+        LY_CHECK_RET(lys_has_compiled_import_r(mod));
+    }
+
+    /* compile the schema */
+    LY_CHECK_RET(lys_compile(mod, 0, unres));
+
+    /* new module is implemented and compiled */
+    unres->full_compilation = 0;
+
+    return LY_SUCCESS;
 }

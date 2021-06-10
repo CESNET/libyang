@@ -524,15 +524,15 @@ struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
 /**
- * @brief Implement a module, can be called recursively.
+ * @brief Implement a module and resolve all global unres.
  *
  * @param[in] mod Module to implement.
  * @param[in] features Features to set, see ::lys_set_features().
- * @param[in,out] unres Global unres to add to.
- * @return LY_ERECOMPILE if unres->recompile dep set needs to be recompiled.
+ * @param[in] unres Global unres with all the created modules.
+ * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+LY_ERR _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
 
 typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
         void *check_data);

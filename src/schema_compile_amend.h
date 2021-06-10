@@ -23,6 +23,7 @@ struct lysp_node;
 struct lysc_node;
 struct lysc_ctx;
 struct lysp_node_uses;
+struct lys_glob_unres;
 struct lys_module;
 
 /**
@@ -155,14 +156,16 @@ LY_ERR lys_precompile_own_augments(struct lysc_ctx *ctx);
 LY_ERR lys_precompile_own_deviations(struct lysc_ctx *ctx);
 
 /**
- * @brief Compile top-level augments and deviations defined in the current module.
- * Generally, just add the module refence to the target modules. But in case
- * of foreign augments, they are directly applied.
+ * @brief Compile top-level augments and deviations in a module and all its submodules.
+ * Adds the module reference to the target modules and if not implemented, implement them.
  *
- * @param[in] ctx Compile context.
- * @return LY_ERR value.
+ * @param[in] mod Module to process.
+ * @param[in] unres Global unres to use.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE on required recompilation.
+ * @return LY_ERR on error.
  */
-LY_ERR lys_precompile_augments_deviations(struct lysc_ctx *ctx);
+LY_ERR lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres);
 
 /**
  * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from
