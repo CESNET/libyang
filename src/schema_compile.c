@@ -414,7 +414,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
             }
         }
         if (!idref || !(*idref)) {
-            if (ident || (ctx->options & LYS_COMPILE_DISABLED)) {
+            if (ident || (ctx->compile_opts & LYS_COMPILE_DISABLED)) {
                 /* look into the parsed module to check whether the identity is not merely disabled */
                 LY_ARRAY_FOR(mod->parsed->identities, v) {
                     if (!strcmp(mod->parsed->identities[v].name, name)) {
@@ -1609,7 +1609,7 @@ lys_compile(struct lys_module *mod, struct lys_glob_unres *unres)
 
     /* validate non-instantiated groupings from the parsed schema,
      * without it we would accept even the schemas with invalid grouping specification */
-    ctx.options |= LYS_COMPILE_GROUPING;
+    ctx.compile_opts |= LYS_COMPILE_GROUPING;
     LY_LIST_FOR(sp->groupings, grp) {
         if (!(grp->flags & LYS_USED_GRP)) {
             LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, NULL, grp), cleanup);

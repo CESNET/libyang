@@ -53,7 +53,7 @@ struct lysc_ctx {
     struct ly_set uses_rfns;    /**< set of compiled non-applied uses refines (stored ::lysc_refine *) */
     struct lys_glob_unres *unres;  /**< global unres sets */
     uint32_t path_len;          /**< number of path bytes used */
-    uint32_t options;           /**< various @ref scflags. */
+    uint32_t compile_opts;      /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
 };
