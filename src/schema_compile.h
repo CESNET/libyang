@@ -73,7 +73,6 @@ struct lys_glob_unres {
     struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
     ly_bool full_compilation;   /**< flag marking that all the currently implemented modules were compiled in this
                                     compilation (meaning that all their disabled nodes are still present) */
-    ly_bool recompile;          /**< flag marking that a module needs to be recompiled for this compilation to succeed */
 };
 
 /**
