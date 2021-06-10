@@ -1352,6 +1352,8 @@ lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         /* make the module correctly non-implemented again */
         m->implemented = 0;
         lys_precompile_augments_deviations_revert(ctx, m);
+        lysc_module_free(m->compiled);
+        m->compiled = NULL;
     }
 
     for (i = 0; i < unres->creating.count; ++i) {
