@@ -837,9 +837,6 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
             /* unimplemented module found */
             if (implement) {
                 LY_CHECK_RET(lys_implement((struct lys_module *)mod, NULL, unres));
-                if (unres->recompile) {
-                    return LY_ERECOMPILE;
-                }
             } else {
                 *mod_p = mod;
                 break;
@@ -1209,14 +1206,6 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     LY_ARRAY_COUNT_TYPE v;
     uint32_t i;
 
-    if (unres->recompile) {
-recompilation:
-        assert(unres->recompile);
-        /* recompile all the modules and resolve the new unres instead (during recompilation) */
-        unres->recompile = 0;
-        return lys_recompile(ctx, 1);
-    }
-
     /* fake compile context */
     cctx.ctx = ctx;
     cctx.path_len = 1;
@@ -1252,7 +1241,7 @@ recompilation:
         LOG_LOCBACK(1, 0, 0, 0);
         if (ret == LY_ERECOMPILE) {
             /* leafref caused a new module to be implemented, following leafrefs referencing the module would fail */
-            goto recompilation;
+            return lys_recompile(ctx, 1);
         } else if (ret) {
             return ret;
         }
@@ -1297,7 +1286,7 @@ recompilation:
         ret = lys_compile_unres_xpath(&cctx, node, unres);
         LOG_LOCBACK(1, 0, 0, 0);
         if (ret == LY_ERECOMPILE) {
-            goto recompilation;
+            return lys_recompile(ctx, 1);
         } else if (ret) {
             return ret;
         }
@@ -1320,7 +1309,7 @@ recompilation:
         }
         LOG_LOCBACK(1, 0, 0, 0);
         if (ret == LY_ERECOMPILE) {
-            goto recompilation;
+            return lys_recompile(ctx, 1);
         } else if (ret) {
             return ret;
         }
@@ -1564,20 +1553,8 @@ lys_recompile(struct ly_ctx *ctx, ly_bool log)
             continue;
         }
 
-        /* recompile */
-        ret = lys_compile(mod, 0, 1, &unres);
-        if (ret) {
-            if (!log) {
-                LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
-            }
-            goto cleanup;
-        }
-
-        if (unres.recompile) {
-            /* we need to recompile again (newly compiled module caused another new implemented module) */
-            ret = lys_recompile(ctx, log);
-            goto cleanup;
-        }
+        /* (re)compile the module */
+        LY_CHECK_GOTO(ret = lys_compile(mod, 0, &unres), cleanup);
     }
 
     /* resolve global unres */
@@ -1608,9 +1585,7 @@ lys_compile(struct lys_module *mod, uint32_t options, struct lys_glob_unres *unr
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
 
-    /* if some previous module was not fully compiled, it is forbidden to compile another one (even though it
-     * may be okay in some cases) */
-    assert(mod->implemented && !unres->recompile);
+    assert(mod->implemented);
 
     sp = mod->parsed;
 
