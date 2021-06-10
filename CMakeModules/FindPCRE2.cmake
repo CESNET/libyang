@@ -36,9 +36,19 @@ else()
         ${CMAKE_LIBRARY_PATH}
         ${CMAKE_INSTALL_PREFIX}/lib)
 
-    if(PCRE2_LIBRARY)
-        # Check required version
-        execute_process(COMMAND pcre2-config --version OUTPUT_VARIABLE PCRE2_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(PCRE2_INCLUDE_DIR AND PCRE2_LIBRARY)
+        # learn pcre2 version
+        file(STRINGS ${PCRE2_INCLUDE_DIR}/pcre2.h PCRE2_VERSION_MAJOR
+            REGEX "#define[ ]+PCRE2_MAJOR[ ]+[0-9]+")
+        string(REGEX MATCH " [0-9]+" PCRE2_VERSION_MAJOR ${PCRE2_VERSION_MAJOR})
+        string(STRIP "${PCRE2_VERSION_MAJOR}" PCRE2_VERSION_MAJOR)
+
+        file(STRINGS ${PCRE2_INCLUDE_DIR}/pcre2.h PCRE2_VERSION_MINOR
+            REGEX "#define[ ]+PCRE2_MINOR[ ]+[0-9]+")
+        string(REGEX MATCH " [0-9]+" PCRE2_VERSION_MINOR ${PCRE2_VERSION_MINOR})
+        string(STRIP "${PCRE2_VERSION_MINOR}" PCRE2_VERSION_MINOR)
+
+        set(PCRE2_VERSION ${PCRE2_VERSION_MAJOR}.${PCRE2_VERSION_MINOR})
     endif()
 
     set(PCRE2_INCLUDE_DIRS ${PCRE2_INCLUDE_DIR})
