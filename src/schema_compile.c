@@ -1371,12 +1371,14 @@ lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 }
 
 void
-lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres)
+lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres, ly_bool recompiled)
 {
     uint32_t i;
 
-    ly_set_erase(&unres->implementing, NULL);
-    ly_set_erase(&unres->creating, NULL);
+    if (!recompiled) {
+        ly_set_erase(&unres->implementing, NULL);
+        ly_set_erase(&unres->creating, NULL);
+    }
     for (i = 0; i < unres->dflts.count; ++i) {
         lysc_unres_dflt_free(ctx, unres->dflts.objs[i]);
     }
