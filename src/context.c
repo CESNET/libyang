@@ -189,7 +189,7 @@ ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
 API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
 {
-    struct lys_module *result = NULL;
+    struct lys_module *mod = NULL;
     struct lys_glob_unres unres = {0};
     LY_ERR ret = LY_SUCCESS;
 
@@ -227,13 +227,13 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
 
     ctx = calloc(1, sizeof *ctx);
-    LY_CHECK_ERR_RET(!ctx, LOGMEM(NULL), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!ctx, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
     /* dictionary */
     lydict_init(&ctx->dict);
 
     /* plugins */
-    LY_CHECK_ERR_RET(lyplg_init(), LOGINT(NULL), LY_EINT);
+    LY_CHECK_ERR_GOTO(lyplg_init(), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     /* initialize thread-specific keys */
     while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
@@ -245,7 +245,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     ctx->flags = options;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
-        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, error);
+        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
         for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
             *sep = 0;
@@ -265,9 +265,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
         free(search_dir_list);
 
         /* If ly_ctx_set_searchdir() failed, the error is already logged. Just exit */
-        if (rc != LY_SUCCESS) {
-            goto error;
-        }
+        LY_CHECK_GOTO(rc, cleanup);
     }
     ctx->change_count = 1;
 
@@ -278,26 +276,27 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 
     /* create dummy in */
     rc = ly_in_new_memory(internal_modules[0].data, &in);
-    LY_CHECK_GOTO(rc, error);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
         LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, NULL, &unres.creating, &module), cleanup);
         if (internal_modules[i].implemented || (ctx->flags & LY_CTX_ALL_IMPLEMENTED)) {
-            LY_CHECK_GOTO(rc = lys_implement(module, NULL, &unres), error);
+            LY_CHECK_GOTO(rc = lys_implement(module, NULL, &unres), cleanup);
         }
     }
 
     /* resolve global unres */
-    LY_CHECK_GOTO(rc = lys_compile_unres_glob(ctx, &unres), error);
+    LY_CHECK_GOTO(rc = lys_compile_unres_glob(ctx, &unres), cleanup);
 
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
         /* compile now */
-        LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), error);
+        LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), cleanup);
         ctx->flags &= ~LY_CTX_EXPLICIT_COMPILE;
     }
 
+cleanup:
     ly_in_free(in, 0);
     lys_compile_unres_glob_erase(ctx, &unres, 0);
     if (rc) {
