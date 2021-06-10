@@ -715,10 +715,10 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
 
     /* config */
     if (rfn->flags & LYS_CONFIG_MASK) {
-        if (ctx->options & LYS_COMPILE_NO_CONFIG) {
+        if (ctx->compile_opts & LYS_COMPILE_NO_CONFIG) {
             LOGWRN(ctx->ctx, "Refining config inside %s has no effect (%s).",
-                    (ctx->options & (LYS_IS_INPUT | LYS_IS_OUTPUT)) ? "RPC/action" :
-                    ctx->options & LYS_IS_NOTIF ? "notification" : "a subtree ignoring config", ctx->path);
+                    (ctx->compile_opts & (LYS_IS_INPUT | LYS_IS_OUTPUT)) ? "RPC/action" :
+                    ctx->compile_opts & LYS_IS_NOTIF ? "notification" : "a subtree ignoring config", ctx->path);
         } else {
             target->flags &= ~LYS_CONFIG_MASK;
             target->flags |= rfn->flags & LYS_CONFIG_MASK;
@@ -1703,7 +1703,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
     struct lysc_node_notif **notifs;
     ly_bool allow_mandatory = 0, enabled;
     struct ly_set child_set = {0};
-    uint32_t i, opt_prev = ctx->options;
+    uint32_t i, opt_prev = ctx->compile_opts;
 
     if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
         LOGVAL(ctx->ctx, LYVE_REFERENCE,
@@ -1738,9 +1738,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             LY_CHECK_GOTO(ret = lys_compile_node_choice_child(ctx, pnode, target, &child_set), cleanup);
         } else if (target->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             if (target->nodetype == LYS_INPUT) {
-                ctx->options |= LYS_COMPILE_RPC_INPUT;
+                ctx->compile_opts |= LYS_COMPILE_RPC_INPUT;
             } else {
-                ctx->options |= LYS_COMPILE_RPC_OUTPUT;
+                ctx->compile_opts |= LYS_COMPILE_RPC_OUTPUT;
             }
             LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
         } else {
@@ -1750,7 +1750,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
         /* eval if-features again for the rest of this node processing */
         LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
         if (!enabled) {
-            ctx->options |= LYS_COMPILE_DISABLED;
+            ctx->compile_opts |= LYS_COMPILE_DISABLED;
         }
 
         /* since the augment node is not present in the compiled tree, we need to pass some of its
@@ -1775,7 +1775,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
         ly_set_erase(&child_set, NULL);
 
         /* restore options */
-        ctx->options = opt_prev;
+        ctx->compile_opts = opt_prev;
     }
 
     actions = lysc_node_actions_p(target);
@@ -1797,7 +1797,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             /* eval if-features again for the rest of this node processing */
             LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
             if (!enabled) {
-                ctx->options |= LYS_COMPILE_DISABLED;
+                ctx->compile_opts |= LYS_COMPILE_DISABLED;
             }
 
             /* since the augment node is not present in the compiled tree, we need to pass some of its
@@ -1813,7 +1813,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             ly_set_erase(&child_set, NULL);
 
             /* restore options */
-            ctx->options = opt_prev;
+            ctx->compile_opts = opt_prev;
         }
     }
     if (aug_p->notifs) {
@@ -1832,7 +1832,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             /* eval if-features again for the rest of this node processing */
             LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
             if (!enabled) {
-                ctx->options |= LYS_COMPILE_DISABLED;
+                ctx->compile_opts |= LYS_COMPILE_DISABLED;
             }
 
             /* since the augment node is not present in the compiled tree, we need to pass some of its
@@ -1848,13 +1848,13 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             ly_set_erase(&child_set, NULL);
 
             /* restore options */
-            ctx->options = opt_prev;
+            ctx->compile_opts = opt_prev;
         }
     }
 
 cleanup:
     ly_set_erase(&child_set, NULL);
-    ctx->options = opt_prev;
+    ctx->compile_opts = opt_prev;
     return ret;
 }
 
