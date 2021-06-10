@@ -701,7 +701,11 @@ invalid_character:
         LY_CHECK_RET(lyjson_exp_number(jsonctx->ctx, in, exponent, offset, &num, &num_len));
         lyjson_ctx_set_value(jsonctx, num, num_len, 1);
     } else {
-        /* store the number */
+        if (offset > LY_NUMBER_MAXLEN) {
+            LOGVAL(jsonctx->ctx, LYVE_SEMANTICS,
+                    "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit.");
+            return LY_EVALID;
+        }
         lyjson_ctx_set_value(jsonctx, in, offset, 0);
     }
     ly_in_skip(jsonctx->in, offset);
