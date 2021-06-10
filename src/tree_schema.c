@@ -798,61 +798,10 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
 }
 
 LY_ERR
-lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
-{
-    LY_ERR ret;
-    struct lys_module *m;
-
-    if (mod->implemented) {
-        /* nothing to do */
-        return LY_SUCCESS;
-    }
-
-    /* we have module from the current context */
-    m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
-    if (m) {
-        assert(m != mod);
-
-        /* check collision with other implemented revision */
-        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s%s%s\" is present in the context in other implemented revision (%s).",
-                mod->name, mod->revision ? "@" : "", mod->revision ? mod->revision : "", m->revision ? m->revision : "none");
-        return LY_EDENIED;
-    }
-
-    /* set features */
-    ret = lys_set_features(mod->parsed, features);
-    if (ret && (ret != LY_EEXIST)) {
-        return ret;
-    }
-
-    if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
-        /* do not compile the module yet */
-        mod->to_compile = 1;
-        return LY_SUCCESS;
-    }
-
-    /* add the module into newly implemented module set */
-    LY_CHECK_RET(ly_set_add(&unres->implementing, mod, 1, NULL));
-
-    /* mark the module implemented, check for collision was already done */
-    mod->implemented = 1;
-
-    /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, 0, 0, unres));
-
-    /* new module is implemented and compiled */
-    unres->full_compilation = 0;
-
-    return LY_SUCCESS;
-}
-
-API LY_ERR
-lys_set_implemented(struct lys_module *mod, const char **features)
+_lys_set_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS, r;
-    struct lys_glob_unres unres = {0};
-
-    LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
+    uint32_t i;
 
     if (mod->implemented) {
         /* mod is already implemented, set the features */
@@ -875,19 +824,63 @@ lys_set_implemented(struct lys_module *mod, const char **features)
         }
     }
 
-    /* implement this module and any other required modules, recursively */
-    ret = lys_implement(mod, features, &unres);
+    /* implement */
+    ret = lys_implement(mod, features, unres);
+    if (ret == LY_ERECOMPILE) {
+        /* recompile */
+        LY_CHECK_GOTO(ret = lys_recompile(mod->ctx, 1), cleanup);
 
-    /* the first module being implemented is finished, resolve global unres, consolidate the set */
-    if (!ret) {
-        ret = lys_compile_unres_glob(mod->ctx, &unres);
+        /* reset unres, it is no longer valid after recompilation and recompilation has actually resolved it all */
+        lys_compile_unres_glob_erase(mod->ctx, unres, 1);
+        unres->full_compilation = 1;
+    } else if (ret) {
+        goto cleanup;
     }
+
+    if (mod->ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
+        /* implement all the imports as well */
+        for (i = 0; i < unres->creating.count; ++i) {
+            mod = unres->creating.objs[i];
+            if (mod->implemented) {
+                continue;
+            }
+
+            ret = lys_implement(mod, NULL, unres);
+            if (ret == LY_ERECOMPILE) {
+                LY_CHECK_GOTO(ret = lys_recompile(mod->ctx, 1), cleanup);
+
+                lys_compile_unres_glob_erase(mod->ctx, unres, 1);
+                unres->full_compilation = 1;
+            } else if (ret) {
+                goto cleanup;
+            }
+        }
+    }
+
+    /* resolve unres */
+    LY_CHECK_GOTO(ret = lys_compile_unres_glob(mod->ctx, unres), cleanup);
+
+cleanup:
+    return ret;
+}
+
+API LY_ERR
+lys_set_implemented(struct lys_module *mod, const char **features)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lys_glob_unres unres = {0};
+
+    LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
+
+    /* implement */
+    ret = _lys_set_implemented(mod, features, &unres);
+    LY_CHECK_GOTO(ret, cleanup);
+
+cleanup:
     if (ret) {
-        /* failure, full compile revert */
         lys_compile_unres_glob_revert(mod->ctx, &unres);
     }
-
-    lys_compile_unres_glob_erase(mod->ctx, &unres);
+    lys_compile_unres_glob_erase(mod->ctx, &unres, 0);
     return ret;
 }
 
@@ -1437,7 +1430,7 @@ lys_parse_get_format(const struct ly_in *in, LYS_INFORMAT format)
 API LY_ERR
 lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, const struct lys_module **module)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
     struct lys_glob_unres unres = {0};
 
@@ -1457,11 +1450,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* implement */
-    ret = lys_implement(mod, features, &unres);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    /* resolve global unres */
-    ret = lys_compile_unres_glob(ctx, &unres);
+    ret = _lys_set_implemented(mod, features, &unres);
     LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:

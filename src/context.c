@@ -198,10 +198,8 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
     LY_CHECK_GOTO(ret = lys_parse_load(ctx, name, revision, &unres, &result), cleanup);
 
     /* implement */
-    LY_CHECK_GOTO(ret = lys_implement(result, features, &unres), cleanup);
-
-    /* resolve unres and revert, if needed */
-    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
+    ret = _lys_set_implemented(mod, features, &unres);
+    LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
     if (ret) {
@@ -510,9 +508,12 @@ ly_ctx_compile(struct ly_ctx *ctx)
     for (i = 0; i < ctx->list.count; ++i) {
         mod = ctx->list.objs[i];
         if (mod->to_compile) {
-            /* if was not implemented, will be */
-            mod->implemented = 1;
+            assert(mod->implemented);
 
+            /* just unset the flag, it is not used for anything currently */
+            mod->to_compile = 0;
+
+            /* some modules were changed and need to be (re)compiled */
             recompile = 1;
         }
     }
@@ -522,18 +523,8 @@ ly_ctx_compile(struct ly_ctx *ctx)
         return LY_SUCCESS;
     }
 
-    /* recompile */
-    LY_CHECK_RET(lys_recompile(ctx, 1));
-
-    /* everything is fine, clear the flags */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
-        if (mod->to_compile) {
-            mod->to_compile = 0;
-        }
-    }
-
-    return LY_SUCCESS;
+    /* (re)compile all the implemented modules */
+    return lys_recompile(ctx, 1);
 }
 
 API uint16_t
@@ -1203,13 +1194,22 @@ error:
 API void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
+    struct lys_module *mod;
+
     if (!ctx) {
         return;
     }
 
     /* models list */
     for ( ; ctx->list.count; ctx->list.count--) {
+        mod = ctx->list.objs[ctx->list.count - 1];
+
         /* remove the module */
+        if (mod->implemented) {
+            mod->implemented = 0;
+            lysc_module_free(mod->compiled);
+            mod->compiled = NULL;
+        }
         lys_module_free(ctx->list.objs[ctx->list.count - 1]);
     }
     free(ctx->list.objs);

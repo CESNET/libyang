@@ -2173,32 +2173,39 @@ lys_precompile_mod_set_all_implemented(const struct ly_set *mod_set)
 }
 
 LY_ERR
-lys_precompile_augments_deviations(struct lysc_ctx *ctx)
+lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
-    const struct lysp_module *mod_p;
-    struct lysp_module *orig_pmod;
-    struct lys_module *mod;
+    struct lysc_ctx ctx = {0};
+    struct lysp_module *mod_p;
+    struct lys_module *m;
     struct lysp_submodule *submod;
     struct lysp_node_augment *aug;
     uint32_t idx;
     struct ly_set mod_set = {0}, set = {0};
 
-    orig_pmod = ctx->pmod;
-    mod_p = ctx->cur_mod->parsed;
+    mod_p = mod->parsed;
+
+    /* prepare context */
+    ctx.ctx = mod->ctx;
+    ctx.cur_mod = mod;
+    ctx.pmod = mod_p;
+    ctx.path_len = 1;
+    ctx.path[0] = '/';
+    ctx.unres = unres;
 
     LY_LIST_FOR(mod_p->augments, aug) {
         /* get target module */
-        lysc_update_path(ctx, NULL, "{augment}");
-        lysc_update_path(ctx, NULL, aug->nodeid);
-        ret = lys_nodeid_mod_check(ctx, aug->nodeid, 1, &set, NULL, &mod);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, "{augment}");
+        lysc_update_path(&ctx, NULL, aug->nodeid);
+        ret = lys_nodeid_mod_check(&ctx, aug->nodeid, 1, &set, NULL, &m);
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add this module into the target module augmented_by, if not there and implemented */
-        if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->augmented_by) != LY_EEXIST) ||
+        if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
                 !lys_precompile_mod_set_all_implemented(&set)) {
             LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
         }
@@ -2207,15 +2214,15 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
 
     LY_ARRAY_FOR(mod_p->deviations, u) {
         /* get target module */
-        lysc_update_path(ctx, NULL, "{deviation}");
-        lysc_update_path(ctx, NULL, mod_p->deviations[u].nodeid);
-        ret = lys_nodeid_mod_check(ctx, mod_p->deviations[u].nodeid, 1, &set, NULL, &mod);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, "{deviation}");
+        lysc_update_path(&ctx, NULL, mod_p->deviations[u].nodeid);
+        ret = lys_nodeid_mod_check(&ctx, mod_p->deviations[u].nodeid, 1, &set, NULL, &m);
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add this module into the target module deviated_by, if not there and implemented */
-        if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->deviated_by) != LY_EEXIST) ||
+        if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
                 !lys_precompile_mod_set_all_implemented(&set)) {
             LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
         }
@@ -2225,17 +2232,17 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     /* the same for augments and deviations in submodules */
     LY_ARRAY_FOR(mod_p->includes, v) {
         submod = mod_p->includes[v].submodule;
-        ctx->pmod = (struct lysp_module *)submod;
+        ctx.pmod = (struct lysp_module *)submod;
 
         LY_LIST_FOR(submod->augments, aug) {
-            lysc_update_path(ctx, NULL, "{augment}");
-            lysc_update_path(ctx, NULL, aug->nodeid);
-            ret = lys_nodeid_mod_check(ctx, aug->nodeid, 1, &set, NULL, &mod);
-            lysc_update_path(ctx, NULL, NULL);
-            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, "{augment}");
+            lysc_update_path(&ctx, NULL, aug->nodeid);
+            ret = lys_nodeid_mod_check(&ctx, aug->nodeid, 1, &set, NULL, &m);
+            lysc_update_path(&ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
-            if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->augmented_by) != LY_EEXIST) ||
+            if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
                     !lys_precompile_mod_set_all_implemented(&set)) {
                 LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
             }
@@ -2243,14 +2250,14 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
         }
 
         LY_ARRAY_FOR(submod->deviations, u) {
-            lysc_update_path(ctx, NULL, "{deviation}");
-            lysc_update_path(ctx, NULL, submod->deviations[u].nodeid);
-            ret = lys_nodeid_mod_check(ctx, submod->deviations[u].nodeid, 1, &set, NULL, &mod);
-            lysc_update_path(ctx, NULL, NULL);
-            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, "{deviation}");
+            lysc_update_path(&ctx, NULL, submod->deviations[u].nodeid);
+            ret = lys_nodeid_mod_check(&ctx, submod->deviations[u].nodeid, 1, &set, NULL, &m);
+            lysc_update_path(&ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
-            if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->deviated_by) != LY_EEXIST) ||
+            if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
                     !lys_precompile_mod_set_all_implemented(&set)) {
                 LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
             }
@@ -2263,33 +2270,29 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
         idx = mod_set.count;
         do {
             --idx;
-            mod = mod_set.objs[idx];
+            m = mod_set.objs[idx];
 
-            if (mod == ctx->cur_mod) {
+            if (m == mod) {
                 /* will be applied normally later */
                 continue;
             }
 
-            if (!mod->implemented) {
+            if (!m->implemented) {
                 /* implement (compile) the target module with our augments/deviations */
-                LY_CHECK_GOTO(ret = lys_implement(mod, NULL, ctx->unres), cleanup);
-            } else if (!ctx->unres->full_compilation) {
+                LY_CHECK_GOTO(ret = lys_implement(m, NULL, unres), cleanup);
+            } else if (!unres->full_compilation) {
                 /* target module was already compiled, we need to recompile it */
-                ctx->unres->recompile = 1;
+                ret = LY_ERECOMPILE;
+                goto cleanup;
             }
             /* else the module is implemented and was compiled in this compilation run or will yet be;
              * we actually do not need the module compiled now because its compiled nodes will not be accessed,
              * augments/deviations are applied during the target module compilation and the rest is in global unres */
 
-            if (ctx->unres->recompile) {
-                /* we need some module recompiled and cannot continue */
-                goto cleanup;
-            }
         } while (idx);
     }
 
 cleanup:
-    ctx->pmod = orig_pmod;
     ly_set_erase(&set, NULL);
     ly_set_erase(&mod_set, NULL);
     return ret;
