@@ -505,6 +505,11 @@ test_number(void **state)
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1e9999999999999999999).", "Line number 1.");
 
+    str = "-2.1e0.";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    CHECK_LOG_CTX("Unexpected character \".\" after JSON number.", "Line number 1.");
+
     ly_in_free(in, 0);
 }
 
