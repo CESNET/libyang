@@ -76,8 +76,6 @@ test_module(void **state)
 
     str = "module test {namespace urn:test; prefix t;"
             "feature f1;feature f2 {if-feature f1;}}";
-    assert_int_equal(LY_EINVAL, lys_compile(NULL, 0, NULL));
-    CHECK_LOG("Invalid argument mod (lys_compile()).", NULL);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
     lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
