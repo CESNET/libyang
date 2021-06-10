@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "schema_compile_node.h"
 

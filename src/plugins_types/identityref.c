@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "plugins_types.h"
 
