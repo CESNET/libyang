@@ -355,8 +355,6 @@ lyjson_count_in_row(const char *str, const char *end, char c, ly_bool backwards)
 /**
  * @brief Check if the number can be shortened to zero.
  *
- * The input number must be syntactically valid.
- *
  * @param[in] in Start of input string;
  * @param[in] end End of input string;
  * @return 1 if number is zero, otherwise 0.
@@ -364,13 +362,17 @@ lyjson_count_in_row(const char *str, const char *end, char c, ly_bool backwards)
 static ly_bool
 lyjson_number_is_zero(const char *in, const char *end)
 {
-    assert(end >= in);
+    assert(in < end);
 
     if ((in[0] == '-') || (in[0] == '+')) {
         in++;
+        assert(in < end);
     }
     if ((in[0] == '0') && (in[1] == '.')) {
         in += 2;
+        if (!(in < end)) {
+            return 1;
+        }
     }
 
     return lyjson_count_in_row(in, end, '0', 0) == end - in;
