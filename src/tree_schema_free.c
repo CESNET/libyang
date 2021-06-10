@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include "common.h"
@@ -1013,8 +1014,9 @@ lys_module_free(struct lys_module *module)
     if (!module) {
         return;
     }
+    assert(!module->implemented);
+    assert(!module->compiled);
 
-    lysc_module_free(module->compiled);
     FREE_ARRAY(module->ctx, module->identities, lysc_ident_free);
     lysp_module_free(module->parsed);
 
