@@ -1457,7 +1457,7 @@ cleanup:
     } else if (module) {
         *module = mod;
     }
-    lys_compile_unres_glob_erase(ctx, &unres);
+    lys_compile_unres_glob_erase(ctx, &unres, 0);
     return ret;
 }
 

@@ -257,12 +257,13 @@ LY_ERR lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres);
 void lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres);
 
 /**
- * @brief Erase all the global unres sets.
+ * @brief Erase the global unres.
  *
  * @param[in] ctx libyang context.
  * @param[in] unres Global unres structure with the sets.
+ * @param[in] recompiled Whether to keep the set of new parsed and implemented modules.
  */
-void lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres);
+void lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres, ly_bool recompiled);
 
 /**
  * @brief Recompile the whole context based on the current flags.

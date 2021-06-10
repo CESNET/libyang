@@ -20,6 +20,7 @@
 
 #include "context.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -205,10 +206,10 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
 cleanup:
     if (ret) {
         lys_compile_unres_glob_revert(ctx, &unres);
-        result = NULL;
+        mod = NULL;
     }
-    lys_compile_unres_glob_erase(ctx, &unres);
-    return result;
+    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    return mod;
 }
 
 API LY_ERR
@@ -298,14 +299,12 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     }
 
     ly_in_free(in, 0);
-    lys_compile_unres_glob_erase(ctx, &unres);
-    *new_ctx = ctx;
-    return rc;
-
-error:
-    ly_in_free(in, 0);
-    lys_compile_unres_glob_erase(ctx, &unres);
-    ly_ctx_destroy(ctx);
+    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    if (rc) {
+        ly_ctx_destroy(ctx);
+    } else {
+        *new_ctx = ctx;
+    }
     return rc;
 }
 

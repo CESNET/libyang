@@ -79,13 +79,13 @@ test_module(void **state)
     assert_int_equal(LY_EINVAL, lys_compile(NULL, 0, NULL));
     CHECK_LOG("Invalid argument mod (lys_compile()).", NULL);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
+    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
     assert_int_equal(LY_SUCCESS, lys_implement(mod, NULL, &unres));
     assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
+    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     assert_non_null(mod->compiled);
     assert_string_equal("test", mod->name);
     assert_string_equal("urn:test", mod->ns);
@@ -105,8 +105,8 @@ test_module(void **state)
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
     assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, NULL));
+    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL);
 
@@ -116,7 +116,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
     assert_int_equal(LY_EEXIST, lys_implement(mod, NULL, &unres));
     CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/aa:a");
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres);
+    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     ly_in_free(in, 0);
 }
 
