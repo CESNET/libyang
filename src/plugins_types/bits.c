@@ -228,7 +228,7 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
     bit_pos = 0;
     for (i = 0; i < bitmap_size; ++i) {
         /* check this byte (but not necessarily all bits in the last byte) */
-        byte = BITS_BITMAP_BYTE(bitmap, bitmap_size, i);
+        byte = (uint8_t *)BITS_BITMAP_BYTE(bitmap, bitmap_size, i);
         for (bitmask = 1; bitmask; bitmask <<= 1) {
             if (*byte & bitmask) {
                 /* add this bit */
