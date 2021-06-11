@@ -610,8 +610,8 @@ struct lyd_value_bits {
  * @brief Special lyd_value structure for built-in binary values.
  */
 struct lyd_value_binary {
-    void *data;     /**< binary value itself */
-    size_t size;    /**< size of the @p data value in bytes */
+    void *data;     /**< pointer to the binary value */
+    size_t size;    /**< size of @p data value in bytes */
 };
 
 /**
