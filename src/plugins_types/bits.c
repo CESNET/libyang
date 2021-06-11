@@ -222,8 +222,8 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
 {
     size_t i, bitmap_size = lyplg_type_bits_bitmap_size(type);
     uint32_t bit_pos;
-    char bitmask;
-    const char *byte;
+    uint8_t bitmask;
+    const uint8_t *byte;
 
     bit_pos = 0;
     for (i = 0; i < bitmap_size; ++i) {
