@@ -491,6 +491,43 @@ test_find_path(void **state)
     lyd_free_all(root);
 }
 
+static void
+test_data_hash(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema, *data;
+
+    schema =
+            "module test-data-hash {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:tests:tdh\";"
+            "  prefix t;"
+            "  container c {"
+            "    leaf-list ll {"
+            "      type string;"
+            "    }"
+            "  }"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* The number of <ll/> must be greater or equal to LYD_HT_MIN_ITEMS
+     * for the correct test run. It should guarantee the creation of a hash table.
+     */
+    assert_true(LYD_HT_MIN_ITEMS <= 4);
+    data =
+            "<c xmlns='urn:tests:tdh'>"
+            "  <ll/>"
+            "  <ll/>"
+            "  <ll/>"
+            "  <ll/>"
+            "</c>";
+
+    /* The run must not crash due to the assert that checks the hash. */
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -502,6 +539,7 @@ main(void)
         UTEST(test_list_pos, setup),
         UTEST(test_first_sibling, setup),
         UTEST(test_find_path, setup),
+        UTEST(test_data_hash, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
