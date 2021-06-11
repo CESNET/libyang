@@ -975,7 +975,7 @@ struct lyd_node_opaq {
 static inline struct lyd_node *
 lyd_parent(const struct lyd_node *node)
 {
-    if (!node) {
+    if (!node || !node->parent) {
         return NULL;
     }
 

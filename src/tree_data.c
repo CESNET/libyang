@@ -3439,7 +3439,7 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t opt
             }
         } else {
             /* if there is no local parent, it will be inserted into first */
-            rc = lyd_dup_r(orig, &local_parent->node, &first, options, first ? NULL : &first);
+            rc = lyd_dup_r(orig, local_parent ? &local_parent->node : NULL, &first, options, first ? NULL : &first);
             LY_CHECK_GOTO(rc, error);
         }
         if (nosiblings) {

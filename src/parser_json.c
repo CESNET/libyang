@@ -202,7 +202,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     /* init return value */
     *snode_p = NULL;
 
-    LOG_LOCSET(NULL, &parent->node, NULL, NULL);
+    LOG_LOCSET(NULL, parent ? &parent->node : NULL, NULL, NULL);
 
     /* get the element module */
     if (prefix_len) {
