@@ -2061,7 +2061,9 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct lysp_restr **patterns
         buf = malloc(word_len + 2);
     }
     LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
-    memmove(buf + 1, word, word_len);
+    if (word_len) {
+        memmove(buf + 1, word, word_len);
+    }
     buf[0] = LYSP_RESTR_PATTERN_ACK; /* pattern's default regular-match flag */
     buf[word_len + 1] = '\0'; /* terminating NULL byte */
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
