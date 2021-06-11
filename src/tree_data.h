@@ -611,7 +611,7 @@ struct lyd_value_bits {
  */
 struct lyd_value_binary {
     void *data;     /**< binary value itself */
-    size_t size;    /**< size of the @p data value */
+    size_t size;    /**< size of the @p data value in bytes */
 };
 
 /**
