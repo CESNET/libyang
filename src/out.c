@@ -433,7 +433,9 @@ ly_vprint_(struct ly_out *out, const char *format, va_list ap)
             *out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + written + 1;
         }
-        memcpy(&(*out->method.mem.buf)[out->method.mem.len], msg, written);
+        if (written) {
+            memcpy(&(*out->method.mem.buf)[out->method.mem.len], msg, written);
+        }
         out->method.mem.len += written;
         (*out->method.mem.buf)[out->method.mem.len] = '\0';
         free(msg);
@@ -542,7 +544,9 @@ ly_write_(struct ly_out *out, const char *buf, size_t len)
             out->buf_size = out->buf_len + len;
         }
 
-        memcpy(&out->buffered[out->buf_len], buf, len);
+        if (len) {
+            memcpy(&out->buffered[out->buf_len], buf, len);
+        }
         out->buf_len += len;
 
         out->printed += len;
@@ -563,7 +567,9 @@ repeat:
             }
             out->method.mem.size = out->method.mem.len + len + 1;
         }
-        memcpy(&(*out->method.mem.buf)[out->method.mem.len], buf, len);
+        if (len) {
+            memcpy(&(*out->method.mem.buf)[out->method.mem.len], buf, len);
+        }
         out->method.mem.len += len;
         (*out->method.mem.buf)[out->method.mem.len] = '\0';
 
@@ -703,6 +709,8 @@ LY_ERR
 ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t count)
 {
     LY_ERR ret = LY_SUCCESS;
+
+    assert(count);
 
     switch (out->type) {
     case LY_OUT_MEMORY:

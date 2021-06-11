@@ -256,7 +256,9 @@ lyjson_string_(struct lyjson_ctx *jsonctx)
                 buf = ly_realloc(buf, len + offset + 1);
                 LY_CHECK_ERR_RET(!buf, LOGMEM(jsonctx->ctx), LY_EMEM);
                 size = len + offset + 1;
-                memcpy(&buf[len], in, offset);
+                if (offset) {
+                    memcpy(&buf[len], in, offset);
+                }
 
                 /* set terminating NULL byte */
                 buf[len + offset] = '\0';

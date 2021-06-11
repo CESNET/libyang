@@ -805,9 +805,13 @@ set_copy(struct lyxp_set *set)
         }
     } else if (set->type == LYXP_SET_NODE_SET) {
         ret->type = set->type;
-        ret->val.nodes = malloc(set->used * sizeof *ret->val.nodes);
-        LY_CHECK_ERR_RET(!ret->val.nodes, LOGMEM(set->ctx); free(ret), NULL);
-        memcpy(ret->val.nodes, set->val.nodes, set->used * sizeof *ret->val.nodes);
+        if (set->used) {
+            ret->val.nodes = malloc(set->used * sizeof *ret->val.nodes);
+            LY_CHECK_ERR_RET(!ret->val.nodes, LOGMEM(set->ctx); free(ret), NULL);
+            memcpy(ret->val.nodes, set->val.nodes, set->used * sizeof *ret->val.nodes);
+        } else {
+            ret->val.nodes = NULL;
+        }
 
         ret->used = ret->size = set->used;
         ret->ctx_pos = set->ctx_pos;
@@ -901,9 +905,13 @@ set_fill_set(struct lyxp_set *trg, const struct lyxp_set *src)
         trg->used = src->used;
         trg->size = src->used;
 
-        trg->val.scnodes = ly_realloc(trg->val.scnodes, trg->size * sizeof *trg->val.scnodes);
-        LY_CHECK_ERR_RET(!trg->val.scnodes, LOGMEM(src->ctx); memset(trg, 0, sizeof *trg), );
-        memcpy(trg->val.scnodes, src->val.scnodes, src->used * sizeof *src->val.scnodes);
+        if (trg->size) {
+            trg->val.scnodes = ly_realloc(trg->val.scnodes, trg->size * sizeof *trg->val.scnodes);
+            LY_CHECK_ERR_RET(!trg->val.scnodes, LOGMEM(src->ctx); memset(trg, 0, sizeof *trg), );
+            memcpy(trg->val.scnodes, src->val.scnodes, src->used * sizeof *src->val.scnodes);
+        } else {
+            trg->val.scnodes = NULL;
+        }
     } else if (src->type == LYXP_SET_BOOLEAN) {
         set_fill_boolean(trg, src->val.bln);
     } else if (src->type == LYXP_SET_NUMBER) {
@@ -925,9 +933,13 @@ set_fill_set(struct lyxp_set *trg, const struct lyxp_set *src)
         trg->ctx_pos = src->ctx_pos;
         trg->ctx_size = src->ctx_size;
 
-        trg->val.nodes = malloc(trg->used * sizeof *trg->val.nodes);
-        LY_CHECK_ERR_RET(!trg->val.nodes, LOGMEM(src->ctx); memset(trg, 0, sizeof *trg), );
-        memcpy(trg->val.nodes, src->val.nodes, src->used * sizeof *src->val.nodes);
+        if (trg->size) {
+            trg->val.nodes = malloc(trg->size * sizeof *trg->val.nodes);
+            LY_CHECK_ERR_RET(!trg->val.nodes, LOGMEM(src->ctx); memset(trg, 0, sizeof *trg), );
+            memcpy(trg->val.nodes, src->val.nodes, src->used * sizeof *src->val.nodes);
+        } else {
+            trg->val.nodes = NULL;
+        }
         if (src->ht) {
             trg->ht = lyht_dup(src->ht);
         } else {
@@ -972,10 +984,9 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
     set_remove_node_hash(set, set->val.nodes[idx].node, set->val.nodes[idx].type);
 
     --set->used;
-    if (set->used) {
-        memmove(&set->val.nodes[idx], &set->val.nodes[idx + 1],
-                (set->used - idx) * sizeof *set->val.nodes);
-    } else {
+    if (idx < set->used) {
+        memmove(&set->val.nodes[idx], &set->val.nodes[idx + 1], (set->used - idx) * sizeof *set->val.nodes);
+    } else if (!set->used) {
         lyxp_set_free_content(set);
     }
 }
@@ -2988,32 +2999,34 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_GOTO(!dup, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 
-    dup->tokens = malloc(exp->used * sizeof *dup->tokens);
-    LY_CHECK_ERR_GOTO(!dup->tokens, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    memcpy(dup->tokens, exp->tokens, exp->used * sizeof *dup->tokens);
+    if (exp->used) {
+        dup->tokens = malloc(exp->used * sizeof *dup->tokens);
+        LY_CHECK_ERR_GOTO(!dup->tokens, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        memcpy(dup->tokens, exp->tokens, exp->used * sizeof *dup->tokens);
 
-    dup->tok_pos = malloc(exp->used * sizeof *dup->tok_pos);
-    LY_CHECK_ERR_GOTO(!dup->tok_pos, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    memcpy(dup->tok_pos, exp->tok_pos, exp->used * sizeof *dup->tok_pos);
+        dup->tok_pos = malloc(exp->used * sizeof *dup->tok_pos);
+        LY_CHECK_ERR_GOTO(!dup->tok_pos, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        memcpy(dup->tok_pos, exp->tok_pos, exp->used * sizeof *dup->tok_pos);
 
-    dup->tok_len = malloc(exp->used * sizeof *dup->tok_len);
-    LY_CHECK_ERR_GOTO(!dup->tok_len, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    memcpy(dup->tok_len, exp->tok_len, exp->used * sizeof *dup->tok_len);
+        dup->tok_len = malloc(exp->used * sizeof *dup->tok_len);
+        LY_CHECK_ERR_GOTO(!dup->tok_len, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        memcpy(dup->tok_len, exp->tok_len, exp->used * sizeof *dup->tok_len);
 
-    dup->repeat = malloc(exp->used * sizeof *dup->repeat);
-    LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    for (i = 0; i < exp->used; ++i) {
-        if (!exp->repeat[i]) {
-            dup->repeat[i] = NULL;
-        } else {
-            for (j = 0; exp->repeat[i][j]; ++j) {}
-            /* the ending 0 as well */
-            ++j;
+        dup->repeat = malloc(exp->used * sizeof *dup->repeat);
+        LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        for (i = 0; i < exp->used; ++i) {
+            if (!exp->repeat[i]) {
+                dup->repeat[i] = NULL;
+            } else {
+                for (j = 0; exp->repeat[i][j]; ++j) {}
+                /* the ending 0 as well */
+                ++j;
 
-            dup->repeat[i] = malloc(j * sizeof **dup->repeat);
-            LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx); ret = LY_EMEM, cleanup);
-            memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
-            dup->repeat[i][j - 1] = 0;
+                dup->repeat[i] = malloc(j * sizeof **dup->repeat);
+                LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
+                dup->repeat[i][j - 1] = 0;
+            }
         }
     }
 

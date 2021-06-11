@@ -1068,7 +1068,9 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
         } \
         LY_ARRAY_DECREMENT(ORIG_ARRAY); \
         FREE_FUNC(ctx->ctx, &(ORIG_ARRAY)[v]); \
-        memmove(&(ORIG_ARRAY)[v], &(ORIG_ARRAY)[v + 1], (LY_ARRAY_COUNT(ORIG_ARRAY) - v) * sizeof *(ORIG_ARRAY)); \
+        if (v < LY_ARRAY_COUNT(ORIG_ARRAY)) { \
+            memmove(&(ORIG_ARRAY)[v], &(ORIG_ARRAY)[v + 1], (LY_ARRAY_COUNT(ORIG_ARRAY) - v) * sizeof *(ORIG_ARRAY)); \
+        } \
     } \
     if (!LY_ARRAY_COUNT(ORIG_ARRAY)) { \
         LY_ARRAY_FREE(ORIG_ARRAY); \

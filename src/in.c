@@ -356,7 +356,9 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
         return LY_EDENIED;
     }
 
-    memcpy(buf, in->current, count);
+    if (count) {
+        memcpy(buf, in->current, count);
+    }
     in->current += count;
     return LY_SUCCESS;
 }

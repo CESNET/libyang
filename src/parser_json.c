@@ -850,7 +850,7 @@ lydjson_maintain_children(struct lyd_node_inner *parent, struct lyd_node **first
 {
     if (*node_p) {
         /* insert, keep first pointer correct */
-        lyd_insert_node(&parent->node, first_p, *node_p);
+        lyd_insert_node(parent ? &parent->node : NULL, first_p, *node_p);
         if (first_p) {
             if (parent) {
                 *first_p = parent->child;

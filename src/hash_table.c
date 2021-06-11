@@ -242,7 +242,9 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
              */
             match->value = malloc(sizeof *match->value * (len + 1));
             LY_CHECK_ERR_RET(!match->value, LOGMEM(ctx), LY_EMEM);
-            memcpy(match->value, value, len);
+            if (len) {
+                memcpy(match->value, value, len);
+            }
             match->value[len] = '\0';
         }
     } else {

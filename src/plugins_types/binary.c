@@ -226,10 +226,12 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
             val->data = (void *)value;
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        } else {
+        } else if (value_len) {
             val->data = malloc(value_len);
             LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
             memcpy(val->data, value, value_len);
+        } else {
+            val->data = NULL;
         }
 
         /* store size */
@@ -350,13 +352,15 @@ lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original
     }
 
     LYD_VALUE_GET(original, orig_val);
-    dup_val->data = malloc(orig_val->size);
-    if (!dup_val->data) {
-        lydict_remove(ctx, dup->_canonical);
-        LYPLG_TYPE_VAL_INLINE_DESTROY(dup_val);
-        return LY_EMEM;
+    if (orig_val->size) {
+        dup_val->data = malloc(orig_val->size);
+        if (!dup_val->data) {
+            lydict_remove(ctx, dup->_canonical);
+            LYPLG_TYPE_VAL_INLINE_DESTROY(dup_val);
+            return LY_EMEM;
+        }
+        memcpy(dup_val->data, orig_val->data, orig_val->size);
     }
-    memcpy(dup_val->data, orig_val->data, orig_val->size);
     dup_val->size = orig_val->size;
 
     dup->realtype = original->realtype;
