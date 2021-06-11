@@ -53,24 +53,24 @@ struct lyd_value_xpath10 {
  * @param[in] token Token to transform.
  * @param[in] tok_len Lenghth of @p token.
  * @param[in] is_nametest Whether the token is a nametest, it then always requires a prefix in XML @p get_format.
+ * @param[in,out] context_mod Current context module, may be updated.
  * @param[in] resolve_ctx Context to use for resolving prefixes.
  * @param[in] resolve_format Format of the resolved prefixes.
  * @param[in] resolve_prefix_data Resolved prefixes prefix data.
  * @param[in] get_format Format of the output prefixes.
  * @param[in] get_prefix_data Format-specific prefix data for the output.
- * @param[in,out] prev_prefix Prefix of a previous nametest.
  * @param[out] token_p Printed token.
  * @param[out] err Error structure on error.
  * @return LY_ERR value.
  */
 static LY_ERR
-xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct ly_ctx *resolve_ctx,
-        LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data, LY_VALUE_FORMAT get_format,
-        void *get_prefix_data, const char **prev_prefix, char **token_p, struct ly_err_item **err)
+xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct lys_module **context_mod,
+        const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data,
+        LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *str_begin, *str_next, *prefix;
-    ly_bool is_prefix;
+    ly_bool is_prefix, has_prefix = 0;
     uint32_t len;
     char *str = NULL;
     void *mem;
@@ -80,8 +80,32 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
     str_begin = token;
 
     while (!(ret = ly_value_prefix_next(str_begin, token + tok_len, &len, &is_prefix, &str_next)) && len) {
+        if (!is_prefix) {
+            if (!has_prefix && is_nametest && (get_format == LY_VALUE_XML) && *context_mod) {
+                /* prefix is always needed, get it in the target format */
+                prefix = lyplg_type_get_prefix(*context_mod, get_format, get_prefix_data);
+                if (!prefix) {
+                    ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
+                    goto cleanup;
+                }
 
-        if (is_prefix) {
+                /* append the nametest and prefix */
+                mem = realloc(str, str_len + strlen(prefix) + 1 + len + 1);
+                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
+                str = mem;
+                str_len += sprintf(str + str_len, "%s:%.*s", prefix, len, str_begin);
+            } else {
+                /* just append the string, we may get the first expression node without a prefix but since this
+                 * is not strictly forbidden, allow it */
+                mem = realloc(str, str_len + len + 1);
+                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
+                str = mem;
+                str_len += sprintf(str + str_len, "%.*s", len, str_begin);
+            }
+        } else {
+            /* remember there was a prefix found */
+            has_prefix = 1;
+
             /* resolve the module in the original format */
             mod = lyplg_type_identity_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
             if (!mod) {
@@ -89,38 +113,27 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
                 goto cleanup;
             }
 
-            /* get the prefix in the target format */
-            prefix = lyplg_type_get_prefix(mod, get_format, get_prefix_data);
-            if (!prefix) {
-                ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
-                goto cleanup;
-            }
+            if (is_nametest && ((get_format == LY_VALUE_JSON) || (get_format == LY_VALUE_LYB)) && (*context_mod == mod)) {
+                /* inherit the prefix and do not print it again */
+            } else {
+                /* get the prefix in the target format */
+                prefix = lyplg_type_get_prefix(mod, get_format, get_prefix_data);
+                if (!prefix) {
+                    ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
+                    goto cleanup;
+                }
 
-            /* append the prefix */
-            mem = realloc(str, str_len + strlen(prefix) + 2);
-            LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
-            str = mem;
-            sprintf(str + str_len, "%s:", prefix);
-            str_len += strlen(prefix) + 1;
+                /* append the prefix */
+                mem = realloc(str, str_len + strlen(prefix) + 2);
+                LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
+                str = mem;
+                str_len += sprintf(str + str_len, "%s:", prefix);
+            }
 
             if (is_nametest) {
-                /* remember prefix of a nametest */
-                *prev_prefix = prefix;
+                /* update context module */
+                *context_mod = mod;
             }
-        } else if (is_nametest && (get_format == LY_VALUE_XML) && (len == tok_len) && *prev_prefix) {
-            /* nametest without a prefix, we must add it */
-            mem = realloc(str, str_len + strlen(*prev_prefix) + 1 + len + 1);
-            LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
-            str = mem;
-            sprintf(str + str_len, "%s:%.*s", *prev_prefix, len, str_begin);
-            str_len += strlen(*prev_prefix) + 1 + len;
-        } else {
-            /* just append the string */
-            mem = realloc(str, str_len + len + 1);
-            LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
-            str = mem;
-            sprintf(str + str_len, "%.*s", len, str_begin);
-            str_len += len;
         }
 
         str_begin = str_next;
@@ -133,6 +146,92 @@ cleanup:
         *token_p = str;
     }
     return ret;
+}
+
+/**
+ * @brief Print xpath1.0 subexpression in the specific format.
+ *
+ * @param[in,out] cur_idx Current index of the next token in the expression.
+ * @param[in] end_tok End token (including) that finishes this subexpression parsing. If 0, parse until the end.
+ * @param[in] context_mod Current context module, some formats (::LY_VALUE_JSON and ::LY_VALUE_LYB) inherit this module
+ * instead of printing it again.
+ * @param[in] xp_val xpath1.0 value structure.
+ * @param[in] format Format to print in.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[in,out] str_value Printed value, appended to.
+ * @param[in,out] str_len Length of @p str_value, updated.
+ * @param[out] err Error structure on error.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct lys_module *context_mod,
+        const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data, char **str_value,
+        uint32_t *str_len, struct ly_err_item **err)
+{
+    enum lyxp_token cur_tok, sub_end_tok;
+    char *str_tok;
+    void *mem;
+    const char *cur_exp_ptr;
+    ly_bool is_nt;
+    const struct lys_module *orig_context_mod = context_mod;
+
+    while (*cur_idx < xp_val->exp->used) {
+        cur_tok = xp_val->exp->tokens[*cur_idx];
+        cur_exp_ptr = xp_val->exp->expr + xp_val->exp->tok_pos[*cur_idx];
+
+        if ((cur_tok == LYXP_TOKEN_NAMETEST) || (cur_tok == LYXP_TOKEN_LITERAL)) {
+            /* tokens that may include prefixes, get them in the target format */
+            is_nt = (cur_tok == LYXP_TOKEN_NAMETEST) ? 1 : 0;
+            LY_CHECK_RET(xpath10_print_token(cur_exp_ptr, xp_val->exp->tok_len[*cur_idx], is_nt, &context_mod,
+                    xp_val->ctx, xp_val->format, xp_val->prefix_data, format, prefix_data, &str_tok, err));
+
+            /* append the converted token */
+            mem = realloc(*str_value, *str_len + strlen(str_tok) + 1);
+            LY_CHECK_ERR_GOTO(!mem, free(str_tok), error_mem);
+            *str_value = mem;
+            *str_len += sprintf(*str_value + *str_len, "%s", str_tok);
+            free(str_tok);
+
+            /* token processed */
+            ++(*cur_idx);
+        } else {
+            if ((cur_tok == LYXP_TOKEN_OPER_LOG) || (cur_tok == LYXP_TOKEN_OPER_UNI)) {
+                /* copy the token with spaces around */
+                mem = realloc(*str_value, *str_len + 1 + xp_val->exp->tok_len[*cur_idx] + 2);
+                LY_CHECK_GOTO(!mem, error_mem);
+                *str_value = mem;
+                *str_len += sprintf(*str_value + *str_len, " %.*s ", (int)xp_val->exp->tok_len[*cur_idx], cur_exp_ptr);
+
+                /* reset context mod */
+                context_mod = orig_context_mod;
+            } else {
+                /* just copy the token */
+                mem = realloc(*str_value, *str_len + xp_val->exp->tok_len[*cur_idx] + 1);
+                LY_CHECK_GOTO(!mem, error_mem);
+                *str_value = mem;
+                *str_len += sprintf(*str_value + *str_len, "%.*s", (int)xp_val->exp->tok_len[*cur_idx], cur_exp_ptr);
+            }
+
+            /* token processed but keep it in cur_tok */
+            ++(*cur_idx);
+
+            if (end_tok && (cur_tok == end_tok)) {
+                /* end token found */
+                break;
+            } else if ((cur_tok == LYXP_TOKEN_BRACK1) || (cur_tok == LYXP_TOKEN_PAR1)) {
+                sub_end_tok = (cur_tok == LYXP_TOKEN_BRACK1) ? LYXP_TOKEN_BRACK2 : LYXP_TOKEN_PAR2;
+
+                /* parse the subexpression separately, use the current context mod */
+                LY_CHECK_RET(xpath10_print_subexpr_r(cur_idx, sub_end_tok, context_mod, xp_val, format, prefix_data,
+                        str_value, str_len, err));
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+
+error_mem:
+    return ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
 }
 
 /**
@@ -150,57 +249,16 @@ xpath10_print_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT form
         char **str_value, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *str = NULL, *token;
-    void *mem;
-    const char *str_exp_ptr = xp_val->exp->expr, *cur_exp_ptr, *prev_prefix = NULL;
-    uint32_t str_len = 0, len;
-    uint16_t idx;
-    ly_bool is_nt;
+    uint16_t expr_idx = 0;
+    uint32_t str_len = 0;
 
-    for (idx = 0; idx < xp_val->exp->used; ++idx) {
-        cur_exp_ptr = xp_val->exp->expr + xp_val->exp->tok_pos[idx];
+    *str_value = NULL;
 
-        /* only these tokens may include prefixes */
-        if ((xp_val->exp->tokens[idx] == LYXP_TOKEN_NAMETEST) || (xp_val->exp->tokens[idx] == LYXP_TOKEN_LITERAL)) {
-            /* append preceding expression */
-            len = cur_exp_ptr - str_exp_ptr;
-            mem = realloc(str, str_len + len + 1);
-            LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
-            str = mem;
-            sprintf(str + str_len, "%.*s", len, str_exp_ptr);
-            str_len += len;
-            str_exp_ptr = cur_exp_ptr;
+    /* recursively print the expression */
+    ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, xp_val, format, prefix_data, str_value, &str_len, err);
 
-            /* get the token in the target format */
-            is_nt = (xp_val->exp->tokens[idx] == LYXP_TOKEN_NAMETEST) ? 1 : 0;
-            ret = xpath10_print_token(cur_exp_ptr, xp_val->exp->tok_len[idx], is_nt, xp_val->ctx, xp_val->format,
-                    xp_val->prefix_data, format, prefix_data, &prev_prefix, &token, err);
-            LY_CHECK_GOTO(ret, cleanup);
-
-            /* append the converted token */
-            mem = realloc(str, str_len + strlen(token) + 1);
-            LY_CHECK_ERR_GOTO(!mem, free(token); ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
-            str = mem;
-            sprintf(str + str_len, "%s", token);
-            str_len += strlen(token);
-            str_exp_ptr += xp_val->exp->tok_len[idx];
-            free(token);
-        }
-    }
-
-    /* append the rest of the expression */
-    if (str_exp_ptr[0]) {
-        mem = realloc(str, str_len + strlen(str_exp_ptr) + 1);
-        LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
-        str = mem;
-        sprintf(str + str_len, "%s", str_exp_ptr);
-    }
-
-cleanup:
     if (ret) {
-        free(str);
-    } else {
-        *str_value = str;
+        free(*str_value);
     }
     return ret;
 }

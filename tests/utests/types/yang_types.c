@@ -69,6 +69,9 @@ test_data_xml(void **state)
             "leaf l {type yang:date-and-time;}"
             "leaf l2 {type yang:xpath1.0;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    schema = MODULE_CREATE_YANG("b",
+            "");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     /* date-and-time */
     TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T21:15:15.88888-02:00");
@@ -88,12 +91,15 @@ test_data_xml(void **state)
             "Schema location /a:l, line number 1.");
 
     /* xpath1.0 */
-    TEST_SUCCESS_XML("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']", STRING, "/a:l2[. = '4']");
+    TEST_SUCCESS_XML("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']", STRING, "/a:l2[.='4']");
     TEST_SUCCESS_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores", "l2",
             "/yl:yang-library/yl:datastore/yl:name = 'ds:running'", STRING,
-            "/ietf-yang-library:yang-library/ietf-yang-library:datastore/ietf-yang-library:name = 'ietf-datastores:running'");
-    TEST_SUCCESS_XML("a", "l2", "/l2[. = '4']", STRING, "/l2[. = '4']");
+            "/ietf-yang-library:yang-library/datastore/name='ietf-datastores:running'");
+    TEST_SUCCESS_XML("a\" xmlns:a1=\"urn:tests:a\" xmlns:a2=\"urn:tests:a\" xmlns:bb=\"urn:tests:b", "l2",
+            "/a1:node1/a2:node2[a1:node3/bb:node4]/bb:node5 | bb:node6 and (bb:node7)", STRING,
+            "/a:node1/node2[node3/b:node4]/b:node5 | b:node6 and (b:node7)");
+    TEST_SUCCESS_XML("a", "l2", "/l2[. = '4']", STRING, "/l2[.='4']");
 
     TEST_ERROR_XML("a", "l2", "/a:l2[. = '4']");
     CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location /a:l2, line number 1.");
@@ -118,11 +124,11 @@ test_print(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
 
     /* XML print */
-    expected = "<l xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l[. = '/pref:l']</l>";
+    expected = "<l xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l[.='/pref:l']</l>";
     CHECK_LYD_STRING_PARAM(tree, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
 
     /* JSON print */
-    expected = "{\"a:l\":\"/a:l[. = '/a:l']\"}";
+    expected = "{\"a:l\":\"/a:l[.='/a:l']\"}";
     CHECK_LYD_STRING_PARAM(tree, expected, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
 
     lyd_free_tree(tree);
@@ -132,7 +138,7 @@ test_print(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
 
     /* XML print */
-    expected = "<l xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l/pref:k/pref:m[. = '/pref:l']</l>";
+    expected = "<l xmlns=\"urn:tests:a\" xmlns:pref=\"urn:tests:a\">/pref:l/pref:k/pref:m[.='/pref:l']</l>";
     CHECK_LYD_STRING_PARAM(tree, expected, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS);
 
     /* JSON print */
