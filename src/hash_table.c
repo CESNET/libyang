@@ -102,7 +102,7 @@ dict_hash_multi(uint32_t hash, const char *key_part, size_t len)
 {
     uint32_t i;
 
-    if (key_part) {
+    if (key_part && len) {
         for (i = 0; i < len; ++i) {
             hash += key_part[i];
             hash += (hash << 10);
