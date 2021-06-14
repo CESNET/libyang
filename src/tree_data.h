@@ -102,6 +102,7 @@ struct timespec;
  * - ::lyd_get_meta_value()
  * - ::lyd_find_xpath()
  * - ::lyd_find_path()
+ * - ::lyd_find_target()
  * - ::lyd_find_sibling_val()
  * - ::lyd_find_sibling_first()
  * - ::lyd_find_sibling_opaq_next()
@@ -553,7 +554,8 @@ struct lyd_value {
         uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
-        struct ly_path *target;      /**< Instance-identifier target path. */
+        struct ly_path *target;      /**< Instance-identifier target path, use ::lyd_find_target() to evaluate
+                                        it on data. */
         struct lyd_value_union *subvalue; /** Union value with some metadata. */
 
         void *dyn_mem;               /**< pointer to generic data type value stored in dynamic memory */
@@ -2161,7 +2163,7 @@ LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_dif
 LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
- * @brief Find the target in data of a compiled instance-identifier path (the target member in ::lyd_value).
+ * @brief Deprecated, use ::lyd_find_target() instead.
  *
  * @param[in] path Compiled path structure.
  * @param[in] tree Data tree to be searched.
@@ -2302,6 +2304,18 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
  * @return LY_ERR on other errors.
  */
 LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
+
+/**
+ * @brief Find the target node of a compiled path (::lyd_value instance-identifier).
+ *
+ * @param[in] path Compiled path structure.
+ * @param[in] tree Data tree to be searched.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match is set to the found node.
+ * @return LY_ENOTFOUND if no match was found.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.

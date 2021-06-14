@@ -4312,6 +4312,28 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match)
+{
+    LY_ERR ret;
+    struct lyd_node *m;
+
+    LY_CHECK_ARG_RET(NULL, path, LY_EINVAL);
+
+    ret = ly_path_eval(path, tree, &m);
+    if (ret) {
+        if (match) {
+            *match = NULL;
+        }
+        return LY_ENOTFOUND;
+    }
+
+    if (match) {
+        *match = m;
+    }
+    return LY_SUCCESS;
+}
+
 API uint32_t
 lyd_list_pos(const struct lyd_node *instance)
 {
