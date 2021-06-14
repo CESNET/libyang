@@ -820,7 +820,7 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
             return LY_SUCCESS;
         } else {
             /* full recompilation */
-            return lys_recompile(mod->ctx, 1);
+            return lys_recompile(mod->ctx);
         }
     }
 
@@ -828,11 +828,10 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
     ret = lys_implement(mod, features, unres);
     if (ret == LY_ERECOMPILE) {
         /* recompile */
-        LY_CHECK_GOTO(ret = lys_recompile(mod->ctx, 1), cleanup);
+        LY_CHECK_GOTO(ret = lys_recompile(mod->ctx), cleanup);
 
-        /* reset unres, it is no longer valid after recompilation and recompilation has actually resolved it all */
+        /* reset unres, it is no longer valid after recompilation, which has actually resolved it all */
         lys_compile_unres_glob_erase(mod->ctx, unres, 1);
-        unres->full_compilation = 1;
     } else if (ret) {
         goto cleanup;
     }
@@ -847,10 +846,9 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
 
             ret = lys_implement(mod, NULL, unres);
             if (ret == LY_ERECOMPILE) {
-                LY_CHECK_GOTO(ret = lys_recompile(mod->ctx, 1), cleanup);
+                LY_CHECK_GOTO(ret = lys_recompile(mod->ctx), cleanup);
 
                 lys_compile_unres_glob_erase(mod->ctx, unres, 1);
-                unres->full_compilation = 1;
             } else if (ret) {
                 goto cleanup;
             }
