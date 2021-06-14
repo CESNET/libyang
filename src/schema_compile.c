@@ -1241,7 +1241,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         LOG_LOCBACK(1, 0, 0, 0);
         if (ret == LY_ERECOMPILE) {
             /* leafref caused a new module to be implemented, following leafrefs referencing the module would fail */
-            return lys_recompile(ctx, 1);
+            return lys_recompile(ctx);
         } else if (ret) {
             return ret;
         }
@@ -1286,7 +1286,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         ret = lys_compile_unres_xpath(&cctx, node, unres);
         LOG_LOCBACK(1, 0, 0, 0);
         if (ret == LY_ERECOMPILE) {
-            return lys_recompile(ctx, 1);
+            return lys_recompile(ctx);
         } else if (ret) {
             return ret;
         }
@@ -1309,7 +1309,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
         LOG_LOCBACK(1, 0, 0, 0);
         if (ret == LY_ERECOMPILE) {
-            return lys_recompile(ctx, 1);
+            return lys_recompile(ctx);
         } else if (ret) {
             return ret;
         }
@@ -1342,8 +1342,9 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 void
 lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
-    uint32_t i;
+    uint32_t i, prev_lo;
     struct lys_module *m;
+    LY_ERR ret;
 
     for (i = 0; i < unres->implementing.count; ++i) {
         m = unres->implementing.objs[i];
@@ -1365,8 +1366,13 @@ lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     }
 
     if (unres->implementing.count) {
-        /* recompile because some implemented modules are no longer implemented */
-        lys_recompile(ctx, 0);
+        /* recompile previous context because some implemented modules are no longer implemented */
+        prev_lo = ly_log_options(0);
+        ret = lys_recompile(ctx);
+        ly_log_options(prev_lo);
+        if (ret) {
+            LOGINT(ctx);
+        }
     }
 }
 
@@ -1519,19 +1525,7 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Compile schema into a validated schema linking all the references.
- *
- * Implemented flag of @p mod must be set meaning this function should be called only if the module
- * is being recompiled, otherwise call ::lys_implement().
- *
- * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
- * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
- * @param[in,out] unres Global unres structure to add to.
- * @return LY_SUCCESS on success.
- * @return LY_ERR on error.
- */
-static LY_ERR
+LY_ERR
 lys_compile(struct lys_module *mod, struct lys_glob_unres *unres)
 {
     struct lysc_ctx ctx = {0};
@@ -1657,59 +1651,21 @@ cleanup:
 }
 
 LY_ERR
-lys_recompile(struct ly_ctx *ctx, ly_bool log)
+lys_recompile(struct ly_ctx *ctx)
 {
     uint32_t idx;
     struct lys_module *mod;
-    struct lys_glob_unres unres = {0};
-    LY_ERR ret = LY_SUCCESS;
-    uint32_t prev_lo = 0;
 
-    /* we are always recompiling all the modules */
-    unres.full_compilation = 1;
-
-    if (!log) {
-        /* recompile, must succeed because the modules were already compiled; hide messages because any
-         * warnings were already printed, are not really relevant, and would hide the real error */
-        prev_lo = ly_log_options(0);
-    }
-
-    /* free all the modules */
+    /* mark all modules for recompilation */
     for (idx = 0; idx < ctx->list.count; ++idx) {
         mod = ctx->list.objs[idx];
-        if (mod->compiled) {
-            assert(mod->implemented);
-
-            /* free the module */
-            lysc_module_free(mod->compiled);
-            mod->compiled = NULL;
+        if (mod->implemented) {
+            mod->to_compile = 1;
         }
     }
 
-    /* recompile all the modules */
-    for (idx = 0; idx < ctx->list.count; ++idx) {
-        mod = ctx->list.objs[idx];
-        if (!mod->implemented || mod->compiled) {
-            /* nothing to do */
-            continue;
-        }
-
-        /* (re)compile the module */
-        LY_CHECK_GOTO(ret = lys_compile(mod, &unres), cleanup);
-    }
-
-    /* resolve global unres */
-    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
-
-cleanup:
-    if (!log) {
-        ly_log_options(prev_lo);
-        if (ret) {
-            LOGERR(mod->ctx, ret, "Recompilation of module \"%s\" failed.", mod->name);
-        }
-    }
-    lys_compile_unres_glob_erase(ctx, &unres, 0);
-    return ret;
+    /* recompile */
+    return ly_ctx_compile(ctx);
 }
 
 /**
@@ -1730,7 +1686,8 @@ lys_has_compiled_import_r(struct lys_module *mod)
             continue;
         }
 
-        if (mod->parsed->imports[u].module->compiled) {
+        if (!mod->parsed->imports[u].module->to_compile) {
+            /* module was not/will not be compiled in this compilation (so disabled nodes are not present) */
             return LY_ERECOMPILE;
         }
 
@@ -1793,16 +1750,11 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
         return ret;
     }
 
-    if (!unres->full_compilation) {
-        /* check whether this module may reference any already-compiled modules */
-        LY_CHECK_RET(lys_has_compiled_import_r(mod));
-    }
+    /* check whether this module may reference any modules compiled previously */
+    LY_CHECK_RET(lys_has_compiled_import_r(mod));
 
     /* compile the schema */
     LY_CHECK_RET(lys_compile(mod, unres));
-
-    /* new module is implemented and compiled */
-    unres->full_compilation = 0;
 
     return LY_SUCCESS;
 }

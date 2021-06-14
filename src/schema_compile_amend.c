@@ -2280,8 +2280,8 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
             if (!m->implemented) {
                 /* implement (compile) the target module with our augments/deviations */
                 LY_CHECK_GOTO(ret = lys_implement(m, NULL, unres), cleanup);
-            } else if (!unres->full_compilation) {
-                /* target module was already compiled, we need to recompile it */
+            } else if (m->compiled) {
+                /* target module was already compiled without our amends (augment/deviation), we need to recompile it */
                 ret = LY_ERECOMPILE;
                 goto cleanup;
             }

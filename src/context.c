@@ -498,32 +498,42 @@ ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, in
 API LY_ERR
 ly_ctx_compile(struct ly_ctx *ctx)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
     uint32_t i;
-    ly_bool recompile = 0;
+    struct lys_glob_unres unres = {0};
 
     LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
+    /* (re)compile all the implemented modules */
     for (i = 0; i < ctx->list.count; ++i) {
         mod = ctx->list.objs[i];
-        if (mod->to_compile) {
-            assert(mod->implemented);
-
-            /* just unset the flag, it is not used for anything currently */
-            mod->to_compile = 0;
-
-            /* some modules were changed and need to be (re)compiled */
-            recompile = 1;
+        if (!mod->to_compile) {
+            /* skip */
+            continue;
         }
+        assert(mod->implemented);
+
+        /* free the compiled module, if any */
+        lysc_module_free(mod->compiled);
+        mod->compiled = NULL;
+
+        /* (re)compile the module */
+        LY_CHECK_GOTO(ret = lys_compile(mod, &unres), cleanup);
     }
 
-    if (!recompile) {
-        /* no recompilation needed */
-        return LY_SUCCESS;
+    /* resolve global unres */
+    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
+
+    /* success, unset all the flags */
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
+        mod->to_compile = 0;
     }
 
-    /* (re)compile all the implemented modules */
-    return lys_recompile(ctx, 1);
+cleanup:
+    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    return ret;
 }
 
 API uint16_t
@@ -544,7 +554,7 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         ctx->flags |= LY_CTX_SET_PRIV_PARSED;
         /* recompile to set the priv pointers */
-        lyrc = lys_recompile(ctx, 0);
+        lyrc = lys_recompile(ctx);
         if (lyrc) {
             ly_ctx_unset_options(ctx, LY_CTX_SET_PRIV_PARSED);
         }

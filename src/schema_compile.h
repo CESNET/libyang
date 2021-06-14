@@ -71,8 +71,6 @@ struct lys_glob_unres {
     struct ly_set leafrefs;     /**< to validate leafref's targets */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
-    ly_bool full_compilation;   /**< flag marking that all the currently implemented modules were compiled in this
-                                    compilation (meaning that all their disabled nodes are still present) */
 };
 
 /**
@@ -266,14 +264,27 @@ void lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *un
 void lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres, ly_bool recompiled);
 
 /**
- * @brief Recompile the whole context based on the current flags.
+ * @brief Compile schema into a validated schema linking all the references.
  *
- * @param[in] ctx Context to recompile.
- * @param[in] log Whether to log all the errors.
+ * Implemented flag of @p mod must be set meaning this function should be called only if the module
+ * is being recompiled, otherwise call ::lys_implement().
+ *
+ * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
+ * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
+ * @param[in,out] unres Global unres structure to add to.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lys_recompile(struct ly_ctx *ctx, ly_bool log);
+LY_ERR lys_compile(struct lys_module *mod, struct lys_glob_unres *unres);
+
+/**
+ * @brief Recompile the whole context based on the current flags.
+ *
+ * @param[in] ctx Context to recompile.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_recompile(struct ly_ctx *ctx);
 
 /**
  * @brief Implement a single module, can be called recursively.
