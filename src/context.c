@@ -541,6 +541,7 @@ API uint16_t
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
+
     return ctx->flags;
 }
 
