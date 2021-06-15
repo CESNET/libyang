@@ -547,14 +547,22 @@ API LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_ERR lyrc = LY_SUCCESS;
+    struct lys_module *mod;
+    uint32_t i;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         ctx->flags |= LY_CTX_SET_PRIV_PARSED;
-        /* recompile to set the priv pointers */
-        lyrc = lys_recompile(ctx);
+        /* recompile the whole context to set the priv pointers */
+        for (i = 0; i < ctx->list.count; ++i) {
+            mod = ctx->list.objs[i];
+            if (mod->implemented) {
+                mod->to_compile = 1;
+            }
+        }
+        lyrc = ly_ctx_compile(ctx);
         if (lyrc) {
             ly_ctx_unset_options(ctx, LY_CTX_SET_PRIV_PARSED);
         }

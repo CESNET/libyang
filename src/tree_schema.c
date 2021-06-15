@@ -809,32 +809,17 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
         if (r == LY_EEXIST) {
             /* no changes */
             return LY_SUCCESS;
-        } else if (r) {
-            /* error */
-            return r;
-        }
-
-        if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
-            /* just mark the module as changed */
+        } else if (!r) {
+            /* mark the module as changed */
             mod->to_compile = 1;
-            return LY_SUCCESS;
-        } else {
-            /* full recompilation */
-            return lys_recompile(mod->ctx);
         }
+
+        return r;
     }
 
-    /* implement */
-    ret = lys_implement(mod, features, unres);
-    if (ret == LY_ERECOMPILE) {
-        /* recompile */
-        LY_CHECK_GOTO(ret = lys_recompile(mod->ctx), cleanup);
-
-        /* reset unres, it is no longer valid after recompilation, which has actually resolved it all */
-        lys_compile_unres_glob_erase(mod->ctx, unres, 1);
-    } else if (ret) {
-        goto cleanup;
-    }
+    /* implement, ignore recompilation because it must always take place later */
+    r = lys_implement(mod, features, unres);
+    LY_CHECK_ERR_GOTO(r && (r != LY_ERECOMPILE), ret = r, cleanup);
 
     if (mod->ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
         /* implement all the imports as well */
@@ -844,9 +829,8 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
                 continue;
             }
 
-            ret = lys_implement(mod, NULL, unres);
-            if (ret == LY_ERECOMPILE) {
-                LY_CHECK_GOTO(ret = lys_recompile(mod->ctx), cleanup);
+            r = lys_implement(mod, NULL, unres);
+            LY_CHECK_ERR_GOTO(r && (r != LY_ERECOMPILE), ret = r, cleanup);
 
                 lys_compile_unres_glob_erase(mod->ctx, unres, 1);
             } else if (ret) {
