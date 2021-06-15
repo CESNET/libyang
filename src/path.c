@@ -388,6 +388,7 @@ error:
  * @param[in] lref Lref option.
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in,out] unres Global unres to use.
  * @param[out] mod Resolved module.
  * @param[out] name Parsed node name.
  * @param[out] name_len Length of @p name.
