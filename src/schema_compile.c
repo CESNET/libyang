@@ -474,8 +474,7 @@ restart:
         }
 
         lysc_update_path(ctx, NULL, (*idents)[u].name);
-        LY_CHECK_RET(lys_compile_identity_bases(ctx, (*idents)[u].module->parsed, idents_p[v].bases, &(*idents)[u], NULL,
-                &enabled));
+        LY_CHECK_RET(lys_compile_identity_bases(ctx, ctx->pmod, idents_p[v].bases, &(*idents)[u], NULL, &enabled));
         lysc_update_path(ctx, NULL, NULL);
 
         if (!enabled) {
@@ -1495,24 +1494,31 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
 static LY_ERR
 lys_compile_identities(struct lysc_ctx *ctx)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lysp_submodule *submod;
+    struct lysp_module *orig_pmod = ctx->pmod;
     LY_ARRAY_COUNT_TYPE u;
 
     if (ctx->cur_mod->parsed->identities) {
-        LY_CHECK_RET(lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities, &ctx->cur_mod->identities));
+        LY_CHECK_GOTO(ret = lys_compile_identities_derived(ctx, ctx->cur_mod->parsed->identities,
+                &ctx->cur_mod->identities), cleanup);
     }
     lysc_update_path(ctx, NULL, "{submodule}");
     LY_ARRAY_FOR(ctx->cur_mod->parsed->includes, u) {
         submod = ctx->cur_mod->parsed->includes[u].submodule;
         if (submod->identities) {
+            ctx->pmod = (struct lysp_module *)submod;
             lysc_update_path(ctx, NULL, submod->name);
-            LY_CHECK_RET(lys_compile_identities_derived(ctx, submod->identities, &ctx->cur_mod->identities));
+            ret = lys_compile_identities_derived(ctx, submod->identities, &ctx->cur_mod->identities);
             lysc_update_path(ctx, NULL, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
     lysc_update_path(ctx, NULL, NULL);
 
-    return LY_SUCCESS;
+cleanup:
+    ctx->pmod = orig_pmod;
+    return ret;
 }
 
 LY_ERR
