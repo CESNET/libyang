@@ -78,7 +78,7 @@ test_module(void **state)
             "feature f1;feature f2 {if-feature f1;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
+    lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(mod, NULL));
@@ -102,7 +102,7 @@ test_module(void **state)
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_EINVAL, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, NULL));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
+    lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL);
 

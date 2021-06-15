@@ -162,7 +162,7 @@ LY_ERR lys_precompile_own_deviations(struct lysc_ctx *ctx);
  * @param[in] mod Module to process.
  * @param[in,out] unres Global unres to use.
  * @return LY_SUCCESS on success.
- * @return LY_ERECOMPILE on required recompilation.
+ * @return LY_ERECOMPILE on required recompilation of the dep set.
  * @return LY_ERR on error.
  */
 LY_ERR lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres);

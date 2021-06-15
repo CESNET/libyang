@@ -1197,16 +1197,28 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
     return LY_SUCCESS;
 }
 
-LY_ERR
-lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
+/**
+ * @brief Finish dependency set compilation by resolving all the unres sets.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets to resolve.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE if the dep set needs to be recompiled.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     LY_ERR ret;
     struct lysc_node *node;
     struct lysc_type *type, *typeiter;
     struct lysc_type_leafref *lref;
     struct lysc_ctx cctx = {0};
+    struct lys_depset_unres *ds_unres;
     LY_ARRAY_COUNT_TYPE v;
     uint32_t i;
+
+    ds_unres = &unres->ds_unres;
 
     /* fake compile context */
     cctx.ctx = ctx;
@@ -1216,9 +1228,9 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
      * can be also leafref, in case it is already resolved, go through the chain and check that it does not
      * point to the starting leafref type). The second round stores the first non-leafref type for later data validation. */
-    for (i = 0; i < unres->leafrefs.count; ++i) {
+    for (i = 0; i < ds_unres->leafrefs.count; ++i) {
         LY_ERR ret = LY_SUCCESS;
-        node = unres->leafrefs.objs[i];
+        node = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
@@ -1243,8 +1255,8 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
     }
-    while (unres->leafrefs.count) {
-        node = unres->leafrefs.objs[unres->leafrefs.count - 1];
+    while (ds_unres->leafrefs.count) {
+        node = ds_unres->leafrefs.objs[ds_unres->leafrefs.count - 1];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
@@ -1269,32 +1281,30 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
         LOG_LOCBACK(1, 0, 0, 0);
 
-        ly_set_rm_index(&unres->leafrefs, unres->leafrefs.count - 1, NULL);
+        ly_set_rm_index(&ds_unres->leafrefs, ds_unres->leafrefs.count - 1, NULL);
     }
 
     /* check xpath */
-    while (unres->xpath.count) {
-        node = unres->xpath.objs[unres->xpath.count - 1];
+    while (ds_unres->xpath.count) {
+        node = ds_unres->xpath.objs[ds_unres->xpath.count - 1];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
         LOG_LOCSET(node, NULL, NULL, NULL);
-
         ret = lys_compile_unres_xpath(&cctx, node, unres);
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
 
-        ly_set_rm_index(&unres->xpath, unres->xpath.count - 1, NULL);
+        ly_set_rm_index(&ds_unres->xpath, ds_unres->xpath.count - 1, NULL);
     }
 
     /* finish incomplete default values compilation */
-    while (unres->dflts.count) {
-        struct lysc_unres_dflt *r = unres->dflts.objs[unres->dflts.count - 1];
+    while (ds_unres->dflts.count) {
+        struct lysc_unres_dflt *r = ds_unres->dflts.objs[ds_unres->dflts.count - 1];
         cctx.cur_mod = r->leaf->module;
         cctx.pmod = r->leaf->module->parsed;
 
         LOG_LOCSET(&r->leaf->node, NULL, NULL, NULL);
-
         if (r->leaf->nodetype == LYS_LEAF) {
             ret = lys_compile_unres_leaf_dlft(&cctx, r->leaf, r->dflt, unres);
         } else {
@@ -1304,17 +1314,17 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         LY_CHECK_RET(ret);
 
         lysc_unres_dflt_free(ctx, r);
-        ly_set_rm_index(&unres->dflts, unres->dflts.count - 1, NULL);
+        ly_set_rm_index(&ds_unres->dflts, ds_unres->dflts.count - 1, NULL);
     }
 
     /* some unres items may have been added */
-    if (unres->leafrefs.count || unres->xpath.count || unres->dflts.count) {
-        return lys_compile_unres_glob(ctx, unres);
+    if (ds_unres->leafrefs.count || ds_unres->xpath.count || ds_unres->dflts.count) {
+        return lys_compile_unres_depset(ctx, unres);
     }
 
     /* finally, remove all disabled nodes */
-    for (i = 0; i < unres->disabled.count; ++i) {
-        node = unres->disabled.snodes[i];
+    for (i = 0; i < ds_unres->disabled.count; ++i) {
+        node = ds_unres->disabled.snodes[i];
         if (node->flags & LYS_KEY) {
             LOG_LOCSET(node, NULL, NULL, NULL);
             LOGVAL(ctx, LYVE_REFERENCE, "Key \"%s\" is disabled by its if-features.", node->name);
@@ -1328,59 +1338,69 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     return LY_SUCCESS;
 }
 
-void
-lys_compile_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
-{
-    uint32_t i, prev_lo;
-    struct lys_module *m;
-    LY_ERR ret;
-
-    for (i = 0; i < unres->implementing.count; ++i) {
-        m = unres->implementing.objs[i];
-        assert(m->implemented);
-
-        /* make the module correctly non-implemented again */
-        m->implemented = 0;
-        lys_precompile_augments_deviations_revert(ctx, m);
-        lysc_module_free(m->compiled);
-        m->compiled = NULL;
-    }
-
-    for (i = 0; i < unres->creating.count; ++i) {
-        m = unres->creating.objs[i];
-
-        /* remove the module from the context and free it */
-        ly_set_rm(&ctx->list, m, NULL);
-        lys_module_free(m);
-    }
-
-    if (unres->implementing.count) {
-        /* recompile previous context because some implemented modules are no longer implemented */
-        prev_lo = ly_log_options(0);
-        ret = lys_recompile(ctx);
-        ly_log_options(prev_lo);
-        if (ret) {
-            LOGINT(ctx);
-        }
-    }
-}
-
-void
-lys_compile_unres_glob_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres, ly_bool recompiled)
+/**
+ * @brief Erase dep set unres.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres structure with the sets to resolve.
+ */
+static void
+lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     uint32_t i;
 
-    if (!recompiled) {
-        ly_set_erase(&unres->implementing, NULL);
-        ly_set_erase(&unres->creating, NULL);
+    for (i = 0; i < unres->ds_unres.dflts.count; ++i) {
+        lysc_unres_dflt_free(ctx, unres->ds_unres.dflts.objs[i]);
     }
-    for (i = 0; i < unres->dflts.count; ++i) {
-        lysc_unres_dflt_free(ctx, unres->dflts.objs[i]);
+    ly_set_erase(&unres->ds_unres.dflts, NULL);
+    ly_set_erase(&unres->ds_unres.xpath, NULL);
+    ly_set_erase(&unres->ds_unres.leafrefs, NULL);
+    ly_set_erase(&unres->ds_unres.disabled, NULL);
+}
+
+LY_ERR
+lys_compile_dep_set_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob_unres *unres)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lys_module *mod;
+    uint32_t i;
+
+    for (i = 0; i < dep_set->count; ++i) {
+        mod = dep_set->objs[i];
+        if (!mod->to_compile) {
+            /* skip */
+            continue;
+        }
+        assert(mod->implemented);
+
+        /* free the compiled module, if any */
+        lysc_module_free(mod->compiled);
+        mod->compiled = NULL;
+
+        /* (re)compile the module */
+        LY_CHECK_GOTO(ret = lys_compile(mod, &unres->ds_unres), cleanup);
     }
-    ly_set_erase(&unres->dflts, NULL);
-    ly_set_erase(&unres->xpath, NULL);
-    ly_set_erase(&unres->leafrefs, NULL);
-    ly_set_erase(&unres->disabled, NULL);
+
+    /* resolve dep set unres */
+    ret = lys_compile_unres_depset(ctx, unres);
+    if (ret == LY_ERECOMPILE) {
+        /* new module is implemented, discard current dep set unres and recompile the whole dep set */
+        lys_compile_unres_depset_erase(ctx, unres);
+        return lys_compile_dep_set_r(ctx, dep_set, unres);
+    } else if (ret) {
+        /* error */
+        goto cleanup;
+    }
+
+    /* success, unset the flags of all the modules in the dep set */
+    for (i = 0; i < dep_set->count; ++i) {
+        mod = dep_set->objs[i];
+        mod->to_compile = 0;
+    }
+
+cleanup:
+    lys_compile_unres_depset_erase(ctx, unres);
+    return ret;
 }
 
 /**
@@ -1474,7 +1494,7 @@ lys_compile_unres_mod_erase(struct lysc_ctx *ctx, ly_bool error)
 }
 
 LY_ERR
-lys_compile(struct lys_module *mod, struct lys_glob_unres *unres)
+lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c = NULL;
@@ -1487,7 +1507,7 @@ lys_compile(struct lys_module *mod, struct lys_glob_unres *unres)
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, !mod->compiled, mod->ctx, LY_EINVAL);
 
-    assert(mod->implemented);
+    assert(mod->implemented && mod->to_compile);
 
     sp = mod->parsed;
 
@@ -1641,7 +1661,7 @@ lys_compile_identities(struct lys_module *mod)
  *
  * @param[in] mod Module to examine.
  * @return LY_SUCCESS on success.
- * @return LY_ERECOMPILE on required recompilation.
+ * @return LY_ERECOMPILE on required recompilation of the dep set.
  * @return LY_ERR on error.
  */
 static LY_ERR
@@ -1658,6 +1678,7 @@ lys_has_compiled_import_r(struct lys_module *mod)
 
         if (!m->to_compile) {
             /* module was not/will not be compiled in this compilation (so disabled nodes are not present) */
+            m->to_compile = 1;
             return LY_ERECOMPILE;
         }
 
