@@ -204,12 +204,20 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
     ret = _lys_set_implemented(mod, features, &unres);
     LY_CHECK_GOTO(ret, cleanup);
 
+    if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
+        /* create dep set for the module and mark all the modules that will be (re)compiled */
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_to_compile(ctx, &unres.dep_sets, mod), cleanup);
+
+        /* (re)compile the whole dep set */
+        LY_CHECK_GOTO(ret = lys_compile_dep_set_r(ctx, unres.dep_sets.objs[0], &unres), cleanup);
+    }
+
 cleanup:
     if (ret) {
-        lys_compile_unres_glob_revert(ctx, &unres);
+        lys_unres_glob_revert(ctx, &unres);
         mod = NULL;
     }
-    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    lys_unres_glob_erase(&unres);
     return mod;
 }
 
@@ -288,9 +296,6 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
         }
     }
 
-    /* resolve global unres */
-    LY_CHECK_GOTO(rc = lys_compile_unres_glob(ctx, &unres), cleanup);
-
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
         /* compile now */
         LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), cleanup);
@@ -299,7 +304,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 
 cleanup:
     ly_in_free(in, 0);
-    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    lys_unres_glob_erase(&unres);
     if (rc) {
         ly_ctx_destroy(ctx);
     } else {
@@ -500,40 +505,25 @@ API LY_ERR
 ly_ctx_compile(struct ly_ctx *ctx)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lys_module *mod;
     uint32_t i;
     struct lys_glob_unres unres = {0};
 
     LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
-    /* (re)compile all the implemented modules */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
-        if (!mod->to_compile) {
-            /* skip */
-            continue;
-        }
-        assert(mod->implemented);
+    /* create dep sets and mark all the modules that will be (re)compiled */
+    LY_CHECK_GOTO(ret = lys_unres_dep_sets_to_compile(ctx, &unres.dep_sets, NULL), cleanup);
 
-        /* free the compiled module, if any */
-        lysc_module_free(mod->compiled);
-        mod->compiled = NULL;
-
-        /* (re)compile the module */
-        LY_CHECK_GOTO(ret = lys_compile(mod, &unres), cleanup);
-    }
-
-    /* resolve global unres */
-    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
-
-    /* success, unset all the flags */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
-        mod->to_compile = 0;
+    /* (re)compile all the dep sets */
+    for (i = 0; i < unres.dep_sets.count; ++i) {
+        LY_CHECK_GOTO(ret = lys_compile_dep_set_r(ctx, unres.dep_sets.objs[i], &unres), cleanup);
     }
 
 cleanup:
-    lys_compile_unres_glob_erase(ctx, &unres, 0);
+    if (ret) {
+        /* revert changes of modules */
+        lys_unres_glob_revert(ctx, &unres);
+    }
+    lys_unres_glob_erase(&unres);
     return ret;
 }
 

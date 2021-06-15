@@ -1935,3 +1935,39 @@ lysc_data_node(const struct lysc_node *schema)
 
     return parent;
 }
+
+ly_bool
+lys_has_recompiled(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (LYSP_HAS_RECOMPILED(mod->parsed)) {
+        return 1;
+    }
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (LYSP_HAS_RECOMPILED(mod->parsed->includes[u].submodule)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+ly_bool
+lys_has_compiled(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (LYSP_HAS_COMPILED(mod->parsed)) {
+        return 1;
+    }
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (LYSP_HAS_COMPILED(mod->parsed->includes[u].submodule)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}

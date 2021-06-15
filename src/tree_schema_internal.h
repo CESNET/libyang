@@ -534,6 +534,31 @@ const char *lys_datatype2str(LY_DATA_TYPE basetype);
  */
 LY_ERR _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
 
+/**
+ * @brief Create dependency sets for all modules in a context.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in,out] main_set Set of dependency module sets.
+ * @param[in] mod Optional only module whose dependency set is needed, otherwise all sets are created.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struct lys_module *mod);
+
+/**
+ * @brief Revert changes stored in global compile context after a failed compilation.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres to use.
+ */
+void lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres);
+
+/**
+ * @brief Erase the global compile context.
+ *
+ * @param[in] unres Global unres to erase.
+ */
+void lys_unres_glob_erase(struct lys_glob_unres *unres);
+
 typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
         void *check_data);
 
@@ -816,5 +841,39 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
  */
 const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_len,
         LY_VALUE_FORMAT format, const void *prefix_data);
+
+/**
+ * @brief Learn whether @p PMOD needs to be recompiled if it is implemented.
+ *
+ * @param[in] PMOD Parsed module or submodule.
+ * @return Whether it has statements that are recompiled or not.
+ */
+#define LYSP_HAS_RECOMPILED(PMOD) \
+        (PMOD->data || PMOD->rpcs || PMOD->notifs || PMOD->exts)
+
+/**
+ * @brief Learn whether the module has statements that need to be recompiled or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it has statements that are recompiled or not.
+ */
+ly_bool lys_has_recompiled(const struct lys_module *mod);
+
+/**
+ * @brief Learn whether @p PMOD needs to be compiled if it is implemented.
+ *
+ * @param[in] PMOD Parsed module or submodule.
+ * @return Whether it needs (has) a compiled module or not.
+ */
+#define LYSP_HAS_COMPILED(PMOD) \
+        (LYSP_HAS_RECOMPILED(PMOD) || PMOD->identities || PMOD->augments || PMOD->deviations)
+
+/**
+ * @brief Learn whether the module has statements that need to be compiled or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it needs compiled module or not.
+ */
+ly_bool lys_has_compiled(const struct lys_module *mod);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
