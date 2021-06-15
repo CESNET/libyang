@@ -1239,12 +1239,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
 
         LOG_LOCBACK(1, 0, 0, 0);
-        if (ret == LY_ERECOMPILE) {
-            /* leafref caused a new module to be implemented, following leafrefs referencing the module would fail */
-            return lys_recompile(ctx);
-        } else if (ret) {
-            return ret;
-        }
+        LY_CHECK_RET(ret);
     }
     while (unres->leafrefs.count) {
         node = unres->leafrefs.objs[unres->leafrefs.count - 1];
@@ -1285,11 +1280,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 
         ret = lys_compile_unres_xpath(&cctx, node, unres);
         LOG_LOCBACK(1, 0, 0, 0);
-        if (ret == LY_ERECOMPILE) {
-            return lys_recompile(ctx);
-        } else if (ret) {
-            return ret;
-        }
+        LY_CHECK_RET(ret);
 
         ly_set_rm_index(&unres->xpath, unres->xpath.count - 1, NULL);
     }
@@ -1308,11 +1299,7 @@ lys_compile_unres_glob(struct ly_ctx *ctx, struct lys_glob_unres *unres)
             ret = lys_compile_unres_llist_dflts(&cctx, r->llist, r->dflt, r->dflts, unres);
         }
         LOG_LOCBACK(1, 0, 0, 0);
-        if (ret == LY_ERECOMPILE) {
-            return lys_recompile(ctx);
-        } else if (ret) {
-            return ret;
-        }
+        LY_CHECK_RET(ret);
 
         lysc_unres_dflt_free(ctx, r);
         ly_set_rm_index(&unres->dflts, unres->dflts.count - 1, NULL);
@@ -1607,24 +1594,6 @@ cleanup:
         mod->compiled = NULL;
     }
     return ret;
-}
-
-LY_ERR
-lys_recompile(struct ly_ctx *ctx)
-{
-    uint32_t idx;
-    struct lys_module *mod;
-
-    /* mark all modules for recompilation */
-    for (idx = 0; idx < ctx->list.count; ++idx) {
-        mod = ctx->list.objs[idx];
-        if (mod->implemented) {
-            mod->to_compile = 1;
-        }
-    }
-
-    /* recompile */
-    return ly_ctx_compile(ctx);
 }
 
 /**
