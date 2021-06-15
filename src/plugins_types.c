@@ -755,7 +755,10 @@ lyplg_type_make_implemented(struct lys_module *mod, const char **features, struc
         return LY_SUCCESS;
     }
 
-    return lys_implement(mod, features, unres);
+    LY_CHECK_RET(lys_implement(mod, features, unres));
+    LY_CHECK_RET(lys_compile(mod, &unres->ds_unres));
+
+    return LY_SUCCESS;
 }
 
 API LY_ERR

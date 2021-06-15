@@ -433,6 +433,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
             assert(unres);
             LY_CHECK_GOTO(ret = lys_implement((struct lys_module *)*mod, NULL, unres), error);
+            LY_CHECK_GOTO(ret = lys_compile((struct lys_module *)*mod, &unres->ds_unres), error);
         }
 
         LOG_LOCBACK(cur_node ? 1 : 0, 0, 0, 0);

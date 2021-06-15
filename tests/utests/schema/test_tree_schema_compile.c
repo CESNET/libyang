@@ -81,9 +81,7 @@ test_module(void **state)
     lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
-    assert_int_equal(LY_SUCCESS, lys_implement(mod, NULL, &unres));
-    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
+    assert_int_equal(LY_SUCCESS, lys_set_implemented(mod, NULL));
     assert_non_null(mod->compiled);
     assert_string_equal("test", mod->name);
     assert_string_equal("urn:test", mod->ns);
@@ -111,11 +109,9 @@ test_module(void **state)
     /* data definition name collision in top level */
     str = "module aa {namespace urn:aa;prefix aa; leaf a {type string;} container a{presence x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
-    assert_int_equal(LY_EEXIST, lys_implement(mod, NULL, &unres));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/aa:a");
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
+    assert_int_equal(LY_EEXIST, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, (const struct lys_module **)&mod));
     ly_in_free(in, 0);
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/aa:a");
 }
 
 static void

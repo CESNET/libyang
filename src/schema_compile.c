@@ -838,6 +838,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
             /* unimplemented module found */
             if (implement) {
                 LY_CHECK_RET(lys_implement((struct lys_module *)mod, NULL, unres));
+                LY_CHECK_RET(lys_compile((struct lys_module *)mod, &unres->ds_unres));
             } else {
                 *mod_p = mod;
                 break;
@@ -1692,13 +1693,6 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
         return ret;
     }
 
-    /* compile identities */
-    LY_CHECK_RET(lys_compile_identities(mod));
-
-    /* mark target modules with our augments and deviations */
-    ret = lys_precompile_augments_deviations(mod, unres);
-    LY_CHECK_RET(ret && (ret != LY_ERECOMPILE), ret);
-
     /*
      * mark the module implemented, which means
      * 1) to (re)compile it only ::lys_compile() call is needed
@@ -1707,23 +1701,20 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
      */
     mod->implemented = 1;
 
+    /* this module is compiled in this compilation */
+    mod->to_compile = 1;
+
     /* add the module into newly implemented module set */
     LY_CHECK_RET(ly_set_add(&unres->implementing, mod, 1, NULL));
 
-    if (mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE) {
-        /* do not actually compile the module yet */
-        mod->to_compile = 1;
-        return LY_SUCCESS;
-    } else if (ret == LY_ERECOMPILE) {
-        /* we cannot compile the module yet */
-        return ret;
-    }
+    /* compile identities */
+    LY_CHECK_RET(lys_compile_identities(mod));
+
+    /* mark target modules with our augments and deviations */
+    LY_CHECK_RET(lys_precompile_augments_deviations(mod, unres));
 
     /* check whether this module may reference any modules compiled previously */
     LY_CHECK_RET(lys_has_compiled_import_r(mod));
-
-    /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, unres));
 
     return LY_SUCCESS;
 }
