@@ -2158,7 +2158,7 @@ lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_m
  * @return Whether all modules are implemented or not.
  */
 static ly_bool
-lys_precompile_mod_set_all_implemented(const struct ly_set *mod_set)
+lys_precompile_mod_set_is_all_implemented(const struct ly_set *mod_set)
 {
     uint32_t i;
     const struct lys_module *mod;
@@ -2207,7 +2207,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
 
         /* add this module into the target module augmented_by, if not there and implemented */
         if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
-                !lys_precompile_mod_set_all_implemented(&set)) {
+                !lys_precompile_mod_set_is_all_implemented(&set)) {
             LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
         }
         ly_set_erase(&set, NULL);
@@ -2224,7 +2224,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
 
         /* add this module into the target module deviated_by, if not there and implemented */
         if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
-                !lys_precompile_mod_set_all_implemented(&set)) {
+                !lys_precompile_mod_set_is_all_implemented(&set)) {
             LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
         }
         ly_set_erase(&set, NULL);
@@ -2244,7 +2244,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
             LY_CHECK_GOTO(ret, cleanup);
 
             if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
-                    !lys_precompile_mod_set_all_implemented(&set)) {
+                    !lys_precompile_mod_set_is_all_implemented(&set)) {
                 LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
             }
             ly_set_erase(&set, NULL);
@@ -2259,7 +2259,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
             LY_CHECK_GOTO(ret, cleanup);
 
             if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
-                    !lys_precompile_mod_set_all_implemented(&set)) {
+                    !lys_precompile_mod_set_is_all_implemented(&set)) {
                 LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
             }
             ly_set_erase(&set, NULL);
