@@ -63,10 +63,6 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
     }
 }
 
-#define LY_OVERFLOW_ADD(MAX, X, Y) ((X > MAX - Y) ? 1 : 0)
-
-#define LY_OVERFLOW_MUL(MAX, X, Y) ((X > MAX / Y) ? 1 : 0)
-
 LY_ERR
 ly_strntou8(const char *nptr, size_t len, uint8_t *ret)
 {

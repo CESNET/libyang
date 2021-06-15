@@ -462,6 +462,16 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
 
 #define ly_sizeofarray(ARRAY) (sizeof ARRAY / sizeof *ARRAY)
 
+/**
+ * @brief Check for overflow during the addition of two unsigned integers.
+ */
+#define LY_OVERFLOW_ADD(MAX, X, Y) (X > MAX - Y)
+
+/**
+ * @brief Check for overflow during the multiplication of two unsigned integers.
+ */
+#define LY_OVERFLOW_MUL(MAX, X, Y) (X > MAX / Y)
+
 /*
  * Numerical bases for use in functions like strtoll() instead of magic numbers
  */
