@@ -1647,19 +1647,21 @@ static LY_ERR
 lys_has_compiled_import_r(struct lys_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
+    struct lys_module *m;
 
     LY_ARRAY_FOR(mod->parsed->imports, u) {
-        if (!mod->parsed->imports[u].module->implemented) {
+        m = mod->parsed->imports[u].module;
+        if (!m->implemented) {
             continue;
         }
 
-        if (!mod->parsed->imports[u].module->to_compile) {
+        if (!m->to_compile) {
             /* module was not/will not be compiled in this compilation (so disabled nodes are not present) */
             return LY_ERECOMPILE;
         }
 
         /* recursive */
-        LY_CHECK_RET(lys_has_compiled_import_r(mod->parsed->imports[u].module));
+        LY_CHECK_RET(lys_has_compiled_import_r(m));
     }
 
     return LY_SUCCESS;
