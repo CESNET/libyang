@@ -2176,14 +2176,14 @@ lys_precompile_mod_set_is_all_implemented(const struct ly_set *mod_set)
 LY_ERR
 lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     LY_ARRAY_COUNT_TYPE u, v;
     struct lysc_ctx ctx = {0};
     struct lysp_module *mod_p;
     struct lys_module *m;
     struct lysp_submodule *submod;
     struct lysp_node_augment *aug;
-    uint32_t idx;
+    uint32_t i;
     struct ly_set mod_set = {0}, set = {0};
 
     mod_p = mod->parsed;
@@ -2194,7 +2194,6 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
     ctx.pmod = mod_p;
     ctx.path_len = 1;
     ctx.path[0] = '/';
-    ctx.unres = unres;
 
     LY_LIST_FOR(mod_p->augments, aug) {
         /* get target module */
@@ -2266,31 +2265,35 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
         }
     }
 
-    if (mod_set.count) {
-        /* descending order to make sure the modules are implemented in the right order */
-        idx = mod_set.count;
-        do {
-            --idx;
-            m = mod_set.objs[idx];
+    for (i = 0; i < mod_set.count; ++i) {
+        m = mod_set.objs[i];
 
-            if (m == mod) {
-                /* will be applied normally later */
+        if (m == mod) {
+            /* will be applied normally later */
+            continue;
+        }
+
+        /* we do not actually need the target modules compiled with out amends, they just need to be implemented
+         * not compiled yet and marked for compilation */
+
+        if (!m->implemented) {
+            /* implement the target module */
+            r = lys_implement(m, NULL, unres);
+            if (r == LY_ERECOMPILE) {
+                /* implement all the modules right away to save possible later recompilation */
+                ret = r;
                 continue;
-            }
-
-            if (!m->implemented) {
-                /* implement (compile) the target module with our augments/deviations */
-                LY_CHECK_GOTO(ret = lys_implement(m, NULL, unres), cleanup);
-            } else if (m->compiled) {
-                /* target module was already compiled without our amends (augment/deviation), we need to recompile it */
-                ret = LY_ERECOMPILE;
+            } else if (r) {
+                /* error */
+                ret = r;
                 goto cleanup;
             }
-            /* else the module is implemented and was compiled in this compilation run or will yet be;
-             * we actually do not need the module compiled now because its compiled nodes will not be accessed,
-             * augments/deviations are applied during the target module compilation and the rest is in global unres */
-
-        } while (idx);
+        } else if (m->compiled) {
+            /* target module was already compiled without our amends (augment/deviation), we need to recompile it */
+            m->to_compile = 1;
+            ret = LY_ERECOMPILE;
+            continue;
+        }
     }
 
 cleanup:

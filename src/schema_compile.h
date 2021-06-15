@@ -201,6 +201,17 @@ LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module
         struct lysc_ident *ident, struct lysc_ident ***bases, ly_bool *enabled);
 
 /**
+ * @brief Compile schema into a validated schema linking all the references. Must have been implemented before.
+ *
+ * @param[in] mod Pointer to the schema structure holding pointers to both schema structure types. The ::lys_module#parsed
+ * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
+ * @param[in,out] unres Dep set unres structure to add to.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_compile(struct lys_module *mod, struct lys_depset_unres *unres);
+
+/**
  * @brief Check statement's status for invalid combination.
  *
  * The modX parameters are used just to determine if both flags are in the same module,
@@ -288,15 +299,12 @@ LY_ERR lys_compile(struct lys_module *mod, struct lys_glob_unres *unres);
 LY_ERR lys_recompile(struct ly_ctx *ctx);
 
 /**
- * @brief Implement a single module, can be called recursively.
+ * @brief Implement a single module. Does not actually compile, only marks to_compile!
  *
  * @param[in] mod Module to implement.
  * @param[in] features Features to set, see ::lys_set_features().
- * @param[in,out] unres Global unres to add to.
- * @return LY_SUCCESS on success.
- * @return LY_ERECOMPILE on required recompilation, @p mod implemented flag is kept and
- * is left in @p unres implementing set so that it is known that the next compilation is recompilation.
- * @return LY_ERR on error.
+ * @param[in,out] unres Global unres to use.
+ * @return LY_ERR value.
  */
 LY_ERR lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
 

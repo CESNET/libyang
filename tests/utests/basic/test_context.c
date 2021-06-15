@@ -241,9 +241,6 @@ test_models(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", &in));
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
-    assert_int_equal(LY_SUCCESS, lys_implement(mod1, NULL, &unres));
-    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     ly_in_free(in, 0);
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module y {namespace urn:y;prefix y;}", &in));
     assert_int_equal(LY_EVALID, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
@@ -271,11 +268,8 @@ test_models(void **state)
 
     /* reloading module in case only the compiled module resists in the context */
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module w {namespace urn:w;prefix w;revision 2018-10-24;}", &in));
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod1));
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, (const struct lys_module **)&mod1));
     ly_in_free(in, 0);
-    assert_int_equal(LY_SUCCESS, lys_implement(mod1, NULL, &unres));
-    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
     assert_non_null(mod1->compiled);
     assert_non_null(mod1->parsed);
 
@@ -294,10 +288,7 @@ test_models(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory("module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", &in));
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
-    assert_int_equal(LY_SUCCESS, _lys_set_implemented(mod2, NULL, &unres));
-    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, (const struct lys_module **)&mod2));
     ly_in_free(in, 0);
     assert_non_null(mod2);
     assert_non_null(mod1->parsed);
@@ -391,10 +382,7 @@ test_get_models(void **state)
     assert_non_null(ly_ctx_get_module_ns(UTEST_LYCTX, "urn:ietf:params:xml:ns:yang:ietf-datastores", "2018-02-14"));
 
     /* select module by revision */
-    assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod));
-    assert_int_equal(LY_SUCCESS, lys_implement(mod, NULL, &unres));
-    assert_int_equal(LY_SUCCESS, lys_compile_unres_glob(UTEST_LYCTX, &unres));
-    lys_compile_unres_glob_erase(UTEST_LYCTX, &unres, 0);
+    assert_int_equal(LY_SUCCESS, lys_parse(UTEST_LYCTX, in1, LYS_IN_YANG, NULL, (const struct lys_module **)&mod));
     /* invalid attempts - implementing module of the same name and inserting the same module */
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
     assert_int_equal(LY_EDENIED, lys_implement(mod2, NULL, &unres));

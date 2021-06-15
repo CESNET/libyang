@@ -156,11 +156,11 @@ LY_ERR lys_precompile_own_augments(struct lysc_ctx *ctx);
 LY_ERR lys_precompile_own_deviations(struct lysc_ctx *ctx);
 
 /**
- * @brief Compile top-level augments and deviations in a module and all its submodules.
- * Adds the module reference to the target modules and if not implemented, implement them.
+ * @brief Add references to target modules of top-level augments and deviations in a module and all its submodules.
+ * Adds the module reference to the target modules and if not implemented, implement them (but not compile).
  *
  * @param[in] mod Module to process.
- * @param[in] unres Global unres to use.
+ * @param[in,out] unres Global unres to use.
  * @return LY_SUCCESS on success.
  * @return LY_ERECOMPILE on required recompilation.
  * @return LY_ERR on error.
