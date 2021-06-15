@@ -390,7 +390,7 @@ lyjson_number_is_zero(const char *in, const char *end)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyjson_get_buffer_for_number(const struct ly_ctx *ctx, uint32_t num_len, char **buffer)
+lyjson_get_buffer_for_number(const struct ly_ctx *ctx, uint64_t num_len, char **buffer)
 {
     *buffer = NULL;
 
@@ -461,7 +461,7 @@ lyjson_exp_number_copy_num_part(const char *num, uint32_t num_len,
  */
 static LY_ERR
 lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent,
-        size_t total_len, char **res, size_t *res_len)
+        uint64_t total_len, char **res, uint64_t *res_len)
 {
 
 #define MAYBE_WRITE_MINUS(ARRAY, INDEX, FLAG) \
@@ -479,7 +479,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     /* Buffer where the result is stored. */
     char *buf;
     /* Size without space for terminating NULL-byte. */
-    uint32_t buf_len;
+    uint64_t buf_len;
     /* Index to buf. */
     uint32_t i = 0;
     /* A 'numeric part' doesn't contain a minus sign or an leading zero.
@@ -487,7 +487,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
      */
     const char *num;
     /* Length of the 'numeric part' ends before E/e. */
-    uint32_t num_len;
+    uint16_t num_len;
     /* Position of decimal point in the num. */
     char *dec_point;
     /* Final position of decimal point in the buf. */
@@ -506,10 +506,15 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     assert(ctx && in && exponent && res && res_len && (total_len > 2));
     assert((in < exponent) && ((*exponent == 'e') || (*exponent == 'E')));
 
+    if ((exponent - in) > UINT16_MAX) {
+        LOGVAL(ctx, LYVE_SEMANTICS, "JSON number is too long.");
+        return LY_EVALID;
+    }
+
     /* Convert exponent. */
     errno = 0;
     e_val = strtol(exponent + 1, NULL, LY_BASE_DEC);
-    if (errno) {
+    if (errno || (labs(e_val) > UINT16_MAX)) {
         LOGVAL(ctx, LYVE_SEMANTICS,
                 "Exponent out-of-bounds in a JSON Number value (%.*s).",
                 total_len, in);

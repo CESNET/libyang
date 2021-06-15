@@ -505,6 +505,16 @@ test_number(void **state)
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
     CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1e9999999999999999999).", "Line number 1.");
 
+    str = "1.1e66000";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1.1e66000).", "Line number 1.");
+
+    str = "1.1e-66000";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
+    CHECK_LOG_CTX("Exponent out-of-bounds in a JSON Number value (1.1e-66000).", "Line number 1.");
+
     str = "-2.1e0.";
     assert_non_null(ly_in_memory(in, str));
     assert_int_equal(LY_EVALID, lyjson_ctx_new(UTEST_LYCTX, in, &jsonctx));
