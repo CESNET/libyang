@@ -900,7 +900,7 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
     }
 
     /* create node */
-    lydjson_get_node_prefix(&parent->node, prefix, prefix_len, &module_name, &module_name_len);
+    lydjson_get_node_prefix(parent ? &parent->node : NULL, prefix, prefix_len, &module_name, &module_name_len);
     ret = lyd_create_opaq(lydctx->jsonctx->ctx, name, name_len, prefix, prefix_len, module_name, module_name_len, value,
             value_len, &dynamic, LY_VALUE_JSON, NULL, type_hint, node_p);
     if (dynamic) {
