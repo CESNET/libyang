@@ -467,11 +467,12 @@ restart:
             }
             ++v;
         }
-        assert(v < LY_ARRAY_COUNT(idents_p));
 
-        if (!idents_p[v].bases) {
+        if ((v == LY_ARRAY_COUNT(idents_p)) || !idents_p[v].bases) {
+            /* identity not found (it may be from a submodule) or identity without bases */
             continue;
         }
+
         lysc_update_path(ctx, NULL, (*idents)[u].name);
         LY_CHECK_RET(lys_compile_identity_bases(ctx, (*idents)[u].module->parsed, idents_p[v].bases, &(*idents)[u], NULL,
                 &enabled));
