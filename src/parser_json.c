@@ -20,7 +20,6 @@
 #include <string.h>
 
 #include "common.h"
-#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in_internal.h"
@@ -75,6 +74,35 @@ lyd_json_ctx_free(struct lyd_ctx *lydctx)
         lyjson_ctx_free(ctx->jsonctx);
         free(ctx);
     }
+}
+
+/**
+ * @brief Submit the responsibility for releasing the dynamic values to @p dst.
+ *
+ * @param[in] jsonctx JSON context which contains the dynamic value.
+ * @param[in,out] dst Pointer to which the responsibility will be submited.
+ * If the pointer is already pointing to some allocated memory,
+ * it is released beforehand.
+ */
+static void
+lyjson_ctx_submit_dynamic_value(struct lyjson_ctx *jsonctx, char **dst)
+{
+    assert(jsonctx && dst);
+
+    if (!jsonctx->dynamic) {
+        return;
+    }
+
+    if (dst) {
+        free(*dst);
+    }
+    *dst = NULL;
+
+    /* Submit the dynamic value. */
+    *dst = (char *)jsonctx->value;
+
+    /* Responsibility for the release is now passed to @p dst. */
+    jsonctx->dynamic = 0;
 }
 
 /**
@@ -746,26 +774,8 @@ next_entry:
     LOG_LOCSET(snode, NULL, NULL, NULL);
 
     while (status != LYJSON_OBJECT_CLOSED) {
-        if (dynamic_prefname) {
-            free(dynamic_prefname);
-            dynamic_prefname = NULL;
-        }
-        if (lydctx->jsonctx->dynamic) {
-            /* Duplicate ::lyjson_ctx.value because it is dynamically
-             * allocated and later ::lyjson_ctx_next() will release it
-             * which will cause local pointers 'name' and 'prefix'
-             * to be invalid.
-             */
-            dynamic_prefname = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
-            if (!dynamic_prefname) {
-                LOGMEM(lydctx->jsonctx->ctx);
-                ret = LY_EMEM;
-                goto cleanup;
-            }
-            lydjson_parse_name(dynamic_prefname, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
-        } else {
-            lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
-        }
+        lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
+        lyjson_ctx_submit_dynamic_value(lydctx->jsonctx, &dynamic_prefname);
 
         if (!prefix) {
             LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
@@ -1263,18 +1273,9 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     assert(parent || first_p);
     assert(status == LYJSON_OBJECT);
 
-    /* Duplicate ::lyjson_ctx.value because it can be dynamically allocated and later
-     * ::lyjson_ctx_next() will release it although this string is needed for the ::lydjson_parse_opaq().
-     */
-    value = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
-    if (!value) {
-        LOGMEM(lydctx->jsonctx->ctx);
-        ret = LY_EMEM;
-        goto cleanup;
-    }
-
     /* process the node name */
-    lydjson_parse_name(value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
+    lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_meta);
+    lyjson_ctx_submit_dynamic_value(lydctx->jsonctx, &value);
 
     if (!is_meta || name_len || prefix_len) {
         /* get the schema node */
