@@ -327,6 +327,7 @@ static LY_ERR
 lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
         struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
+    LY_ERR ret;
     struct lysp_node *parent;
     uint32_t hash;
     size_t name_len;
@@ -369,7 +370,8 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
     /* check collision with the top-level typedefs */
     hash = dict_hash(name, name_len);
     if (node) {
-        lyht_insert(tpdfs_scoped, &name, hash, NULL);
+        ret = lyht_insert(tpdfs_scoped, &name, hash, NULL);
+        LY_CHECK_ERR_RET(ret && (ret != LY_EEXIST), LOGINT(PARSER_CTX(ctx)), LY_EINT);
         if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
             LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
             return LY_EEXIST;
