@@ -2848,7 +2848,7 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
     assert(ctx && (parent || attr) && (!parent || !parent->schema));
     assert(name && name_len && format);
 
-    if (!value_len) {
+    if (!value_len && (!dynamic || !*dynamic)) {
         value = "";
     }
 
