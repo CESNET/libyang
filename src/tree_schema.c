@@ -998,6 +998,7 @@ lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struc
     }
 
 cleanup:
+    assert(ret || main_set->objs);
     ly_set_free(dep_set, NULL);
     ly_set_free(ctx_set, NULL);
     return ret;
