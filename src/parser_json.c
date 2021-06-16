@@ -667,6 +667,7 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
     const char *expected;
     ly_bool in_parent = 0;
     const char *name, *prefix = NULL;
+    char *dynamic_prefname = NULL;
     size_t name_len, prefix_len = 0;
     struct lys_module *mod;
     struct lyd_meta *meta = NULL;
@@ -745,7 +746,27 @@ next_entry:
     LOG_LOCSET(snode, NULL, NULL, NULL);
 
     while (status != LYJSON_OBJECT_CLOSED) {
-        lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
+        if (dynamic_prefname) {
+            free(dynamic_prefname);
+            dynamic_prefname = NULL;
+        }
+        if (lydctx->jsonctx->dynamic) {
+            /* Duplicate ::lyjson_ctx.value because it is dynamically
+             * allocated and later ::lyjson_ctx_next() will release it
+             * which will cause local pointers 'name' and 'prefix'
+             * to be invalid.
+             */
+            dynamic_prefname = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
+            if (!dynamic_prefname) {
+                LOGMEM(lydctx->jsonctx->ctx);
+                ret = LY_EMEM;
+                goto cleanup;
+            }
+            lydjson_parse_name(dynamic_prefname, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
+        } else {
+            lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
+        }
+
         if (!prefix) {
             LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
                     (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
@@ -834,6 +855,7 @@ representation_error:
     ret = LY_EVALID;
 
 cleanup:
+    free(dynamic_prefname);
     LOG_LOCBACK(1, 0, 0, 0);
     return ret;
 }
