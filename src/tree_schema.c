@@ -840,32 +840,57 @@ cleanup:
 }
 
 /**
- * @brief Check whether it may be needed to (re)compile a module from a particular dependency set.
+ * @brief Learn whether a module may depend on its import module.
  *
- * Dependency set includes all modules that need to be (re)compiled in case any of the modules
- * is (re)compiled. The reason is possible disabled nodes and updaing leafref targets to point
- * to the newly compiled modules. Using the import relation, the dependency is reflexive
- * because of possible foreign augments and deviations, which are compiled during the target
- * module compilation.
+ * @param[in] mod Main module with the import.
+ * @param[in] import Imported module.
+ * @return Whether the module depends on its import or not.
+ */
+static ly_bool
+lys_unres_dep_sets_is_dep(const struct lys_module *mod, const struct lys_module *import)
+{
+    if (!lys_has_compiled(mod) || !lys_has_compiled(import)) {
+        /* module needs to be compiled to have any dependencies */
+        return 0;
+    }
+
+    if ((mod->compiled && !lys_has_recompiled(mod)) || (import->compiled && !lys_has_recompiled(import))) {
+        /* modules are compiled (and implemented) and if they have nothing to recompile, they surely do not
+         * depend on each other */
+        return 0;
+    }
+
+    return 1;
+}
+
+/**
+ * @brief Check whether it may be needed to (re)compile a module from a particular dependency set
+ * and if so, add it into its dep set.
+ *
+ * Dependency set includes all modules that need to be (re)compiled in case any of the module(s)
+ * in the dep set are (re)compiled.
+ *
+ * The reason for recompilation is possible disabled nodes and updating
+ * leafref targets to point to the newly compiled modules. Using the import relation, the
+ * dependency is reflexive because of possible foreign augments and deviations, which are compiled
+ * during the target module compilation.
+ *
+ * - every module must belong to exactly one dep set
+ * - implement flag must be ignored because it can be changed during dep set compilation
  *
  * @param[in] mod Module to process.
  * @param[in,out] ctx_set Set with all not-yet-processed modules.
  * @param[in,out] dep_set Current dependency set to update.
- * @param[out] nothing_to_compile Set if there is nothing to compile in the module.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct ly_set *dep_set, ly_bool *nothing_to_compile)
+lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct ly_set *dep_set)
 {
     struct lys_module *mod2;
     struct lysp_import *imports;
     uint32_t i;
     LY_ARRAY_COUNT_TYPE u, v;
     ly_bool found;
-
-    if (nothing_to_compile) {
-        *nothing_to_compile = 0;
-    }
 
     if (!ly_set_contains(ctx_set, mod, &i)) {
         /* it was already processed */
@@ -875,38 +900,37 @@ lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct 
     /* remove it from the set, we are processing it now */
     ly_set_rm_index(ctx_set, i, NULL);
 
-    if (mod->to_compile && mod->compiled && !lys_has_recompiled(mod)) {
-        /* it would be recompiled but there are no statements requiring recompilation */
-        mod->to_compile = 0;
-        return LY_SUCCESS;
-    }
-
-    /* add a new dependent module into the dep set */
-    LY_CHECK_RET(ly_set_add(dep_set, mod, 1, NULL));
-
-    if (!lys_has_compiled(mod)) {
-        /* nothing to compile */
-        if (nothing_to_compile) {
-            *nothing_to_compile = 1;
+    if (!lys_has_compiled(mod) || (mod->compiled && !lys_has_recompiled(mod))) {
+        if (!dep_set->count) {
+            /* add a new dependent module into the dep set */
+            LY_CHECK_RET(ly_set_add(dep_set, mod, 1, NULL));
         }
-        return LY_SUCCESS;
+
+        if (!lys_has_groupings(mod)) {
+            /* break the dep set here, nothing to compile or recompile and no groupings, no modules will depend
+             * on this one */
+            return LY_SUCCESS;
+        }
+    } else {
+        /* add a new dependent module into the dep set */
+        LY_CHECK_RET(ly_set_add(dep_set, mod, 1, NULL));
     }
 
     /* process imports of the module and submodules */
     imports = mod->parsed->imports;
     LY_ARRAY_FOR(imports, u) {
-        LY_CHECK_RET(lys_unres_dep_sets_mod_r(imports[u].module, ctx_set, dep_set, NULL));
+        LY_CHECK_RET(lys_unres_dep_sets_mod_r(imports[u].module, ctx_set, dep_set));
     }
     LY_ARRAY_FOR(mod->parsed->includes, v) {
         imports = mod->parsed->includes[v].submodule->imports;
         LY_ARRAY_FOR(imports, u) {
-            LY_CHECK_RET(lys_unres_dep_sets_mod_r(imports[u].module, ctx_set, dep_set, NULL));
+            LY_CHECK_RET(lys_unres_dep_sets_mod_r(imports[u].module, ctx_set, dep_set));
         }
     }
 
     /* process modules and submodules importing this module */
-    for (i = 0; i < ctx_set->count; ++i) {
-        mod2 = ctx_set->objs[i];
+    for (i = 0; i < mod->ctx->list.count; ++i) {
+        mod2 = mod->ctx->list.objs[i];
         found = 0;
 
         imports = mod2->parsed->imports;
@@ -934,7 +958,7 @@ lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct 
         }
 
         if (found) {
-            LY_CHECK_RET(lys_unres_dep_sets_mod_r(mod2, ctx_set, dep_set, NULL));
+            LY_CHECK_RET(lys_unres_dep_sets_mod_r(mod2, ctx_set, dep_set));
         }
     }
 
@@ -948,7 +972,7 @@ lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struc
     struct lys_module *m;
     struct ly_set *dep_set = NULL, *ctx_set = NULL;
     uint32_t i;
-    ly_bool nothing_to_compile;
+    ly_bool found;
 
     /* start with a duplicate set of modules that we will remove from */
     LY_CHECK_GOTO(ret = ly_set_dup(&ctx->list, NULL, &ctx_set), cleanup);
@@ -959,21 +983,24 @@ lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struc
 
         if (mod) {
             /* use the module create a dep set with the rest of its dependent modules */
-            LY_CHECK_GOTO(ret = lys_unres_dep_sets_mod_r(mod, ctx_set, dep_set, &nothing_to_compile), cleanup);
+            LY_CHECK_GOTO(ret = lys_unres_dep_sets_mod_r(mod, ctx_set, dep_set), cleanup);
         } else {
             /* use first ctx mod to create a dep set with the rest of its dependent modules */
-            LY_CHECK_GOTO(ret = lys_unres_dep_sets_mod_r(ctx_set->objs[0], ctx_set, dep_set, &nothing_to_compile), cleanup);
+            LY_CHECK_GOTO(ret = lys_unres_dep_sets_mod_r(ctx_set->objs[0], ctx_set, dep_set), cleanup);
         }
+        assert(dep_set->count);
 
         /* check whether there is any module that will be (re)compiled */
+        found = 0;
         for (i = 0; i < dep_set->count; ++i) {
             m = dep_set->objs[i];
             if (m->to_compile) {
+                found = 1;
                 break;
             }
         }
 
-        if (i < dep_set->count) {
+        if (found) {
             /* if there is, all the implemented modules need to be recompiled */
             for (i = 0; i < dep_set->count; ++i) {
                 m = dep_set->objs[i];
@@ -983,12 +1010,8 @@ lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struc
             }
         }
 
-        if (dep_set->count) {
-            /* add the dep set into main set */
-            LY_CHECK_GOTO(ret = ly_set_add(main_set, dep_set, 1, NULL), cleanup);
-        } else {
-            ly_set_free(dep_set, NULL);
-        }
+        /* add the dep set into main set */
+        LY_CHECK_GOTO(ret = ly_set_add(main_set, dep_set, 1, NULL), cleanup);
         dep_set = NULL;
 
         if (mod) {
@@ -1032,16 +1055,13 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         /* remove the module from the context */
         ly_set_rm(&ctx->list, m, NULL);
 
-        if (unres->dep_sets.count) {
-            /* remove it also from dep sets, if created */
-            for (j = 0; j < unres->dep_sets.count; ++j) {
-                dep_set = unres->dep_sets.objs[j];
-                if (ly_set_contains(dep_set, m, &idx)) {
-                    ly_set_rm_index(dep_set, idx, NULL);
-                    break;
-                }
+        /* remove it also from dep sets (it may not be there if we have created only a single dep set for the main module) */
+        for (j = 0; j < unres->dep_sets.count; ++j) {
+            dep_set = unres->dep_sets.objs[j];
+            if (ly_set_contains(dep_set, m, &idx)) {
+                ly_set_rm_index(dep_set, idx, NULL);
+                break;
             }
-            assert(j < unres->dep_sets.count);
         }
 
         /* free the module */

@@ -876,4 +876,12 @@ ly_bool lys_has_recompiled(const struct lys_module *mod);
  */
 ly_bool lys_has_compiled(const struct lys_module *mod);
 
+/**
+ * @brief Learn whether the module has any grouping statements or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it has groupings or not.
+ */
+ly_bool lys_has_groupings(const struct lys_module *mod);
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

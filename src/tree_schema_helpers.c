@@ -1973,3 +1973,21 @@ lys_has_compiled(const struct lys_module *mod)
 
     return 0;
 }
+
+ly_bool
+lys_has_groupings(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (mod->parsed->groupings) {
+        return 1;
+    }
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (mod->parsed->includes[u].submodule->groupings) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
