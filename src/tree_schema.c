@@ -1029,9 +1029,8 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     for (i = 0; i < unres->creating.count; ++i) {
         m = unres->creating.objs[i];
 
-        /* remove the module from the context and free it */
+        /* remove the module from the context */
         ly_set_rm(&ctx->list, m, NULL);
-        lys_module_free(m);
 
         if (unres->dep_sets.count) {
             /* remove it also from dep sets, if created */
@@ -1044,6 +1043,9 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
             }
             assert(j < unres->dep_sets.count);
         }
+
+        /* free the module */
+        lys_module_free(m);
     }
 
     if (unres->implementing.count) {
