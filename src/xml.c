@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Generic XML parser implementation for libyang
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1039,11 +1039,30 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Free all namespaces in XML context.
+ *
+ * @param[in] xmlctx XML context to use.
+ */
+static void
+lyxml_ns_rm_all(struct lyxml_ctx *xmlctx)
+{
+    struct lyxml_ns *ns;
+    uint32_t i;
+
+    for (i = 0; i < xmlctx->ns.count; ++i) {
+        ns = xmlctx->ns.objs[i];
+
+        free(ns->prefix);
+        free(ns->uri);
+        free(ns);
+    }
+    ly_set_erase(&xmlctx->ns, NULL);
+}
+
 void
 lyxml_ctx_free(struct lyxml_ctx *xmlctx)
 {
-    uint32_t u;
-
     if (!xmlctx) {
         return;
     }
@@ -1054,14 +1073,109 @@ lyxml_ctx_free(struct lyxml_ctx *xmlctx)
         free((char *)xmlctx->value);
     }
     ly_set_erase(&xmlctx->elements, free);
-    for (u = xmlctx->ns.count - 1; u + 1 > 0; --u) {
-        /* remove the ns structure */
-        free(((struct lyxml_ns *)xmlctx->ns.objs[u])->prefix);
-        free(((struct lyxml_ns *)xmlctx->ns.objs[u])->uri);
-        free(xmlctx->ns.objs[u]);
-    }
-    ly_set_erase(&xmlctx->ns, NULL);
+    lyxml_ns_rm_all(xmlctx);
     free(xmlctx);
+}
+
+/**
+ * @brief Duplicate an XML element.
+ *
+ * @param[in] elem Element to duplicate.
+ * @return Element duplicate.
+ * @return NULL on error.
+ */
+static struct lyxml_elem *
+lyxml_elem_dup(const struct lyxml_elem *elem)
+{
+    struct lyxml_elem *dup;
+
+    dup = malloc(sizeof *dup);
+    LY_CHECK_ERR_RET(!dup, LOGMEM(NULL), NULL);
+
+    memcpy(dup, elem, sizeof *dup);
+
+    return dup;
+}
+
+/**
+ * @brief Duplicate an XML namespace.
+ *
+ * @param[in] ns Namespace to duplicate.
+ * @return Namespace duplicate.
+ * @return NULL on error.
+ */
+static struct lyxml_ns *
+lyxml_ns_dup(const struct lyxml_ns *ns)
+{
+    struct lyxml_ns *dup;
+
+    dup = malloc(sizeof *dup);
+    LY_CHECK_ERR_RET(!dup, LOGMEM(NULL), NULL);
+
+    if (ns->prefix) {
+        dup->prefix = strdup(ns->prefix);
+        LY_CHECK_ERR_RET(!dup->prefix, LOGMEM(NULL); free(dup), NULL);
+    } else {
+        dup->prefix = NULL;
+    }
+    dup->uri = strdup(ns->uri);
+    LY_CHECK_ERR_RET(!dup->uri, LOGMEM(NULL); free(dup->prefix); free(dup), NULL);
+    dup->depth = ns->depth;
+
+    return dup;
+}
+
+LY_ERR
+lyxml_ctx_backup(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup)
+{
+    uint32_t i;
+
+    /* first make shallow copy */
+    memcpy(backup, xmlctx, sizeof *backup);
+
+    if ((xmlctx->status == LYXML_ELEM_CONTENT) && xmlctx->dynamic) {
+        /* it was backed up, do not free */
+        xmlctx->dynamic = 0;
+    }
+
+    /* backup in current pointer only */
+    backup->in = (void *)xmlctx->in->current;
+
+    /* duplicate elements */
+    backup->elements.objs = malloc(xmlctx->elements.size * sizeof(struct lyxml_elem));
+    for (i = 0; i < xmlctx->elements.count; ++i) {
+        backup->elements.objs[i] = lyxml_elem_dup(xmlctx->elements.objs[i]);
+    }
+
+    /* duplicate ns */
+    backup->ns.objs = malloc(xmlctx->ns.size * sizeof(struct lyxml_ns));
+    for (i = 0; i < xmlctx->ns.count; ++i) {
+        backup->ns.objs[i] = lyxml_ns_dup(xmlctx->ns.objs[i]);
+    }
+
+    return LY_SUCCESS;
+}
+
+void
+lyxml_ctx_restore(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup)
+{
+    if (((xmlctx->status == LYXML_ELEM_CONTENT) || (xmlctx->status == LYXML_ATTR_CONTENT)) && xmlctx->dynamic) {
+        /* free dynamic value */
+        free((char *)xmlctx->value);
+    }
+
+    /* free elements */
+    ly_set_erase(&xmlctx->elements, free);
+
+    /* free ns */
+    lyxml_ns_rm_all(xmlctx);
+
+    /* restore in current pointer */
+    xmlctx->in->current = (void *)backup->in;
+    backup->in = xmlctx->in;
+
+    /* restore backup */
+    memcpy(xmlctx, backup, sizeof *xmlctx);
 }
 
 LY_ERR

@@ -330,10 +330,7 @@ static LY_ERR
 lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snode)
 {
     LY_ERR ret = LY_SUCCESS;
-    enum LYXML_PARSER_STATUS prev_status;
-    const char *prev_current, *pname, *pprefix;
-    size_t pprefix_len, pname_len;
-    struct lyxml_ctx *xmlctx = lydctx->xmlctx;
+    struct lyxml_ctx *xmlctx = lydctx->xmlctx, pxmlctx;
 
     if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
         /* only checks specific to opaque nodes */
@@ -345,17 +342,10 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
         return LY_SUCCESS;
     }
 
+    assert(xmlctx->elements.count);
+
     /* backup parser */
-    prev_status = xmlctx->status;
-    pprefix = xmlctx->prefix;
-    pprefix_len = xmlctx->prefix_len;
-    pname = xmlctx->name;
-    pname_len = xmlctx->name_len;
-    prev_current = xmlctx->in->current;
-    if ((xmlctx->status == LYXML_ELEM_CONTENT) && xmlctx->dynamic) {
-        /* it was backed up, do not free */
-        xmlctx->dynamic = 0;
-    }
+    LY_CHECK_RET(lyxml_ctx_backup(xmlctx, &pxmlctx));
 
     /* skip attributes */
     while (xmlctx->status == LYXML_ATTRIBUTE) {
@@ -386,16 +376,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
 restore:
     /* restore parser */
-    if (xmlctx->dynamic) {
-        free((char *)xmlctx->value);
-    }
-    xmlctx->status = prev_status;
-    xmlctx->prefix = pprefix;
-    xmlctx->prefix_len = pprefix_len;
-    xmlctx->name = pname;
-    xmlctx->name_len = pname_len;
-    xmlctx->in->current = prev_current;
-
+    lyxml_ctx_restore(xmlctx, &pxmlctx);
     return ret;
 }
 
@@ -536,6 +517,10 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
                     &xmlctx->ns, &format, &val_prefix_data);
             LY_CHECK_GOTO(ret, error);
         }
+
+        /* get NS again, it may have been backed up and restored */
+        ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
+        assert(ns);
 
         /* create node */
         ret = lyd_create_opaq(ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,

@@ -57,8 +57,8 @@ struct lyxml_ns {
 
 /* element tag identifier for matching opening and closing tags */
 struct lyxml_elem {
-    const char *prefix;
-    const char *name;
+    const char *prefix; /**< only pointer, not in dictionary */
+    const char *name;   /**< only pointer, not in dictionary */
     size_t prefix_len;
     size_t name_len;
 };
@@ -160,6 +160,23 @@ LY_ERR lyxml_dump_text(struct ly_out *out, const char *text, ly_bool attribute);
  * @param[in] xmlctx XML context to clear.
  */
 void lyxml_ctx_free(struct lyxml_ctx *xmlctx);
+
+/**
+ * @brief Create a backup of XML context.
+ *
+ * @param[in] xmlctx XML context to back up.
+ * @param[out] backup Backup XML context.
+ * @return LY_ERR value.
+ */
+LY_ERR lyxml_ctx_backup(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup);
+
+/**
+ * @brief Restore previous backup of XML context.
+ *
+ * @param[in,out] xmlctx XML context to restore.
+ * @param[in] backup Backup XML context to restore, is unasble afterwards.
+ */
+void lyxml_ctx_restore(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup);
 
 /**
  * @brief Compare values and their prefix mappings.

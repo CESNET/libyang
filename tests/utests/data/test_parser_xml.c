@@ -251,6 +251,13 @@ test_opaq(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, "<foo3 xmlns=\"urn:tests:a\"/>\n");
     lyd_free_all(tree);
 
+    /* list, opaq flag */
+    data = "<l1 xmlns=\"urn:tests:a\"/>";
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_XML, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, "<l1 xmlns=\"urn:tests:a\"/>\n");
+    lyd_free_all(tree);
+
     /* missing key, no flags */
     data = "<l1 xmlns=\"urn:tests:a\">\n"
             "  <a>val_a</a>\n"
