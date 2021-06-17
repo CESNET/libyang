@@ -166,16 +166,8 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     struct lyd_meta *meta;
     const struct lys_module *mod;
     struct ly_set ns_list = {0};
-
-#if 0
-    const char **prefs, **nss;
-    const char *xml_expr = NULL, *mod_name;
-    uint32_t ns_count, i;
-    ly_bool rpc_filter = 0;
-    char *p;
-    size_t len;
-#endif
-    ly_bool dynamic;
+    LY_ARRAY_COUNT_TYPE u;
+    ly_bool dynamic, filter_attrs = 0;
 
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
@@ -188,50 +180,36 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
             }
         }
     }
-#if 0
-    /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
-    if (!strcmp(node->schema->name, "filter") &&
-            (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
-        rpc_filter = 1;
+
+    /* check for NETCONF filter unqualified attributes */
+    LY_ARRAY_FOR(node->schema->exts, u) {
+        if (!strcmp(node->schema->exts[u].def->name, "get-filter-element-attributes") &&
+                !strcmp(node->schema->exts[u].def->module->name, "ietf-netconf")) {
+            filter_attrs = 1;
+            break;
+        }
     }
-#endif
+
     for (meta = node->meta; meta; meta = meta->next) {
         const char *value = meta->value.realtype->plugin->print(LYD_CTX(node), &meta->value, LY_VALUE_XML, &ns_list,
                 &dynamic, NULL);
 
         /* print namespaces connected with the value's prefixes */
-        for (uint32_t u = 0; u < ns_list.count; ++u) {
-            mod = (const struct lys_module *)ns_list.objs[u];
+        for (uint32_t i = 0; i < ns_list.count; ++i) {
+            mod = ns_list.objs[i];
             xml_print_ns(ctx, mod->ns, mod->prefix, 1);
         }
         ly_set_erase(&ns_list, NULL);
 
-#if 0
-        if (rpc_filter) {
-            /* exception for NETCONF's filter's attributes */
-            if (!strcmp(meta->name, "select")) {
-                /* xpath content, we have to convert the JSON format into XML first */
-                xml_expr = transform_json2xml(node->schema->module, meta->value_str, 0, &prefs, &nss, &ns_count);
-                if (!xml_expr) {
-                    /* error */
-                    return EXIT_FAILURE;
-                }
-
-                for (i = 0; i < ns_count; ++i) {
-                    ly_print_(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
-                }
-                free(prefs);
-                free(nss);
-            }
-            ly_print_(out, " %s=\"", meta->name);
-        } else {
-#endif
-        /* print the metadata with its namespace */
         mod = meta->annotation->module;
-        ly_print_(ctx->out, " %s:%s=\"", xml_print_ns(ctx, mod->ns, mod->prefix, 1), meta->name);
-#if 0
-    }
-#endif
+        if (filter_attrs && !strcmp(mod->name, "ietf-netconf") && (!strcmp(meta->name, "type") ||
+                !strcmp(meta->name, "select"))) {
+            /* print special NETCONF filter unqualified attributes */
+            ly_print_(ctx->out, " %s=\"", meta->name);
+        } else {
+            /* print the metadata with its namespace */
+            ly_print_(ctx->out, " %s:%s=\"", xml_print_ns(ctx, mod->ns, mod->prefix, 1), meta->name);
+        }
 
         /* print metadata value */
         if (value && value[0]) {

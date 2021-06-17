@@ -734,6 +734,44 @@ test_netconf_reply_or_notification(void **state)
 }
 
 static void
+test_filter_attributes(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree;
+    const struct lyd_node *node;
+    const char *dsc;
+    const char *ref = "RFC 6241, Section 7.7";
+    const char *feats[] = {"writable-running", NULL};
+
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", feats)));
+
+    data = "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <filter type=\"xpath\" select=\"/*\"/>\n"
+            "</get>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    ly_in_free(in, 0);
+    assert_non_null(tree);
+
+    node = tree;
+    dsc = "Retrieve running configuration and device state information.";
+    CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
+            1, 0, 0, 1, "get", LYS_RPC,
+            1, 0, 0, 0, 0, ref, 0);
+    node = lyd_child(node);
+    dsc = "This parameter specifies the portion of the system\nconfiguration and state data to retrieve.";
+    CHECK_LYSC_NODE(node->schema, dsc, 1, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "filter", 0, LYS_ANYXML, 1, 0, NULL, 0);
+
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+            "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <filter type=\"xpath\" select=\"/*\"/>\n"
+            "</get>\n");
+
+    lyd_free_all(tree);
+}
+
+static void
 test_data_skip(void **state)
 {
     const char *data;
@@ -775,6 +813,7 @@ main(void)
         UTEST(test_netconf_rpc, setup),
         UTEST(test_netconf_action, setup),
         UTEST(test_netconf_reply_or_notification, setup),
+        UTEST(test_filter_attributes, setup),
         UTEST(test_data_skip, setup),
     };
 

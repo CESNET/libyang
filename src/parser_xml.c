@@ -67,30 +67,60 @@ lyd_xml_ctx_free(struct lyd_ctx *lydctx)
     free(ctx);
 }
 
+/**
+ * @brief Parse and create XML metadata.
+ *
+ * @param[in] lydctx XML data parser context.
+ * @param[in] parent_exts Extension instances of the parent node.
+ * @param[out] meta List of created metadata instances.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lydxml_metadata(struct lyd_xml_ctx *lydctx, struct lyd_meta **meta)
+lydxml_metadata(struct lyd_xml_ctx *lydctx, struct lysc_ext_instance *parent_exts, struct lyd_meta **meta)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lyxml_ns *ns;
     struct lys_module *mod;
     const char *name;
     size_t name_len;
+    LY_ARRAY_COUNT_TYPE u;
+    ly_bool filter_attrs = 0;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
 
     *meta = NULL;
 
+    /* check for NETCONF filter unqualified attributes */
+    LY_ARRAY_FOR(parent_exts, u) {
+        if (!strcmp(parent_exts[u].def->name, "get-filter-element-attributes") &&
+                !strcmp(parent_exts[u].def->module->name, "ietf-netconf")) {
+            filter_attrs = 1;
+            break;
+        }
+    }
+
     while (xmlctx->status == LYXML_ATTRIBUTE) {
         if (!xmlctx->prefix_len) {
-            /* in XML, all attributes must be prefixed
-             * TODO exception for NETCONF filters which are supposed to map to the ietf-netconf without prefix */
+            /* in XML all attributes must be prefixed except NETCONF filter ones marked by an extension */
+            if (filter_attrs && (!ly_strncmp("type", xmlctx->name, xmlctx->name_len) ||
+                    !ly_strncmp("select", xmlctx->name, xmlctx->name_len))) {
+                mod = ly_ctx_get_module_implemented(xmlctx->ctx, "ietf-netconf");
+                if (!mod) {
+                    LOGVAL(xmlctx->ctx, LYVE_REFERENCE,
+                            "Missing (or not implemented) YANG module \"ietf-netconf\" for special filter attributes.");
+                    ret = LY_ENOTFOUND;
+                    goto cleanup;
+                }
+                goto create_meta;
+            }
+
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                ret = LY_EVALID;
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Missing mandatory prefix for XML metadata \"%.*s\".",
                         (int)xmlctx->name_len, xmlctx->name);
+                ret = LY_EVALID;
                 goto cleanup;
             }
 
-skip_attr:
+            /* skip attr */
             LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
             assert(xmlctx->status == LYXML_ATTR_CONTENT);
             LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
@@ -100,25 +130,32 @@ skip_attr:
         /* get namespace of the attribute to find its annotation definition */
         ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
         if (!ns) {
-            ret = LY_ENOTFOUND;
             /* unknown namespace, XML error */
             LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
+            ret = LY_ENOTFOUND;
             goto cleanup;
         }
+
+        /* get the module with metadata definition */
         mod = ly_ctx_get_module_implemented_ns(xmlctx->ctx, ns->uri);
         if (!mod) {
-            /* module is not implemented or not present in the schema */
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                ret = LY_ENOTFOUND;
                 LOGVAL(xmlctx->ctx, LYVE_REFERENCE,
                         "Unknown (or not implemented) YANG module with namespace \"%s\" for metadata \"%.*s%s%.*s\".",
                         ns->uri, (int)xmlctx->prefix_len, xmlctx->prefix, xmlctx->prefix_len ? ":" : "",
                         (int)xmlctx->name_len, xmlctx->name);
+                ret = LY_ENOTFOUND;
                 goto cleanup;
             }
-            goto skip_attr;
+
+            /* skip attr */
+            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
+            assert(xmlctx->status == LYXML_ATTR_CONTENT);
+            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
+            continue;
         }
 
+create_meta:
         /* remember meta name and get its content */
         name = xmlctx->name;
         name_len = xmlctx->name_len;
@@ -489,7 +526,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     /* create metadata/attributes */
     if (xmlctx->status == LYXML_ATTRIBUTE) {
         if (snode) {
-            ret = lydxml_metadata(lydctx, &meta);
+            ret = lydxml_metadata(lydctx, snode->exts, &meta);
             LY_CHECK_GOTO(ret, error);
         } else {
             assert(lydctx->parse_opts & LYD_PARSE_OPAQ);
