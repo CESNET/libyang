@@ -860,7 +860,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct ly_set *dep_set)
+lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct ly_set *dep_set)
 {
     struct lys_module *mod2;
     struct lysp_import *imports;
@@ -895,12 +895,12 @@ lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct 
     /* process imports of the module and submodules */
     imports = mod->parsed->imports;
     LY_ARRAY_FOR(imports, u) {
-        LY_CHECK_RET(lys_unres_dep_sets_mod_r(imports[u].module, ctx_set, dep_set));
+        LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(imports[u].module, ctx_set, dep_set));
     }
     LY_ARRAY_FOR(mod->parsed->includes, v) {
         imports = mod->parsed->includes[v].submodule->imports;
         LY_ARRAY_FOR(imports, u) {
-            LY_CHECK_RET(lys_unres_dep_sets_mod_r(imports[u].module, ctx_set, dep_set));
+            LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(imports[u].module, ctx_set, dep_set));
         }
     }
 
@@ -934,7 +934,7 @@ lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct 
         }
 
         if (found) {
-            LY_CHECK_RET(lys_unres_dep_sets_mod_r(mod2, ctx_set, dep_set));
+            LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(mod2, ctx_set, dep_set));
         }
     }
 
@@ -942,7 +942,7 @@ lys_unres_dep_sets_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct 
 }
 
 LY_ERR
-lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struct lys_module *mod)
+lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *m;
@@ -959,10 +959,10 @@ lys_unres_dep_sets_to_compile(struct ly_ctx *ctx, struct ly_set *main_set, struc
 
         if (mod) {
             /* use the module create a dep set with the rest of its dependent modules */
-            LY_CHECK_GOTO(ret = lys_unres_dep_sets_mod_r(mod, ctx_set, dep_set), cleanup);
+            LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_mod_r(mod, ctx_set, dep_set), cleanup);
         } else {
             /* use first ctx mod to create a dep set with the rest of its dependent modules */
-            LY_CHECK_GOTO(ret = lys_unres_dep_sets_mod_r(ctx_set->objs[0], ctx_set, dep_set), cleanup);
+            LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_mod_r(ctx_set->objs[0], ctx_set, dep_set), cleanup);
         }
         assert(dep_set->count);
 
@@ -1088,7 +1088,7 @@ lys_set_implemented(struct lys_module *mod, const char **features)
 
     if (!(mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
-        LY_CHECK_GOTO(ret = lys_unres_dep_sets_to_compile(mod->ctx, &unres.dep_sets, mod), cleanup);
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(mod->ctx, &unres.dep_sets, mod), cleanup);
 
         /* (re)compile the whole dep set */
         LY_CHECK_GOTO(ret = lys_compile_dep_set_r(mod->ctx, unres.dep_sets.objs[0], &unres), cleanup);
@@ -1671,7 +1671,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
 
     if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
-        LY_CHECK_GOTO(ret = lys_unres_dep_sets_to_compile(ctx, &unres.dep_sets, mod), cleanup);
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &unres.dep_sets, mod), cleanup);
 
         /* (re)compile the whole dep set */
         LY_CHECK_GOTO(ret = lys_compile_dep_set_r(ctx, unres.dep_sets.objs[0], &unres), cleanup);

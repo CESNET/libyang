@@ -206,7 +206,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
 
     if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
-        LY_CHECK_GOTO(ret = lys_unres_dep_sets_to_compile(ctx, &unres.dep_sets, mod), cleanup);
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &unres.dep_sets, mod), cleanup);
 
         /* (re)compile the whole dep set */
         LY_CHECK_GOTO(ret = lys_compile_dep_set_r(ctx, unres.dep_sets.objs[0], &unres), cleanup);
@@ -511,7 +511,7 @@ ly_ctx_compile(struct ly_ctx *ctx)
     LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
     /* create dep sets and mark all the modules that will be (re)compiled */
-    LY_CHECK_GOTO(ret = lys_unres_dep_sets_to_compile(ctx, &unres.dep_sets, NULL), cleanup);
+    LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &unres.dep_sets, NULL), cleanup);
 
     /* (re)compile all the dep sets */
     for (i = 0; i < unres.dep_sets.count; ++i) {
