@@ -840,30 +840,6 @@ cleanup:
 }
 
 /**
- * @brief Learn whether a module may depend on its import module.
- *
- * @param[in] mod Main module with the import.
- * @param[in] import Imported module.
- * @return Whether the module depends on its import or not.
- */
-static ly_bool
-lys_unres_dep_sets_is_dep(const struct lys_module *mod, const struct lys_module *import)
-{
-    if (!lys_has_compiled(mod) || !lys_has_compiled(import)) {
-        /* module needs to be compiled to have any dependencies */
-        return 0;
-    }
-
-    if ((mod->compiled && !lys_has_recompiled(mod)) || (import->compiled && !lys_has_recompiled(import))) {
-        /* modules are compiled (and implemented) and if they have nothing to recompile, they surely do not
-         * depend on each other */
-        return 0;
-    }
-
-    return 1;
-}
-
-/**
  * @brief Check whether it may be needed to (re)compile a module from a particular dependency set
  * and if so, add it into its dep set.
  *
