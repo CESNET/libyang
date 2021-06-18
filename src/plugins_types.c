@@ -490,13 +490,13 @@ lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, si
             PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
             pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
 
-            return ly_err_new(err, LY_ESYS, 0, NULL, NULL, (const char *)pcre2_errmsg);
+            return ly_err_new(err, LY_ESYS, 0, NULL, NULL, "%s", (const char *)pcre2_errmsg);
         } else if (((rc == PCRE2_ERROR_NOMATCH) && !patterns[u]->inverted) ||
                 ((rc != PCRE2_ERROR_NOMATCH) && patterns[u]->inverted)) {
             char *eapptag = patterns[u]->eapptag ? strdup(patterns[u]->eapptag) : NULL;
 
             if (patterns[u]->emsg) {
-                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, patterns[u]->emsg);
+                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", patterns[u]->emsg);
             } else {
                 const char *inverted = patterns[u]->inverted ? "inverted " : "";
                 return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
@@ -523,7 +523,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             if ((uint64_t)value < range->parts[u].min_u64) {
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
                             is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
@@ -535,7 +535,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
                             is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
@@ -546,7 +546,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             if (value < range->parts[u].min_64) {
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
@@ -557,7 +557,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }

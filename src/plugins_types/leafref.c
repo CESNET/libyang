@@ -79,7 +79,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
 
     /* check leafref target existence */
     if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, errmsg);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "%s", errmsg);
         free(errmsg);
         return ret;
     }

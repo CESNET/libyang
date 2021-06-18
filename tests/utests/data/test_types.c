@@ -952,6 +952,9 @@ test_leafref(void **state)
     CHECK_LOG_CTX("Invalid leafref value \"z\" - no existing target instance \"../../l[id=current()/../../../t:str-norestr]"
             "[value=current()/../../../t:str-norestr]/value\".",
             "Schema location /leafrefs:c/l/lr2, data location /leafrefs:c/l[id='x'][value='x']/lr2.");
+
+    data = "<lref xmlns=\"urn:tests:types\">%n</lref>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
 }
 
 static void

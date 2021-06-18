@@ -26,4 +26,10 @@
 #define LYPLG_TYPE_DIR "@PLUGINS_DIR_EXTENSIONS@"
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_TYPES@"
 
+#if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)
+# define _FORMAT_PRINTF(FORM, ARGS) __attribute__((format (printf, FORM, ARGS)))
+#else
+# define _FORMAT_PRINTF(FORM, ARGS)
+#endif
+
 #endif /* LY_CONFIG_H_ */
