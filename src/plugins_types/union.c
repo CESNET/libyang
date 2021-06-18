@@ -167,7 +167,7 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
         type_idx = *(uint32_t *)value;
         if (type_idx >= LY_ARRAY_COUNT(type_u->types)) {
             ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB union type index %" PRIu32
-                    " (type count " LY_PRI_ARRAY_COUNT_TYPE ").", type_idx, LY_ARRAY_COUNT(type_u->types));
+                    " (type count %" LY_PRI_ARRAY_COUNT_TYPE ").", type_idx, LY_ARRAY_COUNT(type_u->types));
             goto cleanup;
         }
     }
