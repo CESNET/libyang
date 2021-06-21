@@ -345,6 +345,9 @@ lysp_type_dup(const struct ly_ctx *ctx, struct lysp_type *type, const struct lys
 {
     LY_ERR ret = LY_SUCCESS;
 
+    /* array macros read previous data so we must zero it */
+    memset(type, 0, sizeof *type);
+
     DUP_STRING_GOTO(ctx, orig_type->name, type->name, ret, done);
 
     if (orig_type->range) {
