@@ -360,6 +360,50 @@ test_statements(void **state)
     lyd_free_all(tree_2);
 }
 
+static void
+test_opaq(void **state)
+{
+    const char *nc_feats[] = {"writable-running", NULL};
+    const char *data_xml =
+            "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <target>\n"
+            "    <running/>\n"
+            "  </target>\n"
+            "  <config>\n"
+            "    <top xmlns=\"urn:ed\">\n"
+            "      <first>TestFirst</first>\n"
+            "    </top>\n"
+            "  </config>\n"
+            "</edit-config>\n";
+    struct ly_in *in;
+    struct lyd_node *tree_1;
+    struct lyd_node *tree_2;
+    char *xml_out; /* tree_2 */
+    LY_ERR rc;
+
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", NULL, nc_feats));
+
+    ly_in_new_memory(data_xml, &in);
+    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree_1, NULL);
+    ly_in_free(in, 0);
+    assert_int_equal(rc, LY_SUCCESS);
+
+    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
+
+    ly_in_new_memory(xml_out, &in);
+    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_LYB, LYD_TYPE_RPC_YANG, &tree_2, NULL);
+    ly_in_free(in, 0);
+    assert_int_equal(rc, LY_SUCCESS);
+
+    /* compare models */
+    CHECK_LYD(tree_1, tree_2);
+
+    /* clean */
+    free(xml_out);
+    lyd_free_all(tree_1);
+    lyd_free_all(tree_2);
+}
+
 #if 0
 
 static void
@@ -653,6 +697,7 @@ main(void)
         UTEST(test_ietf_interfaces, setup),
         UTEST(test_origin, setup),
         UTEST(test_statements, setup),
+        UTEST(test_opaq, setup),
 #if 0
         cmocka_unit_test_setup_teardown(test_types, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),

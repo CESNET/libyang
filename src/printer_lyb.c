@@ -623,14 +623,14 @@ lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx 
     /* name */
     LY_CHECK_RET(lyb_write_string(opaq->name.name, 0, 1, out, lybctx));
 
+    /* value */
+    LY_CHECK_RET(lyb_write_string(opaq->value, 0, 1, out, lybctx));
+
     /* format */
     LY_CHECK_RET(lyb_write_number(opaq->format, 1, out, lybctx));
 
     /* value prefixes */
     LY_CHECK_RET(lyb_print_prefix_data(out, opaq->format, opaq->val_prefix_data, lybctx));
-
-    /* value */
-    LY_CHECK_RET(lyb_write_string(opaq->value, 0, 0, out, lybctx));
 
     return LY_SUCCESS;
 }

@@ -777,17 +777,17 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         ret = lyb_read_string(&name, 1, lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
+        /* parse value */
+        ret = lyb_read_string(&value, 1, lybctx->lybctx);
+        LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
+        dynamic = 1;
+
         /* parse format */
         lyb_read((uint8_t *)&format, 1, lybctx->lybctx);
 
         /* parse value prefixes */
         ret = lyb_parse_prefix_data(lybctx->lybctx, format, &val_prefix_data);
         LY_CHECK_GOTO(ret, cleanup);
-
-        /* parse value */
-        ret = lyb_read_string(&value, 0, lybctx->lybctx);
-        LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
-        dynamic = 1;
 
         /* create node */
         ret = lyd_create_opaq(ctx, name, strlen(name), prefix, ly_strlen(prefix), module_key, ly_strlen(module_key),
