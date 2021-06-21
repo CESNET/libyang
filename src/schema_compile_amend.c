@@ -1508,6 +1508,8 @@ lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn)
 void
 lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
 {
+    LY_ARRAY_COUNT_TYPE u;
+
     if (!dev_pnode) {
         return;
     }
@@ -1548,6 +1550,12 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
     default:
         LOGINT(ctx);
         return;
+    }
+
+    /* extension parsed tree and children were not duplicated */
+    LY_ARRAY_FOR(dev_pnode->exts, u) {
+        dev_pnode->exts[u].parsed = NULL;
+        dev_pnode->exts[u].child = NULL;
     }
 
     lysp_node_free((struct ly_ctx *)ctx, dev_pnode);
