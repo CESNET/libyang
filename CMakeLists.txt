@@ -373,6 +373,9 @@ endif()
 # - add it after tests which may also update list of sources to format
 source_format(${format_sources})
 
+# uninstall
+add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_MODULE_PATH}/uninstall.cmake")
+
 # clean cmake cache
 add_custom_target(cclean
         COMMAND make clean
