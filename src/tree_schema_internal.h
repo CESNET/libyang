@@ -147,7 +147,6 @@ struct lys_parser_ctx {
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct ly_set *new_mods;        /**< all modules added to context */
 };
 
 /**
@@ -158,7 +157,6 @@ struct lys_yang_parser_ctx {
     struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
     struct ly_set grps_nodes;       /**< set of grouping nodes */
     struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct ly_set *new_mods;        /**< all modules added to context */
     struct ly_in *in;               /**< input handler for the parser */
     uint64_t indent;                /**< current position on the line for YANG indentation */
     uint32_t depth;                 /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
@@ -177,7 +175,6 @@ struct lys_yin_parser_ctx {
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
     struct lysp_module *parsed_mod;/**< (sub)module being parsed */
-    struct ly_set *new_mods;        /**< all modules added to context */
     struct lyxml_ctx *xmlctx;      /**< context for xml parser */
 };
 
@@ -314,9 +311,10 @@ LY_ERR lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision
  *
  * @param[in] pctx main parser context
  * @param[in] pmod Parsed module with the includes array to be processed.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod);
+LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods);
 
 /**
  * @brief Free a parsed restriction.
@@ -590,11 +588,12 @@ LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, l
  * @param[in] main_ctx Parser context of the main module.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
+ * @param[in] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] submodule Parsed submodule.
  * @return LY_ERR value.
  */
 LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-        lys_custom_check custom_check, void *check_data, struct lysp_submodule **submodule);
+        lys_custom_check custom_check, void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule);
 
 /**
  * @brief Fill filepath value if available in input handler @p in

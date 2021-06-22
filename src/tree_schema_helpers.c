@@ -668,7 +668,7 @@ lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, 
     check_data.path = filepath;
     check_data.submoduleof = main_name;
     if (main_ctx) {
-        ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
+        ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data, new_mods,
                 (struct lysp_submodule **)&mod);
     } else {
         ret = lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, (struct lys_module **)&mod);
@@ -903,7 +903,7 @@ lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 }
 
 LY_ERR
-lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
+lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct ly_ctx *ctx = PARSER_CTX(pctx);
@@ -941,7 +941,7 @@ search_clb:
                     check_data.name = inc->name;
                     check_data.revision = inc->rev[0] ? inc->rev : NULL;
                     check_data.submoduleof = pctx->parsed_mod->mod->name;
-                    lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
+                    lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, new_mods, &submod);
 
                     /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                      * submodule's include into main module, where it is missing */
