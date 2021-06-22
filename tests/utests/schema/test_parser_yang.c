@@ -589,7 +589,6 @@ test_module(void **state)
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
-    struct ly_set new_mods = {0};
     struct lys_yang_parser_ctx *ctx_p;
 
     mod = mod_renew(YCTX);
@@ -761,7 +760,7 @@ test_module(void **state)
     in.current = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &new_mods));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m);
@@ -769,7 +768,7 @@ test_module(void **state)
     in.current = "prefix " SCHEMA_BEGINNING "}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &new_mods));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m);
@@ -777,7 +776,7 @@ test_module(void **state)
     in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &new_mods));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m);

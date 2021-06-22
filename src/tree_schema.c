@@ -1101,7 +1101,7 @@ cleanup:
 }
 
 static LY_ERR
-lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
+lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     struct lysp_import *imp;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -1110,8 +1110,7 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
     LY_ARRAY_FOR(pmod->imports, u) {
         imp = &pmod->imports[u];
         if (!imp->module) {
-            LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL,
-                    pctx->new_mods, &imp->module));
+            LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, new_mods, &imp->module));
         }
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
@@ -1120,7 +1119,7 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
             }
         }
     }
-    LY_CHECK_RET(lysp_load_submodules(pctx, pmod));
+    LY_CHECK_RET(lysp_load_submodules(pctx, pmod, new_mods));
 
     pmod->parsing = 0;
 
@@ -1130,7 +1129,7 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
 LY_ERR
 lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
         LY_ERR (*custom_check)(const struct ly_ctx *, struct lysp_module *, struct lysp_submodule *, void *),
-        void *check_data, struct lysp_submodule **submodule)
+        void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule)
 {
     LY_ERR ret;
     struct lysp_submodule *submod = NULL, *latest_sp;
@@ -1192,7 +1191,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     lys_parser_fill_filepath(ctx, in, &submod->filepath);
 
     /* resolve imports and includes */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod), error);
+    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
 
     /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
     memcpy(&main_ctx->tpdfs_nodes, &pctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
@@ -1457,11 +1456,11 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     /* parse */
     switch (format) {
     case LYS_IN_YIN:
-        ret = yin_parse_module(&yinctx, in, mod, new_mods);
+        ret = yin_parse_module(&yinctx, in, mod);
         pctx = (struct lys_parser_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
-        ret = yang_parse_module(&yangctx, in, mod, new_mods);
+        ret = yang_parse_module(&yangctx, in, mod);
         pctx = (struct lys_parser_ctx *)yangctx;
         break;
     default:
@@ -1570,7 +1569,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     ctx->change_count++;
 
     /* resolve includes and all imports */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), cleanup);
+    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
 
     /* check name collisions */
     LY_CHECK_GOTO(ret = lysp_check_dup_typedefs(pctx, mod->parsed), cleanup);

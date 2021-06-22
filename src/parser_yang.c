@@ -4556,7 +4556,6 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
-    (*context)->new_mods = main_ctx->new_mods;
     (*context)->in = in;
 
     mod_p = calloc(1, sizeof *mod_p);
@@ -4617,7 +4616,7 @@ cleanup:
 }
 
 LY_ERR
-yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod, struct ly_set *new_mods)
+yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
@@ -4629,7 +4628,6 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(mod->ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
-    (*context)->new_mods = new_mods;
     (*context)->in = in;
 
     mod_p = calloc(1, sizeof *mod_p);
