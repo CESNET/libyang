@@ -931,7 +931,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             break;
         case LY_STMT_PATH:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &str_path, Y_STR_ARG, &type->exts));
-            ret = ly_path_parse(PARSER_CTX(ctx), NULL, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            ret = ly_path_parse(PARSER_CTX(ctx), NULL, str_path, 0, 1, LY_PATH_BEGIN_EITHER,
                     LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
             lydict_remove(PARSER_CTX(ctx), str_path);
             LY_CHECK_RET(ret);
@@ -2416,7 +2416,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **resul
         const char *str_path = NULL;
 
         LY_CHECK_RET(lysp_stmt_text_field(&pctx, stmt, 0, &str_path, Y_STR_ARG, exts));
-        ret = ly_path_parse(ctx->ctx, NULL, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+        ret = ly_path_parse(ctx->ctx, NULL, str_path, 0, 1, LY_PATH_BEGIN_EITHER,
                 LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, (struct lyxp_expr **)result);
         lydict_remove(ctx->ctx, str_path);
         break;

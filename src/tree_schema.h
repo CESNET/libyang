@@ -1595,7 +1595,7 @@ struct lysc_type_leafref {
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lyxp_expr *path;          /**< parsed target path, compiled path cannot be stored because of type sharing */
     struct lysc_prefix *prefixes;    /**< resolved prefixes used in the path */
-    const struct lys_module *cur_mod;/**< current module for the leafref (path) */
+    const struct lys_module *cur_mod;/**< unused, not needed */
     struct lysc_type *realtype;      /**< pointer to the real (first non-leafref in possible leafrefs chain) type. */
     uint8_t require_instance;        /**< require-instance flag */
 };

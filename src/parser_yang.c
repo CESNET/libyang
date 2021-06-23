@@ -2170,7 +2170,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct lysp_type *type)
              */
             LY_CHECK_ERR_RET(ret = parse_text_field(ctx, LY_STMT_PATH, 0, &str_path, Y_STR_ARG, &type->exts),
                     lydict_remove(PARSER_CTX(ctx), str_path), ret);
-            ret = ly_path_parse(PARSER_CTX(ctx), NULL, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+            ret = ly_path_parse(PARSER_CTX(ctx), NULL, str_path, 0, 1, LY_PATH_BEGIN_EITHER,
                     LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
             /* Moreover, even if successful, the string is removed from the dictionary. */
             lydict_remove(PARSER_CTX(ctx), str_path);

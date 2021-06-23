@@ -1003,8 +1003,8 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
-    /* try to find the target */
-    LY_CHECK_RET(ly_path_compile(ctx->ctx, lref->cur_mod, node, NULL, lref->path, LY_PATH_LREF_TRUE,
+    /* try to find the target, current module is that of the context node (RFC 7950 6.4.1 second bullet) */
+    LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, NULL, lref->path,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
             LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, unres, &p));
 

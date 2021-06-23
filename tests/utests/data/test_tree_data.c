@@ -388,10 +388,10 @@ test_target(void **state)
             "</c></l2>";
 
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path_str, strlen(path_str), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
+    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path_str, strlen(path_str), 0, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp));
-    assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, NULL, NULL, exp, LY_PATH_LREF_FALSE, LY_PATH_OPER_INPUT,
-            LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, NULL, &path));
+    assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, NULL, NULL, exp, LY_PATH_OPER_INPUT,
+            LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, &path));
     term = lyd_target(path, tree);
 
     const int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM | LYS_ORDBY_USER;

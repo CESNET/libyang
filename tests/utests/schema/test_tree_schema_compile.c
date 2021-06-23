@@ -1477,28 +1477,28 @@ test_type_leafref(void **state)
 
     /* lys_path_parse() */
     path = "invalid_path";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "..";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "..[";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "../";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     path = "/";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
 
     path = "../../pref:id/xxx[predicate]/invalid!!!";
-    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_EVALID, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     CHECK_LOG_CTX("Invalid character 0x21 ('!'), perhaps \"invalid\" is supposed to be a function call.", NULL);
 
     path = "/absolute/prefix:path";
-    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path, strlen(path), 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &expr));
     assert_int_equal(4, expr->used);
     assert_int_equal(LYXP_TOKEN_OPER_PATH, expr->tokens[0]);
@@ -2902,18 +2902,21 @@ test_deviation(void **state)
     assert_int_equal(LY_TYPE_IDENT, leaf->type->basetype);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module y {namespace urn:y;prefix y;"
-            "container cont {leaf l {type string;}}"
-            "leaf bl2 {type string;}"
+            "leaf l1 {type string;}"
+            "leaf l2 {type string;}"
             "}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module z {namespace urn:z;prefix z;"
             "import y {prefix y;}"
-            "deviation \"/y:cont/y:l\" {deviate replace {type leafref {path \"/al\";}}}"
-            "leaf al {type string;}"
-            "leaf al2 {type leafref {path \"/y:bl2\";}}"
+            "deviation \"/y:l1\" {deviate replace {type leafref {path \"/l2\";}}}"
+            "deviation \"/y:l2\" {deviate replace {type leafref {path \"/z:al2\";}}}"
+            "leaf al2 {type string;}"
             "}", LYS_IN_YANG, NULL));
     assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "y")));
-    assert_non_null(leaf = (struct lysc_node_leaf *)lysc_node_child(mod->compiled->data));
-    assert_string_equal("l", leaf->name);
+    assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
+    assert_string_equal("l1", leaf->name);
+    assert_int_equal(LY_TYPE_LEAFREF, leaf->type->basetype);
+    leaf = (struct lysc_node_leaf *)leaf->next;
+    assert_string_equal("l2", leaf->name);
     assert_int_equal(LY_TYPE_LEAFREF, leaf->type->basetype);
 
     /* complex dependencies */

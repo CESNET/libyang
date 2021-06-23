@@ -3739,7 +3739,8 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
                         sleaf->name);
-            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) && !warn_is_specific_type(sleaf->type, LY_TYPE_INST)) {
+            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) &&
+                    !warn_is_specific_type(sleaf->type, LY_TYPE_INST)) {
                 LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"leafref\" nor \"instance-identifier\".",
                         __func__, sleaf->name);
             }
@@ -3750,8 +3751,8 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
-            rc = ly_path_compile(set->ctx, lref->cur_mod, &sleaf->node, NULL, lref->path, LY_PATH_LREF_TRUE, oper,
-                    LY_PATH_TARGET_MANY, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
+            rc = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
+                    LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
             assert(!rc);
 
             /* get the target node */

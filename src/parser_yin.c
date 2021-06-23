@@ -622,7 +622,7 @@ yin_parse_path(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp_type
     const char *str_path;
 
     LY_CHECK_RET(yin_parse_simple_element(ctx, kw, &str_path, YIN_ARG_VALUE, Y_STR_ARG, &type->exts));
-    ret = ly_path_parse(ctx->xmlctx->ctx, NULL, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+    ret = ly_path_parse(ctx->xmlctx->ctx, NULL, str_path, 0, 1, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
     lydict_remove(ctx->xmlctx->ctx, str_path);
     LY_CHECK_RET(ret);

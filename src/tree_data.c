@@ -1778,13 +1778,13 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
     }
 
     /* parse path */
-    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
-            LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp), cleanup);
+    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), 0, LY_PATH_BEGIN_EITHER, LY_PATH_PREFIX_OPTIONAL,
+            LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, ext, exp, LY_PATH_LREF_FALSE,
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, ext, exp,
             options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, LY_VALUE_JSON,
-            NULL, NULL, &p), cleanup);
+            NULL, &p), cleanup);
 
     /* check the compiled path before searching existing nodes, it may be shortened */
     orig_count = LY_ARRAY_COUNT(p);
@@ -4294,13 +4294,13 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_CHECK_ARG_RET(NULL, ctx_node, ctx_node->schema, path, LY_EINVAL);
 
     /* parse the path */
-    ret = ly_path_parse(LYD_CTX(ctx_node), ctx_node->schema, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
+    ret = ly_path_parse(LYD_CTX(ctx_node), ctx_node->schema, path, strlen(path), 0, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &expr);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile the path */
-    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, NULL, expr, LY_PATH_LREF_FALSE,
-            output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, NULL, &lypath);
+    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, NULL, expr,
+            output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, &lypath);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate the path */

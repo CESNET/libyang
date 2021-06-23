@@ -710,8 +710,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
     /* parse the value */
-    ret = ly_path_parse(ctx, ctx_node, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE,
-            prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
+    ret = ly_path_parse(ctx, ctx_node, value, value_len, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
@@ -724,8 +723,8 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
     /* resolve it on schema tree */
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, LY_PATH_LREF_FALSE, (ctx_node->flags & LYS_IS_OUTPUT) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, unres, path);
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node->flags & LYS_IS_OUTPUT) ?
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, path);
     if (ret) {
         ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
                 "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
@@ -787,12 +786,14 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     uint32_t i;
     int rc;
 
+    LY_CHECK_ARG_RET(NULL, lref, node, value, errmsg, LY_EINVAL);
+
     /* find all target data instances */
-    ret = lyxp_eval(lref->cur_mod->ctx, lref->path, lref->cur_mod, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, tree,
-            &set, 0);
+    ret = lyxp_eval(LYD_CTX(node), lref->path, node->schema->module, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
+            node, tree, &set, 0);
     if (ret) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+        val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
@@ -812,7 +813,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     }
     if (i == set.used) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+        val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (set.used) {
             rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
         } else {

@@ -72,15 +72,6 @@ struct ly_path {
 /** @} */
 
 /**
- * @defgroup path_lref_options Path leafref options.
- * @{
- */
-#define LY_PATH_LREF_FALSE      0x04    /**< path does not represent leafref */
-#define LY_PATH_LREF_TRUE       0x08    /* '..' in path allowed, special leafref predicates expected (but are not compiled),
-                                           implement traversed modules */
-/** @} */
-
-/**
  * @defgroup path_prefix_options Path prefix options.
  * @{
  */
@@ -107,15 +98,15 @@ struct ly_path {
  * @param[in] ctx_node Optional context node, used for logging.
  * @param[in] str_path Path to parse.
  * @param[in] path_len Length of @p str_path.
+ * @param[in] lref Whether leafref is being parsed or not.
  * @param[in] begin Begin option (@ref path_begin_options).
- * @param[in] lref Lref option (@ref path_lref_options).
  * @param[in] prefix Prefix option (@ref path_prefix_options).
  * @param[in] pred Predicate option (@ref path_pred_options).
  * @param[out] expr Parsed path.
  * @return LY_ERR value.
  */
 LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
-        uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
+        ly_bool lref, uint8_t begin, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
 
 /**
  * @brief Parse predicate into XPath token structure and perform all additional checks.
@@ -151,28 +142,47 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
 /** @} */
 
 /**
- * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
+ * @brief Compile path into ly_path structure.
  *
  * @param[in] ctx libyang context.
- * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
- * for ::LY_PREF_SCHEMA* format.
+ * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes in schema-nodeid
+ * without a prefix for ::LY_PREF_SCHEMA* format.
  * @param[in] ctx_node Optional context node.
  * @param[in] ext Extension instance containing the definition of the data being created. It is used to find the top-level
  * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
  * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in] expr Parsed path.
- * @param[in] lref Lref option (@ref path_lref_options).
  * @param[in] oper Oper option (@ref path_oper_options).
  * @param[in] target Target option (@ref path_target_options).
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
- * @param[in,out] unres Global unres structure for newly implemented modules, needed only if @p lref is ::LY_PATH_LREF_TRUE.
  * @param[out] path Compiled path.
- * @return LY_ERECOMPILE, only if @p lref is ::LY_PATH_LREF_TRUE.
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
+        LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
+
+/**
+ * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] ctx_node Context node.
+ * @param[in] ext Extension instance containing the definition of the data being created. It is used to find the top-level
+ * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
+ * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
+ * @param[in] expr Parsed path.
+ * @param[in] oper Oper option (@ref path_oper_options).
+ * @param[in] target Target option (@ref path_target_options).
+ * @param[in] format Format of the path.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[out] path Compiled path.
+ * @return LY_ERECOMPILE if recompilation is needed before the path can be compiled.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+        const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
         LY_VALUE_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path);
 
 /**
