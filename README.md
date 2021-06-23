@@ -205,7 +205,7 @@ $ make
 In case of the `Release` mode, the tests are not built by default (it requires
 additional dependency), but they can be enabled via cmake option:
 ```
-$ cmake -DENABLE_BUILD_TESTS=ON ..
+$ cmake -DENABLE_TESTS=ON ..
 ```
 
 Note that if the necessary [cmocka](https://cmocka.org/) headers are not present

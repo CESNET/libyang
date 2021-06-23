@@ -7,7 +7,7 @@ macro(GEN_COVERAGE_ENABLE ENABLE_TESTS)
 
     set(GEN_COVERAGE_ENABLED ON)
     if(NOT TESTS_ENABLED)
-        message(WARNING "You cannot generate coverage when tests are disabled. Enable test by additing parameter -DENABLE_BUILD_TESTS=ON or run cmake with Debug build target.")
+        message(WARNING "You cannot generate coverage when tests are disabled. Enable test by additing parameter -DENABLE_TESTS=ON or run cmake with Debug build target.")
         set(GEN_COVERAGE_ENABLED OFF)
     endif()
 

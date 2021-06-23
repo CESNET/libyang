@@ -196,12 +196,12 @@ set(format_sources
 #
 
 if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
-    option(ENABLE_BUILD_TESTS "Build tests" ON)
+    option(ENABLE_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
     # TODO enable when the internal docs ready
     set(INTERNAL_DOCS NO)
 else()
-    option(ENABLE_BUILD_TESTS "Build tests" OFF)
+    option(ENABLE_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
     set(INTERNAL_DOCS NO)
 endif()
@@ -225,7 +225,7 @@ option(ENABLE_STATIC "Build static (.a) library" OFF)
 #
 if(ENABLE_STATIC)
     message(STATUS "Disabling tests for static build")
-    set(ENABLE_BUILD_TESTS OFF)
+    set(ENABLE_TESTS OFF)
     set(ENABLE_VALGRIND_TESTS OFF)
 endif()
 
@@ -235,20 +235,20 @@ if(ENABLE_VALGRIND_TESTS)
         message(WARNING "valgrind executable not found! Disabling memory leaks tests.")
         set(ENABLE_VALGRIND_TESTS OFF)
     else()
-        set(ENABLE_BUILD_TESTS ON)
+        set(ENABLE_TESTS ON)
     endif()
 endif()
 
-if(ENABLE_BUILD_TESTS)
+if(ENABLE_TESTS)
     find_package(CMocka 1.0.0)
     if(NOT CMOCKA_FOUND)
         message(STATUS "Disabling tests because of missing CMocka")
-        set(ENABLE_BUILD_TESTS OFF)
+        set(ENABLE_TESTS OFF)
     endif()
-endif(ENABLE_BUILD_TESTS)
+endif(ENABLE_TESTS)
 
 if(ENABLE_COVERAGE)
-    gen_coverage_enable(${ENABLE_BUILD_TESTS})
+    gen_coverage_enable(${ENABLE_TESTS})
 endif()
 
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
@@ -340,7 +340,7 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 # tests
-if(ENABLE_BUILD_TESTS)
+if(ENABLE_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
