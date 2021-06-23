@@ -274,7 +274,7 @@ LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_ex
  * What can cause new modules to be implemented when resolving unres in 5):
  * - leafref
  * - when, must
- * - identityref default value
+ * - identityref, instance-identifier default value
  * - new implemented module augments, deviations
  *
  * @param[in] ctx libyang context.
