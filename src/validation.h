@@ -58,7 +58,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] node_exts Set with nodes with extension instances with validation plugin callback, can be NULL.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
- * @param[in] meta_types Set with metdata with unresolved types, can be NULL.
+ * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */

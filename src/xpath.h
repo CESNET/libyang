@@ -287,7 +287,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
- * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
+ * @param[in] format Format of the XPath expression (more specifically, of any used prefixes).
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
  * @param[in] ctx_node Current (context) data node, NULL in case of the root node.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
@@ -308,7 +308,7 @@ LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const st
  * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
- * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
+ * @param[in] format Format of the XPath expression (more specifically, of any used prefixes).
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
  * @param[in] ctx_scnode Current (context) schema node, NULL in case of the root node.
  * @param[out] set Result set.

@@ -31,7 +31,7 @@ extern "C" {
  * input type and then used throughout the parser functions processing the input data. Using a generic input handler avoids
  * need to have a set of functions for each parser functionality and results in simpler API.
  *
- * The API allows to alter the source of the data behind the handler by another source. Also reseting a seekable source
+ * The API allows to alter the source of the data behind the handler by another source. Also resetting a seekable source
  * input is possible with ::ly_in_reset() to re-read the input.
  *
  * @note

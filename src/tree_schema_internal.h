@@ -722,7 +722,7 @@ void lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif);
 /**
  * @brief Free the compiled extension definition and NULL the provided pointer.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] ext Compiled extendion definition to be freed.
+ * @param[in,out] ext Compiled extension definition to be freed.
  */
 void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 

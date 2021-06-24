@@ -44,7 +44,7 @@ extern "C" {
  *
  * YANG extensions are very complex. Usually only its description specifies how it is supposed to behave, what are the
  * allowed substatements, their cardinality or if the standard YANG statements placed inside the extension differs somehow
- * in their meaning or behavior. libyang provids the Extension plugins API to implement such extensions and add its support
+ * in their meaning or behavior. libyang provides the Extension plugins API to implement such extensions and add its support
  * into libyang itself. However we tried our best, the API is not (and it cannot be) so universal and complete to cover all
  * possibilities. There are definitely use cases which cannot be simply implemented only with this API.
  *

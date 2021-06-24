@@ -69,7 +69,7 @@ struct lysc_refine {
  *
  * @param[in] ctx Compile context.
  * @param[in] uses_p Parsed uses structure with augments and refines.
- * @param[in] ctx_node Context node of @p uses_p meaning its first data definiition parent.
+ * @param[in] ctx_node Context node of @p uses_p meaning its first data definition parent.
  * @return LY_ERR value.
  */
 LY_ERR lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p,
@@ -118,7 +118,7 @@ void lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn);
 void lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode);
 
 /**
- * @brief Compile and apply any precompiled deviations and refines targetting a node.
+ * @brief Compile and apply any precompiled deviations and refines targeting a node.
  *
  * @param[in] ctx Compile context.
  * @param[in] pnode Parsed node to consider.
@@ -131,7 +131,7 @@ LY_ERR lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct ly
         const struct lysc_node *parent, struct lysp_node **dev_pnode, ly_bool *not_supported);
 
 /**
- * @brief Compile and apply any precompiled top-level or uses augments targetting a node.
+ * @brief Compile and apply any precompiled top-level or uses augments targeting a node.
  *
  * @param[in] ctx Compile context.
  * @param[in] node Compiled node to consider.

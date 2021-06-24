@@ -127,7 +127,7 @@ LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *c
  * @brief Parse XML string as a YANG data tree.
  *
  * @param[in] ctx libyang context.
- * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
@@ -148,7 +148,7 @@ LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *e
  * @brief Parse JSON string as a YANG data tree.
  *
  * @param[in] ctx libyang context.
- * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
@@ -167,7 +167,7 @@ LY_ERR lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *
  * @brief Parse binary LYB data as a YANG data tree.
  *
  * @param[in] ctx libyang context.
- * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
