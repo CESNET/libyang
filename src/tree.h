@@ -225,7 +225,7 @@ typedef enum
 #define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
 
 /**
- * @brief Stringified YANG built-in data types
+ * @brief Stringfield YANG built-in data types
  */
 extern const char *ly_data_type2str[LY_DATA_TYPE_COUNT];
 

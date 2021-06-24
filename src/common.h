@@ -370,7 +370,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] s String to search in.
  * @param[in] c Character to search for.
  * @param[in] len Limit the search to this number of characters in @p s.
- * @return Pointer to first @p c occurence in @p s, NULL if not found in first @p len characters.
+ * @return Pointer to first @p c occurrence in @p s, NULL if not found in first @p len characters.
  */
 char *ly_strnchr(const char *s, int c, size_t len);
 

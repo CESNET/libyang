@@ -174,7 +174,7 @@ LY_ERR lyxml_ctx_backup(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup);
  * @brief Restore previous backup of XML context.
  *
  * @param[in,out] xmlctx XML context to restore.
- * @param[in] backup Backup XML context to restore, is unasble afterwards.
+ * @param[in] backup Backup XML context to restore, is unusable afterwards.
  */
 void lyxml_ctx_restore(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup);
 

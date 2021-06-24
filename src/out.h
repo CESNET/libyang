@@ -34,7 +34,7 @@ extern "C" {
  *
  * Using a generic output handler avoids need to have a set of functions for each printer functionality and results in simpler API.
  *
- * The API allows to alter the target of the data behind the handler by another target (of the same type). Also reseting
+ * The API allows to alter the target of the data behind the handler by another target (of the same type). Also resetting
  * a seekable output is possible with ::ly_out_reset() to re-write the output.
  *
  * @note
@@ -154,7 +154,7 @@ LY_ERR ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **ou
 ly_write_clb ly_out_clb(struct ly_out *out, ly_write_clb writeclb);
 
 /**
- * @brief Get or reset callback function's argument aasociated with a callback printer handler.
+ * @brief Get or reset callback function's argument associated with a callback printer handler.
  *
  * @param[in] out Printer handler.
  * @param[in] arg caller-specific argument to be passed to the callback function associated with the printer handler.
@@ -247,7 +247,7 @@ LY_ERR ly_out_new_filepath(const char *filepath, struct ly_out **out);
  * @param[in] out Printer handler.
  * @param[in] filepath Optional new filepath for the handler. If and only if NULL, the current filepath string is returned.
  * @return Previous filepath string in case the @p filepath argument is NULL.
- * @return NULL if changing filepath succeedes and ((void *)-1) otherwise.
+ * @return NULL if changing filepath succeeds and ((void *)-1) otherwise.
  */
 const char *ly_out_filepath(struct ly_out *out, const char *filepath);
 

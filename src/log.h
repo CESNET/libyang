@@ -94,7 +94,7 @@ typedef enum
 /**
  * @brief Set logger verbosity level.
  *
- * To get the current value, the function must be called twice resetting the level by the reived value.
+ * To get the current value, the function must be called twice resetting the level by the received value.
  *
  * @param[in] level Verbosity level.
  * @return Previous verbosity level.
@@ -125,7 +125,7 @@ LY_LOG_LEVEL ly_log_level(LY_LOG_LEVEL level);
 /**
  * @brief Set logger options. Default is #LY_LOLOG | #LY_LOSTORE_LAST.
  *
- * To get the current value, the function must be called twice resetting the level by the reived value.
+ * To get the current value, the function must be called twice resetting the level by the received value.
  *
  * @param[in] opts Bitfield of @ref logopts.
  * @return Previous logger options.
@@ -155,7 +155,7 @@ uint32_t ly_log_options(uint32_t opts);
 /**
  * @brief Enable specific debugging messages (independent of log level).
  *
- * To get the current value, the function must be called twice resetting the level by the reived value.
+ * To get the current value, the function must be called twice resetting the level by the received value.
  *
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  * @return Previous options bitfield.

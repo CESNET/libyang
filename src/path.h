@@ -68,7 +68,7 @@ struct ly_path {
  * @{
  */
 #define LY_PATH_BEGIN_ABSOLUTE  0x01    /**< path must be absolute */
-#define LY_PATH_BEGIN_EITHER    0x02    /**< path be be iether absolute or relative */
+#define LY_PATH_BEGIN_EITHER    0x02    /**< path be be either absolute or relative */
 /** @} */
 
 /**

@@ -1396,7 +1396,7 @@ LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool 
 /**
  * @brief Create a new JSON opaque node in the data tree. To create an XML opaque node, use ::lyd_new_opaq2().
  *
- * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] ctx libyang context. If NULL, @p parent context will be used.
  * @param[in] name Node name.
  * @param[in] value Optional node value.
@@ -1411,7 +1411,7 @@ LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
 /**
  * @brief Create a new XML opaque node in the data tree. To create a JSON opaque node, use ::lyd_new_opaq().
  *
- * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] ctx libyang context. If NULL, @p parent context will be used.
  * @param[in] name Node name.
  * @param[in] value Optional node value.
@@ -1619,7 +1619,7 @@ LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *
  * @param[in] val_str New value to set, any prefixes are expected in JSON format.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
@@ -1635,7 +1635,7 @@ LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
  * @param[in] value_len Length of @p value.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len);
@@ -1651,7 +1651,7 @@ LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t valu
  * canonical, it may lead to unexpected behavior.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
@@ -1662,7 +1662,7 @@ LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
  * @param[in] meta Metadata to change.
  * @param[in] val_str New value to set, any prefixes are expected in JSON format.
  * @return LY_SUCCESS if value was changed,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);

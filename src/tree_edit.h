@@ -239,7 +239,7 @@ void *ly_realloc(void *ptr, size_t size);
  *
  * @param[in,out] LIST Linked list to add to.
  * @param[in] NEW_ITEM New item, that will be appended to the list, must be already allocated.
- * @param[in] LINKER name of structuin member that is used to connect items together.
+ * @param[in] LINKER name of structuring member that is used to connect items together.
  */
 #define LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)\
     if (!(*LIST)) { \
