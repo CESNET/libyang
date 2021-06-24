@@ -1773,7 +1773,8 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
                 node->flags &= ~LYS_MAND_TRUE;
                 lys_compile_mandatory_parents(target, 0);
                 LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.", node->name);
+                        "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.",
+                        node->name);
                 ret = LY_EVALID;
                 goto cleanup;
             }

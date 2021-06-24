@@ -796,8 +796,7 @@ lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, const char 
 
     if ((flg1 < flg2) && (mod1 == mod2)) {
         if (ctx) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "A %s definition \"%s\" is not allowed to reference %s definition \"%s\".",
+            LOGVAL(ctx->ctx, LYVE_REFERENCE, "A %s definition \"%s\" is not allowed to reference %s definition \"%s\".",
                     flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
                     flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
         }
