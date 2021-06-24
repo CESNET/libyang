@@ -269,6 +269,11 @@ test_typedef(void **state)
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
     CHECK_LOG("Invalid name \"y\" of typedef - name collision with sibling type.", NULL);
 
+    str = "module a {namespace urn:a; prefix a; container c {typedef x {type t{}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_STRING(_UC->err_msg, "Unexpected end-of-input.");
+    UTEST_LOG_CLEAN;
+
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
     str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);

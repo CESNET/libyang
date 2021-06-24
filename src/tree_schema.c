@@ -1193,10 +1193,6 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     /* resolve imports and includes */
     LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
 
-    /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
-    memcpy(&main_ctx->tpdfs_nodes, &pctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-    memcpy(&main_ctx->grps_nodes, &pctx->grps_nodes, sizeof main_ctx->grps_nodes);
-
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
@@ -1602,9 +1598,6 @@ free_mod_cleanup:
     }
 
 cleanup:
-    if (pctx) {
-        ly_set_erase(&pctx->tpdfs_nodes, NULL);
-    }
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
