@@ -204,7 +204,6 @@ test_node_container(void **state)
     assert_true(cont->flags & LYS_STATUS_CURR);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;container c {config false; status deprecated; container child;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing explicit \"deprecated\" status that was already specified in parent, inheriting.", NULL);
     assert_non_null(mod->compiled);
     assert_non_null((cont = (struct lysc_node_container *)mod->compiled->data));
     assert_true(cont->flags & LYS_CONFIG_R);
@@ -2002,15 +2001,15 @@ test_status(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container c {status deprecated; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("A \"current\" status is in conflict with the parent's \"deprecated\" status.", "/aa:c/l");
+    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with the \"deprecated\" status of parent \"c\".", "/aa:c/l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;"
             "container c {status obsolete; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("A \"current\" status is in conflict with the parent's \"obsolete\" status.", "/bb:c/l");
+    CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with the \"obsolete\" status of parent \"c\".", "/bb:c/l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;"
             "container c {status obsolete; leaf l {status deprecated; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.", "/cc:c/l");
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"c\".", "/cc:c/l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
             "container c {leaf l {status obsolete; type string;}}"
@@ -2188,7 +2187,8 @@ test_uses(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.", "/ee:{uses='grp'}/ee:l");
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<uses>\".",
+            "/ee:{uses='grp'}/ee:l");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
             "leaf l {type int8;}uses grp;}", LYS_IN_YANG, &mod));
@@ -2352,7 +2352,8 @@ test_refine(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.", "/ii:{uses='grp'}/ii:l");
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<uses>\".",
+            "/ii:{uses='grp'}/ii:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;import grp {prefix g;}"
             "uses g:grp {refine c/x {presence nonsence;}}}", LYS_IN_YANG, &mod));

@@ -220,18 +220,68 @@ cleanup:
 }
 
 /**
+ * @brief Compile status information of the given statement.
+ *
+ * To simplify getting status of the node, the flags are set following inheritance rules, so all the nodes
+ * has the status correctly set during the compilation.
+ *
+ * @param[in] ctx Compile context
+ * @param[in,out] stmt_flags Compiled flags to update. If the status was set explicitly, it is already set
+ * in the flags value and we just check the compatibility with the parent's status value.
+ * @param[in] stmt_name Statement name, for logging.
+ * @param[in] parent_flags Flags of the parent node to check/inherit the status value.
+ * @param[in] parent_name Name of the parent node, for logging.
+ * @param[in] inherit_log Whether to print inherit message.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_status(struct lysc_ctx *ctx, uint16_t *stmt_flags, const char *stmt_name, uint16_t parent_flags,
+        const char *parent_name, ly_bool inherit_log)
+{
+    /* status - it is not inherited by specification, but it does not make sense to have
+     * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
+    if (!(*stmt_flags & LYS_STATUS_MASK)) {
+        if (parent_flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT)) {
+            if (inherit_log) {
+                LOGVRB("Missing explicit \"%s\" status specified in parent \"%s\", inheriting for \"%s\".",
+                        (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete", parent_name, stmt_name);
+            }
+            *stmt_flags |= parent_flags & LYS_STATUS_MASK;
+        } else {
+            *stmt_flags |= LYS_STATUS_CURR;
+        }
+    } else if (parent_flags & LYS_STATUS_MASK) {
+        /* check status compatibility with the parent */
+        if ((parent_flags & LYS_STATUS_MASK) > (*stmt_flags & LYS_STATUS_MASK)) {
+            if (*stmt_flags & LYS_STATUS_CURR) {
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
+                        "Status \"current\" of \"%s\" is in conflict with the \"%s\" status of parent \"%s\".",
+                        stmt_name, (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete", parent_name);
+            } else { /* LYS_STATUS_DEPRC */
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
+                        "Status \"deprecated\" of \"%s\" is in conflict with the \"obsolete\" status of parent \"%s\".",
+                        stmt_name, parent_name);
+            }
+            return LY_EVALID;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Compile information from the when statement
  *
  * @param[in] ctx Compile context.
  * @param[in] when_p Parsed when structure.
- * @param[in] flags Flags of the parsed node with the when statement.
+ * @param[in] parent_flags Flags of the parsed node with the when statement.
+ * @param[in] compiled_parent Closest compiled parent of the when statement.
  * @param[in] ctx_node Context node for the when statement.
  * @param[out] when Pointer where to store pointer to the created compiled when structure.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_when_(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, const struct lysc_node *ctx_node,
-        struct lysc_when **when)
+lys_compile_when_(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent_flags,
+        const struct lysc_node *compiled_parent, const struct lysc_node *ctx_node, struct lysc_when **when)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_VALUE_FORMAT format;
@@ -246,15 +296,20 @@ lys_compile_when_(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags
     DUP_STRING_GOTO(ctx->ctx, when_p->dsc, (*when)->dsc, ret, done);
     DUP_STRING_GOTO(ctx->ctx, when_p->ref, (*when)->ref, ret, done);
     COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), ret, done);
-    (*when)->flags = flags & LYS_STATUS_MASK;
+    (*when)->flags = (parent_flags & LYS_STATUS_MASK);
+    if (compiled_parent) {
+        LY_CHECK_RET(lys_compile_status(ctx, &(*when)->flags, "when", compiled_parent->flags, compiled_parent->name, 0));
+    } else {
+        LY_CHECK_RET(lys_compile_status(ctx, &(*when)->flags, "when", 0, NULL, 0));
+    }
 
 done:
     return ret;
 }
 
 LY_ERR
-lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, const struct lysc_node *ctx_node,
-        struct lysc_node *node, struct lysc_when **when_c)
+lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent_flags, const struct lysc_node *compiled_parent,
+        const struct lysc_node *ctx_node, struct lysc_node *node, struct lysc_when **when_c)
 {
     struct lysc_when **new_when, ***node_when;
 
@@ -267,7 +322,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags,
     LY_ARRAY_NEW_RET(ctx->ctx, *node_when, new_when, LY_EMEM);
     if (!when_c || !(*when_c)) {
         /* compile when */
-        LY_CHECK_RET(lys_compile_when_(ctx, when_p, flags, ctx_node, new_when));
+        LY_CHECK_RET(lys_compile_when_(ctx, when_p, parent_flags, compiled_parent, ctx_node, new_when));
 
         /* remember the compiled when for sharing */
         if (when_c) {
@@ -2000,58 +2055,6 @@ cleanup:
 }
 
 /**
- * @brief Special bits combination marking the uses_status value and propagated by ::lys_compile_uses() function.
- */
-#define LYS_STATUS_USES LYS_CONFIG_MASK
-
-/**
- * @brief Compile status information of the given node.
- *
- * To simplify getting status of the node, the flags are set following inheritance rules, so all the nodes
- * has the status correctly set during the compilation.
- *
- * @param[in] ctx Compile context
- * @param[in,out] node_flags Flags of the compiled node which status is supposed to be resolved.
- * If the status was set explicitly on the node, it is already set in the flags value and we just check
- * the compatibility with the parent's status value.
- * @param[in] parent_flags Flags of the parent node to check/inherit the status value.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_status(struct lysc_ctx *ctx, uint16_t *node_flags, uint16_t parent_flags)
-{
-    /* status - it is not inherited by specification, but it does not make sense to have
-     * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
-    if (!((*node_flags) & LYS_STATUS_MASK)) {
-        if (parent_flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT)) {
-            if ((parent_flags & LYS_STATUS_USES) != LYS_STATUS_USES) {
-                /* do not print the warning when inheriting status from uses - the uses_status value has a special
-                 * combination of bits (LYS_STATUS_USES) which marks the uses_status value */
-                LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
-                        (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-            }
-            (*node_flags) |= parent_flags & LYS_STATUS_MASK;
-        } else {
-            (*node_flags) |= LYS_STATUS_CURR;
-        }
-    } else if (parent_flags & LYS_STATUS_MASK) {
-        /* check status compatibility with the parent */
-        if ((parent_flags & LYS_STATUS_MASK) > ((*node_flags) & LYS_STATUS_MASK)) {
-            if ((*node_flags) & LYS_STATUS_CURR) {
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "A \"current\" status is in conflict with the parent's \"%s\" status.",
-                        (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-            } else { /* LYS_STATUS_DEPRC */
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
-            }
-            return LY_EVALID;
-        }
-    }
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Check uniqness of the node/action/notification name.
  *
  * Data nodes, actions/RPCs and Notifications are stored separately (in distinguish lists) in the schema
@@ -2371,7 +2374,9 @@ lys_compile_node_flags(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t us
 
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
-    LY_CHECK_RET(lys_compile_status(ctx, &node->flags, uses_status ? uses_status : (node->parent ? node->parent->flags : 0)));
+    LY_CHECK_RET(lys_compile_status(ctx, &node->flags, node->name, uses_status ? uses_status :
+            (node->parent ? node->parent->flags : 0), uses_status ? "<uses>" : (node->parent ? node->parent->name : NULL),
+            !uses_status));
 
     /* other flags */
     if ((ctx->compile_opts & LYS_IS_INPUT) && (node->nodetype != LYS_INPUT)) {
@@ -2410,6 +2415,9 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     }
 
     node->flags = pnode->flags & LYS_FLAGS_COMPILED_MASK;
+    DUP_STRING_GOTO(ctx->ctx, pnode->name, node->name, ret, error);
+    DUP_STRING_GOTO(ctx->ctx, pnode->dsc, node->dsc, ret, error);
+    DUP_STRING_GOTO(ctx->ctx, pnode->ref, node->ref, ret, error);
 
     /* if-features */
     LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), error);
@@ -2436,16 +2444,12 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
         }
     }
 
-    DUP_STRING_GOTO(ctx->ctx, pnode->name, node->name, ret, error);
-    DUP_STRING_GOTO(ctx->ctx, pnode->dsc, node->dsc, ret, error);
-    DUP_STRING_GOTO(ctx->ctx, pnode->ref, node->ref, ret, error);
-
     /* insert into parent's children/compiled module (we can no longer free the node separately on error) */
     LY_CHECK_GOTO(ret = lys_compile_node_connect(ctx, parent, node), cleanup);
 
     if ((pwhen = lysp_node_when(pnode))) {
         /* compile when */
-        ret = lys_compile_when(ctx, pwhen, pnode->flags, lysc_data_node(node), node, NULL);
+        ret = lys_compile_when(ctx, pwhen, pnode->flags, node, lysc_data_node(node), node, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -3554,6 +3558,11 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
 }
 
 /**
+ * @brief Special bits combination marking the uses_status value and propagated by ::lys_compile_uses() function.
+ */
+#define LYS_STATUS_USES LYS_CONFIG_MASK
+
+/**
  * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
  * If present, also apply uses's modificators.
  *
@@ -3617,7 +3626,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         for (i = 0; i < uses_child_set.count; ++i) {
             child = uses_child_set.snodes[i];
 
-            ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_data_node(parent), child, &when_shared);
+            ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, lysc_data_node(parent), child, &when_shared);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -3642,7 +3651,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         if (uses_p->when) {
             /* inherit when */
             LY_LIST_FOR((struct lysc_node *)*actions, child) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_data_node(parent), child, &when_shared);
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, lysc_data_node(parent), child, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
@@ -3669,7 +3678,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         if (uses_p->when) {
             /* inherit when */
             LY_LIST_FOR((struct lysc_node *)*notifs, child) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, lysc_data_node(parent), child, &when_shared);
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, lysc_data_node(parent), child, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }

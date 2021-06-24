@@ -1781,7 +1781,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
 
             if (aug_p->when) {
                 /* pass augment's when to all the children */
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
@@ -1819,7 +1819,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
                 node = child_set.snodes[i];
                 if (aug_p->when) {
                     /* pass augment's when to all the actions */
-                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
             }
@@ -1854,7 +1854,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
                 node = child_set.snodes[i];
                 if (aug_p->when) {
                     /* pass augment's when to all the actions */
-                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
             }
