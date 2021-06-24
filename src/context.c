@@ -87,7 +87,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s).", search_dir, strerror(errno)),
                 LY_EINVAL);
         if (strcmp(search_dir, new_dir)) {
-            LOGVRB("Canonicalizing search directory string from \"%s\" to \"%s\".", search_dir, new_dir);
+            LOGVRB("Search directory string \"%s\" canonized to \"%s\".", search_dir, new_dir);
         }
         LY_CHECK_ERR_RET(access(new_dir, R_OK | X_OK),
                 LOGERR(ctx, LY_ESYS, "Unable to fully access search directory \"%s\" (%s).", new_dir, strerror(errno)); free(new_dir),
