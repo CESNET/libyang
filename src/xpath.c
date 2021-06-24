@@ -3730,7 +3730,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
     struct lyd_node *node;
     char *errmsg = NULL;
     uint8_t oper;
-    LY_ERR rc = LY_SUCCESS;
+    LY_ERR r;
 
     if (options & LYXP_SCNODE_ALL) {
         if (args[0]->type != LYXP_SET_SCNODE_SET) {
@@ -3751,18 +3751,18 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
-            rc = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
+            r = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
-            assert(!rc);
+            if (!r) {
+                /* get the target node */
+                target = p[LY_ARRAY_COUNT(p) - 1].node;
+                ly_path_free(set->ctx, p);
 
-            /* get the target node */
-            target = p[LY_ARRAY_COUNT(p) - 1].node;
-            ly_path_free(set->ctx, p);
-
-            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM, NULL));
+                LY_CHECK_RET(lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM, NULL));
+            } /* else the target was found before but is disabled so it was removed */
         }
 
-        return rc;
+        return LY_SUCCESS;
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
