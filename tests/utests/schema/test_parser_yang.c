@@ -957,6 +957,7 @@ test_container(void **state)
     struct lysp_node_container *c = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1132,6 +1133,7 @@ test_list(void **state)
     struct lysp_node_list *l = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1303,6 +1305,7 @@ test_grouping(void **state)
     struct lysp_node_grp *grp = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1353,6 +1356,7 @@ test_action(void **state)
     struct lysp_node_container *c = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1421,6 +1425,7 @@ test_notification(void **state)
     struct lysp_node_container *c = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \

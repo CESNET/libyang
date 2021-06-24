@@ -1134,6 +1134,10 @@ void
 yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx)
 {
     if (ctx) {
+        if (ctx->main_ctx == (struct lys_parser_ctx *)ctx) {
+            ly_set_erase(&ctx->tpdfs_nodes, NULL);
+            ly_set_erase(&ctx->grps_nodes, NULL);
+        }
         free(ctx);
     }
 }
@@ -1142,6 +1146,10 @@ void
 yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx)
 {
     if (ctx) {
+        if (ctx->main_ctx == (struct lys_parser_ctx *)ctx) {
+            ly_set_erase(&ctx->tpdfs_nodes, NULL);
+            ly_set_erase(&ctx->grps_nodes, NULL);
+        }
         lyxml_ctx_free(ctx->xmlctx);
         free(ctx);
     }

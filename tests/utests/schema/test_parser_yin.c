@@ -158,9 +158,8 @@ setup(void **state)
 static int
 teardown_ctx(void **UNUSED(state))
 {
-    lyxml_ctx_free(YCTX->xmlctx);
     lys_module_free(YCTX->parsed_mod->mod);
-    free(YCTX);
+    yin_parser_ctx_free(YCTX);
     YCTX = NULL;
 
     return 0;
@@ -755,6 +754,7 @@ test_element_helper(void **state, const char *data, void *dest, const char **tex
         {LY_STMT_ARG_VALUE, dest, 0}
     };
 
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
     ly_in_new_memory(data, &UTEST_IN);
     lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
     prefix = YCTX->xmlctx->prefix;

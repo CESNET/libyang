@@ -2694,7 +2694,8 @@ checks:
 
     /* store data for collision check */
     if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_RPC | LYS_ACTION | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
-        LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, parent, 0, NULL));
+        assert(ctx->main_ctx);
+        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->tpdfs_nodes, parent, 0, NULL));
     }
 
     return ret;
@@ -4557,6 +4558,16 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
     (*context)->in = in;
+    if (main_ctx) {
+        /* Forward pointer to the main module. */
+        (*context)->main_ctx = main_ctx;
+    } else {
+        /* Set this submodule as the main module because its main
+         * module was not received from the callback or there is no
+         * callback set, see ::lys_parse_load().
+         */
+        (*context)->main_ctx = (struct lys_parser_ctx *)(*context);
+    }
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ly_ctx); ret = LY_EMEM, cleanup);
@@ -4565,10 +4576,6 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     (*context)->parsed_mod = (struct lysp_module *)mod_p;
 
     LOG_LOCINIT(NULL, NULL, NULL, in);
-
-    /* map the typedefs and groupings list from main context to the submodule's context */
-    memcpy(&(*context)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-    memcpy(&(*context)->grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
     /* skip redundant but valid characters at the beginning */
     ret = skip_redundant_chars(*context);
@@ -4629,6 +4636,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     LY_CHECK_ERR_RET(!(*context), LOGMEM(mod->ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
     (*context)->in = in;
+    (*context)->main_ctx = (struct lys_parser_ctx *)(*context);
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);

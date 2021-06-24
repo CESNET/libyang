@@ -143,23 +143,33 @@ enum yang_arg {
 #define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX) ? PARSER_CTX(CTX) : NULL, __VA_ARGS__)
 
 struct lys_parser_ctx {
-    LYS_INFORMAT format;            /**< parser format */
-    struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
-    struct ly_set grps_nodes;       /**< set of grouping nodes */
-    struct lysp_module *parsed_mod; /**< (sub)module being parsed */
+    LYS_INFORMAT format;             /**< parser format */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. TODO implement. */
+    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+                                          then should be set to the context of the module to which it belongs,
+                                          otherwise it points to the beginning of this structure. */
 };
 
 /**
  * @brief Internal context for yang schema parser.
  */
 struct lys_yang_parser_ctx {
-    LYS_INFORMAT format;            /**< parser format */
-    struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
-    struct ly_set grps_nodes;       /**< set of grouping nodes */
-    struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct ly_in *in;               /**< input handler for the parser */
-    uint64_t indent;                /**< current position on the line for YANG indentation */
-    uint32_t depth;                 /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
+    LYS_INFORMAT format;             /**< parser format */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. TODO implement. */
+    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+                                          then should be set to the context of the module to which it belongs,
+                                          otherwise it points to the beginning of this structure. */
+    struct ly_in *in;                /**< input handler for the parser */
+    uint64_t indent;                 /**< current position on the line for YANG indentation */
+    uint32_t depth;                  /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
 };
 
 /**
@@ -171,11 +181,16 @@ void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
  * @brief Internal context for yin schema parser.
  */
 struct lys_yin_parser_ctx {
-    LYS_INFORMAT format;           /**< parser format */
-    struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
-    struct ly_set grps_nodes;      /**< set of grouping nodes */
-    struct lysp_module *parsed_mod;/**< (sub)module being parsed */
-    struct lyxml_ctx *xmlctx;      /**< context for xml parser */
+    LYS_INFORMAT format;             /**< parser format */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. TODO implement. */
+    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+                                          then should be set to the context of the module to which it belongs,
+                                          otherwise it points to the beginning of this structure. */
+    struct lyxml_ctx *xmlctx;        /**< context for xml parser */
 };
 
 /**

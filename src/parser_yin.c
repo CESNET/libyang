@@ -1621,7 +1621,8 @@ yin_parse_typedef(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *typedef
     /* store data for collision check */
     if (typedef_meta->parent && !(typedef_meta->parent->nodetype & (LYS_GROUPING | LYS_RPC | LYS_ACTION | LYS_INPUT |
             LYS_OUTPUT | LYS_NOTIF))) {
-        LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, typedef_meta->parent, 0, NULL));
+        assert(ctx->main_ctx);
+        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->tpdfs_nodes, typedef_meta->parent, 0, NULL));
     }
 
     return LY_SUCCESS;
@@ -3704,6 +3705,16 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
+    if (main_ctx) {
+        /* Forward pointer to the main module. */
+        (*yin_ctx)->main_ctx = main_ctx;
+    } else {
+        /* Set this submodule as the main module because its main
+         * module was not received from the callback or there is no
+         * callback set, see ::lys_parse_load().
+         */
+        (*yin_ctx)->main_ctx = (struct lys_parser_ctx *)(*yin_ctx);
+    }
     LY_CHECK_RET(lyxml_ctx_new(ctx, in, &(*yin_ctx)->xmlctx));
 
     mod_p = calloc(1, sizeof *mod_p);
@@ -3711,10 +3722,6 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     mod_p->mod = main_ctx->parsed_mod->mod;
     mod_p->parsing = 1;
     (*yin_ctx)->parsed_mod = (struct lysp_module *)mod_p;
-
-    /* map the typedefs and groupings list from main context to the submodule's context */
-    memcpy(&(*yin_ctx)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-    memcpy(&(*yin_ctx)->grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
     /* check submodule */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
@@ -3770,6 +3777,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
     LY_CHECK_RET(lyxml_ctx_new(mod->ctx, in, &(*yin_ctx)->xmlctx));
+    (*yin_ctx)->main_ctx = (struct lys_parser_ctx *)(*yin_ctx);
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
