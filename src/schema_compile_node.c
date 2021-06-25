@@ -3299,38 +3299,39 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         /* standard case under choice */
         ret = lys_compile_node(ctx, child_p, node, 0, child_set);
     } else {
-        /* we need the implicit case first, so create a fake parsed case */
+        /* we need the implicit case first, so create a fake parsed (shorthand) case */
         cs_p = calloc(1, sizeof *cs_p);
         cs_p->nodetype = LYS_CASE;
-        DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, free_fake_node);
+        DUP_STRING_GOTO(ctx->ctx, child_p->name, cs_p->name, ret, revert_sh_case);
         cs_p->child = child_p;
 
         /* make the child the only case child */
         child_p->next = NULL;
 
         /* compile it normally */
-        ret = lys_compile_node(ctx, (struct lysp_node *)cs_p, node, 0, child_set);
+        LY_CHECK_GOTO(ret = lys_compile_node(ctx, (struct lysp_node *)cs_p, node, 0, child_set), revert_sh_case);
 
-free_fake_node:
-        /* free the fake parsed node and correct pointers back */
+        if (((struct lysc_node_choice *)node)->cases) {
+            /* get last case node */
+            compiled_case = (struct lysc_node_case *)((struct lysc_node_choice *)node)->cases->prev;
 
-        /* get last case node */
-        compiled_case = (struct lysc_node_case *)((struct lysc_node_choice *)node)->cases->prev;
+            if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
+                /* Compiled case node cannot point to his corresponding parsed node
+                * because it exists temporarily. Therefore, it must be set to NULL.
+                */
+                assert(compiled_case->priv == cs_p);
+                compiled_case->priv = NULL;
+            }
 
-        if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
-            /* Compiled case node cannot point to his corresponding parsed node
-             * because it exists temporarily. Therefore, it must be set to NULL.
-             */
-            assert(compiled_case->priv == cs_p);
-            compiled_case->priv = NULL;
-        }
+            /* The status is copied from his child and not from his parent as usual. */
+            if (compiled_case->child) {
+                compiled_case->flags &= ~LYS_STATUS_MASK;
+                compiled_case->flags |= LYS_STATUS_MASK & compiled_case->child->flags;
+            }
+        } /* else it was removed by a deviation */
 
-        /* The status is copied from his child and not from his parent as usual. */
-        if (compiled_case->child) {
-            compiled_case->flags &= ~LYS_STATUS_MASK;
-            compiled_case->flags |= LYS_STATUS_MASK & compiled_case->child->flags;
-        }
-
+revert_sh_case:
+        /* free the parsed shorthand case and correct pointers back */
         cs_p->child = NULL;
         lysp_node_free(ctx->ctx, (struct lysp_node *)cs_p);
         child_p->next = child_p_next;
