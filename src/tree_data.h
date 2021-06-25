@@ -496,7 +496,7 @@ struct timespec;
 /**
  * @brief Macro to get context from a data tree node.
  */
-#define LYD_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((struct lyd_node_opaq *)(node))->ctx)
+#define LYD_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((const struct lyd_node_opaq *)(node))->ctx)
 
 /**
  * @brief Data input/output formats supported by libyang [parser](@ref howtoDataParsers) and
@@ -1003,7 +1003,7 @@ lyd_child(const struct lyd_node *node)
 
     if (!node->schema) {
         /* opaq node */
-        return ((struct lyd_node_opaq *)node)->child;
+        return ((const struct lyd_node_opaq *)node)->child;
     }
 
     switch (node->schema->nodetype) {
@@ -1012,7 +1012,7 @@ lyd_child(const struct lyd_node *node)
     case LYS_RPC:
     case LYS_ACTION:
     case LYS_NOTIF:
-        return ((struct lyd_node_inner *)node)->child;
+        return ((const struct lyd_node_inner *)node)->child;
     default:
         return NULL;
     }
@@ -1100,9 +1100,9 @@ lyd_get_value(const struct lyd_node *node)
     }
 
     if (!node->schema) {
-        return ((struct lyd_node_opaq *)node)->value;
+        return ((const struct lyd_node_opaq *)node)->value;
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        const struct lyd_value *value = &((struct lyd_node_term *)node)->value;
+        const struct lyd_value *value = &((const struct lyd_node_term *)node)->value;
         return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
     }
 
