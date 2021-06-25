@@ -312,6 +312,41 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
 }
 
 /**
+ * @brief Insert @p name to hash table and if @p name has already
+ * been added, then log an error.
+ *
+ * This function is used to detect duplicate names.
+ *
+ * @param[in,out] ctx Context to log the error.
+ * @param[in,out] ht Hash table with top-level names.
+ * @param[in] name Inserted top-level identifier.
+ * @param[in] statement The name of the statement type from which
+ * @p name originated (eg typedef, feature, ...).
+ * @param[in] err_detail Optional error specification.
+ * @return LY_ERR, but LY_EEXIST is mapped to LY_EVALID.
+ */
+static LY_ERR
+lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
+        const char *name, const char *statement, const char *err_detail)
+{
+    LY_ERR ret;
+    uint32_t hash;
+
+    hash = dict_hash(name, strlen(name));
+    ret = lyht_insert(ht, &name, hash, NULL);
+    if (ret == LY_EEXIST) {
+        if (err_detail) {
+            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT2, name, statement, err_detail);
+        } else {
+            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, name, statement);
+        }
+        ret = LY_EVALID;
+    }
+
+    return ret;
+}
+
+/**
  * @brief Check name of a new type to avoid name collisions.
  *
  * @param[in] ctx Parser context, module where the type is being defined is taken from here.
@@ -450,39 +485,22 @@ lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
     struct lysp_feature *f;
-    uint32_t hash;
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
 
     ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module features into a hash table */
     LY_ARRAY_FOR(mod->features, struct lysp_feature, f) {
-        hash = dict_hash(f->name, strlen(f->name));
-        r = lyht_insert(ht, &f->name, hash, NULL);
-        if (r == LY_EEXIST) {
-            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, f->name, "feature");
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (r) {
-            ret = r;
-            goto cleanup;
-        }
+        ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature", NULL);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule features into a hash table */
     LY_ARRAY_FOR(mod->includes, u) {
         LY_ARRAY_FOR(mod->includes[u].submodule->features, struct lysp_feature, f) {
-            hash = dict_hash(f->name, strlen(f->name));
-            r = lyht_insert(ht, &f->name, hash, NULL);
-            if (r == LY_EEXIST) {
-                LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, f->name, "feature");
-                ret = LY_EVALID;
-                goto cleanup;
-            } else if (r) {
-                ret = r;
-                goto cleanup;
-            }
+            ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature", NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -497,39 +515,22 @@ lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
     struct lysp_ident *i;
-    uint32_t hash;
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
 
     ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module identities into a hash table */
     LY_ARRAY_FOR(mod->identities, struct lysp_ident, i) {
-        hash = dict_hash(i->name, strlen(i->name));
-        r = lyht_insert(ht, &i->name, hash, NULL);
-        if (r == LY_EEXIST) {
-            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, i->name, "identity");
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (r) {
-            ret = r;
-            goto cleanup;
-        }
+        ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity", NULL);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule identities into a hash table */
     LY_ARRAY_FOR(mod->includes, u) {
         LY_ARRAY_FOR(mod->includes[u].submodule->identities, struct lysp_ident, i) {
-            hash = dict_hash(i->name, strlen(i->name));
-            r = lyht_insert(ht, &i->name, hash, NULL);
-            if (r == LY_EEXIST) {
-                LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, i->name, "identity");
-                ret = LY_EVALID;
-                goto cleanup;
-            } else if (r) {
-                ret = r;
-                goto cleanup;
-            }
+            ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity", NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
