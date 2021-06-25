@@ -487,7 +487,7 @@ lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     struct lysp_feature *f;
     LY_ERR ret = LY_SUCCESS;
 
-    ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
+    ht = lyht_new(LYHT_MIN_SIZE, sizeof(void *), ly_ptrequal_cb, NULL, 1);
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module features into a hash table */
@@ -517,7 +517,7 @@ lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     struct lysp_ident *i;
     LY_ERR ret = LY_SUCCESS;
 
-    ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
+    ht = lyht_new(LYHT_MIN_SIZE, sizeof(void *), ly_ptrequal_cb, NULL, 1);
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module identities into a hash table */
