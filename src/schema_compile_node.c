@@ -3317,9 +3317,8 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
 
             if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
                 /* Compiled case node cannot point to his corresponding parsed node
-                * because it exists temporarily. Therefore, it must be set to NULL.
-                */
-                assert(compiled_case->priv == cs_p);
+                 * because it exists temporarily. Therefore, it must be set to NULL.
+                 */
                 compiled_case->priv = NULL;
             }
 
