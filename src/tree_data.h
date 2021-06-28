@@ -256,6 +256,8 @@ struct timespec;
  * - ::lyd_new_term_bin()
  * - ::lyd_new_term_canon()
  * - ::lyd_new_list()
+ * - ::lyd_new_list_bin()
+ * - ::lyd_new_list_canon()
  * - ::lyd_new_list2()
  * - ::lyd_new_any()
  * - ::lyd_new_opaq()
@@ -1193,6 +1195,38 @@ LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, 
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...);
+
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @param[in] ... Ordered binary key values of the new list instance, all must be set. Every key value must be followed
+ * by its length. No keys are expected for key-less lists.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...);
+
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @param[in] ... Ordered canonical key values of the new list instance, all must be set. No keys are expected for
+ * key-less lists.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...);
 
 /**

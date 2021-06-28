@@ -918,15 +918,29 @@ lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct 
     return LY_SUCCESS;
 }
 
-API LY_ERR
-lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
-        struct lyd_node **node, ...)
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] format Format of key values.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @param[in] ap Ordered key values of the new list instance, all must be set. For ::LY_VALUE_LYB, every value must
+ * be followed by the value length.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+_lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, LY_VALUE_FORMAT format,
+        ly_bool output, struct lyd_node **node, va_list ap)
 {
     struct lyd_node *ret = NULL, *key;
     const struct lysc_node *schema, *key_s;
     struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
-    va_list ap;
-    const char *key_val;
+    const void *key_val;
+    uint32_t key_len;
     LY_ERR rc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
@@ -941,14 +955,17 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
     /* create list inner node */
     LY_CHECK_RET(lyd_create_inner(schema, &ret));
 
-    va_start(ap, node);
-
     /* create and insert all the keys */
     for (key_s = lysc_node_child(schema); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
-        key_val = va_arg(ap, const char *);
+        if (format == LY_VALUE_LYB) {
+            key_val = va_arg(ap, const void *);
+            key_len = va_arg(ap, uint32_t);
+        } else {
+            key_val = va_arg(ap, const char *);
+            key_len = key_val ? strlen((char *)key_val) : 0;
+        }
 
-        rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
-                NULL, &key);
+        rc = lyd_create_term(key_s, key_val, key_len, NULL, format, NULL, LYD_HINT_DATA, NULL, &key);
         LY_CHECK_GOTO(rc, cleanup);
         lyd_insert_node(ret, NULL, key);
     }
@@ -958,13 +975,57 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
     }
 
 cleanup:
-    va_end(ap);
     if (rc) {
         lyd_free_tree(ret);
         ret = NULL;
     } else if (node) {
         *node = ret;
     }
+    return rc;
+}
+
+API LY_ERR
+lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...)
+{
+    LY_ERR rc;
+    va_list ap;
+
+    va_start(ap, node);
+
+    rc = _lyd_new_list(parent, module, name, LY_VALUE_JSON, output, node, ap);
+
+    va_end(ap);
+    return rc;
+}
+
+API LY_ERR
+lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...)
+{
+    LY_ERR rc;
+    va_list ap;
+
+    va_start(ap, node);
+
+    rc = _lyd_new_list(parent, module, name, LY_VALUE_LYB, output, node, ap);
+
+    va_end(ap);
+    return rc;
+}
+
+API LY_ERR
+lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...)
+{
+    LY_ERR rc;
+    va_list ap;
+
+    va_start(ap, node);
+
+    rc = _lyd_new_list(parent, module, name, LY_VALUE_CANON, output, node, ap);
+
+    va_end(ap);
     return rc;
 }
 
