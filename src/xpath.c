@@ -1920,6 +1920,18 @@ exp_check_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t
     return LY_SUCCESS;
 }
 
+LY_ERR
+lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_token want_tok1,
+        enum lyxp_token want_tok2)
+{
+    LY_CHECK_RET(exp_check_token2(ctx, exp, *tok_idx, want_tok1, want_tok2));
+
+    /* skip the token */
+    ++(*tok_idx);
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Stack operation push on the repeat array.
  *

@@ -435,6 +435,21 @@ LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, u
 LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_token want_tok);
 
 /**
+ * @brief Look at the next token and skip it if it matches either of the 2 expected ones.
+ *
+ * @param[in] ctx Context for logging, not logged if NULL.
+ * @param[in] exp Expression to use.
+ * @param[in,out] tok_idx Token index in the expression \p exp, is updated.
+ * @param[in] want_tok1 Expected token 1.
+ * @param[in] want_tok2 Expected token 2.
+ * @return LY_EINCOMPLETE on EOF,
+ * @return LY_ENOT on non-matching token,
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx,
+        enum lyxp_token want_tok1, enum lyxp_token want_tok2);
+
+/**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.
  *
  * @param[in] ctx libyang context of the expression.
