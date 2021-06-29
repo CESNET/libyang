@@ -2330,7 +2330,7 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
                 if (m->augmented_by[u] == mod) {
                     /* keep the order */
                     if (u < count - 1) {
-                        memmove(m->augmented_by + u, m->augmented_by + u + 1, (count - u) * sizeof *m->augmented_by);
+                        memmove(m->augmented_by + u, m->augmented_by + u + 1, (count - u - 1) * sizeof *m->augmented_by);
                     }
                     LY_ARRAY_DECREMENT(m->augmented_by);
                     break;
@@ -2348,7 +2348,7 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
                 if (m->deviated_by[u] == mod) {
                     /* keep the order */
                     if (u < count - 1) {
-                        memmove(m->deviated_by + u, m->deviated_by + u + 1, (count - u) * sizeof *m->deviated_by);
+                        memmove(m->deviated_by + u, m->deviated_by + u + 1, (count - u - 1) * sizeof *m->deviated_by);
                     }
                     LY_ARRAY_DECREMENT(m->deviated_by);
                     break;
