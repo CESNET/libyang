@@ -21,6 +21,31 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
+struct module_clb_list {
+    const char *name;
+    const char *data;
+};
+
+static LY_ERR
+module_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod_name,
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    struct module_clb_list *list = (struct module_clb_list *)user_data;
+
+    for (unsigned int i = 0; list[i].data; i++) {
+
+        if ((submod_name && !strcmp(list[i].name, submod_name)) ||
+                (!submod_name && mod_name && !strcmp(list[i].name, mod_name))) {
+            *module_data = list[i].data;
+            *format = LYS_IN_YANG;
+            *free_module_data = NULL;
+            return LY_SUCCESS;
+        }
+    }
+    return LY_EINVAL;
+}
+
 void
 test_getnext(void **state)
 {
@@ -184,10 +209,11 @@ test_revisions(void **state)
 }
 
 void
-test_typedef(void **state)
+test_collision_typedef(void **state)
 {
     const char *str;
 
+    /* collision with a built-in type */
     str = "module a {namespace urn:a; prefix a; typedef binary {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
     CHECK_LOG("Duplicate identifier \"binary\" of typedef statement - name collision with a built-in type.", NULL);
@@ -253,41 +279,61 @@ test_typedef(void **state)
             "typedef uint32_ {type string;} typedef uint64_ {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
 
-    str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"test\" of typedef statement - name collision with another top-level type.", NULL);
-
-    str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
-
-    str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with another scoped type.", NULL);
-
+    /* collision in node's scope */
     str = "module a {namespace urn:a; prefix a; container c {typedef y {type int8;} typedef y {type string;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
     CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with sibling type.", NULL);
 
-    str = "module a {namespace urn:a; prefix a; container c {typedef x {type t{}}";
+    /* collision with parent node */
+    str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_STRING(_UC->err_msg, "Unexpected end-of-input.");
-    UTEST_LOG_CLEAN;
+    CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with another scoped type.", NULL);
 
-    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
-    str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
+    /* collision with module's top-level */
+    str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - name collision with another top-level type.", NULL);
+    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
+    /* collision of submodule's node with module's top-level */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {typedef x {type string;}}}");
     str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
     CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
+    /* collision of module's node with submodule's top-level */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type int8;}}");
     str = "module a {namespace urn:a; prefix a; include b; container c {typedef x {type string;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
     CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
+
+    /* collision of submodule's node with another submodule's top-level */
+    //TODO
+
+    /* collision of module's top-levels */
+    str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"test\" of typedef statement - name collision with another top-level type.", NULL);
+
+    /* collision of submodule's top-levels */
+    //TODO
+
+    /* collision of module's top-level with submodule's top-levels */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
+    str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - name collision with another top-level type.", NULL);
+
+    /* collision of submodule's top-level with another submodule's top-levels */
+    //TODO
+
+    /* error in type-stmt */
+    str = "module a {namespace urn:a; prefix a; container c {typedef x {type t{}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_STRING(_UC->err_msg, "Unexpected end-of-input.");
+    UTEST_LOG_CLEAN;
+
+    /* no collision if the same names are in different scope */
+    //TODO
 }
 
 void
@@ -643,31 +689,6 @@ test_accessible_tree(void **state)
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
     CHECK_LOG_CTX("Schema node \"l\" not found (\"/cont/ll/act/l\") with context node \"/k:cont/ll/act/output/l2\".", NULL);
-}
-
-struct module_clb_list {
-    const char *name;
-    const char *data;
-};
-
-static LY_ERR
-module_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod_name,
-        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
-{
-    struct module_clb_list *list = (struct module_clb_list *)user_data;
-
-    for (unsigned int i = 0; list[i].data; i++) {
-
-        if ((submod_name && !strcmp(list[i].name, submod_name)) ||
-                (!submod_name && mod_name && !strcmp(list[i].name, mod_name))) {
-            *module_data = list[i].data;
-            *format = LYS_IN_YANG;
-            *free_module_data = NULL;
-            return LY_SUCCESS;
-        }
-    }
-    return LY_EINVAL;
 }
 
 void
