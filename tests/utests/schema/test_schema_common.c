@@ -189,62 +189,62 @@ test_typedef(void **state)
     const char *str;
 
     str = "module a {namespace urn:a; prefix a; typedef binary {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"binary\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"binary\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef bits {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"bits\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"bits\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef boolean {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"boolean\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"boolean\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef decimal64 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"decimal64\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"decimal64\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef empty {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"empty\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"empty\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef enumeration {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"enumeration\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"enumeration\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int8 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"int8\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"int8\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int16 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"int16\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"int16\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int32 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"int32\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"int32\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int64 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"int64\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"int64\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef instance-identifier {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"instance-identifier\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"instance-identifier\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef identityref {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"identityref\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"identityref\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef leafref {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"leafref\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"leafref\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef string {type int8;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"string\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"string\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef union {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"union\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"union\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint8 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"uint8\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"uint8\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint16 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"uint16\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"uint16\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint32 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"uint32\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"uint32\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint64 {type string;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"uint64\" of typedef - name collision with a built-in type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"uint64\" of typedef statement - name collision with a built-in type.", NULL);
 
     str = "module mytypes {namespace urn:types; prefix t; typedef binary_ {type string;} typedef bits_ {type string;} typedef boolean_ {type string;} "
             "typedef decimal64_ {type string;} typedef empty_ {type string;} typedef enumeration_ {type string;} typedef int8_ {type string;} typedef int16_ {type string;}"
@@ -254,20 +254,20 @@ test_typedef(void **state)
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_SUCCESS);
 
     str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"test\" of typedef - name collision with another top-level type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"test\" of typedef statement - name collision with another top-level type.", NULL);
 
     str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"x\" of typedef - scoped type collide with a top-level type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"y\" of typedef - name collision with another scoped type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with another scoped type.", NULL);
 
     str = "module a {namespace urn:a; prefix a; container c {typedef y {type int8;} typedef y {type string;}}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"y\" of typedef - name collision with sibling type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with sibling type.", NULL);
 
     str = "module a {namespace urn:a; prefix a; container c {typedef x {type t{}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
@@ -276,18 +276,18 @@ test_typedef(void **state)
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
     str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"x\" of typedef - name collision with another top-level type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - name collision with another top-level type.", NULL);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {typedef x {type string;}}}");
     str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"x\" of typedef - scoped type collide with a top-level type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type int8;}}");
     str = "module a {namespace urn:a; prefix a; include b; container c {typedef x {type string;}}}";
-    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EEXIST);
-    CHECK_LOG("Invalid name \"x\" of typedef - scoped type collide with a top-level type.", NULL);
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 }
 
 void
