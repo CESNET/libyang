@@ -1619,8 +1619,7 @@ yin_parse_typedef(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *typedef
     LY_CHECK_RET(yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_TYPEDEF, NULL, &tpdf->exts));
 
     /* store data for collision check */
-    if (typedef_meta->parent && !(typedef_meta->parent->nodetype & (LYS_GROUPING | LYS_RPC | LYS_ACTION | LYS_INPUT |
-            LYS_OUTPUT | LYS_NOTIF))) {
+    if (typedef_meta->parent) {
         assert(ctx->main_ctx);
         LY_CHECK_RET(ly_set_add(&ctx->main_ctx->tpdfs_nodes, typedef_meta->parent, 0, NULL));
     }
