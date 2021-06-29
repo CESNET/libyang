@@ -205,6 +205,7 @@ else()
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
     set(INTERNAL_DOCS NO)
 endif()
+option(ENABLE_PERF_TESTS "Build performance tests" OFF)
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 
@@ -247,6 +248,24 @@ if(ENABLE_TESTS)
     if(NOT CMOCKA_FOUND)
         message(STATUS "Disabling tests because of missing CMocka")
         set(ENABLE_TESTS OFF)
+    endif()
+endif()
+
+if(ENABLE_PERF_TESTS)
+    find_path(CALLGRIND_INCLUDE_DIR
+        NAMES
+        valgrind/callgrind.h
+        PATHS
+        /usr/include
+        /usr/local/include
+        /opt/local/include
+        /sw/include
+        ${CMAKE_INCLUDE_PATH}
+        ${CMAKE_INSTALL_PREFIX}/include)
+    if(CALLGRIND_INCLUDE_DIR)
+        set(HAVE_CALLGRIND 1)
+    else()
+        message(STATUS "Disabling callgrind macros in performance tests because of missing headers")
     endif()
 endif()
 
@@ -343,7 +362,7 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 # tests
-if(ENABLE_TESTS)
+if(ENABLE_TESTS OR ENABLE_PERF_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
