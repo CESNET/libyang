@@ -492,14 +492,16 @@ lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 
     /* add all module features into a hash table */
     LY_ARRAY_FOR(mod->features, struct lysp_feature, f) {
-        ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature", NULL);
+        ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature",
+                "name collision with another top-level feature");
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule features into a hash table */
     LY_ARRAY_FOR(mod->includes, u) {
         LY_ARRAY_FOR(mod->includes[u].submodule->features, struct lysp_feature, f) {
-            ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature", NULL);
+            ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature",
+                    "name collision with another top-level feature");
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -522,14 +524,16 @@ lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 
     /* add all module identities into a hash table */
     LY_ARRAY_FOR(mod->identities, struct lysp_ident, i) {
-        ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity", NULL);
+        ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity",
+                "name collision with another top-level identity");
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule identities into a hash table */
     LY_ARRAY_FOR(mod->includes, u) {
         LY_ARRAY_FOR(mod->includes[u].submodule->identities, struct lysp_ident, i) {
-            ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity", NULL);
+            ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity",
+                    "name collision with another top-level identity");
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
