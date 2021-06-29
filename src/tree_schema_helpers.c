@@ -354,15 +354,12 @@ lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
  * @param[in] tpdf Typedef definition to check.
  * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
  *            typedefs are checked, caller is supposed to free the table.
- * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
- *            typedefs are checked, caller is supposed to free the table.
  * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
 lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
-        struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
+        struct hash_table *tpdfs_global)
 {
-    LY_ERR ret;
     struct lysp_node *parent;
     uint32_t hash;
     size_t name_len;
@@ -405,8 +402,6 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
     /* check collision with the top-level typedefs */
     hash = dict_hash(name, name_len);
     if (node) {
-        ret = lyht_insert(tpdfs_scoped, &name, hash, NULL);
-        LY_CHECK_ERR_RET(ret && (ret != LY_EEXIST), LOGINT(PARSER_CTX(ctx)), LY_EINT);
         if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
             LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
             return LY_EEXIST;
@@ -438,7 +433,6 @@ LY_ERR
 lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
-    struct hash_table *ids_scoped;
     const struct lysp_tpdf *typedefs;
     LY_ARRAY_COUNT_TYPE u, v;
     uint32_t i;
@@ -446,28 +440,26 @@ lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 
     /* check name collisions - typedefs and groupings */
     ids_global = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
-    ids_scoped = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
     LY_ARRAY_FOR(mod->typedefs, v) {
-        ret = lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global, ids_scoped);
+        ret = lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global);
         LY_CHECK_GOTO(ret, cleanup);
     }
     LY_ARRAY_FOR(mod->includes, v) {
         LY_ARRAY_FOR(mod->includes[v].submodule->typedefs, u) {
-            ret = lysp_check_dup_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global, ids_scoped);
+            ret = lysp_check_dup_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
     for (i = 0; i < ctx->tpdfs_nodes.count; ++i) {
         typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[i]);
         LY_ARRAY_FOR(typedefs, u) {
-            ret = lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global, ids_scoped);
+            ret = lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
 cleanup:
     lyht_free(ids_global);
-    lyht_free(ids_scoped);
     return ret;
 }
 
