@@ -1569,7 +1569,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* check name collisions */
     LY_CHECK_GOTO(ret = lysp_check_dup_typedefs(pctx, mod->parsed), cleanup);
-    /* TODO groupings */
+    LY_CHECK_GOTO(ret = lysp_check_dup_groupings(pctx, mod->parsed), cleanup);
     LY_CHECK_GOTO(ret = lysp_check_dup_features(pctx, mod->parsed), cleanup);
     LY_CHECK_GOTO(ret = lysp_check_dup_identities(pctx, mod->parsed), cleanup);
 

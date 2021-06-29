@@ -2327,6 +2327,12 @@ yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_met
     ret = yin_parse_content(ctx, subelems, subelems_size, LY_STMT_GROUPING, NULL, &grp->exts);
     subelems_deallocator(subelems_size, subelems);
 
+    /* store data for collision check */
+    if (!ret && grp->parent) {
+        assert(ctx->main_ctx);
+        LY_CHECK_RET(ly_set_add(&ctx->main_ctx->grps_nodes, grp->parent, 0, NULL));
+    }
+
     return ret;
 }
 

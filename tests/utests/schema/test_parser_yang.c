@@ -987,6 +987,7 @@ test_container(void **state)
     assert_string_equal("true", c->presence);
     assert_non_null(c->typedefs);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)c); c = NULL;
 
     /* invalid */
@@ -1169,6 +1170,7 @@ test_list(void **state)
     assert_int_equal(1, l->min);
     assert_non_null(l->musts);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 
     /* invalid content */
@@ -1332,6 +1334,7 @@ test_grouping(void **state)
     assert_null(grp->parent);
     assert_int_equal(LYS_STATUS_CURR, grp->flags);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, &grp->node);
     grp = NULL;
 
@@ -1407,6 +1410,7 @@ test_action(void **state)
     assert_non_null(rpcs->output.child);
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)rpcs); rpcs = NULL;
 
     /* invalid content */
@@ -1459,6 +1463,7 @@ test_notification(void **state)
     assert_int_equal(LYS_STATUS_CURR, notifs->flags);
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)notifs); notifs = NULL;
 
     /* invalid content */

@@ -147,7 +147,7 @@ struct lys_parser_ctx {
     struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. TODO implement. */
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -162,7 +162,7 @@ struct lys_yang_parser_ctx {
     struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. TODO implement. */
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -185,7 +185,7 @@ struct lys_yin_parser_ctx {
     struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. TODO implement. */
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -255,6 +255,15 @@ LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date
  * @return LY_ERR value.
  */
 LY_ERR lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+
+/**
+ * @brief Check names of groupings in the parsed module to detect collisions.
+ *
+ * @param[in] ctx Parser context for logging and to maintain grps_nodes.
+ * @param[in] mod Module where the type is being defined.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Check names of features in the parsed module and submodules to detect collisions.

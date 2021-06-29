@@ -137,6 +137,22 @@ lysp_type_match(const char *name, struct lysp_node *node)
     return NULL;
 }
 
+static const struct lysp_node_grp *
+lysp_grouping_match(const char *name, struct lysp_node *node)
+{
+    const struct lysp_node_grp *groupings, *grp_iter;
+
+    groupings = lysp_node_groupings(node);
+    LY_LIST_FOR(groupings, grp_iter) {
+        if (!strcmp(name, grp_iter->name)) {
+            /* match */
+            return grp_iter;
+        }
+    }
+
+    return NULL;
+}
+
 static LY_DATA_TYPE
 lysp_type_str2builtin(const char *name, size_t len)
 {
@@ -456,6 +472,104 @@ lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
         typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[i]);
         LY_ARRAY_FOR(typedefs, u) {
             ret = lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    }
+
+cleanup:
+    lyht_free(ids_global);
+    return ret;
+}
+
+/**
+ * @brief Check name of a new grouping to avoid name collisions.
+ *
+ * @param[in] ctx Parser context, module where the grouping is being defined is taken from here.
+ * @param[in] node Schema node where the grouping is being defined, NULL in case of a top-level grouping.
+ * @param[in] grp Grouping definition to check.
+ * @param[in,out] grps_global Initialized hash table to store temporary data between calls. When the module's
+ * groupings are checked, caller is supposed to free the table.
+ * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
+ */
+static LY_ERR
+lysp_check_dup_grouping(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
+        struct hash_table *grps_global)
+{
+    struct lysp_node *parent;
+    uint32_t hash;
+    size_t name_len;
+    const char *name;
+    const struct lysp_node_grp *groupings, *grp_iter;
+
+    assert(ctx);
+    assert(grp);
+
+    name = grp->name;
+    name_len = strlen(name);
+
+    /* check locally scoped groupings (avoid name shadowing) */
+    if (node) {
+        groupings = lysp_node_groupings(node);
+        LY_LIST_FOR(groupings, grp_iter) {
+            if (grp_iter == grp) {
+                break;
+            }
+            if (!strcmp(name, grp_iter->name)) {
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of grouping statement - name collision with sibling grouping.", name);
+                return LY_EVALID;
+            }
+        }
+        /* search grouping in parent's nodes */
+        for (parent = node->parent; parent; parent = parent->parent) {
+            if (lysp_grouping_match(name, parent)) {
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of grouping statement - name collision with another scoped grouping.", name);
+                return LY_EVALID;
+            }
+        }
+    }
+
+    /* check collision with the top-level groupings */
+    if (node) {
+        hash = dict_hash(name, name_len);
+        if (!lyht_find(grps_global, &name, hash, NULL)) {
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                    "Duplicate identifier \"%s\" of grouping statement - scoped grouping collide with a top-level grouping.", name);
+            return LY_EVALID;
+        }
+    } else {
+        LY_CHECK_RET(lysp_check_dup_ht_insert(ctx, grps_global, name, "grouping",
+                "name collision with another top-level grouping"));
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+{
+    struct hash_table *ids_global;
+    const struct lysp_node_grp *groupings, *grp_iter;
+    LY_ARRAY_COUNT_TYPE u;
+    uint32_t i;
+    LY_ERR ret = LY_SUCCESS;
+
+    ids_global = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
+    LY_LIST_FOR(mod->groupings, grp_iter) {
+        ret = lysp_check_dup_grouping(ctx, NULL, grp_iter, ids_global);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+    LY_ARRAY_FOR(mod->includes, u) {
+        LY_LIST_FOR(mod->includes[u].submodule->groupings, grp_iter) {
+            ret = lysp_check_dup_grouping(ctx, NULL, grp_iter, ids_global);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    }
+    for (i = 0; i < ctx->grps_nodes.count; ++i) {
+        groupings = lysp_node_groupings((struct lysp_node *)ctx->grps_nodes.objs[i]);
+        LY_LIST_FOR(groupings, grp_iter) {
+            ret = lysp_check_dup_grouping(ctx, (struct lysp_node *)ctx->grps_nodes.objs[i], grp_iter, ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
