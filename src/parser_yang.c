@@ -2693,7 +2693,7 @@ checks:
     }
 
     /* store data for collision check */
-    if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_RPC | LYS_ACTION | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
+    if (parent) {
         assert(ctx->main_ctx);
         LY_CHECK_RET(ly_set_add(&ctx->main_ctx->tpdfs_nodes, parent, 0, NULL));
     }
