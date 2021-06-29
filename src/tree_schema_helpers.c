@@ -353,8 +353,8 @@ lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
  * @param[in] node Schema node where the type is being defined, NULL in case of a top-level typedef.
  * @param[in] tpdf Typedef definition to check.
  * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
- *            typedefs are checked, caller is supposed to free the table.
- * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
+ * typedefs are checked, caller is supposed to free the table.
+ * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
 lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
@@ -374,8 +374,9 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
     name_len = strlen(name);
 
     if (lysp_type_str2builtin(name, name_len)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
-        return LY_EEXIST;
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                "Duplicate identifier \"%s\" of typedef statement - name collision with a built-in type.", name);
+        return LY_EVALID;
     }
 
     /* check locally scoped typedefs (avoid name shadowing) */
@@ -386,31 +387,32 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
                 break;
             }
             if (!strcmp(name, typedefs[u].name)) {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
-                return LY_EEXIST;
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of typedef statement - name collision with sibling type.", name);
+                return LY_EVALID;
             }
         }
         /* search typedefs in parent's nodes */
         for (parent = node->parent; parent; parent = parent->parent) {
             if (lysp_type_match(name, parent)) {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
-                return LY_EEXIST;
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of typedef statement - name collision with another scoped type.", name);
+                return LY_EVALID;
             }
         }
     }
 
     /* check collision with the top-level typedefs */
-    hash = dict_hash(name, name_len);
     if (node) {
+        hash = dict_hash(name, name_len);
         if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
-            return LY_EEXIST;
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                    "Duplicate identifier \"%s\" of typedef statement - scoped type collide with a top-level type.", name);
+            return LY_EVALID;
         }
     } else {
-        if (lyht_insert(tpdfs_global, &name, hash, NULL)) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with another top-level type.", name);
-            return LY_EEXIST;
-        }
+        LY_CHECK_RET(lysp_check_dup_ht_insert(ctx, tpdfs_global, name, "typedef",
+                "name collision with another top-level type"));
         /* it is not necessary to test collision with the scoped types - in lysp_check_typedefs, all the
          * top-level typedefs are inserted into the tables before the scoped typedefs, so the collision
          * is detected in the first branch few lines above */
