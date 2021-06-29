@@ -104,11 +104,12 @@ test_identity(void **state)
     assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[1].derived));
     assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[0]);
 
-    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1;identity i1;", "Duplicate identifier \"i1\" of identity statement.", NULL);
+    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1;identity i1;",
+            "Duplicate identifier \"i1\" of identity statement - name collision with another top-level identity.", NULL);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule inv_sub {belongs-to inv {prefix inv;} identity i1;}");
     TEST_SCHEMA_ERR(0, 0, "inv", "include inv_sub;identity i1;",
-            "Duplicate identifier \"i1\" of identity statement.", NULL);
+            "Duplicate identifier \"i1\" of identity statement - name collision with another top-level identity.", NULL);
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}", "Unable to find base (i2) of identity \"i1\".", "/inv:{identity='i1'}");
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i1;}", "Identity \"i1\" is derived from itself.", "/inv:{identity='i1'}");
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}",
@@ -227,11 +228,11 @@ test_feature(void **state)
     TEST_SCHEMA_ERR(0, 0, "inv", "feature f1; feature f2{if-feature 'not f1';}",
             "Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", NULL);
     TEST_SCHEMA_ERR(0, 0, "inv", "feature f1; feature f1;",
-            "Duplicate identifier \"f1\" of feature statement.", NULL);
+            "Duplicate identifier \"f1\" of feature statement - name collision with another top-level feature.", NULL);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule inv_sub {belongs-to inv {prefix inv;} feature f1;}");
     TEST_SCHEMA_ERR(0, 0, "inv", "include inv_sub;feature f1;",
-            "Duplicate identifier \"f1\" of feature statement.", NULL);
+            "Duplicate identifier \"f1\" of feature statement - name collision with another top-level feature.", NULL);
     TEST_SCHEMA_ERR(0, 0, "inv", "feature f1 {if-feature f2;} feature f2 {if-feature f1;}",
             "Feature \"f1\" is indirectly referenced from itself.", NULL);
     TEST_SCHEMA_ERR(0, 0, "inv", "feature f1 {if-feature f1;}",
