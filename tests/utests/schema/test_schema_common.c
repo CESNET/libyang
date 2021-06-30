@@ -212,6 +212,11 @@ void
 test_collision_typedef(void **state)
 {
     const char *str;
+    char *submod;
+    struct module_clb_list list[3] = {0};
+
+    list[0].name = "asub";
+    list[1].name = "bsub";
 
     /* collision with a built-in type */
     str = "module a {namespace urn:a; prefix a; typedef binary {type string;}}";
@@ -307,7 +312,12 @@ test_collision_typedef(void **state)
     CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     /* collision of submodule's node with another submodule's top-level */
-    //TODO
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
+    list[0].data = "submodule asub {belongs-to a {prefix a;} typedef g {type int;}}";
+    list[1].data = "submodule bsub {belongs-to a {prefix a;} container c {typedef g {type int;}}}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     /* collision of module's top-levels */
     str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
@@ -315,7 +325,11 @@ test_collision_typedef(void **state)
     CHECK_LOG("Duplicate identifier \"test\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* collision of submodule's top-levels */
-    //TODO
+    submod = "submodule asub {belongs-to a {prefix a;} typedef g {type int;} typedef g {type int;}}";
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* collision of module's top-level with submodule's top-levels */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
@@ -324,7 +338,12 @@ test_collision_typedef(void **state)
     CHECK_LOG("Duplicate identifier \"x\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* collision of submodule's top-level with another submodule's top-levels */
-    //TODO
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
+    list[0].data = "submodule asub {belongs-to a {prefix a;} typedef g {type int;}}";
+    list[1].data = "submodule bsub {belongs-to a {prefix a;} typedef g {type int;}}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* error in type-stmt */
     str = "module a {namespace urn:a; prefix a; container c {typedef x {type t{}}";
@@ -333,7 +352,9 @@ test_collision_typedef(void **state)
     UTEST_LOG_CLEAN;
 
     /* no collision if the same names are in different scope */
-    //TODO
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a;"
+            "container c {typedef g {type int;}} container d {typedef g {type int;}}}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
 }
 
 void
