@@ -2803,8 +2803,9 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
             /* first prepare for the next iteration */
             src_elem_backup = src_elem;
             trg_parent_backup = trg_parent;
-            if (((src_elem->schema->nodetype == LYS_CONTAINER) || ((src_elem->schema->nodetype == LYS_LIST)
-                    && ((struct lys_node_list *)src_elem->schema)->keys_size)) && src_elem->child && trg_child) {
+            if (((src_elem->schema->nodetype & (LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF))
+                    || ((src_elem->schema->nodetype == LYS_LIST) && ((struct lys_node_list *)src_elem->schema)->keys_size))
+                    && src_elem->child && trg_child) {
                 /* go into children */
                 src_next = src_elem->child;
                 trg_parent = trg_child;
