@@ -358,6 +358,44 @@ test_collision_typedef(void **state)
 }
 
 void
+test_collision_identity(void **state)
+{
+    const char *str;
+    char *submod;
+
+    /* collision of module's top-levels */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; identity g; identity g;}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+
+    /* collision of module's top-level with submodule's top-levels */
+    submod = "submodule asub {belongs-to a {prefix a;} identity g;}";
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; identity g;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+}
+
+void
+test_collision_feature(void **state)
+{
+    const char *str;
+    char *submod;
+
+    /* collision of module's top-levels */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; feature g; feature g;}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+
+    /* collision of module's top-level with submodule's top-levels */
+    submod = "submodule asub {belongs-to a {prefix a;} feature g;}";
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; feature g;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+}
+
+void
 test_accessible_tree(void **state)
 {
     const char *str;
