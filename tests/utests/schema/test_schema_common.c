@@ -358,13 +358,111 @@ test_collision_typedef(void **state)
 }
 
 void
+test_collision_grouping(void **state)
+{
+    const char *str;
+    char *submod;
+    struct module_clb_list list[3] = {0};
+
+    list[0].name = "asub";
+    list[1].name = "bsub";
+
+    /* collision in node's scope */
+    str = "module a {namespace urn:a; prefix a; container c {grouping y; grouping y;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"y\" of grouping statement - name collision with sibling grouping.", NULL);
+
+    /* collision with parent node */
+    str = "module a {namespace urn:a; prefix a; container c {container d {grouping y;} grouping y;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"y\" of grouping statement - name collision with another scoped grouping.", NULL);
+
+    /* collision with module's top-level */
+    str = "module a {namespace urn:a; prefix a; grouping x; container c {grouping x;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+
+    /* collision of submodule's node with module's top-level */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {grouping x;}}");
+    str = "module a {namespace urn:a; prefix a; include b; grouping x;}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+
+    /* collision of module's node with submodule's top-level */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} grouping x;}");
+    str = "module a {namespace urn:a; prefix a; include b; container c {grouping x;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+
+    /* collision of submodule's node with another submodule's top-level */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
+    list[0].data = "submodule asub {belongs-to a {prefix a;} grouping g;}";
+    list[1].data = "submodule bsub {belongs-to a {prefix a;} container c {grouping g;}}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+
+    /* collision of module's top-levels */
+    str = "module a {namespace urn:a; prefix a; grouping test; grouping test;}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"test\" of grouping statement - name collision with another top-level grouping.", NULL);
+
+    /* collision of submodule's top-levels */
+    submod = "submodule asub {belongs-to a {prefix a;} grouping g; grouping g;}";
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - name collision with another top-level grouping.", NULL);
+
+    /* collision of module's top-level with submodule's top-levels */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} grouping x;}");
+    str = "module a {namespace urn:a; prefix a; include b; grouping x;}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - name collision with another top-level grouping.", NULL);
+
+    /* collision of submodule's top-level with another submodule's top-levels */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
+    list[0].data = "submodule asub {belongs-to a {prefix a;} grouping g;}";
+    list[1].data = "submodule bsub {belongs-to a {prefix a;} grouping g;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - name collision with another top-level grouping.", NULL);
+
+    /* collision in nested groupings, top-level */
+    str = "module a {namespace urn:a; prefix a; grouping g {grouping g;}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+
+    /* collision in nested groupings, in node */
+    str = "module a {namespace urn:a; prefix a; container c {grouping g {grouping g;}}}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - name collision with another scoped grouping.", NULL);
+
+    /* no collision if the same names are in different scope */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a;"
+            "container c {grouping g;} container d {grouping g;}}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+}
+
+void
 test_collision_identity(void **state)
 {
     const char *str;
     char *submod;
+    struct module_clb_list list[3] = {0};
+
+    list[0].name = "asub";
+    list[1].name = "bsub";
 
     /* collision of module's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; identity g; identity g;}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+
+    /* collision of submodule's top-levels */
+    submod = "submodule asub {belongs-to a {prefix a;} identity g; identity g;}";
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
     CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
 
@@ -374,6 +472,14 @@ test_collision_identity(void **state)
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
     CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+
+    /* collision of submodule's top-level with another submodule's top-levels */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
+    list[0].data = "submodule asub {belongs-to a {prefix a;} identity g;}";
+    list[1].data = "submodule bsub {belongs-to a {prefix a;} identity g;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
 }
 
 void
@@ -381,9 +487,20 @@ test_collision_feature(void **state)
 {
     const char *str;
     char *submod;
+    struct module_clb_list list[3] = {0};
+
+    list[0].name = "asub";
+    list[1].name = "bsub";
 
     /* collision of module's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; feature g; feature g;}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+
+    /* collision of submodule's top-levels */
+    submod = "submodule asub {belongs-to a {prefix a;} feature g; feature g;}";
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
     CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
 
@@ -391,6 +508,14 @@ test_collision_feature(void **state)
     submod = "submodule asub {belongs-to a {prefix a;} feature g;}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; feature g;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
+    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+
+    /* collision of submodule's top-level with another submodule's top-levels */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
+    list[0].data = "submodule asub {belongs-to a {prefix a;} feature g;}";
+    list[1].data = "submodule bsub {belongs-to a {prefix a;} feature g;}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
     CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
 }
