@@ -372,6 +372,22 @@ test_create_path(struct test_state *state, struct timespec *ts_start, struct tim
 }
 
 static LY_ERR
+test_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+{
+    LY_ERR r;
+
+    TEST_START(ts_start);
+
+    if ((r = lyd_validate_all(&state->data1, NULL, LYD_VALIDATE_PRESENT, NULL))) {
+        return r;
+    }
+
+    TEST_END(ts_end);
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 _test_parse(struct test_state *state, LYD_FORMAT format, ly_bool use_file, uint32_t print_options, uint32_t parse_options,
         uint32_t validate_options, struct timespec *ts_start, struct timespec *ts_end)
 {
@@ -708,6 +724,7 @@ struct test tests[] = {
     { "create new text", setup_basic, test_create_new_text },
     { "create new bin", setup_basic, test_create_new_bin },
     { "create path", setup_basic, test_create_path },
+    { "validate", setup_data_single_tree, test_validate },
     { "parse xml mem validate", setup_data_single_tree, test_parse_xml_mem_validate },
     { "parse xml mem no validate", setup_data_single_tree, test_parse_xml_mem_no_validate },
     { "parse xml file no validate format", setup_data_single_tree, test_parse_xml_file_no_validate_format },
