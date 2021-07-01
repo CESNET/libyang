@@ -3706,20 +3706,13 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     LY_ERR ret = LY_SUCCESS;
     struct lysp_submodule *mod_p = NULL;
 
+    assert(yin_ctx && ctx && main_ctx && in && submod);
+
     /* create context */
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
-    if (main_ctx) {
-        /* Forward pointer to the main module. */
-        (*yin_ctx)->main_ctx = main_ctx;
-    } else {
-        /* Set this submodule as the main module because its main
-         * module was not received from the callback or there is no
-         * callback set, see ::lys_parse_load().
-         */
-        (*yin_ctx)->main_ctx = (struct lys_parser_ctx *)(*yin_ctx);
-    }
+    (*yin_ctx)->main_ctx = main_ctx;
     LY_CHECK_RET(lyxml_ctx_new(ctx, in, &(*yin_ctx)->xmlctx));
 
     mod_p = calloc(1, sizeof *mod_p);
