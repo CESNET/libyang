@@ -252,7 +252,7 @@ if(ENABLE_TESTS)
 endif()
 
 if(ENABLE_PERF_TESTS)
-    find_path(CALLGRIND_INCLUDE_DIR
+    find_path(VALGRIND_INCLUDE_DIR
         NAMES
         valgrind/callgrind.h
         PATHS
@@ -262,10 +262,10 @@ if(ENABLE_PERF_TESTS)
         /sw/include
         ${CMAKE_INCLUDE_PATH}
         ${CMAKE_INSTALL_PREFIX}/include)
-    if(CALLGRIND_INCLUDE_DIR)
+    if(VALGRIND_INCLUDE_DIR)
         set(HAVE_CALLGRIND 1)
     else()
-        message(STATUS "Disabling callgrind macros in performance tests because of missing headers")
+        message(STATUS "Disabling callgrind macros in performance tests because of missing valgrind headers")
     endif()
 endif()
 
