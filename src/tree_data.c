@@ -3278,6 +3278,56 @@ lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
 }
 
 /**
+ * @brief Create a copy of the attribute.
+ *
+ * @param[in] attr Attribute to copy.
+ * @param[in] node Opaque where to append the new attribute.
+ * @param[out] dup Optional created attribute copy.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_dup_attr_single(const struct lyd_attr *attr, struct lyd_node *node, struct lyd_attr **dup)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_attr *a, *last;
+    struct lyd_node_opaq *opaq = (struct lyd_node_opaq *)node;
+
+    LY_CHECK_ARG_RET(NULL, attr, node, !node->schema, LY_EINVAL);
+
+    /* create a copy */
+    a = calloc(1, sizeof *attr);
+    LY_CHECK_ERR_RET(!a, LOGMEM(LYD_CTX(node)), LY_EMEM);
+
+    LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), attr->name.name, 0, &a->name.name), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), attr->name.prefix, 0, &a->name.prefix), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), attr->name.module_ns, 0, &a->name.module_ns), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), attr->value, 0, &a->value), finish);
+    a->hints = attr->hints;
+    a->format = attr->format;
+    if (attr->val_prefix_data) {
+        ret = ly_dup_prefix_data(LYD_CTX(node), attr->format, attr->val_prefix_data, &a->val_prefix_data);
+        LY_CHECK_GOTO(ret, finish);
+    }
+
+    /* insert as the last attribute */
+    a->parent = opaq;
+    if (opaq->attr) {
+        for (last = opaq->attr; last->next; last = last->next) {}
+        last->next = a;
+    } else {
+        opaq->attr = a;
+    }
+
+finish:
+    if (ret) {
+        lyd_free_attr_single(LYD_CTX(node), a);
+    } else if (dup) {
+        *dup = a;
+    }
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Duplicate a single node and connect it into @p parent (if present) or last of @p first siblings.
  *
  * Ignores LYD_DUP_WITH_PARENTS and LYD_DUP_WITH_SIBLINGS which are supposed to be handled by lyd_dup().
@@ -3296,12 +3346,14 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
     LY_ERR ret;
     struct lyd_node *dup = NULL;
     struct lyd_meta *meta;
+    struct lyd_attr *attr;
     struct lyd_node_any *any;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
     if (!node->schema) {
         dup = calloc(1, sizeof(struct lyd_node_opaq));
+        ((struct lyd_node_opaq *)dup)->ctx = LYD_CTX(node);
     } else {
         switch (node->schema->nodetype) {
         case LYS_RPC:
@@ -3335,10 +3387,16 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
     dup->schema = node->schema;
     dup->prev = dup;
 
-    /* duplicate metadata */
+    /* duplicate metadata/attributes */
     if (!(options & LYD_DUP_NO_META)) {
-        LY_LIST_FOR(node->meta, meta) {
-            LY_CHECK_GOTO(ret = lyd_dup_meta_single(meta, dup, NULL), error);
+        if (!node->schema) {
+            LY_LIST_FOR(((struct lyd_node_opaq *)node)->attr, attr) {
+                LY_CHECK_GOTO(ret = lyd_dup_attr_single(attr, dup, NULL), error);
+            }
+        } else {
+            LY_LIST_FOR(node->meta, meta) {
+                LY_CHECK_GOTO(ret = lyd_dup_meta_single(meta, dup, NULL), error);
+            }
         }
     }
 
@@ -3355,17 +3413,15 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
             }
         }
         LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.name, 0, &opaq->name.name), error);
-        opaq->format = orig->format;
-        if (orig->name.prefix) {
-            LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.prefix, 0, &opaq->name.prefix), error);
-        }
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.prefix, 0, &opaq->name.prefix), error);
         LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.module_ns, 0, &opaq->name.module_ns), error);
+        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->value, 0, &opaq->value), error);
+        opaq->hints = orig->hints;
+        opaq->format = orig->format;
         if (orig->val_prefix_data) {
             ret = ly_dup_prefix_data(LYD_CTX(node), opaq->format, orig->val_prefix_data, &opaq->val_prefix_data);
             LY_CHECK_GOTO(ret, error);
         }
-        LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->value, 0, &opaq->value), error);
-        opaq->ctx = orig->ctx;
     } else if (dup->schema->nodetype & LYD_NODE_TERM) {
         struct lyd_node_term *term = (struct lyd_node_term *)dup;
         struct lyd_node_term *orig = (struct lyd_node_term *)node;

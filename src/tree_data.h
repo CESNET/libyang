@@ -1874,7 +1874,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
 
 #define LYD_DUP_RECURSIVE    0x01  /**< Duplicate not just the node but also all the children. Note that
                                         list's keys are always duplicated. */
-#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata of any node. */
+#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata (or attributes) of any node. */
 #define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
                                         Keys are also duplicated for lists. Return value does not change! */
 #define LYD_DUP_WITH_FLAGS   0x08  /**< Also copy any data node flags. That will cause the duplicated data to preserve
