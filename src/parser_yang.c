@@ -4560,21 +4560,14 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     enum ly_stmt kw;
     struct lysp_submodule *mod_p = NULL;
 
+    assert(context && ly_ctx && main_ctx && in && submod);
+
     /* create context */
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
     (*context)->in = in;
-    if (main_ctx) {
-        /* Forward pointer to the main module. */
-        (*context)->main_ctx = main_ctx;
-    } else {
-        /* Set this submodule as the main module because its main
-         * module was not received from the callback or there is no
-         * callback set, see ::lys_parse_load().
-         */
-        (*context)->main_ctx = (struct lys_parser_ctx *)(*context);
-    }
+    (*context)->main_ctx = main_ctx;
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ly_ctx); ret = LY_EMEM, cleanup);
