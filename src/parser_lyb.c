@@ -537,7 +537,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
 
         /* attr2 is always changed to the created attribute */
         ret = lyd_create_attr(NULL, &attr2, lybctx->ctx, name, strlen(name), prefix, ly_strlen(prefix), module_name,
-                ly_strlen(module_name), value, ly_strlen(value), &dynamic, format, val_prefix_data, 0);
+                ly_strlen(module_name), value, ly_strlen(value), &dynamic, format, val_prefix_data, LYD_HINT_DATA);
         LY_CHECK_GOTO(ret, cleanup);
 
         free(prefix);
