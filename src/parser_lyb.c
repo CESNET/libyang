@@ -489,7 +489,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t count, i;
-    struct lyd_attr *attr2;
+    struct lyd_attr *attr2 = NULL;
     char *prefix = NULL, *module_name = NULL, *name = NULL, *value = NULL;
     ly_bool dynamic = 0;
     LY_VALUE_FORMAT format = 0;
