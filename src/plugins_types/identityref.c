@@ -191,7 +191,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     char *canon;
-    struct lysc_ident *ident;
+    struct lysc_ident *ident = NULL;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);

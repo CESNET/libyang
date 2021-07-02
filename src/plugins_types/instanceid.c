@@ -54,7 +54,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL, quot;
     const struct lys_module *mod = NULL;
-    ly_bool inherit_prefix, d;
+    ly_bool inherit_prefix = 0, d;
     const char *strval;
 
     switch (format) {

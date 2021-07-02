@@ -1392,7 +1392,7 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
-    uint32_t i, int_opts, close_elem = 0;
+    uint32_t i, int_opts = 0, close_elem = 0;
     ly_bool parsed_data_nodes = 0;
 
     assert(ctx && in && lydctx_p);
