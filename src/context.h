@@ -451,7 +451,7 @@ struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const
  * to be used in all calls starting with value 0.
  * @return Next context module, NULL if the last was already returned.
  */
-const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
+struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
 
 /**
  * @brief Get YANG module of the given namespace and revision.
@@ -572,8 +572,7 @@ uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
  * with the current features settings in case the module is already present in the context.
  * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
-const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision,
-        const char **features);
+struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features);
 
 /**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.

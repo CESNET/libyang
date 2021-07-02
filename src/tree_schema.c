@@ -1473,7 +1473,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     }
 
     /* decide the latest revision */
-    latest = (struct lys_module *)ly_ctx_get_module_latest(ctx, mod->name);
+    latest = ly_ctx_get_module_latest(ctx, mod->name);
     if (latest) {
         if (mod->revision) {
             if (!latest->revision) {
@@ -1498,7 +1498,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     }
 
     /* check whether it is not already in the context in the same revision */
-    mod_dup = (struct lys_module *)ly_ctx_get_module(ctx, mod->name, mod->revision);
+    mod_dup = ly_ctx_get_module(ctx, mod->name, mod->revision);
     if (mod_dup) {
         /* nothing to do */
         LOGVRB("Module \"%s@%s\" is already present in the context.", mod_dup->name,

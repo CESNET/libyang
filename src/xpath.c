@@ -5745,7 +5745,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
             /* it can actually be in any module, it's all <running>, and even if it's moveto_mod (if set),
              * it can be in a top-level augment (the root node itself is useless in this case) */
             mod_idx = 0;
-            while ((mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
+            while ((mod = ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
                 iter = NULL;
                 /* module may not be implemented */
                 while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
@@ -6340,7 +6340,7 @@ moveto_scnode_self(struct lyxp_set *set, ly_bool all_desc, uint32_t options)
         if ((set->val.scnodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.scnodes[i].type == LYXP_NODE_ROOT)) {
             /* it can actually be in any module, it's all <running> */
             mod_idx = 0;
-            while ((mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
+            while ((mod = ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
                 iter = NULL;
                 /* module may not be implemented */
                 while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {

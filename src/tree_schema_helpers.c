@@ -819,10 +819,10 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
     if (!*mod) {
         if (revision) {
             /* get the specific revision */
-            *mod = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+            *mod = ly_ctx_get_module(ctx, name, revision);
         } else {
             /* get the requested module of the latest revision in the context */
-            *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
+            *mod = ly_ctx_get_module_latest(ctx, name);
             if (*mod && ((*mod)->latest_revision == 1)) {
                 /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
                 ctx_latest = *mod;

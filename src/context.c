@@ -187,7 +187,7 @@ ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
     return LY_SUCCESS;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
 {
     struct lys_module *mod = NULL;
@@ -620,7 +620,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
         uint32_t index;
 
         index = 0;
-        while ((mod = (struct lys_module *)ly_ctx_get_module_iter(ctx, &index))) {
+        while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
             lysc_node_clear_all_priv(mod);
         }
     }
@@ -659,7 +659,7 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->imp_clb;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {
     LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
