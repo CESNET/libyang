@@ -1781,8 +1781,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
  *
- * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
- * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * If @p path points to a list key, the key value from the predicate is used and @p value is ignored.
+ * Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
  * For key-less lists and state leaf-lists, positional predicates can be used. If no preciate is used for these
@@ -1949,8 +1949,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             if (lysc_is_key(schema)) {
                 /* it must have been already created or some error will occur later */
                 assert(cur_parent);
-                node = lyd_child(cur_parent);
-                assert(node && (node->schema == schema));
+                lyd_find_sibling_schema(lyd_child(cur_parent), schema, &node);
+                assert(node);
                 goto next_iter;
             }
 
