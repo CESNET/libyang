@@ -156,17 +156,17 @@ exec_test(setup_cb setup, test_cb test, const char *name, const struct lys_modul
     LY_ERR ret;
     struct timespec ts_start, ts_end;
     struct test_state state = {0};
-    const uint32_t name_fixed_len = 37;
+    const uint32_t name_fixed_len = 38;
     char str[name_fixed_len + 1];
     uint32_t i, printed;
     uint64_t time_usec = 0;
 
     /* print test start */
     printed = sprintf(str, "| %s ", name);
-    while (printed + 1 < name_fixed_len) {
+    while (printed + 2 < name_fixed_len) {
         printed += sprintf(str + printed, ".");
     }
-    if (printed < name_fixed_len) {
+    if (printed + 1 < name_fixed_len) {
         printed += sprintf(str + printed, " ");
     }
     sprintf(str + printed, "|");
