@@ -1200,6 +1200,51 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
 }
 
 /**
+ * @brief Iteratively get all leafrefs from @p node
+ * if the node is of type union, otherwise just return the leafref.
+ *
+ * @param[in] node Node that may contain the leafref.
+ * @param[in,out] index Value that is passed between function calls.
+ * For each new node, initialize value of the @p index to 0, otherwise
+ * do not modify the value between calls.
+ * @return Pointer to the leafref or next leafref, otherwise NULL.
+ */
+static struct lysc_type_leafref *
+lys_type_leafref_next(const struct lysc_node *node, uint64_t *index)
+{
+    struct lysc_type_leafref *ret = NULL;
+    struct lysc_type_union *uni;
+    struct lysc_type *leaf_type;
+
+    assert(node->nodetype & LYD_NODE_TERM);
+
+    leaf_type = ((struct lysc_node_leaf *)node)->type;
+    if (leaf_type->basetype == LY_TYPE_UNION) {
+        uni = (struct lysc_type_union *)leaf_type;
+
+        /* find next union leafref */
+        while (*index < LY_ARRAY_COUNT(uni->types)) {
+            if (uni->types[*index]->basetype == LY_TYPE_LEAFREF) {
+                ret = (struct lysc_type_leafref *)uni->types[*index];
+                ++(*index);
+                break;
+            }
+
+            ++(*index);
+        }
+    } else {
+        /* return just the single leafref */
+        if (*index == 0) {
+            ++(*index);
+            assert(leaf_type->basetype == LY_TYPE_LEAFREF);
+            ret = (struct lysc_type_leafref *)leaf_type;
+        }
+    }
+
+    return ret;
+}
+
+/**
  * @brief Finish dependency set compilation by resolving all the unres sets.
  *
  * @param[in] ctx libyang context.
@@ -1211,9 +1256,9 @@ lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *l
 static LY_ERR
 lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node;
-    struct lysc_type *type, *typeiter;
+    struct lysc_type *typeiter;
     struct lysc_type_leafref *lref;
     struct lysc_ctx cctx = {0};
     struct lys_depset_unres *ds_unres;
@@ -1231,27 +1276,15 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
      * can be also leafref, in case it is already resolved, go through the chain and check that it does not
      * point to the starting leafref type). The second round stores the first non-leafref type for later data validation. */
     for (i = 0; i < ds_unres->leafrefs.count; ++i) {
-        LY_ERR ret = LY_SUCCESS;
         node = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
-
         LOG_LOCSET(node, NULL, NULL, NULL);
 
         assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
-        type = ((struct lysc_node_leaf *)node)->type;
-        if (type->basetype == LY_TYPE_LEAFREF) {
-            ret = lys_compile_unres_leafref(&cctx, node, (struct lysc_type_leafref *)type, unres);
-        } else if (type->basetype == LY_TYPE_UNION) {
-            LY_ARRAY_FOR(((struct lysc_type_union *)type)->types, v) {
-                if (((struct lysc_type_union *)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
-                    lref = (struct lysc_type_leafref *)((struct lysc_type_union *)type)->types[v];
-                    ret = lys_compile_unres_leafref(&cctx, node, lref, unres);
-                    if (ret) {
-                        break;
-                    }
-                }
-            }
+        v = 0;
+        while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(node, &v))) {
+            ret = lys_compile_unres_leafref(&cctx, node, lref, unres);
         }
 
         LOG_LOCBACK(1, 0, 0, 0);
@@ -1261,25 +1294,15 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         node = ds_unres->leafrefs.objs[ds_unres->leafrefs.count - 1];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
-
         LOG_LOCSET(node, NULL, NULL, NULL);
 
         /* store pointer to the real type */
-        type = ((struct lysc_node_leaf *)node)->type;
-        if (type->basetype == LY_TYPE_LEAFREF) {
-            for (typeiter = ((struct lysc_type_leafref *)type)->realtype;
+        v = 0;
+        while ((lref = lys_type_leafref_next(node, &v))) {
+            for (typeiter = lref->realtype;
                     typeiter->basetype == LY_TYPE_LEAFREF;
                     typeiter = ((struct lysc_type_leafref *)typeiter)->realtype) {}
-            ((struct lysc_type_leafref *)type)->realtype = typeiter;
-        } else if (type->basetype == LY_TYPE_UNION) {
-            LY_ARRAY_FOR(((struct lysc_type_union *)type)->types, v) {
-                if (((struct lysc_type_union *)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
-                    for (typeiter = ((struct lysc_type_leafref *)((struct lysc_type_union *)type)->types[v])->realtype;
-                            typeiter->basetype == LY_TYPE_LEAFREF;
-                            typeiter = ((struct lysc_type_leafref *)typeiter)->realtype) {}
-                    ((struct lysc_type_leafref *)((struct lysc_type_union *)type)->types[v])->realtype = typeiter;
-                }
-            }
+            lref->realtype = typeiter;
         }
         LOG_LOCBACK(1, 0, 0, 0);
 
