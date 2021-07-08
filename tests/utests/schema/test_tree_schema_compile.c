@@ -1469,6 +1469,7 @@ test_type_identityref(void **state)
 static void
 test_type_leafref(void **state)
 {
+    char *str;
     struct lys_module *mod;
     struct lysc_type *type;
     const char *path;
@@ -1575,17 +1576,21 @@ test_type_leafref(void **state)
     assert_int_equal(1, ((struct lysc_type_leafref *)type)->require_instance);
 
     /* conditional leafrefs */
-    /*assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module e {yang-version 1.1;namespace urn:e;prefix e;feature f1; feature f2;"
-                                        "leaf ref1 {if-feature 'f1 and f2';type leafref {path /target;}}"
-                                        "leaf target {if-feature f1; type boolean;}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(1, type->refcount);
-    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("/target", ((struct lysc_type_leafref* )type)->path->expr);
-    assert_int_equal(0, LY_ARRAY_COUNT(((struct lysc_type_leafref*)type)->prefixes));
-    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
-    assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);*/
+    str = "module e {yang-version 1.1;namespace urn:e;prefix e;feature f1;"
+            "leaf ref1 {type leafref {path /target;}}"
+            "leaf target {if-feature 'f1'; type boolean;}}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
+    CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled by its if-features.", "Schema location /e:ref1.");
+
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module cl {namespace urn:cl;prefix cl;feature f1;"
+            "leaf f {type string; if-feature 'f1';}"
+            "leaf g {type leafref {path \"/cl:f\";}}"
+            "leaf h {type uint16; default 1;}}");
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module im {namespace urn:im;prefix im;import cl {prefix cl;}"
+            "leaf ref {must \"/cl:h > 0\"; type uint16;}}", LYS_IN_YANG, &mod));
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
+    CHECK_LOG_CTX("Target of leafref \"g\" cannot be referenced because it is disabled by its if-features.", "Schema location /cl:g.");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {namespace urn:f;prefix f;"
             "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
