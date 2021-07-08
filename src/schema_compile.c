@@ -1050,8 +1050,6 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
         }
     }
 
-    /* TODO check if leafref and its target are under common if-features */
-
     return LY_SUCCESS;
 }
 
@@ -1260,14 +1258,17 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     struct lysc_node *node;
     struct lysc_type *typeiter;
     struct lysc_type_leafref *lref;
-    struct lysc_ctx cctx = {0};
+    struct lysc_ctx cctx;
     struct lys_depset_unres *ds_unres;
+    struct ly_path *path;
     LY_ARRAY_COUNT_TYPE v;
-    uint32_t i;
+    uint32_t i, processed_leafrefs = 0;
 
     ds_unres = &unres->ds_unres;
 
     /* fake compile context */
+resolve_all:
+    memset(&cctx, 0, sizeof cctx);
     cctx.ctx = ctx;
     cctx.path_len = 1;
     cctx.path[0] = '/';
@@ -1275,7 +1276,7 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
      * can be also leafref, in case it is already resolved, go through the chain and check that it does not
      * point to the starting leafref type). The second round stores the first non-leafref type for later data validation. */
-    for (i = 0; i < ds_unres->leafrefs.count; ++i) {
+    for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
         node = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
@@ -1290,8 +1291,8 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
     }
-    while (ds_unres->leafrefs.count) {
-        node = ds_unres->leafrefs.objs[ds_unres->leafrefs.count - 1];
+    for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
+        node = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
         LOG_LOCSET(node, NULL, NULL, NULL);
@@ -1306,7 +1307,10 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
         LOG_LOCBACK(1, 0, 0, 0);
 
-        ly_set_rm_index(&ds_unres->leafrefs, ds_unres->leafrefs.count - 1, NULL);
+        /* If 'goto' will be used on the 'again' label, then
+         * the current leafref will not be processed again.
+         */
+        processed_leafrefs++;
     }
 
     /* check xpath */
@@ -1343,8 +1347,8 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     }
 
     /* some unres items may have been added */
-    if (ds_unres->leafrefs.count || ds_unres->xpath.count || ds_unres->dflts.count) {
-        return lys_compile_unres_depset(ctx, unres);
+    if ((processed_leafrefs != ds_unres->leafrefs.count) || ds_unres->xpath.count || ds_unres->dflts.count) {
+        goto resolve_all;
     }
 
     /* finally, remove all disabled nodes */
@@ -1358,6 +1362,30 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
 
         lysc_node_free(ctx, node, 1);
+    }
+
+    /* also check if the leafref target has not been disabled */
+    for (i = 0; i < ds_unres->leafrefs.count; ++i) {
+        node = ds_unres->leafrefs.objs[i];
+        cctx.cur_mod = node->module;
+        cctx.pmod = node->module->parsed;
+
+        v = 0;
+        while ((lref = lys_type_leafref_next(node, &v))) {
+            ret = ly_path_compile_leafref(cctx.ctx, node, NULL, lref->path,
+                    (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
+                    LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &path);
+            ly_path_free(node->module->ctx, path);
+
+            assert(ret != LY_ERECOMPILE);
+            if (ret) {
+                LOG_LOCSET(node, NULL, NULL, NULL);
+                LOGVAL(ctx, LYVE_REFERENCE, "Target of leafref \"%s\" cannot be "
+                        "referenced because it is disabled by its if-features.", node->name);
+                LOG_LOCBACK(1, 0, 0, 0);
+                return LY_EVALID;
+            }
+        }
     }
 
     return LY_SUCCESS;
