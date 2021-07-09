@@ -1338,6 +1338,8 @@ get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const s
     LY_LIST_FOR(root, top_sibling) {
         LYD_TREE_DFS_BEGIN(top_sibling, elem) {
 dfs_search:
+            LYD_TREE_DFS_continue = 0;
+
             if (*prev && !elem) {
                 /* resume previous DFS */
                 elem = LYD_TREE_DFS_next = (struct lyd_node *)*prev;

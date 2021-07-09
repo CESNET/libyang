@@ -1429,7 +1429,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
         void *check_data, struct ly_set *new_mods, struct lys_module **module)
 {
-    struct lys_module *mod = NULL, *latest, *mod_dup;
+    struct lys_module *mod = NULL, *latest, *mod_dup = NULL;
     struct lysp_submodule *submod;
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;

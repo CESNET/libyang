@@ -147,7 +147,7 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue;
-    uint32_t type_idx;
+    uint32_t type_idx = 0;
 
     *err = NULL;
 

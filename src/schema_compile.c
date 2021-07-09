@@ -582,7 +582,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                         unconst_ext_p = (struct lysp_ext_instance *)ext_p;
                         unconst_ext_p->parsed = parsed;
                     } else {
-                        struct lysp_node *node, *last_node;
+                        struct lysp_node *node, *last_node = NULL;
                         /* get last parsed node */
                         LY_LIST_FOR(ext_p->parsed, node) {
                             last_node = node;
