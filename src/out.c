@@ -43,7 +43,7 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
         if (node->flags & LYD_DEFAULT) {
             /* implicit default node/NP container with only default nodes */
             return 0;
-        } else if (node->schema->nodetype & LYD_NODE_TERM) {
+        } else if (node->schema && (node->schema->nodetype & LYD_NODE_TERM)) {
             if (lyd_is_default(node)) {
                 /* explicit default node */
                 return 0;
