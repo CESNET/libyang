@@ -146,11 +146,12 @@ set(libsrc
     ${type_plugins})
 
 set(headers
-    src/libyang.h
     src/context.h
     src/dict.h
-    src/log.h
     src/in.h
+    src/libyang.h
+    src/log.h
+    src/out.h
     src/parser_data.h
     src/parser_schema.h
     src/plugins.h
@@ -158,13 +159,12 @@ set(headers
     src/plugins_exts_compile.h
     src/plugins_exts_print.h
     src/plugins_types.h
-    src/out.h
     src/printer_data.h
     src/printer_schema.h
     src/set.h
     src/tree.h
-    src/tree_edit.h
     src/tree_data.h
+    src/tree_edit.h
     src/tree_schema.h)
 
 set(gen_headers
