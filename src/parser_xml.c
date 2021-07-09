@@ -1374,7 +1374,7 @@ finish:
     }
 
     /* NETCONF rpc-reply */
-    *int_opts = LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_REPLY;
+    *int_opts = LYD_INTOPT_WITH_SIBLINGS | LYD_INTOPT_REPLY;
     *close_elem = 1;
 
 cleanup:
