@@ -82,7 +82,7 @@ static void
 test_schema_yang(void **state)
 {
     const char *schema;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_leaf *lysc_leaf;
     struct lysp_node_leaf *lysp_leaf;
     struct lysc_pattern *pattern;
@@ -332,7 +332,7 @@ static void
 test_schema_yin(void **state)
 {
     const char *schema;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_leaf *lysc_leaf;
     struct lysp_node_leaf *lysp_leaf;
     struct lysc_pattern *pattern;
@@ -618,7 +618,7 @@ test_schema_print(void **state)
 {
     const char *schema_yang, *schema_yin;
     char *printed;
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     /* test print yang to yin */
     schema_yang = MODULE_CREATE_YANG("PRINT0",
@@ -1039,7 +1039,7 @@ test_plugin_store(void **state)
 
     const char *val_text = NULL;
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value value = {0};
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_STRING]);
     struct lysc_type *lysc_type;
@@ -1147,7 +1147,7 @@ static void
 test_plugin_compare(void **state)
 {
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value values[10];
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_STRING]);
     struct lysc_type *lysc_type;
@@ -1225,7 +1225,7 @@ static void
 test_plugin_print(void **state)
 {
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value values[10];
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_STRING]);
     struct lysc_type *lysc_type;
@@ -1264,7 +1264,7 @@ test_plugin_dup(void **state)
 {
 
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value values[10];
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_STRING]);
     struct lysc_type *lysc_type[2];

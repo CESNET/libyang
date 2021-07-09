@@ -23,7 +23,7 @@
 static void
 test_module(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *orig = "module a {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:a\";\n"
@@ -161,7 +161,7 @@ test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const ch
 static void
 test_submodule(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *mod_yang = "module a {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:a\";\n"

@@ -1634,7 +1634,7 @@ lys_parse_get_format(const struct ly_in *in, LYS_INFORMAT format)
 }
 
 API LY_ERR
-lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, const struct lys_module **module)
+lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, struct lys_module **module)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
@@ -1678,7 +1678,7 @@ cleanup:
 }
 
 API LY_ERR
-lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const struct lys_module **module)
+lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
     struct ly_in *in = NULL;
@@ -1694,7 +1694,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const s
 }
 
 API LY_ERR
-lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_module **module)
+lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
     struct ly_in *in = NULL;
@@ -1710,7 +1710,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_m
 }
 
 API LY_ERR
-lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const struct lys_module **module)
+lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
     struct ly_in *in = NULL;

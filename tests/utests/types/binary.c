@@ -33,7 +33,7 @@ test_plugin_store(void **state)
     const char *val, *dec_val;
     char bin_val[2];
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value value = {0};
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BINARY]);
     struct lysc_type *lysc_type;

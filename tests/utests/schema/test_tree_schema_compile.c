@@ -109,7 +109,7 @@ test_module(void **state)
     /* data definition name collision in top level */
     str = "module aa {namespace urn:aa;prefix aa; leaf a {type string;} container a{presence x;}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
-    assert_int_equal(LY_EEXIST, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, (const struct lys_module **)&mod));
+    assert_int_equal(LY_EEXIST, lys_parse(UTEST_LYCTX, in, LYS_IN_YANG, NULL, &mod));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/aa:a");
 }
@@ -192,7 +192,7 @@ test_name_collisions(void **state)
 static void
 test_node_container(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_container *cont;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;container c;}", LYS_IN_YANG, &mod));
@@ -218,7 +218,7 @@ test_node_container(void **state)
 static void
 test_node_leaflist(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
     struct lysc_node_leaflist *ll;
     struct lysc_node_leaf *l;
@@ -327,7 +327,7 @@ test_node_leaflist(void **state)
 static void
 test_node_list(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_list *list;
     struct lysc_node *child;
     struct ly_in *in;
@@ -465,7 +465,7 @@ test_node_list(void **state)
 static void
 test_node_choice(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_choice *ch;
     struct lysc_node_case *cs;
 
@@ -524,7 +524,7 @@ test_node_choice(void **state)
 static void
 test_node_anydata(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_anydata *any;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1;namespace urn:a;prefix a;"
@@ -549,7 +549,7 @@ test_node_anydata(void **state)
 static void
 test_action(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysc_node_action *rpc;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;"
@@ -606,7 +606,7 @@ test_action(void **state)
 static void
 test_notification(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysc_node_notif *notif;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;"
@@ -679,7 +679,7 @@ test_notification(void **state)
 static void
 test_type_range(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
 #if 0
@@ -810,7 +810,7 @@ test_type_range(void **state)
 static void
 test_type_length(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;leaf l {type binary {length min {error-app-tag errortag;error-message error;}}}}", LYS_IN_YANG, &mod));
@@ -1015,7 +1015,7 @@ test_type_length(void **state)
 static void
 test_type_pattern(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1; namespace urn:a;prefix a;leaf l {type string {"
@@ -1076,7 +1076,7 @@ test_type_pattern(void **state)
 static void
 test_type_enum(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1; namespace urn:a;prefix a;feature f; leaf l {type enumeration {"
@@ -1201,7 +1201,7 @@ test_type_enum(void **state)
 static void
 test_type_bits(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     /* type bits is now tested in file type/bits.c */
@@ -1293,7 +1293,7 @@ test_type_bits(void **state)
 static void
 test_type_dec64(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;leaf l {type decimal64 {"
@@ -1376,7 +1376,7 @@ test_type_dec64(void **state)
 static void
 test_type_instanceid(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;typedef mytype {type instance-identifier {require-instance false;}}"
@@ -1408,7 +1408,7 @@ test_type_instanceid(void **state)
 static void
 test_type_identityref(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1;namespace urn:a;prefix a;identity i; identity j; identity k {base i;}"
@@ -1469,7 +1469,7 @@ test_type_identityref(void **state)
 static void
 test_type_leafref(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
     const char *path;
     struct lyxp_expr *expr;
@@ -1827,7 +1827,6 @@ test_type_leafref(void **state)
 static void
 test_type_empty(void **state)
 {
-
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "leaf l {type empty; default x;}}", LYS_IN_YANG, NULL));
@@ -1841,7 +1840,7 @@ test_type_empty(void **state)
 static void
 test_type_union(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1;namespace urn:a;prefix a; typedef mybasetype {type string;}"
@@ -1913,7 +1912,7 @@ test_type_union(void **state)
 static void
 test_type_dflt(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_type *type;
     struct lysc_node_leaf *leaf;
     uint8_t dynamic;
@@ -2020,7 +2019,6 @@ test_status(void **state)
 static void
 test_grouping(void **state)
 {
-
     /* result ok, but a warning about not used locally scoped grouping printed */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a; grouping grp1 {leaf a1 {type string;}}"
             "container a {leaf x {type string;} grouping grp2 {leaf a2 {type string;}}}}", LYS_IN_YANG, NULL));
@@ -2046,7 +2044,7 @@ test_grouping(void **state)
 static void
 test_uses(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysc_node *parent, *child;
     const struct lysc_node_container *cont;
     const struct lysc_node_leaf *leaf;
@@ -2221,7 +2219,7 @@ test_uses(void **state)
 static void
 test_refine(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node *parent, *child;
     struct lysc_node_leaf *leaf;
     struct lysc_node_leaflist *llist;
@@ -2376,7 +2374,7 @@ test_refine(void **state)
 static void
 test_augment(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysc_node *node;
     const struct lysc_node_choice *ch;
     const struct lysc_node_case *c;
@@ -2546,7 +2544,7 @@ test_augment(void **state)
 static void
 test_deviation(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysc_node *node;
     const struct lysc_node_list *list;
     const struct lysc_node_leaflist *llist;

@@ -1126,7 +1126,7 @@ struct utest_context {
  */
 #define UTEST_INVALID_MODULE(DATA, FORMAT, FEATURES, RET_VAL) \
     { \
-        const struct lys_module *mod; \
+        struct lys_module *mod; \
         assert_int_equal(LY_SUCCESS, ly_in_new_memory(DATA, &_UC->in)); \
         assert_int_equal(RET_VAL, lys_parse(_UC->ctx, _UC->in, FORMAT, FEATURES, &mod)); \
         assert_null(mod); \

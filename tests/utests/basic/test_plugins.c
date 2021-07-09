@@ -41,7 +41,7 @@ test_add_invalid(void **state)
 static void
 test_add_simple(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_leaf *leaf;
     struct lyplg_ext *plugin_e;
     struct lyplg_type *plugin_t;
@@ -69,7 +69,7 @@ test_add_simple(void **state)
 static void
 test_validation(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_node *tree;
     const char *data;
     const char *schema = "module libyang-plugins-validate {"
@@ -124,7 +124,7 @@ test_validation(void **state)
 static void
 test_not_implemented(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_node *tree;
     const char *schema = "module libyang-plugins-unknown {"
             "  namespace urn:libyang:tests:plugins:unknown;"

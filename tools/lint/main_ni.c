@@ -291,7 +291,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             char *dir, *module;
             const char *fall = "*";
             const char **features = &fall;
-            const struct lys_module *mod;
+            struct lys_module *mod;
 
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
                 goto error;

@@ -23,7 +23,7 @@
 static void
 test_module(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     const char *orig =
             "module all {\n"
@@ -538,7 +538,7 @@ test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const ch
 static void
 test_submodule(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     const char *mod_yin =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"

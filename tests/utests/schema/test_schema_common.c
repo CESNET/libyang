@@ -49,7 +49,7 @@ module_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod
 void
 test_getnext(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysc_node *node = NULL, *four;
     const struct lysc_node_container *cont;
     const struct lysc_action *rpc;
@@ -878,7 +878,7 @@ test_accessible_tree(void **state)
 void
 test_includes(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     {
         /* YANG 1.0 - the missing include sub_a_two in main_a will be injected from sub_a_one */

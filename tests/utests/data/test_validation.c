@@ -737,7 +737,7 @@ static void
 test_defaults(void **state)
 {
     struct lyd_node *tree, *node, *diff;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *schema =
             "module f {\n"
             "    namespace urn:tests:f;\n"

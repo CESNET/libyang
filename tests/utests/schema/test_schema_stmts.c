@@ -22,7 +22,7 @@
 void
 test_identity(void **state)
 {
-    const struct lys_module *mod, *mod_imp;
+    struct lys_module *mod, *mod_imp;
 
     /*
      * parsing YANG
@@ -137,7 +137,7 @@ test_identity(void **state)
 void
 test_feature(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysp_feature *f;
 
     /*

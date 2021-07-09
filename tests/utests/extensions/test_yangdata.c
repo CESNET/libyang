@@ -30,7 +30,7 @@ setup(void **state)
 static void
 test_schema(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_ext_instance *e;
     char *printed = NULL;
     const char *data = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"
@@ -236,7 +236,7 @@ test_schema_invalid(void **state)
 static void
 test_data(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_ext_instance *e;
     struct lyd_node *tree = NULL;
     const char *schema = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"

@@ -103,7 +103,7 @@ typedef enum {
  * @return LY_ERR value.
  */
 LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features,
-        const struct lys_module **module);
+        struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context.
@@ -117,7 +117,7 @@ LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, cons
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Read a schema from file descriptor into the specified context.
@@ -134,7 +134,7 @@ LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context from a file.
@@ -148,7 +148,7 @@ LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struc
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Search for the schema file in the specified searchpaths.

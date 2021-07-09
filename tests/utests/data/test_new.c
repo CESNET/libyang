@@ -86,7 +86,7 @@ const char *schema_a = "module a {\n"
 static void
 test_top_level(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_node *node, *rpc;
 
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
@@ -200,7 +200,7 @@ test_path(void **state)
 {
     LY_ERR ret;
     struct lyd_node *root, *node, *parent;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     char *str;
 
     UTEST_ADD_MODULE(schema_a, LYS_IN_YANG, NULL, &mod);
@@ -349,7 +349,7 @@ test_path_ext(void **state)
 {
     LY_ERR ret;
     struct lyd_node *root, *node;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *mod_str = "module ext {yang-version 1.1; namespace urn:tests:extensions:ext; prefix e;"
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template {container c {leaf x {type string;} leaf y {type string;} leaf z {type string;}}}}";

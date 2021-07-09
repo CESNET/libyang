@@ -49,7 +49,7 @@ static void
 test_schema_yang(void **state)
 {
     const char *schema;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_list *lysc_leaf;
     struct lysc_node *lysc_node;
 
@@ -361,7 +361,7 @@ static void
 test_schema_yin(void **state)
 {
     const char *schema;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_list *lysc_leaf;
     struct lysc_node *lysc_node;
 
@@ -652,7 +652,7 @@ test_schema_print(void **state)
 {
     const char *schema_yang, *schema_yin;
     char *printed;
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     /* test print yang to yin */
     schema_yang = MODULE_CREATE_YANG("PRINT0",

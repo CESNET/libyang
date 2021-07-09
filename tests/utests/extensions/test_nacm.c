@@ -30,7 +30,7 @@ setup(void **state)
 static void
 test_deny_all(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_container *cont;
     struct lysc_node_leaf *leaf;
     struct lysc_ext_instance *e;
@@ -73,7 +73,7 @@ test_deny_all(void **state)
 static void
 test_deny_write(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_container *cont;
     struct lysc_node_leaf *leaf;
     struct lysc_ext_instance *e;
