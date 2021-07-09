@@ -167,6 +167,28 @@ set(headers
     src/tree_edit.h
     src/tree_schema.h)
 
+set(internal_headers
+    src/common.h
+    src/diff.h
+    src/hash_table.h
+    src/in_internal.h
+    src/json.h
+    src/lyb.h
+    src/out_internal.h
+    src/parser_internal.h
+    src/path.h
+    src/plugins_internal.h
+    src/printer_internal.h
+    src/schema_compile.h
+    src/schema_compile_amend.h
+    src/schema_compile_node.h
+    src/schema_features.h
+    src/tree_data_internal.h
+    src/tree_schema_internal.h
+    src/validation.h
+    src/xml.h
+    src/xpath.h)
+
 set(gen_headers
     src/version.h
     src/config.h)
@@ -198,16 +220,21 @@ set(format_sources
 if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
     option(ENABLE_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
-    # TODO enable when the internal docs ready
-    set(INTERNAL_DOCS NO)
 else()
     option(ENABLE_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
-    set(INTERNAL_DOCS NO)
 endif()
 option(ENABLE_PERF_TESTS "Build performance tests" OFF)
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
+option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
+
+if(ENABLE_INTERNAL_DOCS)
+    set(doxy_files ${doxy_files} ${internal_headers})
+    set(INTERNAL_DOCS YES)
+else()
+    set(INTERNAL_DOCS NO)
+endif()
 
 set(LYD_VALUE_SIZE "24" CACHE STRING "Maximum size in bytes of data node values that do not need to be allocated dynamically, minimum is 8")
 if(LYD_VALUE_SIZE LESS 8)
