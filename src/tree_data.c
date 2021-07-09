@@ -2328,7 +2328,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
         getnext_opts = LYS_GETNEXT_OUTPUT;
     }
 
-    if (first_sibling->parent && first_sibling->parent->children_ht) {
+    if (first_sibling->parent && first_sibling->parent->schema && first_sibling->parent->children_ht) {
         /* find the anchor using hashes */
         sparent = first_sibling->parent->schema;
         schema = lys_getnext(new_node->schema, sparent, NULL, getnext_opts);
