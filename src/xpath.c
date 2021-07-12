@@ -3766,7 +3766,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 
             /* it was already evaluated on schema, it must succeed */
             r = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
-                    LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, NULL, &p);
+                    LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p);
             if (!r) {
                 /* get the target node */
                 target = p[LY_ARRAY_COUNT(p) - 1].node;

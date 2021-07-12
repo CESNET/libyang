@@ -1002,10 +1002,13 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
 
+    /* first implement all the modules in the path */
+    LY_CHECK_RET(lys_compile_expr_implement(ctx->ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
+
     /* try to find the target, current module is that of the context node (RFC 7950 6.4.1 second bullet) */
     LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, NULL, lref->path,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
-            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, unres, &p));
+            LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p));
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;

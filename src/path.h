@@ -176,14 +176,12 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @param[in] target Target option (@ref path_target_options).
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
- * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] path Compiled path.
- * @return LY_ERECOMPILE if recompilation is needed before the path can be compiled.
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
         const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
-        LY_VALUE_FORMAT format, void *prefix_data, struct lys_glob_unres *unres, struct ly_path **path);
+        LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
  * @brief Compile predicate into ly_path_predicate structure. Only simple predicates (not leafref) are supported.
