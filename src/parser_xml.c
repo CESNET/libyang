@@ -393,6 +393,8 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
         if (lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_VALUE_XML, &xmlctx->ns)) {
+            LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, xmlctx->value_len,
+                    xmlctx->value);
             *snode = NULL;
         }
     } else if ((*snode)->nodetype == LYS_LIST) {
@@ -401,6 +403,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
         if (lydxml_check_list(xmlctx, *snode)) {
             /* invalid list, parse as opaque if it missing/has invalid some keys */
+            LOGVRB("Parsing opaque list node \"%s\" with missing/invalid keys.", (*snode)->name);
             *snode = NULL;
         }
     } else {
@@ -512,6 +515,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
                 ret = LY_EVALID;
                 goto error;
             } else if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
+                LOGVRB("Skipping parsing of unkown node \"%.*s\".", name_len, name);
+
                 /* skip element with children */
                 LY_CHECK_GOTO(ret = lydxml_data_skip(xmlctx), error);
                 return LY_SUCCESS;
