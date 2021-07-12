@@ -1582,6 +1582,16 @@ test_type_leafref(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled by its if-features.", "Schema location /e:ref1.");
 
+    str = "module en {yang-version 1.1;namespace urn:en;prefix en;feature f1;"
+            "leaf ref1 {if-feature 'f1'; type leafref {path /target;}}"
+            "leaf target {type boolean;}}";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
+
+    str = "module e {yang-version 1.1;namespace urn:e;prefix e;feature f1;"
+            "leaf ref1 {if-feature 'f1'; type leafref {path /target;}}}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
+    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location /e:ref1.");
+
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module cl {namespace urn:cl;prefix cl;feature f1;"
             "leaf f {type string; if-feature 'f1';}"

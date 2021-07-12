@@ -64,10 +64,11 @@ struct lysc_ctx {
  * so their resolution can only be performed after the whole dep set compilation is done.
  */
 struct lys_depset_unres {
-    struct ly_set xpath;        /**< when/must to check */
-    struct ly_set leafrefs;     /**< to validate leafref's targets */
-    struct ly_set dflts;        /**< set of incomplete default values */
-    struct ly_set disabled;     /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
+    struct ly_set xpath;                /**< when/must to check */
+    struct ly_set leafrefs;             /**< to validate target of leafrefs */
+    struct ly_set dflts;                /**< set of incomplete default values */
+    struct ly_set disabled;             /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
+    struct ly_set disabled_leafrefs;    /**< subset of the lys_depset_unres.disabled to validate target of disabled leafrefs */
 };
 
 /**
