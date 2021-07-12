@@ -1275,7 +1275,24 @@ resolve_all:
 
     /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
      * can be also leafref, in case it is already resolved, go through the chain and check that it does not
-     * point to the starting leafref type). The second round stores the first non-leafref type for later data validation. */
+     * point to the starting leafref type). The second round stores the first non-leafref type for later data validation.
+     * Also do the same check for set of the disabled leafrefs, but without the second round. */
+    while (ds_unres->disabled_leafrefs.count) {
+        node = ds_unres->disabled_leafrefs.objs[ds_unres->disabled_leafrefs.count - 1];
+        cctx.cur_mod = node->module;
+        cctx.pmod = node->module->parsed;
+        LOG_LOCSET(node, NULL, NULL, NULL);
+
+        assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
+        v = 0;
+        while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(node, &v))) {
+            ret = lys_compile_unres_leafref(&cctx, node, lref, unres);
+        }
+
+        LOG_LOCBACK(1, 0, 0, 0);
+        LY_CHECK_RET(ret);
+        ly_set_rm_index(&ds_unres->disabled_leafrefs, ds_unres->disabled_leafrefs.count - 1, NULL);
+    }
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
         node = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = node->module;
@@ -1347,7 +1364,8 @@ resolve_all:
     }
 
     /* some unres items may have been added */
-    if ((processed_leafrefs != ds_unres->leafrefs.count) || ds_unres->xpath.count || ds_unres->dflts.count) {
+    if ((processed_leafrefs != ds_unres->leafrefs.count) || ds_unres->disabled_leafrefs.count ||
+            ds_unres->xpath.count || ds_unres->dflts.count) {
         goto resolve_all;
     }
 
@@ -1408,6 +1426,7 @@ lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *
     ly_set_erase(&unres->ds_unres.dflts, NULL);
     ly_set_erase(&unres->ds_unres.xpath, NULL);
     ly_set_erase(&unres->ds_unres.leafrefs, NULL);
+    ly_set_erase(&unres->ds_unres.disabled_leafrefs, NULL);
     ly_set_erase(&unres->ds_unres.disabled, NULL);
 }
 

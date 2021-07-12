@@ -1068,6 +1068,7 @@ lys_unres_glob_erase(struct lys_glob_unres *unres)
 
     assert(!unres->ds_unres.xpath.count);
     assert(!unres->ds_unres.leafrefs.count);
+    assert(!unres->ds_unres.disabled_leafrefs.count);
     assert(!unres->ds_unres.dflts.count);
     assert(!unres->ds_unres.disabled.count);
 }

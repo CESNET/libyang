@@ -2668,6 +2668,7 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         struct lysc_node_leaf *leaf)
 {
     struct lysp_qname *dflt;
+    struct ly_set *leafrefs_set;
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
@@ -2677,15 +2678,16 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         LY_CHECK_RET(lysc_unres_leaf_dflt_add(ctx, leaf, dflt));
     }
 
-    if ((leaf->type->basetype == LY_TYPE_LEAFREF) && !(ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+    leafrefs_set = ctx->compile_opts & LYS_COMPILE_DISABLED ? &ctx->unres->disabled_leafrefs : &ctx->unres->leafrefs;
+    if ((leaf->type->basetype == LY_TYPE_LEAFREF) && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-        LY_CHECK_RET(ly_set_add(&ctx->unres->leafrefs, leaf, 0, NULL));
-    } else if ((leaf->type->basetype == LY_TYPE_UNION) && !(ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+        LY_CHECK_RET(ly_set_add(leafrefs_set, leaf, 0, NULL));
+    } else if ((leaf->type->basetype == LY_TYPE_UNION) && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         LY_ARRAY_COUNT_TYPE u;
         LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
             if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
                 /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-                LY_CHECK_RET(ly_set_add(&ctx->unres->leafrefs, leaf, 0, NULL));
+                LY_CHECK_RET(ly_set_add(leafrefs_set, leaf, 0, NULL));
             }
         }
     } else if (leaf->type->basetype == LY_TYPE_EMPTY) {
