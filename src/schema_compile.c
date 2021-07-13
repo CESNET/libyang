@@ -1283,7 +1283,6 @@ resolve_all:
         cctx.pmod = node->module->parsed;
         LOG_LOCSET(node, NULL, NULL, NULL);
 
-        assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
         v = 0;
         while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(node, &v))) {
             ret = lys_compile_unres_leafref(&cctx, node, lref, unres);
@@ -1299,7 +1298,6 @@ resolve_all:
         cctx.pmod = node->module->parsed;
         LOG_LOCSET(node, NULL, NULL, NULL);
 
-        assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
         v = 0;
         while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(node, &v))) {
             ret = lys_compile_unres_leafref(&cctx, node, lref, unres);
