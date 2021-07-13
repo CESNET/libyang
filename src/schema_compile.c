@@ -1292,6 +1292,7 @@ resolve_all:
         LY_CHECK_RET(ret);
         ly_set_rm_index(&ds_unres->disabled_leafrefs, ds_unres->disabled_leafrefs.count - 1, NULL);
     }
+
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
         node = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = node->module;
@@ -1308,9 +1309,6 @@ resolve_all:
     }
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
         node = ds_unres->leafrefs.objs[i];
-        cctx.cur_mod = node->module;
-        cctx.pmod = node->module->parsed;
-        LOG_LOCSET(node, NULL, NULL, NULL);
 
         /* store pointer to the real type */
         v = 0;
@@ -1320,9 +1318,8 @@ resolve_all:
                     typeiter = ((struct lysc_type_leafref *)typeiter)->realtype) {}
             lref->realtype = typeiter;
         }
-        LOG_LOCBACK(1, 0, 0, 0);
 
-        /* If 'goto' will be used on the 'again' label, then
+        /* If 'goto' will be used on the 'resolve_all' label, then
          * the current leafref will not be processed again.
          */
         processed_leafrefs++;
