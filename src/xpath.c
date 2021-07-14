@@ -7095,6 +7095,10 @@ continue_search:
         if ((format == LY_VALUE_JSON) && !moveto_mod) {
             /* search all modules for a single match */
             while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
+                if (!mod->implemented) {
+                    continue;
+                }
+
                 scnode = lys_find_child(NULL, mod, name, name_len, 0, 0);
                 if (scnode) {
                     /* we have found a match */
