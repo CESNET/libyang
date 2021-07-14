@@ -75,9 +75,9 @@ struct lys_depset_unres {
  * @brief Unres structure global for compilation.
  */
 struct lys_glob_unres {
-    struct ly_set dep_sets;     /**< set of dependency sets of modules, see ::ly_ctx_compile_deps_mod_r() */
+    struct ly_set dep_sets;     /**< set of dependency sets of modules, see ::lys_compile_dep_set_r() */
     struct ly_set implementing; /**< set of YANG schemas being atomically implemented (compiled); the first added
-                                    module is always the explcitly implemented module, the other ones are dependencies */
+                                    module is always the explicitly implemented module, the other ones are dependencies */
     struct ly_set creating;     /**< set of YANG schemas being atomically created (parsed); it is a subset of implemented
                                     and all these modules are freed if any error occurs */
     struct lys_depset_unres ds_unres;   /**< unres specific for the current dependency set */
@@ -101,6 +101,7 @@ struct lysc_unres_dflt {
  * @param[in] CTX libyang context of the dictionary.
  * @param[in] ORIG String to duplicate.
  * @param[out] DUP Where to store the result.
+ * @param[out] RET Where to store the return code.
  */
 #define DUP_STRING(CTX, ORIG, DUP, RET) if (ORIG) {RET = lydict_insert(CTX, ORIG, 0, &DUP);}
 #define DUP_STRING_RET(CTX, ORIG, DUP) if (ORIG) {LY_ERR __ret = lydict_insert(CTX, ORIG, 0, &DUP); LY_CHECK_RET(__ret);}

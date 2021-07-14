@@ -380,7 +380,8 @@ error:
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node.
- * @param[in] cur_mod Current module of the path (where the path is "instantiated"). Needed for ::LY_VALUE_SCHEMA*.
+ * @param[in] cur_mod Current module of the path (where the path is "instantiated"). Needed for ::LY_VALUE_SCHEMA
+ * and ::LY_VALUE_SCHEMA_RESOLVED.
  * @param[in] prev_ctx_node Previous context node. Needed for ::LY_VALUE_JSON.
  * @param[in] expr Parsed path.
  * @param[in] tok_idx Index in @p expr.
@@ -797,7 +798,7 @@ cleanup:
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_mod Current module of the path (where it was "instantiated"), ignored of @p lref. Used for nodes
- * without a prefix for ::LY_PREF_SCHEMA* format.
+ * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Optional context node, mandatory of @p lref.
  * @param[in] ext Extension instance containing the definition of the data being created. It is used to find the top-level
  * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
