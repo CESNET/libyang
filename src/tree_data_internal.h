@@ -268,7 +268,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, ly_bool clear_dlft, ly_bool *incomplete);
+        void *prefix_data, uint32_t hints, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
  * @brief Insert an attribute (last) into a parent

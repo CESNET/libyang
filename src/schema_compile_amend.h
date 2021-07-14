@@ -124,7 +124,7 @@ void lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode);
  * @param[in] pnode Parsed node to consider.
  * @param[in] parent First compiled parent of @p pnode.
  * @param[out] dev_pnode Copy of parsed node @p pnode with deviations and refines, if any. NULL if there are none.
- * @param[out] no_supported Whether a not-supported deviation is defined for the node.
+ * @param[out] not_supported Whether a not-supported deviation is defined for the node.
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node *pnode,

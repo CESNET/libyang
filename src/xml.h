@@ -136,10 +136,8 @@ LY_ERR lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next);
  * @brief Get a namespace record for the given prefix in the current context.
  *
  * @param[in] ns_set Set with namespaces from the XML context.
- * @param[in] prefix Pointer to the namespace prefix as taken from ::lyxml_get_attribute() or ::lyxml_get_element().
- * Can be NULL for default namespace.
- * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from ::lyxml_get_attribute() or
- * ::lyxml_get_element()).
+ * @param[in] prefix Pointer to the namespace prefix. Can be NULL for default namespace.
+ * @param[in] prefix_len Length of the prefix string (since it might not be NULL-terminated).
  * @return The namespace record or NULL if the record for the specified prefix not found.
  */
 const struct lyxml_ns *lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len);

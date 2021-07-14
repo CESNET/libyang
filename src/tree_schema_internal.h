@@ -318,7 +318,7 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  *
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
- * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
+ * @param[in] revision Optional revision of the module to load. If NULL, the newest revision is loaded.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] mod Created module structure.
  * @return LY_SUCCESS on success.
@@ -670,12 +670,18 @@ void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 /**
  * @brief Free the parsed extension instance structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in] type Parsed extension instance structure to free. Note that the instance itself is not freed.
+ * @param[in] ext Parsed extension instance structure to free. Note that the instance itself is not freed.
  */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 
 /**
+ * @brief Parse generic statement structure into a specific parsed-schema structure.
+ *
+ * @param[in] ctx The compilation context of the @p stmt being processed
+ * @param[in] stmt Generic statement structure to process.
+ * @param[out] result Specific parsed-schema structure for the given statement. For the specific type for the particular statement, check the function code.
  * @param[in,out] exts [sized array](@ref sizedarrays) For extension instances in case of statements that do not store extension instances in their own list.
+ * @return LY_ERR value.
  */
 LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **result, struct lysp_ext_instance **exts);
 
@@ -828,15 +834,15 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
 /**
  * @brief Get format-specific prefix for a module.
  *
- * For type plugins available as ::ly_type_print_get_prefix().
+ * This function is available for type plugins via ::lyplg_type_get_prefix() API function.
  *
  * @param[in] mod Module whose prefix to get.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data based on @p format:
  *      LY_VALUE_CANON           - NULL
- *      LY_VALUE_SCHEMA          - const struct lysp_module * (module used for resolving imports to prefixes)
- *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_VALUE_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)
+ *      LY_VALUE_SCHEMA          - const struct ::lysp_module* (module used for resolving imports to prefixes)
+ *      LY_VALUE_SCHEMA_RESOLVED - struct ::lysc_prefix* (sized array of pairs: prefix - module)
+ *      LY_VALUE_XML             - struct ::ly_set* (set of all returned modules as struct ::lys_module)
  *      LY_VALUE_JSON            - NULL
  *      LY_VALUE_LYB             - NULL
  * @return Module prefix to print.
@@ -846,8 +852,6 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
 
 /**
  * @brief Resolve format-specific prefixes to modules.
- *
- * For type plugins available as ::ly_type_store_resolve_prefix().
  *
  * @param[in] ctx libyang context.
  * @param[in] prefix Prefix to resolve.

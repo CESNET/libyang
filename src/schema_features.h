@@ -47,9 +47,9 @@ LY_ERR lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatur
 LY_ERR lys_set_features(struct lysp_module *pmod, const char **features);
 
 /**
- * @brief Compile if-features of features in the current module and all its submodules.
+ * @brief Compile if-features of features in the provided module and all its submodules.
  *
- * @param[in] ctx Compile context.
+ * @param[in] pmod Parsed module to process.
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_feature_iffeatures(struct lysp_module *pmod);

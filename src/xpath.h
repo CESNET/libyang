@@ -26,11 +26,15 @@
 struct ly_ctx;
 struct lyd_node;
 
-/*
+/**
+ * @internal
+ * @page internals
+ * @section internalsXpath XPath Implementation
+ *
  * XPath evaluator fully compliant with http://www.w3.org/TR/1999/REC-xpath-19991116/
  * except the following restrictions in the grammar.
  *
- * PARSED GRAMMAR
+ * @subsection internalsXpathGrammar Parsed Grammar
  *
  * Full axes are not supported, abbreviated forms must be used,
  * variables are not supported, "id()" function is not supported,
@@ -39,7 +43,7 @@ struct lyd_node;
  * constants are tokens.
  *
  * Modified full grammar:
- *
+ * @code
  * [1] Expr ::= OrExpr // just an alias
  *
  * [2] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
@@ -73,6 +77,7 @@ struct lyd_node;
  *                     | MultiplicativeExpr 'mod' UnaryExpr
  * [19] UnaryExpr ::= UnionExpr | '-' UnaryExpr
  * [20] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
+ * @endcode
  */
 
 /* expression tokens allocation */

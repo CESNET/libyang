@@ -88,7 +88,7 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
  * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
- * @param[in] node_exts Set with nodes with extension instances with validation plugin callback, if NULL a local set is used.
+ * @param[in] node_exts_p Set with nodes with extension instances with validation plugin callback, if NULL a local set is used.
  * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
  * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
  * @param[out] diff Generated validation diff, not generated if NULL.

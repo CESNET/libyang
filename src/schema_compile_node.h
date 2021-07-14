@@ -49,7 +49,7 @@ LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t
  *
  * @param[in] ctx Context.
  * @param[in] pattern Pattern to check.
- * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
+ * @param[in,out] code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
 LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_code **code);
@@ -100,6 +100,7 @@ LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size
  * @param[in] ctx Compile context
  * @param[in] child_p Parsed choice children nodes.
  * @param[in] node Compiled choice node to compile and add children to.
+ * @param[in,out] child_set Optional set to add all the compiled nodes into (can be more in case of uses).
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 LY_ERR lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, struct lysc_node *node,

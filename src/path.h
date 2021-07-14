@@ -146,7 +146,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes in schema-nodeid
- * without a prefix for ::LY_PREF_SCHEMA* format.
+ * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Optional context node.
  * @param[in] ext Extension instance containing the definition of the data being created. It is used to find the top-level
  * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
@@ -189,7 +189,7 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node.
  * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
- * for ::LY_PREF_SCHEMA* format.
+ * for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Context node, node for which the predicate is defined.
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
