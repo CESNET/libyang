@@ -833,15 +833,20 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
             continue;
         }
 
+        /* unimplemented module found */
+        if (!mod->implemented && !implement) {
+            /* should not be implemented now */
+            *mod_p = mod;
+            break;
+        }
+
         if (!mod->implemented) {
-            /* unimplemented module found */
-            if (implement) {
-                LY_CHECK_RET(lys_implement((struct lys_module *)mod, NULL, unres));
-                LY_CHECK_RET(lys_compile((struct lys_module *)mod, &unres->ds_unres));
-            } else {
-                *mod_p = mod;
-                break;
-            }
+            /* implement if not implemented */
+            LY_CHECK_RET(lys_implement((struct lys_module *)mod, NULL, unres));
+        }
+        if (!mod->compiled) {
+            /* compile if not implemented before or only marked for compilation */
+            LY_CHECK_RET(lys_compile((struct lys_module *)mod, &unres->ds_unres));
         }
     }
 
