@@ -264,13 +264,13 @@ LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_ex
  * Steps taken when adding a new module (::ly_ctx_load_module(), ::lys_parse()):
  *
  * 1) parse module and add it into context with all imports and includes also parsed and in context
- *    (::lys_parse_load(), ::lys_parse_in(), ::lys_parse_localfile())
+ *    (::lys_parse_load(), ::lys_parse_in(), lys_parse_localfile() - static)
  * 2) implement it (perform one-time compilation tasks - compile identities and add reference to augment/deviation
  *    target modules, implement those as well, ::_lys_set_implemented())
  * 3) create dep set of the module (::lys_unres_dep_sets_create())
  * 4) (re)compile all the modules in the dep set and collect unres (::lys_compile_dep_set_r())
- * 5) resolve unres (::lys_compile_unres_depset()), new modules may be implemented like in 2) and if require recompilation,
- *    free all compiled modules and do 4)
+ * 5) resolve unres (lys_compile_unres_depset() - static), new modules may be implemented like in 2) and if
+ *    require recompilation, free all compiled modules and do 4)
  * 6) all modules that needed to be (re)compiled are now, with all their dependencies
  *
  * What can cause new modules to be implemented when resolving unres in 5):
