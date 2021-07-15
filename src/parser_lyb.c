@@ -730,7 +730,7 @@ lyb_parse_any_content(const struct ly_ctx *ctx, const char *data, struct lyd_nod
     /* turn logging off */
     prev_lo = ly_log_options(0);
 
-    ret = _lyd_parse_lyb(ctx, NULL, NULL, tree, in, LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0,
+    ret = _lyd_parse_lyb(ctx, NULL, NULL, tree, in, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0,
             LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS, NULL, &lydctx);
 
     /* turn logging on again */
