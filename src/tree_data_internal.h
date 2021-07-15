@@ -360,6 +360,7 @@ LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node
 /**
  * @defgroup datahash Data nodes hash manipulation
  * @ingroup datatree
+ * @{
  */
 
 /**
