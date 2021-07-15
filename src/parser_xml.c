@@ -655,7 +655,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             lydctx->parse_opts &= ~LYD_PARSE_STRICT;
             lydctx->parse_opts |= LYD_PARSE_OPAQ;
             prev_int_opts = lydctx->int_opts;
-            lydctx->int_opts |= LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF;
+            lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
 
             /* parse any data tree */
             anchor = NULL;

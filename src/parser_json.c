@@ -1123,7 +1123,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
 {
     LY_ERR ret;
     uint32_t type_hints = 0;
-    uint32_t prev_opts;
+    uint32_t prev_parse_opts, prev_int_opts;
     struct lyd_node *tree = NULL;
 
     ret = lydjson_data_check_opaq(lydctx, snode, &type_hints);
@@ -1187,9 +1187,11 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
 
             /* parse any data tree with correct options */
             /* first backup the current options and then make the parser to process data as opaq nodes */
-            prev_opts = lydctx->parse_opts;
+            prev_parse_opts = lydctx->parse_opts;
             lydctx->parse_opts &= ~LYD_PARSE_STRICT;
             lydctx->parse_opts |= LYD_PARSE_OPAQ;
+            prev_int_opts = lydctx->int_opts;
+            lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
 
             /* process the anydata content */
             while (*status != LYJSON_OBJECT_CLOSED && *status != LYJSON_OBJECT_EMPTY) {
@@ -1199,7 +1201,8 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             }
 
             /* restore parser options */
-            lydctx->parse_opts = prev_opts;
+            lydctx->parse_opts = prev_parse_opts;
+            lydctx->int_opts = prev_int_opts;
 
             /* finish linking metadata */
             ret = lydjson_metadata_finish(lydctx, &tree);
