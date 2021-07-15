@@ -2344,7 +2344,8 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
     } else {
         /* find the anchor without hashes */
         match = (struct lyd_node *)first_sibling;
-        if (!lysc_data_parent(new_node->schema)) {
+        sparent = lysc_data_parent(new_node->schema);
+        if (!sparent) {
             /* we are in top-level, skip all the data from preceding modules */
             LY_LIST_FOR(match, match) {
                 if (!match->schema || (strcmp(lyd_owner_module(match)->name, lyd_owner_module(new_node)->name) >= 0)) {
@@ -2354,7 +2355,6 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
         }
 
         /* get the first schema sibling */
-        sparent = lysc_data_parent(new_node->schema);
         schema = lys_getnext(NULL, sparent, new_node->schema->module->compiled, getnext_opts);
 
         found = 0;
