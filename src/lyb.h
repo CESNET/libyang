@@ -27,6 +27,9 @@ struct ly_ctx;
 struct lyd_node;
 struct lysc_node;
 
+/**
+ * @brief LYB format parser context
+ */
 struct lylyb_ctx {
     const struct ly_ctx *ctx;
     uint64_t line;             /* current line */
@@ -46,35 +49,6 @@ struct lylyb_ctx {
         struct lysc_node *first_sibling;
         struct hash_table *ht;
     } *sib_hts;
-};
-
-/**
- * @brief Internal structure for LYB parser/printer.
- *
- * Note that the structure maps to the lyd_ctx which is common for all the data parsers
- */
-struct lyd_lyb_ctx {
-    const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context of the data being parsed */
-    union {
-        struct {
-            uint32_t parse_opts;   /**< various @ref dataparseroptions. */
-            uint32_t val_opts;     /**< various @ref datavalidationoptions. */
-        };
-        uint32_t print_options;
-    };
-    uint32_t int_opts;             /**< internal data parser options */
-    uint32_t path_len;             /**< used bytes in the path buffer */
-    char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
-    struct ly_set node_when;       /**< set of nodes with "when" conditions */
-    struct ly_set node_exts;       /**< set of nodes and extensions connected with a plugin providing own validation callback */
-    struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
-    struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
-    struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
-
-    /* callbacks */
-    lyd_ctx_free_clb free;           /* destructor */
-
-    struct lylyb_ctx *lybctx;      /* lyb format context */
 };
 
 /**

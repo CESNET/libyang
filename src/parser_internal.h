@@ -69,6 +69,77 @@ struct lyd_ctx {
 };
 
 /**
+ * @brief Internal context for XML data parser.
+ */
+struct lyd_xml_ctx {
+    const struct lysc_ext_instance *ext;
+    uint32_t parse_opts;
+    uint32_t val_opts;
+    uint32_t int_opts;
+    uint32_t path_len;
+    char path[LYD_PARSER_BUFSIZE];
+    struct ly_set node_when;
+    struct ly_set node_exts;
+    struct ly_set node_types;
+    struct ly_set meta_types;
+    struct lyd_node *op_node;
+
+    /* callbacks */
+    lyd_ctx_free_clb free;
+
+    struct lyxml_ctx *xmlctx;      /**< XML context */
+};
+
+/**
+ * @brief Internal context for JSON data parser.
+ */
+struct lyd_json_ctx {
+    const struct lysc_ext_instance *ext;
+    uint32_t parse_opts;
+    uint32_t val_opts;
+    uint32_t int_opts;
+    uint32_t path_len;
+    char path[LYD_PARSER_BUFSIZE];
+    struct ly_set node_when;
+    struct ly_set node_exts;
+    struct ly_set node_types;
+    struct ly_set meta_types;
+    struct lyd_node *op_node;
+
+    /* callbacks */
+    lyd_ctx_free_clb free;
+
+    struct lyjson_ctx *jsonctx;    /**< JSON context */
+};
+
+/**
+ * @brief Internal context for LYB data parser/printer.
+ */
+struct lyd_lyb_ctx {
+    const struct lysc_ext_instance *ext;
+    union {
+        struct {
+            uint32_t parse_opts;
+            uint32_t val_opts;
+        };
+        uint32_t print_options;
+    };
+    uint32_t int_opts;
+    uint32_t path_len;
+    char path[LYD_PARSER_BUFSIZE];
+    struct ly_set node_when;
+    struct ly_set node_exts;
+    struct ly_set node_types;
+    struct ly_set meta_types;
+    struct lyd_node *op_node;
+
+    /* callbacks */
+    lyd_ctx_free_clb free;
+
+    struct lylyb_ctx *lybctx;      /* LYB context */
+};
+
+/**
  * @brief Common part to supplement the specific ::lyd_ctx_free_clb callbacks.
  */
 void lyd_ctx_free(struct lyd_ctx *);
