@@ -5433,6 +5433,11 @@ static LY_ERR
 moveto_node_check(const struct lyd_node *node, const struct lyd_node *ctx_node, const struct lyxp_set *set,
         const char *node_name, const struct lys_module *moveto_mod, uint32_t options)
 {
+    if (!node->schema) {
+        /* opaque node never matches */
+        return LY_ENOT;
+    }
+
     if (!moveto_mod && (!node_name || strcmp(node_name, "*"))) {
         switch (set->format) {
         case LY_VALUE_SCHEMA:
