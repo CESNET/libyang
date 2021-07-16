@@ -1595,7 +1595,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     /* success */
 
 cleanup:
-    if (ret) {
+    if (ret && (ret != LY_EEXIST)) {
         if (mod && mod->name) {
             /* there are cases when path is not available for parsing error, so this additional
              * message tries to add information about the module where the error occurred */
