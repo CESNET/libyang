@@ -131,7 +131,6 @@ struct ly_in;
  * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
  * all the keys, leaf(-lists) correct values),
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
- * - if-feature statements are evaluated,
  * - invalid multiple data instances/data from several cases cause a validation error,
  * - implicit nodes (NP containers and default values) are added.
  * @{
