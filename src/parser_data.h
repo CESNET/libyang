@@ -151,6 +151,12 @@ struct ly_in;
 #define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Only for LYB format, allow parsing data printed using a specific module
                                                  revision to be loaded even with a module with the same name but newer
                                                  revision. */
+#define LYD_PARSE_ORDERED 0x200000          /**< Do not search for the correct place of each node but instead expect
+                                                 that the nodes are being parsed in the correct schema-based order,
+                                                 which is always true if the data were printed by libyang and not
+                                                 modified manually. If this flag is used incorrectly (for unordered data),
+                                                 the behavior is undefined and most functions executed with these
+                                                 data will not work correctly. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 

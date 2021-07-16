@@ -847,18 +847,20 @@ cleanup:
 }
 
 /**
- * @brief Eat the node pointed by @p node_p by inserting it into @p parent and maintain the @p first_p pointing to the first child node.
+ * @brief Eat the node pointed by @p node_p by inserting it into @p parent and maintain the @p first_p pointing
+ * to the first child node.
  *
  * @param[in] parent Parent node to insert to, can be NULL in case of top-level (or provided first_p).
- * @param[in, out] first_p Pointer to the first sibling node in case of top-level.
- * @param[in, out] node_p pointer to the new node to insert, after the insert is done, pointer is set to NULL.
+ * @param[in,out] first_p Pointer to the first sibling node in case of top-level.
+ * @param[in,out] node_p pointer to the new node to insert, after the insert is done, pointer is set to NULL.
+ * @param[in] last If set, always insert at the end.
  */
 static void
-lydjson_maintain_children(struct lyd_node_inner *parent, struct lyd_node **first_p, struct lyd_node **node_p)
+lydjson_maintain_children(struct lyd_node_inner *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last)
 {
     if (*node_p) {
         /* insert, keep first pointer correct */
-        lyd_insert_node(parent ? &parent->node : NULL, first_p, *node_p);
+        lyd_insert_node(parent ? &parent->node : NULL, first_p, *node_p, last);
         if (first_p) {
             if (parent) {
                 *first_p = parent->child;
@@ -971,7 +973,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
 
         /* continue with the next instance */
         assert(node_p);
-        lydjson_maintain_children(parent, first_p, node_p);
+        lydjson_maintain_children(parent, first_p, node_p, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
         ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p);
         LY_CHECK_RET(ret);
     }
@@ -1331,7 +1333,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 
             /* process all the values/objects */
             do {
-                lydjson_maintain_children((struct lyd_node_inner *)parent, first_p, &node);
+                lydjson_maintain_children((struct lyd_node_inner *)parent, first_p, &node,
+                        lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
 
                 ret = lydjson_parse_instance(lydctx, (struct lyd_node_inner *)parent, first_p, snode, name, name_len,
                         prefix, prefix_len, &status, &node);
@@ -1383,7 +1386,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
     /* finally connect the parsed node */
-    lydjson_maintain_children((struct lyd_node_inner *)parent, first_p, &node);
+    lydjson_maintain_children((struct lyd_node_inner *)parent, first_p, &node,
+            lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
 
     /* rememeber a successfully parsed node */
     if (parsed) {

@@ -957,7 +957,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     }
 
     /* insert, keep first pointer correct */
-    lyd_insert_node(parent, first_p, node);
+    lyd_insert_node(parent, first_p, node, lybctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
     }

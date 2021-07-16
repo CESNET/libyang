@@ -436,13 +436,14 @@ test_parse_xml_mem_validate(struct test_state *state, struct timespec *ts_start,
 static LY_ERR
 test_parse_xml_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
-    return _test_parse(state, LYD_XML, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_XML, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0,
+            ts_start, ts_end);
 }
 
 static LY_ERR
 test_parse_xml_file_no_validate_format(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
-    return _test_parse(state, LYD_XML, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_XML, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end);
 }
 
 static LY_ERR
@@ -454,13 +455,14 @@ test_parse_json_mem_validate(struct test_state *state, struct timespec *ts_start
 static LY_ERR
 test_parse_json_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
-    return _test_parse(state, LYD_JSON, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_JSON, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0,
+            ts_start, ts_end);
 }
 
 static LY_ERR
 test_parse_json_file_no_validate_format(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
-    return _test_parse(state, LYD_JSON, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_JSON, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end);
 }
 
 static LY_ERR
@@ -472,13 +474,14 @@ test_parse_lyb_mem_validate(struct test_state *state, struct timespec *ts_start,
 static LY_ERR
 test_parse_lyb_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
-    return _test_parse(state, LYD_LYB, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_LYB, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0,
+            ts_start, ts_end);
 }
 
 static LY_ERR
 test_parse_lyb_file_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
 {
-    return _test_parse(state, LYD_LYB, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_LYB, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end);
 }
 
 static LY_ERR

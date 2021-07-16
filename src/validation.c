@@ -1649,7 +1649,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     lyd_val_op_merge_find(op_tree, op_node, dep_tree, &op_subtree, &tree_sibling, &tree_parent);
     op_parent = lyd_parent(op_subtree);
     lyd_unlink_tree(op_subtree);
-    lyd_insert_node(tree_parent, &tree_sibling, op_subtree);
+    lyd_insert_node(tree_parent, &tree_sibling, op_subtree, 0);
     if (!dep_tree) {
         dep_tree = tree_sibling;
     }
@@ -1693,7 +1693,7 @@ cleanup:
     /* restore operation tree */
     lyd_unlink_tree(op_subtree);
     if (op_parent) {
-        lyd_insert_node(op_parent, NULL, op_subtree);
+        lyd_insert_node(op_parent, NULL, op_subtree, 0);
     }
 
     ly_set_erase(&node_when, NULL);

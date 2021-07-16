@@ -696,7 +696,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     }
 
     /* insert, keep first pointer correct */
-    lyd_insert_node(parent, first_p, node);
+    lyd_insert_node(parent, first_p, node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
     }
@@ -817,7 +817,7 @@ lydxml_env_netconf_rpc(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_
     r = lydxml_envelope(xmlctx, "action", "urn:ietf:params:xml:ns:yang:1", 0, &child);
     if (r == LY_SUCCESS) {
         /* insert */
-        lyd_insert_node(*envp, NULL, child);
+        lyd_insert_node(*envp, NULL, child, 0);
 
         /* NETCONF action */
         *int_opts = LYD_INTOPT_NO_SIBLINGS | LYD_INTOPT_ACTION;
@@ -871,7 +871,7 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* insert */
-    lyd_insert_node(*envp, NULL, child);
+    lyd_insert_node(*envp, NULL, child, 0);
 
     /* validate value */
     /* TODO validate child->value as yang:date-and-time */
@@ -954,7 +954,7 @@ lydxml_opaq_r(struct lyxml_ctx *xmlctx, struct lyd_node *parent)
     }
 
     /* insert */
-    lyd_insert_node(parent, NULL, child);
+    lyd_insert_node(parent, NULL, child, 1);
 
 cleanup:
     lyd_free_attr_siblings(xmlctx->ctx, attr);
@@ -1080,7 +1080,7 @@ check_child:
         LY_CHECK_GOTO(r = lyxml_ctx_next(xmlctx), error);
 
         /* insert */
-        lyd_insert_node(parent, NULL, child);
+        lyd_insert_node(parent, NULL, child, 1);
     }
 
     return LY_SUCCESS;
@@ -1255,7 +1255,7 @@ check_child:
         LY_CHECK_GOTO(r = lyxml_ctx_next(xmlctx), error);
 
         /* insert */
-        lyd_insert_node(parent, NULL, child);
+        lyd_insert_node(parent, NULL, child, 1);
     }
 
     return LY_SUCCESS;
@@ -1299,7 +1299,7 @@ lydxml_env_netconf_reply(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     r = lydxml_envelope(xmlctx, "ok", "urn:ietf:params:xml:ns:netconf:base:1.0", 0, &child);
     if (r == LY_SUCCESS) {
         /* insert */
-        lyd_insert_node(*envp, NULL, child);
+        lyd_insert_node(*envp, NULL, child, 1);
 
         /* finish child parsing */
         if (xmlctx->status != LYXML_ELEM_CLOSE) {
@@ -1330,7 +1330,7 @@ lydxml_env_netconf_reply(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
         }
 
         /* insert */
-        lyd_insert_node(*envp, NULL, child);
+        lyd_insert_node(*envp, NULL, child, 1);
 
         /* parse all children of "rpc-error" */
         LY_CHECK_GOTO(rc = lydxml_env_netconf_rpc_reply_error(xmlctx, child), cleanup);
