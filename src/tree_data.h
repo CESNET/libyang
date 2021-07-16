@@ -2323,6 +2323,19 @@ LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name
 LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
 
 /**
+ * @brief Evaluate an XPath on data and return the result converted to boolean.
+ *
+ * Optimizations similar as in ::lyd_find_xpath().
+ *
+ * @param[in] ctx_node XPath context node.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[out] result Expression result comverted to boolean.
+ * @return LY_SUCCESS on success, @p result is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result);
+
+/**
  * @brief Search in given data for a node uniquely identified by a path.
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth

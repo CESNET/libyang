@@ -4414,6 +4414,36 @@ cleanup:
 }
 
 API LY_ERR
+lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_set xp_set;
+    struct lyxp_expr *exp = NULL;
+
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, result, LY_EINVAL);
+
+    /* compile expression */
+    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(ctx_node), xpath, 0, 1, &exp);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* evaluate expression */
+    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, LYXP_IGNORE_WHEN);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* transform into boolean */
+    ret = lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* set result */
+    *result = xp_set.val.bln;
+
+cleanup:
+    lyxp_set_free_content(&xp_set);
+    lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
+    return ret;
+}
+
+API LY_ERR
 lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match)
 {
     LY_ERR ret = LY_SUCCESS;
