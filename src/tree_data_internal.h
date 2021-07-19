@@ -392,6 +392,14 @@ void lyd_unlink_hash(struct lyd_node *node);
 /** @} datahash */
 
 /**
+ * @brief Update node pointer to point to the first data node of a module, leave unchanged if there is none.
+ *
+ * @param[in,out] node Node pointer, may be updated.
+ * @param[in] mod Module whose data to search for.
+ */
+void lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod);
+
+/**
  * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
  *
  * @param[in] tree Data tree.

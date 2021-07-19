@@ -1491,8 +1491,12 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_GOTO(ret, cleanup);
 
         /* our first module node pointer may no longer be the first */
-        while (*first2 && (*first2)->prev->next && (lyd_owner_module(*first2) == lyd_owner_module((*first2)->prev))) {
-            *first2 = (*first2)->prev;
+        first = *first2;
+        lyd_first_module_sibling(&first, mod);
+        if (!first || (first == *tree)) {
+            first2 = tree;
+        } else {
+            first2 = &first;
         }
 
         if (validate_subtree) {

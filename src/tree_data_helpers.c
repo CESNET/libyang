@@ -215,6 +215,57 @@ lyd_owner_module(const struct lyd_node *node)
     return schema->module;
 }
 
+void
+lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod)
+{
+    int cmp;
+    struct lyd_node *first;
+
+    assert(node && mod);
+
+    if (!*node) {
+        return;
+    }
+
+    first = *node;
+    cmp = strcmp(lyd_owner_module(first)->name, mod->name);
+    if (cmp > 0) {
+        /* there may be some preceding data */
+        while (first->prev->next) {
+            first = first->prev;
+            if (lyd_owner_module(first) == mod) {
+                cmp = 0;
+                break;
+            }
+        }
+    }
+
+    if (cmp == 0) {
+        /* there may be some preceding data belonging to this module */
+        while (first->prev->next) {
+            if (lyd_owner_module(first->prev) != mod) {
+                break;
+            }
+            first = first->prev;
+        }
+    }
+
+    if (cmp < 0) {
+        /* there may be some following data */
+        LY_LIST_FOR(first, first) {
+            if (lyd_owner_module(first) == mod) {
+                cmp = 0;
+                break;
+            }
+        }
+    }
+
+    if (cmp == 0) {
+        /* we have found the first module data node */
+        *node = first;
+    }
+}
+
 const struct lys_module *
 lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t *i,
         struct lyd_node **first)
@@ -467,10 +518,11 @@ lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const s
         return;
     }
 
-    *root = (*root)->next;
-    if (mod && *root && (lyd_owner_module(to_del) != lyd_owner_module(*root))) {
-        /* there are no more nodes from mod */
+    if (mod && (*root)->prev->next && (!(*root)->next || (lyd_owner_module(to_del) != lyd_owner_module((*root)->next)))) {
+        /* there are no more nodes from mod, simply get the first top-level sibling */
         *root = lyd_first_sibling(*root);
+    } else {
+        *root = (*root)->next;
     }
 }
 
