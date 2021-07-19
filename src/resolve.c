@@ -2347,7 +2347,7 @@ resolve_json_nodeid(const char *nodeid, const struct ly_ctx *ctx, const struct l
         while (start_parent && (start_parent->nodetype == LYS_USES)) {
             start_parent = lys_parent(start_parent);
         }
-        module = start->module;
+        module = lys_node_module(start);
     } else {
         if (!mod_name) {
             str = strndup(nodeid, (name + nam_len) - nodeid);
