@@ -178,18 +178,19 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
  * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
  * the first top-level sibling.
  * @param[in] node_when Set with nodes with "when" conditions.
+ * @param[in,out] node_types Set with nodes with unresolved types, remove any with false "when" parents.
  * @param[in,out] diff Validation diff.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
 static LY_ERR
 lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
-        struct lyd_node **diff)
+        struct ly_set *node_types, struct lyd_node **diff)
 {
     LY_ERR ret;
-    uint32_t i;
+    uint32_t i, idx;
     const struct lysc_when *disabled;
-    struct lyd_node *node = NULL;
+    struct lyd_node *node = NULL, *elem;
 
     if (!node_when->count) {
         return LY_SUCCESS;
@@ -214,6 +215,16 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                         ret = lyd_val_diff_add(node, LYD_DIFF_OP_DELETE, diff);
                         LY_CHECK_GOTO(ret, error);
                     }
+
+                    /* remove from node types set, if present */
+                    LYD_TREE_DFS_BEGIN(node, elem) {
+                        if (ly_set_contains(node_types, elem, &idx)) {
+                            LY_CHECK_GOTO(ret = ly_set_rm_index(node_types, idx, NULL), error);
+                        }
+                        LYD_TREE_DFS_END(node, elem);
+                    }
+
+                    /* free */
                     lyd_free_tree(node);
                 } else {
                     /* invalid data */
@@ -306,7 +317,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
         uint32_t prev_count;
         do {
             prev_count = node_when->count;
-            LY_CHECK_RET(lyd_validate_unres_when(tree, mod, node_when, diff));
+            LY_CHECK_RET(lyd_validate_unres_when(tree, mod, node_when, node_types, diff));
             /* there must have been some when conditions resolved */
         } while (prev_count > node_when->count);
 
