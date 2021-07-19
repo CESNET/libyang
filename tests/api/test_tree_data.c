@@ -605,7 +605,7 @@ test_lyd_new_path(void **state)
     assert_non_null(node);
     assert_string_equal(node->schema->name, "number64");
 
-    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='\\']", NULL, 0, 0);
+    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='\'']", NULL, 0, 0);
     assert_null(node);
     assert_int_equal(ly_errno, LY_EVALID);
     ly_errno = 0;
