@@ -1257,6 +1257,7 @@ lyd_validate_obsolete(const struct lyd_node *node)
 static LY_ERR
 lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
 {
+    LY_ERR ret;
     struct lyxp_set xp_set;
     struct lysc_must *musts;
     const struct lyd_node *tree;
@@ -1272,8 +1273,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         } else if (int_opts & LYD_INTOPT_REPLY) {
             schema = &((struct lysc_node_action *)node->schema)->output.node;
         } else {
-            LOGINT(LYD_CTX(node));
-            return LY_EINT;
+            LOGINT_RET(LYD_CTX(node));
         }
     } else {
         schema = node->schema;
@@ -1292,8 +1292,13 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         memset(&xp_set, 0, sizeof xp_set);
 
         /* evaluate must */
-        LY_CHECK_RET(lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
-                musts[u].prefixes, node, tree, &xp_set, LYXP_SCHEMA));
+        ret = lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
+                musts[u].prefixes, node, tree, &xp_set, LYXP_SCHEMA);
+        if (ret == LY_EINCOMPLETE) {
+            LOGINT_RET(LYD_CTX(node));
+        } else if (ret) {
+            return ret;
+        }
 
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
