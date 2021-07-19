@@ -1331,7 +1331,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
     /* validate all restrictions of nodes themselves */
     LY_LIST_FOR_SAFE(first, next, node) {
-        if (mod && (lyd_owner_module(node) != mod)) {
+        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
             /* all top-level data from this module checked */
             break;
         }
@@ -1372,6 +1372,11 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
     LY_CHECK_RET(lyd_validate_siblings_schema_r(first, parent, sparent, mod ? mod->compiled : NULL, val_opts, int_opts));
 
     LY_LIST_FOR(first, node) {
+        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
+            /* all top-level data from this module checked */
+            break;
+        }
+
         /* validate all children recursively */
         LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, val_opts, int_opts));
 
