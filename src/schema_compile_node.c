@@ -3582,6 +3582,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     struct lysc_node *child;
     struct lysp_node_grp *grp = NULL;
     uint32_t i, grp_stack_count;
+    uint16_t uses_flags;
     struct lysp_module *grp_mod, *mod_old = ctx->pmod;
     LY_ERR ret = LY_SUCCESS;
     struct lysc_when *when_shared = NULL;
@@ -3611,10 +3612,15 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     /* switch context's parsed module being processed */
     ctx->pmod = grp_mod;
 
+    /* compile special uses status flags */
+    uses_flags = uses_p->flags;
+    ret = lys_compile_status(ctx, &uses_flags, "<uses>", parent ? parent->flags : 0, parent ? parent->name : NULL, 0);
+    LY_CHECK_GOTO(ret, cleanup);
+    uses_flags |= LYS_STATUS_USES;
+
     /* compile data nodes */
     LY_LIST_FOR(grp->child, pnode) {
-        /* LYS_STATUS_USES in uses_status is a special bits combination to be able to detect status flags from uses */
-        ret = lys_compile_node(ctx, pnode, parent, (uses_p->flags & LYS_STATUS_MASK) | LYS_STATUS_USES, &uses_child_set);
+        ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -3628,7 +3634,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         for (i = 0; i < uses_child_set.count; ++i) {
             child = uses_child_set.snodes[i];
 
-            ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, lysc_data_node(parent), child, &when_shared);
+            ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
@@ -3645,15 +3651,14 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             goto cleanup;
         }
         LY_LIST_FOR((struct lysp_node *)grp->actions, pnode) {
-            /* LYS_STATUS_USES in uses_status is a special bits combination to be able to detect status flags from uses */
-            ret = lys_compile_node(ctx, pnode, parent, (uses_p->flags & LYS_STATUS_MASK) | LYS_STATUS_USES, &uses_child_set);
+            ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
         if (uses_p->when) {
             /* inherit when */
             LY_LIST_FOR((struct lysc_node *)*actions, child) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, lysc_data_node(parent), child, &when_shared);
+                ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
@@ -3672,15 +3677,14 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         }
 
         LY_LIST_FOR((struct lysp_node *)grp->notifs, pnode) {
-            /* LYS_STATUS_USES in uses_status is a special bits combination to be able to detect status flags from uses */
-            ret = lys_compile_node(ctx, pnode, parent, (uses_p->flags & LYS_STATUS_MASK) | LYS_STATUS_USES, &uses_child_set);
+            ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
         if (uses_p->when) {
             /* inherit when */
             LY_LIST_FOR((struct lysc_node *)*notifs, child) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, lysc_data_node(parent), child, &when_shared);
+                ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
