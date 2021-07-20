@@ -3231,7 +3231,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition includes a self-reference.", "Schema location /a:cont/lst/val.");
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"cont2\".", "Schema location /a:cont/lst/val.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3259,7 +3259,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition includes a self-reference.", "Schema location /a:cont/lst/val.");
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"cont2\".", "Schema location /a:cont/lst/val.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"

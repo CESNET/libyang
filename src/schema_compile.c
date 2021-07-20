@@ -753,7 +753,8 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         uint32_t idx;
                         if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) &&
                                 (set->val.scnodes[idx].in_ctx == LYXP_SET_SCNODE_START_USED)) {
-                            LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition includes a self-reference.");
+                            LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition cyclic dependency on the node \"%s\".",
+                                    tmp_set.val.scnodes[j].scnode->name);
                             ret = LY_EVALID;
                             goto cleanup;
                         }
