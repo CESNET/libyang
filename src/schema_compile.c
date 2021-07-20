@@ -778,7 +778,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
         } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
         /* this node when was checked (xp_scnode could have been reallocd) */
-        set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_START_USED;
+        set->val.scnodes[i].in_ctx = LYXP_SET_SCNODE_ATOM_NODE;
     }
 
 cleanup:
