@@ -1721,6 +1721,13 @@ LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 LY_ERR lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
+ * @brief Unlink the specified node with all the following siblings.
+ *
+ * @param[in] node Data tree node to be unlinked (together with all the children and following siblings).
+ */
+void lyd_unlink_siblings(struct lyd_node *node);
+
+/**
  * @brief Unlink the specified data subtree.
  *
  * @param[in] node Data tree node to be unlinked (together with all the children).

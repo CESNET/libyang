@@ -2737,6 +2737,17 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 }
 
 API void
+lyd_unlink_siblings(struct lyd_node *node)
+{
+    struct lyd_node *next, *elem, *first = NULL;
+
+    LY_LIST_FOR_SAFE(node, next, elem) {
+        lyd_unlink_tree(elem);
+        lyd_insert_node(NULL, &first, elem, 1);
+    }
+}
+
+API void
 lyd_unlink_tree(struct lyd_node *node)
 {
     struct lyd_node *iter;
