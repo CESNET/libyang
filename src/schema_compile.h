@@ -75,7 +75,7 @@ struct lys_depset_unres {
  * @brief Unres structure global for compilation.
  */
 struct lys_glob_unres {
-    struct ly_set dep_sets;     /**< set of dependency sets of modules, see ::lys_compile_dep_set_r() */
+    struct ly_set dep_sets;     /**< set of dependency sets of modules, see ::lys_compile_depset_all() */
     struct ly_set implementing; /**< set of YANG schemas being atomically implemented (compiled); the first added
                                     module is always the explicitly implemented module, the other ones are dependencies */
     struct ly_set creating;     /**< set of YANG schemas being atomically created (parsed); it is a subset of implemented
@@ -280,11 +280,10 @@ LY_ERR lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_ex
  * - new implemented module augments, deviations
  *
  * @param[in] ctx libyang context.
- * @param[in] dep_set Dependency set to compile.
  * @param[in,out] unres Global unres to use.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile_dep_set_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob_unres *unres);
+LY_ERR lys_compile_depset_all(struct ly_ctx *ctx, struct lys_glob_unres *unres);
 
 /**
  * @brief Implement a single module. Does not actually compile, only marks to_compile!

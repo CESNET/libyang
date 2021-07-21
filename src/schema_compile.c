@@ -1431,8 +1431,16 @@ lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *
     ly_set_erase(&unres->ds_unres.disabled, NULL);
 }
 
-LY_ERR
-lys_compile_dep_set_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob_unres *unres)
+/**
+ * @brief Compile all flagged modules in a dependency set, recursively if recompilation is needed.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] dep_set Dependency set to compile.
+ * @param[in,out] unres Global unres to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_depset_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
@@ -1459,7 +1467,7 @@ lys_compile_dep_set_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glo
     if (ret == LY_ERECOMPILE) {
         /* new module is implemented, discard current dep set unres and recompile the whole dep set */
         lys_compile_unres_depset_erase(ctx, unres);
-        return lys_compile_dep_set_r(ctx, dep_set, unres);
+        return lys_compile_depset_r(ctx, dep_set, unres);
     } else if (ret) {
         /* error */
         goto cleanup;
@@ -1474,6 +1482,18 @@ lys_compile_dep_set_r(struct ly_ctx *ctx, struct ly_set *dep_set, struct lys_glo
 cleanup:
     lys_compile_unres_depset_erase(ctx, unres);
     return ret;
+}
+
+LY_ERR
+lys_compile_depset_all(struct ly_ctx *ctx, struct lys_glob_unres *unres)
+{
+    uint32_t i;
+
+    for (i = 0; i < unres->dep_sets.count; ++i) {
+        LY_CHECK_RET(lys_compile_depset_r(ctx, unres->dep_sets.objs[i], unres));
+    }
+
+    return LY_SUCCESS;
 }
 
 /**

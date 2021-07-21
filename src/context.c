@@ -208,8 +208,8 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, c
         /* create dep set for the module and mark all the modules that will be (re)compiled */
         LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &unres.dep_sets, mod), cleanup);
 
-        /* (re)compile the whole dep set */
-        LY_CHECK_GOTO(ret = lys_compile_dep_set_r(ctx, unres.dep_sets.objs[0], &unres), cleanup);
+        /* (re)compile the whole dep set (other dep sets will have no modules marked for compilation) */
+        LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &unres), cleanup);
     }
 
 cleanup:
@@ -505,7 +505,6 @@ API LY_ERR
 ly_ctx_compile(struct ly_ctx *ctx)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint32_t i;
     struct lys_glob_unres unres = {0};
 
     LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
@@ -514,9 +513,7 @@ ly_ctx_compile(struct ly_ctx *ctx)
     LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &unres.dep_sets, NULL), cleanup);
 
     /* (re)compile all the dep sets */
-    for (i = 0; i < unres.dep_sets.count; ++i) {
-        LY_CHECK_GOTO(ret = lys_compile_dep_set_r(ctx, unres.dep_sets.objs[i], &unres), cleanup);
-    }
+    LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &unres), cleanup);
 
 cleanup:
     if (ret) {
