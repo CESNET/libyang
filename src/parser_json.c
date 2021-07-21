@@ -457,11 +457,11 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
         return LY_SUCCESS;
     }
 
-    if (lydctx->parse_opts & LYD_PARSE_OPAQ) {
-        /* backup parser */
-        lyjson_ctx_backup(jsonctx);
-        status = lyjson_ctx_status(jsonctx, 0);
+    /* backup parser */
+    lyjson_ctx_backup(jsonctx);
+    status = lyjson_ctx_status(jsonctx, 0);
 
+    if (lydctx->parse_opts & LYD_PARSE_OPAQ) {
         /* check if the node is parseable. if not, NULL the snode to announce that it is supposed to be parsed
          * as an opaq node */
         switch (snode->nodetype) {
@@ -485,13 +485,13 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             }
             break;
         }
-
-        /* restore parser */
-        lyjson_ctx_restore(jsonctx);
     } else if (snode->nodetype & LYD_NODE_TERM) {
         status = lyjson_ctx_status(jsonctx, 0);
         ret = lydjson_value_type_hint(lydctx, &status, type_hint_p);
     }
+
+    /* restore parser */
+    lyjson_ctx_restore(jsonctx);
 
     return ret;
 }
@@ -1139,8 +1139,14 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             LY_CHECK_RET(ret);
 
             /* move JSON parser */
-            ret = lyjson_ctx_next(lydctx->jsonctx, status);
-            LY_CHECK_RET(ret);
+            if (*status == LYJSON_ARRAY) {
+                /* only [null], 2 more moves are needed */
+                LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
+                assert(*status == LYJSON_NULL);
+                LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
+                assert(*status == LYJSON_ARRAY_CLOSED);
+            }
+            LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
         } else if (snode->nodetype & LYD_NODE_INNER) {
             /* create inner node */
             LY_CHECK_RET(*status != LYJSON_OBJECT && *status != LYJSON_OBJECT_EMPTY, LY_EINVAL);
