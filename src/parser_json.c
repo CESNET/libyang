@@ -234,7 +234,7 @@ lydjson_get_snode(const struct lyd_json_ctx *lydctx, ly_bool is_attr, const char
     }
 
     /* get the schema node */
-    if (mod) {
+    if (mod && (!parent || parent->schema)) {
         if (!parent && lydctx->ext) {
             *snode_p = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
         } else {
