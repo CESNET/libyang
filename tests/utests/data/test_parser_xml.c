@@ -292,10 +292,10 @@ test_opaq(void **state)
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(UTEST_LYCTX,
             "<a xmlns=\"ns\">\n"
             "  <b>x</b>\n"
-            "  <c xml:id=\"D\">1</c>\n"
+            "  <c xmld:id=\"D\">1</c>\n"
             "</a>\n",
             LYD_XML, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Unknown XML prefix \"xml\".", "Line number 3.");
+    CHECK_LOG_CTX("Unknown XML prefix \"xmld\".", "Line number 3.");
 }
 
 static void

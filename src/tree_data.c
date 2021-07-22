@@ -1417,6 +1417,14 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
         return LY_EVALID;
     }
 
+    if ((pref_len == 3) && !strncmp(prefix, "xml", 3)) {
+        /* not a prefix but special name */
+        name = prefix;
+        name_len += 1 + pref_len;
+        prefix = NULL;
+        pref_len = 0;
+    }
+
     /* get the module */
     if (module_name) {
         mod_len = strlen(module_name);
@@ -1457,6 +1465,14 @@ lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, 
     if (ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len) || tmp[0]) {
         LOGERR(ctx, LY_EINVAL, "Attribute name \"%s\" is not valid.", name);
         return LY_EVALID;
+    }
+
+    if ((pref_len == 3) && !strncmp(prefix, "xml", 3)) {
+        /* not a prefix but special name */
+        name = prefix;
+        name_len += 1 + pref_len;
+        prefix = NULL;
+        pref_len = 0;
     }
 
     /* set value if none */

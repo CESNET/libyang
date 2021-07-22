@@ -170,17 +170,6 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
     *attr = NULL;
 
     while (xmlctx->status == LYXML_ATTRIBUTE) {
-        ns = NULL;
-        if (xmlctx->prefix_len) {
-            /* get namespace of the attribute */
-            ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
-            if (!ns) {
-                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
-                ret = LY_EVALID;
-                goto cleanup;
-            }
-        }
-
         if (*attr) {
             attr2 = *attr;
         } else {
@@ -194,6 +183,25 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
         name_len = xmlctx->name_len;
         LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
         assert(xmlctx->status == LYXML_ATTR_CONTENT);
+
+        /* handle special "xml" attribute prefix */
+        if ((prefix_len == 3) && !strncmp(prefix, "xml", 3)) {
+            name = prefix;
+            name_len += 1 + prefix_len;
+            prefix = NULL;
+            prefix_len = 0;
+        }
+
+        /* find namespace of the attribute, if any */
+        ns = NULL;
+        if (prefix_len) {
+            ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
+            if (!ns) {
+                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)prefix_len, prefix);
+                ret = LY_EVALID;
+                goto cleanup;
+            }
+        }
 
         /* get value prefixes */
         val_prefix_data = NULL;
