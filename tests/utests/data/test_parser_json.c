@@ -131,7 +131,7 @@ test_leaf(void **state)
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Unknown (or not implemented) YANG module \"x\" for metadata \"x:xxx\".", "Data location /@a:foo, line number 1.");
+            "Unknown (or not implemented) YANG module \"x\" of metadata \"x:xxx\".", "Data location /@a:foo, line number 1.");
 
     /* missing referenced metadata node */
     PARSER_CHECK_ERROR("{\"@a:foo\" : { \"a:hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,

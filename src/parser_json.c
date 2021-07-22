@@ -607,9 +607,15 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                                 NULL, LY_VALUE_JSON, NULL, meta->hints);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_opts & LYD_PARSE_STRICT) {
-                        LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
-                                "Unknown (or not implemented) YANG module \"%s\" for metadata \"%s%s%s\".",
-                                meta->name.prefix, meta->name.prefix, ly_strlen(meta->name.prefix) ? ":" : "", meta->name.name);
+                        if (meta->name.prefix) {
+                            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
+                                    "Unknown (or not implemented) YANG module \"%s\" of metadata \"%s%s%s\".",
+                                    meta->name.prefix, meta->name.prefix, ly_strlen(meta->name.prefix) ? ":" : "",
+                                    meta->name.name);
+                        } else {
+                            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing YANG module of metadata \"%s\".",
+                                    meta->name.name);
+                        }
                         ret = LY_EVALID;
                         goto cleanup;
                     }
