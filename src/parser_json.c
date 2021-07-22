@@ -599,13 +599,12 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     /* convert opaq node to a metadata of the node */
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
                     struct lys_module *mod = NULL;
-                    ly_bool dynamic = 0;
 
                     mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->name.prefix);
                     if (mod) {
                         ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod,
                                 meta->name.name, strlen(meta->name.name), meta->value, ly_strlen(meta->value),
-                                &dynamic, LY_VALUE_JSON, NULL, meta->hints);
+                                NULL, LY_VALUE_JSON, NULL, meta->hints);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                         LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE,
