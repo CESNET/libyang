@@ -897,6 +897,8 @@ lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_no
 {
     struct lys_node *sparent, *schoice, *scase, *saux;
     struct lyd_node *next, *iter;
+    int found;
+
     assert(node || schemanode);
 
     if (!schemanode) {
@@ -928,10 +930,25 @@ autodelete:
             continue;
         }
 
-        for (sparent = lys_parent(iter->schema); sparent && (sparent->nodetype == LYS_USES); sparent = lys_parent(sparent));
-        if (sparent && ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
-                || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) /* another case */
-                ) {
+        /* find either another implicit case or another case */
+        found = 0;
+        sparent = lys_parent(iter->schema);
+        while (sparent && (sparent->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE))) {
+            if ((sparent->nodetype == LYS_CHOICE) && (sparent == schoice)) {
+                /* implicit case */
+                found = 1;
+                break;
+            } else if ((sparent->nodetype == LYS_CASE) && (lys_parent(sparent) == schoice)) {
+                if (sparent != scase) {
+                    /* another case */
+                    found = 1;
+                }
+                break;
+            }
+            sparent = lys_parent(sparent);
+        }
+
+        if (found) {
             if (autodelete) {
                 if (iter == nodel) {
                     LOGVAL(schemanode->module->ctx, LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
