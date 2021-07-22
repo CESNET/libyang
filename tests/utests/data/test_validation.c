@@ -1249,6 +1249,94 @@ test_reply(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_case(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module k {\n"
+            "  namespace urn:tests:k;\n"
+            "  prefix k;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  container ch {\n"
+            "    choice a0 {\n"
+            "      case v0 {\n"
+            "        leaf g0 {\n"
+            "          type string;\n"
+            "        }\n"
+            "      }\n"
+            "      case v1 {\n"
+            "        choice a1 {\n"
+            "          case r0 {\n"
+            "            leaf g1 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case r1 {\n"
+            "            leaf g2 {\n"
+            "              type string;\n"
+            "            }\n"
+            "            leaf g3 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case r2 {\n"
+            "            leaf g4 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "        }\n"
+            "      }\n"
+            "      case v2 {\n"
+            "        choice a2 {\n"
+            "          case y0 {\n"
+            "            leaf g5 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case y1 {\n"
+            "            leaf g6 {\n"
+            "              type string;\n"
+            "            }\n"
+            "            leaf g7 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case y2 {\n"
+            "            leaf g8 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM(
+            "{\n"
+            "  \"k:ch\": {\n"
+            "    \"g0\": \"value_g0\",\n"
+            "    \"g7\": \"value_g7\"\n"
+            "  }\n"
+            "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.",
+            "Schema location /k:ch/a0, data location /k:ch, line number 5.");
+
+    CHECK_PARSE_LYD_PARAM(
+            "{\n"
+            "  \"k:ch\": {\n"
+            "    \"g7\": \"value_g7\",\n"
+            "    \"g0\": \"value_g0\"\n"
+            "  }\n"
+            "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.",
+            "Schema location /k:ch/a0, data location /k:ch, line number 5.");
+}
+
 int
 main(void)
 {
@@ -1265,6 +1353,7 @@ main(void)
         UTEST(test_must),
         UTEST(test_action),
         UTEST(test_reply),
+        UTEST(test_case),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
