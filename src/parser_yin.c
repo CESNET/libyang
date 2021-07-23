@@ -684,7 +684,7 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
 {
     const char *temp_val = NULL;
     char *ptr;
-    unsigned long int num;
+    unsigned long long int num;
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_FRACTION_DIGITS));
@@ -696,7 +696,7 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     }
 
     errno = 0;
-    num = strtoul(temp_val, &ptr, LY_BASE_DEC);
+    num = strtoull(temp_val, &ptr, LY_BASE_DEC);
     if (*ptr != '\0') {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
@@ -1082,8 +1082,8 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     assert(kw == LY_STMT_POSITION || kw == LY_STMT_VALUE);
     const char *temp_val = NULL;
     char *ptr;
-    long int num = 0;
-    unsigned long int unum = 0;
+    long long int num = 0;
+    unsigned long long int unum = 0;
 
     /* set value flag */
     enm->flags |= LYS_SET_VALUE;
@@ -1100,13 +1100,13 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     /* convert value */
     errno = 0;
     if (kw == LY_STMT_VALUE) {
-        num = strtol(temp_val, &ptr, LY_BASE_DEC);
+        num = strtoll(temp_val, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
             goto error;
         }
     } else {
-        unum = strtoul(temp_val, &ptr, LY_BASE_DEC);
+        unum = strtoull(temp_val, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
             goto error;
@@ -1291,7 +1291,7 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
 {
     const char *temp_val = NULL;
     char *ptr;
-    unsigned long int num;
+    unsigned long long int num;
     struct yin_subelement subelems[] = {
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
     };
@@ -1307,7 +1307,7 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
 
     if (strcmp(temp_val, "unbounded")) {
         errno = 0;
-        num = strtoul(temp_val, &ptr, LY_BASE_DEC);
+        num = strtoull(temp_val, &ptr, LY_BASE_DEC);
         if (*ptr != '\0') {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
             lydict_remove(ctx->xmlctx->ctx, temp_val);
@@ -1339,7 +1339,7 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
 {
     const char *temp_val = NULL;
     char *ptr;
-    unsigned long int num;
+    unsigned long long int num;
     struct yin_subelement subelems[] = {
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
     };
@@ -1355,7 +1355,7 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
     }
 
     errno = 0;
-    num = strtoul(temp_val, &ptr, LY_BASE_DEC);
+    num = strtoull(temp_val, &ptr, LY_BASE_DEC);
     if (ptr[0] != 0) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
         lydict_remove(ctx->xmlctx->ctx, temp_val);

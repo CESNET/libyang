@@ -493,7 +493,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     /* Final position of decimal point in the buf. */
     int32_t dp_position;
     /* Exponent as integer. */
-    long int e_val;
+    long long int e_val;
     /* Byte for the decimal point. */
     int8_t dot;
     /* Required additional byte for the minus sign. */
@@ -513,7 +513,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
 
     /* Convert exponent. */
     errno = 0;
-    e_val = strtol(exponent + 1, NULL, LY_BASE_DEC);
+    e_val = strtoll(exponent + 1, NULL, LY_BASE_DEC);
     if (errno || (e_val > UINT16_MAX) || (e_val < -UINT16_MAX)) {
         LOGVAL(ctx, LYVE_SEMANTICS,
                 "Exponent out-of-bounds in a JSON Number value (%.*s).",

@@ -1734,8 +1734,8 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, 
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
     size_t word_len;
-    long int num = 0;
-    unsigned long int unum = 0;
+    long long int num = 0;
+    unsigned long long int unum = 0;
     enum ly_stmt kw;
 
     if (*flags & LYS_SET_VALUE) {
@@ -1754,13 +1754,13 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, 
 
     errno = 0;
     if (val_kw == LY_STMT_VALUE) {
-        num = strtol(word, &ptr, LY_BASE_DEC);
+        num = strtoll(word, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
             goto error;
         }
     } else {
-        unum = strtoul(word, &ptr, LY_BASE_DEC);
+        unum = strtoull(word, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
             goto error;
@@ -1880,7 +1880,7 @@ parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, uint8_t *fracdig, struct 
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
     size_t word_len;
-    unsigned long int num;
+    unsigned long long int num;
     enum ly_stmt kw;
 
     if (*fracdig) {
@@ -1898,7 +1898,7 @@ parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, uint8_t *fracdig, struct 
     }
 
     errno = 0;
-    num = strtoul(word, &ptr, LY_BASE_DEC);
+    num = strtoull(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "fraction-digits");
@@ -2310,7 +2310,7 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flag
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
     size_t word_len;
-    unsigned long int num;
+    unsigned long long int num;
     enum ly_stmt kw;
 
     if (*flags & LYS_SET_MAX) {
@@ -2330,7 +2330,7 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flag
 
     if (ly_strncmp("unbounded", word, word_len)) {
         errno = 0;
-        num = strtoul(word, &ptr, LY_BASE_DEC);
+        num = strtoull(word, &ptr, LY_BASE_DEC);
         /* we have not parsed the whole argument */
         if ((size_t)(ptr - word) != word_len) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "max-elements");
@@ -2379,7 +2379,7 @@ parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flag
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
     size_t word_len;
-    unsigned long int num;
+    unsigned long long int num;
     enum ly_stmt kw;
 
     if (*flags & LYS_SET_MIN) {
@@ -2398,7 +2398,7 @@ parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flag
     }
 
     errno = 0;
-    num = strtoul(word, &ptr, LY_BASE_DEC);
+    num = strtoull(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "min-elements");
