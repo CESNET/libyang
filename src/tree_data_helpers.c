@@ -347,18 +347,18 @@ lyd_parse_check_keys(struct lyd_node *node)
 }
 
 void
-lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct ly_set *exts_check, struct lyd_meta **meta,
-        uint32_t options)
+lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts, struct lyd_meta **meta,
+        uint32_t parse_opts)
 {
     struct lyd_meta *meta2, *prev_meta = NULL;
 
     if (lysc_has_when(node->schema)) {
-        if (!(options & LYD_PARSE_ONLY)) {
+        if (!(parse_opts & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
-            LY_CHECK_RET(ly_set_add(when_check, node, 1, NULL), );
+            LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL), );
         }
     }
-    LY_CHECK_RET(lysc_node_ext_tovalidate(exts_check, node), );
+    LY_CHECK_RET(lysc_node_ext_tovalidate(node_exts, node), );
 
     LY_LIST_FOR(*meta, meta2) {
         if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults") &&

@@ -436,13 +436,13 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  * @brief Set data flags for a newly parsed node.
  *
  * @param[in] node Node to use.
- * @param[in,out] when_check Set of nodes with unresolved when.
- * @param[in,out] exts_check Set of nodes and their extension instances if they have own validation callback.
+ * @param[in,out] node_when Set of nodes with unresolved when.
+ * @param[in,out] node_exts Set of nodes and their extension instances if they have own validation callback.
  * @param[in,out] meta Node metadata, may be removed from.
- * @param[in] options Parse options.
+ * @param[in] parse_opts Parse options.
  */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct ly_set *exts_check,
-        struct lyd_meta **meta, uint32_t options);
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts,
+        struct lyd_meta **meta, uint32_t parse_opts);
 
 /**
  * @brief Append all list key predicates to path.
