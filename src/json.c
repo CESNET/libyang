@@ -461,7 +461,7 @@ lyjson_exp_number_copy_num_part(const char *num, uint32_t num_len,
  */
 static LY_ERR
 lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent,
-        uint64_t total_len, char **res, uint64_t *res_len)
+        uint64_t total_len, char **res, size_t *res_len)
 {
 
 #define MAYBE_WRITE_MINUS(ARRAY, INDEX, FLAG) \
