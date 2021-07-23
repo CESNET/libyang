@@ -230,10 +230,10 @@ test_leaflist(void **state)
             "Missing JSON data instance to be coupled with @a:ll1 metadata.", "Data location /@a:ll1, line number 1.");
 
     PARSER_CHECK_ERROR("{\"a:ll1\":[1],\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance no. 2 of a:ll1 to be coupled with metadata.", "Schema location /a:ll1, line number 1.");
+            "Missing JSON data instance #2 of a:ll1 to be coupled with metadata.", "Schema location /a:ll1, line number 1.");
 
     PARSER_CHECK_ERROR("{\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2},{\"a:hint\":3}],\"a:ll1\" : [1, 2]}", 0, LYD_VALIDATE_PRESENT,
-            tree, LY_EVALID, "Missing 3rd JSON data instance to be coupled with @a:ll1 metadata.", "Data location /@a:ll1, line number 1.");
+            tree, LY_EVALID, "Missing JSON data instance #3 to be coupled with @a:ll1 metadata.", "Data location /@a:ll1, line number 1.");
 }
 
 static void

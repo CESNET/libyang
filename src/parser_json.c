@@ -631,8 +631,8 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         if (match != instance) {
             /* there is no corresponding data node for the metadata */
             if (instance > 1) {
-                LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing %d%s JSON data instance to be coupled with %s metadata.",
-                        instance, instance == 2 ? "nd" : (instance == 3 ? "rd" : "th"), meta_container->name.name);
+                LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance #%" PRIu64 " to be coupled with %s metadata.",
+                        instance, meta_container->name.name);
             } else {
                 LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance to be coupled with %s metadata.",
                         meta_container->name.name);
@@ -716,7 +716,7 @@ next_entry:
         LY_CHECK_GOTO(status != LYJSON_OBJECT && status != LYJSON_NULL, representation_error);
 
         if (!node || (node->schema != prev->schema)) {
-            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance no. %u of %s:%s to be coupled with metadata.",
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_REFERENCE, "Missing JSON data instance #%u of %s:%s to be coupled with metadata.",
                     instance, prev->schema->module->name, prev->schema->name);
             ret = LY_EVALID;
             goto cleanup;

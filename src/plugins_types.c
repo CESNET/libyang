@@ -382,7 +382,7 @@ lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_
     if (!value_len) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty decimal64 value.");
     } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %lu. character of decimal64 value \"%.*s\".",
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %zu. character of decimal64 value \"%.*s\".",
                 len + 1, (int)value_len, value);
     }
 

@@ -517,7 +517,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     if (errno || (e_val > UINT16_MAX) || (e_val < -UINT16_MAX)) {
         LOGVAL(ctx, LYVE_SEMANTICS,
                 "Exponent out-of-bounds in a JSON Number value (%.*s).",
-                total_len, in);
+                (int)total_len, in);
         return LY_EVALID;
     }
 
