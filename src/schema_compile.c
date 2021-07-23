@@ -1375,7 +1375,7 @@ resolve_all:
         node = ds_unres->disabled.snodes[i];
         if (node->flags & LYS_KEY) {
             LOG_LOCSET(node, NULL, NULL, NULL);
-            LOGVAL(ctx, LYVE_REFERENCE, "Key \"%s\" is disabled by its if-features.", node->name);
+            LOGVAL(ctx, LYVE_REFERENCE, "Key \"%s\" is disabled.", node->name);
             LOG_LOCBACK(1, 0, 0, 0);
             return LY_EVALID;
         }
@@ -1399,8 +1399,8 @@ resolve_all:
             assert(ret != LY_ERECOMPILE);
             if (ret) {
                 LOG_LOCSET(node, NULL, NULL, NULL);
-                LOGVAL(ctx, LYVE_REFERENCE, "Target of leafref \"%s\" cannot be "
-                        "referenced because it is disabled by its if-features.", node->name);
+                LOGVAL(ctx, LYVE_REFERENCE, "Target of leafref \"%s\" cannot be referenced because it is disabled.",
+                        node->name);
                 LOG_LOCBACK(1, 0, 0, 0);
                 return LY_EVALID;
             }

@@ -419,7 +419,7 @@ test_node_list(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;feature f;"
             "list l {key x; leaf x {type string; if-feature f;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Key \"x\" is disabled by its if-features.", "Schema location /cc:l/x.");
+    CHECK_LOG_CTX("Key \"x\" is disabled.", "Schema location /cc:l/x.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;"
             "list l {key x; leaf x {type string; config false;}}}", LYS_IN_YANG, NULL));
@@ -1606,7 +1606,7 @@ test_type_leafref(void **state)
             "leaf ref1 {type leafref {path /target;}}"
             "leaf target {if-feature 'f1'; type boolean;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled by its if-features.", "Schema location /e:ref1.");
+    CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled.", "Schema location /e:ref1.");
 
     str = "module en {yang-version 1.1;namespace urn:en;prefix en;feature f1;"
             "leaf ref1 {if-feature 'f1'; type leafref {path /target;}}"
@@ -1626,7 +1626,7 @@ test_type_leafref(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module im {namespace urn:im;prefix im;import cl {prefix cl;}"
             "leaf ref {must \"/cl:h > 0\"; type uint16;}}", LYS_IN_YANG, &mod));
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
-    CHECK_LOG_CTX("Target of leafref \"g\" cannot be referenced because it is disabled by its if-features.", "Schema location /cl:g.");
+    CHECK_LOG_CTX("Target of leafref \"g\" cannot be referenced because it is disabled.", "Schema location /cl:g.");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {namespace urn:f;prefix f;"
             "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
@@ -3199,7 +3199,7 @@ test_deviation(void **state)
             "container c {leaf x {type string;} leaf y {type string;}}}", LYS_IN_YANG, &mod));
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp1 {namespace urn:pp1;prefix pp1; import pp {prefix pp;}"
             "deviation /pp:c/pp:x {deviate not-supported;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"x\" in path.", "Schema location /pp:l.");
+    CHECK_LOG_CTX("Target of leafref \"l\" cannot be referenced because it is disabled.", "Schema location /pp:l.");
 }
 
 static void

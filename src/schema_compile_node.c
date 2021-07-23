@@ -2399,6 +2399,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     ly_bool not_supported, enabled;
     struct lysp_node *dev_pnode = NULL;
     struct lysp_when *pwhen = NULL;
+    uint32_t prev_opts = ctx->compile_opts;
 
     node->nodetype = pnode->nodetype;
     node->module = ctx->cur_mod;
@@ -2408,9 +2409,12 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
 
     /* compile any deviations for this node */
     LY_CHECK_GOTO(ret = lys_compile_node_deviations_refines(ctx, pnode, parent, &dev_pnode, &not_supported), error);
-    if (not_supported) {
-        goto error;
-    } else if (dev_pnode) {
+    if (not_supported && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+        /* if not supported, keep it just like disabled nodes by if-feature */
+        ly_set_add(&ctx->unres->disabled, node, 1, NULL);
+        ctx->compile_opts |= LYS_COMPILE_DISABLED;
+    }
+    if (dev_pnode) {
         pnode = dev_pnode;
     }
 
@@ -2479,6 +2483,7 @@ cleanup:
     if (ret && dev_pnode) {
         LOGVAL(ctx->ctx, LYVE_OTHER, "Compilation of a deviated and/or refined node failed.");
     }
+    ctx->compile_opts = prev_opts;
     lysp_dev_node_free(ctx->ctx, dev_pnode);
     return ret;
 }

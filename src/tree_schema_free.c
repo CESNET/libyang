@@ -921,10 +921,15 @@ lysc_node_free_(struct ly_ctx *ctx, struct lysc_node *node)
 void
 lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
 {
-    struct lysc_node *iter, **child_p;
+    struct lysc_node *next, *iter, **child_p;
 
     if (node->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-        /* nothing to do - inouts are part of actions and cannot be unlinked/freed separately */
+        /* inouts are part of actions and cannot be unlinked/freed separately, we can only free all the children */
+        struct lysc_node_action_inout *inout = (struct lysc_node_action_inout *)node;
+        LY_LIST_FOR_SAFE(inout->child, next, iter) {
+            lysc_node_free_(ctx, iter);
+        }
+        inout->child = NULL;
         return;
     }
 
