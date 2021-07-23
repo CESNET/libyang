@@ -11,8 +11,6 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _ISOC99_SOURCE /* strtoull */
-
 #include "path.h"
 
 #include <assert.h>
