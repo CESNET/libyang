@@ -945,7 +945,7 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
 
     first = *((struct lyd_node **)val1_p);
     second = *((struct lyd_node **)val2_p);
-    action = (LY_ARRAY_COUNT_TYPE)cb_data;
+    action = (uintptr_t)cb_data;
 
     assert(first && (first->schema->nodetype == LYS_LIST));
     assert(second && (second->schema == first->schema));
@@ -1051,6 +1051,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     size_t key_len;
     ly_bool dyn;
     const void *hash_key;
+    void *cb_data;
     struct hash_table **uniqtables = NULL;
     struct lyd_value *val;
     struct ly_ctx *ctx = snode->module->ctx;
@@ -1094,7 +1095,8 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
         LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         x = LY_ARRAY_COUNT(uniques);
         for (v = 0; v < x; v++) {
-            uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, (void *)(v + 1L), 0);
+            cb_data = (void *)(uintptr_t)(v + 1L);
+            uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, cb_data, 0);
             LY_CHECK_ERR_GOTO(!uniqtables[v], LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
 
