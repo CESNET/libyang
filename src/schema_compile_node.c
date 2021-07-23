@@ -334,7 +334,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent
         *new_when = *when_c;
     }
 
-    if (!(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (!(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "when" semantics in a grouping, but repeat the check for different node because
          * of dummy node check */
         LY_CHECK_RET(ly_set_add(&ctx->unres->xpath, node, 0, NULL));
@@ -2568,7 +2568,7 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
     LY_CHECK_GOTO(ret, done);
 
     /* do not check "must" semantics in a grouping */
-    if ((action->input.musts || action->output.musts) && !(ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+    if ((action->input.musts || action->output.musts) && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         ret = ly_set_add(&ctx->unres->xpath, action, 0, NULL);
         LY_CHECK_GOTO(ret, done);
     }
@@ -2594,7 +2594,7 @@ lys_compile_node_notif(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lys
     struct lysp_node *child_p;
 
     COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, lys_compile_must, ret, done);
-    if (notif_p->musts && !(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (notif_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->unres->xpath, notif, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -2641,7 +2641,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
     }
 
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, lys_compile_must, ret, done);
-    if (cont_p->musts && !(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (cont_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->unres->xpath, cont, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -2721,7 +2721,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, lys_compile_must, ret, done);
-    if (leaf_p->musts && !(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (leaf_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->unres->xpath, leaf, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -2768,7 +2768,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, lys_compile_must, ret, done);
-    if (llist_p->musts && !(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (llist_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->unres->xpath, llist, 0, NULL);
         LY_CHECK_GOTO(ret, done);
@@ -3080,7 +3080,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, lys_compile_must, ret, done);
-    if (list_p->musts && !(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (list_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         LY_CHECK_RET(ly_set_add(&ctx->unres->xpath, list, 0, NULL));
     }
@@ -3393,7 +3393,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, lys_compile_must, ret, done);
-    if (any_p->musts && !(ctx->compile_opts & (LYS_COMPILE_GROUPING | LYS_COMPILE_DISABLED))) {
+    if (any_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "must" semantics in a grouping */
         ret = ly_set_add(&ctx->unres->xpath, any, 0, NULL);
         LY_CHECK_GOTO(ret, done);
