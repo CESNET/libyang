@@ -758,7 +758,11 @@ next_entry:
         lydjson_parse_name(lydctx->jsonctx->value, lydctx->jsonctx->value_len, &name, &name_len, &prefix, &prefix_len, &is_attr);
         lyjson_ctx_submit_dynamic_value(lydctx->jsonctx, &dynamic_prefname);
 
-        if (!prefix) {
+        if (!name_len) {
+            LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON found with an empty name, followed by: %.10s", name);
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (!prefix_len) {
             LOGVAL(ctx, LYVE_SYNTAX_JSON, "Metadata in JSON must be namespace-qualified, missing prefix for \"%.*s\".",
                     (int)lydctx->jsonctx->value_len, lydctx->jsonctx->value);
             ret = LY_EVALID;
