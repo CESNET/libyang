@@ -444,7 +444,12 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
 static ly_bool
 lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
-    return strcmp(val1, val2) == 0 ? 1 : 0;
+    char *id1, *id2;
+
+    id1 = *(char **)val1;
+    id2 = *(char **)val2;
+
+    return strcmp(id1, id2) == 0 ? 1 : 0;
 }
 
 LY_ERR
