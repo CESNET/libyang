@@ -1228,6 +1228,9 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             ret = lyd_create_any(snode, tree, LYD_ANYDATA_DATATREE, 1, node);
             LY_CHECK_RET(ret);
         }
+
+        /* add/correct flags */
+        lyd_parse_set_data_flags(*node, &lydctx->node_when, &lydctx->node_exts, &(*node)->meta, lydctx->parse_opts);
     } else if (ret == LY_ENOT) {
         /* parse it again as an opaq node */
         ret = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent,
