@@ -2321,11 +2321,20 @@ struct lys_module {
     ly_bool implemented;             /**< flag if the module is implemented, not just imported */
     ly_bool to_compile;              /**< flag marking a module that was changed but not (re)compiled, see
                                           ::LY_CTX_EXPLICIT_COMPILE. */
-    uint8_t latest_revision;         /**< flag to mark the latest available revision:
-                                          1 - the latest revision in searchdirs was not searched yet and this is the
-                                          latest revision in the current context
-                                          2 - searchdirs were searched and this is the latest available revision */
+    uint8_t latest_revision;         /**< Flag to mark the latest available revision, see [latest_revision options](@ref latestrevflags). */
 };
+
+/**
+ * @defgroup latestrevflags Options for ::lys_module.latest_revision.
+ *
+ * Various information bits of ::lys_module.latest_revision.
+ *
+ * @{
+ */
+#define LYS_MOD_LATEST_REV          0x01 /**< The latest revision in searchdirs was not searched yet
+                                              and this is the latest revision in the current context. */
+#define LYS_MOD_LATEST_SEARCHDIRS   0x02 /**< Searchdirs were searched and this is the latest available revision. */
+/** @} latestrevflags */
 
 /**
  * @brief Get the current real status of the specified feature in the module.

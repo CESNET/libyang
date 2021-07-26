@@ -828,7 +828,7 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
         } else {
             /* get the requested module of the latest revision in the context */
             *mod = ly_ctx_get_module_latest(ctx, name);
-            if (*mod && ((*mod)->latest_revision == 1)) {
+            if (*mod && ((*mod)->latest_revision & LYS_MOD_LATEST_REV)) {
                 /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
                 ctx_latest = *mod;
                 *mod = NULL;
@@ -880,10 +880,12 @@ search_file:
         if (!*mod && ctx_latest) {
             LOGVRB("Newer revision than \"%s@%s\" not found, using this as the latest revision.", ctx_latest->name,
                     ctx_latest->revision);
-            ctx_latest->latest_revision = 2;
+            ctx_latest->latest_revision &= ~LYS_MOD_LATEST_REV;
+            ctx_latest->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
             *mod = ctx_latest;
-        } else if (*mod && !revision && ((*mod)->latest_revision == 1)) {
-            (*mod)->latest_revision = 2;
+        } else if (*mod && !revision && ((*mod)->latest_revision & LYS_MOD_LATEST_REV)) {
+            (*mod)->latest_revision &= ~LYS_MOD_LATEST_REV;
+            (*mod)->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
         }
 
         if (!*mod) {
