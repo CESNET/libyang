@@ -5754,8 +5754,8 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
             mod_idx = 0;
             while ((mod = ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
                 iter = NULL;
-                /* module may not be implemented */
-                while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
+                /* module may not be implemented or not compiled yet */
+                while (mod->compiled && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
                     if (!moveto_scnode_check(iter, NULL, set, ncname, moveto_mod)) {
                         LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, &idx));
 
