@@ -1564,10 +1564,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         if (mod->revision) {
             if (!latest->revision) {
                 /* latest has no revision, so mod is anyway newer */
-                mod->latest_revision = latest->latest_revision;
+                mod->latest_revision = latest->latest_revision & (LYS_MOD_LATEST_REV | LYS_MOD_LATEST_SEARCHDIRS);
                 /* the latest is zeroed later when the new module is being inserted into the context */
             } else if (strcmp(mod->revision, latest->revision) > 0) {
-                mod->latest_revision = latest->latest_revision;
+                mod->latest_revision = latest->latest_revision & (LYS_MOD_LATEST_REV | LYS_MOD_LATEST_SEARCHDIRS);
                 /* the latest is zeroed later when the new module is being inserted into the context */
             } else {
                 latest = NULL;
@@ -1576,7 +1576,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
             latest = NULL;
         }
     } else {
-        mod->latest_revision = 1;
+        mod->latest_revision = LYS_MOD_LATEST_REV;
     }
 
     if (custom_check) {
@@ -1632,7 +1632,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
 
     if (latest) {
-        latest->latest_revision = 0;
+        latest->latest_revision &= ~(LYS_MOD_LATEST_REV | LYS_MOD_LATEST_SEARCHDIRS);
     }
 
     /* add internal data in case specific modules were parsed */

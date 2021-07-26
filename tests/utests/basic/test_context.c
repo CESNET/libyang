@@ -313,12 +313,12 @@ test_imports(void **state)
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;revision 2019-09-16;}",
             LYS_IN_YANG, &mod1));
-    assert_int_equal(1, mod1->latest_revision);
+    assert_true(LYS_MOD_LATEST_REV & mod1->latest_revision);
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
             LYS_IN_YANG, &mod2));
     import = mod2->parsed->imports[0].module;
-    assert_int_equal(2, import->latest_revision);
+    assert_true(LYS_MOD_LATEST_SEARCHDIRS & import->latest_revision);
     assert_int_equal(0, mod1->latest_revision);
     assert_ptr_not_equal(mod1, import);
     assert_string_equal("2019-09-17", import->revision);
@@ -332,13 +332,13 @@ test_imports(void **state)
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;revision 2019-09-18;}",
             LYS_IN_YANG, &mod1));
-    assert_int_equal(1, mod1->latest_revision);
+    assert_true(LYS_MOD_LATEST_REV & mod1->latest_revision);
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
             LYS_IN_YANG, &mod2));
     import = mod2->parsed->imports[0].module;
     assert_ptr_equal(mod1, import);
-    assert_int_equal(2, import->latest_revision);
+    assert_true(LYS_MOD_LATEST_SEARCHDIRS & import->latest_revision);
     assert_int_equal(1, import->implemented);
     assert_string_equal("2019-09-18", import->revision);
     assert_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-17"));

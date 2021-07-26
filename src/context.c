@@ -761,7 +761,7 @@ ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t ke
     uint32_t index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, 0, key_offset, &index))) {
-        if (mod->latest_revision) {
+        if (mod->latest_revision & (LYS_MOD_LATEST_REV | LYS_MOD_LATEST_SEARCHDIRS)) {
             return mod;
         }
     }
@@ -928,13 +928,15 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
 
     for (uint32_t v = 0; v < ctx->list.count; ++v) {
         mod = ctx->list.objs[v];
-        if (mod->latest_revision == 2) {
-            mod->latest_revision = 1;
+        if (mod->latest_revision & LYS_MOD_LATEST_SEARCHDIRS) {
+            mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+            mod->latest_revision |= LYS_MOD_LATEST_REV;
         }
         if (mod->parsed && mod->parsed->includes) {
             for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
-                if (mod->parsed->includes[u].submodule->latest_revision == 2) {
-                    mod->parsed->includes[u].submodule->latest_revision = 1;
+                if (mod->parsed->includes[u].submodule->latest_revision & LYS_MOD_LATEST_SEARCHDIRS) {
+                    mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+                    mod->parsed->includes[u].submodule->latest_revision |= LYS_MOD_LATEST_REV;
                 }
             }
         }
