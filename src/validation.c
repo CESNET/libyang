@@ -217,11 +217,13 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                     }
 
                     /* remove from node types set, if present */
-                    LYD_TREE_DFS_BEGIN(node, elem) {
-                        if (ly_set_contains(node_types, elem, &idx)) {
-                            LY_CHECK_GOTO(ret = ly_set_rm_index(node_types, idx, NULL), error);
+                    if (node_types) {
+                        LYD_TREE_DFS_BEGIN(node, elem) {
+                            if (ly_set_contains(node_types, elem, &idx)) {
+                                LY_CHECK_GOTO(ret = ly_set_rm_index(node_types, idx, NULL), error);
+                            }
+                            LYD_TREE_DFS_END(node, elem);
                         }
-                        LYD_TREE_DFS_END(node, elem);
                     }
 
                     /* free */
