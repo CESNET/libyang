@@ -3192,7 +3192,7 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
         goto error;
     }
 
-    if (target->schema->nodetype == LYS_RPC) {
+    if (target->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
         lyd_schema_sort(target, 1);
     }
 
