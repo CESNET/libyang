@@ -1860,6 +1860,10 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
             value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
             break;
         }
+
+        /* update value type */
+        any->value_type = value_type;
+
         return node;
     default:
         /* nothing needed - containers, lists and leaf-lists do not have value or it cannot be changed */
