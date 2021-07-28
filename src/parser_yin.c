@@ -3780,7 +3780,6 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
     mod_p->mod = mod;
-    mod_p->parsing = 1;
     (*yin_ctx)->parsed_mod = mod_p;
 
     /* check module */
@@ -3814,7 +3813,6 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
         goto cleanup;
     }
 
-    mod_p->parsing = 0;
     mod->parsed = mod_p;
 
 cleanup:
