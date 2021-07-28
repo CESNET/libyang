@@ -855,10 +855,12 @@ cleanup:
  * @param[in] mod Module to process.
  * @param[in,out] ctx_set Set with all not-yet-processed modules.
  * @param[in,out] dep_set Current dependency set to update.
+ * @param[in] aux_set Set of traversed non-compiled modules, should be empty on first call.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct ly_set *dep_set)
+lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, struct ly_set *dep_set,
+        struct ly_set *aux_set)
 {
     struct lys_module *mod2;
     struct lysp_import *imports;
@@ -872,6 +874,14 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
             /* break the dep set here, no modules depend on this one */
             return LY_SUCCESS;
         }
+
+        if (ly_set_contains(aux_set, mod, NULL)) {
+            /* it was traversed */
+            return LY_SUCCESS;
+        }
+
+        /* add a new auxiliary module */
+        LY_CHECK_RET(ly_set_add(aux_set, mod, 1, NULL));
     } else {
         if (!ly_set_contains(ctx_set, mod, &i)) {
             /* it was already processed */
@@ -889,14 +899,7 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
     imports = mod->parsed->imports;
     LY_ARRAY_FOR(imports, u) {
         mod2 = imports[u].module;
-        if (!lys_has_compiled(mod2) || (mod2->compiled && !lys_has_recompiled(mod2))) {
-            if (!lys_has_groupings(mod2)) {
-                /* break the dep set here, no modules depend on this one */
-                continue;
-            }
-        }
-
-        LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(mod2, ctx_set, dep_set));
+        LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(mod2, ctx_set, dep_set, aux_set));
     }
     LY_ARRAY_FOR(mod->parsed->includes, v) {
         imports = mod->parsed->includes[v].submodule->imports;
@@ -909,7 +912,7 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
                 }
             }
 
-            LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(imports[u].module, ctx_set, dep_set));
+            LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(imports[u].module, ctx_set, dep_set, aux_set));
         }
     }
 
@@ -943,12 +946,7 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
         }
 
         if (found) {
-            if (!lys_has_compiled(mod2) || (mod2->compiled && !lys_has_recompiled(mod2))) {
-                /* break the dep set here, no modules depend on this one (groupings were handled as imports) */
-                continue;
-            }
-
-            LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(mod2, ctx_set, dep_set));
+            LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(mod2, ctx_set, dep_set, aux_set));
         }
     }
 
@@ -997,7 +995,7 @@ lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct ly
 {
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *m;
-    struct ly_set *dep_set = NULL, *ctx_set = NULL;
+    struct ly_set *dep_set = NULL, *ctx_set = NULL, aux_set = {0};
     uint32_t i;
     ly_bool found;
 
@@ -1018,11 +1016,12 @@ lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct ly
 
         if (mod) {
             /* use the module create a dep set with the rest of its dependent modules */
-            LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_mod_r(mod, ctx_set, dep_set), cleanup);
+            LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_mod_r(mod, ctx_set, dep_set, &aux_set), cleanup);
         } else {
             /* use first ctx mod to create a dep set with the rest of its dependent modules */
-            LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_mod_r(ctx_set->objs[0], ctx_set, dep_set), cleanup);
+            LY_CHECK_GOTO(ret = lys_unres_dep_sets_create_mod_r(ctx_set->objs[0], ctx_set, dep_set, &aux_set), cleanup);
         }
+        ly_set_erase(&aux_set, NULL);
         assert(dep_set->count);
 
         /* check whether there is any module that will be (re)compiled */
@@ -1070,6 +1069,7 @@ lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct ly
 
 cleanup:
     assert(ret || main_set->objs);
+    ly_set_erase(&aux_set, NULL);
     ly_set_free(dep_set, NULL);
     ly_set_free(ctx_set, NULL);
     return ret;
