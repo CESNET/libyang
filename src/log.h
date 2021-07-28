@@ -145,8 +145,9 @@ uint32_t ly_log_options(uint32_t opts);
  * @{
  */
 
-#define LY_LDGDICT  0x01 /**< Dictionary additions and deletions. */
-#define LY_LDGXPATH 0x02 /**< XPath parsing end evaluation. */
+#define LY_LDGDICT      0x01    /**< Dictionary additions and deletions. */
+#define LY_LDGXPATH     0x02    /**< XPath parsing end evaluation. */
+#define LY_LDGDEPSETS   0x04    /**< Dependency module sets for schema compilation. */
 
 /**
  * @}

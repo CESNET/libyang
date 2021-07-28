@@ -500,6 +500,9 @@ ly_log_dbg(uint32_t group, const char *format, ...)
     case LY_LDGXPATH:
         str_group = "XPATH";
         break;
+    case LY_LDGDEPSETS:
+        str_group = "DEPSETS";
+        break;
     default:
         LOGINT(NULL);
         return;

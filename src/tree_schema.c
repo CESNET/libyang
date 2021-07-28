@@ -1055,6 +1055,19 @@ lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct ly
         }
     }
 
+#ifndef NDEBUG
+    LOGDBG(LY_LDGDEPSETS, "dep sets created (%" PRIu32 "):", main_set->count);
+    for (i = 0; i < main_set->count; ++i) {
+        struct ly_set *iter_set = main_set->objs[i];
+
+        LOGDBG(LY_LDGDEPSETS, "dep set #%" PRIu32 ":", i);
+        for (uint32_t j = 0; j < iter_set->count; ++j) {
+            m = iter_set->objs[j];
+            LOGDBG(LY_LDGDEPSETS, "\t%s", m->name);
+        }
+    }
+#endif
+
 cleanup:
     assert(ret || main_set->objs);
     ly_set_free(dep_set, NULL);
