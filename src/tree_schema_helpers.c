@@ -804,93 +804,139 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
-        struct lys_module **mod)
+/**
+ * @brief Load module from searchdirs or from callback.
+ *
+ * @param[in] ctx libyang context where to work.
+ * @param[in] name Name of module to load.
+ * @param[in] revision Revision of module to load.
+ * @param[in] mod_latest Module with the latest revision found in
+ * context and the searchdirs should be searched, otherwise set to NULL.
+ * @param[in,out] new_mods Set of all the new mods added to the context.
+ * Includes this module and all of its imports.
+ * @param[out] mod Loaded module.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_parse_load_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *revision,
+        struct lys_module *mod_latest, struct ly_set *new_mods, struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
-    struct lys_module *ctx_latest = NULL;
     struct ly_in *in;
 
-    assert(mod && new_mods);
-
-    /*
-     * try to get the module from the context
-     */
-    if (!*mod) {
-        if (revision) {
-            /* get the specific revision */
-            *mod = ly_ctx_get_module(ctx, name, revision);
-        } else {
-            /* get the requested module of the latest revision in the context */
-            *mod = ly_ctx_get_module_latest(ctx, name);
-            if (*mod) {
-                /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
-                ctx_latest = *mod;
-                *mod = NULL;
+    /* Module not present in the context, get the input data and parse it. */
+    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+search_clb:
+        if (ctx->imp_clb && !ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data,
+                &module_data_free)) {
+            LY_CHECK_RET(ly_in_new_memory(module_data, &in));
+            check_data.name = name;
+            check_data.revision = revision;
+            lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
+            ly_in_free(in, 0);
+            if (module_data_free) {
+                module_data_free((void *)module_data, ctx->imp_clb_data);
             }
+        }
+        if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_file;
+        }
+    } else {
+search_file:
+        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+            /* Module was not received from the callback or there is no callback set. */
+            lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod);
+        }
+        if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_clb;
         }
     }
 
-    /* we have module from the current context, circular check */
-    if (*mod && (*mod)->parsed->parsing) {
-        LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Check if a circular dependency exists between modules.
+ *
+ * @param[in] ctx libyang context for log an error.
+ * @param[in,out] mod Examined module which is set to NULL
+ * if the circular dependency is detected.
+ * @return LY_SUCCESS if no circular dependecy is detected,
+ * otherwise LY_EVALID.
+ */
+static LY_ERR
+lys_check_circular_dependency(struct ly_ctx *ctx, struct lys_module **mod)
+{
+    if ((*mod) && (*mod)->parsed->parsing) {
+        LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", (*mod)->name);
         *mod = NULL;
         return LY_EVALID;
     }
 
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
+        struct lys_module **mod)
+{
+    struct lys_module *mod_latest = NULL;
+
+    assert(mod && new_mods);
+
+    if (*mod) {
+        LY_CHECK_RET(lys_check_circular_dependency(ctx, mod));
+        return LY_SUCCESS;
+    }
+
     /*
-     * no suitable module in the context, try to load it
+     * Try to get the module from the context.
      */
+    if (revision) {
+        /* Get the specific revision. */
+        *mod = ly_ctx_get_module(ctx, name, revision);
+    } else {
+        /* Get the requested module of the latest revision in the context. */
+        *mod = ly_ctx_get_module_latest(ctx, name);
+        if (*mod) {
+            /* Let us now search with callback and searchpaths to check
+             * if there is newer revision outside the context.
+             */
+            mod_latest = *mod;
+            *mod = NULL;
+        }
+    }
+
     if (!*mod) {
-        /* module not present in the context, get the input data and parse it */
-        if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-search_clb:
-            if (ctx->imp_clb && !ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data,
-                    &module_data_free)) {
-                LY_CHECK_RET(ly_in_new_memory(module_data, &in));
-                check_data.name = name;
-                check_data.revision = revision;
-                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
-                ly_in_free(in, 0);
-                if (module_data_free) {
-                    module_data_free((void *)module_data, ctx->imp_clb_data);
-                }
-            }
-            if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_file;
-            }
-        } else {
-search_file:
-            if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-                /* module was not received from the callback or there is no callback set */
-                lys_parse_localfile(ctx, name, revision, NULL, NULL, ctx_latest ? 0 : 1, new_mods, (void **)mod);
-            }
-            if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_clb;
-            }
-        }
+        /* No suitable module in the context, try to load it. */
+        LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision,
+                mod_latest, new_mods, mod));
 
-        /* update the latest_revision flag - here we have selected the latest available schema,
-         * consider that even the callback provides correct latest revision */
-        if (!*mod && ctx_latest) {
-            LOGVRB("Newer revision than \"%s@%s\" not found, using this as the latest revision.", ctx_latest->name,
-                    ctx_latest->revision);
-            assert(ctx_latest->latest_revision & LYS_MOD_LATEST_REV);
-            ctx_latest->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
-            *mod = ctx_latest;
-        } else if (*mod && !revision && ((*mod)->latest_revision & LYS_MOD_LATEST_REV)) {
-            (*mod)->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
-        }
-
-        if (!*mod) {
+        if (!*mod && !mod_latest) {
             LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
             return LY_EVALID;
         }
+
+        /* Update the latest_revision flag - here we have selected the latest available schema,
+         * consider that even the callback provides correct latest revision.
+         */
+        if (!*mod) {
+            LOGVRB("Newer revision than \"%s@%s\" not found, using this as the latest revision.",
+                    mod_latest->name, mod_latest->revision);
+            assert(mod_latest->latest_revision & LYS_MOD_LATEST_REV);
+            mod_latest->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
+            *mod = mod_latest;
+        } else if (*mod && !revision && ((*mod)->latest_revision & LYS_MOD_LATEST_REV)) {
+            (*mod)->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
+        }
+    } else {
+        /* We have module from the current context, circular check. */
+        LY_CHECK_RET(lys_check_circular_dependency(ctx, mod));
     }
 
     return LY_SUCCESS;
