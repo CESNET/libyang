@@ -303,6 +303,7 @@ static void
 test_imports(void **state)
 {
     struct lys_module *mod1, *mod2, *import;
+    char *str;
 
     /* use own context with extra flags */
     ly_ctx_destroy(UTEST_LYCTX);
@@ -342,6 +343,18 @@ test_imports(void **state)
     assert_int_equal(1, import->implemented);
     assert_string_equal("2019-09-18", import->revision);
     assert_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-17"));
+    ly_ctx_destroy(UTEST_LYCTX);
+
+    /* check of circular dependency */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS | LY_CTX_NO_YANGLIBRARY, &UTEST_LYCTX));
+    str = "module a {namespace urn:a; prefix a;"
+            "import b {prefix b;}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b { yang-version 1.1; namespace urn:b; prefix b;"
+            "import a {prefix a;}"
+            "}";
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
 }
 
 static void

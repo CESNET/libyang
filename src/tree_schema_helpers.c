@@ -929,10 +929,10 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
         } else if (*mod && !revision && ((*mod)->latest_revision & LYS_MOD_LATEST_REV)) {
             (*mod)->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
         }
-    } else {
-        /* We have module from the current context, circular check. */
-        LY_CHECK_RET(lys_check_circular_dependency(ctx, mod));
     }
+
+    /* Checking the circular dependence of imported modules. */
+    LY_CHECK_RET(lys_check_circular_dependency(ctx, mod));
 
     return LY_SUCCESS;
 }
