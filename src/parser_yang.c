@@ -4641,7 +4641,6 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
     mod_p->mod = mod;
-    mod_p->parsing = 1;
     (*context)->parsed_mod = mod_p;
 
     LOG_LOCINIT(NULL, NULL, NULL, in);
@@ -4677,7 +4676,6 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
         goto cleanup;
     }
 
-    mod_p->parsing = 0;
     mod->parsed = mod_p;
 
 cleanup:

@@ -889,11 +889,6 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
 
     assert(mod && new_mods);
 
-    if (*mod) {
-        LY_CHECK_RET(lys_check_circular_dependency(ctx, mod));
-        return LY_SUCCESS;
-    }
-
     /*
      * Try to get the module from the context.
      */
