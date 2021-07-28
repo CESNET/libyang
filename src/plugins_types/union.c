@@ -73,7 +73,11 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
 
     ret = type->plugin->store(ctx, type, value, value_len, 0, subvalue->format, subvalue->prefix_data, subvalue->hints,
             subvalue->ctx_node, &subvalue->value, unres, err);
-    LY_CHECK_RET((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE), ret);
+    if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
+        /* clear any leftover/freed garbage */
+        memset(&subvalue->value, 0, sizeof subvalue->value);
+        return ret;
+    }
 
     if (resolve && (ret == LY_EINCOMPLETE)) {
         /* we need the value resolved */
