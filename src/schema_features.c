@@ -457,23 +457,29 @@ LY_ERR
 lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_bool *enabled)
 {
     LY_ERR ret;
-    struct lysc_iffeature iff = {0};
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_iffeature iff;
+
+    /* enabled by default */
+    *enabled = 1;
 
     if (!iffeatures) {
-        *enabled = 1;
         return LY_SUCCESS;
     }
 
-    LY_CHECK_RET(lys_compile_iffeature(ctx, iffeatures, &iff));
+    /* evaluate all if-feature conditions or until an unsatisfied one is found */
+    LY_ARRAY_FOR(iffeatures, u) {
+        memset(&iff, 0, sizeof iff);
+        LY_CHECK_RET(lys_compile_iffeature(ctx, &iffeatures[u], &iff));
 
-    ret = lysc_iffeature_value(&iff);
-    lysc_iffeature_free((struct ly_ctx *)ctx, &iff);
-    if (ret == LY_ENOT) {
-        *enabled = 0;
-    } else if (ret) {
-        return ret;
-    } else {
-        *enabled = 1;
+        ret = lysc_iffeature_value(&iff);
+        lysc_iffeature_free((struct ly_ctx *)ctx, &iff);
+        if (ret == LY_ENOT) {
+            *enabled = 0;
+            break;
+        } else if (ret) {
+            return ret;
+        }
     }
 
     return LY_SUCCESS;
