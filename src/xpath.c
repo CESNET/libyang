@@ -3429,7 +3429,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
 {
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
-    struct lysc_type_bits *bits;
+    struct lyd_value_bits *bits;
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
 
@@ -3467,11 +3467,10 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
     set_fill_boolean(set, 0);
     if (args[0]->used) {
         leaf = (struct lyd_node_term *)args[0]->val.nodes[0].node;
-        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
-                (((struct lysc_node_leaf *)leaf->schema)->type->basetype == LY_TYPE_BITS)) {
-            bits = (struct lysc_type_bits *)((struct lysc_node_leaf *)leaf->schema)->type;
-            LY_ARRAY_FOR(bits->bits, u) {
-                if (!strcmp(bits->bits[u].name, args[1]->val.str)) {
+        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (leaf->value.realtype->basetype == LY_TYPE_BITS)) {
+            LYD_VALUE_GET(&leaf->value, bits);
+            LY_ARRAY_FOR(bits->items, u) {
+                if (!strcmp(bits->items[u]->name, args[1]->val.str)) {
                     set_fill_boolean(set, 1);
                     break;
                 }
