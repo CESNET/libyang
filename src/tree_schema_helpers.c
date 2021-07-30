@@ -861,6 +861,53 @@ search_file:
 }
 
 /**
+ * @brief Get module without revision according to priorities.
+ *
+ * 1. Search for the module with LYS_MOD_IMPORTED_REV.
+ * 2. Search for the implemented module.
+ * 3. Search for the latest module in the context.
+ *
+ * @param[in] ctx libyang context where module is searched.
+ * @param[in] name Name of the searched module.
+ * @param[out] keep_search Flag set to 1 if searchpaths or module
+ * callback must be searched to obtain latest available revision.
+ * @return Found module from context or NULL.
+ */
+static struct lys_module *
+lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *keep_search)
+{
+    struct lys_module *mod, *mod_impl;
+    uint32_t index;
+
+    *keep_search = 0;
+
+    /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
+    index = 0;
+    while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
+        if (!strcmp(mod->name, name) && (mod->latest_revision & LYS_MOD_IMPORTED_REV)) {
+            break;
+        }
+    }
+
+    /* Try to find the implemented module. */
+    mod_impl = ly_ctx_get_module_implemented(ctx, name);
+    if (mod && mod_impl) {
+        LOGVRB("Implemented module \"%s@%s\" is not used for import, "
+                "revision \"%s\" is imported instead.",
+                mod_impl->name, mod_impl->revision, mod->revision);
+        return mod;
+    } else if (mod_impl) {
+        return mod_impl;
+    }
+
+    /* Try to find the latest module in the current context. */
+    mod = ly_ctx_get_module_latest(ctx, name);
+    *keep_search = 1;
+
+    return mod;
+}
+
+/**
  * @brief Check if a circular dependency exists between modules.
  *
  * @param[in] ctx libyang context for log an error.
@@ -885,6 +932,7 @@ LY_ERR
 lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
         struct lys_module **mod)
 {
+    ly_bool keep_search;
     struct lys_module *mod_latest = NULL;
 
     assert(mod && new_mods);
@@ -897,8 +945,8 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
         *mod = ly_ctx_get_module(ctx, name, revision);
     } else {
         /* Get the requested module of the latest revision in the context. */
-        *mod = ly_ctx_get_module_latest(ctx, name);
-        if (*mod) {
+        *mod = lys_get_module_without_revision(ctx, name, &keep_search);
+        if (keep_search) {
             /* Let us now search with callback and searchpaths to check
              * if there is newer revision outside the context.
              */

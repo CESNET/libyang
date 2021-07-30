@@ -302,15 +302,17 @@ test_models(void **state)
 static void
 test_imports(void **state)
 {
-    struct lys_module *mod1, *mod2, *import;
+    struct lys_module *mod1, *mod2, *mod3, *import;
     char *str;
+    uint16_t ctx_options;
 
     /* use own context with extra flags */
     ly_ctx_destroy(UTEST_LYCTX);
+    ctx_options = LY_CTX_DISABLE_SEARCHDIRS | LY_CTX_NO_YANGLIBRARY;
 
-    /* import callback provides newer revision of module 'a' than present in context, so when importing 'a', the newer revision
-     * from the callback should be loaded into the context and used as an import */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
+    /* Import callback provides newer revision of module 'a',
+     * however the older revision is implemented soon and therefore it is preferred. */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, ctx_options, &UTEST_LYCTX));
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;revision 2019-09-16;}",
             LYS_IN_YANG, &mod1));
@@ -318,35 +320,42 @@ test_imports(void **state)
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
             LYS_IN_YANG, &mod2));
-    import = mod2->parsed->imports[0].module;
-    assert_true(LYS_MOD_LATEST_SEARCHDIRS & import->latest_revision);
-    assert_int_equal(0, mod1->latest_revision);
-    assert_ptr_not_equal(mod1, import);
-    assert_string_equal("2019-09-17", import->revision);
-    assert_int_equal(0, import->implemented);
+    assert_ptr_equal(mod1, mod2->parsed->imports[0].module);
+    assert_true((LYS_MOD_LATEST_REV | LYS_MOD_IMPORTED_REV) & mod1->latest_revision);
+    assert_string_equal("2019-09-16", mod1->revision);
+    assert_int_equal(1, mod1->implemented);
     assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-16"));
     ly_ctx_destroy(UTEST_LYCTX);
 
-    /* import callback provides older revision of module 'a' than present in context, so when importing a, the newer revision
-     * already present in the context should be selected and the callback's revision should not be loaded into the context */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
-    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;revision 2019-09-18;}",
-            LYS_IN_YANG, &mod1));
-    assert_true(LYS_MOD_LATEST_REV & mod1->latest_revision);
-    assert_int_equal(1, mod1->implemented);
+    /* Import callback provides older revision of module 'a' and it is
+     * imported by another module, so it is preferred even if newer
+     * revision is implemented later. */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, ctx_options, &UTEST_LYCTX));
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-16;}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
             LYS_IN_YANG, &mod2));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {namespace urn:a;prefix a;revision 2019-09-17;}",
+            LYS_IN_YANG, &mod1));
+    ly_log_level(LY_LLVRB);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c;import a {prefix a;}}",
+            LYS_IN_YANG, &mod3));
+    CHECK_LOG("Implemented module \"a@2019-09-17\" is not used for import, revision \"2019-09-16\" is imported instead.", NULL);
+    ly_log_level(LY_LLWRN);
+    assert_true(LYS_MOD_LATEST_SEARCHDIRS & mod1->latest_revision);
+    assert_int_equal(1, mod1->implemented);
     import = mod2->parsed->imports[0].module;
-    assert_ptr_equal(mod1, import);
-    assert_true(LYS_MOD_LATEST_SEARCHDIRS & import->latest_revision);
-    assert_int_equal(1, import->implemented);
-    assert_string_equal("2019-09-18", import->revision);
-    assert_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-17"));
+    assert_true(LYS_MOD_IMPORTED_REV & import->latest_revision);
+    assert_string_equal("2019-09-16", import->revision);
+    assert_int_equal(0, import->implemented);
+    import = mod3->parsed->imports[0].module;
+    assert_string_equal("2019-09-16", import->revision);
+    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-16"));
+    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", "2019-09-17"));
+    assert_string_equal("2019-09-17", ly_ctx_get_module_implemented(UTEST_LYCTX, "a")->revision);
     ly_ctx_destroy(UTEST_LYCTX);
 
     /* check of circular dependency */
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS | LY_CTX_NO_YANGLIBRARY, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, ctx_options, &UTEST_LYCTX));
     str = "module a {namespace urn:a; prefix a;"
             "import b {prefix b;}"
             "}";
