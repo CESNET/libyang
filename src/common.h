@@ -400,18 +400,6 @@ int ly_strncmp(const char *refstr, const char *str, size_t str_len);
 LY_ERR ly_strntou8(const char *nptr, size_t len, uint8_t *ret);
 
 /**
- * @brief Similar to strlen(3) but accepts NULL and returns 0.
- *
- * @param[in] s String to examine.
- * @return Length of @p s.
- */
-static inline size_t
-ly_strlen(const char *s)
-{
-    return s ? strlen(s) : 0;
-}
-
-/**
  * @brief Get all possible value prefixes from an YANG value by iteratively returning specific substrings.
  *
  * The function looks for possible prefix ending in a colon at the beginning of @p str_begin.
