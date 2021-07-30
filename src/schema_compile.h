@@ -175,23 +175,6 @@ LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, st
         const struct lys_module *ext_mod);
 
 /**
- * @brief Compile information from the identity statement
- *
- * The backlinks to the identities derived from this one are supposed to be filled later via ::lys_compile_identity_bases().
- *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
- * @param[in] ctx libyang context.
- * @param[in] parsed_mod Module with the identities.
- * @param[in] identities_p Array of the parsed identity definitions to precompile.
- * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
- * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
- * to be processed.
- * @return LY_ERR value.
- */
-LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
-        struct lysp_ident *identities_p, struct lysc_ident **identities);
-
-/**
  * @brief Find and process the referenced base identities from another identity or identityref
  *
  * For bases in identity set backlinks to them from the base identities. For identityref, store
@@ -208,6 +191,14 @@ LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, stru
  */
 LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
         struct lysc_ident *ident, struct lysc_ident ***bases, ly_bool *enabled);
+
+/**
+ * @brief Perform a complet compilation of identites in a module and all its submodules.
+ *
+ * @param[in] mod Module to process.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_compile_identities(struct lys_module *mod);
 
 /**
  * @brief Compile schema into a validated schema linking all the references. Must have been implemented before.

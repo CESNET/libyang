@@ -894,7 +894,7 @@ ly_bool lys_has_recompiled(const struct lys_module *mod);
  * @return Whether it needs (has) a compiled module or not.
  */
 #define LYSP_HAS_COMPILED(PMOD) \
-        (LYSP_HAS_RECOMPILED(PMOD) || PMOD->identities || PMOD->augments || PMOD->deviations)
+        (LYSP_HAS_RECOMPILED(PMOD) || PMOD->augments || PMOD->deviations)
 
 /**
  * @brief Learn whether the module has statements that need to be compiled or not.

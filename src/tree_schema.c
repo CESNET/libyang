@@ -800,6 +800,7 @@ LY_ERR
 _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
     LY_ERR ret = LY_SUCCESS, r;
+    struct lys_module *mod_iter;
     uint32_t i;
 
     if (mod->implemented) {
@@ -830,6 +831,18 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
 
             r = lys_implement(mod, NULL, unres);
             LY_CHECK_ERR_GOTO(r && (r != LY_ERECOMPILE), ret = r, cleanup);
+        }
+    }
+
+    /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
+    i = 0;
+    while ((mod_iter = ly_ctx_get_module_iter(mod->ctx, &i))) {
+        if (!strcmp(mod_iter->name, mod->name) && (mod_iter->latest_revision & LYS_MOD_IMPORTED_REV)) {
+            LOGVRB("Implemented module \"%s@%s\" was not and will not "
+                    "be imported if the revision-date is missing in the "
+                    "import statement. Instead, the revision \"%s\" "
+                    "is imported.", mod->name, mod->revision, mod_iter->revision);
+            break;
         }
     }
 
@@ -1523,9 +1536,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         void *check_data, struct ly_set *new_mods, struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup = NULL;
-    struct lysp_submodule *submod;
     LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;
@@ -1671,13 +1682,8 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     /* compile features */
     LY_CHECK_GOTO(ret = lys_compile_feature_iffeatures(mod->parsed), cleanup);
 
-    /* pre-compile identities of the module and any submodules */
-    LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod->parsed, mod->parsed->identities, &mod->identities), cleanup);
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
-        submod = mod->parsed->includes[u].submodule;
-        ret = lys_identity_precompile(NULL, ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
+    /* compile identities */
+    LY_CHECK_GOTO(ret = lys_compile_identities(mod), cleanup);
 
     /* success */
 
