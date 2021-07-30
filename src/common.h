@@ -23,6 +23,7 @@
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
+#include "schema_compile.h"
 #include "set.h"
 #include "tree_data.h"
 
@@ -313,10 +314,14 @@ struct ly_ctx {
     struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
     struct ly_set list;               /**< set of loaded YANG schemas */
-    ly_module_imp_clb imp_clb;        /**< Optional callback for retrieving missing included or imported models in a custom way. */
-    void *imp_clb_data;               /**< Optional private data for ::ly_ctx.imp_clb */
-    uint16_t change_count;            /**< Count of changes of the context, on some changes it could be incremented more times */
-    uint16_t flags;                   /**< context settings, see @ref contextoptions. */
+    ly_module_imp_clb imp_clb;        /**< optional callback for retrieving missing included or imported models */
+    void *imp_clb_data;               /**< optional private data for ::ly_ctx.imp_clb */
+    struct lys_glob_unres unres;      /**< global unres, should be empty unless there are modules prepared for
+                                           compilation if ::LY_CTX_EXPLICIT_COMPILE flag is set */
+    uint16_t change_count;            /**< count of changes of the context, on some changes it could be incremented
+                                           more times */
+    uint16_t flags;                   /**< context settings, see @ref contextoptions */
+
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
 };

@@ -999,6 +999,8 @@ lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct ly
     uint32_t i;
     ly_bool found;
 
+    assert(!main_set->count);
+
     /* start with a duplicate set of modules that we will remove from */
     LY_CHECK_GOTO(ret = ly_set_dup(&ctx->list, NULL, &ctx_set), cleanup);
 
@@ -1103,7 +1105,7 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         /* remove the module from the context */
         ly_set_rm(&ctx->list, m, NULL);
 
-        /* remove it also from dep sets (it may not be there if we have created only a single dep set for the main module) */
+        /* remove it also from dep sets */
         for (j = 0; j < unres->dep_sets.count; ++j) {
             dep_set = unres->dep_sets.objs[j];
             if (ly_set_contains(dep_set, m, &idx)) {
@@ -1120,7 +1122,7 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         /* recompile previous context because some implemented modules are no longer implemented,
          * we can reuse the current to_compile flags */
         prev_lo = ly_log_options(0);
-        ret = ly_ctx_compile(ctx);
+        ret = lys_compile_depset_all(ctx, &ctx->unres);
         ly_log_options(prev_lo);
         if (ret) {
             LOGINT(ctx);
@@ -1151,27 +1153,30 @@ API LY_ERR
 lys_set_implemented(struct lys_module *mod, const char **features)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lys_glob_unres unres = {0};
+    struct lys_glob_unres *unres = &mod->ctx->unres;
 
     LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
 
     /* implement */
-    ret = _lys_set_implemented(mod, features, &unres);
+    ret = _lys_set_implemented(mod, features, unres);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(mod->ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
-        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(mod->ctx, &unres.dep_sets, mod), cleanup);
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(mod->ctx, &unres->dep_sets, mod), cleanup);
 
         /* (re)compile the whole dep set (other dep sets will have no modules marked for compilation) */
-        LY_CHECK_GOTO(ret = lys_compile_depset_all(mod->ctx, &unres), cleanup);
+        LY_CHECK_GOTO(ret = lys_compile_depset_all(mod->ctx, unres), cleanup);
+
+        /* unres resolved */
+        lys_unres_glob_erase(unres);
     }
 
 cleanup:
     if (ret) {
-        lys_unres_glob_revert(mod->ctx, &unres);
+        lys_unres_glob_revert(mod->ctx, unres);
+        lys_unres_glob_erase(unres);
     }
-    lys_unres_glob_erase(&unres);
     return ret;
 }
 
@@ -1724,7 +1729,6 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
 {
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
-    struct lys_glob_unres unres = {0};
 
     if (module) {
         *module = NULL;
@@ -1738,28 +1742,31 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char 
     in->func_start = in->current;
 
     /* parse */
-    ret = lys_parse_in(ctx, in, format, NULL, NULL, &unres.creating, &mod);
+    ret = lys_parse_in(ctx, in, format, NULL, NULL, &ctx->unres.creating, &mod);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* implement */
-    ret = _lys_set_implemented(mod, features, &unres);
+    ret = _lys_set_implemented(mod, features, &ctx->unres);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
         /* create dep set for the module and mark all the modules that will be (re)compiled */
-        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &unres.dep_sets, mod), cleanup);
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &ctx->unres.dep_sets, mod), cleanup);
 
         /* (re)compile the whole dep set (other dep sets will have no modules marked for compilation) */
-        LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &unres), cleanup);
+        LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &ctx->unres), cleanup);
+
+        /* unres resolved */
+        lys_unres_glob_erase(&ctx->unres);
     }
 
 cleanup:
     if (ret) {
-        lys_unres_glob_revert(ctx, &unres);
+        lys_unres_glob_revert(ctx, &ctx->unres);
+        lys_unres_glob_erase(&ctx->unres);
     } else if (module) {
         *module = mod;
     }
-    lys_unres_glob_erase(&unres);
     return ret;
 }
 

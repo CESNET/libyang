@@ -19,7 +19,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "common.h"
 #include "dict.h"
 #include "log.h"
 #include "set.h"
