@@ -447,7 +447,7 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
  * @brief Macro to simply put couple of string length and the string as
  * printf's arguments for %.*s. Use only with constant strings.
  */
-#define LY_PRI_LENSTR(STR) ly_strlen_const(STR), STR
+#define LY_PRI_LENSTR(STR) (int)ly_strlen_const(STR), STR
 
 #define ly_sizeofarray(ARRAY) (sizeof ARRAY / sizeof *ARRAY)
 
