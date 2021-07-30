@@ -249,7 +249,21 @@ remove_nodelevel:
     LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 }
 
-LY_ERR
+/**
+ * @brief Compile information from the identity statement
+ *
+ * The backlinks to the identities derived from this one are supposed to be filled later via ::lys_compile_identity_bases().
+ *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
+ * @param[in] ctx libyang context.
+ * @param[in] parsed_mod Module with the identities.
+ * @param[in] identities_p Array of the parsed identity definitions to precompile.
+ * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
+ * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
+ * to be processed.
+ * @return LY_ERR value.
+ */
+static LY_ERR
 lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
         struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
@@ -1711,18 +1725,19 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Compile identites in a module and all its submodules.
- *
- * @param[in] mod Module to process.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 lys_compile_identities(struct lys_module *mod)
 {
     struct lysc_ctx ctx = {0};
     struct lysp_submodule *submod;
     LY_ARRAY_COUNT_TYPE u;
+
+    /* pre-compile identities of the module and any submodules */
+    LY_CHECK_RET(lys_identity_precompile(NULL, mod->ctx, mod->parsed, mod->parsed->identities, &mod->identities));
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        submod = mod->parsed->includes[u].submodule;
+        LY_CHECK_RET(lys_identity_precompile(NULL, mod->ctx, (struct lysp_module *)submod, submod->identities, &mod->identities));
+    }
 
     /* prepare context */
     ctx.ctx = mod->ctx;
@@ -1820,9 +1835,6 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
 
     /* add the module into newly implemented module set */
     LY_CHECK_RET(ly_set_add(&unres->implementing, mod, 1, NULL));
-
-    /* compile identities */
-    LY_CHECK_RET(lys_compile_identities(mod));
 
     /* mark target modules with our augments and deviations */
     LY_CHECK_RET(lys_precompile_augments_deviations(mod, unres));

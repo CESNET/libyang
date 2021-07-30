@@ -1460,7 +1460,8 @@ struct lysc_ident {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lys_module *module;       /**< module structure */
-    struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays)) */
+    struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays))
+                                          It also contains references to identities located in unimplemented modules. */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
@@ -2309,8 +2310,9 @@ struct lys_module {
                                           Available only for implemented modules. */
 
     struct lysc_ident *identities;   /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
-                                          Identities are outside the compiled tree to allow their linkage to the identities from
-                                          the implemented modules. This avoids problems when the module became implemented in
+                                          also contains the disabled identities when their if-feature(s) are evaluated to \"false\",
+                                          and also the list is filled even if the module is not implemented.
+                                          The list is located here because it avoids problems when the module became implemented in
                                           future (no matter if implicitly via augment/deviate or explicitly via
                                           ::lys_set_implemented()). Note that if the module is not implemented (compiled), the
                                           identities cannot be instantiated in data (in identityrefs). */

@@ -1431,6 +1431,254 @@ test_type_instanceid(void **state)
     CHECK_LOG_CTX("Invalid type restrictions for instance-identifier type.", "/aa:l");
 }
 
+static ly_bool
+identity_isderived(const struct lysc_ident *base, const char *der)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(base->derived, u) {
+        if (!strcmp(base->derived[u]->name, der)) {
+            return 1;
+        }
+        if (identity_isderived(base->derived[u], der)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static ly_bool
+contains_derived_identity(struct ly_ctx *ctx, char *module_name,
+        char *revision, char *identity_name, char *derived_name)
+{
+    LY_ARRAY_COUNT_TYPE u = 0;
+    struct lys_module *mod;
+    struct lysc_ident *identity = NULL;
+
+    if (!(mod = ly_ctx_get_module(ctx, module_name, revision))) {
+        return 0;
+    }
+
+    LY_ARRAY_FOR(mod->identities, u) {
+        if (!strcmp(identity_name, mod->identities[u].name)) {
+            identity = &mod->identities[u];
+            break;
+        }
+    }
+    if (!identity) {
+        return 0;
+    }
+
+    return identity_isderived(identity, derived_name);
+}
+
+static void
+test_identity(void **state)
+{
+    char *str;
+    struct lyd_node *tree;
+    const char *data;
+
+#define RESET_CTX(CTX) \
+    ly_ctx_destroy(UTEST_LYCTX); \
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
+
+    /* It does not matter whether the base identity is in implemented
+     * module or not.
+     */
+
+    /* Implemented module's identity expand base identity located in unimplemented module. */
+    str = "module a {namespace urn:a; prefix a;"
+            "identity baseid;"
+            "identity id1 {base baseid;}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b {namespace urn:b; prefix b; import a {prefix a;}"
+            "identity id2 {base a:baseid;}"
+            "leaf lf {type identityref {base a:baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id2"));
+    data = "<lf xmlns=\"urn:b\">id2</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", NULL));
+    assert_false(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
+    data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id3</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Unimplemented module (c) expand base identity located in unimplemented module. */
+    str = "module a {namespace urn:a; prefix a;"
+            "identity baseid;"
+            "identity id1 {base baseid;}"
+            "}\n"
+            "module c {namespace urn:c; prefix c; import a {prefix a;}"
+            "identity id3 {base a:baseid;}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b {namespace urn:b; prefix b; import a {prefix a;} import c {prefix c;}"
+            "identity id2 {base a:baseid;}"
+            "leaf lf {type identityref {base a:baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id2"));
+    data = "<lf xmlns=\"urn:b\">id2</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
+    data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:c\">ids:id3</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    lyd_free_tree(tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Unimplemented module expand base identity located in implemented module. */
+    str = "module b {namespace urn:b; prefix b;"
+            "identity baseid;"
+            "identity id2 {base baseid;}"
+            "leaf lf {type identityref {base baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module a {namespace urn:a; prefix a; import b {prefix b;}"
+            "identity id1 {base b:baseid;}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    /* load (but don't implement) module (a) into context by module (c) */
+    str = "module c {namespace urn:c; prefix c; import a {prefix a;}}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "b", NULL, "baseid", "id2"));
+    data = "<lf xmlns=\"urn:b\">id2</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "b", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    lyd_free_tree(tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Transitivity of derived identity through unimplemented module. */
+    str = "module a {namespace urn:a; prefix a;"
+            "identity baseid;"
+            "identity id1 {base baseid;}"
+            "}\n"
+            "module c {namespace urn:c; prefix c; import a {prefix a;}"
+            "identity id3 {base a:baseid;}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b {namespace urn:b; prefix b; import c {prefix c;} import a {prefix a;}"
+            "identity id2 {base c:id3;}"
+            "leaf lf {type identityref {base a:baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id2"));
+    data = "<lf xmlns=\"urn:b\">id2</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\">id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
+    data = "<lf xmlns=\"urn:b\">id3</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* The base reference must not refer to a non-existent module,
+     * even if the module is not implemented.
+     */
+    str = "module b {namespace urn:b; prefix b;"
+            "identity ident { base a:baseid;}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    /* load (but don't implement) module (b) into context by module (c) */
+    str = "module c {namespace urn:c; prefix c; import b {prefix b;}}";
+    UTEST_INVALID_MODULE(str, LYS_IN_YANG, NULL, LY_EVALID);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Tests in which multiple revisions are available and the import
+     * does not specify an exact revision.
+     */
+
+    /* The old revision was soon implemented
+     * and therefore its "baseid" is used.
+     */
+    str = "module a {namespace urn:a; prefix a;"
+            "revision \"2014-05-08\";"
+            "identity baseid;"
+            "leaf alf { type identityref { base baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module a {namespace urn:a; prefix a;"
+            "revision \"2015-05-08\";"
+            "identity baseid;"
+            "leaf alf { type identityref { base baseid;}}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b {namespace urn:b; prefix b;"
+            "import a {prefix a;}"
+            "identity baseref { base a:baseid;}"
+            "identity id1 { base baseref;}"
+            "identity id2 { base baseref;}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", "2014-05-08", "baseid", "baseref"));
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", "2014-05-08", "baseid", "id1"));
+    data = "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id1</alf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", "2014-05-08", "baseid", "id2"));
+    data = "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id2</alf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Even if a newer revision has been implemented, the old and
+     * unimplemented one will be used because it has already been
+     * imported. Therefore, if the user wants to use multiple revisions,
+     * he must choose one and implement it as soon as possible.
+     */
+    str = "module a {namespace urn:a; prefix a;"
+            "revision \"2014-05-08\";"
+            "identity baseid;"
+            "leaf alf { type identityref { base baseid;}}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b {namespace urn:b; prefix b;"
+            "import a {prefix a;}"
+            "identity baseref { base a:baseid;}"
+            "identity id1 { base baseref;}"
+            "identity id2 { base baseref;}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module a {namespace urn:a; prefix a;"
+            "revision \"2015-05-08\";"
+            "identity baseid;"
+            "leaf alf { type identityref { base baseid;}}"
+            "}";
+    ly_log_level(LY_LLVRB);
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    CHECK_LOG("Implemented module \"a@2015-05-08\" was not and will not "
+            "be imported if the revision-date is missing in the import "
+            "statement. Instead, the revision \"2014-05-08\" is imported.", NULL);
+    ly_log_level(LY_LLWRN);
+    /* Data is inserted only to implemented revision. */
+    data = "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id1</alf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    data = "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id2</alf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", "2014-05-08", "baseid", "baseref"));
+    assert_false(contains_derived_identity(UTEST_LYCTX, "a", "2015-05-08", "baseid", "baseref"));
+    RESET_CTX(UTEST_LYCTX);
+
+#undef RESET_CTX
+}
+
 static void
 test_type_identityref(void **state)
 {
@@ -3370,6 +3618,7 @@ main(void)
         UTEST(test_type_bits, setup),
         UTEST(test_type_dec64, setup),
         UTEST(test_type_instanceid, setup),
+        UTEST(test_identity, setup),
         UTEST(test_type_identityref, setup),
         UTEST(test_type_leafref, setup),
         UTEST(test_type_empty, setup),
