@@ -73,8 +73,7 @@ struct lysc_node;
  * For a context, the first time the latest revision of a module is requested, it is properly searched for and loaded.
  * However, when this module is requested (without revision) the second time, the one found previously is returned.
  * This has the advantage of not searching for the module repeatedly but there is a drawback in case the content of search
- * directories is updated and a later revision become available. However, to force libyang to re-search the
- * latest revision, ::ly_ctx_reset_latests() can be used (note that it applies to all the modules in the context).
+ * directories is updated and a later revision become available.
  *
  * Context holds all the schema modules internally. To get a specific module, use ::ly_ctx_get_module() (or some of its
  * variants). If you need to do something with all the modules in the context, it is advised to iterate over them using
@@ -529,6 +528,8 @@ const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_modul
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.
+ *
+ * This function is deprecated and should not be used.
  *
  * When a (sub)module is imported/included without revision, the latest revision is
  * searched. libyang searches for the latest revision in searchdirs and/or via provided

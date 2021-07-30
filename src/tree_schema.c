@@ -1191,6 +1191,14 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
         imp = &pmod->imports[u];
         if (!imp->module) {
             LY_CHECK_RET(lys_parse_load(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, new_mods, &imp->module));
+
+            if (!imp->rev[0]) {
+                /* This module must be selected for the next similar
+                 * import without revision-date to avoid incorrect
+                 * derived identities in the ::lys_module.identities.
+                 */
+                imp->module->latest_revision |= LYS_MOD_IMPORTED_REV;
+            }
         }
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
