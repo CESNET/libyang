@@ -2154,6 +2154,19 @@ LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, 
 LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
 
 /**
+ * @brief Get how the if-feature statement is evaluated for certain identity.
+ *
+ * The function can be called even if the identity does not contain
+ * if-features, in which case ::LY_SUCCESS is returned.
+ *
+ * @param[in] ident Compiled identity statement to evaluate.
+ * @return LY_SUCCESS if the statement evaluates to true,
+ * @return LY_ENOT if it evaluates to false,
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_identity_iffeature_value(const struct lysc_ident *ident);
+
+/**
  * @brief Get the next feature in the module or submodules.
  *
  * @param[in] last Last returned feature.

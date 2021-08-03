@@ -1636,7 +1636,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
                 }
                 return LY_EVALID;
             }
-            LY_CHECK_RET(lys_compile_identity_bases(ctx, type_p->pmod, type_p->bases, NULL, &idref->bases, NULL));
+            LY_CHECK_RET(lys_compile_identity_bases(ctx, type_p->pmod, type_p->bases, NULL, &idref->bases));
         }
 
         if (!base && !type_p->flags) {

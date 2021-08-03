@@ -271,7 +271,6 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
     struct lysc_ctx context = {0};
     struct lysc_ident *ident;
     LY_ERR ret = LY_SUCCESS;
-    ly_bool enabled;
 
     assert(ctx_sc || ctx);
 
@@ -290,12 +289,6 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
 
     lysc_update_path(ctx_sc, NULL, "{identity}");
     LY_ARRAY_FOR(identities_p, u) {
-        /* evaluate if-features */
-        LY_CHECK_RET(lys_eval_iffeatures(ctx, identities_p[u].iffeatures, &enabled));
-        if (!enabled) {
-            continue;
-        }
-
         lysc_update_path(ctx_sc, NULL, identities_p[u].name);
 
         /* add new compiled identity */
@@ -371,14 +364,14 @@ cleanup:
 
 LY_ERR
 lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
-        struct lysc_ident *ident, struct lysc_ident ***bases, ly_bool *enabled)
+        struct lysc_ident *ident, struct lysc_ident ***bases)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     const char *s, *name;
     const struct lys_module *mod;
     struct lysc_ident **idref;
 
-    assert((ident && enabled) || bases);
+    assert(ident || bases);
 
     if ((LY_ARRAY_COUNT(bases_p) > 1) && (ctx->pmod->version < LYS_VERSION_1_1)) {
         LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
@@ -428,18 +421,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
                 break;
             }
         }
-        if (!idref || !(*idref)) {
-            if (ident || (ctx->compile_opts & LYS_COMPILE_DISABLED)) {
-                /* look into the parsed module to check whether the identity is not merely disabled */
-                LY_ARRAY_FOR(mod->parsed->identities, v) {
-                    if (!strcmp(mod->parsed->identities[v].name, name)) {
-                        if (ident) {
-                            *enabled = 0;
-                        }
-                        return LY_SUCCESS;
-                    }
-                }
-            }
+        if (!idref) {
             if (ident) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Unable to find base (%s) of identity \"%s\".", bases_p[u], ident->name);
@@ -451,9 +433,6 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
         }
     }
 
-    if (ident) {
-        *enabled = 1;
-    }
     return LY_SUCCESS;
 }
 
@@ -461,21 +440,18 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_
  * @brief For the given array of identities, set the backlinks from all their base identities.
  * @param[in] ctx Compile context, not only for logging but also to get the current module to resolve prefixes.
  * @param[in] idents_p Array of identities definitions from the parsed schema structure.
- * @param[in,out] idents Array of referencing identities to which the backlinks are supposed to be set. Any
- * identities with disabled bases are removed.
+ * @param[in,out] idents Array of referencing identities to which the backlinks are supposed to be set.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
 lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident **idents)
 {
     LY_ARRAY_COUNT_TYPE u, v;
-    ly_bool enabled;
 
     lysc_update_path(ctx, NULL, "{identity}");
 
-restart:
     for (u = 0, v = 0; u < LY_ARRAY_COUNT(*idents); ++u) {
-        /* find matching parsed identity, the disabled ones are missing in the compiled array */
+        /* find matching parsed identity */
         while (v < LY_ARRAY_COUNT(idents_p)) {
             if (idents_p[v].name == (*idents)[u].name) {
                 break;
@@ -489,32 +465,8 @@ restart:
         }
 
         lysc_update_path(ctx, NULL, (*idents)[u].name);
-        LY_CHECK_RET(lys_compile_identity_bases(ctx, ctx->pmod, idents_p[v].bases, &(*idents)[u], NULL, &enabled));
+        LY_CHECK_RET(lys_compile_identity_bases(ctx, ctx->pmod, idents_p[v].bases, &(*idents)[u], NULL));
         lysc_update_path(ctx, NULL, NULL);
-
-        if (!enabled) {
-            /* remove the identity */
-            lysc_ident_free(ctx->ctx, &(*idents)[u]);
-            LY_ARRAY_DECREMENT(*idents);
-            if (u < LY_ARRAY_COUNT(*idents)) {
-                memmove(&(*idents)[u], &(*idents)[u + 1], (LY_ARRAY_COUNT(*idents) - u) * sizeof **idents);
-            }
-
-            /* revert compilation of all the previous identities */
-            for (v = 0; v < u; ++v) {
-                LY_ARRAY_FREE((*idents)[v].derived);
-                (*idents)[v].derived = NULL;
-            }
-
-            /* free the whole array if there are no identites left */
-            if (!LY_ARRAY_COUNT(*idents)) {
-                LY_ARRAY_FREE(*idents);
-                *idents = NULL;
-            }
-
-            /* restart the whole process without this identity */
-            goto restart;
-        }
     }
 
     lysc_update_path(ctx, NULL, NULL);
