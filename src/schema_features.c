@@ -97,6 +97,31 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
     return LY_ENOT;
 }
 
+API LY_ERR
+lys_identity_iffeature_value(const struct lysc_ident *ident)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    ly_bool enabled;
+    const struct lysp_ident *idents_p;
+
+    assert(ident);
+
+    idents_p = ident->module->parsed->identities;
+    LY_ARRAY_FOR(idents_p, u) {
+        if (idents_p[u].name == ident->name) {
+            break;
+        }
+    }
+    assert(u != LY_ARRAY_COUNT(idents_p));
+
+    LY_CHECK_RET(lys_eval_iffeatures(ident->module->ctx, idents_p[u].iffeatures, &enabled));
+    if (!enabled) {
+        return LY_ENOT;
+    }
+
+    return LY_SUCCESS;
+}
+
 API struct lysp_feature *
 lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx)
 {

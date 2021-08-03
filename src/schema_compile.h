@@ -186,11 +186,10 @@ LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, st
  * @param[in] bases_p Array of names (including prefix if necessary) of base identities.
  * @param[in] ident Referencing identity to work with, NULL for identityref.
  * @param[in] bases Array of bases of identityref to fill in.
- * @param[in] enabled Whether the base is disabled, must be set if @p ident is set.
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
-        struct lysc_ident *ident, struct lysc_ident ***bases, ly_bool *enabled);
+        struct lysc_ident *ident, struct lysc_ident ***bases);
 
 /**
  * @brief Perform a complet compilation of identites in a module and all its submodules.

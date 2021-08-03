@@ -134,6 +134,19 @@ test_module(void **state)
     compiled = "module c {\n"
             "  namespace \"urn:test:c\";\n"
             "  prefix c;\n"
+            "\n"
+            "  identity i1 {\n"
+            "    /* identity \"i1\" is disabled by if-feature(s) */\n"
+            "    derived i2;\n"
+            "    description\n"
+            "      \"text\";\n"
+            "    reference\n"
+            "      \"text32\";\n"
+            "  }\n"
+            "\n"
+            "  identity i2 {\n"
+            "    status obsolete;\n"
+            "  }\n"
             "}\n";
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));

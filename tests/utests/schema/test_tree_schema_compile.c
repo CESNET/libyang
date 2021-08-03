@@ -1476,6 +1476,7 @@ static void
 test_identity(void **state)
 {
     char *str;
+    const char *feats[2] = {NULL, NULL};
     struct lyd_node *tree;
     const char *data;
 
@@ -1505,6 +1506,7 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".", "Schema location /b:lf, line number 1.");
     assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", NULL));
     assert_false(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id3</lf>";
@@ -1532,11 +1534,11 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    lyd_free_tree(tree);
+    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".", "Schema location /b:lf, line number 1.");
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:c\">ids:id3</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    lyd_free_tree(tree);
+    CHECK_LOG("Invalid identityref \"ids:id3\" value - identity found in non-implemented module \"c\".", "Schema location /b:lf, line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
     /* Unimplemented module expand base identity located in implemented module. */
@@ -1560,7 +1562,7 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "b", NULL, "baseid", "id1"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    lyd_free_tree(tree);
+    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".", "Schema location /b:lf, line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
     /* Transitivity of derived identity through unimplemented module. */
@@ -1674,6 +1676,75 @@ test_identity(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", "2014-05-08", "baseid", "baseref"));
     assert_false(contains_derived_identity(UTEST_LYCTX, "a", "2015-05-08", "baseid", "baseref"));
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Identity testing with if-features. */
+
+    /* The if-feature has no effect if the module is imported. */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a;"
+            "feature f;"
+            "identity baseid { if-feature \"f\";}"
+            "}";
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, str);
+    str = "module b {namespace urn:b; prefix b; import a { prefix a;}"
+            "identity id1 { base a:baseid;}"
+            "leaf lf { type identityref { base a:baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\">id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Even if the identity in the implemented module is disabled,
+     * it can be used as a base.
+     */
+    str = "module a {yang-version 1.1; namespace urn:a; prefix a;"
+            "feature f;"
+            "identity baseid { if-feature \"f\";}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module b {namespace urn:b; prefix b; import a { prefix a;}"
+            "identity id1 { base a:baseid;}"
+            "leaf lf { type identityref { base a:baseid;}}"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\">id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    RESET_CTX(UTEST_LYCTX);
+
+    /* Identity derivation cannot be instantiated if it is disabled.
+     * Conversely, if the identity is enabled, it can be instantiated.
+     */
+    str = "module a {namespace urn:a; prefix a;"
+            "identity baseid;"
+            "}";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, NULL, NULL);
+    str = "module b {yang-version 1.1; namespace urn:b; prefix b; import a { prefix a;}"
+            "feature f2;"
+            "feature f3;"
+            "identity id1 { base a:baseid;}"
+            "identity id2 { if-feature \"f2\"; base a:baseid;}"
+            "identity id3 { if-feature \"f3\"; base a:baseid;}"
+            "leaf lf { type identityref { base a:baseid;}}"
+            "}";
+    feats[0] = "f2";
+    UTEST_ADD_MODULE(str, LYS_IN_YANG, feats, NULL);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
+    data = "<lf xmlns=\"urn:b\">id1</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id2"));
+    data = "<lf xmlns=\"urn:b\">id2</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_tree(tree);
+    assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
+    data = "<lf xmlns=\"urn:b\">id3</lf>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Invalid identityref \"id3\" value - identity is disabled by if-feature.", "Schema location /b:lf, line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
 #undef RESET_CTX

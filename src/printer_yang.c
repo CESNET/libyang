@@ -551,8 +551,12 @@ yprc_identity(struct lys_ypr_ctx *ctx, const struct lysc_ident *ident)
 
     yprc_extension_instances(ctx, LY_STMT_IDENTITY, 0, ident->exts, &flag, 0);
 
+    ypr_open(ctx->out, &flag);
+    if (lys_identity_iffeature_value(ident) == LY_ENOT) {
+        ly_print_(ctx->out, "%*s/* identity \"%s\" is disabled by if-feature(s) */\n", INDENT, ident->name);
+    }
+
     LY_ARRAY_FOR(ident->derived, u) {
-        ypr_open(ctx->out, &flag);
         if (ctx->module != ident->derived[u]->module) {
             ly_print_(ctx->out, "%*sderived %s:%s;\n", INDENT, ident->derived[u]->module->prefix, ident->derived[u]->name);
         } else {
