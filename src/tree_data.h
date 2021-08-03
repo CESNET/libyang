@@ -1937,11 +1937,13 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  * - source data tree is not modified in any way,
  * - any default nodes in the source are ignored if there are explicit nodes in the target,
  * - any metadata are ignored - those present in the target are kept, those in the source are not merged.
+ * - any merged nodes flags are set as non-validated.
  * @{
  */
 
 #define LYD_MERGE_DESTRUCT      0x01 /**< Spend source data tree in the function, it cannot be used afterwards! */
 #define LYD_MERGE_DEFAULTS      0x02 /**< Default nodes in the source tree replace even explicit nodes in the target. */
+#define LYD_MERGE_WITH_FLAGS    0x04 /**< Merged nodes (those missing in the source) keep their exact flags. */
 
 /** @} mergeoptions */
 

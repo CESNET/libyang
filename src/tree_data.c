@@ -3725,7 +3725,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
                         &((struct lyd_node_term *)match_trg)->value));
 
                 /* copy flags and add LYD_NEW */
-                match_trg->flags = sibling_src->flags | LYD_NEW;
+                match_trg->flags = sibling_src->flags | ((options & LYD_MERGE_WITH_FLAGS) ? 0 : LYD_NEW);
             }
         } else if ((match_trg->schema->nodetype & LYS_ANYDATA) && lyd_compare_single(sibling_src, match_trg, 0)) {
             /* update value */
@@ -3733,7 +3733,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
                     ((struct lyd_node_any *)sibling_src)->value_type));
 
             /* copy flags and add LYD_NEW */
-            match_trg->flags = sibling_src->flags | LYD_NEW;
+            match_trg->flags = sibling_src->flags | ((options & LYD_MERGE_WITH_FLAGS) ? 0 : LYD_NEW);
         }
 
         /* check descendants, recursively */
@@ -3758,10 +3758,12 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
             LY_CHECK_RET(lyd_dup_single(sibling_src, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &dup_src));
         }
 
-        /* set LYD_NEW for all the new nodes, required for validation */
-        LYD_TREE_DFS_BEGIN(dup_src, elem) {
-            elem->flags |= LYD_NEW;
-            LYD_TREE_DFS_END(dup_src, elem);
+        if (!(options & LYD_MERGE_WITH_FLAGS)) {
+            /* set LYD_NEW for all the new nodes, required for validation */
+            LYD_TREE_DFS_BEGIN(dup_src, elem) {
+                elem->flags |= LYD_NEW;
+                LYD_TREE_DFS_END(dup_src, elem);
+            }
         }
 
         /* insert */
