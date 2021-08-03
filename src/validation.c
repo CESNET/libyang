@@ -666,21 +666,44 @@ lyd_validate_autodel_case_dflt(struct lyd_node **first, struct lyd_node *node, c
     }
 }
 
-LY_ERR
-lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
+/**
+ * @brief Validate new siblings in choices, recursively for nested choices.
+ *
+ * @param[in,out] first First sibling.
+ * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
+ * @param[in] mod Module of the siblings, NULL for nested siblings.
+ * @param[in,out] diff Validation diff.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_validate_choice_r(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
         struct lyd_node **diff)
 {
-    struct lyd_node *next, *node;
     const struct lysc_node *snode = NULL;
-
-    assert(first && (sparent || mod));
 
     while (*first && (snode = lys_getnext(snode, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
         /* check case duplicites */
         if (snode->nodetype == LYS_CHOICE) {
             LY_CHECK_RET(lyd_validate_cases(first, mod, (struct lysc_node_choice *)snode, diff));
+
+            /* check for nested choice */
+            LY_CHECK_RET(lyd_validate_choice_r(first, snode, mod, diff));
         }
     }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
+        struct lyd_node **diff)
+{
+    struct lyd_node *next, *node;
+
+    assert(first && (sparent || mod));
+
+    /* validate choices */
+    LY_CHECK_RET(lyd_validate_choice_r(first, sparent, mod, diff));
 
     LY_LIST_FOR_SAFE(*first, next, node) {
         if (mod && (lyd_owner_module(node) != mod)) {
