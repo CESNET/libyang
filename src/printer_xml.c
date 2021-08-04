@@ -293,8 +293,9 @@ static LY_ERR xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
  *
  * @param[in] ctx XML printer context.
  * @param[in] node Data node to be printed.
+ * @return LY_ERR value.
  */
-static void
+static LY_ERR
 xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
 {
     struct ly_set ns_list = {0};
@@ -304,6 +305,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     xml_print_node_open(ctx, &node->node);
     value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(LYD_CTX(node), &node->value, LY_VALUE_XML,
             &ns_list, &dynamic, NULL);
+    LY_CHECK_RET(!value, LY_EINVAL);
 
     /* print namespaces connected with the values's prefixes */
     for (uint32_t u = 0; u < ns_list.count; ++u) {
@@ -312,7 +314,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     }
     ly_set_erase(&ns_list, NULL);
 
-    if (!value || !value[0]) {
+    if (!value[0]) {
         ly_print_(ctx->out, "/>%s", DO_FORMAT ? "\n" : "");
     } else {
         ly_print_(ctx->out, ">");
@@ -322,6 +324,8 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     if (dynamic) {
         free((void *)value);
     }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -523,7 +527,7 @@ xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
             break;
         case LYS_LEAF:
         case LYS_LEAFLIST:
-            xml_print_term(ctx, (const struct lyd_node_term *)node);
+            ret = xml_print_term(ctx, (const struct lyd_node_term *)node);
             break;
         case LYS_ANYXML:
         case LYS_ANYDATA:
