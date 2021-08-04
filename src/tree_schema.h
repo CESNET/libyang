@@ -2331,9 +2331,8 @@ struct lys_module {
  *
  * @{
  */
-#define LYS_MOD_LATEST_REV          0x01 /**< The latest revision in searchdirs was not searched yet
-                                              and this is the latest revision in the current context. */
-#define LYS_MOD_LATEST_SEARCHDIRS   0x02 /**< Searchdirs were searched and this is the latest available revision. */
+#define LYS_MOD_LATEST_REV          0x01 /**< This is the latest revision of the module in the current context. */
+#define LYS_MOD_LATEST_SEARCHDIRS   0x02 /**< This is the latest revision of the module found in searchdirs. */
 /** @} latestrevflags */
 
 /**
