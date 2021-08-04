@@ -106,7 +106,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l2",
             "/yl:yang-library/yl:datastore/yl::name");
     CHECK_LOG_CTX("Storing value \"/yl:yang-library/yl:datastore/yl::name\" failed.", "Schema location /a:l2, line number 1.",
-            "Invalid character ':'[34] of expression '/yl:yang-library/yl:datastore/yl::name'.",
+            "Invalid character 'y'[31] of expression '/yl:yang-library/yl:datastore/yl::name'.",
             "Schema location /a:l2, line number 1.");
 }
 

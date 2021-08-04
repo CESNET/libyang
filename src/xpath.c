@@ -2942,7 +2942,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
 
             /* NameTest (NCName ':' '*' | QName) or NodeType/FunctionName */
             long int ncname_len = parse_ncname(&expr_str[parsed]);
-            LY_CHECK_ERR_GOTO(ncname_len < 0, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+            LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
                     parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
             tok_len = ncname_len;
 
@@ -2952,7 +2952,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                     ++tok_len;
                 } else {
                     ncname_len = parse_ncname(&expr_str[parsed + tok_len]);
-                    LY_CHECK_ERR_GOTO(ncname_len < 0, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+                    LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
                             parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
                     tok_len += ncname_len;
                 }
