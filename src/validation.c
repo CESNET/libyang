@@ -1378,7 +1378,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
         /* opaque data */
         if (!node->schema) {
-            LOGVAL(LYD_CTX(node), LYVE_DATA, "Opaque node \"%s\" found.", ((struct lyd_node_opaq *)node)->name.name);
+            LOGVAL(LYD_CTX(node), LYVE_DATA, "Invalid opaque node \"%s\" found.", ((struct lyd_node_opaq *)node)->name.name);
             LOG_LOCBACK(0, 1, 0, 0);
             return LY_EVALID;
         }
@@ -1459,6 +1459,10 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
     struct lyd_node *node;
 
     LYD_TREE_DFS_BEGIN(root, node) {
+        if (!node->schema) {
+            continue;
+        }
+
         LY_LIST_FOR(node->meta, meta) {
             if ((*(const struct lysc_type **)meta->annotation->substmts[ANNOTATION_SUBSTMT_TYPE].storage)->plugin->validate) {
                 /* metadata type resolution */
