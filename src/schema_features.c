@@ -100,21 +100,40 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
 API LY_ERR
 lys_identity_iffeature_value(const struct lysc_ident *ident)
 {
-    LY_ARRAY_COUNT_TYPE u;
+    LY_ARRAY_COUNT_TYPE u, v;
     ly_bool enabled;
-    const struct lysp_ident *idents_p;
+    const struct lysp_ident *idents_p, *found_ident = NULL;
+    struct lysp_include *includes;
 
     assert(ident);
 
+    /* Search parsed identity in the module. */
     idents_p = ident->module->parsed->identities;
     LY_ARRAY_FOR(idents_p, u) {
         if (idents_p[u].name == ident->name) {
+            found_ident = &idents_p[u];
             break;
         }
     }
-    assert(u != LY_ARRAY_COUNT(idents_p));
 
-    LY_CHECK_RET(lys_eval_iffeatures(ident->module->ctx, idents_p[u].iffeatures, &enabled));
+    if (!found_ident) {
+        /* It is not in the module, so it must be in some submodule. */
+        includes = ident->module->parsed->includes;
+        LY_ARRAY_FOR(includes, u) {
+            idents_p = includes[u].submodule->identities;
+            LY_ARRAY_FOR(idents_p, v) {
+                if (idents_p[v].name == ident->name) {
+                    found_ident = &idents_p[v];
+                    break;
+                }
+            }
+        }
+    }
+
+    assert(found_ident);
+
+    /* Evaluate its if-feature. */
+    LY_CHECK_RET(lys_eval_iffeatures(ident->module->ctx, found_ident->iffeatures, &enabled));
     if (!enabled) {
         return LY_ENOT;
     }
