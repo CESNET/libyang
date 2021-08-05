@@ -450,13 +450,12 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
 
     lysc_update_path(ctx, NULL, "{identity}");
 
-    for (u = 0, v = 0; u < LY_ARRAY_COUNT(*idents); ++u) {
+    for (u = 0; u < LY_ARRAY_COUNT(*idents); ++u) {
         /* find matching parsed identity */
-        while (v < LY_ARRAY_COUNT(idents_p)) {
+        for (v = 0; v < LY_ARRAY_COUNT(idents_p); ++v) {
             if (idents_p[v].name == (*idents)[u].name) {
                 break;
             }
-            ++v;
         }
 
         if ((v == LY_ARRAY_COUNT(idents_p)) || !idents_p[v].bases) {
