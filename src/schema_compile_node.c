@@ -1833,6 +1833,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL, *prev_type;
     struct ly_set tpdf_chain = {0};
+    struct lyplg_type *plugin;
 
     (*type) = NULL;
     if (dflt) {
@@ -1995,11 +1996,19 @@ preparenext:
         LY_CHECK_GOTO(ret, cleanup);
 
         if (tctx->tpdf->type.compiled) {
+            /* already compiled */
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
-            /* no change, just use the type information from the base */
-            base = ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = ((struct type_context *)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
+        }
+
+        /* get plugin for the specific typedef */
+        plugin = lys_compile_type_get_plugin(tctx->tpdf->type.pmod->mod, tctx->tpdf->name, basetype);
+        assert(plugin);
+
+        if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags) &&
+                (plugin == base->plugin)) {
+            /* no change, reuse the compiled base */
+            ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
             ++base->refcount;
             continue;
         }
@@ -2019,10 +2028,12 @@ preparenext:
         }
 
         (*type)->basetype = basetype;
+        (*type)->plugin = plugin;
+
         /* collect extensions */
         COMPILE_EXTS_GOTO(ctx, tctx->tpdf->type.exts, (*type)->exts, (*type), ret, cleanup);
-        /* get plugin for the type */
-        (*type)->plugin = lys_compile_type_get_plugin(tctx->tpdf->type.pmod->mod, tctx->tpdf->name, basetype);
+
+        /* compile the new typedef */
         prev_type = *type;
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->tpdf->name,
                 &((struct lysp_tpdf *)tctx->tpdf)->type, basetype, tctx->tpdf->name, base, type);
