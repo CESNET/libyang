@@ -1460,7 +1460,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
 
     LYD_TREE_DFS_BEGIN(root, node) {
         if (!node->schema) {
-            continue;
+            goto next_node;
         }
 
         LY_LIST_FOR(node->meta, meta) {
@@ -1487,6 +1487,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
         }
         LY_CHECK_RET(lysc_node_ext_tovalidate(node_exts, node));
 
+next_node:
         LYD_TREE_DFS_END(root, node);
     }
 

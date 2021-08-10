@@ -1200,6 +1200,55 @@ test_action(void **state)
 }
 
 static void
+test_rpc(void **state)
+{
+    const char *schema, *data;
+    struct ly_in *in;
+    struct lyd_node *tree;
+
+    /* Testing constraint violation in RPC. */
+    schema =
+            "module val-str {\n"
+            "  namespace \"urn:vstr\";\n"
+            "  prefix v;\n"
+            "\n"
+            "  rpc modify-user-password {\n"
+            "    input {\n"
+            "      leaf old-password {\n"
+            "        type string {\n"
+            "          length \"4..8\";\n"
+            "        }\n"
+            "      }\n"
+            "      leaf new-password {\n"
+            "        type string {\n"
+            "          length \"4..8\";\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    data =
+            "<modify-user-password xmlns=\"urn:vstr\">\n"
+            "   <old-password>12345</old-password>\n"
+            "   <new-password>123</new-password>\n"
+            "</modify-user-password>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    /* Success, although the validation found a violation of
+     * the restriction. An \"opaq\" node was created instead of
+     * the \"new-password\" node from schema.
+     */
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    assert_non_null(tree);
+    /* Validate data as RPC request. */
+    assert_int_equal(LY_EVALID, lyd_validate_op(tree, NULL, LYD_TYPE_RPC_YANG, NULL));
+    CHECK_LOG_CTX("Invalid opaque node \"new-password\" found.",
+            "Data location /val-str:modify-user-password/new-password.");
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
+}
+
+static void
 test_reply(void **state)
 {
     struct ly_in *in;
@@ -1352,6 +1401,7 @@ main(void)
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_action),
+        UTEST(test_rpc),
         UTEST(test_reply),
         UTEST(test_case),
     };
