@@ -109,6 +109,14 @@ test_plugin_store(void **state)
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
+    /* empty value */
+    val = "";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, "", "", 0);
+    assert_ptr_equal(value.realtype, lysc_type);
+    type->free(UTEST_LYCTX, &value);
+
     /*
      * ERROR TESTS
      */
@@ -129,11 +137,61 @@ test_plugin_store(void **state)
     ly_err_free(err);
 }
 
+static void
+test_plugin_print(void **state)
+{
+    const char *schema, *val;
+    struct lyd_value value = {0};
+    struct lys_module *mod;
+    struct lysc_type *lysc_type;
+    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BINARY]);
+    struct ly_err_item *err = NULL;
+
+    /* create schema. Prepare common used variables */
+    schema = MODULE_CREATE_YANG("a", "leaf l {type binary;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    /* Testing empty value. */
+    val = "";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_string_equal("", value.realtype->plugin->print(UTEST_LYCTX, &(value), LY_VALUE_CANON, NULL, NULL, NULL));
+    type->free(UTEST_LYCTX, &value);
+}
+
+static void
+test_plugin_duplicate(void **state)
+{
+    const char *schema, *val;
+    struct lyd_value value = {0}, dup;
+    struct lys_module *mod;
+    struct lysc_type *lysc_type;
+    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BINARY]);
+    struct ly_err_item *err = NULL;
+
+    /* create schema. Prepare common used variables */
+    schema = MODULE_CREATE_YANG("a", "leaf l {type binary;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+
+    /* Testing empty value. */
+    val = "";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_int_equal(LY_SUCCESS, type->duplicate(UTEST_LYCTX, &value, &dup));
+    CHECK_LYD_VALUE(dup, BINARY, "", "", 0);
+    type->free(UTEST_LYCTX, &value);
+    type->free(UTEST_LYCTX, &dup);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        UTEST(test_plugin_store)
+        UTEST(test_plugin_store),
+        UTEST(test_plugin_print),
+        UTEST(test_plugin_duplicate),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

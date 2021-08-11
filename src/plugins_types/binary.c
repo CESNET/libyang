@@ -12,11 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE /* strdup */
+
 #include "plugins_types.h"
 
 #include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libyang.h"
 
@@ -60,6 +63,10 @@ binary_base64_encode(const struct ly_ctx *ctx, const char *data, size_t size, ch
     *str_len = (size + 2) / 3 * 4;
     *str = malloc(*str_len + 1);
     LY_CHECK_ERR_RET(!*str, LOGMEM(ctx), LY_EMEM);
+    if (!(*str_len)) {
+        **str = 0;
+        return LY_SUCCESS;
+    }
 
     ptr = *str;
     for (i = 0; i < size - 2; i += 3) {
@@ -230,7 +237,8 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
             LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
             memcpy(val->data, value, value_len);
         } else {
-            val->data = NULL;
+            val->data = strdup("");
+            LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
         }
 
         /* store size */
@@ -351,11 +359,10 @@ lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original
 
     LYD_VALUE_GET(original, orig_val);
 
-    if (orig_val->size) {
-        dup_val->data = malloc(orig_val->size);
-        LY_CHECK_ERR_GOTO(!dup_val->data, ret = LY_EMEM, error);
-        memcpy(dup_val->data, orig_val->data, orig_val->size);
-    }
+    dup_val->data = orig_val->size ? malloc(orig_val->size) : strdup("");
+    LY_CHECK_ERR_GOTO(!dup_val->data, ret = LY_EMEM, error);
+
+    memcpy(dup_val->data, orig_val->data, orig_val->size);
     dup_val->size = orig_val->size;
     dup->realtype = original->realtype;
 
