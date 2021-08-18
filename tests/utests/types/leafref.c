@@ -1,5 +1,5 @@
 /**
- * @file enumeration.c
+ * @file leafref.c
  * @author Adam Piecek <piecek@cesnet.cz>
  * @brief test for built-in enumeration type
  *
@@ -27,12 +27,13 @@
     NODES \
     "}\n"
 
-#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
+#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME1, DATA1, NODE_NAME2, DATA2) \
     { \
         struct lyd_node *tree_1; \
         struct lyd_node *tree_2; \
         char *xml_out, *data; \
-        data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        data = "<" NODE_NAME1 " xmlns=\"urn:tests:" MOD_NAME "\"><name>" DATA1 "</name></" NODE_NAME1 ">" \
+        "<" NODE_NAME2 " xmlns=\"urn:tests:" MOD_NAME "\">" DATA2 "</" NODE_NAME2 ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
         assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
         assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
@@ -48,10 +49,11 @@ test_plugin_lyb(void **state)
 {
     const char *schema;
 
-    schema = MODULE_CREATE_YANG("lyb", "leaf port {type enumeration {enum white; enum yellow; enum black;}}");
+    schema = MODULE_CREATE_YANG("lyb",
+            "list lst {key \"name\"; leaf name {type string;}}"
+            "leaf lref {type leafref {path \"../lst/name\";}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
-    TEST_SUCCESS_LYB("lyb", "port", "white");
-    TEST_SUCCESS_LYB("lyb", "port", "black");
+    TEST_SUCCESS_LYB("lyb", "lst", "key_str", "lref", "key_str");
 }
 
 int

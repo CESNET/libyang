@@ -224,6 +224,42 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
 }
 
 /**
+ * @brief Read the term node.
+ *
+ * @param[out] term_value Set to term node value in dynamically
+ * allocated memory. The caller must release it.
+ * @param[out] term_value_len Value length in bytes. The zero byte is
+ * always included and is not counted.
+ * @param[in,out] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_read_term(uint8_t **term_value, uint32_t *term_value_len, struct lylyb_ctx *lybctx)
+{
+    uint32_t allocated_size;
+
+    assert(term_value && term_value_len && lybctx);
+
+    /* Parse value size. */
+    lyb_read_number(term_value_len, sizeof *term_value_len, sizeof *term_value_len, lybctx);
+
+    /* Allocate memory. */
+    allocated_size = *term_value_len + 1;
+    *term_value = malloc(allocated_size * sizeof **term_value);
+    LY_CHECK_ERR_RET(!*term_value, LOGMEM(lybctx->ctx), LY_EMEM);
+
+    if (*term_value_len > 0) {
+        /* Parse value. */
+        lyb_read(*term_value, *term_value_len, lybctx);
+    }
+
+    /* Add extra zero byte regardless of whether it is string or not. */
+    (*term_value)[allocated_size - 1] = 0;
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Stop the current subtree - change LYB context state.
  *
  * @param[in] lybctx LYB context.
@@ -766,11 +802,12 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     struct lyd_attr *attr = NULL, *a;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
+    uint8_t *term_value = NULL;
     const char *val_dict;
     ly_bool dynamic = 0;
     LY_VALUE_FORMAT format = 0;
     void *val_prefix_data = NULL;
-    uint32_t flags;
+    uint32_t flags, term_value_len;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
     /* register a new subtree */
@@ -845,18 +882,19 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         }
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* parse value */
-        ret = lyb_read_string(&value, 0, lybctx->lybctx);
+        ret = lyb_read_term(&term_value, &term_value_len, lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         dynamic = 1;
 
         /* create node */
-        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, LY_VALUE_JSON,
+        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode,
+                term_value, term_value_len, &dynamic, LY_VALUE_LYB,
                 NULL, LYD_HINT_DATA, &node);
         if (dynamic) {
-            free(value);
+            free(term_value);
             dynamic = 0;
         }
-        value = NULL;
+        term_value = NULL;
         LY_CHECK_GOTO(ret, cleanup);
     } else if (snode->nodetype & LYD_NODE_INNER) {
         /* create node */

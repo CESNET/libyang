@@ -450,7 +450,7 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u,
     LY_ERR retval;
     struct ly_err_item *err;
     uint32_t type_idx;
-    ly_bool dynamic = 0;
+    ly_bool dynamic;
     size_t pval_len;
     void *pval;
 
@@ -465,21 +465,21 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u,
     subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
     retval = union_find_type(ctx, type_u->types, subvalue,
             0, NULL, NULL, &type_idx, NULL, &err);
-    LY_CHECK_GOTO((retval != LY_SUCCESS) && (retval != LY_EINCOMPLETE), cleanup);
+    LY_CHECK_RET((retval != LY_SUCCESS) && (retval != LY_EINCOMPLETE), NULL);
 
     /* Print subvalue in LYB format. */
     pval = (void *)subvalue->value.realtype->plugin->print(NULL,
             &subvalue->value, LY_VALUE_LYB, prefix_data, &dynamic,
             &pval_len);
+    LY_CHECK_RET(!pval, NULL);
 
     /* Create LYB data. */
     *value_len = IDX_SIZE + pval_len;
     ret = malloc(*value_len);
-    LY_CHECK_GOTO(!ret, cleanup);
+    LY_CHECK_RET(!ret, NULL);
     memcpy(ret, &type_idx, IDX_SIZE);
     memcpy(ret + IDX_SIZE, pval, pval_len);
 
-cleanup:
     if (dynamic) {
         free(pval);
     }

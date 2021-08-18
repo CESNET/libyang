@@ -59,6 +59,22 @@
         assert_null(tree); \
     }
 
+#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
+    { \
+        struct lyd_node *tree_1; \
+        struct lyd_node *tree_2; \
+        char *xml_out, *data; \
+        data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
+        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_non_null(tree_2); \
+        CHECK_LYD(tree_1, tree_2); \
+        free(xml_out); \
+        lyd_free_all(tree_1); \
+        lyd_free_all(tree_2); \
+    }
+
 static void
 test_data_xml(void **state)
 {
@@ -148,12 +164,32 @@ test_print(void **state)
     lyd_free_tree(tree);
 }
 
+static void
+test_lyb(void **state)
+{
+    const char *schema;
+
+    /* xml test */
+    schema = MODULE_CREATE_YANG("a",
+            "leaf l {type yang:date-and-time;}"
+            "leaf l2 {type yang:xpath1.0;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* date-and-time */
+    TEST_SUCCESS_LYB("a", "l", "2005-05-25T23:15:15.88888Z");
+    TEST_SUCCESS_LYB("a", "l", "2005-05-31T23:15:15-08:59");
+
+    /* xpath1.0 */
+    TEST_SUCCESS_LYB("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']");
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_print),
+        UTEST(test_lyb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

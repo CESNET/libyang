@@ -44,10 +44,8 @@
     }
 
 static void
-test_plugin_lyb(void **UNUSED(state))
+test_plugin_lyb(void **state)
 {
-
-#if 0
     const char *schema;
 
     schema = MODULE_CREATE_YANG("lyb",
@@ -59,7 +57,6 @@ test_plugin_lyb(void **UNUSED(state))
     TEST_SUCCESS_LYB("lyb", "un1", "12");
     TEST_SUCCESS_LYB("lyb", "un1", "some_string");
     TEST_SUCCESS_LYB("lyb", "un1", "");
-#endif
 }
 
 int
