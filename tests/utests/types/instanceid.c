@@ -27,13 +27,13 @@
     NODES \
     "}\n"
 
-#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME1, DATA1, NODE_NAME2, DATA2) \
+#define LYB_CHECK_START \
+    struct lyd_node *tree_1; \
+    struct lyd_node *tree_2; \
+    char *xml_out, *data;
+
+#define LYB_CHECK_END \
     { \
-        struct lyd_node *tree_1; \
-        struct lyd_node *tree_2; \
-        char *xml_out, *data; \
-        data = "<" NODE_NAME1 " xmlns=\"urn:tests:" MOD_NAME "\">" DATA1 "</" NODE_NAME1 ">" \
-        "<xdf:" NODE_NAME2 " xmlns:xdf=\"urn:tests:" MOD_NAME "\">/xdf:" DATA2 "</xdf:" NODE_NAME2 ">"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
         assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
         assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
@@ -44,11 +44,22 @@
         lyd_free_all(tree_2); \
     }
 
-static void
-test_plugin_lyb(void **UNUSED(state))
-{
+#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME1, DATA1, NODE_NAME2, DATA2) \
+    LYB_CHECK_START \
+    data = "<" NODE_NAME1 " xmlns=\"urn:tests:" MOD_NAME "\">" DATA1 "</" NODE_NAME1 ">" \
+    "<xdf:" NODE_NAME2 " xmlns:xdf=\"urn:tests:" MOD_NAME "\">/xdf:" DATA2 "</xdf:" NODE_NAME2 ">"; \
+    LYB_CHECK_END \
 
-#if 0
+#define TEST_SUCCESS_LYB2(MOD_NAME, NODE_NAME, DATA) \
+    { \
+        LYB_CHECK_START \
+        data = "<" NODE_NAME " xmlns:aa=\"urn:tests:lyb2\" xmlns=\"urn:tests:" MOD_NAME "\">/aa:" DATA "</" NODE_NAME ">"; \
+        LYB_CHECK_END \
+    }
+
+static void
+test_plugin_lyb(void **state)
+{
     const char *schema;
 
     schema = MODULE_CREATE_YANG("lyb",
@@ -56,7 +67,15 @@ test_plugin_lyb(void **UNUSED(state))
             "leaf inst {type instance-identifier {require-instance true;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_SUCCESS_LYB("lyb", "leaflisttarget", "1", "inst", "leaflisttarget[.='1']");
-#endif
+
+    /* ietf-netconf-acm node-instance-identifier type */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    schema = MODULE_CREATE_YANG("lyb2",
+            "import ietf-netconf-acm {prefix acm;}"
+            "leaf-list ll {type string;}"
+            "leaf nii {type acm:node-instance-identifier;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_LYB2("lyb2", "nii", "ll[. = 'some_string']");
 }
 
 int

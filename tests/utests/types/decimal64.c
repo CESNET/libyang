@@ -1,5 +1,5 @@
 /**
- * @file enumeration.c
+ * @file decimal64.c
  * @author Adam Piecek <piecek@cesnet.cz>
  * @brief test for built-in enumeration type
  *
@@ -48,10 +48,10 @@ test_plugin_lyb(void **state)
 {
     const char *schema;
 
-    schema = MODULE_CREATE_YANG("lyb", "leaf port {type enumeration {enum white; enum yellow; enum black;}}");
+    schema = MODULE_CREATE_YANG("lyb",
+            "leaf dec64 {type decimal64 {fraction-digits 1; range 1.5..10;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
-    TEST_SUCCESS_LYB("lyb", "port", "white");
-    TEST_SUCCESS_LYB("lyb", "port", "black");
+    TEST_SUCCESS_LYB("lyb", "dec64", "8.00");
 }
 
 int

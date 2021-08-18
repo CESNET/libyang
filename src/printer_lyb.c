@@ -704,8 +704,40 @@ cleanup:
 static LY_ERR
 lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
-    /* print the value */
-    return lyb_write_string(lyd_get_value(&term->node), 0, 0, out, lybctx);
+    LY_ERR ret;
+    ly_bool dynamic = 0;
+    void *value;
+    size_t value_len = 0;
+
+    assert(term->value.realtype && term->value.realtype->plugin && term->value.realtype->plugin->print &&
+            term->schema);
+
+    value = (void *)term->value.realtype->plugin->print(term->schema->module->ctx,
+            &term->value, LY_VALUE_LYB, NULL, &dynamic, &value_len);
+    LY_CHECK_RET(!value, LY_EINT);
+
+    if (value_len > UINT32_MAX) {
+        LOGERR(lybctx->ctx, LY_EINT, "The maximum length of the LYB data "
+                "from a term node must not exceed %lu.", UINT32_MAX);
+        return LY_EINT;
+    }
+
+    /* Print the length of the data as 32-bit unsigned integer. */
+    ret = lyb_write_number(value_len, sizeof(uint32_t), out, lybctx);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (value_len > 0) {
+        /* Print the data simply as it is. */
+        ret = lyb_write(out, value, value_len, lybctx);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+cleanup:
+    if (dynamic) {
+        free(value);
+    }
+
+    return ret;
 }
 
 /**

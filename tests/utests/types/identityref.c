@@ -1,5 +1,5 @@
 /**
- * @file enumeration.c
+ * @file identityref.c
  * @author Adam Piecek <piecek@cesnet.cz>
  * @brief test for built-in enumeration type
  *
@@ -48,10 +48,12 @@ test_plugin_lyb(void **state)
 {
     const char *schema;
 
-    schema = MODULE_CREATE_YANG("lyb", "leaf port {type enumeration {enum white; enum yellow; enum black;}}");
+    schema = MODULE_CREATE_YANG("lyb",
+            "identity idbase;"
+            "identity ident {base idbase;}"
+            "leaf lf {type identityref {base idbase;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
-    TEST_SUCCESS_LYB("lyb", "port", "white");
-    TEST_SUCCESS_LYB("lyb", "port", "black");
+    TEST_SUCCESS_LYB("lyb", "lf", "ident");
 }
 
 int

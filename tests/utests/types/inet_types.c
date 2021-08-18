@@ -114,19 +114,27 @@ test_data_xml(void **state)
 }
 
 static void
-test_data_lyb(void **UNUSED(state))
+test_data_lyb(void **state)
 {
-#if 0
     const char *schema;
 
     schema = MODULE_CREATE_YANG("lyb",
+            "leaf l {type inet:ip-address;}"
+            "leaf l2 {type inet:ipv6-address;}"
+            "leaf l3 {type inet:ip-address-no-zone;}"
+            "leaf l4 {type inet:ipv6-address-no-zone;}"
+            "leaf l5 {type inet:ip-prefix;}"
             "leaf l6 {type inet:ipv4-prefix;}"
             "leaf l7 {type inet:ipv6-prefix;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
+    TEST_SUCCESS_LYB("lyb", "l", "192.168.0.1");
+    TEST_SUCCESS_LYB("lyb", "l2", "FAAC:21:011:Da85::87:daaF%1");
+    TEST_SUCCESS_LYB("lyb", "l3", "127.0.0.1");
+    TEST_SUCCESS_LYB("lyb", "l4", "A:B:c:D:e:f:1:0");
+    TEST_SUCCESS_LYB("lyb", "l5", "158.1.58.4/1");
     TEST_SUCCESS_LYB("lyb", "l6", "12.1.58.4/8");
     TEST_SUCCESS_LYB("lyb", "l7", "::C:D:E:f:a/112");
-#endif
 }
 
 int
