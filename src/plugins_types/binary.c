@@ -372,6 +372,7 @@ lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_binary *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         free(val->data);

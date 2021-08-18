@@ -345,6 +345,7 @@ lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_union *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         if (val->value.realtype) {

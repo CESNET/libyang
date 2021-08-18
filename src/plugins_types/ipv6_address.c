@@ -338,6 +338,7 @@ lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_ipv6_address *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         lydict_remove(ctx, val->zone);

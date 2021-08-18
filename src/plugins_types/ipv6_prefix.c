@@ -309,6 +309,7 @@ lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_ipv6_prefix *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     LYPLG_TYPE_VAL_INLINE_DESTROY(val);
 }
