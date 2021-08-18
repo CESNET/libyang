@@ -97,7 +97,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     /* store value */
     storage->enum_item = &type_enum->enums[u];
 
-    /* store canonical value */
+    /* store canonical value, it always is */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;

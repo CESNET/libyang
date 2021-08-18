@@ -58,7 +58,7 @@ lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
         i = *(int8_t *)value;
         storage->boolean = i ? 1 : 0;
 
-        /* store canonical value */
+        /* store canonical value, it always is */
         ret = lydict_insert(ctx, i ? "true" : "false", 0, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
 

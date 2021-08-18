@@ -254,7 +254,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     ret = binary_base64_decode(value, value_len, &val->data, &val->size);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* store canonical value, it always is */
+    /* store canonical value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
