@@ -284,20 +284,23 @@ lyplg_type_dup_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *ori
     LY_ERR ret;
     struct lyd_value_ipv6_prefix *orig_val, *dup_val;
 
+    memset(dup, 0, sizeof *dup);
+
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
-    LY_CHECK_RET(ret);
+    LY_CHECK_GOTO(ret, error);
 
     LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
-    if (!dup_val) {
-        lydict_remove(ctx, dup->_canonical);
-        return LY_EMEM;
-    }
+    LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
 
     LYD_VALUE_GET(original, orig_val);
     memcpy(dup_val, orig_val, sizeof *orig_val);
 
     dup->realtype = original->realtype;
     return LY_SUCCESS;
+
+error:
+    lyplg_type_free_ipv6_prefix(ctx, dup);
+    return ret;
 }
 
 /**

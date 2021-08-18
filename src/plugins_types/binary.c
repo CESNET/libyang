@@ -341,29 +341,29 @@ lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original
     LY_ERR ret;
     struct lyd_value_binary *orig_val, *dup_val;
 
+    memset(dup, 0, sizeof *dup);
+
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
-    LY_CHECK_RET(ret);
+    LY_CHECK_GOTO(ret, error);
 
     LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
-    if (!dup_val) {
-        lydict_remove(ctx, dup->_canonical);
-        return LY_EMEM;
-    }
+    LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
 
     LYD_VALUE_GET(original, orig_val);
+
     if (orig_val->size) {
         dup_val->data = malloc(orig_val->size);
-        if (!dup_val->data) {
-            lydict_remove(ctx, dup->_canonical);
-            LYPLG_TYPE_VAL_INLINE_DESTROY(dup_val);
-            return LY_EMEM;
-        }
+        LY_CHECK_ERR_GOTO(!dup_val->data, ret = LY_EMEM, error);
         memcpy(dup_val->data, orig_val->data, orig_val->size);
     }
     dup_val->size = orig_val->size;
-
     dup->realtype = original->realtype;
+
     return LY_SUCCESS;
+
+error:
+    lyplg_type_free_binary(ctx, dup);
+    return ret;
 }
 
 API void

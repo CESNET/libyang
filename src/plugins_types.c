@@ -299,6 +299,7 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 API LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
+    memset(dup, 0, sizeof *dup);
     LY_CHECK_RET(lydict_insert(ctx, original->_canonical, 0, &dup->_canonical));
     memcpy(dup->fixed_mem, original->fixed_mem, sizeof dup->fixed_mem);
     dup->realtype = original->realtype;
