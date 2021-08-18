@@ -73,25 +73,35 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
                     *(int32_t *)value);
             goto cleanup;
         }
-    } else {
-        /* check hints */
-        ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+
+        /* store value */
+        storage->enum_item = &type_enum->enums[u];
+
+        /* canonical settings via dictionary due to free callback */
+        ret = lydict_insert(ctx, type_enum->enums[u].name, 0, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* find the matching enumeration value item */
-        LY_ARRAY_FOR(type_enum->enums, u) {
-            if (!ly_strncmp(type_enum->enums[u].name, value, value_len)) {
-                found = 1;
-                break;
-            }
-        }
+        /* success */
+        goto cleanup;
+    }
 
-        if (!found) {
-            /* enum not found */
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid enumeration value \"%.*s\".", (int)value_len,
-                    (char *)value);
-            goto cleanup;
+    /* check hints */
+    ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* find the matching enumeration value item */
+    LY_ARRAY_FOR(type_enum->enums, u) {
+        if (!ly_strncmp(type_enum->enums[u].name, value, value_len)) {
+            found = 1;
+            break;
         }
+    }
+
+    if (!found) {
+        /* enum not found */
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid enumeration value \"%.*s\".", (int)value_len,
+                (char *)value);
+        goto cleanup;
     }
 
     /* store value */

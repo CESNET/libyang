@@ -20,6 +20,7 @@ ly_add_utest(NAME bits   SOURCES types/bits.c)
 ly_add_utest(NAME binary SOURCES types/binary.c)
 ly_add_utest(NAME inet_types   SOURCES types/inet_types.c)
 ly_add_utest(NAME yang_types   SOURCES types/yang_types.c)
+ly_add_utest(NAME enumeration  SOURCES types/enumeration.c)
 
 ly_add_utest(NAME range  SOURCES restriction/test_range.c)
 ly_add_utest(NAME pattern  SOURCES restriction/test_pattern.c)
