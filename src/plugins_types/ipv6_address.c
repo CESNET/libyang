@@ -311,7 +311,7 @@ lyplg_type_dup_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *or
     memset(dup, 0, sizeof *dup);
 
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
-    LY_CHECK_RET(ret);
+    LY_CHECK_GOTO(ret, error);
 
     LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
     LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);

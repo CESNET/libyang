@@ -247,20 +247,23 @@ lyplg_type_dup_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd_v
     LY_ERR ret;
     struct lyd_value_ipv6_address_no_zone *orig_val, *dup_val;
 
+    memset(dup, 0, sizeof *dup);
+
     ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
-    LY_CHECK_RET(ret);
+    LY_CHECK_GOTO(ret, error);
 
     LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
-    if (!dup_val) {
-        lydict_remove(ctx, dup->_canonical);
-        return LY_EMEM;
-    }
+    LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
 
     LYD_VALUE_GET(original, orig_val);
     memcpy(&dup_val->addr, &orig_val->addr, sizeof orig_val->addr);
 
     dup->realtype = original->realtype;
     return LY_SUCCESS;
+
+error:
+    lyplg_type_free_ipv6_address_no_zone(ctx, dup);
+    return ret;
 }
 
 /**
