@@ -474,6 +474,7 @@ lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_bits *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         free(val->bitmap);
