@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE /* asprintf, strdup */
+#define _GNU_SOURCE /* strndup */
 
 #include "plugins_types.h"
 
@@ -21,9 +21,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
-#include <assert.h>
-#include <errno.h>
-#include <inttypes.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

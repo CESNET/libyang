@@ -12,18 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE /* asprintf, strdup */
+#define _GNU_SOURCE /* strdup */
 
 #include "plugins_types.h"
 
-#include <arpa/inet.h>
-#include <assert.h>
 #include <ctype.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "libyang.h"
 
