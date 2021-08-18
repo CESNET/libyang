@@ -291,7 +291,7 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
         *dynamic = 0;
     }
     if (value_len) {
-        *value_len = strlen(value->_canonical);
+        *value_len = ly_strlen(value->_canonical);
     }
     return value->_canonical;
 }
@@ -299,7 +299,7 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 API LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
+    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, 0, &dup->_canonical));
     memcpy(dup->fixed_mem, original->fixed_mem, sizeof dup->fixed_mem);
     dup->realtype = original->realtype;
     return LY_SUCCESS;
