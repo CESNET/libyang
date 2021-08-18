@@ -308,7 +308,7 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
     memset(dup, 0, sizeof *dup);
     dup->realtype = original->realtype;
 
-    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, cleanup);
 
     dup_val = calloc(1, sizeof *dup_val);
