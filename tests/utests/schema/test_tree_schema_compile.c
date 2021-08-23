@@ -67,7 +67,7 @@ test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *UNUS
 static void
 test_module(void **state)
 {
-    const char *str;
+    const char *str, *feats[] = {"invalid", NULL};
     struct ly_in *in;
     struct lys_module *mod = NULL;
     struct lysp_feature *f;
@@ -81,6 +81,7 @@ test_module(void **state)
     lys_unres_glob_erase(&unres);
     ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
+    assert_int_equal(LY_EINVAL, lys_set_implemented(mod, feats));
     assert_int_equal(LY_SUCCESS, lys_set_implemented(mod, NULL));
     assert_non_null(mod->compiled);
     assert_string_equal("test", mod->name);
