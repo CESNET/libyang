@@ -737,7 +737,9 @@ lyb_parse_any_content(const struct ly_ctx *ctx, const char *data, struct lyd_nod
     ly_log_options(prev_lo);
 
     ly_in_free(in, 0);
-    lydctx->free(lydctx);
+    if (lydctx) {
+        lydctx->free(lydctx);
+    }
     if (ret) {
         lyd_free_siblings(*tree);
         *tree = NULL;
