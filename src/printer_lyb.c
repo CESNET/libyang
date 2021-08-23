@@ -473,29 +473,34 @@ lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct ly
     LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
-    const struct lyd_node *node;
+    const struct lyd_node *elem, *node;
     uint32_t i;
 
     LY_CHECK_RET(ly_set_new(&set));
 
     /* collect all data node modules */
-    LY_LIST_FOR(root, node) {
-        if (!node->schema) {
-            continue;
-        }
+    LY_LIST_FOR(root, elem) {
+        LYD_TREE_DFS_BEGIN(elem, node) {
+            if (node->schema) {
+                mod = node->schema->module;
+                ret = ly_set_add(set, mod, 0, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
 
-        mod = node->schema->module;
-        ret = ly_set_add(set, mod, 0, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
+                /* add also their modules deviating or augmenting them */
+                LY_ARRAY_FOR(mod->deviated_by, u) {
+                    ret = ly_set_add(set, mod->deviated_by[u], 0, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+                LY_ARRAY_FOR(mod->augmented_by, u) {
+                    ret = ly_set_add(set, mod->augmented_by[u], 0, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
 
-        /* add also their modules deviating or augmenting them */
-        LY_ARRAY_FOR(mod->deviated_by, u) {
-            ret = ly_set_add(set, mod->deviated_by[u], 0, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-        LY_ARRAY_FOR(mod->augmented_by, u) {
-            ret = ly_set_add(set, mod->augmented_by[u], 0, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
+                /* only top-level nodes are processed */
+                LYD_TREE_DFS_continue = 1;
+            }
+
+            LYD_TREE_DFS_END(elem, node);
         }
     }
 
@@ -921,10 +926,10 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     /* register a new subtree */
     LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
 
-    /* write model info first */
-    if (!node->schema && !lyd_parent(node)) {
+    /* write model info first, for all opaque and top-level nodes */
+    if (!node->schema) {
         LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
-    } else if (node->schema && !lysc_data_parent(node->schema)) {
+    } else if (!lysc_data_parent(node->schema)) {
         LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
     }
 

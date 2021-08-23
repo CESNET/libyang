@@ -776,8 +776,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     /* register a new subtree */
     LY_CHECK_GOTO(ret = lyb_read_start_subtree(lybctx->lybctx), cleanup);
 
-    if (!parent) {
-        /* top-level, read module name */
+    if (!parent || !parent->schema) {
+        /* top-level or opaque, read module name */
         ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
         LY_CHECK_GOTO(ret, cleanup);
 
