@@ -424,6 +424,8 @@ lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
     dup_val->orig_len = orig_val->orig_len;
 
     dup_val->format = orig_val->format;
+    dup_val->ctx_node = orig_val->ctx_node;
+    dup_val->hints = orig_val->hints;
     ret = lyplg_type_prefix_data_dup(ctx, orig_val->format, orig_val->prefix_data, &dup_val->prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
 
