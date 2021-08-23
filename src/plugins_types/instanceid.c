@@ -159,8 +159,14 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile instance-identifier into path */
-    ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
-            unres, &path, err);
+    if (format == LY_VALUE_LYB) {
+        /* The @p value in LYB format is the same as in JSON format. */
+        ret = lyplg_type_lypath_new(ctx, value, value_len, options, LY_VALUE_JSON, prefix_data, ctx_node,
+                unres, &path, err);
+    } else {
+        ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
+                unres, &path, err);
+    }
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store value */
