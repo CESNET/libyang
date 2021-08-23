@@ -16,6 +16,7 @@
 
 #include "plugins_types.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,115 @@
  */
 
 /**
+ * @brief Size in bytes of the index in the LYB Binary Format.
+ */
+#define IDX_SIZE 4
+
+/**
+ * @brief Assign a value to the union subvalue.
+ *
+ * @param[in] value Value for assignment.
+ * @param[in] value_len Length of the @p value.
+ * @param[out] original Destination item of the subvalue.
+ * @param[out] orig_len Length of the @p original.
+ * @param[in,out] options Flag containing LYPLG_TYPE_STORE_DYNAMIC.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+union_subvalue_assignment(const void *value, size_t value_len,
+        void **original, size_t *orig_len, uint32_t *options)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    if (*options & LYPLG_TYPE_STORE_DYNAMIC) {
+        /* The allocated value is stored and spend. */
+        *original = (void *)value;
+        *options &= ~LYPLG_TYPE_STORE_DYNAMIC;
+    } else if (value_len) {
+        /* Make copy of the value. */
+        *original = calloc(1, value_len);
+        LY_CHECK_ERR_RET(!*original, ret = LY_EMEM, ret);
+        memcpy(*original, value, value_len);
+    } else {
+        /* Empty value. */
+        *original = strdup("");
+        LY_CHECK_ERR_RET(!*original, ret = LY_EMEM, ret);
+    }
+    *orig_len = value_len;
+
+    return ret;
+}
+
+/**
+ * @brief Validate LYB Binary Format.
+ *
+ * @param[in] lyb_data Source of LYB data to parse.
+ * @param[in] lyb_data_len Length of @p lyb_data.
+ * @param[in] type_u Compiled type of union.
+ * @param[out] err Error information on error.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_union_validate(const void *lyb_data, size_t lyb_data_len,
+        const struct lysc_type_union *type_u, struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS;
+    uint32_t type_idx;
+
+    /* Basic validation. */
+    if (lyb_data_len < IDX_SIZE) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Invalid LYB union value size %zu (expected at least 4).",
+                lyb_data_len);
+        return ret;
+    }
+
+    /* Get index. */
+    type_idx = *(uint32_t *)lyb_data;
+    if (type_idx >= LY_ARRAY_COUNT(type_u->types)) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Invalid LYB union type index %" PRIu32
+                " (type count %" LY_PRI_ARRAY_COUNT_TYPE ").",
+                type_idx, LY_ARRAY_COUNT(type_u->types));
+        return ret;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Parse index and lyb_value from LYB Binary Format.
+ *
+ * @param[in] lyb_data Source of LYB data to parse.
+ * @param[in] lyb_data_len Length of @p lyb_data.
+ * @param[out] type_idx Index of the union type.
+ * @param[out] lyb_value Value after index number. If there is no value
+ * after the index, it is set to empty string ("").
+ * @param[out] lyb_value_len Length of @p lyb_value.
+ */
+static void
+lyb_parse_union(const void *lyb_data, size_t lyb_data_len,
+        uint32_t *type_idx, const void **lyb_value, size_t *lyb_value_len)
+{
+    assert(lyb_data && !(lyb_value && !lyb_value_len));
+
+    if (type_idx) {
+        *type_idx = *(uint32_t *)lyb_data;
+    }
+
+    if (lyb_value && lyb_value_len && lyb_data_len) {
+        /* Get lyb_value and its length. */
+        if (lyb_data_len == IDX_SIZE) {
+            *lyb_value_len = 0;
+            *lyb_value = "";
+        } else {
+            *lyb_value_len = lyb_data_len - IDX_SIZE;
+            *lyb_value = lyb_data + IDX_SIZE;
+        }
+    }
+}
+
+/**
  * @brief Store subvalue as a specific type.
  *
  * @param[in] ctx libyang context.
@@ -58,13 +168,11 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
         struct ly_err_item **err)
 {
     LY_ERR ret;
-    void *value;
+    const void *value;
     size_t value_len;
 
     if (subvalue->format == LY_VALUE_LYB) {
-        /* skip the type index */
-        value = ((char *)subvalue->original) + 4;
-        value_len = subvalue->orig_len - 4;
+        lyb_parse_union(subvalue->original, subvalue->orig_len, NULL, &value, &value_len);
     } else {
         value = subvalue->original;
         value_len = subvalue->orig_len;
@@ -151,6 +259,8 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue;
     uint32_t type_idx = 0;
+    const void *lyb_value;
+    size_t lyb_value_len;
 
     *err = NULL;
 
@@ -162,32 +272,14 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
 
     if (format == LY_VALUE_LYB) {
         /* basic validation */
-        if (value_len < 4) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB union value size %zu (expected at least 4).",
-                    value_len);
-            goto cleanup;
-        }
-        type_idx = *(uint32_t *)value;
-        if (type_idx >= LY_ARRAY_COUNT(type_u->types)) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB union type index %" PRIu32
-                    " (type count %" LY_PRI_ARRAY_COUNT_TYPE ").", type_idx, LY_ARRAY_COUNT(type_u->types));
-            goto cleanup;
-        }
+        lyb_parse_union(value, value_len, &type_idx, &lyb_value, &lyb_value_len);
+        ret = lyb_union_validate(value, value_len, type_u, err);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* remember the original value */
-    if (options & LYPLG_TYPE_STORE_DYNAMIC) {
-        subvalue->original = (void *)value;
-        options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-    } else if (value_len) {
-        subvalue->original = calloc(1, value_len);
-        LY_CHECK_ERR_GOTO(!subvalue->original, ret = LY_EMEM, cleanup);
-        memcpy(subvalue->original, value, value_len);
-    } else {
-        subvalue->original = strdup("");
-        LY_CHECK_ERR_GOTO(!subvalue->original, ret = LY_EMEM, cleanup);
-    }
-    subvalue->orig_len = value_len;
+    ret = union_subvalue_assignment(value, value_len, &subvalue->original, &subvalue->orig_len, &options);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* store format-specific data for later prefix resolution */
     ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &subvalue->format,
@@ -227,17 +319,18 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_union *type_u = (struct lysc_type_union *)storage->realtype;
-    struct lyd_value_union *val = storage->subvalue;
+    struct lyd_value_union *subvalue = storage->subvalue;
+    uint32_t type_idx;
 
     *err = NULL;
 
-    if (!val->value.realtype->plugin->validate) {
+    if (!subvalue->value.realtype->plugin->validate) {
         /* nothing to resolve */
         return LY_SUCCESS;
     }
 
     /* resolve the stored value */
-    if (!val->value.realtype->plugin->validate(ctx, type, ctx_node, tree, &val->value, err)) {
+    if (!subvalue->value.realtype->plugin->validate(ctx, type, ctx_node, tree, &subvalue->value, err)) {
         /* resolve successful */
         return LY_SUCCESS;
     }
@@ -249,24 +342,24 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
     ly_err_free(*err);
     *err = NULL;
 
-    if (val->format == LY_VALUE_LYB) {
+    if (subvalue->format == LY_VALUE_LYB) {
         /* use the specific type to store the value */
-        uint32_t type_idx = *(uint32_t *)val->original;
-        ret = union_store_type(ctx, type_u->types[type_idx], val, 1, ctx_node, tree, NULL, err);
+        lyb_parse_union(subvalue->original, 0, &type_idx, NULL, NULL);
+        ret = union_store_type(ctx, type_u->types[type_idx], subvalue, 1, ctx_node, tree, NULL, err);
         LY_CHECK_RET(ret);
     } else {
         /* use the first usable subtype to store the value */
-        ret = union_find_type(ctx, type_u->types, val, 1, ctx_node, tree, NULL, err);
+        ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, err);
         LY_CHECK_RET(ret);
     }
 
     /* store and resolve the value */
-    ret = union_find_type(ctx, type_u->types, val, 1, ctx_node, tree, NULL, err);
+    ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, err);
     LY_CHECK_RET(ret);
 
     /* success, update the canonical value, if any generated */
     lydict_remove(ctx, storage->_canonical);
-    LY_CHECK_RET(lydict_insert(ctx, val->value._canonical, 0, &storage->_canonical));
+    LY_CHECK_RET(lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical));
     return LY_SUCCESS;
 }
 
@@ -288,11 +381,13 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
         void *prefix_data, ly_bool *dynamic, size_t *value_len)
 {
     const void *ret;
+    struct lyd_value_union *subvalue = value->subvalue;
 
-    ret = value->subvalue->value.realtype->plugin->print(ctx, &value->subvalue->value, format, prefix_data, dynamic, value_len);
+    ret = (void *)subvalue->value.realtype->plugin->print(ctx,
+            &subvalue->value, format, prefix_data, dynamic, value_len);
     if (!value->_canonical && (format == LY_VALUE_CANON)) {
         /* the canonical value is supposed to be stored now */
-        lydict_insert(ctx, value->subvalue->value._canonical, 0, (const char **)&value->_canonical);
+        lydict_insert(ctx, subvalue->value._canonical, 0, (const char **)&value->_canonical);
     }
 
     return ret;
