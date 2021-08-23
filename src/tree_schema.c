@@ -718,7 +718,7 @@ char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
         size_t buflen)
 {
-    const struct lysc_node *iter;
+    const struct lysc_node *iter, *par;
     char *path = NULL;
     int len = 0;
 
@@ -746,7 +746,14 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
             } else {
                 slash = "/";
             }
-            if (!iter->parent || (iter->parent->module != iter->module)) {
+
+            if (pathtype == LYSC_PATH_DATA) {
+                par = lysc_data_parent(iter);
+            } else {
+                par = iter->parent;
+            }
+
+            if (!par || (par->module != iter->module)) {
                 /* print prefix */
                 if (buffer) {
                     len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
