@@ -40,6 +40,8 @@
  * | 1 | yes | `uint8_t *` | prefix length up to 32 |
  */
 
+#define LYB_VALUE_LEN 5
+
 static void lyplg_type_free_ipv4_prefix(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
@@ -122,9 +124,9 @@ lyplg_type_store_ipv4_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
 
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (value_len != 5) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-prefix value size %zu (expected 5).",
-                    value_len);
+        if (value_len != LYB_VALUE_LEN) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv4-prefix value size %zu (expected %d).",
+                    value_len, LYB_VALUE_LEN);
             goto cleanup;
         }
         if (((uint8_t *)value)[4] > 32) {
@@ -224,7 +226,7 @@ lyplg_type_print_ipv4_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
         if (value_len) {
-            *value_len = sizeof *val;
+            *value_len = LYB_VALUE_LEN;
         }
         return val;
     }

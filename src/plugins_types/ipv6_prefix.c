@@ -40,6 +40,8 @@
  * | 1 | yes | `uint8_t *` | prefix length up to 128 |
  */
 
+#define LYB_VALUE_LEN 17
+
 static void lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
@@ -122,9 +124,9 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
 
     if (format == LY_VALUE_LYB) {
         /* validation */
-        if (value_len != 17) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-prefix value size %zu (expected 17).",
-                    value_len);
+        if (value_len != LYB_VALUE_LEN) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-prefix value size %zu (expected %d).",
+                    value_len, LYB_VALUE_LEN);
             goto cleanup;
         }
         if (((uint8_t *)value)[16] > 128) {
@@ -238,7 +240,7 @@ lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
         if (value_len) {
-            *value_len = sizeof *val;
+            *value_len = LYB_VALUE_LEN;
         }
         return val;
     }
