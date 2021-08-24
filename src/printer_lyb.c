@@ -927,9 +927,9 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
 
     /* write model info first, for all opaque and top-level nodes */
-    if (!node->schema) {
+    if (!node->schema && (!node->parent || !node->parent->schema)) {
         LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
-    } else if (!lysc_data_parent(node->schema)) {
+    } else if (node->schema && !lysc_data_parent(node->schema)) {
         LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
     }
 
