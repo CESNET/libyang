@@ -677,13 +677,13 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             if (range_expected) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected end of the expression after \"..\" (%s).",
-                        length_restr ? "length" : "range", range_p->arg);
+                        length_restr ? "length" : "range", range_p->arg.str);
                 ret = LY_EVALID;
                 goto cleanup;
             } else if (!parts || (parts_done == LY_ARRAY_COUNT(parts))) {
                 LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                         "Invalid %s restriction - unexpected end of the expression (%s).",
-                        length_restr ? "length" : "range", range_p->arg);
+                        length_restr ? "length" : "range", range_p->arg.str);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -853,7 +853,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
 baseerror:
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG,
                     "Invalid %s restriction - the derived restriction (%s) is not equally or more limiting.",
-                    length_restr ? "length" : "range", range_p->arg);
+                    length_restr ? "length" : "range", range_p->arg.str);
             ret = LY_EVALID;
             goto cleanup;
         }
