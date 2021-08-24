@@ -584,7 +584,7 @@ lyb_print_prefix_data(struct ly_out *out, LY_VALUE_FORMAT format, const void *pr
         }
 
         /* write number of prefixes on 1 byte */
-        LY_CHECK_RET(lyb_write(out, (uint8_t *)&set->count, 1, lybctx));
+        LY_CHECK_RET(lyb_write_number(set->count, 1, out, lybctx));
 
         /* write all the prefixes */
         for (i = 0; i < set->count; ++i) {
@@ -666,7 +666,7 @@ lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lylyb
     }
 
     /* first byte is type */
-    LY_CHECK_GOTO(ret = lyb_write(out, (uint8_t *)&value_type, sizeof value_type, lybctx), cleanup);
+    LY_CHECK_GOTO(ret = lyb_write_number(value_type, sizeof value_type, out, lybctx), cleanup);
 
     if (anydata->value_type == LYD_ANYDATA_DATATREE) {
         /* print LYB data tree to memory */

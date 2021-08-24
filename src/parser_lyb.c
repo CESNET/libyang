@@ -528,7 +528,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* format */
-        lyb_read((uint8_t *)&format, 1, lybctx);
+        lyb_read_number(&format, sizeof format, 1, lybctx);
 
         /* value prefixes */
         ret = lyb_parse_prefix_data(lybctx, format, &val_prefix_data);
@@ -827,7 +827,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         dynamic = 1;
 
         /* parse format */
-        lyb_read((uint8_t *)&format, 1, lybctx->lybctx);
+        lyb_read_number(&format, sizeof format, 1, lybctx->lybctx);
 
         /* parse value prefixes */
         ret = lyb_parse_prefix_data(lybctx->lybctx, format, &val_prefix_data);
@@ -886,7 +886,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         }
     } else if (snode->nodetype & LYD_NODE_ANY) {
         /* parse value type */
-        lyb_read((uint8_t *)&value_type, sizeof value_type, lybctx->lybctx);
+        lyb_read_number(&value_type, sizeof value_type, sizeof value_type, lybctx->lybctx);
         if (value_type == LYD_ANYDATA_DATATREE) {
             /* invalid situation */
             LOGINT(ctx);
