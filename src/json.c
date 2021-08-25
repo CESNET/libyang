@@ -22,6 +22,7 @@
 #include "common.h"
 #include "in_internal.h"
 #include "json.h"
+#include "tree_schema_internal.h"
 
 #define JSON_PUSH_STATUS_RET(CTX, STATUS) \
     LY_CHECK_RET(ly_set_add(&CTX->status, (void*)STATUS, 1, NULL))

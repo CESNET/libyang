@@ -21,7 +21,6 @@
 #include "tree_schema.h"
 
 struct ly_ctx;
-struct lyd_node;
 struct lysc_ctx;
 
 #ifdef __cplusplus

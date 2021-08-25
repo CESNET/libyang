@@ -19,7 +19,7 @@
 
 #include "plugins.h"
 #include "plugins_exts.h"
-#include "tree_schema.h"
+#include "plugins_types.h"
 
 #define LY_TYPE_UNKNOWN_STR "unknown"               /**< text representation of ::LY_TYPE_UNKNOWN */
 #define LY_TYPE_BINARY_STR "binary"                 /**< text representation of ::LY_TYPE_BINARY */

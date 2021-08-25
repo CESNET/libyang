@@ -16,7 +16,6 @@
 #define LY_IN_INTERNAL_H_
 
 #include "in.h"
-#include "tree_schema_internal.h"
 
 /**
  * @brief Parser input structure specifying where the data are read.

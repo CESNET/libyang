@@ -93,6 +93,7 @@
 #include "common.h"
 #include "compat.h"
 #include "out_internal.h"
+#include "printer_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 

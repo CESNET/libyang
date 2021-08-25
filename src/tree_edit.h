@@ -18,9 +18,6 @@
 
 #include <stdlib.h>
 
-#include "log.h"
-#include "tree.h"
-
 #ifndef LOGMEM
 #define LOGMEM(CTX)
 #endif
