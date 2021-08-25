@@ -23,7 +23,6 @@
 #include "tree_data.h"
 
 struct ly_ctx;
-struct lys_glob_unres;
 struct lys_module;
 struct lysc_ext_instance;
 struct lysc_node;

@@ -19,11 +19,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "dict.h"
 #include "log.h"
 #include "set.h"
 #include "tree.h"
-#include "tree_edit.h"
 #include "tree_schema.h"
 
 struct lyxp_expr;

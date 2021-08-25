@@ -17,7 +17,6 @@
 
 #include "log.h"
 #include "plugins_types.h"
-#include "set.h"
 #include "tree_data.h"
 
 #include <stddef.h>

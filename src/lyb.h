@@ -19,12 +19,8 @@
 #include <stdint.h>
 
 #include "parser_internal.h"
-#include "set.h"
-#include "tree.h"
 
-struct hash_table;
 struct ly_ctx;
-struct lyd_node;
 struct lysc_node;
 
 /**

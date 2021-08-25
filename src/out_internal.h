@@ -16,8 +16,8 @@
 #define LY_OUT_INTERNAL_H_
 
 #include "out.h"
-#include "printer_data.h"
-#include "printer_schema.h"
+
+struct lyd_node;
 
 /**
  * @brief Printer output structure specifying where the data are printed.

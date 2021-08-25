@@ -16,11 +16,13 @@
 #define LY_PARSER_INTERNAL_H_
 
 #include "parser_data.h"
-#include "plugins_types.h"
-#include "tree_schema_internal.h"
+#include "set.h"
 
 struct lyd_ctx;
 struct ly_in;
+struct lys_yang_parser_ctx;
+struct lys_yin_parser_ctx;
+struct lys_parser_ctx;
 
 /**
  * @brief Callback for ::lyd_ctx to free the structure

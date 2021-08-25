@@ -20,7 +20,6 @@
 #include "common.h"
 #include "set.h"
 #include "tree_schema.h"
-#include "xml.h"
 
 struct lysc_ctx;
 struct lys_glob_unres;

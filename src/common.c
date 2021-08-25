@@ -30,6 +30,7 @@
 
 #include "compat.h"
 #include "tree_schema_internal.h"
+#include "xml.h"
 
 void *
 ly_realloc(void *ptr, size_t size)
