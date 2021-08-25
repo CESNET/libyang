@@ -28,7 +28,7 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesInstanceIdentifier node-instance-identifier (ietf-netconf-acm)
+ * @subsection howtoDataLYBTypesNodeInstanceIdentifier node-instance-identifier (ietf-netconf-acm)
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
