@@ -3371,14 +3371,16 @@ finish:
  *
  * @param[in] node Original node to duplicate
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
+ * @param[in] insert_last Whether the duplicated node can be inserted as the last child of @p parent. Set for
+ * recursive duplication as an optimization.
  * @param[in,out] first First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @param[out] dup_p Pointer where the created duplicated node is placed (besides connecting it int @p parent / @p first sibling).
  * @return LY_ERR value
  */
 static LY_ERR
-lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node **first, uint32_t options,
-        struct lyd_node **dup_p)
+lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, ly_bool insert_last, struct lyd_node **first,
+        uint32_t options, struct lyd_node **dup_p)
 {
     LY_ERR ret;
     struct lyd_node *dup = NULL;
@@ -3446,7 +3448,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
         if (options & LYD_DUP_RECURSIVE) {
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, NULL, options, NULL), error);
+                LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, 1, NULL, options, NULL), error);
             }
         }
         LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), orig->name.name, 0, &opaq->name.name), error);
@@ -3473,7 +3475,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
         if (options & LYD_DUP_RECURSIVE) {
             /* duplicate all the children */
             LY_LIST_FOR(orig->child, child) {
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, NULL, options, NULL), error);
+                LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, 1, NULL, options, NULL), error);
             }
         } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
@@ -3489,7 +3491,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
                      * but there can be also some non-key nodes */
                     continue;
                 }
-                LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, NULL, options, NULL), error);
+                LY_CHECK_GOTO(ret = lyd_dup_r(child, dup, 1, NULL, options, NULL), error);
                 child = child->next;
             }
         }
@@ -3501,7 +3503,7 @@ lyd_dup_r(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node 
     }
 
     /* insert */
-    lyd_insert_node(parent, first, dup, 0);
+    lyd_insert_node(parent, first, dup, insert_last);
 
     if (dup_p) {
         *dup_p = dup;
@@ -3530,7 +3532,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inne
             repeat = 0;
         } else {
             iter = NULL;
-            LY_CHECK_RET(lyd_dup_r((struct lyd_node *)orig_parent, NULL, (struct lyd_node **)&iter, options,
+            LY_CHECK_RET(lyd_dup_r((struct lyd_node *)orig_parent, NULL, 0, (struct lyd_node **)&iter, options,
                     (struct lyd_node **)&iter));
         }
         if (!*local_parent) {
@@ -3564,7 +3566,8 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inne
 }
 
 static LY_ERR
-lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, ly_bool nosiblings, struct lyd_node **dup)
+lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, ly_bool nosiblings,
+        struct lyd_node **dup)
 {
     LY_ERR rc;
     const struct lyd_node *orig;          /* original node to be duplicated */
@@ -3590,12 +3593,12 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t opt
             } else {
                 assert(!(options & LYD_DUP_WITH_PARENTS));
                 /* duplicating a single key, okay, I suppose... */
-                rc = lyd_dup_r(orig, NULL, &first, options, first ? NULL : &first);
+                rc = lyd_dup_r(orig, NULL, 0, &first, options, first ? NULL : &first);
                 LY_CHECK_GOTO(rc, error);
             }
         } else {
             /* if there is no local parent, it will be inserted into first */
-            rc = lyd_dup_r(orig, local_parent ? &local_parent->node : NULL, &first, options, first ? NULL : &first);
+            rc = lyd_dup_r(orig, local_parent ? &local_parent->node : NULL, 0, &first, options, first ? NULL : &first);
             LY_CHECK_GOTO(rc, error);
         }
         if (nosiblings) {
