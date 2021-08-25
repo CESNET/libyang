@@ -332,7 +332,7 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_VAL
 static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
-    ly_bool dynamic = 0;
+    ly_bool dynamic;
     const char *value = val->realtype->plugin->print(ctx->ctx, val, LY_VALUE_JSON, NULL, &dynamic, NULL);
 
     /* leafref is not supported */
