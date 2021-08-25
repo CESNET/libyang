@@ -3515,6 +3515,16 @@ error:
     return ret;
 }
 
+/**
+ * @brief Get a parent node to connect duplicated subtree to.
+ *
+ * @param[in] node Node (subtree) to duplicate.
+ * @param[in] parent Initial parent to connect to.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @param[out] dup_parent First duplicated parent node, if any.
+ * @param[out] local_parent Correct parent to directly connect duplicated @p node to.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inner *parent, uint32_t options,
         struct lyd_node **dup_parent, struct lyd_node_inner **local_parent)
