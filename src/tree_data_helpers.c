@@ -866,7 +866,7 @@ API LY_ERR
 ly_time_str2ts(const char *value, struct timespec *ts)
 {
     LY_ERR rc;
-    char *fractions_s, frac_buf[10] = {'0'};
+    char *fractions_s, frac_buf[10];
     int frac_len;
 
     LY_CHECK_ARG_RET(NULL, value, ts, LY_EINVAL);
@@ -876,6 +876,10 @@ ly_time_str2ts(const char *value, struct timespec *ts)
 
     /* convert fractions of a second to nanoseconds */
     if (fractions_s) {
+        /* init frac_buf with zeroes */
+        memset(frac_buf, '0', 9);
+        frac_buf[9] = '\0';
+
         frac_len = strlen(fractions_s);
         memcpy(frac_buf, fractions_s, frac_len > 9 ? 9 : frac_len);
         ts->tv_nsec = atol(frac_buf);
