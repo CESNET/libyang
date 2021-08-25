@@ -788,14 +788,6 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
         for (frac_len = 0; isdigit(frac[frac_len]); ++frac_len) {}
 
         i += frac_len;
-
-        /* skip trailing zeros */
-        for ( ; frac_len && (frac[frac_len - 1] == '0'); --frac_len) {}
-
-        if (!frac_len) {
-            /* only zeros, ignore */
-            frac = NULL;
-        }
     } else {
         frac = NULL;
     }
