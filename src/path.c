@@ -437,6 +437,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             *mod = cur_mod;
             break;
         case LY_VALUE_JSON:
+        case LY_VALUE_LYB:
             if (!prev_ctx_node) {
                 LOGINT_RET(ctx);
             }
@@ -445,7 +446,6 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
             break;
         case LY_VALUE_CANON:
         case LY_VALUE_XML:
-        case LY_VALUE_LYB:
             /* not really defined or accepted */
             LOGINT_RET(ctx);
         }
