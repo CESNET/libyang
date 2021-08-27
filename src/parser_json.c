@@ -962,17 +962,35 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     ret = lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p);
     LY_CHECK_RET(ret);
 
+    if ((*status_p == LYJSON_ARRAY) && (*status_inner_p == LYJSON_NULL)) {
+        /* special array null value */
+        ((struct lyd_node_opaq *)*node_p)->hints |= LYD_VALHINT_EMPTY;
+
+        /* must be the only item */
+        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_inner_p));
+        if (*status_inner_p != LYJSON_ARRAY_CLOSED) {
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX, "Array \"null\" member with another member.");
+            return LY_EVALID;
+        }
+
+        goto finish;
+    }
+
     while ((*status_p == LYJSON_ARRAY) || (*status_p == LYJSON_ARRAY_EMPTY)) {
         /* process another instance of the same node */
-        /* but first mark the node to be expected a list or a leaf-list */
-        ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST;
 
         if ((*status_inner_p == LYJSON_OBJECT) || (*status_inner_p == LYJSON_OBJECT_EMPTY)) {
+            /* array with objects, list */
+            ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LIST;
+
             /* but first process children of the object in the array */
-            while (*status_inner_p != LYJSON_OBJECT_CLOSED && *status_inner_p != LYJSON_OBJECT_EMPTY) {
+            while ((*status_inner_p != LYJSON_OBJECT_CLOSED) && (*status_inner_p != LYJSON_OBJECT_EMPTY)) {
                 LY_CHECK_RET(lydjson_subtree_r(lydctx, *node_p, lyd_node_child_p(*node_p), NULL));
                 *status_inner_p = lyjson_ctx_status(lydctx->jsonctx, 0);
             }
+        } else {
+            /* array with values, leaf-list */
+            ((struct lyd_node_opaq *)*node_p)->hints |= LYD_NODEHINT_LEAFLIST;
         }
 
         LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_inner_p));
