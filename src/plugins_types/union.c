@@ -168,8 +168,8 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
         struct ly_err_item **err)
 {
     LY_ERR ret;
-    const void *value;
-    size_t value_len;
+    const void *value = NULL;
+    size_t value_len = 0;
 
     if (subvalue->format == LY_VALUE_LYB) {
         lyb_parse_union(subvalue->original, subvalue->orig_len, NULL, &value, &value_len);
@@ -279,8 +279,8 @@ lyb_fill_subvalue(const struct ly_ctx *ctx, struct lysc_type_union *type_u,
 {
     LY_ERR ret;
     uint32_t type_idx;
-    const void *lyb_value;
-    size_t lyb_value_len;
+    const void *lyb_value = NULL;
+    size_t lyb_value_len = 0;
 
     ret = lyb_union_validate(lyb_data, lyb_data_len, type_u, err);
     LY_CHECK_RET(ret);
@@ -494,7 +494,7 @@ lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, 
     const void *ret;
     struct lyd_value_union *subvalue = value->subvalue;
     struct lysc_type_union *type_u = (struct lysc_type_union *)value->realtype;
-    size_t lyb_data_len;
+    size_t lyb_data_len = 0;
 
     if ((format == LY_VALUE_LYB) && (subvalue->format == LY_VALUE_LYB)) {
         /* The return value is already ready. */
