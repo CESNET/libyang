@@ -170,7 +170,8 @@ const struct lyplg_type_record plugins_enumeration[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_enum,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 4,
     },
     {0}
 };

@@ -325,7 +325,8 @@ const struct lyplg_type_record plugins_ipv4_prefix[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_ipv4_prefix,
         .plugin.duplicate = lyplg_type_dup_ipv4_prefix,
-        .plugin.free = lyplg_type_free_ipv4_prefix
+        .plugin.free = lyplg_type_free_ipv4_prefix,
+        .plugin.lyb_data_len = LYB_VALUE_LEN,
     },
     {0}
 };

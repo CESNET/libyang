@@ -704,30 +704,54 @@ cleanup:
 static LY_ERR
 lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic = 0;
     void *value;
     size_t value_len = 0;
+    int32_t lyb_data_len;
+    lyplg_type_print_clb print;
 
     assert(term->value.realtype && term->value.realtype->plugin && term->value.realtype->plugin->print &&
             term->schema);
 
-    value = (void *)term->value.realtype->plugin->print(term->schema->module->ctx,
-            &term->value, LY_VALUE_LYB, NULL, &dynamic, &value_len);
-    LY_CHECK_RET(!value, LY_EINT);
+    /* Get length of LYB data to print. */
+    lyb_data_len = term->value.realtype->plugin->lyb_data_len;
 
-    if (value_len > UINT32_MAX) {
-        LOGERR(lybctx->ctx, LY_EINT, "The maximum length of the LYB data "
-                "from a term node must not exceed %lu.", UINT32_MAX);
-        return LY_EINT;
+    /* Get value and also print its length only if size is not fixed. */
+    print = term->value.realtype->plugin->print;
+    if (lyb_data_len < 0) {
+        /* Variable-length data. */
+
+        /* Get value and its length from plugin. */
+        value = (void *)print(term->schema->module->ctx, &term->value,
+                LY_VALUE_LYB, NULL, &dynamic, &value_len);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        if (value_len > UINT32_MAX) {
+            LOGERR(lybctx->ctx, LY_EINT, "The maximum length of the LYB data "
+                    "from a term node must not exceed %lu.", UINT32_MAX);
+            ret = LY_EINT;
+            goto cleanup;
+        }
+
+        /* Print the length of the data as 32-bit unsigned integer. */
+        ret = lyb_write_number(value_len, sizeof(uint32_t), out, lybctx);
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        /* Fixed-length data. */
+
+        /* Get value from plugin. */
+        value = (void *)print(term->schema->module->ctx, &term->value,
+                LY_VALUE_LYB, NULL, &dynamic, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* Copy the length from the compiled node. */
+        value_len = lyb_data_len;
     }
 
-    /* Print the length of the data as 32-bit unsigned integer. */
-    ret = lyb_write_number(value_len, sizeof(uint32_t), out, lybctx);
-    LY_CHECK_GOTO(ret, cleanup);
-
+    /* Print value. */
     if (value_len > 0) {
-        /* Print the data simply as it is. */
+        /* Print the value simply as it is. */
         ret = lyb_write(out, value, value_len, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     }

@@ -158,7 +158,8 @@ const struct lyplg_type_record plugins_boolean[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_boolean,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 1,
     },
     {0}
 };

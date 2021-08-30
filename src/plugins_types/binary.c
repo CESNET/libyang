@@ -408,6 +408,7 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.print = lyplg_type_print_binary,
         .plugin.duplicate = lyplg_type_dup_binary,
         .plugin.free = lyplg_type_free_binary,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };
