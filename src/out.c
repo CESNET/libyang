@@ -33,6 +33,12 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 
+/**
+ * @brief Align the desired size to 1 KB.
+ */
+#define REALLOC_CHUNK(NEW_SIZE) \
+    NEW_SIZE + (1024 - (NEW_SIZE % 1024))
+
 ly_bool
 ly_should_print(const struct lyd_node *node, uint32_t options)
 {
@@ -534,7 +540,7 @@ LY_ERR
 ly_write_(struct ly_out *out, const char *buf, size_t len)
 {
     LY_ERR ret = LY_SUCCESS;
-    size_t written = 0;
+    size_t written = 0, new_mem_size;
 
     if (out->hole_count) {
         /* we are buffering data after a hole */
@@ -562,15 +568,17 @@ ly_write_(struct ly_out *out, const char *buf, size_t len)
 repeat:
     switch (out->type) {
     case LY_OUT_MEMORY:
-        if (out->method.mem.len + len + 1 > out->method.mem.size) {
-            *out->method.mem.buf = ly_realloc(*out->method.mem.buf, out->method.mem.len + len + 1);
+        new_mem_size = out->method.mem.len + len + 1;
+        if (new_mem_size > out->method.mem.size) {
+            new_mem_size = REALLOC_CHUNK(new_mem_size);
+            *out->method.mem.buf = ly_realloc(*out->method.mem.buf, new_mem_size);
             if (!*out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 return LY_EMEM;
             }
-            out->method.mem.size = out->method.mem.len + len + 1;
+            out->method.mem.size = new_mem_size;
         }
         if (len) {
             memcpy(&(*out->method.mem.buf)[out->method.mem.len], buf, len);
