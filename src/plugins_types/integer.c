@@ -449,7 +449,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 1,
     }, {
         .module = "",
         .revision = NULL,
@@ -462,7 +463,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 2,
     }, {
         .module = "",
         .revision = NULL,
@@ -475,7 +477,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 4,
     }, {
         .module = "",
         .revision = NULL,
@@ -488,7 +491,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_uint,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 8,
     }, {
         .module = "",
         .revision = NULL,
@@ -501,7 +505,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 1,
     }, {
         .module = "",
         .revision = NULL,
@@ -514,7 +519,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 2,
     }, {
         .module = "",
         .revision = NULL,
@@ -527,7 +533,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 4,
     }, {
         .module = "",
         .revision = NULL,
@@ -540,7 +547,8 @@ const struct lyplg_type_record plugins_integer[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_int,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 8,
     },
     {0}
 };

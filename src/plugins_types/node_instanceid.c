@@ -252,7 +252,8 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
-        .plugin.free = lyplg_type_free_instanceid
+        .plugin.free = lyplg_type_free_instanceid,
+        .plugin.lyb_data_len = -1,
     },
     {
         .module = "ietf-netconf-acm",
@@ -266,7 +267,8 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
-        .plugin.free = lyplg_type_free_instanceid
+        .plugin.free = lyplg_type_free_instanceid,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

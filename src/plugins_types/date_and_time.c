@@ -289,7 +289,8 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_date_and_time,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
-        .plugin.free = lyplg_type_free_date_and_time
+        .plugin.free = lyplg_type_free_date_and_time,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

@@ -606,7 +606,8 @@ const struct lyplg_type_record plugins_union[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_union,
         .plugin.duplicate = lyplg_type_dup_union,
-        .plugin.free = lyplg_type_free_union
+        .plugin.free = lyplg_type_free_union,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

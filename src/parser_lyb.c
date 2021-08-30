@@ -226,6 +226,7 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
 /**
  * @brief Read the term node.
  *
+ * @param[in] term Compiled term node.
  * @param[out] term_value Set to term node value in dynamically
  * allocated memory. The caller must release it.
  * @param[out] term_value_len Value length in bytes. The zero byte is
@@ -234,14 +235,32 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_term(uint8_t **term_value, uint32_t *term_value_len, struct lylyb_ctx *lybctx)
+lyb_read_term(const struct lysc_node_leaf *term, uint8_t **term_value,
+        uint32_t *term_value_len, struct lylyb_ctx *lybctx)
 {
     uint32_t allocated_size;
+    int32_t lyb_data_len;
+    struct lysc_type_leafref *type_lf;
 
-    assert(term_value && term_value_len && lybctx);
+    assert(term && term_value && term_value_len && lybctx);
 
-    /* Parse value size. */
-    lyb_read_number(term_value_len, sizeof *term_value_len, sizeof *term_value_len, lybctx);
+    /*  Find out the size from @ref howtoDataLYB. */
+    if (term->type->basetype == LY_TYPE_LEAFREF) {
+        /* Leafref itself is ignored, the target is loaded directly. */
+        type_lf = (struct lysc_type_leafref *)term->type;
+        lyb_data_len = type_lf->realtype->plugin->lyb_data_len;
+    } else {
+        lyb_data_len = term->type->plugin->lyb_data_len;
+    }
+
+    if (lyb_data_len < 0) {
+        /* Parse value size. */
+        lyb_read_number(term_value_len, sizeof *term_value_len,
+                sizeof *term_value_len, lybctx);
+    } else {
+        /* Data size is fixed. */
+        *term_value_len = lyb_data_len;
+    }
 
     /* Allocate memory. */
     allocated_size = *term_value_len + 1;
@@ -882,7 +901,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         }
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* parse value */
-        ret = lyb_read_term(&term_value, &term_value_len, lybctx->lybctx);
+        ret = lyb_read_term((struct lysc_node_leaf *)snode, &term_value,
+                &term_value_len, lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         dynamic = 1;
 

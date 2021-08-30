@@ -300,7 +300,8 @@ const struct lyplg_type_record plugins_ipv6_address_no_zone[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_ipv6_address_no_zone,
         .plugin.duplicate = lyplg_type_dup_ipv6_address_no_zone,
-        .plugin.free = lyplg_type_free_ipv6_address_no_zone
+        .plugin.free = lyplg_type_free_ipv6_address_no_zone,
+        .plugin.lyb_data_len = 16,
     },
     {0}
 };

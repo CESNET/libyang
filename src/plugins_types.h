@@ -548,6 +548,8 @@ struct lyplg_type {
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
+    int32_t lyb_data_len;               /**< Length of the data in [LYB format](@ref howtoDataLYB).
+                                             For variable-length is set to -1. */
 };
 
 struct lyplg_type_record {

@@ -131,7 +131,8 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_leafref,
         .plugin.duplicate = lyplg_type_dup_leafref,
-        .plugin.free = lyplg_type_free_leafref
+        .plugin.free = lyplg_type_free_leafref,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

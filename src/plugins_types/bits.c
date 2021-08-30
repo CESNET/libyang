@@ -503,7 +503,8 @@ const struct lyplg_type_record plugins_bits[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_bits,
         .plugin.duplicate = lyplg_type_dup_bits,
-        .plugin.free = lyplg_type_free_bits
+        .plugin.free = lyplg_type_free_bits,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };
