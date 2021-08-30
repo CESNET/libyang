@@ -896,7 +896,7 @@ ly_time_ts2str(const struct timespec *ts, char **str)
 {
     char frac_buf[10];
 
-    LY_CHECK_ARG_RET(NULL, ts, str, ts->tv_nsec <= 999999999, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ts, str, ((ts->tv_nsec <= 999999999) && (ts->tv_nsec >= 0)), LY_EINVAL);
 
     /* convert nanoseconds to fractions of a second */
     if (ts->tv_nsec) {
