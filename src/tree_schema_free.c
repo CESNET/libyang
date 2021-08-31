@@ -666,7 +666,7 @@ lysc_type2_free(struct ly_ctx *ctx, struct lysc_type **type)
 void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
-    if (ATOMIC_DEC_RELAXED(type->refcount) > 1) {
+    if (LY_ATOMIC_DEC_RELAXED(type->refcount) > 1) {
         return;
     }
 

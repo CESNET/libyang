@@ -24,16 +24,9 @@
 #define LYPLG_TYPE_DIR "@PLUGINS_DIR_EXTENSIONS@"
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_TYPES@"
 
-/** atomic variables type similar to compat.h */
-#cmakedefine HAVE_STDATOMIC
-
-#ifdef HAVE_STDATOMIC
-# include <stdatomic.h>
-# define LY_ATOMIC_T atomic_uint_fast32_t
-#else
-# include <stdint.h>
-# define LY_ATOMIC_T uint32_t
-#endif
+/** atomic compiler operations, to be able to use uint32_t */
+#define LY_ATOMIC_INC_RELAXED(var) __sync_fetch_and_add(&(var), 1)
+#define LY_ATOMIC_DEC_RELAXED(var) __sync_fetch_and_sub(&(var), 1)
 
 /** printf compiler attribute */
 #if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)

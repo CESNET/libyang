@@ -306,9 +306,6 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
     source_format_enable()
 endif()
 
-# duplicate compat check, to be placed in config.h
-check_include_file("stdatomic.h" HAVE_STDATOMIC)
-
 # generate files
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
