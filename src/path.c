@@ -552,7 +552,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             ++(*tok_idx);
 
             /* "allocate" the type to avoid problems when freeing the value after the type was freed */
-            ++((struct lysc_type *)p->value.realtype)->refcount;
+            ATOMIC_INC_RELAXED(((struct lysc_type *)p->value.realtype)->refcount);
 
             /* ']' */
             assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
@@ -613,7 +613,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
         ++(*tok_idx);
 
         /* "allocate" the type to avoid problems when freeing the value after the type was freed */
-        ++((struct lysc_type *)p->value.realtype)->refcount;
+        ATOMIC_INC_RELAXED(((struct lysc_type *)p->value.realtype)->refcount);
 
         /* ']' */
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
@@ -1105,7 +1105,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
                     /* key-predicate or leaf-list-predicate */
                     (*dup)[u].predicates[v].key = pred->key;
                     pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].predicates[v].value);
-                    ++((struct lysc_type *)pred->value.realtype)->refcount;
+                    ATOMIC_INC_RELAXED(((struct lysc_type *)pred->value.realtype)->refcount);
                     break;
                 case LY_PATH_PREDTYPE_NONE:
                     break;

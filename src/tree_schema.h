@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "config.h"
 #include "log.h"
 #include "tree.h"
 
@@ -1530,14 +1531,15 @@ struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing, it may be accessed concurrently when
+                                          creating/freeing data node values that reference it (instance-identifier) */
 };
 
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_range *range;        /**< Optional range limitation */
 };
 
@@ -1545,7 +1547,7 @@ struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     uint8_t fraction_digits;         /**< fraction digits specification */
     struct lysc_range *range;        /**< Optional range limitation */
 };
@@ -1554,7 +1556,7 @@ struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
     struct lysc_pattern **patterns;  /**< Optional list of pointers to pattern limitations ([sized array](@ref sizedarrays)) */
 };
@@ -1576,7 +1578,7 @@ struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_type_bitenum_item *enums; /**< enumerations list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
 };
 
@@ -1584,7 +1586,7 @@ struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_type_bitenum_item *bits; /**< bits list ([sized array](@ref sizedarrays)), mandatory (at least 1 item),
                                               the items are ordered by their position value. */
 };
@@ -1593,7 +1595,7 @@ struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lyxp_expr *path;          /**< parsed target path, compiled path cannot be stored because of type sharing */
     struct lysc_prefix *prefixes;    /**< resolved prefixes used in the path */
     const struct lys_module *cur_mod;/**< unused, not needed */
@@ -1605,7 +1607,7 @@ struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_ident **bases;       /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
                                           mandatory (at least 1 item) */
 };
@@ -1614,7 +1616,7 @@ struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     uint8_t require_instance;        /**< require-instance flag */
 };
 
@@ -1622,7 +1624,7 @@ struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_type **types;        /**< list of types in the union ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
 };
 
@@ -1630,7 +1632,7 @@ struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    LY_ATOMIC_T refcount;            /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
 };
 

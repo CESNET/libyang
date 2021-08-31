@@ -1067,7 +1067,7 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
         return ret;
     }
 
-    ++((struct lysc_type *)storage->realtype)->refcount;
+    ATOMIC_INC_RELAXED(((struct lysc_type *)storage->realtype)->refcount);
     return LY_SUCCESS;
 }
 

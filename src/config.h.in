@@ -18,14 +18,24 @@
 /** size of fixed_mem in lyd_value, minimum is 8 (B) */
 #define LYD_VALUE_FIXED_MEM_SIZE @LYD_VALUE_SIZE@
 
-/*
- * Plugins
- */
+/** plugins */
 #define LYPLG_SUFFIX "@CMAKE_SHARED_MODULE_SUFFIX@"
 #define LYPLG_SUFFIX_LEN (sizeof LYPLG_SUFFIX - 1)
 #define LYPLG_TYPE_DIR "@PLUGINS_DIR_EXTENSIONS@"
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_TYPES@"
 
+/** atomic variables type similar to compat.h */
+#cmakedefine HAVE_STDATOMIC
+
+#ifdef HAVE_STDATOMIC
+# include <stdatomic.h>
+# define LY_ATOMIC_T atomic_uint_fast32_t
+#else
+# include <stdint.h>
+# define LY_ATOMIC_T uint32_t
+#endif
+
+/** printf compiler attribute */
 #if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)
 # define _FORMAT_PRINTF(FORM, ARGS) __attribute__((format (printf, FORM, ARGS)))
 #else
