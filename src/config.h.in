@@ -25,8 +25,8 @@
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_TYPES@"
 
 /** atomic compiler operations, to be able to use uint32_t */
-#define LY_ATOMIC_INC_RELAXED(var) __sync_fetch_and_add(&(var), 1)
-#define LY_ATOMIC_DEC_RELAXED(var) __sync_fetch_and_sub(&(var), 1)
+#define LY_ATOMIC_INC_BARRIER(var) __sync_fetch_and_add(&(var), 1)
+#define LY_ATOMIC_DEC_BARRIER(var) __sync_fetch_and_sub(&(var), 1)
 
 /** printf compiler attribute */
 #if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)

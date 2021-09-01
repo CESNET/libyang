@@ -1433,7 +1433,7 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
 
                 } else {
                     utypes[u + additional] = un_aux->types[v];
-                    LY_ATOMIC_INC_RELAXED(un_aux->types[v]->refcount);
+                    LY_ATOMIC_INC_BARRIER(un_aux->types[v]->refcount);
                 }
                 ++additional;
                 LY_ARRAY_INCREMENT(utypes);
@@ -2009,11 +2009,11 @@ preparenext:
                 (plugin == base->plugin)) {
             /* no change, reuse the compiled base */
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = base;
-            LY_ATOMIC_INC_RELAXED(base->refcount);
+            LY_ATOMIC_INC_BARRIER(base->refcount);
             continue;
         }
 
-        LY_ATOMIC_INC_RELAXED((*type)->refcount);
+        LY_ATOMIC_INC_BARRIER((*type)->refcount);
         if (~type_substmt_map[basetype] & tctx->tpdf->type.flags) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Invalid type \"%s\" restriction(s) for %s type.",
                     tctx->tpdf->name, ly_data_type2str[basetype]);
@@ -2048,14 +2048,14 @@ preparenext:
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         (*type)->plugin = base ? base->plugin : lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
-        LY_ATOMIC_INC_RELAXED((*type)->refcount);
+        LY_ATOMIC_INC_BARRIER((*type)->refcount);
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, type_p, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else if ((basetype != LY_TYPE_BOOL) && (basetype != LY_TYPE_EMPTY)) {
         /* no specific restriction in leaf's type definition, copy from the base */
         free(*type);
         (*type) = base;
-        LY_ATOMIC_INC_RELAXED((*type)->refcount);
+        LY_ATOMIC_INC_BARRIER((*type)->refcount);
     }
 
     COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, (*type), ret, cleanup);
