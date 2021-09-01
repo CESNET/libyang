@@ -666,7 +666,7 @@ lysc_type2_free(struct ly_ctx *ctx, struct lysc_type **type)
 void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
-    if (LY_ATOMIC_INC_BARRIER(type->refcount) > 1) {
+    if (LY_ATOMIC_DEC_BARRIER(type->refcount) > 1) {
         return;
     }
 
