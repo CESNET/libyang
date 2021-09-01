@@ -35,6 +35,7 @@ const char *simple = "module libyang-plugins-simple {"
 static void
 test_add_invalid(void **state)
 {
+    (void)state;
     assert_int_equal(LY_ESYS, lyplg_add(TESTS_BIN "/plugins/plugin_does_not_exist" LYPLG_SUFFIX));
 }
 

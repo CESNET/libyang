@@ -1210,110 +1210,6 @@ test_type_enum(void **state)
 }
 
 static void
-test_type_bits(void **state)
-{
-    struct lys_module *mod;
-    struct lysc_type *type;
-
-    /* type bits is now tested in file type/bits.c */
-#if 0
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a {yang-version 1.1; namespace urn:a;prefix a;feature f; leaf l {type bits {"
-            "bit automin; bit one {if-feature f; position 1;}"
-            "bit two; bit seven {position 7;} bit five {position 5;} bit eight;}}}", LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_BITS, type->basetype);
-    assert_non_null(((struct lysc_type_bits *)type)->bits);
-    assert_int_equal(5, LY_ARRAY_COUNT(((struct lysc_type_bits *)type)->bits));
-    assert_string_equal("automin", ((struct lysc_type_bits *)type)->bits[0].name);
-    assert_int_equal(0, ((struct lysc_type_bits *)type)->bits[0].position);
-    assert_string_equal("two", ((struct lysc_type_bits *)type)->bits[1].name);
-    assert_int_equal(2, ((struct lysc_type_bits *)type)->bits[1].position);
-    assert_string_equal("seven", ((struct lysc_type_bits *)type)->bits[2].name);
-    assert_int_equal(7, ((struct lysc_type_bits *)type)->bits[2].position);
-    assert_string_equal("five", ((struct lysc_type_bits *)type)->bits[3].name);
-    assert_int_equal(5, ((struct lysc_type_bits *)type)->bits[3].position);
-    assert_string_equal("eight", ((struct lysc_type_bits *)type)->bits[4].name);
-    assert_int_equal(8, ((struct lysc_type_bits *)type)->bits[4].position);
-
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module b {yang-version 1.1;namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
-            "bit automin; bit one;bit two; bit seven {position 7;}bit eight;}} leaf l { type mytype {bit eight;bit seven;bit automin;}}}",
-            LYS_IN_YANG, &mod));
-    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_BITS, type->basetype);
-    assert_non_null(((struct lysc_type_bits *)type)->bits);
-    assert_int_equal(3, LY_ARRAY_COUNT(((struct lysc_type_bits *)type)->bits));
-    assert_string_equal("automin", ((struct lysc_type_bits *)type)->bits[0].name);
-    assert_int_equal(0, ((struct lysc_type_bits *)type)->bits[0].position);
-    assert_string_equal("seven", ((struct lysc_type_bits *)type)->bits[1].name);
-    assert_int_equal(7, ((struct lysc_type_bits *)type)->bits[1].position);
-    assert_string_equal("eight", ((struct lysc_type_bits *)type)->bits[2].name);
-    assert_int_equal(8, ((struct lysc_type_bits *)type)->bits[2].position);
-#endif
-
-    /* invalid cases */
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type bits {"
-            "bit one {if-feature f;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
-
-#if 0
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
-            "bit one {position -1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"-1\" of \"position\".", "Line number 1.");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
-            "bit one {position 4294967296;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid value \"4294967296\" of \"position\".", "Line number 1.");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
-            "bit one; bit one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Duplicate identifier \"one\" of bit statement.", "Line number 1.");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
-            "bit '11';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid identifier first character '1' (0x0031).", "Line number 1.");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
-            "bit 'x1$1';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
-            "Invalid identifier character '$' (0x0024).", "Line number 1.");
-
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; leaf l {type bits;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"bb\" failed.", NULL,
-            "Missing bit substatement for bits type.", "/bb:l");
-
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;typedef mytype {type bits {bit one;}}"
-            "leaf l {type mytype {bit two;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"cc\" failed.", NULL,
-            "Invalid bits - derived type adds new item \"two\".", "/cc:l");
-
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type bits {bit one;}}"
-            "leaf l {type mytype {bit one {position 1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"dd\" failed.", NULL,
-            "Invalid bits - position of the item \"one\" has changed from 0 to 1 in the derived type.", "/dd:l");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;leaf l {type bits {bit x {position 4294967295;}bit y;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"ee\" failed.", NULL,
-            "Invalid bits - it is not possible to auto-assign bit position for \"y\" since the highest value is already 4294967295.", "/ee:l");
-
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;leaf l {type bits {bit x {position 1;}bit y {position 1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"ff\" failed.", NULL,
-            "Invalid bits - position 1 collide in items \"y\" and \"x\".", "/ff:l");
-
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;typedef mytype {type bits;}"
-            "leaf l {type mytype {bit one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Parsing module \"gg\" failed.", NULL,
-            "Missing bit substatement for bits type mytype.", "/gg:l");
-#endif
-
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh; typedef mytype {type bits {bit one;}}"
-            "leaf l {type mytype {bit one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Bits type can be subtyped only in YANG 1.1 modules.", "/hh:l");
-
-}
-
-static void
 test_type_dec64(void **state)
 {
     struct lys_module *mod;
@@ -3719,7 +3615,6 @@ main(void)
         UTEST(test_type_range, setup),
         UTEST(test_type_pattern, setup),
         UTEST(test_type_enum, setup),
-        UTEST(test_type_bits, setup),
         UTEST(test_type_dec64, setup),
         UTEST(test_type_instanceid, setup),
         UTEST(test_identity, setup),

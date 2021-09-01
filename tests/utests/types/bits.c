@@ -246,6 +246,29 @@ test_schema_yang(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
     CHECK_LOG_CTX("Missing bit substatement for bits type.", "/TERR_9:port");
 
+    /* new features of YANG 1.1 in YANG 1.0 */
+    schema = "module TERR_10 {"
+            "  namespace \"urn:tests:TERR_10\";"
+            "  prefix pref;"
+            "  feature f;"
+            "  leaf l {type bits {"
+            "    bit one {if-feature f;}"
+            "  }}"
+            "}";
+    UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Parsing module \"TERR_10\" failed.", NULL,
+            "Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.",
+            "Line number 1.");
+
+    schema = "module TERR_11 {"
+            "  namespace \"urn:tests:TERR_10\";"
+            "  prefix pref;"
+            "  typedef mytype {type bits {bit one;}}"
+            "  leaf l {type mytype {bit one;}}"
+            "}";
+    UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Bits type can be subtyped only in YANG 1.1 modules.", "/TERR_11:l");
+
     /* feature is not present */
     schema = MODULE_CREATE_YANG("IF_0", "feature f;"
             "leaf port {type bits { bit zero;\nbit one;"
