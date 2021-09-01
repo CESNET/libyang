@@ -27,6 +27,23 @@
     NODES \
     "}\n"
 
+#define TEST_SUCCESS_XML(MOD_NAME, NODE_NAME, DATA, TYPE, ...) \
+    { \
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
+        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, ## __VA_ARGS__); \
+        lyd_free_all(tree); \
+    }
+
+#define TEST_ERROR_XML(MOD_NAME, NODE_NAME, DATA) \
+    {\
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
+        assert_null(tree); \
+    }
+
 #define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
     { \
         struct lyd_node *tree_1; \
@@ -44,6 +61,33 @@
     }
 
 static void
+test_data_xml(void **state)
+{
+    const char *schema;
+
+    /* xml test */
+    schema = MODULE_CREATE_YANG("defs", "typedef tboolean {type boolean;}"
+            "leaf l1 {type boolean;}"
+            "leaf l2 {type tboolean;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    TEST_SUCCESS_XML("defs", "l1", "true", BOOL, "true", 1);
+
+    TEST_SUCCESS_XML("defs", "l1", "false", BOOL, "false", 0);
+
+    TEST_SUCCESS_XML("defs", "l2", "false", BOOL, "false", 0);
+
+    /* invalid value */
+    TEST_ERROR_XML("defs", "l1", "unsure");
+    CHECK_LOG_CTX("Invalid boolean value \"unsure\".",
+            "Schema location /defs:l1, line number 1.");
+
+    TEST_ERROR_XML("defs", "l1", " true");
+    CHECK_LOG_CTX("Invalid boolean value \" true\".",
+            "Schema location /defs:l1, line number 1.");
+}
+
+static void
 test_plugin_lyb(void **state)
 {
     const char *schema;
@@ -59,6 +103,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
     };
 

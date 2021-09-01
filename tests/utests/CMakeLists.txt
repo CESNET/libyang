@@ -14,7 +14,15 @@ set(format_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/node/*.c
     PARENT_SCOPE)
 
+ly_add_utest(NAME uint8  SOURCES types/uint8.c)
+ly_add_utest(NAME uint16 SOURCES types/uint16.c)
+ly_add_utest(NAME uint32 SOURCES types/uint32.c)
+ly_add_utest(NAME uint64 SOURCES types/uint64.c)
 ly_add_utest(NAME int8   SOURCES types/int8.c)
+ly_add_utest(NAME int16  SOURCES types/int16.c)
+ly_add_utest(NAME int32  SOURCES types/int32.c)
+ly_add_utest(NAME int64  SOURCES types/int64.c)
+ly_add_utest(NAME dec64  SOURCES types/dec64.c)
 ly_add_utest(NAME string SOURCES types/string.c)
 ly_add_utest(NAME bits   SOURCES types/bits.c)
 ly_add_utest(NAME binary SOURCES types/binary.c)
@@ -60,7 +68,6 @@ ly_add_utest(NAME printer_xml SOURCES data/test_printer_xml.c)
 ly_add_utest(NAME parser_json SOURCES data/test_parser_json.c)
 ly_add_utest(NAME lyb SOURCES data/test_lyb.c)
 ly_add_utest(NAME validation SOURCES data/test_validation.c)
-ly_add_utest(NAME types SOURCES data/test_types.c)
 ly_add_utest(NAME merge SOURCES data/test_merge.c)
 ly_add_utest(NAME diff SOURCES data/test_diff.c)
 

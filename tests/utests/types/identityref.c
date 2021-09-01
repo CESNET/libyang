@@ -27,6 +27,23 @@
     NODES \
     "}\n"
 
+#define TEST_SUCCESS_XML(MOD_NAME, NAMESPACES, NODE_NAME, DATA, TYPE, ...) \
+    { \
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\" " NAMESPACES ">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
+        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, ## __VA_ARGS__); \
+        lyd_free_all(tree); \
+    }
+
+#define TEST_ERROR_XML(MOD_NAME, NAMESPACES, NODE_NAME, DATA) \
+    {\
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\" " NAMESPACES ">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
+        assert_null(tree); \
+    }
+
 #define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
     { \
         struct lyd_node *tree_1; \
@@ -42,6 +59,44 @@
         lyd_free_all(tree_1); \
         lyd_free_all(tree_2); \
     }
+
+static void
+test_data_xml(void **state)
+{
+    const char *schema, *schema2;
+
+    /* xml test */
+    schema = MODULE_CREATE_YANG("ident-base", "identity ident-base;"
+            "identity ident-imp {base ident-base;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    schema2 = MODULE_CREATE_YANG("defs", "import ident-base {prefix ib;}"
+            "identity ident1 {base ib:ident-base;}"
+            "leaf l1 {type identityref {base ib:ident-base;}}");
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
+
+    TEST_SUCCESS_XML("defs", "", "l1", "ident1", IDENT, "defs:ident1", "ident1");
+
+    TEST_SUCCESS_XML("defs", "xmlns:i=\"urn:tests:ident-base\"", "l1", "i:ident-imp", IDENT, "ident-base:ident-imp",
+            "ident-imp");
+
+    /* invalid value */
+    TEST_ERROR_XML("defs", "", "l1", "fast-ethernet");
+    CHECK_LOG_CTX("Invalid identityref \"fast-ethernet\" value - identity not found in module \"defs\".",
+            "Schema location /defs:l1, line number 1.");
+
+    TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:defs\"", "l1", "x:slow-ethernet");
+    CHECK_LOG_CTX("Invalid identityref \"x:slow-ethernet\" value - identity not found in module \"defs\".",
+            "Schema location /defs:l1, line number 1.");
+
+    TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:ident-base\"", "l1", "x:ident-base");
+    CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - identity not derived from the base \"ident-base:ident-base\".",
+            "Schema location /defs:l1, line number 1.");
+
+    TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:unknown\"", "l1", "x:ident-base");
+    CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - unable to map prefix to YANG schema.",
+            "Schema location /defs:l1, line number 1.");
+}
 
 static void
 test_plugin_lyb(void **state)
@@ -60,6 +115,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
     };
 

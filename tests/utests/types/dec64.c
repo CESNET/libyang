@@ -1,7 +1,7 @@
 /**
- * @file empty.c
- * @author Adam Piecek <piecek@cesnet.cz>
- * @brief test for built-in enumeration type
+ * @file dec64.c
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief test for decimal64 values
  *
  * Copyright (c) 2021 CESNET, z.s.p.o.
  *
@@ -16,8 +16,13 @@
 #define  _UTEST_MAIN_
 #include "../utests.h"
 
+/* GLOBAL INCLUDE HEADERS */
+#include <ctype.h>
+
 /* LOCAL INCLUDE HEADERS */
 #include "libyang.h"
+#include "path.h"
+#include "plugins_internal.h"
 
 #define MODULE_CREATE_YANG(MOD_NAME, NODES) \
     "module " MOD_NAME " {\n" \
@@ -44,56 +49,46 @@
         assert_null(tree); \
     }
 
-#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
-    { \
-        struct lyd_node *tree_1; \
-        struct lyd_node *tree_2; \
-        char *xml_out, *data; \
-        data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
-        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
-        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
-        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
-        assert_non_null(tree_2); \
-        CHECK_LYD(tree_1, tree_2); \
-        free(xml_out); \
-        lyd_free_all(tree_1); \
-        lyd_free_all(tree_2); \
-    }
-
 static void
 test_data_xml(void **state)
 {
     const char *schema;
 
     /* xml test */
-    schema = MODULE_CREATE_YANG("defs", "typedef tempty {type empty;}"
-            "leaf l1 {type empty;}"
-            "leaf l2 {type tempty;}");
+    schema = MODULE_CREATE_YANG("defs", "leaf l1 {type decimal64 {fraction-digits 1; range 1.5..10;}}"
+            "leaf l2 {type decimal64 {fraction-digits 18;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
-    TEST_SUCCESS_XML("defs", "l1", "", EMPTY, "");
+    TEST_SUCCESS_XML("defs", "l1", "\n +8 \t\n  ", DEC64, "8.0", 80);
+    TEST_SUCCESS_XML("defs", "l1", "8.00", DEC64, "8.0", 80);
 
-    TEST_SUCCESS_XML("defs", "l2", "", EMPTY, "");
+    TEST_SUCCESS_XML("defs", "l2", "-9.223372036854775808", DEC64, "-9.223372036854775808",
+            INT64_C(-9223372036854775807) - INT64_C(1));
+    TEST_SUCCESS_XML("defs", "l2", "9.223372036854775807", DEC64, "9.223372036854775807", INT64_C(9223372036854775807));
 
-    /* invalid value */
-    TEST_ERROR_XML("defs", "l1", "x");
-    CHECK_LOG_CTX("Invalid empty value length 1.",
+    TEST_ERROR_XML("defs", "l1", "\n 15 \t\n  ");
+    CHECK_LOG_CTX("Unsatisfied range - value \"15.0\" is out of the allowed range.",
+            "Schema location /defs:l1, line number 3.");
+
+    TEST_ERROR_XML("defs", "l1", "\n 0 \t\n  ");
+    CHECK_LOG_CTX("Unsatisfied range - value \"0.0\" is out of the allowed range.",
+            "Schema location /defs:l1, line number 3.");
+
+    TEST_ERROR_XML("defs", "l1", "xxx");
+    CHECK_LOG_CTX("Invalid 1. character of decimal64 value \"xxx\".",
             "Schema location /defs:l1, line number 1.");
 
-    TEST_ERROR_XML("defs", "l1", " ");
-    CHECK_LOG_CTX("Invalid empty value length 1.",
+    TEST_ERROR_XML("defs", "l1", "");
+    CHECK_LOG_CTX("Invalid empty decimal64 value.",
             "Schema location /defs:l1, line number 1.");
-}
 
-static void
-test_plugin_lyb(void **state)
-{
-    const char *schema;
+    TEST_ERROR_XML("defs", "l1", "8.5  xxx");
+    CHECK_LOG_CTX("Invalid 6. character of decimal64 value \"8.5  xxx\".",
+            "Schema location /defs:l1, line number 1.");
 
-    schema = MODULE_CREATE_YANG("lyb",
-            "leaf empty {type empty;}");
-    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
-    TEST_SUCCESS_LYB("lyb", "empty", "");
+    TEST_ERROR_XML("defs", "l1", "8.55  xxx");
+    CHECK_LOG_CTX("Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits.",
+            "Schema location /defs:l1, line number 1.");
 }
 
 int
@@ -101,7 +96,6 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
-        UTEST(test_plugin_lyb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

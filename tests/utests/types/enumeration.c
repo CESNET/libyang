@@ -27,6 +27,23 @@
     NODES \
     "}\n"
 
+#define TEST_SUCCESS_XML(MOD_NAME, NODE_NAME, DATA, TYPE, ...) \
+    { \
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
+        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, ## __VA_ARGS__); \
+        lyd_free_all(tree); \
+    }
+
+#define TEST_ERROR_XML(MOD_NAME, NODE_NAME, DATA) \
+    {\
+        struct lyd_node *tree; \
+        const char *data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree); \
+        assert_null(tree); \
+    }
+
 #define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
     { \
         struct lyd_node *tree_1; \
@@ -44,20 +61,52 @@
     }
 
 static void
+test_data_xml(void **state)
+{
+    const char *schema;
+
+    /* xml test */
+    schema = MODULE_CREATE_YANG("defs", "feature f; leaf l1 {type enumeration {enum white; enum yellow {if-feature f;}}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    TEST_SUCCESS_XML("defs", "l1", "white", ENUM, "white", "white");
+
+    /* disabled feature */
+    TEST_ERROR_XML("defs", "l1", "yellow");
+    CHECK_LOG_CTX("Invalid enumeration value \"yellow\".",
+            "Schema location /defs:l1, line number 1.");
+
+    /* leading/trailing whitespaces */
+    TEST_ERROR_XML("defs", "l1", " white");
+    CHECK_LOG_CTX("Invalid enumeration value \" white\".",
+            "Schema location /defs:l1, line number 1.");
+
+    TEST_ERROR_XML("defs", "l1", "white\n");
+    CHECK_LOG_CTX("Invalid enumeration value \"white\n\".",
+            "Schema location /defs:l1, line number 2.");
+
+    /* invalid value */
+    TEST_ERROR_XML("defs", "l1", "black");
+    CHECK_LOG_CTX("Invalid enumeration value \"black\".",
+            "Schema location /defs:l1, line number 1.");
+}
+
+static void
 test_plugin_lyb(void **state)
 {
     const char *schema;
 
-    schema = MODULE_CREATE_YANG("lyb", "leaf port {type enumeration {enum white; enum yellow; enum black;}}");
+    schema = MODULE_CREATE_YANG("lyb", "leaf l1 {type enumeration {enum white; enum yellow; enum black;}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
-    TEST_SUCCESS_LYB("lyb", "port", "white");
-    TEST_SUCCESS_LYB("lyb", "port", "black");
+    TEST_SUCCESS_LYB("lyb", "l1", "white");
+    TEST_SUCCESS_LYB("lyb", "l1", "black");
 }
 
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
     };
 
