@@ -116,7 +116,7 @@ create_list_inst(const struct lys_module *mod, uint32_t offset, uint32_t count, 
 {
     LY_ERR ret;
     uint32_t i;
-    char k1_val[32], k2_val[32], l_val[32];
+    char k1_val[32], k2_val[32], l_val[32], lfl_val[32];
     struct lyd_node *list;
 
     if ((ret = lyd_new_inner(NULL, mod, "cont", 0, data))) {
@@ -132,6 +132,14 @@ create_list_inst(const struct lys_module *mod, uint32_t offset, uint32_t count, 
             return ret;
         }
         if ((ret = lyd_new_term(list, NULL, "l", l_val, 0, NULL))) {
+            return ret;
+        }
+    }
+
+    /* Last list contains a "lfl" leaf-list with @p count terms. */
+    for (i = 0; i < count; ++i) {
+        sprintf(lfl_val, "%" PRIu32, i + offset);
+        if ((ret = lyd_new_term(list, NULL, "lfl", lfl_val, 0, NULL))) {
             return ret;
         }
     }

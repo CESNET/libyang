@@ -18,6 +18,10 @@ module perf {
             leaf l {
                 type string;
             }
+
+            leaf-list lfl {
+                type uint32;
+            }
         }
     }
 }
