@@ -844,11 +844,10 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
     /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
     i = 0;
     while ((mod_iter = ly_ctx_get_module_iter(mod->ctx, &i))) {
-        if (!strcmp(mod_iter->name, mod->name) && (mod_iter->latest_revision & LYS_MOD_IMPORTED_REV)) {
-            LOGVRB("Implemented module \"%s@%s\" was not and will not "
-                    "be imported if the revision-date is missing in the "
-                    "import statement. Instead, the revision \"%s\" "
-                    "is imported.", mod->name, mod->revision, mod_iter->revision);
+        if (!strcmp(mod_iter->name, mod->name) && (mod_iter != mod) && (mod_iter->latest_revision & LYS_MOD_IMPORTED_REV)) {
+            LOGVRB("Implemented module \"%s@%s\" was not and will not be imported if the revision-date is missing"
+                    " in the import statement. Instead, the revision \"%s\" is imported.", mod->name, mod->revision,
+                    mod_iter->revision);
             break;
         }
     }
