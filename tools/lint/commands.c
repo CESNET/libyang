@@ -82,7 +82,7 @@ void
 cmd_data_help(void)
 {
     printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json | lyb)] [-F (xml | json | lyb)]\n");
-    printf("     [-r <running-file-name>] <data-file-name> [<RPC/action-data-file-name> | <yang-data name>]\n\n");
+    printf("     [-r/-O <operational-file-name>] <data-file-name> [<RPC/action-data-file-name> | <yang-data name>]\n\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -101,11 +101,10 @@ cmd_data_help(void)
     printf("\ttrim       - remove all nodes with a default value\n");
     printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n\n");
     printf("Option -f determines output format, option -F the input format.\n\n");
-    printf("Option -r:\n");
+    printf("Option -r/-O:\n");
     printf("\tOptional parameter for 'rpc', 'rpcreply' and 'notif' TYPEs, the file contains running\n");
-    printf("\tconfiguration datastore data referenced from the RPC/Notification. Note that the file is\n");
-    printf("\tvalidated as 'data' TYPE. Special value '!' can be used as argument to ignore the\n");
-    printf("\texternal references.\n\n");
+    printf("\tconfiguration datastore and state data (operational datastore) referenced from the RPC/Notification.\n");
+    printf("\tSpecial value '!' can be used as argument to ignore the texternal references.\n\n");
     printf("\tIf an XPath expression (when/must) needs access to configuration data, you can provide\n");
     printf("\tthem in a file, which will be parsed as 'data' TYPE.\n\n");
 }
@@ -748,16 +747,17 @@ cmd_data(const char *arg)
             out_path = optarg;
             break;
         case 'r':
+        case 'O':
             if (val_tree || (options & LYD_OPT_NOEXTDEPS)) {
-                fprintf(stderr, "The running datastore (-r) cannot be set multiple times.\n");
+                fprintf(stderr, "The operational datastore (-r/-O) cannot be set multiple times.\n");
                 goto cleanup;
             }
             if (optarg[0] == '!') {
                 /* ignore extenral dependencies to the running datastore */
                 options |= LYD_OPT_NOEXTDEPS;
             } else {
-                /* external file with the running datastore */
-                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
+                /* external file with the operational datastore */
+                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED);
                 if (!val_tree) {
                     fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                     goto cleanup;
