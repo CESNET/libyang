@@ -38,6 +38,9 @@
 #include "tree_schema_internal.h"
 #include "xml.h"
 
+static LY_ERR lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lylyb_ctx *lybctx);
+static LY_ERR lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lylyb_ctx *lybctx);
+
 /**
  * @brief Hash table equal callback for checking hash equality only.
  *
@@ -619,6 +622,12 @@ lyb_print_prefix_data(struct ly_out *out, LY_VALUE_FORMAT format, const void *pr
 static LY_ERR
 lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
+    /* write attributes */
+    LY_CHECK_RET(lyb_print_attributes(out, opaq, lybctx));
+
+    /* write node flags */
+    LY_CHECK_RET(lyb_write_number(opaq->flags, sizeof opaq->flags, out, lybctx));
+
     /* prefix */
     LY_CHECK_RET(lyb_write_string(opaq->name.prefix, 0, 1, out, lybctx));
 
@@ -889,6 +898,52 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
 }
 
 /**
+ * @brief Print header for non-opaq node.
+ *
+ * @param[in] out Out structure.
+ * @param[in] node Current data node to print.
+ * @param[in] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_node_header(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
+{
+    /* write any metadata */
+    LY_CHECK_RET(lyb_print_metadata(out, node, lybctx));
+
+    /* write node flags */
+    LY_CHECK_RET(lyb_write_number(node->flags, sizeof node->flags, out, lybctx->lybctx));
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print model and hash.
+ *
+ * @param[in] out Out structure.
+ * @param[in] node Current data node to print.
+ * @param[in,out] sibling_ht Cached hash table for these siblings, created if NULL.
+ * @param[in] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_model_and_hash(struct ly_out *out, const struct lyd_node *node, struct hash_table **sibling_ht,
+        struct lylyb_ctx *lybctx)
+{
+    /* write model info first, for all opaque and top-level nodes */
+    if (!node->schema && (!node->parent || !node->parent->schema)) {
+        LY_CHECK_RET(lyb_print_model(out, NULL, lybctx));
+    } else if (node->schema && !lysc_data_parent(node->schema)) {
+        LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx));
+    }
+
+    /* write schema hash */
+    LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Print schema node hash.
  *
  * @param[in] out Out structure.
@@ -982,34 +1037,18 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     /* register a new subtree */
     LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
 
-    /* write model info first, for all opaque and top-level nodes */
-    if (!node->schema && (!node->parent || !node->parent->schema)) {
-        LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
-    } else if (node->schema && !lysc_data_parent(node->schema)) {
-        LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
-    }
-
-    /* write schema hash */
-    LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx->lybctx));
-
-    /* write any metadata/attributes */
-    if (node->schema) {
-        LY_CHECK_RET(lyb_print_metadata(out, node, lybctx));
-    } else {
-        LY_CHECK_RET(lyb_print_attributes(out, (struct lyd_node_opaq *)node, lybctx->lybctx));
-    }
-
-    /* write node flags */
-    LY_CHECK_RET(lyb_write_number(node->flags, sizeof node->flags, out, lybctx->lybctx));
+    LY_CHECK_RET(lyb_print_model_and_hash(out, node, sibling_ht, lybctx->lybctx));
 
     /* write node content */
     if (!node->schema) {
         LY_CHECK_RET(lyb_print_opaq((struct lyd_node_opaq *)node, out, lybctx->lybctx));
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
-        /* nothing to write */
+        LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
+        LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
         LY_CHECK_RET(lyb_print_term((struct lyd_node_term *)node, out, lybctx->lybctx));
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
+        LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
         LY_CHECK_RET(lyb_print_anydata((struct lyd_node_any *)node, out, lybctx->lybctx));
     } else {
         LOGINT_RET(lybctx->lybctx->ctx);
