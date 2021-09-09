@@ -41,6 +41,7 @@
 static LY_ERR lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lylyb_ctx *lybctx);
 static LY_ERR lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lylyb_ctx *lybctx);
 static LY_ERR lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_table **sibling_ht, struct lyd_lyb_ctx *lybctx);
+static LY_ERR lyb_print_node_header(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx);
 
 /**
  * @brief Hash table equal callback for checking hash equality only.
@@ -660,15 +661,15 @@ lyb_print_node_opaq(struct ly_out *out, const struct lyd_node_opaq *opaq, struct
 }
 
 /**
- * @brief Print anydata node.
+ * @brief Print anydata or anyxml node.
  *
  * @param[in] anydata Node to print.
  * @param[in] out Out structure.
- * @param[in] lybctx LYB context.
+ * @param[in] lyd_lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lylyb_ctx *lybctx)
+lyb_print_node_any(struct ly_out *out, struct lyd_node_any *anydata, struct lyd_lyb_ctx *lyd_lybctx)
 {
     LY_ERR ret = LY_SUCCESS;
     LYD_ANYDATA_VALUETYPE value_type;
@@ -676,6 +677,7 @@ lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lylyb
     char *buf = NULL;
     const char *str;
     struct ly_out *out2 = NULL;
+    struct lylyb_ctx *lybctx = lyd_lybctx->lybctx;
 
     if (anydata->value_type == LYD_ANYDATA_DATATREE) {
         /* will be printed as a nested LYB data tree */
@@ -683,6 +685,9 @@ lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lylyb
     } else {
         value_type = anydata->value_type;
     }
+
+    /* write necessary basic data */
+    LY_CHECK_RET(lyb_print_node_header(out, (struct lyd_node *)anydata, lyd_lybctx));
 
     /* first byte is type */
     LY_CHECK_GOTO(ret = lyb_write_number(value_type, sizeof value_type, out, lybctx), cleanup);
@@ -1059,8 +1064,8 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
         LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
         LY_CHECK_RET(lyb_print_term_value((struct lyd_node_term *)node, out, lybctx->lybctx));
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
-        LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
-        LY_CHECK_RET(lyb_print_anydata((struct lyd_node_any *)node, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_node_any(out, (struct lyd_node_any *)node, lybctx));
+        goto stop_subtree;
     } else {
         LOGINT_RET(lybctx->lybctx->ctx);
     }
