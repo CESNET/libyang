@@ -40,6 +40,7 @@
 
 static LY_ERR lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lylyb_ctx *lybctx);
 static LY_ERR lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lylyb_ctx *lybctx);
+static LY_ERR lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_table **sibling_ht, struct lyd_lyb_ctx *lybctx);
 
 /**
  * @brief Hash table equal callback for checking hash equality only.
@@ -612,16 +613,20 @@ lyb_print_prefix_data(struct ly_out *out, LY_VALUE_FORMAT format, const void *pr
 }
 
 /**
- * @brief Print opaque node.
+ * @brief Print opaque node and its descendants.
  *
- * @param[in] opaq Node to print.
  * @param[in] out Out structure.
- * @param[in] lybctx LYB context.
+ * @param[in] opaq Node to print.
+ * @param[in] lyd_lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx *lybctx)
+lyb_print_node_opaq(struct ly_out *out, const struct lyd_node_opaq *opaq, struct lyd_lyb_ctx *lyd_lybctx)
 {
+    const struct lyd_node *node;
+    struct hash_table *child_ht = NULL;
+    struct lylyb_ctx *lybctx = lyd_lybctx->lybctx;
+
     /* write attributes */
     LY_CHECK_RET(lyb_print_attributes(out, opaq, lybctx));
 
@@ -645,6 +650,11 @@ lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx 
 
     /* value prefixes */
     LY_CHECK_RET(lyb_print_prefix_data(out, opaq->format, opaq->val_prefix_data, lybctx));
+
+    /* recursively write all the descendants */
+    LY_LIST_FOR(lyd_child((struct lyd_node *)opaq), node) {
+        LY_CHECK_RET(lyb_print_subtree(out, node, &child_ht, lyd_lybctx));
+    }
 
     return LY_SUCCESS;
 }
@@ -1041,7 +1051,8 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
 
     /* write node content */
     if (!node->schema) {
-        LY_CHECK_RET(lyb_print_opaq((struct lyd_node_opaq *)node, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
+        goto stop_subtree;
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
@@ -1059,6 +1070,7 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
         LY_CHECK_RET(lyb_print_subtree(out, node, &child_ht, lybctx));
     }
 
+stop_subtree:
     /* finish this subtree */
     LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx->lybctx));
 
