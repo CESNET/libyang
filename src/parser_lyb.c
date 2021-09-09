@@ -226,7 +226,7 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
 }
 
 /**
- * @brief Read the term node.
+ * @brief Read value of term node.
  *
  * @param[in] term Compiled term node.
  * @param[out] term_value Set to term node value in dynamically
@@ -237,8 +237,8 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_term(const struct lysc_node_leaf *term, uint8_t **term_value,
-        uint32_t *term_value_len, struct lylyb_ctx *lybctx)
+lyb_read_term_value(const struct lysc_node_leaf *term, uint8_t **term_value, uint32_t *term_value_len,
+        struct lylyb_ctx *lybctx)
 {
     uint32_t allocated_size;
     int32_t lyb_data_len;
@@ -1079,8 +1079,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         LY_CHECK_GOTO(ret, cleanup);
 
         /* parse value */
-        ret = lyb_read_term((struct lysc_node_leaf *)snode, &term_value,
-                &term_value_len, lybctx->lybctx);
+        ret = lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         dynamic = 1;
 
