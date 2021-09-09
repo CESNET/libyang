@@ -43,6 +43,8 @@ static LY_ERR _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_ins
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
+static LY_ERR lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed);
+
 void
 lylyb_ctx_free(struct lylyb_ctx *ctx)
 {
@@ -897,6 +899,94 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
 }
 
 /**
+ * @brief Parse opaq node.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] parent Data parent of the subtree.
+ * @param[in,out] first_p First top-level sibling.
+ * @param[out] parsed Set of all successfully parsed nodes.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
+{
+    LY_ERR ret;
+    struct lyd_node *node = NULL;
+    struct lyd_attr *attr = NULL;
+    char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
+    ly_bool dynamic = 0;
+    LY_VALUE_FORMAT format = 0;
+    void *val_prefix_data = NULL;
+    const struct ly_ctx *ctx = lybctx->lybctx->ctx;
+    uint32_t flags;
+
+    if (!(lybctx->parse_opts & LYD_PARSE_OPAQ)) {
+        /* unknown data, skip them */
+        lyb_skip_subtree(lybctx->lybctx);
+        return LY_SUCCESS;
+    }
+
+    /* parse opaq node attributes */
+    ret = lyb_parse_attributes(lybctx->lybctx, &attr);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* read flags */
+    lyb_read_number(&flags, sizeof flags, sizeof flags, lybctx->lybctx);
+
+    /* parse prefix */
+    ret = lyb_read_string(&prefix, 1, lybctx->lybctx);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* parse module key */
+    ret = lyb_read_string(&module_key, 1, lybctx->lybctx);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* parse name */
+    ret = lyb_read_string(&name, 1, lybctx->lybctx);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* parse value */
+    ret = lyb_read_string(&value, 1, lybctx->lybctx);
+    LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
+    dynamic = 1;
+
+    /* parse format */
+    lyb_read_number(&format, sizeof format, 1, lybctx->lybctx);
+
+    /* parse value prefixes */
+    ret = lyb_parse_prefix_data(lybctx->lybctx, format, &val_prefix_data);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* create node */
+    ret = lyd_create_opaq(ctx, name, strlen(name), prefix, ly_strlen(prefix), module_key, ly_strlen(module_key),
+            value, strlen(value), &dynamic, format, val_prefix_data, 0, &node);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* process children */
+    while (LYB_LAST_SUBTREE(lybctx->lybctx).written) {
+        ret = lyb_parse_subtree_r(lybctx, node, NULL, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    /* register parsed opaq node */
+    lyb_finish_opaq(lybctx, parent, flags, &attr, &node, first_p, parsed);
+    assert(!attr && !node);
+
+cleanup:
+    free(prefix);
+    free(module_key);
+    free(name);
+    if (dynamic) {
+        free(value);
+    }
+    lyd_free_attr_siblings(ctx, attr);
+    lyd_free_tree(node);
+
+    return ret;
+}
+
+
+/**
  * @brief Parse header for non-opaq node.
  *
  * @param[in] lybctx LYB context.
@@ -966,14 +1056,11 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     struct lyd_node *node = NULL, *tree;
     const struct lysc_node *snode = NULL;
     struct lyd_meta *meta = NULL;
-    struct lyd_attr *attr = NULL;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
     uint8_t *term_value = NULL;
     const char *val_dict;
     ly_bool dynamic = 0;
-    LY_VALUE_FORMAT format = 0;
-    void *val_prefix_data = NULL;
     uint32_t flags, term_value_len;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
@@ -983,57 +1070,10 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     ret = lyb_print_model_and_hash(lybctx, parent, &snode);
     LY_CHECK_RET(ret);
 
-    if (!snode && !(lybctx->parse_opts & LYD_PARSE_OPAQ)) {
-        /* unknown data, skip them */
-        lyb_skip_subtree(lybctx->lybctx);
-        goto stop_subtree;
-    }
-
     if (!snode) {
-        /* create attributes */
-        ret = lyb_parse_attributes(lybctx->lybctx, &attr);
+        ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
         LY_CHECK_GOTO(ret, cleanup);
-
-        /* read flags */
-        lyb_read_number(&flags, sizeof flags, sizeof flags, lybctx->lybctx);
-
-        /* parse prefix */
-        ret = lyb_read_string(&prefix, 1, lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        /* parse module key */
-        ret = lyb_read_string(&module_key, 1, lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        /* parse name */
-        ret = lyb_read_string(&name, 1, lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        /* parse value */
-        ret = lyb_read_string(&value, 1, lybctx->lybctx);
-        LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
-        dynamic = 1;
-
-        /* parse format */
-        lyb_read_number(&format, sizeof format, 1, lybctx->lybctx);
-
-        /* parse value prefixes */
-        ret = lyb_parse_prefix_data(lybctx->lybctx, format, &val_prefix_data);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        /* create node */
-        ret = lyd_create_opaq(ctx, name, strlen(name), prefix, ly_strlen(prefix), module_key, ly_strlen(module_key),
-                value, strlen(value), &dynamic, format, val_prefix_data, 0, &node);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        /* process children */
-        while (LYB_LAST_SUBTREE(lybctx->lybctx).written) {
-            ret = lyb_parse_subtree_r(lybctx, node, NULL, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-
-        /* complete the node processing */
-        lyb_finish_opaq(lybctx, parent, flags, &attr, &node, first_p, parsed);
+        goto stop_subtree;
     } else if (snode->nodetype & LYD_NODE_TERM) {
         ret = lyb_parse_node_header(lybctx, &flags, &meta);
         LY_CHECK_GOTO(ret, cleanup);
@@ -1167,7 +1207,6 @@ cleanup:
     }
 
     lyd_free_meta_siblings(meta);
-    lyd_free_attr_siblings(ctx, attr);
     lyd_free_tree(node);
     return ret;
 }
