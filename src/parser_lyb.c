@@ -635,6 +635,52 @@ cleanup:
 }
 
 /**
+ * @brief Fill @p hash with hash values.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in,out] hash Pointer to the array in which the hash values are to be written.
+ * @param[out] hash_count Number of hashes in @p hash.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_read_hashes(struct lylyb_ctx *lybctx, LYB_HASH *hash, uint8_t *hash_count)
+{
+    uint8_t i = 0, j;
+
+    /* read the first hash */
+    lyb_read(&hash[0], sizeof *hash, lybctx);
+
+    if (!hash[0]) {
+        *hash_count = i + 1;
+        return LY_SUCCESS;
+    }
+
+    /* based on the first hash read all the other ones, if any */
+    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i) {
+        if (i > LYB_HASH_BITS) {
+            LOGINT_RET(lybctx->ctx);
+        }
+    }
+
+    /* move the first hash on its accurate position */
+    hash[i] = hash[0];
+
+    /* read the rest of hashes */
+    for (j = i; j; --j) {
+        lyb_read(&hash[j - 1], sizeof *hash, lybctx);
+
+        /* correct collision ID */
+        assert(hash[j - 1] & (LYB_HASH_COLLISION_ID >> (j - 1)));
+        /* preceded with zeros */
+        assert(!(hash[j - 1] & (LYB_HASH_MASK << (LYB_HASH_BITS - (j - 1)))));
+    }
+
+    *hash_count = i + 1;
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check whether a schema node matches a hash(es).
  *
  * @param[in] sibling Schema node to check.
@@ -674,41 +720,21 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
         const struct lysc_node **snode)
 {
     LY_ERR ret;
-    uint8_t i, j;
     const struct lysc_node *sibling;
     LYB_HASH hash[LYB_HASH_BITS - 1];
     uint32_t getnext_opts;
+    uint8_t hash_count;
 
-    *snode = NULL;
-    getnext_opts = lybctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
-
-    /* read the first hash */
-    lyb_read(&hash[0], sizeof *hash, lybctx->lybctx);
+    ret = lyb_read_hashes(lybctx->lybctx, hash, &hash_count);
+    LY_CHECK_RET(ret);
 
     if (!hash[0]) {
         /* opaque node */
         return LY_SUCCESS;
     }
 
-    /* based on the first hash read all the other ones, if any */
-    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i) {
-        if (i > LYB_HASH_BITS) {
-            LOGINT_RET(lybctx->lybctx->ctx);
-        }
-    }
-
-    /* move the first hash on its accurate position */
-    hash[i] = hash[0];
-
-    /* read the rest of hashes */
-    for (j = i; j; --j) {
-        lyb_read(&hash[j - 1], sizeof *hash, lybctx->lybctx);
-
-        /* correct collision ID */
-        assert(hash[j - 1] & (LYB_HASH_COLLISION_ID >> (j - 1)));
-        /* preceded with zeros */
-        assert(!(hash[j - 1] & (LYB_HASH_MASK << (LYB_HASH_BITS - (j - 1)))));
-    }
+    *snode = NULL;
+    getnext_opts = lybctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
     /* find our node with matching hashes */
     sibling = NULL;
@@ -723,7 +749,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
         }
         /* skip schema nodes from models not present during printing */
         if (lyb_has_schema_model(sibling, lybctx->lybctx->models) &&
-                lyb_is_schema_hash_match((struct lysc_node *)sibling, hash, i + 1)) {
+                lyb_is_schema_hash_match((struct lysc_node *)sibling, hash, hash_count)) {
             /* match found */
             break;
         }
