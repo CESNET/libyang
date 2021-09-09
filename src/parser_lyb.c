@@ -44,6 +44,7 @@ static LY_ERR _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_ins
         struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
 static LY_ERR lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed);
+static LY_ERR lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_meta **meta);
 
 void
 lylyb_ctx_free(struct lylyb_ctx *ctx)
@@ -1050,6 +1051,96 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Parse anydata or anyxml node.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] parent Data parent of the subtree.
+ * @param[in] snode Schema of the node to be parsed.
+ * @param[in,out] first_p First top-level sibling.
+ * @param[out] parsed Set of all successfully parsed nodes.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
+        struct lyd_node **first_p, struct ly_set *parsed)
+{
+    LY_ERR ret;
+    struct lyd_node *node = NULL, *tree;
+    struct lyd_meta *meta = NULL;
+    LYD_ANYDATA_VALUETYPE value_type;
+    char *value = NULL;
+    const char *val_dict;
+    uint32_t flags;
+    const struct ly_ctx *ctx = lybctx->lybctx->ctx;
+
+    /* read necessary basic data */
+    ret = lyb_parse_node_header(lybctx, &flags, &meta);
+    LY_CHECK_GOTO(ret, error);
+
+    /* parse value type */
+    lyb_read_number(&value_type, sizeof value_type, sizeof value_type, lybctx->lybctx);
+    if (value_type == LYD_ANYDATA_DATATREE) {
+        /* invalid situation */
+        LOGINT(ctx);
+        ret = LY_EINT;
+        goto error;
+    }
+
+    /* read anydata content */
+    ret = lyb_read_string(&value, 0, lybctx->lybctx);
+    LY_CHECK_GOTO(ret, error);
+
+    if (value_type == LYD_ANYDATA_LYB) {
+        /* try to parse LYB into a data tree */
+        if (!lyb_parse_any_content(ctx, value, &tree)) {
+            /* successfully parsed */
+            free(value);
+            value = (char *)tree;
+            value_type = LYD_ANYDATA_DATATREE;
+        }
+    }
+
+    /* create the node */
+    switch (value_type) {
+    case LYD_ANYDATA_LYB:
+    case LYD_ANYDATA_DATATREE:
+        /* use the value directly */
+        ret = lyd_create_any(snode, value, value_type, 1, &node);
+        LY_CHECK_GOTO(ret, error);
+
+        break;
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+    case LYD_ANYDATA_JSON:
+        /* value is expected to be in the dictionary */
+        ret = lydict_insert_zc(ctx, value, &val_dict);
+        LY_CHECK_GOTO(ret, error);
+
+        /* use the value in the dictionary */
+        ret = lyd_create_any(snode, val_dict, value_type, 1, &node);
+        if (ret) {
+            lydict_remove(ctx, val_dict);
+            goto error;
+        }
+        break;
+    default:
+        LOGINT(ctx);
+        ret = LY_EINT;
+        goto error;
+    }
+
+    /* register parsed anydata node */
+    lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
+
+    return LY_SUCCESS;
+
+error:
+    free(value);
+    lyd_free_meta_siblings(meta);
+    lyd_free_tree(node);
+    return ret;
+}
 
 /**
  * @brief Parse header for non-opaq node.
@@ -1118,13 +1209,9 @@ static LY_ERR
 lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *node = NULL, *tree;
+    struct lyd_node *node = NULL;
     const struct lysc_node *snode = NULL;
     struct lyd_meta *meta = NULL;
-    LYD_ANYDATA_VALUETYPE value_type;
-    char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
-    const char *val_dict;
-    ly_bool dynamic = 0;
     uint32_t flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
@@ -1174,63 +1261,9 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         /* complete the node processing */
         lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
     } else if (snode->nodetype & LYD_NODE_ANY) {
-        ret = lyb_parse_node_header(lybctx, &flags, &meta);
+        ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
         LY_CHECK_GOTO(ret, cleanup);
-
-        /* parse value type */
-        lyb_read_number(&value_type, sizeof value_type, sizeof value_type, lybctx->lybctx);
-        if (value_type == LYD_ANYDATA_DATATREE) {
-            /* invalid situation */
-            LOGINT(ctx);
-            goto cleanup;
-        }
-
-        /* read anydata content */
-        ret = lyb_read_string(&value, 0, lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-        dynamic = 1;
-
-        if (value_type == LYD_ANYDATA_LYB) {
-            /* try to parse LYB into a data tree */
-            if (!lyb_parse_any_content(ctx, value, &tree)) {
-                /* successfully parsed */
-                free(value);
-                value = (char *)tree;
-                value_type = LYD_ANYDATA_DATATREE;
-            }
-        }
-
-        /* create the node */
-        switch (value_type) {
-        case LYD_ANYDATA_LYB:
-        case LYD_ANYDATA_DATATREE:
-            /* use the value directly */
-            ret = lyd_create_any(snode, value, value_type, 1, &node);
-            LY_CHECK_GOTO(ret, cleanup);
-
-            dynamic = 0;
-            value = NULL;
-            break;
-        case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_XML:
-        case LYD_ANYDATA_JSON:
-            /* value is expected to be in the dictionary */
-            ret = lydict_insert_zc(ctx, value, &val_dict);
-            LY_CHECK_GOTO(ret, cleanup);
-            dynamic = 0;
-            value = NULL;
-
-            /* use the value in the dictionary */
-            ret = lyd_create_any(snode, val_dict, value_type, 1, &node);
-            if (ret) {
-                lydict_remove(ctx, val_dict);
-                goto cleanup;
-            }
-            break;
-        }
-
-        /* complete the node processing */
-        lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
+        goto stop_subtree;
     } else {
         LOGINT(ctx);
         ret = LY_EINT;
@@ -1243,13 +1276,6 @@ stop_subtree:
     LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
-    free(prefix);
-    free(module_key);
-    free(name);
-    if (dynamic) {
-        free(value);
-    }
-
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return ret;
