@@ -899,6 +899,41 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
 }
 
 /**
+ * @brief Create term node and fill it with value.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] snode Schema of the term node.
+ * @param[out] node Created term node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struct lyd_node **node)
+{
+    LY_ERR ret;
+    ly_bool dynamic;
+    uint8_t *term_value;
+    uint32_t term_value_len;
+
+    ret = lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, lybctx->lybctx);
+    LY_CHECK_RET(ret);
+
+    dynamic = 1;
+    /* create node */
+    ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode,
+            term_value, term_value_len, &dynamic, LY_VALUE_LYB,
+            NULL, LYD_HINT_DATA, node);
+    if (dynamic) {
+        free(term_value);
+    }
+    if (ret) {
+        lyd_free_tree(*node);
+        *node = NULL;
+    }
+
+    return ret;
+}
+
+/**
  * @brief Parse opaq node.
  *
  * @param[in] lybctx LYB context.
@@ -1058,10 +1093,9 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     struct lyd_meta *meta = NULL;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL, *name = NULL, *prefix = NULL, *module_key = NULL;
-    uint8_t *term_value = NULL;
     const char *val_dict;
     ly_bool dynamic = 0;
-    uint32_t flags, term_value_len;
+    uint32_t flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
     /* register a new subtree */
@@ -1078,20 +1112,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         ret = lyb_parse_node_header(lybctx, &flags, &meta);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* parse value */
-        ret = lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-        dynamic = 1;
-
-        /* create node */
-        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode,
-                term_value, term_value_len, &dynamic, LY_VALUE_LYB,
-                NULL, LYD_HINT_DATA, &node);
-        if (dynamic) {
-            free(term_value);
-            dynamic = 0;
-        }
-        term_value = NULL;
+        /* read value of term node and create it */
+        ret = lyb_create_term(lybctx, snode, &node);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* complete the node processing */
