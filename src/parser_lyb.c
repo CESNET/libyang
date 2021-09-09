@@ -327,6 +327,7 @@ lyb_read_start_subtree(struct lylyb_ctx *lybctx)
  * @brief Parse YANG model info.
  *
  * @param[in] lybctx LYB context.
+ * @param[in] parse_options Flag with options for parsing.
  * @param[out] mod Parsed module.
  * @return LY_ERR value.
  */
@@ -807,7 +808,8 @@ lyb_parse_any_content(const struct ly_ctx *ctx, const char *data, struct lyd_nod
  *
  * @param[in] lybctx LYB context.
  * @param[in] parent Data parent of the subtree, must be set if @p first is not.
- * @param[in,out] first First top-level sibling, must be set if @p parent is not.
+ * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
+ * @param[out] parsed Set of all successfully parsed nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -1051,6 +1053,7 @@ cleanup:
  * @brief Parse used YANG data models.
  *
  * @param[in] lybctx LYB context.
+ * @param[in] parse_options Flag with options for parsing.
  * @return LY_ERR value.
  */
 static LY_ERR
