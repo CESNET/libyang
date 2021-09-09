@@ -711,7 +711,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
+lyb_print_term_value(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic = 0;
@@ -1046,7 +1046,7 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
         LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
-        LY_CHECK_RET(lyb_print_term((struct lyd_node_term *)node, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_term_value((struct lyd_node_term *)node, out, lybctx->lybctx));
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
         LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
         LY_CHECK_RET(lyb_print_anydata((struct lyd_node_any *)node, out, lybctx->lybctx));
