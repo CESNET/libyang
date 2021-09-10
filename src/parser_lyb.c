@@ -1223,53 +1223,43 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct
     uint32_t flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
-    if (!snode) {
-        ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
-        LY_CHECK_GOTO(ret, cleanup);
-    } else if (snode->nodetype & LYD_NODE_TERM) {
-        /* read necessary basic data */
-        ret = lyb_parse_node_header(lybctx, &flags, &meta);
-        LY_CHECK_GOTO(ret, cleanup);
+    /* read necessary basic data */
+    ret = lyb_parse_node_header(lybctx, &flags, &meta);
+    LY_CHECK_GOTO(ret, error);
 
+    if (snode->nodetype & LYD_NODE_TERM) {
         /* read value of term node and create it */
         ret = lyb_create_term(lybctx, snode, &node);
-        LY_CHECK_GOTO(ret, cleanup);
-
-        lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
+        LY_CHECK_GOTO(ret, error);
     } else if (snode->nodetype & LYD_NODE_INNER) {
-        /* read necessary basic data */
-        ret = lyb_parse_node_header(lybctx, &flags, &meta);
-        LY_CHECK_GOTO(ret, cleanup);
-
         /* create node */
         ret = lyd_create_inner(snode, &node);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_GOTO(ret, error);
 
         /* process children */
         ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_GOTO(ret, error);
 
         /* additional procedure for inner node */
         ret = lyb_validate_node_inner(lybctx, snode, node);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_GOTO(ret, error);
 
         if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
             /* rememeber the RPC/action/notification */
             lybctx->op_node = node;
         }
-
-        /* register parsed node */
-        lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
-    } else if (snode->nodetype & LYD_NODE_ANY) {
-        ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
-        LY_CHECK_GOTO(ret, cleanup);
     } else {
         LOGINT(ctx);
         ret = LY_EINT;
-        goto cleanup;
+        goto error;
     }
 
-cleanup:
+    /* register parsed node */
+    lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
+
+    return LY_SUCCESS;
+
+error:
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return ret;
@@ -1318,7 +1308,13 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
         }
         LY_CHECK_RET(ret);
 
-        lyb_parse_node(lybctx, parent, snode, first_p, parsed);
+        if (!snode) {
+            ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
+        } else if (snode->nodetype & LYD_NODE_ANY) {
+            ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
+        } else {
+            ret = lyb_parse_node(lybctx, parent, snode, first_p, parsed);
+        }
         LY_CHECK_RET(ret);
 
         if (top_level && !(lybctx->int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
