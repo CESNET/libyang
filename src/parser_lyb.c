@@ -1325,6 +1325,66 @@ lyb_parse_node_leaflist(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, con
 }
 
 /**
+ * @brief Parse all list nodes which belong to same schema.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] parent Data parent of the sibling.
+ * @param[in] snode Schema of the nodes to be parsed.
+ * @param[in,out] first_p First top-level sibling.
+ * @param[out] parsed Set of all successfully parsed nodes.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
+        struct lyd_node **first_p, struct ly_set *parsed)
+{
+    LY_ERR ret;
+    struct lyd_node *node = NULL;
+    struct lyd_meta *meta = NULL;
+    uint32_t flags;
+
+    /* register a new sibling */
+    ret = lyb_read_start_siblings(lybctx->lybctx);
+    LY_CHECK_RET(ret);
+
+    while (LYB_LAST_SIBLING(lybctx->lybctx).written) {
+        /* read necessary basic data */
+        lyb_parse_node_header(lybctx, &flags, &meta);
+
+        /* create list node */
+        ret = lyd_create_inner(snode, &node);
+        LY_CHECK_GOTO(ret, error);
+
+        /* process children */
+        ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
+        LY_CHECK_GOTO(ret, error);
+
+        /* additional procedure for inner node */
+        ret = lyb_validate_node_inner(lybctx, snode, node);
+        LY_CHECK_GOTO(ret, error);
+
+        if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+            /* rememeber the RPC/action/notification */
+            lybctx->op_node = node;
+        }
+
+        /* register parsed list node */
+        lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
+    }
+
+    /* end the sibling */
+    ret = lyb_read_stop_siblings(lybctx->lybctx);
+    LY_CHECK_RET(ret);
+
+    return LY_SUCCESS;
+
+error:
+    lyd_free_meta_siblings(meta);
+    lyd_free_tree(node);
+    return ret;
+}
+
+/**
  * @brief Parse siblings (@ref lyb_print_siblings()).
  *
  * @param[in] lybctx LYB context.
@@ -1371,6 +1431,8 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
             ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
         } else if (snode->nodetype & LYS_LEAFLIST) {
             ret = lyb_parse_node_leaflist(lybctx, parent, snode, first_p, parsed);
+        } else if (snode->nodetype == LYS_LIST) {
+            ret = lyb_parse_node_list(lybctx, parent, snode, first_p, parsed);
         } else if (snode->nodetype & LYD_NODE_ANY) {
             ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
         } else if (snode->nodetype & LYD_NODE_INNER) {
