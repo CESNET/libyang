@@ -40,6 +40,7 @@
 
 static LY_ERR lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lylyb_ctx *lybctx);
 static LY_ERR lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lylyb_ctx *lybctx);
+static LY_ERR lyb_print_node_inner(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx);
 static LY_ERR lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx);
 static LY_ERR lyb_print_node_header(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx);
 
@@ -1007,28 +1008,21 @@ lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_
 }
 
 /**
- * @brief Print node with childs.
+ * @brief Print inner node.
  *
  * @param[in] out Out structure.
- * @param[in] node Root node of the sibling to print.
+ * @param[in] node Current data node to print.
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_node(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
+lyb_print_node_inner(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 {
     /* write necessary basic data */
     LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
 
-    /* write node content */
-    if (node->schema->nodetype & LYD_NODE_INNER) {
-        /* recursively write all the descendants */
-        LY_CHECK_RET(lyb_print_siblings(out, lyd_child(node), lybctx));
-    } else if (node->schema->nodetype & LYS_LEAFLIST) {
-        LY_CHECK_RET(lyb_print_term_value((struct lyd_node_term *)node, out, lybctx->lybctx));
-    } else {
-        LOGINT_RET(lybctx->lybctx->ctx);
-    }
+    /* recursively write all the descendants */
+    LY_CHECK_RET(lyb_print_siblings(out, lyd_child(node), lybctx));
 
     return LY_SUCCESS;
 }
@@ -1049,6 +1043,44 @@ lyb_print_node_leaf(struct ly_out *out, const struct lyd_node *node, struct lyd_
 
     /* write term value */
     LY_CHECK_RET(lyb_print_term_value((struct lyd_node_term *)node, out, lybctx->lybctx));
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print all leaflist nodes which belong to same schema.
+ *
+ * @param[in] out Out structure.
+ * @param[in] node Current data node to print.
+ * @param[in] lybctx LYB context.
+ * @param[out] printed_node Last node that was printed by this function.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_node_leaflist(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx,
+        const struct lyd_node **printed_node)
+{
+    const struct lysc_node *schema;
+
+    /* register a new sibling */
+    LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));
+
+    schema = node->schema;
+
+    /* write all the siblings */
+    LY_LIST_FOR(node, node) {
+        if (schema != node->schema) {
+            /* all leaflist nodes was printed */
+            break;
+        }
+
+        /* write leaf data */
+        LY_CHECK_RET(lyb_print_node_leaf(out, node, lybctx));
+        *printed_node = node;
+    }
+
+    /* finish this sibling */
+    LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx->lybctx));
 
     return LY_SUCCESS;
 }
@@ -1099,12 +1131,14 @@ lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
         if (!node->schema) {
             LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
+        } else if (node->schema->nodetype & LYS_LEAFLIST) {
+            LY_CHECK_RET(lyb_print_node_leaflist(out, node, lybctx, &node));
         } else if (node->schema->nodetype & LYD_NODE_ANY) {
             LY_CHECK_RET(lyb_print_node_any(out, (struct lyd_node_any *)node, lybctx));
-        } else if (node->schema->nodetype == LYS_LEAF) {
-            LY_CHECK_RET(lyb_print_node_leaf(out, node, lybctx));
+        } else if (node->schema->nodetype & LYD_NODE_INNER) {
+            LY_CHECK_RET(lyb_print_node_inner(out, node, lybctx));
         } else {
-            LY_CHECK_RET(lyb_print_node(out, node, lybctx));
+            LY_CHECK_RET(lyb_print_node_leaf(out, node, lybctx));
         }
 
         if (top_level && !(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
