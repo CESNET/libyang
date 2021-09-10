@@ -33,12 +33,12 @@ struct lylyb_ctx {
 
     const struct lys_module **models;
 
-    struct lyd_lyb_subtree {
+    struct lyd_lyb_sibling {
         size_t written;
         size_t position;
         uint8_t inner_chunks;
-    } *subtrees;
-    LY_ARRAY_COUNT_TYPE subtree_size;
+    } *siblings;
+    LY_ARRAY_COUNT_TYPE sibling_size;
 
     /* LYB printer only */
     struct lyd_lyb_sib_ht {
@@ -62,12 +62,12 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
  * an array of hashes is created with each next hash one bit shorter until a unique sequence of all these
  * hashes is found and then all of them are stored.
  *
- * - tree structure is represented as individual strictly bounded subtrees. Each subtree begins
- * with its metadata, which consist of 1) the whole subtree length in bytes and 2) number
- * of included metadata chunks of nested subtrees.
+ * - tree structure is represented as individual strictly bounded "siblings". Each "siblings" begins
+ * with its metadata, which consist of 1) the whole "sibling" length in bytes and 2) number
+ * of included metadata chunks of nested "siblings".
  *
- * - since length of a subtree is not known before it is printed, holes are first written and
- * after the subtree is printed, they are filled with actual valid metadata. As a consequence,
+ * - since length of a "sibling" is not known before it is printed, holes are first written and
+ * after the "sibling" is printed, they are filled with actual valid metadata. As a consequence,
  * LYB data cannot be directly printed into streams!
  *
  * - data are preceded with information about all the used modules. It is needed because of
@@ -76,10 +76,10 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
  */
 
 /* just a shortcut */
-#define LYB_LAST_SUBTREE(lybctx) lybctx->subtrees[LY_ARRAY_COUNT(lybctx->subtrees) - 1]
+#define LYB_LAST_SIBLING(lybctx) lybctx->siblings[LY_ARRAY_COUNT(lybctx->siblings) - 1]
 
-/* struct lyd_lyb_subtree allocation step */
-#define LYB_SUBTREE_STEP 4
+/* struct lyd_lyb_sibling allocation step */
+#define LYB_SIBLING_STEP 4
 
 /* current LYB format version */
 #define LYB_VERSION_NUM 0x10
@@ -142,9 +142,6 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 #define LYB_REV_MONTH_MASK  0x01E0U
 #define LYB_REV_MONTH_SHIFT 5
 #define LYB_REV_DAY_MASK    0x001fU
-
-/* Type large enough for all meta data */
-#define LYB_META uint16_t
 
 /**
  * @brief Get single hash for a schema node to be used for LYB data. Read from cache, if possible.
