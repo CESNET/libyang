@@ -43,15 +43,16 @@ static LY_ERR _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_ins
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
-static LY_ERR lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed);
+static LY_ERR lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode, struct lyd_node **first_p, struct ly_set *parsed);
 static LY_ERR lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_meta **meta);
+static LY_ERR lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed);
 
 void
 lylyb_ctx_free(struct lylyb_ctx *ctx)
 {
     LY_ARRAY_COUNT_TYPE u;
 
-    LY_ARRAY_FREE(ctx->subtrees);
+    LY_ARRAY_FREE(ctx->siblings);
     LY_ARRAY_FREE(ctx->models);
 
     LY_ARRAY_FOR(ctx->sib_hts, u) {
@@ -83,7 +84,7 @@ static void
 lyb_read(uint8_t *buf, size_t count, struct lylyb_ctx *lybctx)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_lyb_subtree *empty;
+    struct lyd_lyb_sibling *empty;
     size_t to_read;
     uint8_t meta_buf[LYB_META_BYTES];
 
@@ -93,13 +94,13 @@ lyb_read(uint8_t *buf, size_t count, struct lylyb_ctx *lybctx)
         /* check for fully-read (empty) data chunks */
         to_read = count;
         empty = NULL;
-        LY_ARRAY_FOR(lybctx->subtrees, u) {
+        LY_ARRAY_FOR(lybctx->siblings, u) {
             /* we want the innermost chunks resolved first, so replace previous empty chunks,
              * also ignore chunks that are completely finished, there is nothing for us to do */
-            if ((lybctx->subtrees[u].written <= to_read) && lybctx->subtrees[u].position) {
+            if ((lybctx->siblings[u].written <= to_read) && lybctx->siblings[u].position) {
                 /* empty chunk, do not read more */
-                to_read = lybctx->subtrees[u].written;
-                empty = &lybctx->subtrees[u];
+                to_read = lybctx->siblings[u].written;
+                empty = &lybctx->siblings[u];
             }
         }
 
@@ -115,10 +116,10 @@ lyb_read(uint8_t *buf, size_t count, struct lylyb_ctx *lybctx)
                 ly_in_skip(lybctx->in, to_read);
             }
 
-            LY_ARRAY_FOR(lybctx->subtrees, u) {
+            LY_ARRAY_FOR(lybctx->siblings, u) {
                 /* decrease all written counters */
-                lybctx->subtrees[u].written -= to_read;
-                assert(lybctx->subtrees[u].written <= LYB_SIZE_MAX);
+                lybctx->siblings[u].written -= to_read;
+                assert(lybctx->siblings[u].written <= LYB_SIZE_MAX);
             }
             /* decrease count/buf */
             count -= to_read;
@@ -179,7 +180,7 @@ lyb_read_number(void *num, size_t num_size, size_t bytes, struct lylyb_ctx *lybc
  * @brief Read a string.
  *
  * @param[in] str Destination buffer, is allocated.
- * @param[in] with_length Whether the string is preceded with its length or it ends at the end of this subtree.
+ * @param[in] with_length Whether the string is preceded with its length or it ends at the end of this "sibling".
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
@@ -194,9 +195,9 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
     if (with_length) {
         lyb_read_number(&len, sizeof len, 2, lybctx);
     } else {
-        /* read until the end of this subtree */
-        len = LYB_LAST_SUBTREE(lybctx).written;
-        if (LYB_LAST_SUBTREE(lybctx).position) {
+        /* read until the end of this "sibling" */
+        len = LYB_LAST_SIBLING(lybctx).written;
+        if (LYB_LAST_SIBLING(lybctx).position) {
             next_chunk = 1;
         }
     }
@@ -207,8 +208,8 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
     lyb_read((uint8_t *)*str, len, lybctx);
 
     while (next_chunk) {
-        cur_len = LYB_LAST_SUBTREE(lybctx).written;
-        if (LYB_LAST_SUBTREE(lybctx).position) {
+        cur_len = LYB_LAST_SIBLING(lybctx).written;
+        if (LYB_LAST_SIBLING(lybctx).position) {
             next_chunk = 1;
         } else {
             next_chunk = 0;
@@ -282,46 +283,46 @@ lyb_read_term_value(const struct lysc_node_leaf *term, uint8_t **term_value, uin
 }
 
 /**
- * @brief Stop the current subtree - change LYB context state.
+ * @brief Stop the current "siblings" - change LYB context state.
  *
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_stop_subtree(struct lylyb_ctx *lybctx)
+lyb_read_stop_siblings(struct lylyb_ctx *lybctx)
 {
-    if (LYB_LAST_SUBTREE(lybctx).written) {
+    if (LYB_LAST_SIBLING(lybctx).written) {
         LOGINT_RET(lybctx->ctx);
     }
 
-    LY_ARRAY_DECREMENT(lybctx->subtrees);
+    LY_ARRAY_DECREMENT(lybctx->siblings);
     return LY_SUCCESS;
 }
 
 /**
- * @brief Start a new subtree - change LYB context state but also read the expected metadata.
+ * @brief Start a new "siblings" - change LYB context state but also read the expected metadata.
  *
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_start_subtree(struct lylyb_ctx *lybctx)
+lyb_read_start_siblings(struct lylyb_ctx *lybctx)
 {
     uint8_t meta_buf[LYB_META_BYTES];
     LY_ARRAY_COUNT_TYPE u;
 
-    u = LY_ARRAY_COUNT(lybctx->subtrees);
-    if (u == lybctx->subtree_size) {
-        LY_ARRAY_CREATE_RET(lybctx->ctx, lybctx->subtrees, u + LYB_SUBTREE_STEP, LY_EMEM);
-        lybctx->subtree_size = u + LYB_SUBTREE_STEP;
+    u = LY_ARRAY_COUNT(lybctx->siblings);
+    if (u == lybctx->sibling_size) {
+        LY_ARRAY_CREATE_RET(lybctx->ctx, lybctx->siblings, u + LYB_SIBLING_STEP, LY_EMEM);
+        lybctx->sibling_size = u + LYB_SIBLING_STEP;
     }
 
     LY_CHECK_RET(ly_in_read(lybctx->in, meta_buf, LYB_META_BYTES));
 
-    LY_ARRAY_INCREMENT(lybctx->subtrees);
-    LYB_LAST_SUBTREE(lybctx).written = meta_buf[0];
-    LYB_LAST_SUBTREE(lybctx).inner_chunks = meta_buf[LYB_SIZE_BYTES];
-    LYB_LAST_SUBTREE(lybctx).position = (LYB_LAST_SUBTREE(lybctx).written == LYB_SIZE_MAX ? 1 : 0);
+    LY_ARRAY_INCREMENT(lybctx->siblings);
+    LYB_LAST_SIBLING(lybctx).written = meta_buf[0];
+    LYB_LAST_SIBLING(lybctx).inner_chunks = meta_buf[LYB_SIZE_BYTES];
+    LYB_LAST_SIBLING(lybctx).position = (LYB_LAST_SIBLING(lybctx).written == LYB_SIZE_MAX ? 1 : 0);
 
     return LY_SUCCESS;
 }
@@ -338,23 +339,23 @@ static LY_ERR
 lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **model)
 {
     LY_ERR ret = LY_SUCCESS;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
-    uint16_t rev;
+    uint16_t rev, length;
 
-    *model = NULL;
+    lyb_read_number(&length, 2, 2, lybctx);
 
-    /* model name */
-    ret = lyb_read_string(&mod_name, 1, lybctx);
-    LY_CHECK_GOTO(ret, cleanup);
+    if (length) {
+        mod_name = malloc((length + 1) * sizeof *mod_name);
+        LY_CHECK_ERR_RET(!mod_name, LOGMEM(lybctx->ctx), LY_EMEM);
+        lyb_read(((uint8_t *)mod_name), length, lybctx);
+        mod_name[length] = '\0';
+    } else {
+        goto cleanup;
+    }
 
     /* revision */
     lyb_read_number(&rev, sizeof rev, 2, lybctx);
-
-    if (!mod_name[0]) {
-        /* opaq node, no module */
-        goto cleanup;
-    }
 
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
@@ -400,9 +401,8 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
         lyb_cache_module_hash(mod);
     }
 
-    *model = mod;
-
 cleanup:
+    *model = mod;
     free(mod_name);
     return ret;
 }
@@ -428,7 +428,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 
     /* read attributes */
     for (i = 0; i < count; ++i) {
-        ret = lyb_read_start_subtree(lybctx->lybctx);
+        ret = lyb_read_start_siblings(lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* find model */
@@ -438,9 +438,9 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
         if (!mod) {
             /* skip it */
             do {
-                lyb_read(NULL, LYB_LAST_SUBTREE(lybctx->lybctx).written, lybctx->lybctx);
-            } while (LYB_LAST_SUBTREE(lybctx->lybctx).written);
-            goto stop_subtree;
+                lyb_read(NULL, LYB_LAST_SIBLING(lybctx->lybctx).written, lybctx->lybctx);
+            } while (LYB_LAST_SIBLING(lybctx->lybctx).written);
+            goto stop_sibling;
         }
 
         /* meta name */
@@ -466,8 +466,8 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 
         LY_CHECK_GOTO(ret, cleanup);
 
-stop_subtree:
-        ret = lyb_read_stop_subtree(lybctx->lybctx);
+stop_sibling:
+        ret = lyb_read_stop_siblings(lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -567,7 +567,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
 
     /* read attributes */
     for (i = 0; i < count; ++i) {
-        ret = lyb_read_start_subtree(lybctx);
+        ret = lyb_read_start_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* prefix, may be empty */
@@ -620,7 +620,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
             *attr = attr2;
         }
 
-        ret = lyb_read_stop_subtree(lybctx);
+        ret = lyb_read_stop_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -729,6 +729,8 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     uint32_t getnext_opts;
     uint8_t hash_count;
 
+    *snode = NULL;
+
     ret = lyb_read_hashes(lybctx->lybctx, hash, &hash_count);
     LY_CHECK_RET(ret);
 
@@ -737,7 +739,6 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
         return LY_SUCCESS;
     }
 
-    *snode = NULL;
     getnext_opts = lybctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
     /* find our node with matching hashes */
@@ -780,20 +781,20 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 }
 
 /**
- * @brief Read until the end of the current subtree.
+ * @brief Read until the end of the current siblings.
  *
  * @param[in] lybctx LYB context.
  */
 static void
-lyb_skip_subtree(struct lylyb_ctx *lybctx)
+lyb_skip_siblings(struct lylyb_ctx *lybctx)
 {
     do {
         /* first skip any meta information inside */
-        ly_in_skip(lybctx->in, LYB_LAST_SUBTREE(lybctx).inner_chunks * LYB_META_BYTES);
+        ly_in_skip(lybctx->in, LYB_LAST_SIBLING(lybctx).inner_chunks * LYB_META_BYTES);
 
         /* then read data */
-        lyb_read(NULL, LYB_LAST_SUBTREE(lybctx).written, lybctx);
-    } while (LYB_LAST_SUBTREE(lybctx).written);
+        lyb_read(NULL, LYB_LAST_SIBLING(lybctx).written, lybctx);
+    } while (LYB_LAST_SIBLING(lybctx).written);
 }
 
 /**
@@ -842,7 +843,7 @@ lyb_parse_any_content(const struct ly_ctx *ctx, const char *data, struct lyd_nod
  * Also if needed, correct @p first_p.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree, must be set if @p first_p is not.
+ * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
  * @param[in,out] node Parsed node to insertion.
  * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
  * @param[out] parsed Set of all successfully parsed nodes.
@@ -868,7 +869,7 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
  * @brief Finish parsing the opaq node.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree, must be set if @p first_p is not.
+ * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
  * @param[in] flags Node flags to set.
  * @param[in,out] attr Attributes to be attached. Finally set to NULL.
  * @param[in,out] node Parsed opaq node to finish.
@@ -901,7 +902,7 @@ lyb_finish_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
  * @brief Finish parsing the node.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree, must be set if @p first_p is not.
+ * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
  * @param[in] flags Node flags to set.
  * @param[in,out] meta Metadata to be attached. Finally set to NULL.
  * @param[in,out] node Parsed node to finish.
@@ -998,7 +999,7 @@ lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snod
  * @brief Parse opaq node.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree.
+ * @param[in] parent Data parent of the sibling.
  * @param[in,out] first_p First top-level sibling.
  * @param[out] parsed Set of all successfully parsed nodes.
  * @return LY_ERR value.
@@ -1015,12 +1016,6 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     void *val_prefix_data = NULL;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
     uint32_t flags;
-
-    if (!(lybctx->parse_opts & LYD_PARSE_OPAQ)) {
-        /* unknown data, skip them */
-        lyb_skip_subtree(lybctx->lybctx);
-        return LY_SUCCESS;
-    }
 
     /* parse opaq node attributes */
     ret = lyb_parse_attributes(lybctx->lybctx, &attr);
@@ -1053,16 +1048,30 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     ret = lyb_parse_prefix_data(lybctx->lybctx, format, &val_prefix_data);
     LY_CHECK_GOTO(ret, cleanup);
 
+    if (!(lybctx->parse_opts & LYD_PARSE_OPAQ)) {
+        if (lybctx->lybctx->in->current[0] == 0) {
+            /* opaq node has no children */
+            lyb_read(NULL, 1, lybctx->lybctx);
+        } else {
+            /* skip children */
+            ret = lyb_read_start_siblings(lybctx->lybctx);
+            LY_CHECK_RET(ret);
+            lyb_skip_siblings(lybctx->lybctx);
+            ret = lyb_read_stop_siblings(lybctx->lybctx);
+            LY_CHECK_RET(ret);
+        }
+
+        goto cleanup;
+    }
+
     /* create node */
     ret = lyd_create_opaq(ctx, name, strlen(name), prefix, ly_strlen(prefix), module_key, ly_strlen(module_key),
             value, strlen(value), &dynamic, format, val_prefix_data, 0, &node);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* process children */
-    while (LYB_LAST_SUBTREE(lybctx->lybctx).written) {
-        ret = lyb_parse_subtree_r(lybctx, node, NULL, NULL);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
+    ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* register parsed opaq node */
     lyb_finish_opaq(lybctx, parent, flags, &attr, &node, first_p, parsed);
@@ -1085,7 +1094,7 @@ cleanup:
  * @brief Parse anydata or anyxml node.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree.
+ * @param[in] parent Data parent of the sibling.
  * @param[in] snode Schema of the node to be parsed.
  * @param[in,out] first_p First top-level sibling.
  * @param[out] parsed Set of all successfully parsed nodes.
@@ -1105,8 +1114,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
     /* read necessary basic data */
-    ret = lyb_parse_node_header(lybctx, &flags, &meta);
-    LY_CHECK_GOTO(ret, error);
+    lyb_parse_node_header(lybctx, &flags, &meta);
 
     /* parse value type */
     lyb_read_number(&value_type, sizeof value_type, sizeof value_type, lybctx->lybctx);
@@ -1118,7 +1126,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     }
 
     /* read anydata content */
-    ret = lyb_read_string(&value, 0, lybctx->lybctx);
+    ret = lyb_read_string(&value, 1, lybctx->lybctx);
     LY_CHECK_GOTO(ret, error);
 
     if (value_type == LYD_ANYDATA_LYB) {
@@ -1196,66 +1204,30 @@ lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_me
 }
 
 /**
- * @brief Parse model and hash.
+ * @brief Parse LYB node with children.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree.
- * @param[out] snode Schema of the node to be further parsed. Can be NULL for the opaq node.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyb_print_model_and_hash(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node **snode)
-{
-    LY_ERR ret;
-    const struct lys_module *mod;
-
-    if (!parent || !parent->schema) {
-        /* top-level or opaque, read module name */
-        ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
-        LY_CHECK_RET(ret);
-
-        /* read hash, find the schema node starting from mod */
-        ret = lyb_parse_schema_hash(lybctx, NULL, mod, snode);
-        LY_CHECK_RET(ret);
-    } else {
-        /* read hash, find the schema node starting from parent schema */
-        ret = lyb_parse_schema_hash(lybctx, parent->schema, NULL, snode);
-        LY_CHECK_RET(ret);
-    }
-
-    return ret;
-}
-
-/**
- * @brief Parse LYB subtree.
- *
- * @param[in] lybctx LYB context.
- * @param[in] parent Data parent of the subtree, must be set if @p first is not.
+ * @param[in] parent Data parent of the sibling, must be set if @p first is not.
+ * @param[in] snode Schema of the node to be parsed.
  * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
  * @param[out] parsed Set of all successfully parsed nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
+lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
+        struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *node = NULL;
-    const struct lysc_node *snode = NULL;
     struct lyd_meta *meta = NULL;
     uint32_t flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
-    /* register a new subtree */
-    LY_CHECK_GOTO(ret = lyb_read_start_subtree(lybctx->lybctx), cleanup);
-
-    ret = lyb_print_model_and_hash(lybctx, parent, &snode);
-    LY_CHECK_RET(ret);
-
     if (!snode) {
         ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
         LY_CHECK_GOTO(ret, cleanup);
-        goto stop_subtree;
     } else if (snode->nodetype & LYD_NODE_TERM) {
+        /* read necessary basic data */
         ret = lyb_parse_node_header(lybctx, &flags, &meta);
         LY_CHECK_GOTO(ret, cleanup);
 
@@ -1263,9 +1235,9 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         ret = lyb_create_term(lybctx, snode, &node);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* complete the node processing */
         lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
     } else if (snode->nodetype & LYD_NODE_INNER) {
+        /* read necessary basic data */
         ret = lyb_parse_node_header(lybctx, &flags, &meta);
         LY_CHECK_GOTO(ret, cleanup);
 
@@ -1274,10 +1246,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process children */
-        while (LYB_LAST_SUBTREE(lybctx->lybctx).written) {
-            ret = lyb_parse_subtree_r(lybctx, node, NULL, NULL);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
+        ret = lyb_parse_siblings(lybctx, node, NULL, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
 
         /* additional procedure for inner node */
         ret = lyb_validate_node_inner(lybctx, snode, node);
@@ -1288,26 +1258,78 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
             lybctx->op_node = node;
         }
 
-        /* complete the node processing */
+        /* register parsed node */
         lyb_finish_node(lybctx, parent, flags, &meta, &node, first_p, parsed);
     } else if (snode->nodetype & LYD_NODE_ANY) {
         ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
         LY_CHECK_GOTO(ret, cleanup);
-        goto stop_subtree;
     } else {
         LOGINT(ctx);
         ret = LY_EINT;
         goto cleanup;
     }
 
-stop_subtree:
-    /* end the subtree */
-    ret = lyb_read_stop_subtree(lybctx->lybctx);
-    LY_CHECK_GOTO(ret, cleanup);
-
 cleanup:
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
+    return ret;
+}
+
+/**
+ * @brief Parse siblings (@ref lyb_print_siblings()).
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
+ * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
+ * @param[out] parsed Set of all successfully parsed nodes.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p,
+        struct ly_set *parsed)
+{
+    LY_ERR ret;
+    const struct lysc_node *snode;
+    const struct lys_module *mod;
+    ly_bool top_level;
+
+    if (lybctx->lybctx->in->current[0] == 0) {
+        lyb_read(NULL, 1, lybctx->lybctx);
+        return LY_SUCCESS;
+    }
+
+    top_level = !LY_ARRAY_COUNT(lybctx->lybctx->siblings);
+
+    /* register a new siblings */
+    ret = lyb_read_start_siblings(lybctx->lybctx);
+    LY_CHECK_RET(ret);
+
+    while (LYB_LAST_SIBLING(lybctx->lybctx).written) {
+        if (!parent || !parent->schema) {
+            /* top-level or opaque, read module name */
+            ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
+            LY_CHECK_RET(ret);
+
+            /* read hash, find the schema node starting from mod */
+            ret = lyb_parse_schema_hash(lybctx, NULL, mod, &snode);
+        } else {
+            /* read hash, find the schema node starting from parent schema */
+            ret = lyb_parse_schema_hash(lybctx, parent->schema, NULL, &snode);
+        }
+        LY_CHECK_RET(ret);
+
+        lyb_parse_node(lybctx, parent, snode, first_p, parsed);
+        LY_CHECK_RET(ret);
+
+        if (top_level && !(lybctx->int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
+            break;
+        }
+    }
+
+    /* end the siblings */
+    ret = lyb_read_stop_siblings(lybctx->lybctx);
+    LY_CHECK_RET(ret);
+
     return ret;
 }
 
@@ -1436,15 +1458,9 @@ _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     rc = lyb_parse_data_models(lybctx->lybctx, lybctx->parse_opts);
     LY_CHECK_GOTO(rc, cleanup);
 
-    /* read subtree(s) */
-    while (lybctx->lybctx->in->current[0]) {
-        rc = lyb_parse_subtree_r(lybctx, parent, first_p, parsed);
-        LY_CHECK_GOTO(rc, cleanup);
-
-        if (!(int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
-            break;
-        }
-    }
+    /* read sibling(s) */
+    rc = lyb_parse_siblings(lybctx, parent, first_p, parsed);
+    LY_CHECK_GOTO(rc, cleanup);
 
     if ((int_opts & LYD_INTOPT_NO_SIBLINGS) && lybctx->lybctx->in->current[0]) {
         LOGVAL(ctx, LYVE_SYNTAX, "Unexpected sibling node.");
@@ -1546,17 +1562,19 @@ lyd_lyb_data_length(const char *data)
         lyb_read(buf, 2, lybctx);
     }
 
-    while (lybctx->in->current[0]) {
-        /* register a new subtree */
-        ret = lyb_read_start_subtree(lybctx);
+    if (lybctx->in->current[0]) {
+        /* register a new sibling */
+        ret = lyb_read_start_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* skip it */
-        lyb_skip_subtree(lybctx);
+        lyb_skip_siblings(lybctx);
 
-        /* subtree finished */
-        ret = lyb_read_stop_subtree(lybctx);
+        /* sibling finished */
+        ret = lyb_read_stop_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        lyb_read(NULL, 1, lybctx);
     }
 
     /* read the last zero, parsing finished */
