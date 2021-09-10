@@ -43,8 +43,6 @@ static LY_ERR _lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_ins
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
-static LY_ERR lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode, struct lyd_node **first_p, struct ly_set *parsed);
-static LY_ERR lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_meta **meta);
 static LY_ERR lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed);
 
 void
@@ -931,6 +929,29 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
 }
 
 /**
+ * @brief Parse header for non-opaq node.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[out] flags Parsed node flags.
+ * @param[out] meta Parsed metadata of the node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_meta **meta)
+{
+    LY_ERR ret;
+
+    /* create and read metadata */
+    ret = lyb_parse_metadata(lybctx, meta);
+    LY_CHECK_RET(ret);
+
+    /* read flags */
+    lyb_read_number(flags, sizeof *flags, sizeof *flags, lybctx->lybctx);
+
+    return ret;
+}
+
+/**
  * @brief Create term node and fill it with value.
  *
  * @param[in] lybctx LYB context.
@@ -1177,29 +1198,6 @@ error:
     free(value);
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
-    return ret;
-}
-
-/**
- * @brief Parse header for non-opaq node.
- *
- * @param[in] lybctx LYB context.
- * @param[out] flags Parsed node flags.
- * @param[out] meta Parsed metadata of the node.
- * @return LY_ERR value.
- */
-static LY_ERR
-lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_meta **meta)
-{
-    LY_ERR ret;
-
-    /* create and read metadata */
-    ret = lyb_parse_metadata(lybctx, meta);
-    LY_CHECK_RET(ret);
-
-    /* read flags */
-    lyb_read_number(flags, sizeof *flags, sizeof *flags, lybctx->lybctx);
-
     return ret;
 }
 
