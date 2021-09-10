@@ -331,15 +331,18 @@ lyb_read_start_subtree(struct lylyb_ctx *lybctx)
  *
  * @param[in] lybctx LYB context.
  * @param[in] parse_options Flag with options for parsing.
- * @param[out] mod Parsed module.
+ * @param[out] model Parsed module.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **mod)
+lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **model)
 {
     LY_ERR ret = LY_SUCCESS;
+    const struct lys_module *mod;
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
     uint16_t rev;
+
+    *model = NULL;
 
     /* model name */
     ret = lyb_read_string(&mod_name, 1, lybctx);
@@ -350,24 +353,23 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
 
     if (!mod_name[0]) {
         /* opaq node, no module */
-        *mod = NULL;
         goto cleanup;
     }
 
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
                 (rev & LYB_REV_MONTH_MASK) >> LYB_REV_MONTH_SHIFT, rev & LYB_REV_DAY_MASK);
-        *mod = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
-        if ((parse_options & LYD_PARSE_LYB_MOD_UPDATE) && !(*mod)) {
+        mod = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
+        if ((parse_options & LYD_PARSE_LYB_MOD_UPDATE) && !mod) {
             /* try to use an updated module */
-            *mod = ly_ctx_get_module_implemented(lybctx->ctx, mod_name);
-            if (*mod && (!(*mod)->revision || (strcmp((*mod)->revision, mod_rev) < 0))) {
+            mod = ly_ctx_get_module_implemented(lybctx->ctx, mod_name);
+            if (mod && (!mod->revision || (strcmp(mod->revision, mod_rev) < 0))) {
                 /* not an implemented module in a newer revision */
-                *mod = NULL;
+                mod = NULL;
             }
         }
     } else {
-        *mod = ly_ctx_get_module_latest(lybctx->ctx, mod_name);
+        mod = ly_ctx_get_module_latest(lybctx->ctx, mod_name);
     }
     /* TODO data_clb supported?
     if (lybctx->ctx->data_clb) {
@@ -378,12 +380,12 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
         }
     }*/
 
-    if (!*mod || !(*mod)->implemented) {
+    if (!mod || !mod->implemented) {
         if (parse_options & LYD_PARSE_STRICT) {
-            if (!*mod) {
+            if (!mod) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, missing module \"%s%s%s\".",
                         mod_name, rev ? "@" : "", rev ? mod_rev : "");
-            } else if (!(*mod)->implemented) {
+            } else if (!mod->implemented) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",
                         mod_name, rev ? "@" : "", rev ? mod_rev : "");
             }
@@ -393,10 +395,12 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
 
     }
 
-    if (*mod) {
+    if (mod) {
         /* fill cached hashes, if not already */
-        lyb_cache_module_hash(*mod);
+        lyb_cache_module_hash(mod);
     }
+
+    *model = mod;
 
 cleanup:
     free(mod_name);
