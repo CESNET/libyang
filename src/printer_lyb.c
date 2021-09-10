@@ -1017,20 +1017,15 @@ lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_
 static LY_ERR
 lyb_print_node(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 {
-    /* write node content */
-    if (!node->schema) {
-        LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
-    } else if (node->schema->nodetype & LYD_NODE_INNER) {
-        /* write necessary basic data */
-        LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
+    /* write necessary basic data */
+    LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
 
+    /* write node content */
+    if (node->schema->nodetype & LYD_NODE_INNER) {
         /* recursively write all the descendants */
         LY_CHECK_RET(lyb_print_siblings(out, lyd_child(node), lybctx));
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        LY_CHECK_RET(lyb_print_node_header(out, node, lybctx));
         LY_CHECK_RET(lyb_print_term_value((struct lyd_node_term *)node, out, lybctx->lybctx));
-    } else if (node->schema->nodetype & LYD_NODE_ANY) {
-        LY_CHECK_RET(lyb_print_node_any(out, (struct lyd_node_any *)node, lybctx));
     } else {
         LOGINT_RET(lybctx->lybctx->ctx);
     }
@@ -1082,7 +1077,13 @@ lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_l
         /* write schema hash */
         LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, &sibling_ht, lybctx->lybctx));
 
-        LY_CHECK_RET(lyb_print_node(out, node, lybctx));
+        if (!node->schema) {
+            LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
+        } else if (node->schema->nodetype & LYD_NODE_ANY) {
+            LY_CHECK_RET(lyb_print_node_any(out, (struct lyd_node_any *)node, lybctx));
+        } else {
+            LY_CHECK_RET(lyb_print_node(out, node, lybctx));
+        }
 
         if (top_level && !(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
             break;
