@@ -156,7 +156,7 @@ struct lysc_type_leafref;
  */
 
 /**
- * @brief Extensions API version
+ * @brief Type API version
  */
 #define LYPLG_TYPE_API_VERSION 1
 
