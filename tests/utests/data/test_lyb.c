@@ -17,11 +17,26 @@
 #include "hash_table.h"
 #include "libyang.h"
 
-#define CHECK_PARSE_LYD(INPUT, MODEL) \
-                CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0,LY_SUCCESS, MODEL)
+#define CHECK_PARSE_LYD(INPUT, OUT_NODE) \
+                CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, OUT_NODE)
 
 #define CHECK_LYD_STRING(MODEL, TEXT) \
                 CHECK_LYD_STRING_PARAM(MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)
+
+#define CHECK_PRINT_THEN_PARSE(DATA_XML) \
+    { \
+        struct lyd_node *tree_1; \
+        struct lyd_node *tree_2; \
+        char *xml_out; \
+        CHECK_PARSE_LYD(DATA_XML, tree_1); \
+        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_non_null(tree_2); \
+        CHECK_LYD(tree_1, tree_2); \
+        free(xml_out); \
+        lyd_free_all(tree_1); \
+        lyd_free_all(tree_2); \
+    }
 
 static int
 setup(void **state)
@@ -72,27 +87,11 @@ test_ietf_interfaces(void **state)
             "        <enabled>false</enabled>\n"
             "    </interface>\n"
             "</interfaces>\n";
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *xml_out; /* tree_2 */
 
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-ip", NULL, NULL));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "iana-if-type", NULL, NULL));
 
-    CHECK_PARSE_LYD(data_xml, tree_1);
-
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2));
-    assert_non_null(tree_2);
-
-    /* compare models */
-    CHECK_LYD(tree_1, tree_2);
-
-    /* clean */
-    free(xml_out);
-    lyd_free_all(tree_1);
-    lyd_free_all(tree_2);
+    CHECK_PRINT_THEN_PARSE(data_xml);
 }
 
 static void
@@ -124,27 +123,11 @@ test_origin(void **state)
             "  <leaf2>value2</leaf2>\n"
             "  <leaf3 xmlns:or=\"urn:ietf:params:xml:ns:yang:ietf-origin\" or:origin=\"or:system\">125</leaf3>\n"
             "</cont>\n";
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *xml_out; /* tree_2 */
 
     UTEST_ADD_MODULE(origin_yang, LYS_IN_YANG, NULL, NULL);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(ly_ctx_get_module_latest(UTEST_LYCTX, "ietf-origin"), NULL));
 
-    CHECK_PARSE_LYD(data_xml, tree_1);
-
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2));
-    assert_non_null(tree_2);
-
-    /* compare models */
-    CHECK_LYD(tree_1, tree_2);
-
-    /* clean */
-    free(xml_out);
-    lyd_free_all(tree_1);
-    lyd_free_all(tree_2);
+    CHECK_PRINT_THEN_PARSE(data_xml);
 }
 
 static void
@@ -339,27 +322,11 @@ test_statements(void **state)
             "  <lref>reference leaf</lref>\n"
             "  <iref>random-identity</iref>\n"
             "</random>\n";
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *xml_out; /* tree_2 */
 
     UTEST_ADD_MODULE(links_yang, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(statements_yang, LYS_IN_YANG, NULL, NULL);
 
-    CHECK_PARSE_LYD(data_xml, tree_1);
-
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2));
-    assert_non_null(tree_2);
-
-    /* compare models */
-    CHECK_LYD(tree_1, tree_2);
-
-    /* clean */
-    free(xml_out);
-    lyd_free_all(tree_1);
-    lyd_free_all(tree_2);
+    CHECK_PRINT_THEN_PARSE(data_xml);
 }
 
 static void
