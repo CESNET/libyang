@@ -1,3 +1,11 @@
+libyang2 (2.0.7-1) unstable; urgency=low
+
+  * Initial upload of src:libyang2
+  * Rename libyang-tools to libyang2-tools to sync up with RPM
+  * Update symbols file
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 13 Sep 2021 21:06:35 +0200
+
 libyang2 (2.0.0~-1) unstable; urgency=medium
 
   * Initial pre-release of libyang2
