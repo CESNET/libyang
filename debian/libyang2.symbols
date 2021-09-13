@@ -84,6 +84,10 @@ libyang.so.2 libyang2 #MINVER#
  ly_set_rm@Base 2.0.0~
  ly_set_rm_index@Base 2.0.0~
  ly_stmt2str@Base 2.0.0~
+ ly_time_str2time@Base 2.0.7
+ ly_time_str2ts@Base 2.0.7
+ ly_time_time2str@Base 2.0.7
+ ly_time_ts2str@Base 2.0.7
  ly_vecode@Base 2.0.0~
  ly_write@Base 2.0.0~
  lyd_any_copy_value@Base 2.0.0~
@@ -129,6 +133,7 @@ libyang.so.2 libyang2 #MINVER#
  lyd_is_default@Base 2.0.0~
  lyd_list_pos@Base 2.0.0~
  lyd_lyb_data_length@Base 2.0.0~
+ lyd_merge_module@Base 2.0.7
  lyd_merge_siblings@Base 2.0.0~
  lyd_merge_tree@Base 2.0.0~
  lyd_new_any@Base 2.0.0~
@@ -184,18 +189,28 @@ libyang.so.2 libyang2 #MINVER#
  lyplg_add@Base 2.0.0~
  lyplg_ext_instance_substatements_free@Base 2.0.0~
  lyplg_ext_log@Base 2.0.0~
+ lyplg_type_bits_bitmap_size@Base 2.0.7
+ lyplg_type_bits_is_bit_set@Base 2.0.7
  lyplg_type_check_hints@Base 2.0.0~
+ lyplg_type_compare_binary@Base 2.0.7
+ lyplg_type_compare_bits@Base 2.0.7
+ lyplg_type_compare_boolean@Base 2.0.7
+ lyplg_type_compare_decimal64@Base 2.0.7
  lyplg_type_compare_identityref@Base 2.0.0~
  lyplg_type_compare_instanceid@Base 2.0.0~
+ lyplg_type_compare_int@Base 2.0.7
  lyplg_type_compare_leafref@Base 2.0.0~
  lyplg_type_compare_simple@Base 2.0.0~
+ lyplg_type_compare_uint@Base 2.0.7
  lyplg_type_compare_union@Base 2.0.0~
+ lyplg_type_dup_binary@Base 2.0.7
  lyplg_type_dup_bits@Base 2.0.0~
  lyplg_type_dup_instanceid@Base 2.0.0~
  lyplg_type_dup_leafref@Base 2.0.0~
  lyplg_type_dup_simple@Base 2.0.0~
  lyplg_type_dup_union@Base 2.0.0~
  lyplg_type_dup_xpath10@Base 2.0.0~
+ lyplg_type_free_binary@Base 2.0.7
  lyplg_type_free_bits@Base 2.0.0~
  lyplg_type_free_instanceid@Base 2.0.0~
  lyplg_type_free_leafref@Base 2.0.0~
@@ -203,9 +218,9 @@ libyang.so.2 libyang2 #MINVER#
  lyplg_type_free_union@Base 2.0.0~
  lyplg_type_free_xpath10@Base 2.0.0~
  lyplg_type_get_prefix@Base 2.0.0~
- lyplg_type_hash_leafref@Base 2.0.0~
- lyplg_type_hash_simple@Base 2.0.0~
- lyplg_type_hash_union@Base 2.0.0~
+#MISSING: 2.0.7# lyplg_type_hash_leafref@Base 2.0.0~
+#MISSING: 2.0.7# lyplg_type_hash_simple@Base 2.0.0~
+#MISSING: 2.0.7# lyplg_type_hash_union@Base 2.0.0~
  lyplg_type_identity_isderived@Base 2.0.0~
  lyplg_type_identity_module@Base 2.0.0~
  lyplg_type_lypath_free@Base 2.0.0~
@@ -217,10 +232,17 @@ libyang.so.2 libyang2 #MINVER#
  lyplg_type_prefix_data_dup@Base 2.0.0~
  lyplg_type_prefix_data_free@Base 2.0.0~
  lyplg_type_prefix_data_new@Base 2.0.0~
+ lyplg_type_print_binary@Base 2.0.7
+ lyplg_type_print_bits@Base 2.0.7
+ lyplg_type_print_boolean@Base 2.0.7
+ lyplg_type_print_decimal64@Base 2.0.7
+ lyplg_type_print_enum@Base 2.0.7
  lyplg_type_print_identityref@Base 2.0.0~
  lyplg_type_print_instanceid@Base 2.0.0~
+ lyplg_type_print_int@Base 2.0.7
  lyplg_type_print_leafref@Base 2.0.0~
  lyplg_type_print_simple@Base 2.0.0~
+ lyplg_type_print_uint@Base 2.0.7
  lyplg_type_print_union@Base 2.0.0~
  lyplg_type_print_xpath10@Base 2.0.0~
  lyplg_type_resolve_leafref@Base 2.0.0~
