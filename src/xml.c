@@ -1146,14 +1146,18 @@ lyxml_ctx_backup(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup)
 
     /* duplicate elements */
     backup->elements.objs = malloc(xmlctx->elements.size * sizeof(struct lyxml_elem));
+    LY_CHECK_ERR_RET(!backup->elements.objs, LOGMEM(xmlctx->ctx), LY_EMEM);
     for (i = 0; i < xmlctx->elements.count; ++i) {
         backup->elements.objs[i] = lyxml_elem_dup(xmlctx->elements.objs[i]);
+        LY_CHECK_RET(!backup->elements.objs[i], LY_EMEM);
     }
 
     /* duplicate ns */
     backup->ns.objs = malloc(xmlctx->ns.size * sizeof(struct lyxml_ns));
+    LY_CHECK_ERR_RET(!backup->ns.objs, LOGMEM(xmlctx->ctx), LY_EMEM);
     for (i = 0; i < xmlctx->ns.count; ++i) {
         backup->ns.objs[i] = lyxml_ns_dup(xmlctx->ns.objs[i]);
+        LY_CHECK_RET(!backup->ns.objs[i], LY_EMEM);
     }
 
     return LY_SUCCESS;
