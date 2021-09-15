@@ -585,6 +585,10 @@ get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags
                 (*flags) |= ctx->in->current[0] == '\'' ? LYS_SINGLEQUOTED : LYS_DOUBLEQUOTED;
             }
             LY_CHECK_GOTO(ret = read_qstring(ctx, arg, word_p, word_b, word_len, &buf_len), error);
+            if (!*word_p) {
+                /* do not return NULL word */
+                *word_p = "";
+            }
             goto str_end;
         case '/':
             if (ctx->in->current[1] == '/') {
@@ -2052,6 +2056,12 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct lysp_restr **patterns
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+
+    /* empty pattern is not valid */
+    if (!strlen(word)) {
+        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "pattern");
+        return LY_EVALID;
+    }
 
     /* add special meaning first byte */
     if (buf) {
