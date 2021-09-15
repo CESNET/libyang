@@ -45,7 +45,7 @@ setup(void **state)
             "import \"ietf-inet-types\" {prefix inet;}"
             "typedef optional-ip-address {type union {"
             "   type inet:ip-address;"
-            "   type string {pattern \"\";}"
+            "   type string;"
             "}}"
             "container cont {"
             "   list nexthop {min-elements 1; key \"gateway\";"

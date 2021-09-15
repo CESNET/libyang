@@ -499,7 +499,7 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Invalid value \"-1\" of \"value\" attribute in \"max-elements\" element.", "Line number 10.");
+            "Invalid value \"-1\" of \"value\" attribute in \"max-elements\" element.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -512,7 +512,7 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Value \"4294967298\" of \"value\" attribute in \"max-elements\" element is out of bounds.", "Line number 10.");
+            "Value \"4294967298\" of \"value\" attribute in \"max-elements\" element is out of bounds.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -525,7 +525,7 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Invalid combination of min-elements and max-elements: min value 20 is bigger than the max value 10.", "Line number 10.");
+            "Invalid combination of min-elements and max-elements: min value 20 is bigger than the max value 10.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -538,7 +538,7 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Value \"-1\" of \"value\" attribute in \"min-elements\" element is out of bounds.", "Line number 10.");
+            "Value \"-1\" of \"value\" attribute in \"min-elements\" element is out of bounds.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_0",
             "<list name=\"user\">"
@@ -550,7 +550,7 @@ test_schema_yin(void **state)
             "</list>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_0\" failed.", NULL,
-            "Redefinition of \"key\" sub-element in \"list\" element.", "Line number 10.");
+            "Redefinition of \"key\" sub-element in \"list\" element.", "Line number 8.");
 
     schema = MODULE_CREATE_YIN("T6",
             "<list name=\"user\">"
@@ -622,7 +622,7 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERROR0\" failed.", NULL,
             "Invalid value \"systeme\" of \"value\" attribute in \"ordered-by\" element. Valid values are \"system\" and \"user\".",
-            "Line number 10.");
+            "Line number 8.");
 
     schema = MODULE_CREATE_YIN("T_DEFS1",
             "<list name=\"user\">"

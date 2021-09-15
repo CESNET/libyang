@@ -441,7 +441,7 @@ test_schema_yin(void **state)
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL,
-            "Invalid value \"-1\" of \"value\" attribute in \"position\" element.", "Line number 10.");
+            "Invalid value \"-1\" of \"value\" attribute in \"position\" element.", "Line number 8.");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YIN("TERR_3",
@@ -461,7 +461,7 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL,
             "Invalid identifier first character ' ' (0x0020).",
-            "Line number 10.");
+            "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_5",
             "<leaf name=\"port\"> <type name=\"bits\">"
@@ -471,7 +471,7 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL,
             "Invalid identifier character ' ' (0x0020).",
-            "Line number 10.");
+            "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_6",
             "<leaf name=\"port\"> <type name=\"bits\">"
@@ -481,7 +481,7 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL,
             "Duplicate identifier \"hi\" of bit statement.",
-            "Line number 10.");
+            "Line number 8.");
 
     schema = MODULE_CREATE_YIN("TERR_7",
             "<leaf name=\"port\"> <type name=\"bits\">"
@@ -491,7 +491,7 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL,
             "Invalid identifier first character '4' (0x0034).",
-            "Line number 10.");
+            "Line number 8.");
 
     /* TEST EMPTY NAME*/
     schema = MODULE_CREATE_YIN("TERR_8",
@@ -502,7 +502,7 @@ test_schema_yin(void **state)
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL,
             "Empty identifier is not allowed.",
-            "Line number 10.");
+            "Line number 8.");
 }
 
 static void

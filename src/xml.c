@@ -588,6 +588,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
     LY_ERR ret = LY_SUCCESS;
     struct lyxml_elem *e;
     const char *prev_input;
+    uint64_t prev_line;
     char *value;
     size_t parsed, value_len;
     ly_bool ws_only, dynamic, is_ns;
@@ -603,8 +604,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
 
     LY_CHECK_RET(ly_set_add(&xmlctx->elements, e, 1, NULL));
     if (xmlctx->elements.count > LY_MAX_BLOCK_DEPTH) {
-        LOGERR(xmlctx->ctx, LY_EINVAL,
-                "The maximum number of open elements has been exceeded.");
+        LOGERR(xmlctx->ctx, LY_EINVAL, "The maximum number of open elements has been exceeded.");
         ret = LY_EINVAL;
         goto cleanup;
     }
@@ -614,6 +614,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
 
     /* parse and store all namespaces */
     prev_input = xmlctx->in->current;
+    prev_line = xmlctx->in->line;
     is_ns = 1;
     while ((xmlctx->in->current[0] != '\0') && !(ret = ly_getutf8(&xmlctx->in->current, &c, &parsed))) {
         if (!is_xmlqnamestartchar(c)) {
@@ -647,12 +648,14 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
         if (is_ns) {
             /* we can actually skip all the namespaces as there is no reason to parse them again */
             prev_input = xmlctx->in->current;
+            prev_line = xmlctx->in->line;
         }
     }
 
 cleanup:
     if (!ret) {
         xmlctx->in->current = prev_input;
+        xmlctx->in->line = prev_line;
     }
     return ret;
 }
