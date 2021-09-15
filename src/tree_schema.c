@@ -3238,6 +3238,13 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         switch (finalize) {
         case 1:
             /* inherit config flags */
+            if (retval->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+                /* no config flag should be set, it is ignored */
+                retval->flags &= ~LYS_CONFIG_MASK;
+                retval->flags &= ~LYS_CONFIG_SET;
+                break;
+            }
+
             if (retval->flags & LYS_CONFIG_SET) {
                 /* skip nodes with an explicit config value */
                 if ((flags & LYS_CONFIG_R) && (retval->flags & LYS_CONFIG_W)) {
