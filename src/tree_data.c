@@ -264,7 +264,10 @@ lyd_is_default(const struct lyd_node *node)
     const struct lyd_node_term *term;
     LY_ARRAY_COUNT_TYPE u;
 
-    assert(node->schema->nodetype & LYD_NODE_TERM);
+    if (!(node->schema->nodetype & LYD_NODE_TERM)) {
+        return 0;
+    }
+
     term = (const struct lyd_node_term *)node;
 
     if (node->schema->nodetype == LYS_LEAF) {
@@ -274,8 +277,8 @@ lyd_is_default(const struct lyd_node *node)
         }
 
         /* compare with the default value */
-        if (leaf->type->plugin->compare(&term->value, leaf->dflt)) {
-            return 0;
+        if (!leaf->type->plugin->compare(&term->value, leaf->dflt)) {
+            return 1;
         }
     } else {
         llist = (const struct lysc_node_leaflist *)node->schema;
@@ -285,13 +288,13 @@ lyd_is_default(const struct lyd_node *node)
 
         LY_ARRAY_FOR(llist->dflts, u) {
             /* compare with each possible default value */
-            if (llist->type->plugin->compare(&term->value, llist->dflts[u])) {
-                return 0;
+            if (!llist->type->plugin->compare(&term->value, llist->dflts[u])) {
+                return 1;
             }
         }
     }
 
-    return 1;
+    return 0;
 }
 
 static LYD_FORMAT
