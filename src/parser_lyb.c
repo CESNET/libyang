@@ -72,6 +72,29 @@ lyd_lyb_ctx_free(struct lyd_ctx *lydctx)
 }
 
 /**
+ * @brief Read metadata about siblings.
+ *
+ * @param[out] sib Structure in which the metadata will be stored.
+ * @param[in] lybctx LYB context.
+ */
+static void
+lyb_read_sibling_meta(struct lyd_lyb_sibling *sib, struct lylyb_ctx *lybctx)
+{
+    uint8_t meta_buf[LYB_META_BYTES];
+    uint64_t num = 0;
+
+    ly_in_read(lybctx->in, meta_buf, LYB_META_BYTES);
+
+    memcpy(&num, meta_buf, LYB_SIZE_BYTES);
+    sib->written = le64toh(num);
+    memcpy(&num, meta_buf + LYB_SIZE_BYTES, LYB_INCHUNK_BYTES);
+    sib->inner_chunks = le64toh(num);
+
+    /* remember whether there is a following chunk or not */
+    sib->position = (sib->written == LYB_SIZE_MAX ? 1 : 0);
+}
+
+/**
  * @brief Read YANG data from LYB input. Metadata are handled transparently and not returned.
  *
  * @param[in] buf Destination buffer.
@@ -84,7 +107,6 @@ lyb_read(uint8_t *buf, size_t count, struct lylyb_ctx *lybctx)
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_sibling *empty;
     size_t to_read;
-    uint8_t meta_buf[LYB_META_BYTES];
 
     assert(lybctx);
 
@@ -128,12 +150,7 @@ lyb_read(uint8_t *buf, size_t count, struct lylyb_ctx *lybctx)
 
         if (empty) {
             /* read the next chunk meta information */
-            ly_in_read(lybctx->in, meta_buf, LYB_META_BYTES);
-            empty->written = meta_buf[0];
-            empty->inner_chunks = meta_buf[1];
-
-            /* remember whether there is a following chunk or not */
-            empty->position = (empty->written == LYB_SIZE_MAX ? 1 : 0);
+            lyb_read_sibling_meta(empty, lybctx);
         }
     }
 }
@@ -306,7 +323,6 @@ lyb_read_stop_siblings(struct lylyb_ctx *lybctx)
 static LY_ERR
 lyb_read_start_siblings(struct lylyb_ctx *lybctx)
 {
-    uint8_t meta_buf[LYB_META_BYTES];
     LY_ARRAY_COUNT_TYPE u;
 
     u = LY_ARRAY_COUNT(lybctx->siblings);
@@ -315,12 +331,8 @@ lyb_read_start_siblings(struct lylyb_ctx *lybctx)
         lybctx->sibling_size = u + LYB_SIBLING_STEP;
     }
 
-    LY_CHECK_RET(ly_in_read(lybctx->in, meta_buf, LYB_META_BYTES));
-
     LY_ARRAY_INCREMENT(lybctx->siblings);
-    LYB_LAST_SIBLING(lybctx).written = meta_buf[0];
-    LYB_LAST_SIBLING(lybctx).inner_chunks = meta_buf[LYB_SIZE_BYTES];
-    LYB_LAST_SIBLING(lybctx).position = (LYB_LAST_SIBLING(lybctx).written == LYB_SIZE_MAX ? 1 : 0);
+    lyb_read_sibling_meta(&LYB_LAST_SIBLING(lybctx), lybctx);
 
     return LY_SUCCESS;
 }
@@ -1037,6 +1049,7 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     void *val_prefix_data = NULL;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
     uint32_t flags;
+    uint8_t zero[LYB_SIZE_BYTES] = {0};
 
     /* parse opaq node attributes */
     ret = lyb_parse_attributes(lybctx->lybctx, &attr);
@@ -1070,16 +1083,16 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(lybctx->parse_opts & LYD_PARSE_OPAQ)) {
-        if (lybctx->lybctx->in->current[0] == 0) {
-            /* opaq node has no children */
-            lyb_read(NULL, 1, lybctx->lybctx);
-        } else {
+        if (memcmp(zero, lybctx->lybctx->in->current, LYB_SIZE_BYTES)) {
             /* skip children */
             ret = lyb_read_start_siblings(lybctx->lybctx);
             LY_CHECK_RET(ret);
             lyb_skip_siblings(lybctx->lybctx);
             ret = lyb_read_stop_siblings(lybctx->lybctx);
             LY_CHECK_RET(ret);
+        } else {
+            /* opaq node has no children */
+            lyb_read(NULL, LYB_SIZE_BYTES, lybctx->lybctx);
         }
 
         goto cleanup;
@@ -1445,9 +1458,10 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
 {
     LY_ERR ret;
     ly_bool top_level;
+    uint8_t zero[LYB_SIZE_BYTES] = {0};
 
-    if (lybctx->lybctx->in->current[0] == 0) {
-        lyb_read(NULL, 1, lybctx->lybctx);
+    if (!memcmp(zero, lybctx->lybctx->in->current, LYB_SIZE_BYTES)) {
+        lyb_read(NULL, LYB_SIZE_BYTES, lybctx->lybctx);
         return LY_SUCCESS;
     }
 
@@ -1668,6 +1682,7 @@ lyd_lyb_data_length(const char *data)
     int count, i;
     size_t len;
     uint8_t buf[LYB_SIZE_MAX];
+    uint8_t zero[LYB_SIZE_BYTES] = {0};
 
     if (!data) {
         return -1;
@@ -1702,7 +1717,7 @@ lyd_lyb_data_length(const char *data)
         lyb_read(buf, 2, lybctx);
     }
 
-    if (lybctx->in->current[0]) {
+    if (memcmp(zero, lybctx->in->current, LYB_SIZE_BYTES)) {
         /* register a new sibling */
         ret = lyb_read_start_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
@@ -1714,7 +1729,7 @@ lyd_lyb_data_length(const char *data)
         ret = lyb_read_stop_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
-        lyb_read(NULL, 1, lybctx);
+        lyb_read(NULL, LYB_SIZE_BYTES, lybctx);
     }
 
     /* read the last zero, parsing finished */

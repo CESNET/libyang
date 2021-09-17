@@ -227,6 +227,29 @@ lyb_hash_find(struct hash_table *ht, struct lysc_node *node, LYB_HASH *hash_p)
 }
 
 /**
+ * @brief Write metadata about siblings.
+ *
+ * @param[in] out Out structure.
+ * @param[in] sib Contains metadata that is written.
+ */
+static LY_ERR
+lyb_write_sibling_meta(struct ly_out *out, struct lyd_lyb_sibling *sib)
+{
+    uint8_t meta_buf[LYB_META_BYTES];
+    uint64_t num = 0;
+
+    /* write the meta chunk information */
+    num = htole64(sib->written & LYB_SIZE_MAX);
+    memcpy(meta_buf, &num, LYB_SIZE_BYTES);
+    num = htole64(sib->inner_chunks & LYB_INCHUNK_MAX);
+    memcpy(meta_buf + LYB_SIZE_BYTES, &num, LYB_INCHUNK_BYTES);
+
+    LY_CHECK_RET(ly_write_skipped(out, sib->position, (char *)&meta_buf, LYB_META_BYTES));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Write LYB data fully handling the metadata.
  *
  * @param[in] out Out structure.
@@ -241,7 +264,6 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_sibling *full, *iter;
     size_t to_write;
-    uint8_t meta_buf[LYB_META_BYTES];
 
     while (1) {
         /* check for full data chunks */
@@ -276,9 +298,7 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
 
         if (full) {
             /* write the meta information (inner chunk count and chunk size) */
-            meta_buf[0] = full->written & LYB_BYTE_MASK;
-            meta_buf[1] = full->inner_chunks & LYB_BYTE_MASK;
-            LY_CHECK_RET(ly_write_skipped(out, full->position, (char *)meta_buf, LYB_META_BYTES));
+            LY_CHECK_RET(lyb_write_sibling_meta(out, full));
 
             /* zero written and inner chunks */
             full->written = 0;
@@ -311,12 +331,8 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
 static LY_ERR
 lyb_write_stop_siblings(struct ly_out *out, struct lylyb_ctx *lybctx)
 {
-    uint8_t meta_buf[LYB_META_BYTES];
-
     /* write the meta chunk information */
-    meta_buf[0] = LYB_LAST_SIBLING(lybctx).written & LYB_BYTE_MASK;
-    meta_buf[1] = LYB_LAST_SIBLING(lybctx).inner_chunks & LYB_BYTE_MASK;
-    LY_CHECK_RET(ly_write_skipped(out, LYB_LAST_SIBLING(lybctx).position, (char *)&meta_buf, LYB_META_BYTES));
+    lyb_write_sibling_meta(out, &LYB_LAST_SIBLING(lybctx));
 
     LY_ARRAY_DECREMENT(lybctx->siblings);
     return LY_SUCCESS;
@@ -1173,7 +1189,7 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
 
  sb          = siblings_start
  se          = siblings_end
- siblings    = 8bit_zero | (sb instance+ se)
+ siblings    = zero-LYB_SIZE_BYTES | (sb instance+ se)
  instance    = model hash node
  model       = 16bit_zero | (model_name_length model_name revision)
  node        = opaq | leaflist | list | any | inner | leaf
@@ -1198,10 +1214,10 @@ lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_l
     struct hash_table *sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
     ly_bool top_level;
-    uint8_t zero = 0;
+    uint8_t zero[LYB_SIZE_BYTES] = {0};
 
     if (!node) {
-        lyb_write(out, &zero, 1, lybctx->lybctx);
+        lyb_write(out, zero, LYB_SIZE_BYTES, lybctx->lybctx);
         return LY_SUCCESS;
     }
 
