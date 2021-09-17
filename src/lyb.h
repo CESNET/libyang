@@ -36,7 +36,7 @@ struct lylyb_ctx {
     struct lyd_lyb_sibling {
         size_t written;
         size_t position;
-        uint8_t inner_chunks;
+        uint16_t inner_chunks;
     } *siblings;
     LY_ARRAY_COUNT_TYPE sibling_size;
 
@@ -119,20 +119,19 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 #define LYB_HASH_COLLISION_ID 0x80
 
 /* How many bytes are reserved for one data chunk SIZE (8B is maximum) */
-#define LYB_SIZE_BYTES 1
+#define LYB_SIZE_BYTES 2
 
 /* Maximum size that will be written into LYB_SIZE_BYTES (must be large enough) */
-#define LYB_SIZE_MAX UINT8_MAX
+#define LYB_SIZE_MAX UINT16_MAX
 
 /* How many bytes are reserved for one data chunk inner chunk count */
-#define LYB_INCHUNK_BYTES 1
+#define LYB_INCHUNK_BYTES 2
 
 /* Maximum size that will be written into LYB_INCHUNK_BYTES (must be large enough) */
-#define LYB_INCHUNK_MAX UINT8_MAX
+#define LYB_INCHUNK_MAX UINT16_MAX
 
 /* Just a helper macro */
 #define LYB_META_BYTES (LYB_INCHUNK_BYTES + LYB_SIZE_BYTES)
-#define LYB_BYTE_MASK 0xff
 
 /* model revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
  *                   YYYY YYYM MMMD DDDD */
