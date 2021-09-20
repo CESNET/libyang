@@ -287,12 +287,23 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
 
     /* skip after the content */
     do {
+        uint32_t prev_depth = jsonctx->depth;
+
         LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
+
         if (current == status) {
+            /* lyjson_ctx_next() can return LYSJON_OBJECT in two cases, either when
+             * a new object is encountered, or when it finishes parsing a value from a
+             * previous key-value pair. In the latter case the sublevel shouldn't increase.
+            */
+            if ((status == LYJSON_OBJECT) && (prev_depth == jsonctx->depth)) {
+                continue;
+            }
+
             sublevels++;
-        } else if ((status == LYJSON_OBJECT) && ((current == LYJSON_OBJECT_CLOSED) || (current == LYJSON_OBJECT_EMPTY))) {
+        } else if ((status == LYJSON_OBJECT) && (current == LYJSON_OBJECT_CLOSED)) {
             sublevels--;
-        } else if ((status == LYJSON_ARRAY) && ((current == LYJSON_ARRAY_CLOSED) || (current == LYJSON_ARRAY_EMPTY))) {
+        } else if ((status == LYJSON_ARRAY) && (current == LYJSON_ARRAY_CLOSED)) {
             sublevels--;
         }
     } while (current != status + 1 || sublevels);
