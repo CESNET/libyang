@@ -23,17 +23,21 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 # normalize build type string
+# see https://github.com/CESNET/libyang/pull/1692 for why CMAKE_C_FLAGS_<type> are not used directly
 string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
 if ("${BUILD_TYPE_UPPER}" STREQUAL "RELEASE")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
+    set(CMAKE_C_FLAGS "-DNDEBUG -O2 ${CMAKE_C_FLAGS}")
 elseif("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
+    set(CMAKE_C_FLAGS "-g3 -O0 ${CMAKE_C_FLAGS}")
 elseif("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO")
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build Type" FORCE)
 elseif("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBUG")
     set(CMAKE_BUILD_TYPE "RelWithDebug" CACHE STRING "Build Type" FORCE)
 elseif("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
     set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
+    set(CMAKE_C_FLAGS "-g -Og ${CMAKE_C_FLAGS}")
 elseif("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
     set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
 endif()
@@ -68,9 +72,6 @@ set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
 set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c11")
-set(CMAKE_C_FLAGS_RELEASE        "-DNDEBUG -O2")
-set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
-set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 
