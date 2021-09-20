@@ -67,7 +67,7 @@ set(LIBYANG_MICRO_SOVERSION 17)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
-set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
+set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c11")
 set(CMAKE_C_FLAGS_RELEASE        "-DNDEBUG -O2")
 set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
 set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
