@@ -1383,6 +1383,54 @@ error:
 }
 
 /**
+ * @brief Parse node.
+ *
+ * @param[in] out Out structure.
+ * @param[in,out] printed_node Current data node to print. Sets to the last printed node.
+ * @param[in,out] sibling_ht Cached hash table for these siblings, created if NULL.
+ * @param[in] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p,
+        struct ly_set *parsed)
+{
+    LY_ERR ret;
+    const struct lysc_node *snode;
+    const struct lys_module *mod;
+
+    if (!parent || !parent->schema) {
+        /* top-level or opaque, read module name */
+        ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
+        LY_CHECK_RET(ret);
+
+        /* read hash, find the schema node starting from mod */
+        ret = lyb_parse_schema_hash(lybctx, NULL, mod, &snode);
+    } else {
+        /* read hash, find the schema node starting from parent schema */
+        ret = lyb_parse_schema_hash(lybctx, parent->schema, NULL, &snode);
+    }
+    LY_CHECK_RET(ret);
+
+    if (!snode) {
+        ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
+    } else if (snode->nodetype & LYS_LEAFLIST) {
+        ret = lyb_parse_node_leaflist(lybctx, parent, snode, first_p, parsed);
+    } else if (snode->nodetype == LYS_LIST) {
+        ret = lyb_parse_node_list(lybctx, parent, snode, first_p, parsed);
+    } else if (snode->nodetype & LYD_NODE_ANY) {
+        ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
+    } else if (snode->nodetype & LYD_NODE_INNER) {
+        ret = lyb_parse_node_inner(lybctx, parent, snode, first_p, parsed);
+    } else {
+        ret = lyb_parse_node_leaf(lybctx, parent, snode, first_p, parsed);
+    }
+    LY_CHECK_RET(ret);
+
+    return ret;
+}
+
+/**
  * @brief Parse siblings (@ref lyb_print_siblings()).
  *
  * @param[in] lybctx LYB context.
@@ -1396,8 +1444,6 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
         struct ly_set *parsed)
 {
     LY_ERR ret;
-    const struct lysc_node *snode;
-    const struct lys_module *mod;
     ly_bool top_level;
 
     if (lybctx->lybctx->in->current[0] == 0) {
@@ -1412,32 +1458,7 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
     LY_CHECK_RET(ret);
 
     while (LYB_LAST_SIBLING(lybctx->lybctx).written) {
-        if (!parent || !parent->schema) {
-            /* top-level or opaque, read module name */
-            ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
-            LY_CHECK_RET(ret);
-
-            /* read hash, find the schema node starting from mod */
-            ret = lyb_parse_schema_hash(lybctx, NULL, mod, &snode);
-        } else {
-            /* read hash, find the schema node starting from parent schema */
-            ret = lyb_parse_schema_hash(lybctx, parent->schema, NULL, &snode);
-        }
-        LY_CHECK_RET(ret);
-
-        if (!snode) {
-            ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
-        } else if (snode->nodetype & LYS_LEAFLIST) {
-            ret = lyb_parse_node_leaflist(lybctx, parent, snode, first_p, parsed);
-        } else if (snode->nodetype == LYS_LIST) {
-            ret = lyb_parse_node_list(lybctx, parent, snode, first_p, parsed);
-        } else if (snode->nodetype & LYD_NODE_ANY) {
-            ret = lyb_parse_node_any(lybctx, parent, snode, first_p, parsed);
-        } else if (snode->nodetype & LYD_NODE_INNER) {
-            ret = lyb_parse_node_inner(lybctx, parent, snode, first_p, parsed);
-        } else {
-            ret = lyb_parse_node_leaf(lybctx, parent, snode, first_p, parsed);
-        }
+        ret = lyb_parse_node(lybctx, parent, first_p, parsed);
         LY_CHECK_RET(ret);
 
         if (top_level && !(lybctx->int_opts & LYD_INTOPT_WITH_SIBLINGS)) {

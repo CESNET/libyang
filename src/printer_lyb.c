@@ -1123,6 +1123,50 @@ lyb_print_node_list(struct ly_out *out, const struct lyd_node *node, struct lyd_
 }
 
 /**
+ * @brief Print node.
+ *
+ * @param[in] out Out structure.
+ * @param[in,out] printed_node Current data node to print. Sets to the last printed node.
+ * @param[in,out] sibling_ht Cached hash table for these siblings, created if NULL.
+ * @param[in] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct hash_table **sibling_ht,
+        struct lyd_lyb_ctx *lybctx)
+{
+    const struct lyd_node *node = *printed_node;
+
+    /* write model info first, for all opaque and top-level nodes */
+    if (!node->schema && (!node->parent || !node->parent->schema)) {
+        LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
+    } else if (node->schema && !lysc_data_parent(node->schema)) {
+        LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
+    }
+
+    /* write schema hash */
+    LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx->lybctx));
+
+    if (!node->schema) {
+        LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
+    } else if (node->schema->nodetype & LYS_LEAFLIST) {
+        LY_CHECK_RET(lyb_print_node_leaflist(out, node, lybctx, &node));
+    } else if (node->schema->nodetype == LYS_LIST) {
+        LY_CHECK_RET(lyb_print_node_list(out, node, lybctx, &node));
+    } else if (node->schema->nodetype & LYD_NODE_ANY) {
+        LY_CHECK_RET(lyb_print_node_any(out, (struct lyd_node_any *)node, lybctx));
+    } else if (node->schema->nodetype & LYD_NODE_INNER) {
+        LY_CHECK_RET(lyb_print_node_inner(out, node, lybctx));
+    } else {
+        LY_CHECK_RET(lyb_print_node_leaf(out, node, lybctx));
+    }
+
+    *printed_node = node;
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Print siblings.
  *
  * @verbatim
@@ -1165,41 +1209,24 @@ lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
     LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));
 
-    /* write all the siblings */
-    LY_LIST_FOR(node, node) {
+    if (top_level) {
+        /* write all the siblings */
+        LY_LIST_FOR(node, node) {
+            /* do not reuse sibling hash tables from different modules */
+            if (!node->schema || (node->schema->module != prev_mod)) {
+                sibling_ht = NULL;
+                prev_mod = node->schema ? node->schema->module : NULL;
+            }
 
-        /* do not reuse sibling hash tables from different modules */
-        if (top_level && (!node->schema || (node->schema->module != prev_mod))) {
-            sibling_ht = NULL;
-            prev_mod = node->schema ? node->schema->module : NULL;
+            LY_CHECK_RET(lyb_print_node(out, &node, &sibling_ht, lybctx));
+
+            if (!(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
+                break;
+            }
         }
-
-        /* write model info first, for all opaque and top-level nodes */
-        if (!node->schema && (!node->parent || !node->parent->schema)) {
-            LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
-        } else if (node->schema && !lysc_data_parent(node->schema)) {
-            LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
-        }
-
-        /* write schema hash */
-        LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, &sibling_ht, lybctx->lybctx));
-
-        if (!node->schema) {
-            LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
-        } else if (node->schema->nodetype & LYS_LEAFLIST) {
-            LY_CHECK_RET(lyb_print_node_leaflist(out, node, lybctx, &node));
-        } else if (node->schema->nodetype == LYS_LIST) {
-            LY_CHECK_RET(lyb_print_node_list(out, node, lybctx, &node));
-        } else if (node->schema->nodetype & LYD_NODE_ANY) {
-            LY_CHECK_RET(lyb_print_node_any(out, (struct lyd_node_any *)node, lybctx));
-        } else if (node->schema->nodetype & LYD_NODE_INNER) {
-            LY_CHECK_RET(lyb_print_node_inner(out, node, lybctx));
-        } else {
-            LY_CHECK_RET(lyb_print_node_leaf(out, node, lybctx));
-        }
-
-        if (top_level && !(lybctx->print_options & LYD_PRINT_WITHSIBLINGS)) {
-            break;
+    } else {
+        LY_LIST_FOR(node, node) {
+            LY_CHECK_RET(lyb_print_node(out, &node, &sibling_ht, lybctx));
         }
     }
 
