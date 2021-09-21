@@ -68,10 +68,9 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
     LY_ERR ret = LY_SUCCESS;
     const char *str_begin, *str_next, *prefix;
     ly_bool is_prefix, has_prefix = 0;
-    uint32_t len;
     char *str = NULL;
     void *mem;
-    uint32_t str_len = 0;
+    uint32_t len, str_len = 0, pref_len;
     const struct lys_module *mod;
 
     str_begin = token;
@@ -105,7 +104,7 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
 
             /* resolve the module in the original format */
             mod = lyplg_type_identity_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
-            if (!mod) {
+            if (!mod && is_nametest) {
                 ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to resolve prefix \"%.*s\".", len, str_begin);
                 goto cleanup;
             }
@@ -113,18 +112,25 @@ xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, co
             if (is_nametest && ((get_format == LY_VALUE_JSON) || (get_format == LY_VALUE_LYB)) && (*context_mod == mod)) {
                 /* inherit the prefix and do not print it again */
             } else {
-                /* get the prefix in the target format */
-                prefix = lyplg_type_get_prefix(mod, get_format, get_prefix_data);
-                if (!prefix) {
-                    ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
-                    goto cleanup;
+                if (mod) {
+                    /* get the prefix in the target format */
+                    prefix = lyplg_type_get_prefix(mod, get_format, get_prefix_data);
+                    if (!prefix) {
+                        ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Internal error.");
+                        goto cleanup;
+                    }
+                    pref_len = strlen(prefix);
+                } else {
+                    /* invalid prefix, just copy it */
+                    prefix = str_begin;
+                    pref_len = len;
                 }
 
                 /* append the prefix */
-                mem = realloc(str, str_len + strlen(prefix) + 2);
+                mem = realloc(str, str_len + pref_len + 2);
                 LY_CHECK_ERR_GOTO(!mem, ret = ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory."), cleanup);
                 str = mem;
-                str_len += sprintf(str + str_len, "%s:", prefix);
+                str_len += sprintf(str + str_len, "%.*s:", (int)pref_len, prefix);
             }
 
             if (is_nametest) {
