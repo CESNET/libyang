@@ -48,6 +48,114 @@ setup(void **state)
 }
 
 static void
+tests_leaflist(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module mod { namespace \"urn:test-leaflist\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    leaf-list ll {"
+            "      type uint8;"
+            "    }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-leaflist\">\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-leaflist\">\n"
+            "  <ll>1</ll>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-leaflist\">\n"
+            "  <ll>1</ll>\n"
+            "  <ll>2</ll>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+}
+
+static void
+tests_list(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module mod { namespace \"urn:test-list\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    list lst {"
+            "      key \"lf\";"
+            "      leaf lf {"
+            "        type uint8;"
+            "      }"
+            "    }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-list\">\n"
+            "  <lst>"
+            "    <lf>1</lf>"
+            "  </lst>"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-list\">\n"
+            "  <lst>"
+            "    <lf>1</lf>"
+            "    <lf>2</lf>"
+            "  </lst>"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+}
+
+static void
+tests_any(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module mod { namespace \"urn:test-any\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    anyxml anxml;\n"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-any\">\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-any\">\n"
+            "  <anxml><node>value</node></anxml>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-any\">\n"
+            "  <anxml><node1>value</node1></anxml>\n"
+            "  <anxml><node2>value</node2></anxml>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+}
+
+static void
 test_ietf_interfaces(void **state)
 {
     const char *data_xml =
@@ -663,6 +771,9 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(tests_leaflist),
+        UTEST(tests_list),
+        UTEST(tests_any),
         UTEST(test_ietf_interfaces, setup),
         UTEST(test_origin, setup),
         UTEST(test_statements, setup),
