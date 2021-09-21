@@ -33,7 +33,7 @@
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 1/2/4/8 | yes | pointer to the specific integer type | integer value |
+ * | 1/2/4/8 | yes | pointer to the specific integer type | little-endian integer value |
  */
 
 /**
@@ -51,7 +51,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    int64_t num;
+    int64_t num = 0;
     int base = 1;
     char *canon;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
@@ -68,25 +68,9 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
             goto cleanup;
         }
 
-        /* get the integer */
-        switch (type->basetype) {
-        case LY_TYPE_INT8:
-            num = *(int8_t *)value;
-            break;
-        case LY_TYPE_INT16:
-            num = *(int16_t *)value;
-            break;
-        case LY_TYPE_INT32:
-            num = *(int32_t *)value;
-            break;
-        case LY_TYPE_INT64:
-            num = *(int64_t *)value;
-            break;
-        default:
-            LOGINT(ctx);
-            ret = LY_EINT;
-            goto cleanup;
-        }
+        /* copy the integer and correct the byte order */
+        memcpy(&num, value, value_len);
+        num = le64toh(num);
     } else {
         /* check hints */
         ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, &base, err);
@@ -144,7 +128,22 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         }
     } else {
         /* generate canonical value */
-        LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId64, num) == -1, ret = LY_EMEM, cleanup);
+        switch (type->basetype) {
+        case LY_TYPE_INT8:
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId8, storage->int8) == -1, ret = LY_EMEM, cleanup);
+            break;
+        case LY_TYPE_INT16:
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId16, storage->int16) == -1, ret = LY_EMEM, cleanup);
+            break;
+        case LY_TYPE_INT32:
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId32, storage->int32) == -1, ret = LY_EMEM, cleanup);
+            break;
+        case LY_TYPE_INT64:
+            LY_CHECK_ERR_GOTO(asprintf(&canon, "%" PRId64, storage->int64) == -1, ret = LY_EMEM, cleanup);
+            break;
+        default:
+            break;
+        }
 
         /* store it */
         ret = lydict_insert_zc(ctx, canon, (const char **)&storage->_canonical);
@@ -207,24 +206,46 @@ API const void *
 lyplg_type_print_int(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
+    int64_t prev_num = 0, num = 0;
+    void *buf;
+
     if (format == LY_VALUE_LYB) {
-        *dynamic = 0;
-        if (value_len) {
-            *value_len = integer_lyb_size[value->realtype->basetype];
-        }
         switch (value->realtype->basetype) {
         case LY_TYPE_INT8:
-            return &value->int8;
+            prev_num = num = value->int8;
+            break;
         case LY_TYPE_INT16:
-            return &value->int16;
+            prev_num = num = value->int16;
+            break;
         case LY_TYPE_INT32:
-            return &value->int32;
+            prev_num = num = value->int32;
+            break;
         case LY_TYPE_INT64:
-            return &value->int64;
+            prev_num = num = value->int64;
+            break;
         default:
             break;
         }
-        return NULL;
+        num = htole64(num);
+        if (num == prev_num) {
+            /* values are equal, little-endian or int8 */
+            *dynamic = 0;
+            if (value_len) {
+                *value_len = integer_lyb_size[value->realtype->basetype];
+            }
+            return &value->int64;
+        } else {
+            /* values differ, big-endian */
+            buf = calloc(1, integer_lyb_size[value->realtype->basetype]);
+            LY_CHECK_RET(!buf, NULL);
+
+            *dynamic = 1;
+            if (value_len) {
+                *value_len = integer_lyb_size[value->realtype->basetype];
+            }
+            memcpy(buf, &num, integer_lyb_size[value->realtype->basetype]);
+            return buf;
+        }
     }
 
     /* use the cached canonical value */
@@ -244,7 +265,7 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint64_t num;
+    uint64_t num = 0;
     int base = 0;
     char *canon;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
@@ -261,25 +282,9 @@ lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, co
             goto cleanup;
         }
 
-        /* get the integer */
-        switch (type->basetype) {
-        case LY_TYPE_UINT8:
-            num = *(uint8_t *)value;
-            break;
-        case LY_TYPE_UINT16:
-            num = *(uint16_t *)value;
-            break;
-        case LY_TYPE_UINT32:
-            num = *(uint32_t *)value;
-            break;
-        case LY_TYPE_UINT64:
-            num = *(uint64_t *)value;
-            break;
-        default:
-            LOGINT(ctx);
-            ret = LY_EINT;
-            goto cleanup;
-        }
+        /* copy the integer and correct the byte order */
+        memcpy(&num, value, value_len);
+        num = le64toh(num);
     } else {
         /* check hints */
         ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, &base, err);
@@ -399,24 +404,46 @@ API const void *
 lyplg_type_print_uint(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
+    uint64_t num = 0;
+    void *buf;
+
     if (format == LY_VALUE_LYB) {
-        *dynamic = 0;
-        if (value_len) {
-            *value_len = integer_lyb_size[value->realtype->basetype];
-        }
         switch (value->realtype->basetype) {
         case LY_TYPE_UINT8:
-            return &value->uint8;
+            num = value->uint8;
+            break;
         case LY_TYPE_UINT16:
-            return &value->uint16;
+            num = value->uint16;
+            break;
         case LY_TYPE_UINT32:
-            return &value->uint32;
+            num = value->uint32;
+            break;
         case LY_TYPE_UINT64:
-            return &value->uint64;
+            num = value->uint64;
+            break;
         default:
             break;
         }
-        return NULL;
+        num = htole64(num);
+        if (num == value->uint64) {
+            /* values are equal, little-endian or uint8 */
+            *dynamic = 0;
+            if (value_len) {
+                *value_len = integer_lyb_size[value->realtype->basetype];
+            }
+            return &value->uint64;
+        } else {
+            /* values differ, big-endian */
+            buf = calloc(1, integer_lyb_size[value->realtype->basetype]);
+            LY_CHECK_RET(!buf, NULL);
+
+            *dynamic = 1;
+            if (value_len) {
+                *value_len = integer_lyb_size[value->realtype->basetype];
+            }
+            memcpy(buf, &num, integer_lyb_size[value->realtype->basetype]);
+            return buf;
+        }
     }
 
     /* use the cached canonical value */

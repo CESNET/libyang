@@ -33,7 +33,7 @@
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 4        | yes | `int32 *` | assigned value of the enum |
+ * | 4        | yes | `int32 *` | assigned little-endian value of the enum |
  */
 
 API LY_ERR
@@ -46,6 +46,8 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     ly_bool found = 0;
+    int64_t num = 0;
+    int32_t num_val;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);
@@ -59,9 +61,14 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
             goto cleanup;
         }
 
+        /* convert the value to host byte order */
+        memcpy(&num, value, value_len);
+        num = le64toh(num);
+        num_val = num;
+
         /* find the matching enumeration value item */
         LY_ARRAY_FOR(type_enum->enums, u) {
-            if (type_enum->enums[u].value == *(int32_t *)value) {
+            if (type_enum->enums[u].value == num_val) {
                 found = 1;
                 break;
             }
@@ -69,8 +76,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
 
         if (!found) {
             /* value not found */
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid enumeration value % " PRIi32 ".",
-                    *(int32_t *)value);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid enumeration value % " PRIi32 ".", num_val);
             goto cleanup;
         }
 
@@ -132,12 +138,31 @@ API const void *
 lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
+    int64_t prev_num = 0, num = 0;
+    void *buf;
+
     if (format == LY_VALUE_LYB) {
-        *dynamic = 0;
-        if (value_len) {
-            *value_len = 4;
+        prev_num = num = value->enum_item->value;
+        num = htole64(num);
+        if (num == prev_num) {
+            /* values are equal, little-endian */
+            *dynamic = 0;
+            if (value_len) {
+                *value_len = 4;
+            }
+            return &value->enum_item->value;
+        } else {
+            /* values differ, big-endian */
+            buf = calloc(1, 4);
+            LY_CHECK_RET(!buf, NULL);
+
+            *dynamic = 1;
+            if (value_len) {
+                *value_len = 4;
+            }
+            memcpy(buf, &num, 4);
+            return buf;
         }
-        return &value->enum_item->value;
     }
 
     /* use the cached canonical value */
