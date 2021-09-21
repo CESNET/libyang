@@ -162,8 +162,10 @@ struct utest_context {
     { \
         char *test_1; \
         char *test_2; \
-        lyd_print_mem(&test_1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK); \
-        lyd_print_mem(&test_2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&test_1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&test_2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)); \
+        assert_non_null(test_1); \
+        assert_non_null(test_2); \
         assert_string_equal(test_1, test_2); \
         free(test_1); \
         free(test_2); \
