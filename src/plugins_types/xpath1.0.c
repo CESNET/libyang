@@ -198,7 +198,7 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
             /* token processed */
             ++(*cur_idx);
         } else {
-            if ((cur_tok == LYXP_TOKEN_OPER_LOG) || (cur_tok == LYXP_TOKEN_OPER_UNI)) {
+            if ((cur_tok == LYXP_TOKEN_OPER_LOG) || (cur_tok == LYXP_TOKEN_OPER_UNI) || (cur_tok == LYXP_TOKEN_OPER_MATH)) {
                 /* copy the token with spaces around */
                 mem = realloc(*str_value, *str_len + 1 + xp_val->exp->tok_len[*cur_idx] + 2);
                 LY_CHECK_GOTO(!mem, error_mem);
