@@ -53,7 +53,7 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
     LY_ERR ret = LY_SUCCESS;
     int64_t num = 0;
     int base = 1;
-    char *canon;
+    char *canon = NULL;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
     /* init storage */
