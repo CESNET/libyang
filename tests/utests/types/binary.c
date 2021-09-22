@@ -47,7 +47,7 @@ static void
 test_plugin_store(void **state)
 {
     const char *val, *dec_val;
-    char bin_val[2];
+    unsigned char bin_val[2];
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
