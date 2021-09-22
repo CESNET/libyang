@@ -151,7 +151,7 @@ lyplg_type_store_ipv6_address(const struct ly_ctx *ctx, const struct lysc_type *
 
         /* store zone, if any */
         if (value_len > 16) {
-            ret = lydict_insert(ctx, value + 16, value_len - 16, &val->zone);
+            ret = lydict_insert(ctx, value_str + 16, value_len - 16, &val->zone);
             LY_CHECK_GOTO(ret, cleanup);
         } else {
             val->zone = NULL;

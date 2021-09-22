@@ -658,7 +658,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         }
 
         /* add all used prefixes */
-        value_end = value + value_len;
+        value_end = (char *)value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
             LY_CHECK_GOTO(ret = ly_value_prefix_next(value_iter, value_end, &substr_len, &is_prefix, &value_next), cleanup);
             if (is_prefix) {
@@ -694,7 +694,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         }
 
         /* add all used prefixes */
-        value_end = value + value_len;
+        value_end = (char *)value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
             LY_CHECK_GOTO(ret = ly_value_prefix_next(value_iter, value_end, &substr_len, &is_prefix, &value_next), cleanup);
             if (is_prefix) {

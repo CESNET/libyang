@@ -59,10 +59,10 @@ void *ly_realloc(void *ptr, size_t size);
  */
 #define LY_ARRAY_NEW(CTX, ARRAY, EACTION) \
     { \
-        void *p__; \
+        char *p__; \
         if (ARRAY) { \
             ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
-            p__ = realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
+            p__ = (char *)realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
                     sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
             if (!p__) { \
                 --(*((LY_ARRAY_COUNT_TYPE*)(p__) - 1)); \
@@ -70,14 +70,14 @@ void *ly_realloc(void *ptr, size_t size);
                 EACTION; \
             } \
         } else { \
-            p__ = malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
+            p__ = (char *)malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
             if (!p__) { \
                 LOGMEM(CTX); \
                 EACTION; \
             } \
             *((LY_ARRAY_COUNT_TYPE*)(p__)) = 1; \
         } \
-        p__ = (void*)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
+        p__ = (char *)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
         memcpy(&(ARRAY), &p__, sizeof p__); \
     }
 
@@ -131,22 +131,22 @@ void *ly_realloc(void *ptr, size_t size);
  */
 #define LY_ARRAY_CREATE(CTX, ARRAY, SIZE, EACTION) \
     { \
-        void *p__; \
+        char *p__; \
         if (ARRAY) { \
-            p__ = realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
+            p__ = (char *)realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
                     sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
             if (!p__) { \
                 LOGMEM(CTX); \
                 EACTION; \
             } \
         } else { \
-            p__ = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
+            p__ = (char *)calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
             if (!p__) { \
                 LOGMEM(CTX); \
                 EACTION; \
             } \
         } \
-        p__ = (void*)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
+        p__ = (char *)((LY_ARRAY_COUNT_TYPE*)(p__) + 1); \
         memcpy(&(ARRAY), &p__, sizeof p__); \
         if (ARRAY) { \
             memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(p__) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
@@ -242,10 +242,10 @@ void *ly_realloc(void *ptr, size_t size);
     if (!(*LIST)) { \
         memcpy(LIST, &(NEW_ITEM), sizeof NEW_ITEM); \
     } else { \
-        size_t offset__ = (void*)&(*LIST)->LINKER - (void*)(*LIST); \
-        void **iter__ = (void **)((size_t)(*LIST) + offset__); \
+        size_t offset__ = (char *)&(*LIST)->LINKER - (char *)(*LIST); \
+        char **iter__ = (char **)((size_t)(*LIST) + offset__); \
         while (*iter__) { \
-            iter__ = (void **)((size_t)(*iter__) + offset__); \
+            iter__ = (char **)((size_t)(*iter__) + offset__); \
         } \
         memcpy(iter__, &(NEW_ITEM), sizeof NEW_ITEM); \
     }
@@ -263,7 +263,7 @@ void *ly_realloc(void *ptr, size_t size);
  */
 #define LY_LIST_NEW(CTX, LIST, NEW_ITEM, LINKER, EACTION) \
     { \
-        void *p__ = calloc(1, sizeof *NEW_ITEM); \
+        char *p__ = (char *)calloc(1, sizeof *NEW_ITEM); \
         if (!p__) { \
             LOGMEM(CTX); \
             EACTION; \

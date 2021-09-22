@@ -124,7 +124,7 @@ extern "C" {
  */
 #define LY_ARRAY_FOR_ITER(ARRAY, TYPE, ITER) \
     for (ITER = ARRAY; \
-         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+         (ARRAY) && ((char *)ITER - (char *)ARRAY)/(sizeof(TYPE)) < (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
          ITER = (TYPE*)ITER + 1)
 
 /**
