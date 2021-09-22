@@ -570,7 +570,8 @@ test_ylmem(void **state)
             "  </module>\n"
             "</modules-state>";
 
-    const char *with_netconf_features =
+    char *with_netconf_features = malloc(8096);
+    strcpy(with_netconf_features,
             DATA_YANG_LIBRARY_START
             "    <module>\n"
             "      <name>ietf-netconf</name>\n"
@@ -609,7 +610,8 @@ test_ylmem(void **state)
             "      <name>ietf-netconf-acm</name>\n"
             "      <revision>2018-02-14</revision>\n"
             "      <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
-            "    </import-only-module>\n"
+            "    </import-only-module>\n");
+    strcpy(with_netconf_features + strlen(with_netconf_features),
             DATA_YANG_SCHEMA_MODULE_STATE
             "  <module>\n"
             "    <name>ietf-netconf</name>\n"
@@ -631,7 +633,7 @@ test_ylmem(void **state)
             "    <namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>\n"
             "    <conformance-type>import</conformance-type>\n"
             "  </module>\n"
-            "</modules-state>";
+            "</modules-state>");
 
     const char *garbage_revision =
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
@@ -705,6 +707,7 @@ test_ylmem(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", no_yanglibrary, LYD_XML, LY_CTX_NO_YANGLIBRARY, &ctx_test));
     assert_int_equal(NULL, ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
     ly_ctx_destroy(ctx_test);
+    free(with_netconf_features);
 }
 
 static LY_ERR
