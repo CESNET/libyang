@@ -508,8 +508,8 @@ test_yin_parse_content(void **state)
     struct lysp_qname def = {0};
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
-    struct lysp_type_enum pos_enum = {}, val_enum = {};
-    struct lysp_type req_type = {}, range_type = {}, len_type = {}, patter_type = {}, enum_type = {};
+    struct lysp_type_enum pos_enum = {0}, val_enum = {0};
+    struct lysp_type req_type = {0}, range_type = {0}, len_type = {0}, patter_type = {0}, enum_type = {0};
     uint16_t config = 0;
 
     ly_in_new_memory(data, &UTEST_IN);
@@ -778,7 +778,7 @@ test_element_helper(void **state, const char *data, void *dest, const char **tex
 static void
 test_enum_elem(void **state)
 {
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
     const char *data;
 
     data = ELEMENT_WRAPPER_START
@@ -812,7 +812,7 @@ test_enum_elem(void **state)
 static void
 test_bit_elem(void **state)
 {
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
     const char *data;
 
     data = ELEMENT_WRAPPER_START
@@ -1177,7 +1177,7 @@ test_base_elem(void **state)
     const char *data;
     const char **bases = NULL;
     struct lysp_ext_instance *exts = NULL;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     /* as identity subelement */
     data = "<identity xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
@@ -1329,7 +1329,7 @@ static void
 test_fracdigits_elem(void **state)
 {
     const char *data;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     /* valid value */
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\">"EXT_SUBELEM "</fraction-digits>" ELEMENT_WRAPPER_END;
@@ -1389,7 +1389,7 @@ static void
 test_length_elem(void **state)
 {
     const char *data;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
@@ -1476,7 +1476,7 @@ static void
 test_pattern_elem(void **state)
 {
     const char *data;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
@@ -1509,7 +1509,7 @@ static void
 test_value_position_elem(void **state)
 {
     const char *data;
-    struct lysp_type_enum en = {};
+    struct lysp_type_enum en = {0};
 
     /* valid values */
     data = ELEMENT_WRAPPER_START "<value value=\"55\">" EXT_SUBELEM "</value>" ELEMENT_WRAPPER_END;
@@ -1603,7 +1603,7 @@ static void
 test_range_elem(void **state)
 {
     const char *data;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
@@ -1636,7 +1636,7 @@ static void
 test_reqinstance_elem(void **state)
 {
     const char *data;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     data = ELEMENT_WRAPPER_START "<require-instance value=\"true\">" EXT_SUBELEM "</require-instance>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(state, data, &type, NULL, NULL), LY_SUCCESS);
@@ -1781,7 +1781,7 @@ static void
 test_type_elem(void **state)
 {
     const char *data;
-    struct lysp_type type = {};
+    struct lysp_type type = {0};
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
@@ -1839,9 +1839,9 @@ static void
 test_max_elems_elem(void **state)
 {
     const char *data;
-    struct lysp_node_list list = {};
-    struct lysp_node_leaflist llist = {};
-    struct lysp_refine refine = {};
+    struct lysp_node_list list = {0};
+    struct lysp_node_leaflist llist = {0};
+    struct lysp_refine refine = {0};
 
     data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"unbounded\">"EXT_SUBELEM "</max-elements> </refine>";
     assert_int_equal(test_element_helper(state, data, &refine, NULL, NULL), LY_SUCCESS);
@@ -1890,9 +1890,9 @@ static void
 test_min_elems_elem(void **state)
 {
     const char *data;
-    struct lysp_node_list list = {};
-    struct lysp_node_leaflist llist = {};
-    struct lysp_refine refine = {};
+    struct lysp_node_list list = {0};
+    struct lysp_node_leaflist llist = {0};
+    struct lysp_refine refine = {0};
 
     data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"0\">"EXT_SUBELEM "</min-elements> </refine>";
     assert_int_equal(test_element_helper(state, data, &refine, NULL, NULL), LY_SUCCESS);
@@ -2945,7 +2945,7 @@ static void
 test_inout_elem(void **state)
 {
     const char *data;
-    struct lysp_node_action_inout inout = {};
+    struct lysp_node_action_inout inout = {0};
     struct inout_meta inout_meta = {NULL, &inout};
 
     /* max subelements */
