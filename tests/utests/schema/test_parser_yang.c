@@ -1292,13 +1292,13 @@ test_any(void **state, enum ly_stmt kw)
 static void
 test_anydata(void **state)
 {
-    return test_any(state, LY_STMT_ANYDATA);
+    test_any(state, LY_STMT_ANYDATA);
 }
 
 static void
 test_anyxml(void **state)
 {
-    return test_any(state, LY_STMT_ANYXML);
+    test_any(state, LY_STMT_ANYXML);
 }
 
 static void
