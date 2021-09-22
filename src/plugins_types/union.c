@@ -145,7 +145,7 @@ lyb_parse_union(const void *lyb_data, size_t lyb_data_len, uint32_t *type_idx, c
             *lyb_value = "";
         } else {
             *lyb_value_len = lyb_data_len - IDX_SIZE;
-            *lyb_value = lyb_data + IDX_SIZE;
+            *lyb_value = (char *)lyb_data + IDX_SIZE;
         }
     }
 }
@@ -480,7 +480,7 @@ lyb_union_print(const struct ly_ctx *ctx, struct lysc_type_union *type_u, struct
     num = type_idx;
     num = htole64(num);
     memcpy(ret, &num, IDX_SIZE);
-    memcpy(ret + IDX_SIZE, pval, pval_len);
+    memcpy((char *)ret + IDX_SIZE, pval, pval_len);
 
     if (dynamic) {
         free(pval);

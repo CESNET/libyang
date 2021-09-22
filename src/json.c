@@ -25,7 +25,7 @@
 #include "tree_schema_internal.h"
 
 #define JSON_PUSH_STATUS_RET(CTX, STATUS) \
-    LY_CHECK_RET(ly_set_add(&CTX->status, (void*)STATUS, 1, NULL))
+    LY_CHECK_RET(ly_set_add(&CTX->status, (void *)(uintptr_t)(STATUS), 1, NULL))
 
 #define JSON_POP_STATUS_RET(CTX) \
     assert(CTX->status.count); CTX->status.count--;

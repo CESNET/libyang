@@ -47,7 +47,7 @@ test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *UNUS
 
     if ((nl = strchr(user_data, '\n'))) {
         /* more modules */
-        if (!strncmp(user_data + 7, mod_name, strlen(mod_name))) {
+        if (!strncmp((char *)user_data + 7, mod_name, strlen(mod_name))) {
             *module_data = strndup(user_data, nl - (char *)user_data);
             *format = LYS_IN_YANG;
             *free_module_data = test_imp_free_data;

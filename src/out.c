@@ -114,7 +114,7 @@ ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **out)
 API ly_write_clb
 ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
 {
-    void *prev_clb;
+    ly_write_clb prev_clb;
 
     LY_CHECK_ARG_RET(NULL, out, out->type == LY_OUT_CALLBACK, NULL);
 
