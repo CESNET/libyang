@@ -105,13 +105,13 @@ lysp_include_free_(struct ly_ctx *ctx, struct lysp_include *include, ly_bool mai
 void
 lysp_include_free_submodule(struct ly_ctx *ctx, struct lysp_include *include)
 {
-    return lysp_include_free_(ctx, include, 0);
+    lysp_include_free_(ctx, include, 0);
 }
 
 void
 lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
-    return lysp_include_free_(ctx, include, 1);
+    lysp_include_free_(ctx, include, 1);
 }
 
 void
