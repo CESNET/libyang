@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "diff.h"
 #include "log.h"
 
 struct ly_ctx;
@@ -24,8 +25,6 @@ struct ly_set;
 struct lyd_node;
 struct lys_module;
 struct lysc_node;
-
-enum lyd_diff_op;
 
 /**
  * @brief Add information about the node's extensions having their own validation callback into an unres set.
