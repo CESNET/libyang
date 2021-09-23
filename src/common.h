@@ -146,15 +146,15 @@ void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_
 #define LOG_LOCBACK(SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS) \
     ly_log_location_revert(SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS)
 
-#define LOGERR(ctx, errno, str, ...) ly_log(ctx, LY_LLERR, errno, str, ##__VA_ARGS__)
-#define LOGWRN(ctx, str, ...) ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__)
-#define LOGVRB(str, ...) ly_log(NULL, LY_LLVRB, 0, str, ##__VA_ARGS__)
+#define LOGERR(ctx, errno, ...) ly_log(ctx, LY_LLERR, errno, __VA_ARGS__)
+#define LOGWRN(ctx, ...) ly_log(ctx, LY_LLWRN, 0, __VA_ARGS__)
+#define LOGVRB(...) ly_log(NULL, LY_LLVRB, 0, __VA_ARGS__)
 
 #ifdef NDEBUG
-#  define LOGDBG(dbg_group, str, ...)
+#  define LOGDBG(dbg_group, ...)
 #else
 void ly_log_dbg(uint32_t group, const char *format, ...);
-#  define LOGDBG(dbg_group, str, ...) ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
+#  define LOGDBG(dbg_group, ...) ly_log_dbg(dbg_group, __VA_ARGS__);
 #endif
 
 /**
@@ -170,10 +170,10 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
-#define LOGVAL(CTX, CODE, ...) ly_vlog(CTX, CODE, ##__VA_ARGS__)
-#define LOGVAL_LINE(CTX, LINE, CODE, ...) \
+#define LOGVAL(CTX, ...) ly_vlog(CTX, __VA_ARGS__)
+#define LOGVAL_LINE(CTX, LINE, ...) \
     ly_log_location(NULL, NULL, NULL, NULL, LINE, 0); \
-    ly_vlog(CTX, CODE, ##__VA_ARGS__)
+    ly_vlog(CTX, __VA_ARGS__)
 
 /**
  * @brief Print Validation error from struct ly_err_item.
@@ -197,7 +197,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if ((COND)) {ERR; goto GOTO;}
 #define LY_CHECK_RET1(RETVAL) {LY_ERR ret__ = RETVAL;if (ret__ != LY_SUCCESS) {return ret__;}}
 #define LY_CHECK_RET2(COND, RETVAL) if ((COND)) {return RETVAL;}
-#define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1)(__VA_ARGS__)
+#define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1, DUMMY)(__VA_ARGS__)
 #define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if ((COND)) {ERR; return RETVAL;}
 
 #define LY_CHECK_ARG_GOTO1(CTX, ARG, GOTO) if (!(ARG)) {LOGARG(CTX, ARG);goto GOTO;}
@@ -216,7 +216,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LY_CHECK_ARG_RET5(CTX, ARG1, ARG2, ARG3, ARG4, ARG5, RETVAL) LY_CHECK_ARG_RET4(CTX, ARG1, ARG2, ARG3, ARG4, RETVAL);\
     LY_CHECK_ARG_RET1(CTX, ARG5, RETVAL)
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO6(__VA_ARGS__, LY_CHECK_ARG_RET5, LY_CHECK_ARG_RET4, LY_CHECK_ARG_RET3, \
-    LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1) (CTX, __VA_ARGS__)
+    LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1, DUMMY) (CTX, __VA_ARGS__)
 
 /* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
 size_t LY_VCODE_INSTREXP_len(const char *str);
