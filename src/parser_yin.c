@@ -1274,7 +1274,7 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
         {LY_STMT_PATTERN, type, 0},
         {LY_STMT_RANGE, type, YIN_SUBELEM_UNIQUE},
         {LY_STMT_REQUIRE_INSTANCE, type, YIN_SUBELEM_UNIQUE},
-        {LY_STMT_TYPE, type},
+        {LY_STMT_TYPE, type, 0},
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
     };
 
