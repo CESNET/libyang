@@ -216,7 +216,7 @@ LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct 
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] data The input data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the input data to be parsed.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
@@ -234,7 +234,7 @@ LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the input data in the
  * specified @p format to parse.
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the input data to be parsed.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
@@ -251,7 +251,7 @@ LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, ui
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] path Path to the file with the input data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from @p path extension.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
