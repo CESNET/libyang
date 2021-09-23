@@ -1148,7 +1148,8 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
     /* read necessary basic data */
-    lyb_parse_node_header(lybctx, &flags, &meta);
+    ret = lyb_parse_node_header(lybctx, &flags, &meta);
+    LY_CHECK_GOTO(ret, error);
 
     /* parse value type */
     lyb_read_number(&value_type, sizeof value_type, sizeof value_type, lybctx->lybctx);
@@ -1360,7 +1361,8 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
     while (LYB_LAST_SIBLING(lybctx->lybctx).written) {
         /* read necessary basic data */
-        lyb_parse_node_header(lybctx, &flags, &meta);
+        ret = lyb_parse_node_header(lybctx, &flags, &meta);
+        LY_CHECK_GOTO(ret, error);
 
         /* create list node */
         ret = lyd_create_inner(snode, &node);
