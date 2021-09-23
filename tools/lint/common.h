@@ -35,14 +35,14 @@
 /**
  * @brief log error message
  */
-#define YLMSG_E(MSG, ...) \
-        fprintf(stderr, "YANGLINT[E]: " MSG, ##__VA_ARGS__)
+#define YLMSG_E(...) \
+        fprintf(stderr, "YANGLINT[E]: " __VA_ARGS__)
 
 /**
  * @brief log warning message
  */
-#define YLMSG_W(MSG, ...) \
-        fprintf(stderr, "YANGLINT[W]: " MSG, ##__VA_ARGS__)
+#define YLMSG_W(...) \
+        fprintf(stderr, "YANGLINT[W]: " __VA_ARGS__)
 
 /**
  * @brief Storage for the list of the features (their names) in a specific YANG module.

@@ -784,7 +784,7 @@ struct utest_context {
     assert_string_equal((NODE)->name, NAME); \
     CHECK_POINTER((NODE)->next, NEXT); \
     CHECK_POINTER((NODE)->parent, PARENT); \
-    CHECK_LYD_VALUE((NODE)->value, TYPE_VAL, ##__VA_ARGS__);
+    CHECK_LYD_VALUE((NODE)->value, TYPE_VAL, __VA_ARGS__);
 
 /**
  * @brief assert that lyd_node_term structure members are correct
@@ -804,7 +804,7 @@ struct utest_context {
     CHECK_POINTER((NODE)->parent, PARENT); \
     assert_non_null((NODE)->prev); \
     CHECK_POINTER((NODE)->schema, SCHEMA); \
-    CHECK_LYD_VALUE((NODE)->value, VALUE_TYPE, ##__VA_ARGS__);
+    CHECK_LYD_VALUE((NODE)->value, VALUE_TYPE, __VA_ARGS__);
 
 /**
  * @brief assert that lyd_node_any structure members are correct
@@ -881,7 +881,7 @@ struct utest_context {
  *                     CHECK_LYD_VALUE_ ## TYPE_VAL.
  */
 #define CHECK_LYD_VALUE(NODE, TYPE_VAL, ...) \
-    CHECK_LYD_VALUE_ ## TYPE_VAL (NODE, ##__VA_ARGS__);
+    CHECK_LYD_VALUE_ ## TYPE_VAL (NODE, __VA_ARGS__);
 
 /*
  * LYD VALUES CHECKING SPECIALIZATION
@@ -917,7 +917,12 @@ struct utest_context {
     assert_int_equal(LY_TYPE_UNION, (NODE).realtype->basetype); \
     assert_non_null((NODE).subvalue); \
     assert_non_null((NODE).subvalue->prefix_data); \
-    CHECK_LYD_VALUE_ ## TYPE_VAL ((NODE).subvalue->value, ## __VA_ARGS__)
+    CHECK_LYD_VALUE_ ## TYPE_VAL ((NODE).subvalue->value, __VA_ARGS__)
+
+/**
+ * @brief Internal macro. Get 1st variadic argument.
+ */
+#define _GETARG1(ARG1, ...) ARG1
 
 /**
  * @brief Internal macro. Assert that lyd_value structure members are correct. Lyd value is type BITS
@@ -926,19 +931,19 @@ struct utest_context {
  * @param[in] CANNONICAL_VAL expected cannonical value
  * @param[in] VALUE          expected array of bits names
  */
-#define CHECK_LYD_VALUE_BITS(NODE, CANNONICAL_VAL, ...) \
+#define CHECK_LYD_VALUE_BITS(NODE, ...) \
     assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
-    assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
+    assert_string_equal((NODE)._canonical, _GETARG1(__VA_ARGS__, DUMMY)); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
     { \
         const char *arr[] = { __VA_ARGS__ }; \
-        LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
+        LY_ARRAY_COUNT_TYPE arr_size = (sizeof(arr) / sizeof(arr[0])) - 1; \
         struct lyd_value_bits *_val; \
         LYD_VALUE_GET(&(NODE), _val); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT(_val->items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(arr[it], _val->items[it]->name); \
+            assert_string_equal(arr[it + 1], _val->items[it]->name); \
         } \
     }
 
@@ -1239,7 +1244,7 @@ struct utest_context {
 #define CHECK_LOG_CTX(...) \
     _GET_CHECK_LOG_MACRO(__VA_ARGS__, _CHECK_LOG_CTX8, _INVAL, _CHECK_LOG_CTX7, _INVAL, \
             _CHECK_LOG_CTX6, _INVAL, _CHECK_LOG_CTX5, _INVAL, _CHECK_LOG_CTX4, _INVAL, \
-            _CHECK_LOG_CTX3, _INVAL, _CHECK_LOG_CTX2, _INVAL, _CHECK_LOG_CTX1)(__VA_ARGS__); \
+            _CHECK_LOG_CTX3, _INVAL, _CHECK_LOG_CTX2, _INVAL, _CHECK_LOG_CTX1, DUMMY)(__VA_ARGS__); \
     ly_err_clean(_UC->ctx, NULL)
 
 /**
@@ -1402,7 +1407,7 @@ utest_teardown(void **state)
  * UTEST(test_func, setup, teardown) - both setup and teardown are test-specific
  */
 #define UTEST(...) \
-    _GET_UTEST_MACRO(__VA_ARGS__, _UTEST_SETUP_TEARDOWN, _UTEST_SETUP, _UTEST)(__VA_ARGS__)
+    _GET_UTEST_MACRO(__VA_ARGS__, _UTEST_SETUP_TEARDOWN, _UTEST_SETUP, _UTEST, DUMMY)(__VA_ARGS__)
 
 #else /* _UTEST_MAIN_ */
 
