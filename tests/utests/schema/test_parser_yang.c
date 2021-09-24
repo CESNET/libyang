@@ -589,7 +589,6 @@ test_module(void **state)
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
-    struct lys_glob_unres unres = {0};
     struct lys_yang_parser_ctx *ctx_p;
 
     mod = mod_renew(YCTX);
@@ -703,12 +702,12 @@ test_module(void **state)
     ly_ctx_set_module_imp_clb(YCTX->parsed_mod->mod->ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(YCTX->parsed_mod->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, "Including \"xxx\" submodule into \"name\" failed.", NULL);
 
     ly_ctx_set_module_imp_clb(YCTX->parsed_mod->mod->ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(YCTX->parsed_mod->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, "Including \"xxx\" submodule into \"name\" failed.", NULL);
 
     ly_ctx_set_module_imp_clb(YCTX->parsed_mod->mod->ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
     TEST_GENERIC("include xxx;}", mod->includes,
@@ -761,7 +760,7 @@ test_module(void **state)
     in.current = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m);
@@ -769,7 +768,7 @@ test_module(void **state)
     in.current = "prefix " SCHEMA_BEGINNING "}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m);
@@ -777,7 +776,7 @@ test_module(void **state)
     in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
     m = calloc(1, sizeof *m);
     m->ctx = YCTX->parsed_mod->mod->ctx;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m, &unres));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", "Line number 1.");
     yang_parser_ctx_free(ctx_p);
     lys_module_free(m);
@@ -958,6 +957,7 @@ test_container(void **state)
     struct lysp_node_container *c = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -987,6 +987,7 @@ test_container(void **state)
     assert_string_equal("true", c->presence);
     assert_non_null(c->typedefs);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)c); c = NULL;
 
     /* invalid */
@@ -1133,6 +1134,7 @@ test_list(void **state)
     struct lysp_node_list *l = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1168,6 +1170,7 @@ test_list(void **state)
     assert_int_equal(1, l->min);
     assert_non_null(l->musts);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)l); l = NULL;
 
     /* invalid content */
@@ -1289,13 +1292,13 @@ test_any(void **state, enum ly_stmt kw)
 static void
 test_anydata(void **state)
 {
-    return test_any(state, LY_STMT_ANYDATA);
+    test_any(state, LY_STMT_ANYDATA);
 }
 
 static void
 test_anyxml(void **state)
 {
-    return test_any(state, LY_STMT_ANYXML);
+    test_any(state, LY_STMT_ANYXML);
 }
 
 static void
@@ -1304,6 +1307,7 @@ test_grouping(void **state)
     struct lysp_node_grp *grp = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1330,6 +1334,7 @@ test_grouping(void **state)
     assert_null(grp->parent);
     assert_int_equal(LYS_STATUS_CURR, grp->flags);
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, &grp->node);
     grp = NULL;
 
@@ -1354,6 +1359,7 @@ test_action(void **state)
     struct lysp_node_container *c = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1404,6 +1410,7 @@ test_action(void **state)
     assert_non_null(rpcs->output.child);
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)rpcs); rpcs = NULL;
 
     /* invalid content */
@@ -1422,6 +1429,7 @@ test_notification(void **state)
     struct lysp_node_container *c = NULL;
 
     YCTX->parsed_mod->version = 2; /* simulate YANG 1.1 */
+    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1455,6 +1463,7 @@ test_notification(void **state)
     assert_int_equal(LYS_STATUS_CURR, notifs->flags);
 
     ly_set_erase(&YCTX->tpdfs_nodes, NULL);
+    ly_set_erase(&YCTX->grps_nodes, NULL);
     lysp_node_free(YCTX->parsed_mod->mod->ctx, (struct lysp_node *)notifs); notifs = NULL;
 
     /* invalid content */

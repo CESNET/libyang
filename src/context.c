@@ -1,9 +1,10 @@
 /**
  * @file context.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Context implementations
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -17,10 +18,10 @@
 #define _XOPEN_SOURCE 1
 #define _XOPEN_SOURCE_EXTENDED 1
 #endif
-#include <sys/cdefs.h>
 
 #include "context.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -86,7 +87,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s).", search_dir, strerror(errno)),
                 LY_EINVAL);
         if (strcmp(search_dir, new_dir)) {
-            LOGVRB("Canonicalizing search directory string from \"%s\" to \"%s\".", search_dir, new_dir);
+            LOGVRB("Search directory string \"%s\" canonized to \"%s\".", search_dir, new_dir);
         }
         LY_CHECK_ERR_RET(access(new_dir, R_OK | X_OK),
                 LOGERR(ctx, LY_ESYS, "Unable to fully access search directory \"%s\" (%s).", new_dir, strerror(errno)); free(new_dir),
@@ -186,27 +187,40 @@ ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
     return LY_SUCCESS;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
 {
-    struct lys_module *result = NULL;
-    struct lys_glob_unres unres = {0};
+    struct lys_module *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
 
-    LY_CHECK_GOTO(ret = lys_load_module(ctx, name, revision, 1, features, &unres, &result), cleanup);
+    /* load and parse */
+    ret = lys_parse_load(ctx, name, revision, &ctx->unres.creating, &mod);
+    LY_CHECK_GOTO(ret, cleanup);
 
-    /* resolve unres and revert, if needed */
-    LY_CHECK_GOTO(ret = lys_compile_unres_glob(ctx, &unres), cleanup);
+    /* implement */
+    ret = _lys_set_implemented(mod, features, &ctx->unres);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (!(ctx->flags & LY_CTX_EXPLICIT_COMPILE)) {
+        /* create dep set for the module and mark all the modules that will be (re)compiled */
+        LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &ctx->unres.dep_sets, mod), cleanup);
+
+        /* (re)compile the whole dep set (other dep sets will have no modules marked for compilation) */
+        LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &ctx->unres), cleanup);
+
+        /* unres resolved */
+        lys_unres_glob_erase(&ctx->unres);
+    }
 
 cleanup:
     if (ret) {
-        lys_compile_unres_glob_revert(ctx, &unres);
-        result = NULL;
+        lys_unres_glob_revert(ctx, &ctx->unres);
+        lys_unres_glob_erase(&ctx->unres);
+        mod = NULL;
     }
-    lys_compile_unres_glob_erase(ctx, &unres);
-    return result;
+    return mod;
 }
 
 API LY_ERR
@@ -224,13 +238,13 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
 
     ctx = calloc(1, sizeof *ctx);
-    LY_CHECK_ERR_RET(!ctx, LOGMEM(NULL), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!ctx, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
     /* dictionary */
     lydict_init(&ctx->dict);
 
     /* plugins */
-    LY_CHECK_ERR_RET(lyplg_init(), LOGINT(NULL), LY_EINT);
+    LY_CHECK_ERR_GOTO(lyplg_init(), LOGINT(NULL); rc = LY_EINT, cleanup);
 
     /* initialize thread-specific keys */
     while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
@@ -242,7 +256,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
     ctx->flags = options;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
-        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, error);
+        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
         for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
             *sep = 0;
@@ -262,9 +276,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
         free(search_dir_list);
 
         /* If ly_ctx_set_searchdir() failed, the error is already logged. Just exit */
-        if (rc != LY_SUCCESS) {
-            goto error;
-        }
+        LY_CHECK_GOTO(rc, cleanup);
     }
     ctx->change_count = 1;
 
@@ -275,33 +287,31 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 
     /* create dummy in */
     rc = ly_in_new_memory(internal_modules[0].data, &in);
-    LY_CHECK_GOTO(rc, error);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NO_YANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
-        LY_CHECK_GOTO(rc = lys_create_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
-                NULL, NULL, NULL, &unres, &module), error);
+        LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, NULL, &unres.creating, &module), cleanup);
+        if (internal_modules[i].implemented || (ctx->flags & LY_CTX_ALL_IMPLEMENTED)) {
+            LY_CHECK_GOTO(rc = lys_implement(module, NULL, &unres), cleanup);
+        }
     }
-
-    /* resolve global unres */
-    LY_CHECK_GOTO(rc = lys_compile_unres_glob(ctx, &unres), error);
 
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
         /* compile now */
-        LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), error);
+        LY_CHECK_GOTO(rc = ly_ctx_compile(ctx), cleanup);
         ctx->flags &= ~LY_CTX_EXPLICIT_COMPILE;
     }
 
+cleanup:
     ly_in_free(in, 0);
-    lys_compile_unres_glob_erase(ctx, &unres);
-    *new_ctx = ctx;
-    return rc;
-
-error:
-    ly_in_free(in, 0);
-    lys_compile_unres_glob_erase(ctx, &unres);
-    ly_ctx_destroy(ctx);
+    lys_unres_glob_erase(&unres);
+    if (rc) {
+        ly_ctx_destroy(ctx);
+    } else {
+        *new_ctx = ctx;
+    }
     return rc;
 }
 
@@ -496,45 +506,30 @@ ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, in
 API LY_ERR
 ly_ctx_compile(struct ly_ctx *ctx)
 {
-    struct lys_module *mod;
-    uint32_t i;
-    ly_bool recompile = 0;
+    LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, ctx, LY_EINVAL);
 
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
-        if (mod->to_compile) {
-            /* if was not implemented, will be */
-            mod->implemented = 1;
+    /* create dep sets and mark all the modules that will be (re)compiled */
+    LY_CHECK_GOTO(ret = lys_unres_dep_sets_create(ctx, &ctx->unres.dep_sets, NULL), cleanup);
 
-            recompile = 1;
-        }
+    /* (re)compile all the dep sets */
+    LY_CHECK_GOTO(ret = lys_compile_depset_all(ctx, &ctx->unres), cleanup);
+
+cleanup:
+    if (ret) {
+        /* revert changes of modules */
+        lys_unres_glob_revert(ctx, &ctx->unres);
     }
-
-    if (!recompile) {
-        /* no recompilation needed */
-        return LY_SUCCESS;
-    }
-
-    /* recompile */
-    LY_CHECK_RET(lys_recompile(ctx, 1));
-
-    /* everything is fine, clear the flags */
-    for (i = 0; i < ctx->list.count; ++i) {
-        mod = ctx->list.objs[i];
-        if (mod->to_compile) {
-            mod->to_compile = 0;
-        }
-    }
-
-    return LY_SUCCESS;
+    lys_unres_glob_erase(&ctx->unres);
+    return ret;
 }
 
 API uint16_t
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
+
     return ctx->flags;
 }
 
@@ -542,14 +537,22 @@ API LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_ERR lyrc = LY_SUCCESS;
+    struct lys_module *mod;
+    uint32_t i;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         ctx->flags |= LY_CTX_SET_PRIV_PARSED;
-        /* recompile to set the priv pointers */
-        lyrc = lys_recompile(ctx, 0);
+        /* recompile the whole context to set the priv pointers */
+        for (i = 0; i < ctx->list.count; ++i) {
+            mod = ctx->list.objs[i];
+            if (mod->implemented) {
+                mod->to_compile = 1;
+            }
+        }
+        lyrc = ly_ctx_compile(ctx);
         if (lyrc) {
             ly_ctx_unset_options(ctx, LY_CTX_SET_PRIV_PARSED);
         }
@@ -615,7 +618,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
         uint32_t index;
 
         index = 0;
-        while ((mod = (struct lys_module *)ly_ctx_get_module_iter(ctx, &index))) {
+        while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
             lysc_node_clear_all_priv(mod);
         }
     }
@@ -654,7 +657,7 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->imp_clb;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {
     LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
@@ -758,7 +761,7 @@ ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t ke
     uint32_t index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, 0, key_offset, &index))) {
-        if (mod->latest_revision) {
+        if (mod->latest_revision & LYS_MOD_LATEST_REV) {
             return mod;
         }
     }
@@ -925,13 +928,15 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
 
     for (uint32_t v = 0; v < ctx->list.count; ++v) {
         mod = ctx->list.objs[v];
-        if (mod->latest_revision == 2) {
-            mod->latest_revision = 1;
+        if (mod->latest_revision & LYS_MOD_LATEST_SEARCHDIRS) {
+            mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+            assert(mod->latest_revision & LYS_MOD_LATEST_REV);
         }
         if (mod->parsed && mod->parsed->includes) {
             for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
-                if (mod->parsed->includes[u].submodule->latest_revision == 2) {
-                    mod->parsed->includes[u].submodule->latest_revision = 1;
+                if (mod->parsed->includes[u].submodule->latest_revision & LYS_MOD_LATEST_SEARCHDIRS) {
+                    mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
+                    assert(mod->latest_revision & LYS_MOD_LATEST_REV);
                 }
             }
         }
@@ -1198,19 +1203,31 @@ error:
 API void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
+    struct lys_module *mod;
+
     if (!ctx) {
         return;
     }
 
     /* models list */
     for ( ; ctx->list.count; ctx->list.count--) {
+        mod = ctx->list.objs[ctx->list.count - 1];
+
         /* remove the module */
+        if (mod->implemented) {
+            mod->implemented = 0;
+            lysc_module_free(mod->compiled);
+            mod->compiled = NULL;
+        }
         lys_module_free(ctx->list.objs[ctx->list.count - 1]);
     }
     free(ctx->list.objs);
 
     /* search paths list */
     ly_set_erase(&ctx->search_paths, free);
+
+    /* leftover unres */
+    lys_unres_glob_erase(&ctx->unres);
 
     /* clean the error list */
     ly_err_clean(ctx, 0);

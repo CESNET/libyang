@@ -16,7 +16,6 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "libyang.h"
@@ -79,7 +78,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
 
     /* check leafref target existence */
     if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, errmsg);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "%s", errmsg);
         free(errmsg);
         return ret;
     }
@@ -132,7 +131,8 @@ const struct lyplg_type_record plugins_leafref[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_leafref,
         .plugin.duplicate = lyplg_type_dup_leafref,
-        .plugin.free = lyplg_type_free_leafref
+        .plugin.free = lyplg_type_free_leafref,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

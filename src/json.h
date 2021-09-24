@@ -54,11 +54,11 @@ struct lyjson_ctx {
     const struct ly_ctx *ctx;
     struct ly_in *in;       /* input structure */
 
-    struct ly_set status;   /* stack of LYJSON_PARSER_STATUS values corresponding to the JSON items being processed */
+    struct ly_set status;   /* stack of ::LYJSON_PARSER_STATUS values corresponding to the JSON items being processed */
 
-    const char *value;      /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
-    size_t value_len;       /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
-    ly_bool dynamic;        /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
+    const char *value;      /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT */
+    size_t value_len;       /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT */
+    ly_bool dynamic;        /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT */
     uint32_t depth;         /* current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
 
     struct {
@@ -77,7 +77,7 @@ struct lyjson_ctx {
  *
  * @param[in] ctx libyang context.
  * @param[in] in JSON string data to parse.
- * @param[out] jsonctx New JSON context with status ::LYJSON_VALUE.
+ * @param[out] jsonctx New JSON context with status referring the parsed value.
  * @return LY_ERR value.
  */
 LY_ERR lyjson_ctx_new(const struct ly_ctx *ctx,  struct ly_in *in, struct lyjson_ctx **jsonctx);
@@ -87,7 +87,7 @@ LY_ERR lyjson_ctx_new(const struct ly_ctx *ctx,  struct ly_in *in, struct lyjson
  *
  * @param[in] jsonctx JSON context to check.
  * @param[in] index Index of the token, starting by 0 for the last token
- * @return LYJSON_ERROR in case of invalid index, other LYJSON_PARSER_STATUS corresponding to the token.
+ * @return ::LYJSON_ERROR in case of invalid index, other ::LYJSON_PARSER_STATUS corresponding to the token.
  */
 enum LYJSON_PARSER_STATUS lyjson_ctx_status(struct lyjson_ctx *jsonctx, uint32_t index);
 
@@ -100,7 +100,7 @@ enum LYJSON_PARSER_STATUS lyjson_ctx_status(struct lyjson_ctx *jsonctx, uint32_t
 const char *lyjson_token2str(enum LYJSON_PARSER_STATUS status);
 
 /**
- * @brief Move to the next JSON artefact and update parser status.
+ * @brief Move to the next JSON artifact and update parser status.
  *
  * @param[in] jsonctx XML context to move.
  * @param[out] status Optional parameter to provide new parser status

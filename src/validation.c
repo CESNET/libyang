@@ -12,7 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "validation.h"
 
@@ -179,18 +178,19 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
  * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
  * the first top-level sibling.
  * @param[in] node_when Set with nodes with "when" conditions.
+ * @param[in,out] node_types Set with nodes with unresolved types, remove any with false "when" parents.
  * @param[in,out] diff Validation diff.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value on error.
  */
 static LY_ERR
 lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
-        struct lyd_node **diff)
+        struct ly_set *node_types, struct lyd_node **diff)
 {
     LY_ERR ret;
-    uint32_t i;
+    uint32_t i, idx;
     const struct lysc_when *disabled;
-    struct lyd_node *node = NULL;
+    struct lyd_node *node = NULL, *elem;
 
     if (!node_when->count) {
         return LY_SUCCESS;
@@ -215,6 +215,18 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                         ret = lyd_val_diff_add(node, LYD_DIFF_OP_DELETE, diff);
                         LY_CHECK_GOTO(ret, error);
                     }
+
+                    /* remove from node types set, if present */
+                    if (node_types) {
+                        LYD_TREE_DFS_BEGIN(node, elem) {
+                            if (ly_set_contains(node_types, elem, &idx)) {
+                                LY_CHECK_GOTO(ret = ly_set_rm_index(node_types, idx, NULL), error);
+                            }
+                            LYD_TREE_DFS_END(node, elem);
+                        }
+                    }
+
+                    /* free */
                     lyd_free_tree(node);
                 } else {
                     /* invalid data */
@@ -307,7 +319,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
         uint32_t prev_count;
         do {
             prev_count = node_when->count;
-            LY_CHECK_RET(lyd_validate_unres_when(tree, mod, node_when, diff));
+            LY_CHECK_RET(lyd_validate_unres_when(tree, mod, node_when, node_types, diff));
             /* there must have been some when conditions resolved */
         } while (prev_count > node_when->count);
 
@@ -654,21 +666,44 @@ lyd_validate_autodel_case_dflt(struct lyd_node **first, struct lyd_node *node, c
     }
 }
 
-LY_ERR
-lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
+/**
+ * @brief Validate new siblings in choices, recursively for nested choices.
+ *
+ * @param[in,out] first First sibling.
+ * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
+ * @param[in] mod Module of the siblings, NULL for nested siblings.
+ * @param[in,out] diff Validation diff.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_validate_choice_r(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
         struct lyd_node **diff)
 {
-    struct lyd_node *next, *node;
     const struct lysc_node *snode = NULL;
-
-    assert(first && (sparent || mod));
 
     while (*first && (snode = lys_getnext(snode, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
         /* check case duplicites */
         if (snode->nodetype == LYS_CHOICE) {
             LY_CHECK_RET(lyd_validate_cases(first, mod, (struct lysc_node_choice *)snode, diff));
+
+            /* check for nested choice */
+            LY_CHECK_RET(lyd_validate_choice_r(first, snode, mod, diff));
         }
     }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
+        struct lyd_node **diff)
+{
+    struct lyd_node *next, *node;
+
+    assert(first && (sparent || mod));
+
+    /* validate choices */
+    LY_CHECK_RET(lyd_validate_choice_r(first, sparent, mod, diff));
 
     LY_LIST_FOR_SAFE(*first, next, node) {
         if (mod && (lyd_owner_module(node) != mod)) {
@@ -935,7 +970,7 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *c
 
     first = *((struct lyd_node **)val1_p);
     second = *((struct lyd_node **)val2_p);
-    action = (LY_ARRAY_COUNT_TYPE)cb_data;
+    action = (uintptr_t)cb_data;
 
     assert(first && (first->schema->nodetype == LYS_LIST));
     assert(second && (second->schema == first->schema));
@@ -1041,6 +1076,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     size_t key_len;
     ly_bool dyn;
     const void *hash_key;
+    void *cb_data;
     struct hash_table **uniqtables = NULL;
     struct lyd_value *val;
     struct ly_ctx *ctx = snode->module->ctx;
@@ -1084,7 +1120,8 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
         LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         x = LY_ARRAY_COUNT(uniques);
         for (v = 0; v < x; v++) {
-            uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, (void *)(v + 1L), 0);
+            cb_data = (void *)(uintptr_t)(v + 1L);
+            uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, cb_data, 0);
             LY_CHECK_ERR_GOTO(!uniqtables[v], LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
 
@@ -1258,6 +1295,7 @@ lyd_validate_obsolete(const struct lyd_node *node)
 static LY_ERR
 lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
 {
+    LY_ERR ret;
     struct lyxp_set xp_set;
     struct lysc_must *musts;
     const struct lyd_node *tree;
@@ -1273,8 +1311,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         } else if (int_opts & LYD_INTOPT_REPLY) {
             schema = &((struct lysc_node_action *)node->schema)->output.node;
         } else {
-            LOGINT(LYD_CTX(node));
-            return LY_EINT;
+            LOGINT_RET(LYD_CTX(node));
         }
     } else {
         schema = node->schema;
@@ -1293,8 +1330,13 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         memset(&xp_set, 0, sizeof xp_set);
 
         /* evaluate must */
-        LY_CHECK_RET(lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
-                musts[u].prefixes, node, tree, &xp_set, LYXP_SCHEMA));
+        ret = lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
+                musts[u].prefixes, node, tree, &xp_set, LYXP_SCHEMA);
+        if (ret == LY_EINCOMPLETE) {
+            LOGINT_RET(LYD_CTX(node));
+        } else if (ret) {
+            return ret;
+        }
 
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
@@ -1327,7 +1369,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
     /* validate all restrictions of nodes themselves */
     LY_LIST_FOR_SAFE(first, next, node) {
-        if (mod && (lyd_owner_module(node) != mod)) {
+        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
             /* all top-level data from this module checked */
             break;
         }
@@ -1336,7 +1378,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
         /* opaque data */
         if (!node->schema) {
-            LOGVAL(LYD_CTX(node), LYVE_DATA, "Opaque node \"%s\" found.", ((struct lyd_node_opaq *)node)->name.name);
+            LOGVAL(LYD_CTX(node), LYVE_DATA, "Invalid opaque node \"%s\" found.", ((struct lyd_node_opaq *)node)->name.name);
             LOG_LOCBACK(0, 1, 0, 0);
             return LY_EVALID;
         }
@@ -1368,6 +1410,11 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
     LY_CHECK_RET(lyd_validate_siblings_schema_r(first, parent, sparent, mod ? mod->compiled : NULL, val_opts, int_opts));
 
     LY_LIST_FOR(first, node) {
+        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
+            /* all top-level data from this module checked */
+            break;
+        }
+
         /* validate all children recursively */
         LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, val_opts, int_opts));
 
@@ -1412,6 +1459,10 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
     struct lyd_node *node;
 
     LYD_TREE_DFS_BEGIN(root, node) {
+        if (!node->schema) {
+            goto next_node;
+        }
+
         LY_LIST_FOR(node->meta, meta) {
             if ((*(const struct lysc_type **)meta->annotation->substmts[ANNOTATION_SUBSTMT_TYPE].storage)->plugin->validate) {
                 /* metadata type resolution */
@@ -1436,6 +1487,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
         }
         LY_CHECK_RET(lysc_node_ext_tovalidate(node_exts, node));
 
+next_node:
         LYD_TREE_DFS_END(root, node);
     }
 
@@ -1492,13 +1544,21 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_GOTO(ret, cleanup);
 
         /* our first module node pointer may no longer be the first */
-        while (*first2 && (*first2)->prev->next && (lyd_owner_module(*first2) == lyd_owner_module((*first2)->prev))) {
-            *first2 = (*first2)->prev;
+        first = *first2;
+        lyd_first_module_sibling(&first, mod);
+        if (!first || (first == *tree)) {
+            first2 = tree;
+        } else {
+            first2 = &first;
         }
 
         if (validate_subtree) {
             /* process nested nodes */
             LY_LIST_FOR(*first2, iter) {
+                if (lyd_owner_module(iter) != mod) {
+                    break;
+                }
+
                 ret = lyd_validate_subtree(iter, node_when_p, node_exts_p, node_types_p, meta_types_p,
                         (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
                 LY_CHECK_GOTO(ret, cleanup);
@@ -1650,7 +1710,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     lyd_val_op_merge_find(op_tree, op_node, dep_tree, &op_subtree, &tree_sibling, &tree_parent);
     op_parent = lyd_parent(op_subtree);
     lyd_unlink_tree(op_subtree);
-    lyd_insert_node(tree_parent, &tree_sibling, op_subtree);
+    lyd_insert_node(tree_parent, &tree_sibling, op_subtree, 0);
     if (!dep_tree) {
         dep_tree = tree_sibling;
     }
@@ -1694,7 +1754,7 @@ cleanup:
     /* restore operation tree */
     lyd_unlink_tree(op_subtree);
     if (op_parent) {
-        lyd_insert_node(op_parent, NULL, op_subtree);
+        lyd_insert_node(op_parent, NULL, op_subtree, 0);
     }
 
     ly_set_erase(&node_when, NULL);

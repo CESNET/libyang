@@ -52,7 +52,7 @@
         const char *data = "<port xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</port>"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
         CHECK_LYSC_NODE(tree->schema, NULL, 0, 0x5, 1, "port", 0, LYS_LEAF, 0, 0, 0, 0); \
-        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, ## __VA_ARGS__); \
+        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, __VA_ARGS__); \
         lyd_free_all(tree); \
     }
 
@@ -62,8 +62,24 @@
         const char *data = "{\"" MOD_NAME ":port\":" DATA "}"; \
         CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree); \
         CHECK_LYSC_NODE(tree->schema, NULL, 0, 0x5, 1, "port", 0, LYS_LEAF, 0, 0, 0, 0); \
-        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, ## __VA_ARGS__); \
+        CHECK_LYD_NODE_TERM((struct lyd_node_term *)tree, 0, 0, 0, 0, 1, TYPE, __VA_ARGS__); \
         lyd_free_all(tree); \
+    }
+
+#define TEST_SUCCESS_LYB(MOD_NAME, NODE_NAME, DATA) \
+    { \
+        struct lyd_node *tree_1; \
+        struct lyd_node *tree_2; \
+        char *xml_out, *data; \
+        data = "<" NODE_NAME " xmlns=\"urn:tests:" MOD_NAME "\">" DATA "</" NODE_NAME ">"; \
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree_1); \
+        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_non_null(tree_2); \
+        CHECK_LYD(tree_1, tree_2); \
+        free(xml_out); \
+        lyd_free_all(tree_1); \
+        lyd_free_all(tree_2); \
     }
 
 #define TEST_ERROR_XML(MOD_NAME, DATA) \
@@ -86,7 +102,7 @@ static void
 test_schema_yang(void **state)
 {
     const char *schema;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_leaf *lysc_leaf;
     struct lysp_node_leaf *lysp_leaf;
     struct lysc_range *range;
@@ -224,26 +240,22 @@ test_schema_yang(void **state)
     /* TEST ERROR -60 .. 0 | 0 .. 127 */
     schema = MODULE_CREATE_YANG("ERR0", "leaf port {type int8 {range \"-60 .. 0 | 0 .. 127\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).",
-            "/ERR0:port");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "/ERR0:port");
 
     /* TEST ERROR 0 .. 128 */
     schema = MODULE_CREATE_YANG("ERR1", "leaf port {type int8 {range \"0 .. 128\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.",
-            "/ERR1:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "/ERR1:port");
 
     /* TEST ERROR -129 .. 126 */
     schema = MODULE_CREATE_YANG("ERR2", "leaf port {type int8 {range \"-129 .. 0\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.",
-            "/ERR2:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/ERR2:port");
 
     /* TEST ERROR 0 */
     schema = MODULE_CREATE_YANG("ERR3", "leaf port {type int8 {range \"-129\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.",
-            "/ERR3:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/ERR3:port");
 
     /*
      * TEST MODULE SUBTYPE
@@ -647,7 +659,7 @@ static void
 test_schema_yin(void **state)
 {
     const char *schema;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_node_leaf *lysc_leaf;
     struct lysp_node_leaf *lysp_leaf;
     struct lysc_range *range;
@@ -733,8 +745,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value = \"min .. 0 | 0 .. 12\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).",
-            "/TE0:port");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "/TE0:port");
 
     /* TEST ERROR 0 .. 128 */
     schema = MODULE_CREATE_YIN("TE1",
@@ -742,8 +753,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value = \"0 .. 128\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.",
-            "/TE1:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "/TE1:port");
 
     /* TEST ERROR -129 .. 126 */
     schema = MODULE_CREATE_YIN("TE2",
@@ -751,8 +761,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value =\"-129 .. 126\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.",
-            "/TE2:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/TE2:port");
 
     /* TEST YIN */
     schema = MODULE_CREATE_YIN("TS0",
@@ -999,7 +1008,7 @@ test_schema_print(void **state)
 {
     const char *schema_yang, *schema_yin;
     char *printed;
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     /* test print yang to yin */
     schema_yang = MODULE_CREATE_YANG("PRINT0",
@@ -1027,7 +1036,7 @@ test_schema_print(void **state)
     schema_yang = MODULE_CREATE_YANG("PRINT1",
             "\n"
             "  description\n"
-            "    \"desc\";\n"
+            "    \"desc\";\n\n"
             "  leaf port {\n"
             "    type int8 {\n"
             "      range \"0 .. 50 | 127\";\n"
@@ -1072,6 +1081,7 @@ test_schema_print(void **state)
 
     /* test print yin to yang */
     schema_yang = MODULE_CREATE_YANG("PRINT3",
+            "\n"
             "  leaf port {\n"
             "    type int8;\n"
             "  }\n");
@@ -1268,6 +1278,19 @@ test_data_json(void **state)
 }
 
 static void
+test_data_lyb(void **state)
+{
+    const char *schema;
+
+    schema = MODULE_CREATE_YANG("lyb", "leaf port {type int8;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    TEST_SUCCESS_LYB("lyb", "port", "-128");
+    TEST_SUCCESS_LYB("lyb", "port", "0");
+    TEST_SUCCESS_LYB("lyb", "port", "1");
+    TEST_SUCCESS_LYB("lyb", "port", "127");
+}
+
+static void
 test_diff(void **state)
 {
     const char *schema;
@@ -1378,7 +1401,7 @@ test_plugin_store(void **state)
 {
     const char *val_text = NULL;
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value value = {0};
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
@@ -1512,7 +1535,7 @@ static void
 test_plugin_compare(void **state)
 {
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value values[10];
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
@@ -1597,7 +1620,7 @@ static void
 test_plugin_print(void **state)
 {
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value values[10];
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
@@ -1637,7 +1660,7 @@ static void
 test_plugin_dup(void **state)
 {
     struct ly_err_item *err = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lyd_value values[10];
     struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type[2];
@@ -1716,6 +1739,7 @@ main(void)
         UTEST(test_schema_print),
         UTEST(test_data_xml),
         UTEST(test_data_json),
+        UTEST(test_data_lyb),
         UTEST(test_diff),
         UTEST(test_print),
 

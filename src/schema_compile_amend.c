@@ -1,9 +1,10 @@
 /**
  * @file schema_compile_amend.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation of augments, deviations, and refines.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -343,6 +344,9 @@ static LY_ERR
 lysp_type_dup(const struct ly_ctx *ctx, struct lysp_type *type, const struct lysp_type *orig_type)
 {
     LY_ERR ret = LY_SUCCESS;
+
+    /* array macros read previous data so we must zero it */
+    memset(type, 0, sizeof *type);
 
     DUP_STRING_GOTO(ctx, orig_type->name, type->name, ret, done);
 
@@ -715,10 +719,10 @@ lys_apply_refine(struct lysc_ctx *ctx, struct lysp_refine *rfn, struct lysp_node
 
     /* config */
     if (rfn->flags & LYS_CONFIG_MASK) {
-        if (ctx->options & LYS_COMPILE_NO_CONFIG) {
+        if (ctx->compile_opts & LYS_COMPILE_NO_CONFIG) {
             LOGWRN(ctx->ctx, "Refining config inside %s has no effect (%s).",
-                    (ctx->options & (LYS_IS_INPUT | LYS_IS_OUTPUT)) ? "RPC/action" :
-                    ctx->options & LYS_IS_NOTIF ? "notification" : "a subtree ignoring config", ctx->path);
+                    (ctx->compile_opts & (LYS_IS_INPUT | LYS_IS_OUTPUT)) ? "RPC/action" :
+                    ctx->compile_opts & LYS_IS_NOTIF ? "notification" : "a subtree ignoring config", ctx->path);
         } else {
             target->flags &= ~LYS_CONFIG_MASK;
             target->flags |= rfn->flags & LYS_CONFIG_MASK;
@@ -1068,7 +1072,9 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
         } \
         LY_ARRAY_DECREMENT(ORIG_ARRAY); \
         FREE_FUNC(ctx->ctx, &(ORIG_ARRAY)[v]); \
-        memmove(&(ORIG_ARRAY)[v], &(ORIG_ARRAY)[v + 1], (LY_ARRAY_COUNT(ORIG_ARRAY) - v) * sizeof *(ORIG_ARRAY)); \
+        if (v < LY_ARRAY_COUNT(ORIG_ARRAY)) { \
+            memmove(&(ORIG_ARRAY)[v], &(ORIG_ARRAY)[v + 1], (LY_ARRAY_COUNT(ORIG_ARRAY) - v) * sizeof *(ORIG_ARRAY)); \
+        } \
     } \
     if (!LY_ARRAY_COUNT(ORIG_ARRAY)) { \
         LY_ARRAY_FREE(ORIG_ARRAY); \
@@ -1502,6 +1508,8 @@ lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn)
 void
 lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
 {
+    LY_ARRAY_COUNT_TYPE u;
+
     if (!dev_pnode) {
         return;
     }
@@ -1542,6 +1550,12 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
     default:
         LOGINT(ctx);
         return;
+    }
+
+    /* extension parsed tree and children were not duplicated */
+    LY_ARRAY_FOR(dev_pnode->exts, u) {
+        dev_pnode->exts[u].parsed = NULL;
+        dev_pnode->exts[u].child = NULL;
     }
 
     lysp_node_free((struct ly_ctx *)ctx, dev_pnode);
@@ -1701,7 +1715,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
     struct lysc_node_notif **notifs;
     ly_bool allow_mandatory = 0, enabled;
     struct ly_set child_set = {0};
-    uint32_t i, opt_prev = ctx->options;
+    uint32_t i, opt_prev = ctx->compile_opts;
 
     if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
         LOGVAL(ctx->ctx, LYVE_REFERENCE,
@@ -1736,9 +1750,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             LY_CHECK_GOTO(ret = lys_compile_node_choice_child(ctx, pnode, target, &child_set), cleanup);
         } else if (target->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             if (target->nodetype == LYS_INPUT) {
-                ctx->options |= LYS_COMPILE_RPC_INPUT;
+                ctx->compile_opts |= LYS_COMPILE_RPC_INPUT;
             } else {
-                ctx->options |= LYS_COMPILE_RPC_OUTPUT;
+                ctx->compile_opts |= LYS_COMPILE_RPC_OUTPUT;
             }
             LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
         } else {
@@ -1748,7 +1762,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
         /* eval if-features again for the rest of this node processing */
         LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
         if (!enabled) {
-            ctx->options |= LYS_COMPILE_DISABLED;
+            ctx->compile_opts |= LYS_COMPILE_DISABLED;
         }
 
         /* since the augment node is not present in the compiled tree, we need to pass some of its
@@ -1759,21 +1773,22 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
                 node->flags &= ~LYS_MAND_TRUE;
                 lys_compile_mandatory_parents(target, 0);
                 LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.", node->name);
+                        "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.",
+                        node->name);
                 ret = LY_EVALID;
                 goto cleanup;
             }
 
             if (aug_p->when) {
                 /* pass augment's when to all the children */
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
                 LY_CHECK_GOTO(ret, cleanup);
             }
         }
         ly_set_erase(&child_set, NULL);
 
         /* restore options */
-        ctx->options = opt_prev;
+        ctx->compile_opts = opt_prev;
     }
 
     actions = lysc_node_actions_p(target);
@@ -1795,7 +1810,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             /* eval if-features again for the rest of this node processing */
             LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
             if (!enabled) {
-                ctx->options |= LYS_COMPILE_DISABLED;
+                ctx->compile_opts |= LYS_COMPILE_DISABLED;
             }
 
             /* since the augment node is not present in the compiled tree, we need to pass some of its
@@ -1804,14 +1819,14 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
                 node = child_set.snodes[i];
                 if (aug_p->when) {
                     /* pass augment's when to all the actions */
-                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
             }
             ly_set_erase(&child_set, NULL);
 
             /* restore options */
-            ctx->options = opt_prev;
+            ctx->compile_opts = opt_prev;
         }
     }
     if (aug_p->notifs) {
@@ -1830,7 +1845,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
             /* eval if-features again for the rest of this node processing */
             LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
             if (!enabled) {
-                ctx->options |= LYS_COMPILE_DISABLED;
+                ctx->compile_opts |= LYS_COMPILE_DISABLED;
             }
 
             /* since the augment node is not present in the compiled tree, we need to pass some of its
@@ -1839,20 +1854,20 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
                 node = child_set.snodes[i];
                 if (aug_p->when) {
                     /* pass augment's when to all the actions */
-                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, lysc_data_node(target), node, &when_shared);
+                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
             }
             ly_set_erase(&child_set, NULL);
 
             /* restore options */
-            ctx->options = opt_prev;
+            ctx->compile_opts = opt_prev;
         }
     }
 
 cleanup:
     ly_set_erase(&child_set, NULL);
-    ctx->options = opt_prev;
+    ctx->compile_opts = opt_prev;
     return ret;
 }
 
@@ -1887,9 +1902,11 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         lysc_update_path(ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* augment was applied, remove it (index may have changed because other augments could have been applied) */
+        /* augment was applied, remove it (index and the whole set may have changed because other augments
+         * could have been applied) */
         ly_set_rm(&ctx->uses_augs, aug, NULL);
         lysc_augment_free(ctx->ctx, aug);
+        i = 0;
     }
 
     /* top-level augments */
@@ -1919,6 +1936,7 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         /* augment was applied, remove it */
         ly_set_rm(&ctx->augs, aug, NULL);
         lysc_augment_free(ctx->ctx, aug);
+        i = 0;
     }
 
 cleanup:
@@ -2058,6 +2076,7 @@ LY_ERR
 lys_precompile_own_deviations(struct lysc_ctx *ctx)
 {
     LY_ARRAY_COUNT_TYPE u, v, w;
+    struct lys_module *orig_cur_mod;
     const struct lys_module *dev_mod;
     struct lysc_deviation *dev;
     struct lysp_deviate *d;
@@ -2098,8 +2117,15 @@ lys_precompile_own_deviations(struct lysc_ctx *ctx)
             }
         }
         if (not_supported && (LY_ARRAY_COUNT(dev->devs) > 1)) {
+            orig_cur_mod = ctx->cur_mod;
+            ctx->cur_mod = dev->dev_pmods[u]->mod;
+            lysc_update_path(ctx, NULL, "{deviation}");
+            lysc_update_path(ctx, NULL, dev->nodeid->expr);
             LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                     "Multiple deviations of \"%s\" with one of them being \"not-supported\".", dev->nodeid->expr);
+            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(ctx, NULL, NULL);
+            ctx->cur_mod = orig_cur_mod;
             return LY_EVALID;
         }
 
@@ -2144,7 +2170,7 @@ lys_array_add_mod_ref(struct lysc_ctx *ctx, struct lys_module *mod, struct lys_m
  * @return Whether all modules are implemented or not.
  */
 static ly_bool
-lys_precompile_mod_set_all_implemented(const struct ly_set *mod_set)
+lys_precompile_mod_set_is_all_implemented(const struct ly_set *mod_set)
 {
     uint32_t i;
     const struct lys_module *mod;
@@ -2160,31 +2186,39 @@ lys_precompile_mod_set_all_implemented(const struct ly_set *mod_set)
 }
 
 LY_ERR
-lys_precompile_augments_deviations(struct lysc_ctx *ctx)
+lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     LY_ARRAY_COUNT_TYPE u, v;
-    const struct lysp_module *mod_p;
-    struct lys_module *mod;
+    struct lysc_ctx ctx = {0};
+    struct lysp_module *mod_p;
+    struct lys_module *m;
     struct lysp_submodule *submod;
     struct lysp_node_augment *aug;
-    uint32_t idx;
+    uint32_t i;
     struct ly_set mod_set = {0}, set = {0};
 
-    mod_p = ctx->cur_mod->parsed;
+    mod_p = mod->parsed;
+
+    /* prepare context */
+    ctx.ctx = mod->ctx;
+    ctx.cur_mod = mod;
+    ctx.pmod = mod_p;
+    ctx.path_len = 1;
+    ctx.path[0] = '/';
 
     LY_LIST_FOR(mod_p->augments, aug) {
         /* get target module */
-        lysc_update_path(ctx, NULL, "{augment}");
-        lysc_update_path(ctx, NULL, aug->nodeid);
-        ret = lys_nodeid_mod_check(ctx, aug->nodeid, 1, &set, NULL, &mod);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, "{augment}");
+        lysc_update_path(&ctx, NULL, aug->nodeid);
+        ret = lys_nodeid_mod_check(&ctx, aug->nodeid, 1, &set, NULL, &m);
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add this module into the target module augmented_by, if not there and implemented */
-        if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->augmented_by) != LY_EEXIST) ||
-                !lys_precompile_mod_set_all_implemented(&set)) {
+        if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
+                !lys_precompile_mod_set_is_all_implemented(&set)) {
             LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
         }
         ly_set_erase(&set, NULL);
@@ -2192,16 +2226,16 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
 
     LY_ARRAY_FOR(mod_p->deviations, u) {
         /* get target module */
-        lysc_update_path(ctx, NULL, "{deviation}");
-        lysc_update_path(ctx, NULL, mod_p->deviations[u].nodeid);
-        ret = lys_nodeid_mod_check(ctx, mod_p->deviations[u].nodeid, 1, &set, NULL, &mod);
-        lysc_update_path(ctx, NULL, NULL);
-        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, "{deviation}");
+        lysc_update_path(&ctx, NULL, mod_p->deviations[u].nodeid);
+        ret = lys_nodeid_mod_check(&ctx, mod_p->deviations[u].nodeid, 1, &set, NULL, &m);
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add this module into the target module deviated_by, if not there and implemented */
-        if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->deviated_by) != LY_EEXIST) ||
-                !lys_precompile_mod_set_all_implemented(&set)) {
+        if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
+                !lys_precompile_mod_set_is_all_implemented(&set)) {
             LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
         }
         ly_set_erase(&set, NULL);
@@ -2210,65 +2244,68 @@ lys_precompile_augments_deviations(struct lysc_ctx *ctx)
     /* the same for augments and deviations in submodules */
     LY_ARRAY_FOR(mod_p->includes, v) {
         submod = mod_p->includes[v].submodule;
+        ctx.pmod = (struct lysp_module *)submod;
+
         LY_LIST_FOR(submod->augments, aug) {
-            lysc_update_path(ctx, NULL, "{augment}");
-            lysc_update_path(ctx, NULL, aug->nodeid);
-            ret = lys_nodeid_mod_check(ctx, aug->nodeid, 1, &set, NULL, &mod);
-            lysc_update_path(ctx, NULL, NULL);
-            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, "{augment}");
+            lysc_update_path(&ctx, NULL, aug->nodeid);
+            ret = lys_nodeid_mod_check(&ctx, aug->nodeid, 1, &set, NULL, &m);
+            lysc_update_path(&ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
-            if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->augmented_by) != LY_EEXIST) ||
-                    !lys_precompile_mod_set_all_implemented(&set)) {
+            if ((lys_array_add_mod_ref(&ctx, mod, &m->augmented_by) != LY_EEXIST) ||
+                    !lys_precompile_mod_set_is_all_implemented(&set)) {
                 LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
             }
             ly_set_erase(&set, NULL);
         }
 
         LY_ARRAY_FOR(submod->deviations, u) {
-            lysc_update_path(ctx, NULL, "{deviation}");
-            lysc_update_path(ctx, NULL, submod->deviations[u].nodeid);
-            ret = lys_nodeid_mod_check(ctx, submod->deviations[u].nodeid, 1, &set, NULL, &mod);
-            lysc_update_path(ctx, NULL, NULL);
-            lysc_update_path(ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, "{deviation}");
+            lysc_update_path(&ctx, NULL, submod->deviations[u].nodeid);
+            ret = lys_nodeid_mod_check(&ctx, submod->deviations[u].nodeid, 1, &set, NULL, &m);
+            lysc_update_path(&ctx, NULL, NULL);
+            lysc_update_path(&ctx, NULL, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
-            if ((lys_array_add_mod_ref(ctx, ctx->cur_mod, &mod->deviated_by) != LY_EEXIST) ||
-                    !lys_precompile_mod_set_all_implemented(&set)) {
+            if ((lys_array_add_mod_ref(&ctx, mod, &m->deviated_by) != LY_EEXIST) ||
+                    !lys_precompile_mod_set_is_all_implemented(&set)) {
                 LY_CHECK_GOTO(ret = ly_set_merge(&mod_set, &set, 0, NULL), cleanup);
             }
             ly_set_erase(&set, NULL);
         }
     }
 
-    if (mod_set.count) {
-        /* descending order to make sure the modules are implemented in the right order */
-        idx = mod_set.count;
-        do {
-            --idx;
-            mod = mod_set.objs[idx];
+    for (i = 0; i < mod_set.count; ++i) {
+        m = mod_set.objs[i];
 
-            if (mod == ctx->cur_mod) {
-                /* will be applied normally later */
+        if (m == mod) {
+            /* will be applied normally later */
+            continue;
+        }
+
+        /* we do not actually need the target modules compiled with out amends, they just need to be implemented
+         * not compiled yet and marked for compilation */
+
+        if (!m->implemented) {
+            /* implement the target module */
+            r = lys_implement(m, NULL, unres);
+            if (r == LY_ERECOMPILE) {
+                /* implement all the modules right away to save possible later recompilation */
+                ret = r;
                 continue;
-            }
-
-            if (!mod->implemented) {
-                /* implement (compile) the target module with our augments/deviations */
-                LY_CHECK_GOTO(ret = lys_set_implemented_r(mod, NULL, ctx->unres), cleanup);
-            } else if (!ctx->unres->full_compilation) {
-                /* target module was already compiled, we need to recompile it */
-                ctx->unres->recompile = 1;
-            }
-            /* else the module is implemented and was compiled in this compilation run or will yet be;
-             * we actually do not need the module compiled now because its compiled nodes will not be accessed,
-             * augments/deviations are applied during the target module compilation and the rest is in global unres */
-
-            if (ctx->unres->recompile) {
-                /* we need some module recompiled and cannot continue */
+            } else if (r) {
+                /* error */
+                ret = r;
                 goto cleanup;
             }
-        } while (idx);
+        } else if (m->compiled) {
+            /* target module was already compiled without our amends (augment/deviation), we need to recompile it */
+            m->to_compile = 1;
+            ret = LY_ERECOMPILE;
+            continue;
+        }
     }
 
 cleanup:
@@ -2293,7 +2330,7 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
                 if (m->augmented_by[u] == mod) {
                     /* keep the order */
                     if (u < count - 1) {
-                        memmove(m->augmented_by + u, m->augmented_by + u + 1, (count - u) * sizeof *m->augmented_by);
+                        memmove(m->augmented_by + u, m->augmented_by + u + 1, (count - u - 1) * sizeof *m->augmented_by);
                     }
                     LY_ARRAY_DECREMENT(m->augmented_by);
                     break;
@@ -2311,7 +2348,7 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
                 if (m->deviated_by[u] == mod) {
                     /* keep the order */
                     if (u < count - 1) {
-                        memmove(m->deviated_by + u, m->deviated_by + u + 1, (count - u) * sizeof *m->deviated_by);
+                        memmove(m->deviated_by + u, m->deviated_by + u + 1, (count - u - 1) * sizeof *m->deviated_by);
                     }
                     LY_ARRAY_DECREMENT(m->deviated_by);
                     break;

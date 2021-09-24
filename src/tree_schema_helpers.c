@@ -137,6 +137,22 @@ lysp_type_match(const char *name, struct lysp_node *node)
     return NULL;
 }
 
+static const struct lysp_node_grp *
+lysp_grouping_match(const char *name, struct lysp_node *node)
+{
+    const struct lysp_node_grp *groupings, *grp_iter;
+
+    groupings = lysp_node_groupings(node);
+    LY_LIST_FOR(groupings, grp_iter) {
+        if (!strcmp(name, grp_iter->name)) {
+            /* match */
+            return grp_iter;
+        }
+    }
+
+    return NULL;
+}
+
 static LY_DATA_TYPE
 lysp_type_str2builtin(const char *name, size_t len)
 {
@@ -259,6 +275,9 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
         }
     }
 
+    /* go to main module if in submodule */
+    local_module = local_module->mod->parsed;
+
     /* search in top-level typedefs */
     if (local_module->typedefs) {
         LY_ARRAY_FOR(local_module->typedefs, u) {
@@ -270,7 +289,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
         }
     }
 
-    /* search in submodules' typedefs */
+    /* search in all submodules' typedefs */
     LY_ARRAY_FOR(local_module->includes, u) {
         typedefs = local_module->includes[u].submodule->typedefs;
         LY_ARRAY_FOR(typedefs, v) {
@@ -309,20 +328,53 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
 }
 
 /**
+ * @brief Insert @p name to hash table and if @p name has already
+ * been added, then log an error.
+ *
+ * This function is used to detect duplicate names.
+ *
+ * @param[in,out] ctx Context to log the error.
+ * @param[in,out] ht Hash table with top-level names.
+ * @param[in] name Inserted top-level identifier.
+ * @param[in] statement The name of the statement type from which
+ * @p name originated (eg typedef, feature, ...).
+ * @param[in] err_detail Optional error specification.
+ * @return LY_ERR, but LY_EEXIST is mapped to LY_EVALID.
+ */
+static LY_ERR
+lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
+        const char *name, const char *statement, const char *err_detail)
+{
+    LY_ERR ret;
+    uint32_t hash;
+
+    hash = dict_hash(name, strlen(name));
+    ret = lyht_insert(ht, &name, hash, NULL);
+    if (ret == LY_EEXIST) {
+        if (err_detail) {
+            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT2, name, statement, err_detail);
+        } else {
+            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, name, statement);
+        }
+        ret = LY_EVALID;
+    }
+
+    return ret;
+}
+
+/**
  * @brief Check name of a new type to avoid name collisions.
  *
  * @param[in] ctx Parser context, module where the type is being defined is taken from here.
  * @param[in] node Schema node where the type is being defined, NULL in case of a top-level typedef.
  * @param[in] tpdf Typedef definition to check.
  * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
- *            typedefs are checked, caller is supposed to free the table.
- * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
- *            typedefs are checked, caller is supposed to free the table.
- * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
+ * typedefs are checked, caller is supposed to free the table.
+ * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
 lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
-        struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
+        struct hash_table *tpdfs_global)
 {
     struct lysp_node *parent;
     uint32_t hash;
@@ -338,8 +390,9 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
     name_len = strlen(name);
 
     if (lysp_type_str2builtin(name, name_len)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
-        return LY_EEXIST;
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                "Duplicate identifier \"%s\" of typedef statement - name collision with a built-in type.", name);
+        return LY_EVALID;
     }
 
     /* check locally scoped typedefs (avoid name shadowing) */
@@ -350,32 +403,32 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
                 break;
             }
             if (!strcmp(name, typedefs[u].name)) {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
-                return LY_EEXIST;
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of typedef statement - name collision with sibling type.", name);
+                return LY_EVALID;
             }
         }
         /* search typedefs in parent's nodes */
         for (parent = node->parent; parent; parent = parent->parent) {
             if (lysp_type_match(name, parent)) {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
-                return LY_EEXIST;
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of typedef statement - name collision with another scoped type.", name);
+                return LY_EVALID;
             }
         }
     }
 
     /* check collision with the top-level typedefs */
-    hash = dict_hash(name, name_len);
     if (node) {
-        lyht_insert(tpdfs_scoped, &name, hash, NULL);
+        hash = dict_hash(name, name_len);
         if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
-            return LY_EEXIST;
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                    "Duplicate identifier \"%s\" of typedef statement - scoped type collide with a top-level type.", name);
+            return LY_EVALID;
         }
     } else {
-        if (lyht_insert(tpdfs_global, &name, hash, NULL)) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with another top-level type.", name);
-            return LY_EEXIST;
-        }
+        LY_CHECK_RET(lysp_check_dup_ht_insert(ctx, tpdfs_global, name, "typedef",
+                "name collision with another top-level type"));
         /* it is not necessary to test collision with the scoped types - in lysp_check_typedefs, all the
          * top-level typedefs are inserted into the tables before the scoped typedefs, so the collision
          * is detected in the first branch few lines above */
@@ -391,14 +444,18 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
 static ly_bool
 lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
-    return strcmp(val1, val2) == 0 ? 1 : 0;
+    char *id1, *id2;
+
+    id1 = *(char **)val1;
+    id2 = *(char **)val2;
+
+    return strcmp(id1, id2) == 0 ? 1 : 0;
 }
 
 LY_ERR
 lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
-    struct hash_table *ids_scoped;
     const struct lysp_tpdf *typedefs;
     LY_ARRAY_COUNT_TYPE u, v;
     uint32_t i;
@@ -406,28 +463,124 @@ lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 
     /* check name collisions - typedefs and groupings */
     ids_global = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
-    ids_scoped = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
     LY_ARRAY_FOR(mod->typedefs, v) {
-        ret = lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global, ids_scoped);
+        ret = lysp_check_dup_typedef(ctx, NULL, &mod->typedefs[v], ids_global);
         LY_CHECK_GOTO(ret, cleanup);
     }
     LY_ARRAY_FOR(mod->includes, v) {
         LY_ARRAY_FOR(mod->includes[v].submodule->typedefs, u) {
-            ret = lysp_check_dup_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global, ids_scoped);
+            ret = lysp_check_dup_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
     for (i = 0; i < ctx->tpdfs_nodes.count; ++i) {
         typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[i]);
         LY_ARRAY_FOR(typedefs, u) {
-            ret = lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global, ids_scoped);
+            ret = lysp_check_dup_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
 cleanup:
     lyht_free(ids_global);
-    lyht_free(ids_scoped);
+    return ret;
+}
+
+/**
+ * @brief Check name of a new grouping to avoid name collisions.
+ *
+ * @param[in] ctx Parser context, module where the grouping is being defined is taken from here.
+ * @param[in] node Schema node where the grouping is being defined, NULL in case of a top-level grouping.
+ * @param[in] grp Grouping definition to check.
+ * @param[in,out] grps_global Initialized hash table to store temporary data between calls. When the module's
+ * groupings are checked, caller is supposed to free the table.
+ * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
+ */
+static LY_ERR
+lysp_check_dup_grouping(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
+        struct hash_table *grps_global)
+{
+    struct lysp_node *parent;
+    uint32_t hash;
+    size_t name_len;
+    const char *name;
+    const struct lysp_node_grp *groupings, *grp_iter;
+
+    assert(ctx);
+    assert(grp);
+
+    name = grp->name;
+    name_len = strlen(name);
+
+    /* check locally scoped groupings (avoid name shadowing) */
+    if (node) {
+        groupings = lysp_node_groupings(node);
+        LY_LIST_FOR(groupings, grp_iter) {
+            if (grp_iter == grp) {
+                break;
+            }
+            if (!strcmp(name, grp_iter->name)) {
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of grouping statement - name collision with sibling grouping.", name);
+                return LY_EVALID;
+            }
+        }
+        /* search grouping in parent's nodes */
+        for (parent = node->parent; parent; parent = parent->parent) {
+            if (lysp_grouping_match(name, parent)) {
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                        "Duplicate identifier \"%s\" of grouping statement - name collision with another scoped grouping.", name);
+                return LY_EVALID;
+            }
+        }
+    }
+
+    /* check collision with the top-level groupings */
+    if (node) {
+        hash = dict_hash(name, name_len);
+        if (!lyht_find(grps_global, &name, hash, NULL)) {
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
+                    "Duplicate identifier \"%s\" of grouping statement - scoped grouping collide with a top-level grouping.", name);
+            return LY_EVALID;
+        }
+    } else {
+        LY_CHECK_RET(lysp_check_dup_ht_insert(ctx, grps_global, name, "grouping",
+                "name collision with another top-level grouping"));
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+{
+    struct hash_table *ids_global;
+    const struct lysp_node_grp *groupings, *grp_iter;
+    LY_ARRAY_COUNT_TYPE u;
+    uint32_t i;
+    LY_ERR ret = LY_SUCCESS;
+
+    ids_global = lyht_new(LYHT_MIN_SIZE, sizeof(char *), lysp_id_cmp, NULL, 1);
+    LY_LIST_FOR(mod->groupings, grp_iter) {
+        ret = lysp_check_dup_grouping(ctx, NULL, grp_iter, ids_global);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+    LY_ARRAY_FOR(mod->includes, u) {
+        LY_LIST_FOR(mod->includes[u].submodule->groupings, grp_iter) {
+            ret = lysp_check_dup_grouping(ctx, NULL, grp_iter, ids_global);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    }
+    for (i = 0; i < ctx->grps_nodes.count; ++i) {
+        groupings = lysp_node_groupings((struct lysp_node *)ctx->grps_nodes.objs[i]);
+        LY_LIST_FOR(groupings, grp_iter) {
+            ret = lysp_check_dup_grouping(ctx, (struct lysp_node *)ctx->grps_nodes.objs[i], grp_iter, ids_global);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
+    }
+
+cleanup:
+    lyht_free(ids_global);
     return ret;
 }
 
@@ -445,39 +598,24 @@ lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
     struct lysp_feature *f;
-    uint32_t hash;
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
 
-    ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
+    ht = lyht_new(LYHT_MIN_SIZE, sizeof(void *), ly_ptrequal_cb, NULL, 1);
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module features into a hash table */
     LY_ARRAY_FOR(mod->features, struct lysp_feature, f) {
-        hash = dict_hash(f->name, strlen(f->name));
-        r = lyht_insert(ht, &f->name, hash, NULL);
-        if (r == LY_EEXIST) {
-            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, f->name, "feature");
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (r) {
-            ret = r;
-            goto cleanup;
-        }
+        ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature",
+                "name collision with another top-level feature");
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule features into a hash table */
     LY_ARRAY_FOR(mod->includes, u) {
         LY_ARRAY_FOR(mod->includes[u].submodule->features, struct lysp_feature, f) {
-            hash = dict_hash(f->name, strlen(f->name));
-            r = lyht_insert(ht, &f->name, hash, NULL);
-            if (r == LY_EEXIST) {
-                LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, f->name, "feature");
-                ret = LY_EVALID;
-                goto cleanup;
-            } else if (r) {
-                ret = r;
-                goto cleanup;
-            }
+            ret = lysp_check_dup_ht_insert(ctx, ht, f->name, "feature",
+                    "name collision with another top-level feature");
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -492,39 +630,24 @@ lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
     struct lysp_ident *i;
-    uint32_t hash;
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR ret = LY_SUCCESS;
 
-    ht = lyht_new(1, sizeof(void *), ly_ptrequal_cb, NULL, 1);
+    ht = lyht_new(LYHT_MIN_SIZE, sizeof(void *), ly_ptrequal_cb, NULL, 1);
     LY_CHECK_RET(!ht, LY_EMEM);
 
     /* add all module identities into a hash table */
     LY_ARRAY_FOR(mod->identities, struct lysp_ident, i) {
-        hash = dict_hash(i->name, strlen(i->name));
-        r = lyht_insert(ht, &i->name, hash, NULL);
-        if (r == LY_EEXIST) {
-            LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, i->name, "identity");
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (r) {
-            ret = r;
-            goto cleanup;
-        }
+        ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity",
+                "name collision with another top-level identity");
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* add all submodule identities into a hash table */
     LY_ARRAY_FOR(mod->includes, u) {
         LY_ARRAY_FOR(mod->includes[u].submodule->identities, struct lysp_ident, i) {
-            hash = dict_hash(i->name, strlen(i->name));
-            r = lyht_insert(ht, &i->name, hash, NULL);
-            if (r == LY_EEXIST) {
-                LOGVAL_PARSER(ctx, LY_VCODE_DUPIDENT, i->name, "identity");
-                ret = LY_EVALID;
-                goto cleanup;
-            } else if (r) {
-                ret = r;
-                goto cleanup;
-            }
+            ret = lysp_check_dup_ht_insert(ctx, ht, i->name, "identity",
+                    "name collision with another top-level identity");
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -615,30 +738,26 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 }
 
 /**
- * @brief Load the (sub)module into the context.
+ * @brief Parse a (sub)module from a local file and add into the context.
  *
  * This function does not check the presence of the (sub)module in context, it should be done before calling this function.
- *
- * module_name and submodule_name are alternatives - only one of the
  *
  * @param[in] ctx libyang context where to work.
  * @param[in] name Name of the (sub)module to load.
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
- * @param[in] features Array of enabled features ended with NULL.
- * @param[in] need_implemented Whether the (sub)module is needed implemented or not.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
  * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
  * backup and it is actually ok if the input data are not found. However, parser reports errors even in this case.
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
- * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
  */
 static LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, const char **features,
-        ly_bool need_implemented, struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required,
-        struct lys_glob_unres *unres, void **result)
+lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_parser_ctx *main_ctx,
+        const char *main_name, ly_bool required, struct ly_set *new_mods, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -647,8 +766,8 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_check_data check_data = {0};
 
-    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
-            &filepath, &format));
+    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name,
+            revision, &filepath, &format));
     if (!filepath) {
         if (required) {
             LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
@@ -667,11 +786,10 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     check_data.path = filepath;
     check_data.submoduleof = main_name;
     if (main_ctx) {
-        ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
+        ret = lys_parse_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data, new_mods,
                 (struct lysp_submodule **)&mod);
     } else {
-        ret = lys_create_module(ctx, in, format, need_implemented, lysp_load_module_check, &check_data, features, unres,
-                (struct lys_module **)&mod);
+        ret = lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, (struct lys_module **)&mod);
 
     }
     ly_in_free(in, 1);
@@ -686,144 +804,183 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
-        const char **features, struct lys_glob_unres *unres, struct lys_module **mod)
+/**
+ * @brief Load module from searchdirs or from callback.
+ *
+ * @param[in] ctx libyang context where to work.
+ * @param[in] name Name of module to load.
+ * @param[in] revision Revision of module to load.
+ * @param[in] mod_latest Module with the latest revision found in
+ * context and the searchdirs should be searched, otherwise set to NULL.
+ * @param[in,out] new_mods Set of all the new mods added to the context.
+ * Includes this module and all of its imports.
+ * @param[out] mod Loaded module.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lys_parse_load_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *revision,
+        struct lys_module *mod_latest, struct ly_set *new_mods, struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
-    struct lys_module *ctx_latest = NULL, *m;
     struct ly_in *in;
-    LY_ERR ret;
-    ly_bool implement;
 
-    assert(mod && unres);
-
-    if (ctx->flags & LY_CTX_ALL_IMPLEMENTED) {
-        implement = 1;
-    } else {
-        implement = need_implemented;
-    }
-
-    /*
-     * try to get the module from the context
-     */
-    if (!*mod) {
-        if (revision) {
-            /* get the specific revision */
-            *mod = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
-        } else {
-            if (implement) {
-                /* prefer the implemented module instead of the latest one */
-                *mod = (struct lys_module *)ly_ctx_get_module_implemented(ctx, name);
-            }
-            if (!*mod) {
-                /* get the requested module of the latest revision in the context */
-                *mod = (struct lys_module *)ly_ctx_get_module_latest(ctx, name);
-                if (*mod && ((*mod)->latest_revision == 1)) {
-                    /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
-                    ctx_latest = *mod;
-                    *mod = NULL;
-                }
-            }
-        }
-    }
-
-    /* check collision with other implemented revision */
-    if (implement) {
-        m = ly_ctx_get_module_implemented(ctx, name);
-        if (m && (!*mod || (*mod && (m != *mod)))) {
-            LOGVAL(ctx, LYVE_REFERENCE, "Module \"%s\" is already present in other implemented revision.", name);
-            *mod = NULL;
-            return LY_EDENIED;
-        }
-    }
-
-    /*
-     * no suitable module in the context, try to load it
-     */
-    if (!*mod) {
-        /* module not present in the context, get the input data and parse it */
-        if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+    /* Module not present in the context, get the input data and parse it. */
+    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-            if (ctx->imp_clb) {
-                if (ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data,
-                        &format, &module_data, &module_data_free) == LY_SUCCESS) {
-                    LY_CHECK_RET(ly_in_new_memory(module_data, &in));
-                    check_data.name = name;
-                    check_data.revision = revision;
-                    lys_create_module(ctx, in, format, implement, lysp_load_module_check, &check_data, features, unres, mod);
-                    ly_in_free(in, 0);
-                    if (module_data_free) {
-                        module_data_free((void *)module_data, ctx->imp_clb_data);
-                    }
-                }
-            }
-            if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_file;
-            }
-        } else {
-search_file:
-            if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-                /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, features, implement, NULL, NULL, ctx_latest ? 0 : 1, unres,
-                        (void **)mod);
-            }
-            if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_clb;
+        if (ctx->imp_clb && !ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data,
+                &module_data_free)) {
+            LY_CHECK_RET(ly_in_new_memory(module_data, &in));
+            check_data.name = name;
+            check_data.revision = revision;
+            lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
+            ly_in_free(in, 0);
+            if (module_data_free) {
+                module_data_free((void *)module_data, ctx->imp_clb_data);
             }
         }
-
-        /* update the latest_revision flag - here we have selected the latest available schema,
-         * consider that even the callback provides correct latest revision */
-        if (!*mod && ctx_latest) {
-            LOGVRB("Newer revision than \"%s@%s\" not found, using this as the latest revision.", ctx_latest->name,
-                    ctx_latest->revision);
-            ctx_latest->latest_revision = 2;
-            *mod = ctx_latest;
-        } else if (*mod && !revision && ((*mod)->latest_revision == 1)) {
-            (*mod)->latest_revision = 2;
-        }
-
-        if (!*mod) {
-            LOGVAL(ctx, LYVE_REFERENCE, "%s \"%s\" module failed.", implement ? "Loading" : "Importing", name);
-            return LY_EVALID;
+        if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_file;
         }
     } else {
-        /* we have module from the current context, circular check */
-        if ((*mod)->parsed->parsing) {
-            LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
-            *mod = NULL;
-            return LY_EVALID;
+search_file:
+        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+            /* Module was not received from the callback or there is no callback set. */
+            lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod);
+        }
+        if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_clb;
         }
     }
 
-    /*
-     * module found, make sure it is implemented if should be
-     */
-    if (implement) {
-        if (!(*mod)->implemented) {
-            /* implement */
-            ret = lys_set_implemented_r(*mod, features, unres);
-            if (ret) {
-                *mod = NULL;
-                return ret;
-            }
-        } else if (features) {
-            /* set features if different */
-            ret = lys_set_features((*mod)->parsed, features);
-            if (!ret) {
-                /* context need to be recompiled so that feature changes are properly applied */
-                unres->recompile = 1;
-            } else if (ret != LY_EEXIST) {
-                /* error */
-                return ret;
-            } /* else no feature changes */
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Get module without revision according to priorities.
+ *
+ * 1. Search for the module with LYS_MOD_IMPORTED_REV.
+ * 2. Search for the implemented module.
+ * 3. Search for the latest module in the context.
+ *
+ * @param[in] ctx libyang context where module is searched.
+ * @param[in] name Name of the searched module.
+ * @param[out] keep_search Flag set to 1 if searchpaths or module
+ * callback must be searched to obtain latest available revision.
+ * @return Found module from context or NULL.
+ */
+static struct lys_module *
+lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *keep_search)
+{
+    struct lys_module *mod, *mod_impl;
+    uint32_t index;
+
+    *keep_search = 0;
+
+    /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
+    index = 0;
+    while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
+        if (!strcmp(mod->name, name) && (mod->latest_revision & LYS_MOD_IMPORTED_REV)) {
+            break;
         }
     }
+
+    /* Try to find the implemented module. */
+    mod_impl = ly_ctx_get_module_implemented(ctx, name);
+    if (mod && mod_impl) {
+        LOGVRB("Implemented module \"%s@%s\" is not used for import, "
+                "revision \"%s\" is imported instead.",
+                mod_impl->name, mod_impl->revision, mod->revision);
+        return mod;
+    } else if (mod_impl) {
+        return mod_impl;
+    }
+
+    /* Try to find the latest module in the current context. */
+    mod = ly_ctx_get_module_latest(ctx, name);
+    *keep_search = 1;
+
+    return mod;
+}
+
+/**
+ * @brief Check if a circular dependency exists between modules.
+ *
+ * @param[in] ctx libyang context for log an error.
+ * @param[in,out] mod Examined module which is set to NULL
+ * if the circular dependency is detected.
+ * @return LY_SUCCESS if no circular dependecy is detected,
+ * otherwise LY_EVALID.
+ */
+static LY_ERR
+lys_check_circular_dependency(struct ly_ctx *ctx, struct lys_module **mod)
+{
+    if ((*mod) && (*mod)->parsed->parsing) {
+        LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", (*mod)->name);
+        *mod = NULL;
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
+        struct lys_module **mod)
+{
+    ly_bool keep_search;
+    struct lys_module *mod_latest = NULL;
+
+    assert(mod && new_mods);
+
+    /*
+     * Try to get the module from the context.
+     */
+    if (revision) {
+        /* Get the specific revision. */
+        *mod = ly_ctx_get_module(ctx, name, revision);
+    } else {
+        /* Get the requested module of the latest revision in the context. */
+        *mod = lys_get_module_without_revision(ctx, name, &keep_search);
+        if (keep_search) {
+            /* Let us now search with callback and searchpaths to check
+             * if there is newer revision outside the context.
+             */
+            mod_latest = *mod;
+            *mod = NULL;
+        }
+    }
+
+    if (!*mod) {
+        /* No suitable module in the context, try to load it. */
+        LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision,
+                mod_latest, new_mods, mod));
+
+        if (!*mod && !mod_latest) {
+            LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
+            return LY_EVALID;
+        }
+
+        /* Update the latest_revision flag - here we have selected the latest available schema,
+         * consider that even the callback provides correct latest revision.
+         */
+        if (!*mod) {
+            LOGVRB("Newer revision than \"%s@%s\" not found, using this as the latest revision.",
+                    mod_latest->name, mod_latest->revision);
+            assert(mod_latest->latest_revision & LYS_MOD_LATEST_REV);
+            mod_latest->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
+            *mod = mod_latest;
+        } else if (*mod && !revision && ((*mod)->latest_revision & LYS_MOD_LATEST_REV)) {
+            (*mod)->latest_revision |= LYS_MOD_LATEST_SEARCHDIRS;
+        }
+    }
+
+    /* Checking the circular dependence of imported modules. */
+    LY_CHECK_RET(lys_check_circular_dependency(ctx, mod));
 
     return LY_SUCCESS;
 }
@@ -954,7 +1111,7 @@ lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 }
 
 LY_ERR
-lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod)
+lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct ly_ctx *ctx = PARSER_CTX(pctx);
@@ -992,7 +1149,7 @@ search_clb:
                     check_data.name = inc->name;
                     check_data.revision = inc->rev[0] ? inc->rev : NULL;
                     check_data.submoduleof = pctx->parsed_mod->mod->name;
-                    lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
+                    lys_parse_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, new_mods, &submod);
 
                     /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                      * submodule's include into main module, where it is missing */
@@ -1011,9 +1168,8 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, inc->name,
-                        inc->rev[0] ? inc->rev : NULL, NULL, 0, pctx,
-                        pctx->parsed_mod->mod->name, 1, NULL, (void **)&submod);
+                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx,
+                        pctx->parsed_mod->mod->name, 1, new_mods, (void **)&submod);
 
                 /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                  * submodule's include into main module, where it is missing */
@@ -1988,4 +2144,58 @@ lysc_data_node(const struct lysc_node *schema)
     }
 
     return parent;
+}
+
+ly_bool
+lys_has_recompiled(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (LYSP_HAS_RECOMPILED(mod->parsed)) {
+        return 1;
+    }
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (LYSP_HAS_RECOMPILED(mod->parsed->includes[u].submodule)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+ly_bool
+lys_has_compiled(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (LYSP_HAS_COMPILED(mod->parsed)) {
+        return 1;
+    }
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (LYSP_HAS_COMPILED(mod->parsed->includes[u].submodule)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+ly_bool
+lys_has_groupings(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (mod->parsed->groupings) {
+        return 1;
+    }
+
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (mod->parsed->includes[u].submodule->groupings) {
+            return 1;
+        }
+    }
+
+    return 0;
 }

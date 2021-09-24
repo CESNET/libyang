@@ -109,7 +109,7 @@ jobs:
           curl \
             --form token=$TOKEN \
             --form email=mvasko@cesnet.cz \
-            --form file=libyang.tgz \
+            --form file=@libyang.tgz \
             --form version="`./yanglint -v | cut -d\" \" -f2`" \
             --form description="libyang YANG library" \
             https://scan.coverity.com/builds?project=$COVERITY_PROJECT

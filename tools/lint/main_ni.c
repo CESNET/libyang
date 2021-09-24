@@ -132,15 +132,15 @@ help(int shortout)
             "  -h, --help    Show this help message and exit.\n"
             "  -v, --version Show version number and exit.\n"
             "  -V, --verbose Show verbose messages, can be used multiple times to\n"
-            "                increase verbosity.\n"
+            "                increase verbosity.\n");
 #ifndef NDEBUG
-            "  -G GROUPS, --debug=GROUPS\n"
+    printf("  -G GROUPS, --debug=GROUPS\n"
             "                Enable printing of specific debugging message group\n"
             "                (nothing will be printed unless verbosity is set to debug):\n"
-            "                <group>[,<group>]* (dict, xpath)\n\n"
+            "                <group>[,<group>]* (dict, xpath)\n\n");
 #endif
 
-            "  -d MODE, --default=MODE\n"
+    printf("  -d MODE, --default=MODE\n"
             "                Print data with default values, according to the MODE\n"
             "                (to print attributes, ietf-netconf-with-defaults model\n"
             "                must be loaded):\n"
@@ -148,65 +148,65 @@ help(int shortout)
             "      all-tagged      - Add missing default nodes and mark all the default\n"
             "                        nodes with the attribute.\n"
             "      trim            - Remove all nodes with a default value.\n"
-            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n\n"
+            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n\n");
 
-            "  -D, --disable-searchdir\n"
+    printf("  -D, --disable-searchdir\n"
             "                Do not implicitly search in current working directory for\n"
             "                schema modules. If specified a second time, do not even\n"
             "                search in the module directory (all modules must be \n"
-            "                explicitly specified).\n\n"
+            "                explicitly specified).\n\n");
 
-            "  -p PATH, --path=PATH\n"
+    printf("  -p PATH, --path=PATH\n"
             "                Search path for schema (YANG/YIN) modules. The option can be\n"
             "                used multiple times. The current working directory and the\n"
-            "                path of the module being added is used implicitly.\n\n"
+            "                path of the module being added is used implicitly.\n\n");
 
-            "  -F FEATURES, --features=FEATURES\n"
+    printf("  -F FEATURES, --features=FEATURES\n"
             "                Features to support, default all.\n"
-            "                <modname>:[<feature>,]*\n\n"
+            "                <modname>:[<feature>,]*\n\n");
 
-            "  -i, --makeimplemented\n"
+    printf("  -i, --makeimplemented\n"
             "                Make the imported modules \"referenced\" from any loaded\n"
             "                module also implemented. If specified a second time, all the\n"
-            "                modules are set implemented.\n\n"
+            "                modules are set implemented.\n\n");
 
-            "  -l, --list    Print info about the loaded schemas.\n"
+    printf("  -l, --list    Print info about the loaded schemas.\n"
             "                (i - imported module, I - implemented module)\n"
             "                In case the -f option with data encoding is specified,\n"
-            "                the list is printed as ietf-yang-library data.\n\n"
+            "                the list is printed as ietf-yang-library data.\n\n");
 
-            "  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
+    printf("  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
             "                The limit of the maximum line length on which the 'tree'\n"
-            "                format will try to be printed.\n\n"
+            "                format will try to be printed.\n\n");
 
-            "  -o OUTFILE, --output=OUTFILE\n"
-            "                Write the output to OUTFILE instead of stdout.\n\n"
+    printf("  -o OUTFILE, --output=OUTFILE\n"
+            "                Write the output to OUTFILE instead of stdout.\n\n");
 
-            "  -f FORMAT, --format=FORMAT\n"
+    printf("  -f FORMAT, --format=FORMAT\n"
             "                Convert input into FORMAT. Supported formats: \n"
             "                yang, yin, tree and info for schemas,\n"
-            "                xml, json for data.\n\n"
+            "                xml, json for data.\n\n");
 
-            "  -P PATH, --schema-node=PATH\n"
+    printf("  -P PATH, --schema-node=PATH\n"
             "                Print only the specified subtree of the schema.\n"
             "                The PATH is the XPath subset mentioned in documentation as\n"
             "                the Path format. The option can be combined with --single-node\n"
             "                option to print information only about the specified node.\n"
             "  -q, --single-node\n"
             "                Supplement to the --schema-node option to print information\n"
-            "                only about a single node specified as PATH argument.\n\n"
+            "                only about a single node specified as PATH argument.\n\n");
 
-            "  -n, --not-strict\n"
+    printf("  -n, --not-strict\n"
             "                Do not require strict data parsing (silently skip unknown data),\n"
-            "                has no effect for schemas.\n\n"
+            "                has no effect for schemas.\n\n");
 
-            "  -e, --present Validate only with the schema modules whose data actually\n"
+    printf("  -e, --present Validate only with the schema modules whose data actually\n"
             "                exist in the provided input data files. Takes effect only\n"
             "                with the 'data' or 'config' TYPEs. Used to avoid requiring\n"
             "                mandatory nodes from modules which data are not present in the\n"
-            "                provided input data files.\n\n"
+            "                provided input data files.\n\n");
 
-            "  -t TYPE, --type=TYPE\n"
+    printf("  -t TYPE, --type=TYPE\n"
             "                Specify data tree type in the input data file(s):\n"
             "        data          - Complete datastore with status data (default type).\n"
             "        config        - Configuration datastore (without status data).\n"
@@ -220,22 +220,21 @@ help(int shortout)
             "                        RPC/Action. This is necessary to identify appropriate\n"
             "                        data definitions in the schema module.\n"
             "        notif         - Notification instance (content of the <notification>\n"
-            "                        element without <eventTime>).\n"
+            "                        element without <eventTime>).\n");
 
-            "  -O FILE, --operational=FILE\n"
+    printf("  -O FILE, --operational=FILE\n"
             "                Provide optional data to extend validation of the 'rpc',\n"
             "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
             "                the :running configuration datastore and state data\n"
-            "                (operational datastore) referenced from the RPC/Notification.\n\n"
+            "                (operational datastore) referenced from the RPC/Notification.\n\n");
 
-            "  -m, --merge   Merge input data files into a single tree and validate at\n"
-            "                once.The option has effect only for 'data' and 'config' TYPEs.\n\n"
+    printf("  -m, --merge   Merge input data files into a single tree and validate at\n"
+            "                once.The option has effect only for 'data' and 'config' TYPEs.\n\n");
 
-            "  -y, --yang-library\n"
+    printf("  -y, --yang-library\n"
             "                Load and implement internal \"ietf-yang-library\" YANG module.\n"
             "                Note that this module includes definitions of mandatory state\n"
-            "                data that can result in unexpected data validation errors.\n\n"
-            "");
+            "                data that can result in unexpected data validation errors.\n\n");
 }
 
 static void
@@ -291,7 +290,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             char *dir, *module;
             const char *fall = "*";
             const char **features = &fall;
-            const struct lys_module *mod;
+            struct lys_module *mod;
 
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
                 goto error;

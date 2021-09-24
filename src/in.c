@@ -356,7 +356,9 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
         return LY_EDENIED;
     }
 
-    memcpy(buf, in->current, count);
+    if (count) {
+        memcpy(buf, in->current, count);
+    }
     in->current += count;
     return LY_SUCCESS;
 }
@@ -440,6 +442,11 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     LY_ERR rc = LY_SUCCESS;
 
     LOG_LOCSET(snode, NULL, NULL, NULL);
+
+    if (lydctx->int_opts & LYD_INTOPT_ANY) {
+        /* nothing to check, everything is allowed */
+        goto cleanup;
+    }
 
     if ((lydctx->parse_opts & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
         LOGVAL(lydctx->data_ctx->ctx, LY_VCODE_UNEXPNODE, "state", snode->name);

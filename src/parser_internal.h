@@ -16,14 +16,16 @@
 #define LY_PARSER_INTERNAL_H_
 
 #include "parser_data.h"
-#include "plugins_types.h"
-#include "tree_schema_internal.h"
+#include "set.h"
 
 struct lyd_ctx;
 struct ly_in;
+struct lys_yang_parser_ctx;
+struct lys_yin_parser_ctx;
+struct lys_parser_ctx;
 
 /**
- * @brief Callback for lyd_ctx to free the structure
+ * @brief Callback for ::lyd_ctx to free the structure
  *
  * @param[in] ctx Data parser context to free.
  */
@@ -36,13 +38,14 @@ typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 #define LYD_INTOPT_ACTION           0x02    /**< Action request is being parsed. */
 #define LYD_INTOPT_REPLY            0x04    /**< RPC/action reply is being parsed. */
 #define LYD_INTOPT_NOTIF            0x08    /**< Notification is being parsed. */
-#define LYD_INTOPT_WITH_SIBLINGS    0x10    /**< Parse the whole input with any siblings. */
-#define LYD_INTOPT_NO_SIBLINGS      0x20    /**< If there are any siblings, return an error. */
+#define LYD_INTOPT_ANY              0x10    /**< Anydata/anyxml content is being parsed, there can be anything. */
+#define LYD_INTOPT_WITH_SIBLINGS    0x20    /**< Parse the whole input with any siblings. */
+#define LYD_INTOPT_NO_SIBLINGS      0x40    /**< If there are any siblings, return an error. */
 
 /**
  * @brief Internal (common) context for YANG data parsers.
  *
- * Covers ::lyd_xml_ctx, ::lyd_json_ctx and lyd_lyb_ctx.
+ * Covers ::lyd_xml_ctx, ::lyd_json_ctx and ::lyd_lyb_ctx.
  */
 struct lyd_ctx {
     const struct lysc_ext_instance *ext; /**< extension instance possibly changing document root context of the data being parsed */
@@ -69,13 +72,84 @@ struct lyd_ctx {
 };
 
 /**
- * @brief Common part of the lyd_ctx_free_t callbacks.
+ * @brief Internal context for XML data parser.
+ */
+struct lyd_xml_ctx {
+    const struct lysc_ext_instance *ext;
+    uint32_t parse_opts;
+    uint32_t val_opts;
+    uint32_t int_opts;
+    uint32_t path_len;
+    char path[LYD_PARSER_BUFSIZE];
+    struct ly_set node_when;
+    struct ly_set node_exts;
+    struct ly_set node_types;
+    struct ly_set meta_types;
+    struct lyd_node *op_node;
+
+    /* callbacks */
+    lyd_ctx_free_clb free;
+
+    struct lyxml_ctx *xmlctx;      /**< XML context */
+};
+
+/**
+ * @brief Internal context for JSON data parser.
+ */
+struct lyd_json_ctx {
+    const struct lysc_ext_instance *ext;
+    uint32_t parse_opts;
+    uint32_t val_opts;
+    uint32_t int_opts;
+    uint32_t path_len;
+    char path[LYD_PARSER_BUFSIZE];
+    struct ly_set node_when;
+    struct ly_set node_exts;
+    struct ly_set node_types;
+    struct ly_set meta_types;
+    struct lyd_node *op_node;
+
+    /* callbacks */
+    lyd_ctx_free_clb free;
+
+    struct lyjson_ctx *jsonctx;    /**< JSON context */
+};
+
+/**
+ * @brief Internal context for LYB data parser/printer.
+ */
+struct lyd_lyb_ctx {
+    const struct lysc_ext_instance *ext;
+    union {
+        struct {
+            uint32_t parse_opts;
+            uint32_t val_opts;
+        };
+        uint32_t print_options;
+    };
+    uint32_t int_opts;
+    uint32_t path_len;
+    char path[LYD_PARSER_BUFSIZE];
+    struct ly_set node_when;
+    struct ly_set node_exts;
+    struct ly_set node_types;
+    struct ly_set meta_types;
+    struct lyd_node *op_node;
+
+    /* callbacks */
+    lyd_ctx_free_clb free;
+
+    struct lylyb_ctx *lybctx;      /* LYB context */
+};
+
+/**
+ * @brief Common part to supplement the specific ::lyd_ctx_free_clb callbacks.
  */
 void lyd_ctx_free(struct lyd_ctx *);
 
 /**
  * @brief Parse submodule from YANG data.
- * @param[in,out] ctx Parser context.
+ * @param[in,out] context Parser context.
  * @param[in] ly_ctx Context of YANG schemas.
  * @param[in] main_ctx Parser context of main module.
  * @param[in] in Input structure.
@@ -87,15 +161,13 @@ LY_ERR yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx 
 
 /**
  * @brief Parse module from YANG data.
- * @param[in] ctx Parser context.
+ * @param[in] context Parser context.
  * @param[in] in Input structure.
  * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
- * @param[in,out] unres Global unres structure.
  * @return LY_ERR values.
  */
-LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod,
-        struct lys_glob_unres *unres);
+LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod);
 
 /**
  * @brief Parse module from YIN data.
@@ -104,11 +176,9 @@ LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in,
  * @param[in] in Input structure.
  * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
- * @param[in,out] unres Global unres structure.
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod,
-        struct lys_glob_unres *unres);
+LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod);
 
 /**
  * @brief Parse submodule from YIN data.
@@ -127,7 +197,7 @@ LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *c
  * @brief Parse XML string as a YANG data tree.
  *
  * @param[in] ctx libyang context.
- * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
@@ -148,7 +218,7 @@ LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *e
  * @brief Parse JSON string as a YANG data tree.
  *
  * @param[in] ctx libyang context.
- * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
@@ -167,7 +237,7 @@ LY_ERR lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *
  * @brief Parse binary LYB data as a YANG data tree.
  *
  * @param[in] ctx libyang context.
- * @param[in] ext Optional extenion instance to parse data following the schema tree specified in the extension instance
+ * @param[in] ext Optional extension instance to parse data following the schema tree specified in the extension instance
  * @param[in] parent Parent to connect the parsed nodes to, if any.
  * @param[in,out] first_p Pointer to the first top-level parsed node, used only if @p parent is NULL.
  * @param[in] in Input structure.
@@ -186,7 +256,7 @@ LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *e
  * @brief Search all the parents for an operation node, check validity based on internal parser flags.
  *
  * @param[in] parent Parent to connect the parsed nodes to.
- * @param[in] int_opt Internal parser options.
+ * @param[in] int_opts Internal parser options.
  * @param[out] op Found operation, if any.
  * @return LY_ERR value.
  */
@@ -205,7 +275,17 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @brief Wrapper around ::lyd_create_term() for data parsers.
  *
  * @param[in] lydctx Data parser context.
- * @param[in] hints Data parser's hint for the value's type.
+ * @param[in] schema Schema node of the new data node.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] format Input format of @p value.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] hints [Data parser's hints](@ref lydvalhints) for the value's type.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
+ * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value, size_t value_len,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node);

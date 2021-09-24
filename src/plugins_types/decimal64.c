@@ -14,11 +14,8 @@
 
 #include "plugins_types.h"
 
-#include <inttypes.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "libyang.h"
 
@@ -33,7 +30,7 @@
  *
  * | Size (B) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
- * | 8        | yes | `int64_t *` | value represented without floating point |
+ * | 8        | yes | `int64_t *` | little-endian value represented without floating point |
  */
 
 /**
@@ -105,8 +102,9 @@ lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *typ
             goto cleanup;
         }
 
-        /* we have the decimal64 number */
-        num = *(int64_t *)value;
+        /* we have the decimal64 number, in host byte order */
+        memcpy(&num, value, value_len);
+        num = le64toh(num);
     } else {
         /* check hints */
         ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
@@ -177,12 +175,30 @@ API const void *
 lyplg_type_print_decimal64(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, size_t *value_len)
 {
+    int64_t num = 0;
+    void *buf;
+
     if (format == LY_VALUE_LYB) {
-        *dynamic = 0;
-        if (value_len) {
-            *value_len = sizeof value->dec64;
+        num = htole64(value->dec64);
+        if (num == value->dec64) {
+            /* values are equal, little-endian */
+            *dynamic = 0;
+            if (value_len) {
+                *value_len = sizeof value->dec64;
+            }
+            return &value->dec64;
+        } else {
+            /* values differ, big-endian */
+            buf = calloc(1, sizeof value->dec64);
+            LY_CHECK_RET(!buf, NULL);
+
+            *dynamic = 1;
+            if (value_len) {
+                *value_len = sizeof value->dec64;
+            }
+            memcpy(buf, &num, sizeof value->dec64);
+            return buf;
         }
-        return &value->dec64;
     }
 
     /* use the cached canonical value */
@@ -215,7 +231,8 @@ const struct lyplg_type_record plugins_decimal64[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_decimal64,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 8,
     },
     {0}
 };

@@ -63,8 +63,8 @@ struct lys_module;
  * are resolved, groupings are instantiated, types are resolved (and compiled by joining all the relevant restrictions
  * when derived from another types) and many other syntactical checks are done.
  *
- * There is the main parsing function ::lys_parse() wirking with the libyang [input handler](@ref howtoInput). However,
- * to simplify some of the usecases, it is also possible to use other functions accepting input data from various sources.
+ * There is the main parsing function ::lys_parse() working with the libyang [input handler](@ref howtoInput). However,
+ * to simplify some of the use-cases, it is also possible to use other functions accepting input data from various sources.
  *
  * Functions List
  * --------------
@@ -103,52 +103,52 @@ typedef enum {
  * @return LY_ERR value.
  */
 LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features,
-        const struct lys_module **module);
+        struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context.
  *
- * This function is comsidered for a simple use, if you have a complex usecase,
+ * This function is considered for a simple use, if you have a complex use-case,
  * consider use of ::lys_parse() with a standalone input handler.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] data The string containing the dumped data model in the specified format.
- * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Read a schema from file descriptor into the specified context.
  *
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
- * This function is comsidered for a simple use, if you have a complex usecase,
+ * This function is considered for a simple use, if you have a complex use-case,
  * consider use of ::lys_parse() with a standalone input handler.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
  *            in the specified format.
- * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context from a file.
  *
- * This function is comsidered for a simple use, if you have a complex usecase,
+ * This function is considered for a simple use, if you have a complex use-case,
  * consider use of ::lys_parse() with a standalone input handler.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] path Path to the file with the model in the specified format.
- * @param[in] format Format of the schema to parse. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the schema to parse.
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const struct lys_module **module);
+LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Search for the schema file in the specified searchpaths.

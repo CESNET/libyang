@@ -45,7 +45,7 @@ setup(void **state)
             "import \"ietf-inet-types\" {prefix inet;}"
             "typedef optional-ip-address {type union {"
             "   type inet:ip-address;"
-            "   type string {pattern \"\";}"
+            "   type string;"
             "}}"
             "container cont {"
             "   list nexthop {min-elements 1; key \"gateway\";"
@@ -388,10 +388,10 @@ test_target(void **state)
             "</c></l2>";
 
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path_str, strlen(path_str), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
+    assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path_str, strlen(path_str), 0, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp));
-    assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, NULL, NULL, exp, LY_PATH_LREF_FALSE, LY_PATH_OPER_INPUT,
-            LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, NULL, &path));
+    assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, NULL, NULL, exp, LY_PATH_OPER_INPUT,
+            LY_PATH_TARGET_SINGLE, LY_VALUE_JSON, NULL, &path));
     term = lyd_target(path, tree);
 
     const int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM | LYS_ORDBY_USER;
@@ -491,6 +491,43 @@ test_find_path(void **state)
     lyd_free_all(root);
 }
 
+static void
+test_data_hash(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema, *data;
+
+    schema =
+            "module test-data-hash {"
+            "  yang-version 1.1;"
+            "  namespace \"urn:tests:tdh\";"
+            "  prefix t;"
+            "  container c {"
+            "    leaf-list ll {"
+            "      type string;"
+            "    }"
+            "  }"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* The number of <ll/> must be greater or equal to LYD_HT_MIN_ITEMS
+     * for the correct test run. It should guarantee the creation of a hash table.
+     */
+    assert_true(LYD_HT_MIN_ITEMS <= 4);
+    data =
+            "<c xmlns='urn:tests:tdh'>"
+            "  <ll/>"
+            "  <ll/>"
+            "  <ll/>"
+            "  <ll/>"
+            "</c>";
+
+    /* The run must not crash due to the assert that checks the hash. */
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -502,6 +539,7 @@ main(void)
         UTEST(test_list_pos, setup),
         UTEST(test_first_sibling, setup),
         UTEST(test_find_path, setup),
+        UTEST(test_data_hash, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "log.h"
 
@@ -119,7 +118,7 @@ ly_errapptag(const struct ly_ctx *ctx)
 }
 
 API LY_ERR
-ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_msg, ...)
+ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_format, ...)
 {
     char *msg = NULL;
     struct ly_err_item *e;
@@ -144,13 +143,13 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path,
     e->path = path;
     e->apptag = apptag;
 
-    if (err_msg) {
+    if (err_format) {
         va_list print_args;
 
-        va_start(print_args, err_msg);
+        va_start(print_args, err_format);
 
-        if (vasprintf(&msg, err_msg, print_args) == -1) {
-            /* we don't have anything more to do, just set err_msg to NULL to avoid undefined content,
+        if (vasprintf(&msg, err_format, print_args) == -1) {
+            /* we don't have anything more to do, just set msg to NULL to avoid undefined content,
              * still keep the information about the original error instead of LY_EMEM or other printf's error */
             msg = NULL;
         }
@@ -500,6 +499,9 @@ ly_log_dbg(uint32_t group, const char *format, ...)
         break;
     case LY_LDGXPATH:
         str_group = "XPATH";
+        break;
+    case LY_LDGDEPSETS:
+        str_group = "DEPSETS";
         break;
     default:
         LOGINT(NULL);

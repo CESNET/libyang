@@ -23,7 +23,7 @@
 static void
 test_module(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *orig = "module a {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:a\";\n"
@@ -134,6 +134,19 @@ test_module(void **state)
     compiled = "module c {\n"
             "  namespace \"urn:test:c\";\n"
             "  prefix c;\n"
+            "\n"
+            "  identity i1 {\n"
+            "    /* identity \"i1\" is disabled by if-feature(s) */\n"
+            "    derived i2;\n"
+            "    description\n"
+            "      \"text\";\n"
+            "    reference\n"
+            "      \"text32\";\n"
+            "  }\n"
+            "\n"
+            "  identity i2 {\n"
+            "    status obsolete;\n"
+            "  }\n"
             "}\n";
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
@@ -161,7 +174,7 @@ test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const ch
 static void
 test_submodule(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *mod_yang = "module a {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:a\";\n"

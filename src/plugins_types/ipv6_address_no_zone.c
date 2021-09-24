@@ -12,8 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
+#define _GNU_SOURCE /* strndup */
 
 #include "plugins_types.h"
 
@@ -22,8 +21,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
-#include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -250,20 +247,23 @@ lyplg_type_dup_ipv6_address_no_zone(const struct ly_ctx *ctx, const struct lyd_v
     LY_ERR ret;
     struct lyd_value_ipv6_address_no_zone *orig_val, *dup_val;
 
-    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
-    LY_CHECK_RET(ret);
+    memset(dup, 0, sizeof *dup);
+
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
+    LY_CHECK_GOTO(ret, error);
 
     LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
-    if (!dup_val) {
-        lydict_remove(ctx, dup->_canonical);
-        return LY_EMEM;
-    }
+    LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
 
     LYD_VALUE_GET(original, orig_val);
     memcpy(&dup_val->addr, &orig_val->addr, sizeof orig_val->addr);
 
     dup->realtype = original->realtype;
     return LY_SUCCESS;
+
+error:
+    lyplg_type_free_ipv6_address_no_zone(ctx, dup);
+    return ret;
 }
 
 /**
@@ -275,6 +275,7 @@ lyplg_type_free_ipv6_address_no_zone(const struct ly_ctx *ctx, struct lyd_value 
     struct lyd_value_ipv6_address_no_zone *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     LYPLG_TYPE_VAL_INLINE_DESTROY(val);
 }
@@ -299,7 +300,8 @@ const struct lyplg_type_record plugins_ipv6_address_no_zone[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_ipv6_address_no_zone,
         .plugin.duplicate = lyplg_type_dup_ipv6_address_no_zone,
-        .plugin.free = lyplg_type_free_ipv6_address_no_zone
+        .plugin.free = lyplg_type_free_ipv6_address_no_zone,
+        .plugin.lyb_data_len = 16,
     },
     {0}
 };

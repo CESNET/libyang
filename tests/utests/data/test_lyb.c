@@ -17,11 +17,26 @@
 #include "hash_table.h"
 #include "libyang.h"
 
-#define CHECK_PARSE_LYD(INPUT, MODEL) \
-                CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0,LY_SUCCESS, MODEL)
+#define CHECK_PARSE_LYD(INPUT, OUT_NODE) \
+                CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, OUT_NODE)
 
 #define CHECK_LYD_STRING(MODEL, TEXT) \
                 CHECK_LYD_STRING_PARAM(MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)
+
+#define CHECK_PRINT_THEN_PARSE(DATA_XML) \
+    { \
+        struct lyd_node *tree_1; \
+        struct lyd_node *tree_2; \
+        char *xml_out; \
+        CHECK_PARSE_LYD(DATA_XML, tree_1); \
+        assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0); \
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2)); \
+        assert_non_null(tree_2); \
+        CHECK_LYD(tree_1, tree_2); \
+        free(xml_out); \
+        lyd_free_all(tree_1); \
+        lyd_free_all(tree_2); \
+    }
 
 static int
 setup(void **state)
@@ -30,6 +45,114 @@ setup(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
 
     return 0;
+}
+
+static void
+tests_leaflist(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module mod { namespace \"urn:test-leaflist\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    leaf-list ll {"
+            "      type uint8;"
+            "    }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-leaflist\">\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-leaflist\">\n"
+            "  <ll>1</ll>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-leaflist\">\n"
+            "  <ll>1</ll>\n"
+            "  <ll>2</ll>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+}
+
+static void
+tests_list(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module mod { namespace \"urn:test-list\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    list lst {"
+            "      key \"lf\";"
+            "      leaf lf {"
+            "        type uint8;"
+            "      }"
+            "    }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-list\">\n"
+            "  <lst>"
+            "    <lf>1</lf>"
+            "  </lst>"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-list\">\n"
+            "  <lst>"
+            "    <lf>1</lf>"
+            "    <lf>2</lf>"
+            "  </lst>"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+}
+
+static void
+tests_any(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module mod { namespace \"urn:test-any\"; prefix m;"
+            "  container cont {"
+            "    presence \"\";"
+            "    anyxml anxml;\n"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-any\">\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-any\">\n"
+            "  <anxml><node>value</node></anxml>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
+
+    data_xml =
+            "<cont xmlns=\"urn:test-any\">\n"
+            "  <anxml><node1>value</node1></anxml>\n"
+            "  <anxml><node2>value</node2></anxml>\n"
+            "</cont>\n";
+    CHECK_PRINT_THEN_PARSE(data_xml);
 }
 
 static void
@@ -72,27 +195,11 @@ test_ietf_interfaces(void **state)
             "        <enabled>false</enabled>\n"
             "    </interface>\n"
             "</interfaces>\n";
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *xml_out; /* tree_2 */
 
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-ip", NULL, NULL));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "iana-if-type", NULL, NULL));
 
-    CHECK_PARSE_LYD(data_xml, tree_1);
-
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2));
-    assert_non_null(tree_2);
-
-    /* compare models */
-    CHECK_LYD(tree_1, tree_2);
-
-    /* clean */
-    free(xml_out);
-    lyd_free_all(tree_1);
-    lyd_free_all(tree_2);
+    CHECK_PRINT_THEN_PARSE(data_xml);
 }
 
 static void
@@ -124,27 +231,11 @@ test_origin(void **state)
             "  <leaf2>value2</leaf2>\n"
             "  <leaf3 xmlns:or=\"urn:ietf:params:xml:ns:yang:ietf-origin\" or:origin=\"or:system\">125</leaf3>\n"
             "</cont>\n";
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *xml_out; /* tree_2 */
 
     UTEST_ADD_MODULE(origin_yang, LYS_IN_YANG, NULL, NULL);
     assert_int_equal(LY_SUCCESS, lys_set_implemented(ly_ctx_get_module_latest(UTEST_LYCTX, "ietf-origin"), NULL));
 
-    CHECK_PARSE_LYD(data_xml, tree_1);
-
-    assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
-
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2));
-    assert_non_null(tree_2);
-
-    /* compare models */
-    CHECK_LYD(tree_1, tree_2);
-
-    /* clean */
-    free(xml_out);
-    lyd_free_all(tree_1);
-    lyd_free_all(tree_2);
+    CHECK_PRINT_THEN_PARSE(data_xml);
 }
 
 static void
@@ -299,6 +390,8 @@ test_statements(void **state)
             "        }\n"
             "    }\n"
             "\n"
+            "    notification notif;\n"
+            "\n"
             "    augment \"/random\" {\n"
             "        leaf aug-leaf {\n"
             "            type string;\n"
@@ -325,7 +418,7 @@ test_statements(void **state)
             "<random xmlns=\"urn:module\">\n"
             "  <aleaf>string</aleaf>\n"
             "  <xml-data><anyxml>data</anyxml></xml-data>\n"
-            "  <any-data><data>any data</data></any-data>\n"
+            "  <any-data><notif/></any-data>\n"
             "  <leaflist>l0</leaflist>\n"
             "  <leaflist>l1</leaflist>\n"
             "  <leaflist>l2</leaflist>\n"
@@ -337,19 +430,47 @@ test_statements(void **state)
             "  <lref>reference leaf</lref>\n"
             "  <iref>random-identity</iref>\n"
             "</random>\n";
-    struct lyd_node *tree_1;
-    struct lyd_node *tree_2;
-    char *xml_out; /* tree_2 */
 
     UTEST_ADD_MODULE(links_yang, LYS_IN_YANG, NULL, NULL);
     UTEST_ADD_MODULE(statements_yang, LYS_IN_YANG, NULL, NULL);
 
-    CHECK_PARSE_LYD(data_xml, tree_1);
+    CHECK_PRINT_THEN_PARSE(data_xml);
+}
+
+static void
+test_opaq(void **state)
+{
+    const char *nc_feats[] = {"writable-running", NULL};
+    const char *data_xml =
+            "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <target>\n"
+            "    <running/>\n"
+            "  </target>\n"
+            "  <config>\n"
+            "    <top xmlns=\"urn:ed\">\n"
+            "      <first>TestFirst</first>\n"
+            "    </top>\n"
+            "  </config>\n"
+            "</edit-config>\n";
+    struct ly_in *in;
+    struct lyd_node *tree_1;
+    struct lyd_node *tree_2;
+    char *xml_out; /* tree_2 */
+    LY_ERR rc;
+
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", NULL, nc_feats));
+
+    ly_in_new_memory(data_xml, &in);
+    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree_1, NULL);
+    ly_in_free(in, 0);
+    assert_int_equal(rc, LY_SUCCESS);
 
     assert_int_equal(lyd_print_mem(&xml_out, tree_1, LYD_LYB, LYD_PRINT_WITHSIBLINGS), 0);
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, xml_out, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree_2));
-    assert_non_null(tree_2);
+    ly_in_new_memory(xml_out, &in);
+    rc = lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_LYB, LYD_TYPE_RPC_YANG, &tree_2, NULL);
+    ly_in_free(in, 0);
+    assert_int_equal(rc, LY_SUCCESS);
 
     /* compare models */
     CHECK_LYD(tree_1, tree_2);
@@ -650,9 +771,13 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(tests_leaflist),
+        UTEST(tests_list),
+        UTEST(tests_any),
         UTEST(test_ietf_interfaces, setup),
         UTEST(test_origin, setup),
         UTEST(test_statements, setup),
+        UTEST(test_opaq, setup),
 #if 0
         cmocka_unit_test_setup_teardown(test_types, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),

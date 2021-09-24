@@ -32,22 +32,24 @@ struct lysc_ctx;
  *
  * @param[in] ctx Compile context.
  * @param[in] when_p Parsed when structure.
- * @param[in] flags Flags of the parsed node with the when statement.
+ * @param[in] parent_flags Flags of the parsed node with the when statement.
+ * @param[in] compiled_parent Closest compiled parent of the when statement.
  * @param[in] ctx_node Context node for the when statement.
  * @param[in] node Compiled node to which add the compiled when.
  * @param[in,out] when_c Optional, pointer to the previously compiled @p when_p to be reused. Set to NULL
  * for the first call.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, const struct lysc_node *ctx_node,
-        struct lysc_node *node, struct lysc_when **when_c);
+LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent_flags,
+        const struct lysc_node *compiled_parent, const struct lysc_node *ctx_node, struct lysc_node *node,
+        struct lysc_when **when_c);
 
 /**
  * @brief Checks pattern syntax.
  *
  * @param[in] ctx Context.
  * @param[in] pattern Pattern to check.
- * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
+ * @param[in,out] code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
 LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_code **code);
@@ -98,6 +100,7 @@ LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size
  * @param[in] ctx Compile context
  * @param[in] child_p Parsed choice children nodes.
  * @param[in] node Compiled choice node to compile and add children to.
+ * @param[in,out] child_set Optional set to add all the compiled nodes into (can be more in case of uses).
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 LY_ERR lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, struct lysc_node *node,

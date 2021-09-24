@@ -131,7 +131,7 @@ test_leaf(void **state)
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Unknown (or not implemented) YANG module \"x\" for metadata \"x:xxx\".", "Data location /@a:foo, line number 1.");
+            "Unknown (or not implemented) YANG module \"x\" of metadata \"x:xxx\".", "Data location /@a:foo, line number 1.");
 
     /* missing referenced metadata node */
     PARSER_CHECK_ERROR("{\"@a:foo\" : { \"a:hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
@@ -230,10 +230,10 @@ test_leaflist(void **state)
             "Missing JSON data instance to be coupled with @a:ll1 metadata.", "Data location /@a:ll1, line number 1.");
 
     PARSER_CHECK_ERROR("{\"a:ll1\":[1],\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance no. 2 of a:ll1 to be coupled with metadata.", "Schema location /a:ll1, line number 1.");
+            "Missing JSON data instance #2 of a:ll1 to be coupled with metadata.", "Schema location /a:ll1, line number 1.");
 
     PARSER_CHECK_ERROR("{\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2},{\"a:hint\":3}],\"a:ll1\" : [1, 2]}", 0, LYD_VALIDATE_PRESENT,
-            tree, LY_EVALID, "Missing 3rd JSON data instance to be coupled with @a:ll1 metadata.", "Data location /@a:ll1, line number 1.");
+            tree, LY_EVALID, "Missing JSON data instance #3 to be coupled with @a:ll1 metadata.", "Data location /@a:ll1, line number 1.");
 }
 
 static void
@@ -380,7 +380,7 @@ test_opaq(void **state)
             "Invalid non-number-encoded uint32 value \"\".", "Schema location /a:foo3, line number 1.");
 
     /* opaq flag */
-    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_JSON, "foo3", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
@@ -391,7 +391,7 @@ test_opaq(void **state)
             "List instance is missing its key \"c\".", "Schema location /a:l1, data location /a:l1[a='val_a'][b='val_b'], line number 1.");
 
     /* opaq flag */
-    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
@@ -402,19 +402,19 @@ test_opaq(void **state)
             "Invalid non-number-encoded int16 value \"val_c\".", "Schema location /a:l1/c, data location /a:l1[a='val_a'][b='val_b'], line number 1.");
 
     /* opaq flag */
-    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":{\"val\":\"val_c\"}}]}";
-    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\"}]}";
-    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, LYD_VALIDATE_PRESENT, tree);
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
     CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0x1, LY_VALUE_JSON, "l1", 0, 0, NULL,  0,  "");
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
@@ -427,6 +427,66 @@ test_opaq(void **state)
     /* empty name */
     PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "A JSON object member name cannot be a zero-length string.", "Line number 1.");
+
+    /* opaque data tree format print */
+    data =
+            "{\n"
+            "  \"ietf-netconf-nmda:get-data\": {\n"
+            "    \"data\": {\n"
+            "      \"ietf-keystore:keystore\": {\n"
+            "        \"asymmetric-keys\": {\n"
+            "          \"asymmetric-key\": [\n"
+            "            {\n"
+            "              \"name\": \"genkey\",\n"
+            "              \"algorithm\": \"rsa2048\"\n"
+            "            }\n"
+            "          ]\n"
+            "        }\n"
+            "      },\n"
+            "      \"ietf-netconf-server:netconf-server\": {\n"
+            "        \"listen\": {\n"
+            "          \"idle-timeout\": 3600,\n"
+            "          \"endpoint\": [\n"
+            "            {\n"
+            "              \"name\": \"default-ssh\",\n"
+            "              \"ssh\": {\n"
+            "                \"tcp-server-parameters\": {\n"
+            "                  \"local-address\": \"0.0.0.0\",\n"
+            "                  \"local-port\": 830\n"
+            "                },\n"
+            "                \"ssh-server-parameters\": {\n"
+            "                  \"server-identity\": {\n"
+            "                    \"host-key\": [\n"
+            "                      {\n"
+            "                        \"name\": \"default-key\",\n"
+            "                        \"public-key\": {\n"
+            "                          \"keystore-reference\": \"genkey\"\n"
+            "                        }\n"
+            "                      }\n"
+            "                    ]\n"
+            "                  },\n"
+            "                  \"client-authentication\": {\n"
+            "                    \"supported-authentication-methods\": {\n"
+            "                      \"publickey\": [null],\n"
+            "                      \"passsword\": [null],\n"
+            "                      \"other\": [\n"
+            "                        \"interactive\",\n"
+            "                        \"gssapi\"\n"
+            "                      ]\n"
+            "                    }\n"
+            "                  }\n"
+            "                }\n"
+            "              }\n"
+            "            }\n"
+            "          ]\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
 }
 
 static void

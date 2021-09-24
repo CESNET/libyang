@@ -12,12 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE /* strdup */
+
 #include "plugins_types.h"
 
 #include <ctype.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libyang.h"
 
@@ -61,6 +63,10 @@ binary_base64_encode(const struct ly_ctx *ctx, const char *data, size_t size, ch
     *str_len = (size + 2) / 3 * 4;
     *str = malloc(*str_len + 1);
     LY_CHECK_ERR_RET(!*str, LOGMEM(ctx), LY_EMEM);
+    if (!(*str_len)) {
+        **str = 0;
+        return LY_SUCCESS;
+    }
 
     ptr = *str;
     for (i = 0; i < size - 2; i += 3) {
@@ -226,10 +232,13 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
             val->data = (void *)value;
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
-        } else {
+        } else if (value_len) {
             val->data = malloc(value_len);
             LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
             memcpy(val->data, value, value_len);
+        } else {
+            val->data = strdup("");
+            LY_CHECK_ERR_GOTO(!val->data, ret = LY_EMEM, cleanup);
         }
 
         /* store size */
@@ -253,7 +262,7 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     ret = binary_base64_decode(value, value_len, &val->data, &val->size);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* store canonical value, it always is */
+    /* store canonical value */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
@@ -340,27 +349,28 @@ lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original
     LY_ERR ret;
     struct lyd_value_binary *orig_val, *dup_val;
 
-    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
-    LY_CHECK_RET(ret);
+    memset(dup, 0, sizeof *dup);
+
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
+    LY_CHECK_GOTO(ret, error);
 
     LYPLG_TYPE_VAL_INLINE_PREPARE(dup, dup_val);
-    if (!dup_val) {
-        lydict_remove(ctx, dup->_canonical);
-        return LY_EMEM;
-    }
+    LY_CHECK_ERR_GOTO(!dup_val, ret = LY_EMEM, error);
 
     LYD_VALUE_GET(original, orig_val);
-    dup_val->data = malloc(orig_val->size);
-    if (!dup_val->data) {
-        lydict_remove(ctx, dup->_canonical);
-        LYPLG_TYPE_VAL_INLINE_DESTROY(dup_val);
-        return LY_EMEM;
-    }
+
+    dup_val->data = orig_val->size ? malloc(orig_val->size) : strdup("");
+    LY_CHECK_ERR_GOTO(!dup_val->data, ret = LY_EMEM, error);
+
     memcpy(dup_val->data, orig_val->data, orig_val->size);
     dup_val->size = orig_val->size;
-
     dup->realtype = original->realtype;
+
     return LY_SUCCESS;
+
+error:
+    lyplg_type_free_binary(ctx, dup);
+    return ret;
 }
 
 API void
@@ -369,6 +379,7 @@ lyplg_type_free_binary(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_binary *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         free(val->data);
@@ -397,6 +408,7 @@ const struct lyplg_type_record plugins_binary[] = {
         .plugin.print = lyplg_type_print_binary,
         .plugin.duplicate = lyplg_type_dup_binary,
         .plugin.free = lyplg_type_free_binary,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

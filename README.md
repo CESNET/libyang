@@ -5,6 +5,7 @@
 [![Docs](https://img.shields.io/badge/docs-link-blue)](https://netopeer.liberouter.org/doc/libyang/)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 [![codecov.io](https://codecov.io/github/CESNET/libyang/coverage.svg?branch=master)](https://codecov.io/github/CESNET/libyang?branch=master)
+[![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/libyang.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:libyang)
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
 
 libyang is a YANG data modelling language parser and toolkit written (and
@@ -13,6 +14,16 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 
 If you are interested in future plans announcements, please subscribe to the
 [Future Plans issue](https://github.com/CESNET/libyang/issues/880).
+
+## Branches
+
+The project uses 2 main branches `master` and `devel`. Other branches should not be cloned. In `master` there are files of the
+last official *release*. Any latest improvements and changes, which were tested at least briefly are found in `devel`. On every
+new *release*, `devel` is merged into `master`.
+
+This means that when only stable official releases are to be used, either `master` can be used or specific *releases* downloaded.
+If all the latest bugfixes should be applied, `devel` branch is the  one to be used. Note that whenever **a new issue is created**
+and it occurs on the `master` branch, the **first response will likely be** to use `devel` before any further provided support.
 
 ## Migration from libyang version 1 or older
 
@@ -194,7 +205,7 @@ $ make
 In case of the `Release` mode, the tests are not built by default (it requires
 additional dependency), but they can be enabled via cmake option:
 ```
-$ cmake -DENABLE_BUILD_TESTS=ON ..
+$ cmake -DENABLE_TESTS=ON ..
 ```
 
 Note that if the necessary [cmocka](https://cmocka.org/) headers are not present
@@ -206,11 +217,28 @@ Tests can be run by the make's `test` target:
 $ make test
 ```
 
+### Perf
+
+There is a performance measurement tool included that prints information about
+the time required to execute common use-cases of working with YANG instance data.
+
+To enable this test, use an option and to get representative results, enable Release build type:
+```
+$ cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_PERF_TESTS=ON ..
+```
+and to run the test with seeing its output run:
+```
+$ make
+$ ctest -V -R ly_perf
+```
+
 ### Code Coverage
 
-Based on the tests run, it is possible to generate code coverage report via the
-make's `coverage` target:
+Based on the tests run, it is possible to generate code coverage report. But
+it must be enabled and these commands are needed to generate the report:
 ```
+$ cmake -DENABLE_COVERAGE=ON ..
+$ make
 $ make coverage
 ```
 

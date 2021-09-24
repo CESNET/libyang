@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 #include "common.h"
 #include "set.h"
 #include "tree_schema.h"
-#include "xml.h"
 
 struct lysc_ctx;
 struct lys_glob_unres;
@@ -143,25 +142,33 @@ enum yang_arg {
 #define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX) ? PARSER_CTX(CTX) : NULL, __VA_ARGS__)
 
 struct lys_parser_ctx {
-    LYS_INFORMAT format;            /**< parser format */
-    struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
-    struct ly_set grps_nodes;       /**< set of grouping nodes */
-    struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct lys_glob_unres *unres;   /**< global unres structure */
+    LYS_INFORMAT format;             /**< parser format */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+                                          then should be set to the context of the module to which it belongs,
+                                          otherwise it points to the beginning of this structure. */
 };
 
 /**
  * @brief Internal context for yang schema parser.
  */
 struct lys_yang_parser_ctx {
-    LYS_INFORMAT format;            /**< parser format */
-    struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
-    struct ly_set grps_nodes;       /**< set of grouping nodes */
-    struct lysp_module *parsed_mod; /**< (sub)module being parsed */
-    struct lys_glob_unres *unres;   /**< global unres structure */
-    struct ly_in *in;               /**< input handler for the parser */
-    uint64_t indent;                /**< current position on the line for YANG indentation */
-    uint32_t depth;                 /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
+    LYS_INFORMAT format;             /**< parser format */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+                                          then should be set to the context of the module to which it belongs,
+                                          otherwise it points to the beginning of this structure. */
+    struct ly_in *in;                /**< input handler for the parser */
+    uint64_t indent;                 /**< current position on the line for YANG indentation */
+    uint32_t depth;                  /**< current number of nested blocks, see ::LY_MAX_BLOCK_DEPTH */
 };
 
 /**
@@ -173,12 +180,16 @@ void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
  * @brief Internal context for yin schema parser.
  */
 struct lys_yin_parser_ctx {
-    LYS_INFORMAT format;           /**< parser format */
-    struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
-    struct ly_set grps_nodes;      /**< set of grouping nodes */
-    struct lysp_module *parsed_mod;/**< (sub)module being parsed */
-    struct lys_glob_unres *unres;   /**< global unres structure */
-    struct lyxml_ctx *xmlctx;      /**< context for xml parser */
+    LYS_INFORMAT format;             /**< parser format */
+    struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
+                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+                                          then should be set to the context of the module to which it belongs,
+                                          otherwise it points to the beginning of this structure. */
+    struct lyxml_ctx *xmlctx;        /**< context for xml parser */
 };
 
 /**
@@ -245,6 +256,15 @@ LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date
 LY_ERR lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
+ * @brief Check names of groupings in the parsed module to detect collisions.
+ *
+ * @param[in] ctx Parser context for logging and to maintain grps_nodes.
+ * @param[in] mod Module where the type is being defined.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+
+/**
  * @brief Check names of features in the parsed module and submodules to detect collisions.
  *
  * @param[in] ctx Parser context.
@@ -293,21 +313,18 @@ LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct
 LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len);
 
 /**
- * @brief Find and load a module of the given name.
+ * @brief Find source data for a specific module, parse it, and add into the context.
  *
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
- * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
- * @param[in] need_implemented Whether the module should be implemented. If revision is NULL and this flag is set,
- * the implemented module in the context is returned despite it might not be of the latest revision, because in this
- * case the module of the latest revision can not be made implemented.
- * @param[in] features All the features to enable if implementing the module.
- * @param[in] unres Global unres structure for all newly implemented modules.
+ * @param[in] revision Optional revision of the module to load. If NULL, the newest revision is loaded.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] mod Created module structure.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
  */
-LY_ERR lys_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool need_implemented,
-        const char **features, struct lys_glob_unres *unres, struct lys_module **mod);
+LY_ERR lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
+        struct lys_module **mod);
 
 /**
  * @brief Parse included submodules into the simply parsed YANG module.
@@ -317,9 +334,10 @@ LY_ERR lys_load_module(struct ly_ctx *ctx, const char *name, const char *revisio
  *
  * @param[in] pctx main parser context
  * @param[in] pmod Parsed module with the includes array to be processed.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod);
+LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods);
 
 /**
  * @brief Free a parsed restriction.
@@ -527,37 +545,60 @@ struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
 /**
- * @brief Implement a module (just like ::lys_set_implemented()), can be called recursively.
+ * @brief Implement a module and resolve all global unres.
  *
  * @param[in] mod Module to implement.
- * @param[in] features Array of features to enable.
- * @param[in,out] unres Global unres to add to.
+ * @param[in] features Features to set, see ::lys_set_features().
+ * @param[in] unres Global unres with all the created modules.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LY_ERR _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+
+/**
+ * @brief Create dependency sets for all modules in a context.
+ * Also sets to_compile flags for all the modules that should be (re)compiled.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in,out] main_set Set of dependency module sets.
+ * @param[in] mod Optional only module whose dependency set is needed, otherwise all sets are created.
  * @return LY_ERR value.
  */
-LY_ERR lys_set_implemented_r(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+LY_ERR lys_unres_dep_sets_create(struct ly_ctx *ctx, struct ly_set *main_set, struct lys_module *mod);
+
+/**
+ * @brief Revert changes stored in global compile context after a failed compilation.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] unres Global unres to use.
+ */
+void lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres);
+
+/**
+ * @brief Erase the global compile context.
+ *
+ * @param[in] unres Global unres to erase.
+ */
+void lys_unres_glob_erase(struct lys_glob_unres *unres);
 
 typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
         void *check_data);
 
 /**
- * @brief Create a new module.
- *
- * It is parsed, opionally compiled, added into the context, and the latest_revision flag is updated.
+ * @brief Parse a module and add it into the context.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] need_implemented Whether module needs to be implemented and compiled.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
- * @param[in] features Array of features to enable ended with NULL. NULL for all features disabled and '*' for all enabled.
- * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] module Created module.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error, @p new_mods may be modified.
  */
-LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool need_implemented,
-        lys_custom_check custom_check, void *check_data, const char **features, struct lys_glob_unres *unres,
-        struct lys_module **module);
+LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, lys_custom_check custom_check,
+        void *check_data, struct ly_set *new_mods, struct lys_module **module);
 
 /**
  * @brief Parse submodule.
@@ -570,12 +611,12 @@ LY_ERR lys_create_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT form
  * @param[in] main_ctx Parser context of the main module.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
+ * @param[in] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] submodule Parsed submodule.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
-        struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
-        void *check_data, struct lysp_submodule **submodule);
+LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+        lys_custom_check custom_check, void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule);
 
 /**
  * @brief Fill filepath value if available in input handler @p in
@@ -628,12 +669,18 @@ void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 /**
  * @brief Free the parsed extension instance structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in] type Parsed extension instance structure to free. Note that the instance itself is not freed.
+ * @param[in] ext Parsed extension instance structure to free. Note that the instance itself is not freed.
  */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 
 /**
+ * @brief Parse generic statement structure into a specific parsed-schema structure.
+ *
+ * @param[in] ctx The compilation context of the @p stmt being processed
+ * @param[in] stmt Generic statement structure to process.
+ * @param[out] result Specific parsed-schema structure for the given statement. For the specific type for the particular statement, check the function code.
  * @param[in,out] exts [sized array](@ref sizedarrays) For extension instances in case of statements that do not store extension instances in their own list.
+ * @return LY_ERR value.
  */
 LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **result, struct lysp_ext_instance **exts);
 
@@ -703,7 +750,7 @@ void lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif);
 /**
  * @brief Free the compiled extension definition and NULL the provided pointer.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] ext Compiled extendion definition to be freed.
+ * @param[in,out] ext Compiled extension definition to be freed.
  */
 void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 
@@ -786,15 +833,15 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
 /**
  * @brief Get format-specific prefix for a module.
  *
- * For type plugins available as ::ly_type_print_get_prefix().
+ * This function is available for type plugins via ::lyplg_type_get_prefix() API function.
  *
  * @param[in] mod Module whose prefix to get.
  * @param[in] format Format of the prefix.
  * @param[in] prefix_data Format-specific data based on @p format:
  *      LY_VALUE_CANON           - NULL
- *      LY_VALUE_SCHEMA          - const struct lysp_module * (module used for resolving imports to prefixes)
- *      LY_VALUE_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_VALUE_XML             - struct ly_set * (set of all returned modules as ::struct lys_module)
+ *      LY_VALUE_SCHEMA          - const struct ::lysp_module* (module used for resolving imports to prefixes)
+ *      LY_VALUE_SCHEMA_RESOLVED - struct ::lysc_prefix* (sized array of pairs: prefix - module)
+ *      LY_VALUE_XML             - struct ::ly_set* (set of all returned modules as struct ::lys_module)
  *      LY_VALUE_JSON            - NULL
  *      LY_VALUE_LYB             - NULL
  * @return Module prefix to print.
@@ -804,8 +851,6 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
 
 /**
  * @brief Resolve format-specific prefixes to modules.
- *
- * For type plugins available as ::ly_type_store_resolve_prefix().
  *
  * @param[in] ctx libyang context.
  * @param[in] prefix Prefix to resolve.
@@ -823,5 +868,47 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, 
  */
 const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_len,
         LY_VALUE_FORMAT format, const void *prefix_data);
+
+/**
+ * @brief Learn whether @p PMOD needs to be recompiled if it is implemented.
+ *
+ * @param[in] PMOD Parsed module or submodule.
+ * @return Whether it has statements that are recompiled or not.
+ */
+#define LYSP_HAS_RECOMPILED(PMOD) \
+        (PMOD->data || PMOD->rpcs || PMOD->notifs || PMOD->exts)
+
+/**
+ * @brief Learn whether the module has statements that need to be recompiled or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it has statements that are recompiled or not.
+ */
+ly_bool lys_has_recompiled(const struct lys_module *mod);
+
+/**
+ * @brief Learn whether @p PMOD needs to be compiled if it is implemented.
+ *
+ * @param[in] PMOD Parsed module or submodule.
+ * @return Whether it needs (has) a compiled module or not.
+ */
+#define LYSP_HAS_COMPILED(PMOD) \
+        (LYSP_HAS_RECOMPILED(PMOD) || PMOD->augments || PMOD->deviations)
+
+/**
+ * @brief Learn whether the module has statements that need to be compiled or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it needs compiled module or not.
+ */
+ly_bool lys_has_compiled(const struct lys_module *mod);
+
+/**
+ * @brief Learn whether the module has any grouping statements or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it has groupings or not.
+ */
+ly_bool lys_has_groupings(const struct lys_module *mod);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

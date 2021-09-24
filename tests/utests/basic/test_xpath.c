@@ -96,6 +96,26 @@ setup(void **state)
 }
 
 static void
+test_invalid(void **state)
+{
+    const char *data =
+            "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_EVALID, lyd_find_xpath(tree, "/a:foo2[.=]", &set));
+    assert_null(set);
+
+    assert_int_equal(LY_EVALID, lyd_find_xpath(tree, "/a:", &set));
+    assert_null(set);
+
+    lyd_free_all(tree);
+}
+
+static void
 test_hash(void **state)
 {
     const char *data =
@@ -375,6 +395,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_invalid, setup),
         UTEST(test_hash, setup),
         UTEST(test_toplevel, setup),
         UTEST(test_atomize, setup),

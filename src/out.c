@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "out.h"
 #include "out_internal.h"
@@ -34,6 +33,12 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 
+/**
+ * @brief Align the desired size to 1 KB.
+ */
+#define REALLOC_CHUNK(NEW_SIZE) \
+    NEW_SIZE + (1024 - (NEW_SIZE % 1024))
+
 ly_bool
 ly_should_print(const struct lyd_node *node, uint32_t options)
 {
@@ -44,12 +49,27 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
         if (node->flags & LYD_DEFAULT) {
             /* implicit default node/NP container with only default nodes */
             return 0;
-        } else if (node->schema->nodetype & LYD_NODE_TERM) {
+        } else if (node->schema && (node->schema->nodetype & LYD_NODE_TERM)) {
             if (lyd_is_default(node)) {
                 /* explicit default node */
                 return 0;
             }
         }
+    } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER)) {
+        if (options & LYD_PRINT_KEEPEMPTYCONT) {
+            /* explicit request to print */
+            return 1;
+        }
+
+        /* avoid empty default containers */
+        LYD_TREE_DFS_BEGIN(node, elem) {
+            if ((elem != node) && ly_should_print(elem, options)) {
+                return 1;
+            }
+            assert(elem->flags & LYD_DEFAULT);
+            LYD_TREE_DFS_END(node, elem)
+        }
+        return 0;
     } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK) && !(node->schema->flags & LYS_CONFIG_R)) {
         /* LYD_PRINT_WD_EXPLICIT, find out if this is some input/output */
         if (!(node->schema->flags & (LYS_IS_INPUT | LYS_IS_OUTPUT | LYS_IS_NOTIF)) && (node->schema->flags & LYS_CONFIG_W)) {
@@ -62,16 +82,6 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
                 }
                 LYD_TREE_DFS_END(node, elem)
             }
-        }
-        return 0;
-    } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER) && !(options & LYD_PRINT_KEEPEMPTYCONT)) {
-        /* avoid empty default containers */
-        LYD_TREE_DFS_BEGIN(node, elem) {
-            if (elem->schema->nodetype != LYS_CONTAINER) {
-                return 1;
-            }
-            assert(elem->flags & LYD_DEFAULT);
-            LYD_TREE_DFS_END(node, elem)
         }
         return 0;
     }
@@ -104,7 +114,7 @@ ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **out)
 API ly_write_clb
 ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
 {
-    void *prev_clb;
+    ly_write_clb prev_clb;
 
     LY_CHECK_ARG_RET(NULL, out, out->type == LY_OUT_CALLBACK, NULL);
 
@@ -434,7 +444,9 @@ ly_vprint_(struct ly_out *out, const char *format, va_list ap)
             *out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + written + 1;
         }
-        memcpy(&(*out->method.mem.buf)[out->method.mem.len], msg, written);
+        if (written) {
+            memcpy(&(*out->method.mem.buf)[out->method.mem.len], msg, written);
+        }
         out->method.mem.len += written;
         (*out->method.mem.buf)[out->method.mem.len] = '\0';
         free(msg);
@@ -528,7 +540,7 @@ LY_ERR
 ly_write_(struct ly_out *out, const char *buf, size_t len)
 {
     LY_ERR ret = LY_SUCCESS;
-    size_t written = 0;
+    size_t written = 0, new_mem_size;
 
     if (out->hole_count) {
         /* we are buffering data after a hole */
@@ -543,7 +555,9 @@ ly_write_(struct ly_out *out, const char *buf, size_t len)
             out->buf_size = out->buf_len + len;
         }
 
-        memcpy(&out->buffered[out->buf_len], buf, len);
+        if (len) {
+            memcpy(&out->buffered[out->buf_len], buf, len);
+        }
         out->buf_len += len;
 
         out->printed += len;
@@ -554,17 +568,21 @@ ly_write_(struct ly_out *out, const char *buf, size_t len)
 repeat:
     switch (out->type) {
     case LY_OUT_MEMORY:
-        if (out->method.mem.len + len + 1 > out->method.mem.size) {
-            *out->method.mem.buf = ly_realloc(*out->method.mem.buf, out->method.mem.len + len + 1);
+        new_mem_size = out->method.mem.len + len + 1;
+        if (new_mem_size > out->method.mem.size) {
+            new_mem_size = REALLOC_CHUNK(new_mem_size);
+            *out->method.mem.buf = ly_realloc(*out->method.mem.buf, new_mem_size);
             if (!*out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 return LY_EMEM;
             }
-            out->method.mem.size = out->method.mem.len + len + 1;
+            out->method.mem.size = new_mem_size;
         }
-        memcpy(&(*out->method.mem.buf)[out->method.mem.len], buf, len);
+        if (len) {
+            memcpy(&(*out->method.mem.buf)[out->method.mem.len], buf, len);
+        }
         out->method.mem.len += len;
         (*out->method.mem.buf)[out->method.mem.len] = '\0';
 
@@ -704,6 +722,8 @@ LY_ERR
 ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t count)
 {
     LY_ERR ret = LY_SUCCESS;
+
+    assert(count);
 
     switch (out->type) {
     case LY_OUT_MEMORY:

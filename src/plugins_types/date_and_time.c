@@ -12,19 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
+#define _GNU_SOURCE /* strdup */
 
 #include "plugins_types.h"
 
-#include <arpa/inet.h>
-#include <assert.h>
 #include <ctype.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "libyang.h"
 
@@ -231,7 +226,7 @@ lyplg_type_dup_date_and_time(const struct ly_ctx *ctx, const struct lyd_value *o
     memset(dup, 0, sizeof *dup);
 
     /* optional canonical value */
-    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, error);
 
     /* allocate value */
@@ -266,6 +261,7 @@ lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_date_and_time *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         free(val->fractions_s);
@@ -293,7 +289,8 @@ const struct lyplg_type_record plugins_date_and_time[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_date_and_time,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
-        .plugin.free = lyplg_type_free_date_and_time
+        .plugin.free = lyplg_type_free_date_and_time,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

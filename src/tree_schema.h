@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "config.h"
 #include "log.h"
 #include "tree.h"
 
@@ -1460,7 +1461,8 @@ struct lysc_ident {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lys_module *module;       /**< module structure */
-    struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays)) */
+    struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays))
+                                          It also contains references to identities located in unimplemented modules. */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
@@ -1529,7 +1531,8 @@ struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_type *plugin;       /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
+    uint32_t refcount;               /**< reference counter for type sharing, it may be accessed concurrently when
+                                          creating/freeing data node values that reference it (instance-identifier) */
 };
 
 struct lysc_type_num {
@@ -1595,7 +1598,7 @@ struct lysc_type_leafref {
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lyxp_expr *path;          /**< parsed target path, compiled path cannot be stored because of type sharing */
     struct lysc_prefix *prefixes;    /**< resolved prefixes used in the path */
-    const struct lys_module *cur_mod;/**< current module for the leafref (path) */
+    const struct lys_module *cur_mod;/**< unused, not needed */
     struct lysc_type *realtype;      /**< pointer to the real (first non-leafref in possible leafrefs chain) type. */
     uint8_t require_instance;        /**< require-instance flag */
 };
@@ -2153,6 +2156,19 @@ LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, 
 LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
 
 /**
+ * @brief Get how the if-feature statement is evaluated for certain identity.
+ *
+ * The function can be called even if the identity does not contain
+ * if-features, in which case ::LY_SUCCESS is returned.
+ *
+ * @param[in] ident Compiled identity statement to evaluate.
+ * @return LY_SUCCESS if the statement evaluates to true,
+ * @return LY_ENOT if it evaluates to false,
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_identity_iffeature_value(const struct lysc_ident *ident);
+
+/**
  * @brief Get the next feature in the module or submodules.
  *
  * @param[in] last Last returned feature.
@@ -2309,8 +2325,9 @@ struct lys_module {
                                           Available only for implemented modules. */
 
     struct lysc_ident *identities;   /**< List of compiled identities of the module ([sized array](@ref sizedarrays))
-                                          Identities are outside the compiled tree to allow their linkage to the identities from
-                                          the implemented modules. This avoids problems when the module became implemented in
+                                          also contains the disabled identities when their if-feature(s) are evaluated to \"false\",
+                                          and also the list is filled even if the module is not implemented.
+                                          The list is located here because it avoids problems when the module became implemented in
                                           future (no matter if implicitly via augment/deviate or explicitly via
                                           ::lys_set_implemented()). Note that if the module is not implemented (compiled), the
                                           identities cannot be instantiated in data (in identityrefs). */
@@ -2321,11 +2338,21 @@ struct lys_module {
     ly_bool implemented;             /**< flag if the module is implemented, not just imported */
     ly_bool to_compile;              /**< flag marking a module that was changed but not (re)compiled, see
                                           ::LY_CTX_EXPLICIT_COMPILE. */
-    uint8_t latest_revision;         /**< flag to mark the latest available revision:
-                                          1 - the latest revision in searchdirs was not searched yet and this is the
-                                          latest revision in the current context
-                                          2 - searchdirs were searched and this is the latest available revision */
+    uint8_t latest_revision;         /**< Flag to mark the latest available revision, see [latest_revision options](@ref latestrevflags). */
 };
+
+/**
+ * @defgroup latestrevflags Options for ::lys_module.latest_revision.
+ *
+ * Various information bits of ::lys_module.latest_revision.
+ *
+ * @{
+ */
+#define LYS_MOD_LATEST_REV          0x01 /**< This is the latest revision of the module in the current context. */
+#define LYS_MOD_LATEST_SEARCHDIRS   0x02 /**< This is the latest revision of the module found in searchdirs. */
+#define LYS_MOD_IMPORTED_REV        0x04 /**< This is the module revision used when importing the module without an explicit revision-date.
+                                              It is used for all such imports regardless of any changes made in the context. */
+/** @} latestrevflags */
 
 /**
  * @brief Get the current real status of the specified feature in the module.

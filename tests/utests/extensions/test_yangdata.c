@@ -30,7 +30,7 @@ setup(void **state)
 static void
 test_schema(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_ext_instance *e;
     char *printed = NULL;
     const char *data = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"
@@ -109,7 +109,7 @@ test_schema(void **state)
             "container b { rc:yang-data template { container x { leaf x {type string;}}}}}";
     info = "module b {\n"
             "  namespace \"urn:tests:extensions:yangdata:b\";\n"
-            "  prefix self;\n"
+            "  prefix self;\n\n"
             "  container b {\n"
             "    config true;\n"
             "    status current;\n"
@@ -144,7 +144,7 @@ test_schema(void **state)
             "      presence \"true\";\n"
             "      status current;\n"
             "    }\n"
-            "  }\n"
+            "  }\n\n"
             "  leaf d {\n"
             "    type string;\n"
             "    config true;\n"
@@ -236,7 +236,7 @@ test_schema_invalid(void **state)
 static void
 test_data(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     struct lysc_ext_instance *e;
     struct lyd_node *tree = NULL;
     const char *schema = "module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;"

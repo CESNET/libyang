@@ -39,7 +39,7 @@ function(add_yanglint_test)
     set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "YANGLINT=${PROJECT_BINARY_DIR}/yanglint")
 endfunction(add_yanglint_test)
 
-if(ENABLE_BUILD_TESTS)
+if(ENABLE_TESTS)
     # tests of non-interactive mode using shunit2
     find_program(PATH_SHUNIT NAMES shunit2)
     if(NOT PATH_SHUNIT)

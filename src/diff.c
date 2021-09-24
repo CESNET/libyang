@@ -12,7 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "diff.h"
 
@@ -626,6 +625,10 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
 
     /* compare first tree to the second tree - delete, replace, none */
     LY_LIST_FOR(first, iter_first) {
+        if (!iter_first->schema) {
+            continue;
+        }
+
         assert(!(iter_first->schema->flags & LYS_KEY));
         if ((iter_first->flags & LYD_DEFAULT) && !(options & LYD_DIFF_DEFAULTS)) {
             /* skip default nodes */
@@ -695,6 +698,10 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
 
     /* compare second tree to the first tree - create, user-ordered move */
     LY_LIST_FOR(second, iter_second) {
+        if (!iter_second->schema) {
+            continue;
+        }
+
         assert(!(iter_second->schema->flags & LYS_KEY));
         if ((iter_second->flags & LYD_DEFAULT) && !(options & LYD_DIFF_DEFAULTS)) {
             /* skip default nodes */

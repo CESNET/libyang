@@ -102,6 +102,7 @@ struct timespec;
  * - ::lyd_get_meta_value()
  * - ::lyd_find_xpath()
  * - ::lyd_find_path()
+ * - ::lyd_find_target()
  * - ::lyd_find_sibling_val()
  * - ::lyd_find_sibling_first()
  * - ::lyd_find_sibling_opaq_next()
@@ -255,6 +256,8 @@ struct timespec;
  * - ::lyd_new_term_bin()
  * - ::lyd_new_term_canon()
  * - ::lyd_new_list()
+ * - ::lyd_new_list_bin()
+ * - ::lyd_new_list_canon()
  * - ::lyd_new_list2()
  * - ::lyd_new_any()
  * - ::lyd_new_opaq()
@@ -495,7 +498,7 @@ struct timespec;
 /**
  * @brief Macro to get context from a data tree node.
  */
-#define LYD_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((struct lyd_node_opaq *)(node))->ctx)
+#define LYD_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((const struct lyd_node_opaq *)(node))->ctx)
 
 /**
  * @brief Data input/output formats supported by libyang [parser](@ref howtoDataParsers) and
@@ -553,7 +556,8 @@ struct lyd_value {
         uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
-        struct ly_path *target;      /**< Instance-identifier target path. */
+        struct ly_path *target;      /**< Instance-identifier target path, use ::lyd_find_target() to evaluate
+                                        it on data. */
         struct lyd_value_union *subvalue; /** Union value with some metadata. */
 
         void *dyn_mem;               /**< pointer to generic data type value stored in dynamic memory */
@@ -610,8 +614,8 @@ struct lyd_value_bits {
  * @brief Special lyd_value structure for built-in binary values.
  */
 struct lyd_value_binary {
-    void *data;     /**< binary value itself */
-    size_t size;    /**< size of the @p data value */
+    void *data;     /**< pointer to the binary value */
+    size_t size;    /**< size of @p data value in bytes */
 };
 
 /**
@@ -975,7 +979,7 @@ struct lyd_node_opaq {
 static inline struct lyd_node *
 lyd_parent(const struct lyd_node *node)
 {
-    if (!node) {
+    if (!node || !node->parent) {
         return NULL;
     }
 
@@ -1001,7 +1005,7 @@ lyd_child(const struct lyd_node *node)
 
     if (!node->schema) {
         /* opaq node */
-        return ((struct lyd_node_opaq *)node)->child;
+        return ((const struct lyd_node_opaq *)node)->child;
     }
 
     switch (node->schema->nodetype) {
@@ -1010,7 +1014,7 @@ lyd_child(const struct lyd_node *node)
     case LYS_RPC:
     case LYS_ACTION:
     case LYS_NOTIF:
-        return ((struct lyd_node_inner *)node)->child;
+        return ((const struct lyd_node_inner *)node)->child;
     default:
         return NULL;
     }
@@ -1098,9 +1102,9 @@ lyd_get_value(const struct lyd_node *node)
     }
 
     if (!node->schema) {
-        return ((struct lyd_node_opaq *)node)->value;
+        return ((const struct lyd_node_opaq *)node)->value;
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        const struct lyd_value *value = &((struct lyd_node_term *)node)->value;
+        const struct lyd_value *value = &((const struct lyd_node_term *)node)->value;
         return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
     }
 
@@ -1191,6 +1195,38 @@ LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, 
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...);
+
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @param[in] ... Ordered binary key values of the new list instance, all must be set. Every key value must be followed
+ * by its length. No keys are expected for key-less lists.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+        struct lyd_node **node, ...);
+
+/**
+ * @brief Create a new list node in the data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
+ * taken into consideration. Otherwise, the output's data node is going to be created.
+ * @param[out] node Optional created node.
+ * @param[in] ... Ordered canonical key values of the new list instance, all must be set. No keys are expected for
+ * key-less lists.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...);
 
 /**
@@ -1360,7 +1396,7 @@ LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool 
 /**
  * @brief Create a new JSON opaque node in the data tree. To create an XML opaque node, use ::lyd_new_opaq2().
  *
- * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] ctx libyang context. If NULL, @p parent context will be used.
  * @param[in] name Node name.
  * @param[in] value Optional node value.
@@ -1375,7 +1411,7 @@ LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
 /**
  * @brief Create a new XML opaque node in the data tree. To create a JSON opaque node, use ::lyd_new_opaq().
  *
- * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] ctx libyang context. If NULL, @p parent context will be used.
  * @param[in] name Node name.
  * @param[in] value Optional node value.
@@ -1449,8 +1485,8 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  *
  * If creating data nodes defined inside an extension instance, use ::lyd_new_ext_path().
  *
- * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
- * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * If @p path points to a list key, the key value from the predicate is used and @p value is ignored.
+ * Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
  *
  * For key-less lists and non-configuration leaf-lists, positional predicates should be used. If no predicate is used
@@ -1583,7 +1619,7 @@ LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *
  * @param[in] val_str New value to set, any prefixes are expected in JSON format.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
@@ -1599,7 +1635,7 @@ LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
  * @param[in] value_len Length of @p value.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len);
@@ -1615,7 +1651,7 @@ LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t valu
  * canonical, it may lead to unexpected behavior.
  * @return LY_SUCCESS if value was changed,
  * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
@@ -1626,7 +1662,7 @@ LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
  * @param[in] meta Metadata to change.
  * @param[in] val_str New value to set, any prefixes are expected in JSON format.
  * @return LY_SUCCESS if value was changed,
- * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
 LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
@@ -1683,6 +1719,13 @@ LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * @return LY_ERR error on error.
  */
 LY_ERR lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Unlink the specified node with all the following siblings.
+ *
+ * @param[in] node Data tree node to be unlinked (together with all the children and following siblings).
+ */
+void lyd_unlink_siblings(struct lyd_node *node);
 
 /**
  * @brief Unlink the specified data subtree.
@@ -1838,7 +1881,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
 
 #define LYD_DUP_RECURSIVE    0x01  /**< Duplicate not just the node but also all the children. Note that
                                         list's keys are always duplicated. */
-#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata of any node. */
+#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata (or attributes) of any node. */
 #define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
                                         Keys are also duplicated for lists. Return value does not change! */
 #define LYD_DUP_WITH_FLAGS   0x08  /**< Also copy any data node flags. That will cause the duplicated data to preserve
@@ -1894,11 +1937,13 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  * - source data tree is not modified in any way,
  * - any default nodes in the source are ignored if there are explicit nodes in the target,
  * - any metadata are ignored - those present in the target are kept, those in the source are not merged.
+ * - any merged nodes flags are set as non-validated.
  * @{
  */
 
 #define LYD_MERGE_DESTRUCT      0x01 /**< Spend source data tree in the function, it cannot be used afterwards! */
 #define LYD_MERGE_DEFAULTS      0x02 /**< Default nodes in the source tree replace even explicit nodes in the target. */
+#define LYD_MERGE_WITH_FLAGS    0x04 /**< Merged nodes (those missing in the source) keep their exact flags. */
 
 /** @} mergeoptions */
 
@@ -2161,7 +2206,7 @@ LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_dif
 LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
- * @brief Find the target in data of a compiled instance-identifier path (the target member in ::lyd_value).
+ * @brief Deprecated, use ::lyd_find_target() instead.
  *
  * @param[in] path Compiled path structure.
  * @param[in] tree Data tree to be searched.
@@ -2287,6 +2332,19 @@ LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name
 LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
 
 /**
+ * @brief Evaluate an XPath on data and return the result converted to boolean.
+ *
+ * Optimizations similar as in ::lyd_find_xpath().
+ *
+ * @param[in] ctx_node XPath context node.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[out] result Expression result comverted to boolean.
+ * @return LY_SUCCESS on success, @p result is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result);
+
+/**
  * @brief Search in given data for a node uniquely identified by a path.
  *
  * Always works in constant (*O(1)*) complexity. To be exact, it is *O(n)* where *n* is the depth
@@ -2302,6 +2360,18 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
  * @return LY_ERR on other errors.
  */
 LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
+
+/**
+ * @brief Find the target node of a compiled path (::lyd_value instance-identifier).
+ *
+ * @param[in] path Compiled path structure.
+ * @param[in] tree Data tree to be searched.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match is set to the found node.
+ * @return LY_ENOTFOUND if no match was found.
+ * @return LY_ERR on other errors.
+ */
+LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.

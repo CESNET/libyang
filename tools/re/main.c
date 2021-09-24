@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include <errno.h>
 #include <getopt.h>
@@ -125,7 +124,7 @@ main(int argc, char *argv[])
     int *invert_match = NULL;
     int patterns_count = 0;
     struct ly_ctx *ctx = NULL;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     FILE *infile = NULL;
     size_t len = 0;
     ssize_t l;

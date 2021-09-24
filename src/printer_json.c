@@ -332,7 +332,7 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LY_VAL
 static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
-    ly_bool dynamic = 0;
+    ly_bool dynamic;
     const char *value = val->realtype->plugin->print(ctx->ctx, val, LY_VALUE_JSON, NULL, &dynamic, NULL);
 
     /* leafref is not supported */
@@ -601,12 +601,13 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         has_content = 1;
     }
 
-    if (!node->schema || (node->schema->nodetype != LYS_LIST)) {
+    if ((node->schema && (node->schema->nodetype == LYS_LIST)) ||
+            (!node->schema && (((struct lyd_node_opaq *)node)->hints & LYD_NODEHINT_LIST))) {
+        ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ?
+                (DO_FORMAT ? ",\n" : ",") : "", INDENT, (DO_FORMAT && has_content) ? "\n" : "");
+    } else {
         ly_print_(ctx->out, "%s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
                 (DO_FORMAT && has_content) ? "\n" : "");
-    } else {
-        ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? (DO_FORMAT ? ",\n" : ",") : "",
-                INDENT, (DO_FORMAT && has_content) ? "\n" : "");
     }
     LEVEL_INC;
 
@@ -772,10 +773,14 @@ json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
 
         if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
             LY_CHECK_RET(json_print_array_open(ctx, &node->node));
-            LEVEL_INC;
         }
+        if (node->hints & LYD_NODEHINT_LEAFLIST) {
+            ly_print_(ctx->out, "%*s", INDENT);
+        }
+    } else if (node->hints & LYD_NODEHINT_LEAFLIST) {
+        ly_print_(ctx->out, ",%s%*s", DO_FORMAT ? "\n" : "", INDENT);
     }
-    if (node->child || (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
+    if (node->child || (node->hints & LYD_NODEHINT_LIST)) {
         LY_CHECK_RET(json_print_inner(ctx, &node->node));
         LEVEL_PRINTED;
     } else {
@@ -795,7 +800,6 @@ json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
     }
     if (last && (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
         json_print_array_close(ctx);
-        LEVEL_DEC;
         LEVEL_PRINTED;
     }
 

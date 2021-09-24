@@ -23,6 +23,7 @@ struct lysp_node;
 struct lysc_node;
 struct lysc_ctx;
 struct lysp_node_uses;
+struct lys_glob_unres;
 struct lys_module;
 
 /**
@@ -68,7 +69,7 @@ struct lysc_refine {
  *
  * @param[in] ctx Compile context.
  * @param[in] uses_p Parsed uses structure with augments and refines.
- * @param[in] ctx_node Context node of @p uses_p meaning its first data definiition parent.
+ * @param[in] ctx_node Context node of @p uses_p meaning its first data definition parent.
  * @return LY_ERR value.
  */
 LY_ERR lys_precompile_uses_augments_refines(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p,
@@ -117,20 +118,20 @@ void lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn);
 void lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode);
 
 /**
- * @brief Compile and apply any precompiled deviations and refines targetting a node.
+ * @brief Compile and apply any precompiled deviations and refines targeting a node.
  *
  * @param[in] ctx Compile context.
  * @param[in] pnode Parsed node to consider.
  * @param[in] parent First compiled parent of @p pnode.
  * @param[out] dev_pnode Copy of parsed node @p pnode with deviations and refines, if any. NULL if there are none.
- * @param[out] no_supported Whether a not-supported deviation is defined for the node.
+ * @param[out] not_supported Whether a not-supported deviation is defined for the node.
  * @return LY_ERR value.
  */
 LY_ERR lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node *pnode,
         const struct lysc_node *parent, struct lysp_node **dev_pnode, ly_bool *not_supported);
 
 /**
- * @brief Compile and apply any precompiled top-level or uses augments targetting a node.
+ * @brief Compile and apply any precompiled top-level or uses augments targeting a node.
  *
  * @param[in] ctx Compile context.
  * @param[in] node Compiled node to consider.
@@ -155,14 +156,16 @@ LY_ERR lys_precompile_own_augments(struct lysc_ctx *ctx);
 LY_ERR lys_precompile_own_deviations(struct lysc_ctx *ctx);
 
 /**
- * @brief Compile top-level augments and deviations defined in the current module.
- * Generally, just add the module refence to the target modules. But in case
- * of foreign augments, they are directly applied.
+ * @brief Add references to target modules of top-level augments and deviations in a module and all its submodules.
+ * Adds the module reference to the target modules and if not implemented, implement them (but not compile).
  *
- * @param[in] ctx Compile context.
- * @return LY_ERR value.
+ * @param[in] mod Module to process.
+ * @param[in,out] unres Global unres to use.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERECOMPILE on required recompilation of the dep set.
+ * @return LY_ERR on error.
  */
-LY_ERR lys_precompile_augments_deviations(struct lysc_ctx *ctx);
+LY_ERR lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres *unres);
 
 /**
  * @brief Revert precompilation of module augments and deviations. Meaning remove its reference from

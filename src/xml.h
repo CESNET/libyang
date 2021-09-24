@@ -57,8 +57,8 @@ struct lyxml_ns {
 
 /* element tag identifier for matching opening and closing tags */
 struct lyxml_elem {
-    const char *prefix;
-    const char *name;
+    const char *prefix; /**< only pointer, not in dictionary */
+    const char *name;   /**< only pointer, not in dictionary */
     size_t prefix_len;
     size_t name_len;
 };
@@ -136,10 +136,8 @@ LY_ERR lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next);
  * @brief Get a namespace record for the given prefix in the current context.
  *
  * @param[in] ns_set Set with namespaces from the XML context.
- * @param[in] prefix Pointer to the namespace prefix as taken from ::lyxml_get_attribute() or ::lyxml_get_element().
- * Can be NULL for default namespace.
- * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from ::lyxml_get_attribute() or
- * ::lyxml_get_element()).
+ * @param[in] prefix Pointer to the namespace prefix. Can be NULL for default namespace.
+ * @param[in] prefix_len Length of the prefix string (since it might not be NULL-terminated).
  * @return The namespace record or NULL if the record for the specified prefix not found.
  */
 const struct lyxml_ns *lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len);
@@ -160,6 +158,23 @@ LY_ERR lyxml_dump_text(struct ly_out *out, const char *text, ly_bool attribute);
  * @param[in] xmlctx XML context to clear.
  */
 void lyxml_ctx_free(struct lyxml_ctx *xmlctx);
+
+/**
+ * @brief Create a backup of XML context.
+ *
+ * @param[in] xmlctx XML context to back up.
+ * @param[out] backup Backup XML context.
+ * @return LY_ERR value.
+ */
+LY_ERR lyxml_ctx_backup(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup);
+
+/**
+ * @brief Restore previous backup of XML context.
+ *
+ * @param[in,out] xmlctx XML context to restore.
+ * @param[in] backup Backup XML context to restore, is unusable afterwards.
+ */
+void lyxml_ctx_restore(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup);
 
 /**
  * @brief Compare values and their prefix mappings.

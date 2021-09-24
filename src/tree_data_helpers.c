@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -216,6 +215,57 @@ lyd_owner_module(const struct lyd_node *node)
     return schema->module;
 }
 
+void
+lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod)
+{
+    int cmp;
+    struct lyd_node *first;
+
+    assert(node && mod);
+
+    if (!*node) {
+        return;
+    }
+
+    first = *node;
+    cmp = strcmp(lyd_owner_module(first)->name, mod->name);
+    if (cmp > 0) {
+        /* there may be some preceding data */
+        while (first->prev->next) {
+            first = first->prev;
+            if (lyd_owner_module(first) == mod) {
+                cmp = 0;
+                break;
+            }
+        }
+    }
+
+    if (cmp == 0) {
+        /* there may be some preceding data belonging to this module */
+        while (first->prev->next) {
+            if (lyd_owner_module(first->prev) != mod) {
+                break;
+            }
+            first = first->prev;
+        }
+    }
+
+    if (cmp < 0) {
+        /* there may be some following data */
+        LY_LIST_FOR(first, first) {
+            if (lyd_owner_module(first) == mod) {
+                cmp = 0;
+                break;
+            }
+        }
+    }
+
+    if (cmp == 0) {
+        /* we have found the first module data node */
+        *node = first;
+    }
+}
+
 const struct lys_module *
 lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t *i,
         struct lyd_node **first)
@@ -297,18 +347,18 @@ lyd_parse_check_keys(struct lyd_node *node)
 }
 
 void
-lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct ly_set *exts_check, struct lyd_meta **meta,
-        uint32_t options)
+lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts, struct lyd_meta **meta,
+        uint32_t parse_opts)
 {
     struct lyd_meta *meta2, *prev_meta = NULL;
 
     if (lysc_has_when(node->schema)) {
-        if (!(options & LYD_PARSE_ONLY)) {
+        if (!(parse_opts & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
-            LY_CHECK_RET(ly_set_add(when_check, node, 1, NULL), );
+            LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL), );
         }
     }
-    LY_CHECK_RET(lysc_node_ext_tovalidate(exts_check, node), );
+    LY_CHECK_RET(lysc_node_ext_tovalidate(node_exts, node), );
 
     LY_LIST_FOR(*meta, meta2) {
         if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults") &&
@@ -468,10 +518,11 @@ lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const s
         return;
     }
 
-    *root = (*root)->next;
-    if (mod && *root && (lyd_owner_module(to_del) != lyd_owner_module(*root))) {
-        /* there are no more nodes from mod */
+    if (mod && (*root)->prev->next && (!(*root)->next || (lyd_owner_module(to_del) != lyd_owner_module((*root)->next)))) {
+        /* there are no more nodes from mod, simply get the first top-level sibling */
         *root = lyd_first_sibling(*root);
+    } else {
+        *root = (*root)->next;
     }
 }
 
@@ -607,7 +658,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         }
 
         /* add all used prefixes */
-        value_end = value + value_len;
+        value_end = (char *)value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
             LY_CHECK_GOTO(ret = ly_value_prefix_next(value_iter, value_end, &substr_len, &is_prefix, &value_next), cleanup);
             if (is_prefix) {
@@ -643,7 +694,7 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         }
 
         /* add all used prefixes */
-        value_end = value + value_len;
+        value_end = (char *)value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
             LY_CHECK_GOTO(ret = ly_value_prefix_next(value_iter, value_end, &substr_len, &is_prefix, &value_next), cleanup);
             if (is_prefix) {
@@ -737,14 +788,6 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
         for (frac_len = 0; isdigit(frac[frac_len]); ++frac_len) {}
 
         i += frac_len;
-
-        /* skip trailing zeros */
-        for ( ; frac_len && (frac[frac_len - 1] == '0'); --frac_len) {}
-
-        if (!frac_len) {
-            /* only zeros, ignore */
-            frac = NULL;
-        }
     } else {
         frac = NULL;
     }
@@ -823,7 +866,7 @@ API LY_ERR
 ly_time_str2ts(const char *value, struct timespec *ts)
 {
     LY_ERR rc;
-    char *fractions_s, frac_buf[10] = {'0'};
+    char *fractions_s, frac_buf[10];
     int frac_len;
 
     LY_CHECK_ARG_RET(NULL, value, ts, LY_EINVAL);
@@ -833,6 +876,10 @@ ly_time_str2ts(const char *value, struct timespec *ts)
 
     /* convert fractions of a second to nanoseconds */
     if (fractions_s) {
+        /* init frac_buf with zeroes */
+        memset(frac_buf, '0', 9);
+        frac_buf[9] = '\0';
+
         frac_len = strlen(fractions_s);
         memcpy(frac_buf, fractions_s, frac_len > 9 ? 9 : frac_len);
         ts->tv_nsec = atol(frac_buf);
@@ -849,7 +896,7 @@ ly_time_ts2str(const struct timespec *ts, char **str)
 {
     char frac_buf[10];
 
-    LY_CHECK_ARG_RET(NULL, ts, str, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, ts, str, ((ts->tv_nsec <= 999999999) && (ts->tv_nsec >= 0)), LY_EINVAL);
 
     /* convert nanoseconds to fractions of a second */
     if (ts->tv_nsec) {

@@ -737,7 +737,7 @@ static void
 test_defaults(void **state)
 {
     struct lyd_node *tree, *node, *diff;
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *schema =
             "module f {\n"
             "    namespace urn:tests:f;\n"
@@ -1200,6 +1200,55 @@ test_action(void **state)
 }
 
 static void
+test_rpc(void **state)
+{
+    const char *schema, *data;
+    struct ly_in *in;
+    struct lyd_node *tree;
+
+    /* Testing constraint violation in RPC. */
+    schema =
+            "module val-str {\n"
+            "  namespace \"urn:vstr\";\n"
+            "  prefix v;\n"
+            "\n"
+            "  rpc modify-user-password {\n"
+            "    input {\n"
+            "      leaf old-password {\n"
+            "        type string {\n"
+            "          length \"4..8\";\n"
+            "        }\n"
+            "      }\n"
+            "      leaf new-password {\n"
+            "        type string {\n"
+            "          length \"4..8\";\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    data =
+            "<modify-user-password xmlns=\"urn:vstr\">\n"
+            "   <old-password>12345</old-password>\n"
+            "   <new-password>123</new-password>\n"
+            "</modify-user-password>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    /* Success, although the validation found a violation of
+     * the restriction. An \"opaq\" node was created instead of
+     * the \"new-password\" node from schema.
+     */
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    assert_non_null(tree);
+    /* Validate data as RPC request. */
+    assert_int_equal(LY_EVALID, lyd_validate_op(tree, NULL, LYD_TYPE_RPC_YANG, NULL));
+    CHECK_LOG_CTX("Invalid opaque node \"new-password\" found.",
+            "Data location /val-str:modify-user-password/new-password.");
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
+}
+
+static void
 test_reply(void **state)
 {
     struct ly_in *in;
@@ -1249,6 +1298,94 @@ test_reply(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_case(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module k {\n"
+            "  namespace urn:tests:k;\n"
+            "  prefix k;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  container ch {\n"
+            "    choice a0 {\n"
+            "      case v0 {\n"
+            "        leaf g0 {\n"
+            "          type string;\n"
+            "        }\n"
+            "      }\n"
+            "      case v1 {\n"
+            "        choice a1 {\n"
+            "          case r0 {\n"
+            "            leaf g1 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case r1 {\n"
+            "            leaf g2 {\n"
+            "              type string;\n"
+            "            }\n"
+            "            leaf g3 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case r2 {\n"
+            "            leaf g4 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "        }\n"
+            "      }\n"
+            "      case v2 {\n"
+            "        choice a2 {\n"
+            "          case y0 {\n"
+            "            leaf g5 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case y1 {\n"
+            "            leaf g6 {\n"
+            "              type string;\n"
+            "            }\n"
+            "            leaf g7 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "          case y2 {\n"
+            "            leaf g8 {\n"
+            "              type string;\n"
+            "            }\n"
+            "          }\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM(
+            "{\n"
+            "  \"k:ch\": {\n"
+            "    \"g0\": \"value_g0\",\n"
+            "    \"g7\": \"value_g7\"\n"
+            "  }\n"
+            "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.",
+            "Schema location /k:ch/a0, data location /k:ch, line number 5.");
+
+    CHECK_PARSE_LYD_PARAM(
+            "{\n"
+            "  \"k:ch\": {\n"
+            "    \"g7\": \"value_g7\",\n"
+            "    \"g0\": \"value_g0\"\n"
+            "  }\n"
+            "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.",
+            "Schema location /k:ch/a0, data location /k:ch, line number 5.");
+}
+
 int
 main(void)
 {
@@ -1264,7 +1401,9 @@ main(void)
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_action),
+        UTEST(test_rpc),
         UTEST(test_reply),
+        UTEST(test_case),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

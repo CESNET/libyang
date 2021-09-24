@@ -251,6 +251,13 @@ test_opaq(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, "<foo3 xmlns=\"urn:tests:a\"/>\n");
     lyd_free_all(tree);
 
+    /* list, opaq flag */
+    data = "<l1 xmlns=\"urn:tests:a\"/>";
+    CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);
+    CHECK_LYD_NODE_OPAQ((struct lyd_node_opaq *)tree, 0, 0, LY_VALUE_XML, "l1", 0, 0, NULL,  0,  "");
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS, "<l1 xmlns=\"urn:tests:a\"/>\n");
+    lyd_free_all(tree);
+
     /* missing key, no flags */
     data = "<l1 xmlns=\"urn:tests:a\">\n"
             "  <a>val_a</a>\n"
@@ -285,10 +292,10 @@ test_opaq(void **state)
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(UTEST_LYCTX,
             "<a xmlns=\"ns\">\n"
             "  <b>x</b>\n"
-            "  <c xml:id=\"D\">1</c>\n"
+            "  <c xmld:id=\"D\">1</c>\n"
             "</a>\n",
             LYD_XML, LYD_PARSE_OPAQ, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Unknown XML prefix \"xml\".", "Line number 3.");
+    CHECK_LOG_CTX("Unknown XML prefix \"xmld\".", "Line number 3.");
 }
 
 static void
@@ -727,6 +734,44 @@ test_netconf_reply_or_notification(void **state)
 }
 
 static void
+test_filter_attributes(void **state)
+{
+    const char *data;
+    struct ly_in *in;
+    struct lyd_node *tree;
+    const struct lyd_node *node;
+    const char *dsc;
+    const char *ref = "RFC 6241, Section 7.7";
+    const char *feats[] = {"writable-running", NULL};
+
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", feats)));
+
+    data = "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <filter type=\"xpath\" select=\"/*\"/>\n"
+            "</get>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    ly_in_free(in, 0);
+    assert_non_null(tree);
+
+    node = tree;
+    dsc = "Retrieve running configuration and device state information.";
+    CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
+            1, 0, 0, 1, "get", LYS_RPC,
+            1, 0, 0, 0, 0, ref, 0);
+    node = lyd_child(node);
+    dsc = "This parameter specifies the portion of the system\nconfiguration and state data to retrieve.";
+    CHECK_LYSC_NODE(node->schema, dsc, 1, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "filter", 0, LYS_ANYXML, 1, 0, NULL, 0);
+
+    CHECK_LYD_STRING(tree, LYD_PRINT_WITHSIBLINGS,
+            "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n"
+            "  <filter type=\"xpath\" select=\"/*\"/>\n"
+            "</get>\n");
+
+    lyd_free_all(tree);
+}
+
+static void
 test_data_skip(void **state)
 {
     const char *data;
@@ -768,6 +813,7 @@ main(void)
         UTEST(test_netconf_rpc, setup),
         UTEST(test_netconf_action, setup),
         UTEST(test_netconf_reply_or_notification, setup),
+        UTEST(test_filter_attributes, setup),
         UTEST(test_data_skip, setup),
     };
 

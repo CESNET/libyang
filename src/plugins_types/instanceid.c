@@ -14,12 +14,8 @@
 
 #include "plugins_types.h"
 
-#include <assert.h>
-#include <inttypes.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "libyang.h"
 
@@ -54,7 +50,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL, quot;
     const struct lys_module *mod = NULL;
-    ly_bool inherit_prefix, d;
+    ly_bool inherit_prefix = 0, d;
     const char *strval;
 
     switch (format) {
@@ -163,8 +159,14 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile instance-identifier into path */
-    ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
-            unres, &path, err);
+    if (format == LY_VALUE_LYB) {
+        /* The @p value in LYB format is the same as in JSON format. */
+        ret = lyplg_type_lypath_new(ctx, value, value_len, options, LY_VALUE_JSON, prefix_data, ctx_node,
+                unres, &path, err);
+    } else {
+        ret = lyplg_type_lypath_new(ctx, value, value_len, options, format, prefix_data, ctx_node,
+                unres, &path, err);
+    }
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store value */
@@ -321,7 +323,7 @@ lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *orig
     memset(dup, 0, sizeof *dup);
 
     /* canonical value */
-    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, error);
 
     /* copy path */
@@ -340,6 +342,7 @@ API void
 lyplg_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     ly_path_free(ctx, value->target);
 }
 
@@ -363,7 +366,8 @@ const struct lyplg_type_record plugins_instanceid[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
-        .plugin.free = lyplg_type_free_instanceid
+        .plugin.free = lyplg_type_free_instanceid,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

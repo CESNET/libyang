@@ -36,7 +36,7 @@ lysc_ctx_get_ctx(const struct lysc_ctx *ctx)
 API uint32_t *
 lysc_ctx_get_options(const struct lysc_ctx *ctx)
 {
-    return &((struct lysc_ctx *)ctx)->options;
+    return &((struct lysc_ctx *)ctx)->compile_opts;
 }
 
 API const char *

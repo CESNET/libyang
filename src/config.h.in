@@ -18,12 +18,21 @@
 /** size of fixed_mem in lyd_value, minimum is 8 (B) */
 #define LYD_VALUE_FIXED_MEM_SIZE @LYD_VALUE_SIZE@
 
-/*
- * Plugins
- */
+/** plugins */
 #define LYPLG_SUFFIX "@CMAKE_SHARED_MODULE_SUFFIX@"
 #define LYPLG_SUFFIX_LEN (sizeof LYPLG_SUFFIX - 1)
 #define LYPLG_TYPE_DIR "@PLUGINS_DIR_EXTENSIONS@"
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_TYPES@"
+
+/** atomic compiler operations, to be able to use uint32_t */
+#define LY_ATOMIC_INC_BARRIER(var) __sync_fetch_and_add(&(var), 1)
+#define LY_ATOMIC_DEC_BARRIER(var) __sync_fetch_and_sub(&(var), 1)
+
+/** printf compiler attribute */
+#if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)
+# define _FORMAT_PRINTF(FORM, ARGS) __attribute__((format (printf, FORM, ARGS)))
+#else
+# define _FORMAT_PRINTF(FORM, ARGS)
+#endif
 
 #endif /* LY_CONFIG_H_ */

@@ -25,9 +25,7 @@
 extern "C" {
 #endif
 
-struct lyd_node;
 struct lys_module;
-struct lysc_node;
 
 /**
  * @page howtoContext Context
@@ -73,8 +71,7 @@ struct lysc_node;
  * For a context, the first time the latest revision of a module is requested, it is properly searched for and loaded.
  * However, when this module is requested (without revision) the second time, the one found previously is returned.
  * This has the advantage of not searching for the module repeatedly but there is a drawback in case the content of search
- * directories is updated and a later revision become available. However, to force libyang to re-search the
- * latest revision, ::ly_ctx_reset_latests() can be used (note that it applies to all the modules in the context).
+ * directories is updated and a later revision become available.
  *
  * Context holds all the schema modules internally. To get a specific module, use ::ly_ctx_get_module() (or some of its
  * variants). If you need to do something with all the modules in the context, it is advised to iterate over them using
@@ -184,7 +181,7 @@ struct ly_ctx;
 #define LY_CTX_PREFER_SEARCHDIRS 0x20 /**< When searching for schema, prefer searchdirs instead of user callback. */
 #define LY_CTX_SET_PRIV_PARSED 0x40 /**< For all compiled nodes, their private objects (::lysc_node.priv) are used
                                         by libyang as a reference to the corresponding parsed node (::lysp_node).
-                                        The exception are \"case\" statements, which are ommitted (shorthand),
+                                        The exception are \"case\" statements, which are omitted (shorthand),
                                         in that case the private objects are set to NULL.
                                         So if this option is set, the user must not change private objects.
                                         Setting this option by ::ly_ctx_set_options() may result in context recompilation.
@@ -451,7 +448,7 @@ struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const
  * to be used in all calls starting with value 0.
  * @return Next context module, NULL if the last was already returned.
  */
-const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
+struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
 
 /**
  * @brief Get YANG module of the given namespace and revision.
@@ -530,6 +527,8 @@ const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_modul
 /**
  * @brief Reset cached latest revision information of the schemas in the context.
  *
+ * This function is deprecated and should not be used.
+ *
  * When a (sub)module is imported/included without revision, the latest revision is
  * searched. libyang searches for the latest revision in searchdirs and/or via provided
  * import callback ::ly_module_imp_clb() just once. Then it is expected that the content
@@ -572,8 +571,7 @@ uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
  * with the current features settings in case the module is already present in the context.
  * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
-const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision,
-        const char **features);
+struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features);
 
 /**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.

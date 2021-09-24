@@ -44,8 +44,10 @@ lyd_hash(struct lyd_node *node)
 
     if (node->schema->nodetype == LYS_LIST) {
         if (node->schema->flags & LYS_KEYLESS) {
-            /* key-less list simply adds its schema name again to the hash, just so that it differs from the first-instance hash */
-            node->hash = dict_hash_multi(node->hash, node->schema->name, strlen(node->schema->name));
+            /* key-less list simply calls hash function again with empty key,
+             * just so that it differs from the first-instance hash
+             */
+            node->hash = dict_hash_multi(node->hash, NULL, 0);
         } else {
             struct lyd_node_inner *list = (struct lyd_node_inner *)node;
 

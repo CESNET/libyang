@@ -22,7 +22,7 @@
 void
 test_extension_argument(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *mod_def_yang = "module a {\n"
             "  namespace \"urn:a\";\n"
             "  prefix a;\n\n"
@@ -116,7 +116,7 @@ test_extension_argument(void **state)
 void
 test_extension_argument_element(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *mod_def_yang = "module a {\n"
             "  namespace \"urn:a\";\n"
             "  prefix a;\n\n"

@@ -22,7 +22,7 @@
 void
 test_identity(void **state)
 {
-    const struct lys_module *mod, *mod_imp;
+    struct lys_module *mod, *mod_imp;
 
     /*
      * parsing YANG
@@ -72,7 +72,7 @@ test_identity(void **state)
     assert_string_equal(mod->parsed->identities[0].name, "ident-name");
 
     /* invalid substatement */
-    TEST_SCHEMA_ERR(0, 1, "inv", "<identity name=\"ident-name\"><if-feature name=\"iff\"/></identity>",
+    TEST_SCHEMA_PARSE_ERR(0, 1, "inv", "<identity name=\"ident-name\"><if-feature name=\"iff\"/></identity>",
             "Invalid sub-elemnt \"if-feature\" of \"identity\" element - "
             "this sub-element is allowed only in modules with version 1.1 or newer.", "Line number 1.");
 
@@ -104,11 +104,7 @@ test_identity(void **state)
     assert_int_equal(1, LY_ARRAY_COUNT(mod->identities[1].derived));
     assert_ptr_equal(mod->identities[1].derived[0], &mod->identities[0]);
 
-    TEST_SCHEMA_ERR(0, 0, "inv", "identity i1;identity i1;", "Duplicate identifier \"i1\" of identity statement.", NULL);
-
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule inv_sub {belongs-to inv {prefix inv;} identity i1;}");
-    TEST_SCHEMA_ERR(0, 0, "inv", "include inv_sub;identity i1;",
-            "Duplicate identifier \"i1\" of identity statement.", NULL);
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}", "Unable to find base (i2) of identity \"i1\".", "/inv:{identity='i1'}");
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i1;}", "Identity \"i1\" is derived from itself.", "/inv:{identity='i1'}");
     TEST_SCHEMA_ERR(0, 0, "inv", "identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}",
@@ -141,7 +137,7 @@ test_identity(void **state)
 void
 test_feature(void **state)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const struct lysp_feature *f;
 
     /*
@@ -189,7 +185,7 @@ test_feature(void **state)
     assert_string_equal(mod->parsed->features[0].name, "feature-name");
 
     /* invalid substatement */
-    TEST_SCHEMA_ERR(0, 1, "inv", "<feature name=\"feature-name\"><organization><text>org</text></organization></feature>",
+    TEST_SCHEMA_PARSE_ERR(0, 1, "inv", "<feature name=\"feature-name\"><organization><text>org</text></organization></feature>",
             "Unexpected sub-element \"organization\" of \"feature\" element.", "Line number 1.");
 
     /*
@@ -212,41 +208,37 @@ test_feature(void **state)
     }
 
     /* some invalid expressions */
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f{if-feature f1;}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f{if-feature f1;}",
             "Invalid value \"f1\" of if-feature - unable to find feature \"f1\".", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f2{if-feature 'f and';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f2{if-feature 'f and';}",
             "Invalid value \"f and\" of if-feature - unexpected end of expression.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f{if-feature 'or';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f{if-feature 'or';}",
             "Invalid value \"or\" of if-feature - unexpected end of expression.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f2{if-feature '(f1';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f2{if-feature '(f1';}",
             "Invalid value \"(f1\" of if-feature - non-matching opening and closing parentheses.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f2{if-feature 'f1)';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f2{if-feature 'f1)';}",
             "Invalid value \"f1)\" of if-feature - non-matching opening and closing parentheses.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f2{if-feature ---;}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f2{if-feature ---;}",
             "Invalid value \"---\" of if-feature - unable to find feature \"---\".", NULL);
-    TEST_SCHEMA_ERR(0, 0, "inv", "feature f1; feature f2{if-feature 'not f1';}",
+    TEST_SCHEMA_PARSE_ERR(0, 0, "inv", "feature f1; feature f2{if-feature 'not f1';}",
             "Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", NULL);
-    TEST_SCHEMA_ERR(0, 0, "inv", "feature f1; feature f1;",
-            "Duplicate identifier \"f1\" of feature statement.", NULL);
 
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule inv_sub {belongs-to inv {prefix inv;} feature f1;}");
-    TEST_SCHEMA_ERR(0, 0, "inv", "include inv_sub;feature f1;",
-            "Duplicate identifier \"f1\" of feature statement.", NULL);
-    TEST_SCHEMA_ERR(0, 0, "inv", "feature f1 {if-feature f2;} feature f2 {if-feature f1;}",
+    TEST_SCHEMA_PARSE_ERR(0, 0, "inv", "feature f1 {if-feature f2;} feature f2 {if-feature f1;}",
             "Feature \"f1\" is indirectly referenced from itself.", NULL);
-    TEST_SCHEMA_ERR(0, 0, "inv", "feature f1 {if-feature f1;}",
+    TEST_SCHEMA_PARSE_ERR(0, 0, "inv", "feature f1 {if-feature f1;}",
             "Feature \"f1\" is referenced from itself.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f {if-feature ();}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f {if-feature ();}",
             "Invalid value \"()\" of if-feature - number of features in expression does not match the required number of operands for the operations.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'f1(';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'f1(';}",
             "Invalid value \"f1(\" of if-feature - non-matching opening and closing parentheses.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'and f1';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'and f1';}",
             "Invalid value \"and f1\" of if-feature - missing feature/expression before \"and\" operation.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'f1 not ';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'f1 not ';}",
             "Invalid value \"f1 not \" of if-feature - unexpected end of expression.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'f1 not not ';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f {if-feature 'f1 not not ';}",
             "Invalid value \"f1 not not \" of if-feature - unexpected end of expression.", NULL);
-    TEST_SCHEMA_ERR(1, 0, "inv", "feature f1; feature f2; feature f {if-feature 'or f1 f2';}",
+    TEST_SCHEMA_PARSE_ERR(1, 0, "inv", "feature f1; feature f2; feature f {if-feature 'or f1 f2';}",
             "Invalid value \"or f1 f2\" of if-feature - missing feature/expression before \"or\" operation.", NULL);
 
     /*

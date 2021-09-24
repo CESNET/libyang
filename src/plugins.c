@@ -68,6 +68,11 @@ extern const struct lyplg_type_record plugins_date_and_time[];
 extern const struct lyplg_type_record plugins_xpath10[];
 
 /*
+ * ietf-netconf-acm
+ */
+extern const struct lyplg_type_record plugins_node_instanceid[];
+
+/*
  * internal extension plugins records
  */
 extern struct lyplg_ext_record plugins_metadata[];
@@ -101,39 +106,11 @@ struct lyplg_record {
     int8_t plugin[];             /**< specific plugin type's data - ::lyplg_ext or ::lyplg_type */
 };
 
+#ifndef STATIC
 static struct ly_set plugins_handlers = {0};
+#endif
 static struct ly_set plugins_types = {0};
 static struct ly_set plugins_extensions = {0};
-
-/**
- * @brief Just a variadic data to cover extension and type plugins by a single ::plugins_load() function.
- *
- * The values are taken from ::LY_PLUGINS_EXTENSIONS and ::LYPLG_TYPES macros.
- */
-static const struct {
-    const char *id;          /**< string identifier: type/extension */
-    const char *apiver_var;  /**< expected variable name holding API version value */
-    const char *plugins_var; /**< expected variable name holding plugin records */
-    const char *envdir;      /**< environment variable containing directory with the plugins */
-    const char *dir;         /**< default directory with the plugins (has less priority than envdir) */
-    uint32_t apiver;         /**< expected API version */
-} plugins_load_info[] = {
-    {   /* LYPLG_TYPE */
-        .id = "type",
-        .apiver_var = "plugins_types_apiver__",
-        .plugins_var = "plugins_types__",
-        .envdir = "LIBYANG_TYPES_PLUGINS_DIR",
-        .dir = LYPLG_TYPE_DIR,
-        .apiver = LYPLG_TYPE_API_VERSION
-    }, {/* LYPLG_EXTENSION */
-        .id = "extension",
-        .apiver_var = "plugins_extensions_apiver__",
-        .plugins_var = "plugins_extensions__",
-        .envdir = "LIBYANG_EXTENSIONS_PLUGINS_DIR",
-        .dir = LYPLG_EXT_DIR,
-        .apiver = LYPLG_EXT_API_VERSION
-    }
-};
 
 /**
  * @brief Iterate over list of loaded plugins of the given @p type.
@@ -220,6 +197,8 @@ plugins_insert(enum LYPLG type, const void *recs)
     return LY_SUCCESS;
 }
 
+#ifndef STATIC
+
 static void
 lyplg_close_cb(void *handle)
 {
@@ -239,13 +218,49 @@ lyplg_clean_(void)
     ly_set_erase(&plugins_handlers, lyplg_close_cb);
 }
 
+#endif
+
 void
 lyplg_clean(void)
 {
+#ifndef STATIC
     pthread_mutex_lock(&plugins_guard);
     lyplg_clean_();
     pthread_mutex_unlock(&plugins_guard);
+#endif
 }
+
+#ifndef STATIC
+
+/**
+ * @brief Just a variadic data to cover extension and type plugins by a single ::plugins_load() function.
+ *
+ * The values are taken from ::LY_PLUGINS_EXTENSIONS and ::LYPLG_TYPES macros.
+ */
+static const struct {
+    const char *id;          /**< string identifier: type/extension */
+    const char *apiver_var;  /**< expected variable name holding API version value */
+    const char *plugins_var; /**< expected variable name holding plugin records */
+    const char *envdir;      /**< environment variable containing directory with the plugins */
+    const char *dir;         /**< default directory with the plugins (has less priority than envdir) */
+    uint32_t apiver;         /**< expected API version */
+} plugins_load_info[] = {
+    {   /* LYPLG_TYPE */
+        .id = "type",
+        .apiver_var = "plugins_types_apiver__",
+        .plugins_var = "plugins_types__",
+        .envdir = "LIBYANG_TYPES_PLUGINS_DIR",
+        .dir = LYPLG_TYPE_DIR,
+        .apiver = LYPLG_TYPE_API_VERSION
+    }, {/* LYPLG_EXTENSION */
+        .id = "extension",
+        .apiver_var = "plugins_extensions_apiver__",
+        .plugins_var = "plugins_extensions__",
+        .envdir = "LIBYANG_EXTENSIONS_PLUGINS_DIR",
+        .dir = LYPLG_EXT_DIR,
+        .apiver = LYPLG_EXT_API_VERSION
+    }
+};
 
 /**
  * @brief Get the expected plugin objects from the loaded dynamic object and add the defined plugins into the lists of
@@ -395,6 +410,8 @@ plugins_insert_dir(enum LYPLG type)
     return ret;
 }
 
+#endif
+
 LY_ERR
 lyplg_init(void)
 {
@@ -434,16 +451,21 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_date_and_time), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_xpath10), error);
 
+    /* ietf-netconf-acm */
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_node_instanceid), error);
+
     /* internal extensions */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_metadata), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_nacm), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_EXTENSION, plugins_yangdata), error);
 
+#ifndef STATIC
     /* external types */
     LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_TYPE), error);
 
     /* external extensions */
     LY_CHECK_GOTO(ret = plugins_insert_dir(LYPLG_EXTENSION), error);
+#endif
 
     /* initiation done, wake-up possibly waiting threads creating another contexts */
     pthread_mutex_unlock(&plugins_guard);
@@ -452,7 +474,9 @@ lyplg_init(void)
 
 error:
     /* initiation was not successful - cleanup (and let others to try) */
+#ifndef STATIC
     lyplg_clean_();
+#endif
     pthread_mutex_unlock(&plugins_guard);
 
     if (ret == LY_EINVAL) {
@@ -465,6 +489,12 @@ error:
 API LY_ERR
 lyplg_add(const char *pathname)
 {
+#ifdef STATIC
+    (void)pathname;
+
+    LOGERR(NULL, LY_EINVAL, "Plugins are not supported in statically built library.");
+    return LY_EINVAL;
+#else
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, pathname, LY_EINVAL);
@@ -483,4 +513,5 @@ lyplg_add(const char *pathname)
     pthread_mutex_unlock(&plugins_guard);
 
     return ret;
+#endif
 }

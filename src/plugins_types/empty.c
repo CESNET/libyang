@@ -15,7 +15,6 @@
 #include "plugins_types.h"
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "libyang.h"
@@ -56,7 +55,7 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
         goto cleanup;
     }
 
-    /* store canonical value */
+    /* store canonical value, it always is */
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
         ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
         options &= ~LYPLG_TYPE_STORE_DYNAMIC;
@@ -97,7 +96,8 @@ const struct lyplg_type_record plugins_empty[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_simple,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 0,
     },
     {0}
 };

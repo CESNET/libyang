@@ -43,8 +43,7 @@ extern "C" {
  * To free the structure, use ::ly_set_free() function, to manipulate with the structure, use other
  * ly_set_* functions.
  */
-struct ly_set
-{
+struct ly_set {
     uint32_t size;                    /**< allocated size of the set array */
     uint32_t count;                   /**< number of elements in (used size of) the set array */
     union {

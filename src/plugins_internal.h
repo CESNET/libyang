@@ -19,7 +19,7 @@
 
 #include "plugins.h"
 #include "plugins_exts.h"
-#include "tree_schema.h"
+#include "plugins_types.h"
 
 #define LY_TYPE_UNKNOWN_STR "unknown"               /**< text representation of ::LY_TYPE_UNKNOWN */
 #define LY_TYPE_BINARY_STR "binary"                 /**< text representation of ::LY_TYPE_BINARY */
@@ -68,7 +68,7 @@ void lyplg_clean(void);
  * only the plugins with NULL revision specified.
  * @param[in] name Name of the type/extension which the plugin implements.
  * @return NULL if the plugin matching the restrictions is not present.
- * @return Pointer to the matching ::ly_type_plugin or ::lyext_plugin according to the plugin's @p type.
+ * @return Pointer to the matching ::lyplg_ext or ::lyplg_type according to the plugin's @p type.
  */
 void *lyplg_find(enum LYPLG type, const char *module, const char *revision, const char *name);
 

@@ -23,6 +23,7 @@
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
+#include "schema_compile.h"
 #include "set.h"
 #include "tree_data.h"
 
@@ -145,15 +146,15 @@ void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_
 #define LOG_LOCBACK(SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS) \
     ly_log_location_revert(SCNODE_STEPS, DNODE_STEPS, PATH_STEPS, IN_STEPS)
 
-#define LOGERR(ctx, errno, str, ...) ly_log(ctx, LY_LLERR, errno, str, ##__VA_ARGS__)
-#define LOGWRN(ctx, str, ...) ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__)
-#define LOGVRB(str, ...) ly_log(NULL, LY_LLVRB, 0, str, ##__VA_ARGS__)
+#define LOGERR(ctx, errno, ...) ly_log(ctx, LY_LLERR, errno, __VA_ARGS__)
+#define LOGWRN(ctx, ...) ly_log(ctx, LY_LLWRN, 0, __VA_ARGS__)
+#define LOGVRB(...) ly_log(NULL, LY_LLVRB, 0, __VA_ARGS__)
 
 #ifdef NDEBUG
-#  define LOGDBG(dbg_group, str, ...)
+#  define LOGDBG(dbg_group, ...)
 #else
 void ly_log_dbg(uint32_t group, const char *format, ...);
-#  define LOGDBG(dbg_group, str, ...) ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
+#  define LOGDBG(dbg_group, ...) ly_log_dbg(dbg_group, __VA_ARGS__);
 #endif
 
 /**
@@ -169,10 +170,10 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
-#define LOGVAL(CTX, CODE, ...) ly_vlog(CTX, CODE, ##__VA_ARGS__)
-#define LOGVAL_LINE(CTX, LINE, CODE, ...) \
+#define LOGVAL(CTX, ...) ly_vlog(CTX, __VA_ARGS__)
+#define LOGVAL_LINE(CTX, LINE, ...) \
     ly_log_location(NULL, NULL, NULL, NULL, LINE, 0); \
-    ly_vlog(CTX, CODE, ##__VA_ARGS__)
+    ly_vlog(CTX, __VA_ARGS__)
 
 /**
  * @brief Print Validation error from struct ly_err_item.
@@ -196,7 +197,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if ((COND)) {ERR; goto GOTO;}
 #define LY_CHECK_RET1(RETVAL) {LY_ERR ret__ = RETVAL;if (ret__ != LY_SUCCESS) {return ret__;}}
 #define LY_CHECK_RET2(COND, RETVAL) if ((COND)) {return RETVAL;}
-#define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1)(__VA_ARGS__)
+#define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1, DUMMY)(__VA_ARGS__)
 #define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if ((COND)) {ERR; return RETVAL;}
 
 #define LY_CHECK_ARG_GOTO1(CTX, ARG, GOTO) if (!(ARG)) {LOGARG(CTX, ARG);goto GOTO;}
@@ -215,7 +216,7 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 #define LY_CHECK_ARG_RET5(CTX, ARG1, ARG2, ARG3, ARG4, ARG5, RETVAL) LY_CHECK_ARG_RET4(CTX, ARG1, ARG2, ARG3, ARG4, RETVAL);\
     LY_CHECK_ARG_RET1(CTX, ARG5, RETVAL)
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO6(__VA_ARGS__, LY_CHECK_ARG_RET5, LY_CHECK_ARG_RET4, LY_CHECK_ARG_RET3, \
-    LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1) (CTX, __VA_ARGS__)
+    LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1, DUMMY) (CTX, __VA_ARGS__)
 
 /* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
 size_t LY_VCODE_INSTREXP_len(const char *str);
@@ -241,6 +242,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INCHILDSTMSCOMB LYVE_SYNTAX_YANG, "Invalid combination of keywords \"%s\" and \"%s\" as substatements of \"%s\"."
 #define LY_VCODE_DUPSTMT        LYVE_SYNTAX_YANG, "Duplicate keyword \"%s\"."
 #define LY_VCODE_DUPIDENT       LYVE_SYNTAX_YANG, "Duplicate identifier \"%s\" of %s statement."
+#define LY_VCODE_DUPIDENT2      LYVE_SYNTAX_YANG, "Duplicate identifier \"%s\" of %s statement - %s."
 #define LY_VCODE_INVAL          LYVE_SYNTAX_YANG, "Invalid value \"%.*s\" of \"%s\"."
 #define LY_VCODE_MISSTMT        LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_MISSCHILDSTMT  LYVE_SYNTAX_YANG, "Missing %s substatement for %s%s."
@@ -274,6 +276,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_XP_INOP_1      LYVE_XPATH, "Cannot apply XPath operation %s on %s."
 #define LY_VCODE_XP_INOP_2      LYVE_XPATH, "Cannot apply XPath operation %s on %s and %s."
 #define LY_VCODE_XP_INMOD       LYVE_XPATH, "Unknown/non-implemented module \"%.*s\"."
+#define LY_VCODE_XP_DEPTH       LYVE_XPATH, "The maximum nesting of expressions has been exceeded."
 
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
@@ -311,10 +314,14 @@ struct ly_ctx {
     struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
     struct ly_set list;               /**< set of loaded YANG schemas */
-    ly_module_imp_clb imp_clb;        /**< Optional callback for retrieving missing included or imported models in a custom way. */
-    void *imp_clb_data;               /**< Optional private data for ::ly_ctx.imp_clb */
-    uint16_t change_count;            /**< Count of changes of the context, on some changes it could be incremented more times */
-    uint16_t flags;                   /**< context settings, see @ref contextoptions. */
+    ly_module_imp_clb imp_clb;        /**< optional callback for retrieving missing included or imported models */
+    void *imp_clb_data;               /**< optional private data for ::ly_ctx.imp_clb */
+    struct lys_glob_unres unres;      /**< global unres, should be empty unless there are modules prepared for
+                                           compilation if ::LY_CTX_EXPLICIT_COMPILE flag is set */
+    uint16_t change_count;            /**< count of changes of the context, on some changes it could be incremented
+                                           more times */
+    uint16_t flags;                   /**< context settings, see @ref contextoptions */
+
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
     pthread_mutex_t lyb_hash_lock;    /**< lock for storing LYB schema hashes in schema nodes */
 };
@@ -369,7 +376,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] s String to search in.
  * @param[in] c Character to search for.
  * @param[in] len Limit the search to this number of characters in @p s.
- * @return Pointer to first @p c occurence in @p s, NULL if not found in first @p len characters.
+ * @return Pointer to first @p c occurrence in @p s, NULL if not found in first @p len characters.
  */
 char *ly_strnchr(const char *s, int c, size_t len);
 
@@ -396,18 +403,6 @@ int ly_strncmp(const char *refstr, const char *str, size_t str_len);
  * @return LY_SUCCESS on success.
  */
 LY_ERR ly_strntou8(const char *nptr, size_t len, uint8_t *ret);
-
-/**
- * @brief Similar to strlen(3) but accepts NULL and returns 0.
- *
- * @param[in] s String to examine.
- * @return Length of @p s.
- */
-static inline size_t
-ly_strlen(const char *s)
-{
-    return s ? strlen(s) : 0;
-}
 
 /**
  * @brief Get all possible value prefixes from an YANG value by iteratively returning specific substrings.
@@ -447,13 +442,29 @@ LY_ERR ly_value_prefix_next(const char *str_begin, const char *str_end, uint32_t
 #define ly_strlen(STR) (STR ? strlen(STR) : 0)
 
 /**
- * @brief Compile-time strlen() for string contants.
+ * @brief Compile-time strlen() for string constants.
  *
  * Use to avoid magic numbers usage
  */
 #define ly_strlen_const(STR) (sizeof STR - 1)
 
+/**
+ * @brief Macro to simply put couple of string length and the string as
+ * printf's arguments for %.*s. Use only with constant strings.
+ */
+#define LY_PRI_LENSTR(STR) (int)ly_strlen_const(STR), STR
+
 #define ly_sizeofarray(ARRAY) (sizeof ARRAY / sizeof *ARRAY)
+
+/**
+ * @brief Check for overflow during the addition of two unsigned integers.
+ */
+#define LY_OVERFLOW_ADD(MAX, X, Y) (X > MAX - Y)
+
+/**
+ * @brief Check for overflow during the multiplication of two unsigned integers.
+ */
+#define LY_OVERFLOW_MUL(MAX, X, Y) (X > MAX / Y)
 
 /*
  * Numerical bases for use in functions like strtoll() instead of magic numbers

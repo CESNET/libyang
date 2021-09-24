@@ -18,7 +18,7 @@ if (ENABLE_FUZZ_TARGETS)
 	endif()
 endif()
 
-if (ENABLE_BUILD_TESTS)
+if (ENABLE_TESTS)
 	add_executable(fuzz_regression_test fuzz_regression_test.c)
 	set(fuzz_regression_tests lys_parse_mem lyd_parse_mem_xml lyd_parse_mem_json)
 	foreach(target_name IN LISTS fuzz_regression_tests)

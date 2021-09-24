@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "diff.h"
 #include "log.h"
 
 struct ly_ctx;
@@ -24,8 +25,6 @@ struct ly_set;
 struct lyd_node;
 struct lys_module;
 struct lysc_node;
-
-enum lyd_diff_op;
 
 /**
  * @brief Add information about the node's extensions having their own validation callback into an unres set.
@@ -58,7 +57,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] node_exts Set with nodes with extension instances with validation plugin callback, can be NULL.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
- * @param[in] meta_types Set with metdata with unresolved types, can be NULL.
+ * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
@@ -88,7 +87,7 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
  * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
- * @param[in] node_exts Set with nodes with extension instances with validation plugin callback, if NULL a local set is used.
+ * @param[in] node_exts_p Set with nodes with extension instances with validation plugin callback, if NULL a local set is used.
  * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
  * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
  * @param[out] diff Generated validation diff, not generated if NULL.

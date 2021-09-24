@@ -162,8 +162,10 @@ struct utest_context {
     { \
         char *test_1; \
         char *test_2; \
-        lyd_print_mem(&test_1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK); \
-        lyd_print_mem(&test_2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&test_1, NODE_1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)); \
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&test_2, NODE_2, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_SHRINK)); \
+        assert_non_null(test_1); \
+        assert_non_null(test_2); \
         assert_string_equal(test_1, test_2); \
         free(test_1); \
         free(test_2); \
@@ -782,7 +784,7 @@ struct utest_context {
     assert_string_equal((NODE)->name, NAME); \
     CHECK_POINTER((NODE)->next, NEXT); \
     CHECK_POINTER((NODE)->parent, PARENT); \
-    CHECK_LYD_VALUE((NODE)->value, TYPE_VAL, ##__VA_ARGS__);
+    CHECK_LYD_VALUE((NODE)->value, TYPE_VAL, __VA_ARGS__);
 
 /**
  * @brief assert that lyd_node_term structure members are correct
@@ -802,7 +804,7 @@ struct utest_context {
     CHECK_POINTER((NODE)->parent, PARENT); \
     assert_non_null((NODE)->prev); \
     CHECK_POINTER((NODE)->schema, SCHEMA); \
-    CHECK_LYD_VALUE((NODE)->value, VALUE_TYPE, ##__VA_ARGS__);
+    CHECK_LYD_VALUE((NODE)->value, VALUE_TYPE, __VA_ARGS__);
 
 /**
  * @brief assert that lyd_node_any structure members are correct
@@ -879,7 +881,7 @@ struct utest_context {
  *                     CHECK_LYD_VALUE_ ## TYPE_VAL.
  */
 #define CHECK_LYD_VALUE(NODE, TYPE_VAL, ...) \
-    CHECK_LYD_VALUE_ ## TYPE_VAL (NODE, ##__VA_ARGS__);
+    CHECK_LYD_VALUE_ ## TYPE_VAL (NODE, __VA_ARGS__);
 
 /*
  * LYD VALUES CHECKING SPECIALIZATION
@@ -915,7 +917,12 @@ struct utest_context {
     assert_int_equal(LY_TYPE_UNION, (NODE).realtype->basetype); \
     assert_non_null((NODE).subvalue); \
     assert_non_null((NODE).subvalue->prefix_data); \
-    CHECK_LYD_VALUE_ ## TYPE_VAL ((NODE).subvalue->value, ## __VA_ARGS__)
+    CHECK_LYD_VALUE_ ## TYPE_VAL ((NODE).subvalue->value, __VA_ARGS__)
+
+/**
+ * @brief Internal macro. Get 1st variadic argument.
+ */
+#define _GETARG1(ARG1, ...) ARG1
 
 /**
  * @brief Internal macro. Assert that lyd_value structure members are correct. Lyd value is type BITS
@@ -924,19 +931,19 @@ struct utest_context {
  * @param[in] CANNONICAL_VAL expected cannonical value
  * @param[in] VALUE          expected array of bits names
  */
-#define CHECK_LYD_VALUE_BITS(NODE, CANNONICAL_VAL, ...) \
+#define CHECK_LYD_VALUE_BITS(NODE, ...) \
     assert_non_null((NODE).realtype->plugin->print(UTEST_LYCTX, &(NODE), LY_VALUE_CANON, NULL, NULL, NULL)); \
-    assert_string_equal((NODE)._canonical, CANNONICAL_VAL); \
+    assert_string_equal((NODE)._canonical, _GETARG1(__VA_ARGS__, DUMMY)); \
     assert_non_null((NODE).realtype); \
     assert_int_equal(LY_TYPE_BITS, (NODE).realtype->basetype); \
     { \
         const char *arr[] = { __VA_ARGS__ }; \
-        LY_ARRAY_COUNT_TYPE arr_size = sizeof(arr) / sizeof(arr[0]); \
+        LY_ARRAY_COUNT_TYPE arr_size = (sizeof(arr) / sizeof(arr[0])) - 1; \
         struct lyd_value_bits *_val; \
         LYD_VALUE_GET(&(NODE), _val); \
         assert_int_equal(arr_size, LY_ARRAY_COUNT(_val->items)); \
         for (LY_ARRAY_COUNT_TYPE it = 0; it < arr_size; it++) { \
-            assert_string_equal(arr[it], _val->items[it]->name); \
+            assert_string_equal(arr[it + 1], _val->items[it]->name); \
         } \
     }
 
@@ -1126,7 +1133,7 @@ struct utest_context {
  */
 #define UTEST_INVALID_MODULE(DATA, FORMAT, FEATURES, RET_VAL) \
     { \
-        const struct lys_module *mod; \
+        struct lys_module *mod; \
         assert_int_equal(LY_SUCCESS, ly_in_new_memory(DATA, &_UC->in)); \
         assert_int_equal(RET_VAL, lys_parse(_UC->ctx, _UC->in, FORMAT, FEATURES, &mod)); \
         assert_null(mod); \
@@ -1199,9 +1206,30 @@ struct utest_context {
         _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev, MSG5, PATH5)
 
 /**
+ * @brief Internal macro to check the last three libyang's context error.
+ */
+#define _CHECK_LOG_CTX6(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6) \
+        _CHECK_LOG_CTX5(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5); \
+        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev, MSG6, PATH6)
+
+/**
+ * @brief Internal macro to check the last three libyang's context error.
+ */
+#define _CHECK_LOG_CTX7(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7) \
+        _CHECK_LOG_CTX6(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6); \
+        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev->prev, MSG7, PATH7)
+
+/**
+ * @brief Internal macro to check the last three libyang's context error.
+ */
+#define _CHECK_LOG_CTX8(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7, MSG8, PATH8) \
+        _CHECK_LOG_CTX7(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7); \
+        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev->prev->prev, MSG8, PATH8)
+
+/**
  * @brief Internal helper macro to select _CHECK_LOG_CTX* macro according to the provided parameters.
  */
-#define _GET_CHECK_LOG_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, NAME, ...) NAME
+#define _GET_CHECK_LOG_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, NAME, ...) NAME
 
 /**
  * @brief Check expected error(s) in libyang context.
@@ -1214,8 +1242,9 @@ struct utest_context {
  * @param[in] PATH Expected error path.
  */
 #define CHECK_LOG_CTX(...) \
-    _GET_CHECK_LOG_MACRO(__VA_ARGS__, _CHECK_LOG_CTX5, _INVAL, _CHECK_LOG_CTX4, _INVAL, \
-            _CHECK_LOG_CTX3, _INVAL, _CHECK_LOG_CTX2, _INVAL, _CHECK_LOG_CTX1)(__VA_ARGS__); \
+    _GET_CHECK_LOG_MACRO(__VA_ARGS__, _CHECK_LOG_CTX8, _INVAL, _CHECK_LOG_CTX7, _INVAL, \
+            _CHECK_LOG_CTX6, _INVAL, _CHECK_LOG_CTX5, _INVAL, _CHECK_LOG_CTX4, _INVAL, \
+            _CHECK_LOG_CTX3, _INVAL, _CHECK_LOG_CTX2, _INVAL, _CHECK_LOG_CTX1, DUMMY)(__VA_ARGS__); \
     ly_err_clean(_UC->ctx, NULL)
 
 /**
@@ -1378,7 +1407,7 @@ utest_teardown(void **state)
  * UTEST(test_func, setup, teardown) - both setup and teardown are test-specific
  */
 #define UTEST(...) \
-    _GET_UTEST_MACRO(__VA_ARGS__, _UTEST_SETUP_TEARDOWN, _UTEST_SETUP, _UTEST)(__VA_ARGS__)
+    _GET_UTEST_MACRO(__VA_ARGS__, _UTEST_SETUP_TEARDOWN, _UTEST_SETUP, _UTEST, DUMMY)(__VA_ARGS__)
 
 #else /* _UTEST_MAIN_ */
 

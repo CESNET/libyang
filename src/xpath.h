@@ -26,11 +26,15 @@
 struct ly_ctx;
 struct lyd_node;
 
-/*
+/**
+ * @internal
+ * @page internals
+ * @section internalsXpath XPath Implementation
+ *
  * XPath evaluator fully compliant with http://www.w3.org/TR/1999/REC-xpath-19991116/
  * except the following restrictions in the grammar.
  *
- * PARSED GRAMMAR
+ * @subsection internalsXpathGrammar Parsed Grammar
  *
  * Full axes are not supported, abbreviated forms must be used,
  * variables are not supported, "id()" function is not supported,
@@ -39,7 +43,7 @@ struct lyd_node;
  * constants are tokens.
  *
  * Modified full grammar:
- *
+ * @code
  * [1] Expr ::= OrExpr // just an alias
  *
  * [2] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
@@ -73,6 +77,7 @@ struct lyd_node;
  *                     | MultiplicativeExpr 'mod' UnaryExpr
  * [19] UnaryExpr ::= UnionExpr | '-' UnaryExpr
  * [20] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
+ * @endcode
  */
 
 /* expression tokens allocation */
@@ -86,6 +91,9 @@ struct lyd_node;
 /* building string when casting */
 #define LYXP_STRING_CAST_SIZE_START 64
 #define LYXP_STRING_CAST_SIZE_STEP 16
+
+/* Maximum number of nested expressions. */
+#define LYXP_MAX_BLOCK_DEPTH 100
 
 /**
  * @brief Tokens that can be in an XPath expression.
@@ -284,7 +292,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
- * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
+ * @param[in] format Format of the XPath expression (more specifically, of any used prefixes).
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
  * @param[in] ctx_node Current (context) data node, NULL in case of the root node.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
@@ -305,7 +313,7 @@ LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const st
  * @param[in] ctx libyang context to use.
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
- * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
+ * @param[in] format Format of the XPath expression (more specifically, of any used prefixes).
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
  * @param[in] ctx_scnode Current (context) schema node, NULL in case of the root node.
  * @param[out] set Result set.
@@ -323,6 +331,7 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
 #define LYXP_SCNODE_SCHEMA  LYS_FIND_XP_SCHEMA  /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
 #define LYXP_SCNODE_OUTPUT  LYS_FIND_XP_OUTPUT  /**< Search RPC/action output nodes instead of input ones. */
 #define LYXP_SCNODE_ALL     0x1C    /**< mask for all the LYXP_* values */
+#define LYXP_SKIP_EXPR      0x20    /**< The rest of the expression will not be evaluated (lazy evaluation) */
 
 /**
  * @brief Cast XPath set to another type.
@@ -429,6 +438,21 @@ LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, u
  * @return LY_SUCCESS on success.
  */
 LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_token want_tok);
+
+/**
+ * @brief Look at the next token and skip it if it matches either of the 2 expected ones.
+ *
+ * @param[in] ctx Context for logging, not logged if NULL.
+ * @param[in] exp Expression to use.
+ * @param[in,out] tok_idx Token index in the expression \p exp, is updated.
+ * @param[in] want_tok1 Expected token 1.
+ * @param[in] want_tok2 Expected token 2.
+ * @return LY_EINCOMPLETE on EOF,
+ * @return LY_ENOT on non-matching token,
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx,
+        enum lyxp_token want_tok1, enum lyxp_token want_tok2);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.

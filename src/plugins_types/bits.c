@@ -12,14 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
+#define _GNU_SOURCE /* strdup */
 
 #include "plugins_types.h"
 
 #include <ctype.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -223,13 +221,13 @@ bits_bitmap2items(const char *bitmap, struct lysc_type_bits *type, struct lysc_t
 {
     size_t i, bitmap_size = lyplg_type_bits_bitmap_size(type);
     uint32_t bit_pos;
-    char bitmask;
-    const char *byte;
+    uint8_t bitmask;
+    const uint8_t *byte;
 
     bit_pos = 0;
     for (i = 0; i < bitmap_size; ++i) {
         /* check this byte (but not necessarily all bits in the last byte) */
-        byte = BITS_BITMAP_BYTE(bitmap, bitmap_size, i);
+        byte = (uint8_t *)BITS_BITMAP_BYTE(bitmap, bitmap_size, i);
         for (bitmask = 1; bitmask; bitmask <<= 1) {
             if (*byte & bitmask) {
                 /* add this bit */
@@ -441,7 +439,7 @@ lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, 
     memset(dup, 0, sizeof *dup);
 
     /* optional canonical value */
-    ret = lydict_insert(ctx, original->_canonical, ly_strlen(original->_canonical), &dup->_canonical);
+    ret = lydict_insert(ctx, original->_canonical, 0, &dup->_canonical);
     LY_CHECK_GOTO(ret, error);
 
     /* allocate value */
@@ -476,6 +474,7 @@ lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
     struct lyd_value_bits *val;
 
     lydict_remove(ctx, value->_canonical);
+    value->_canonical = NULL;
     LYD_VALUE_GET(value, val);
     if (val) {
         free(val->bitmap);
@@ -504,7 +503,8 @@ const struct lyplg_type_record plugins_bits[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_bits,
         .plugin.duplicate = lyplg_type_dup_bits,
-        .plugin.free = lyplg_type_free_bits
+        .plugin.free = lyplg_type_free_bits,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };

@@ -102,7 +102,7 @@ dict_hash_multi(uint32_t hash, const char *key_part, size_t len)
 {
     uint32_t i;
 
-    if (key_part) {
+    if (key_part && len) {
         for (i = 0; i < len; ++i) {
             hash += key_part[i];
             hash += (hash << 10);
@@ -242,7 +242,9 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
              */
             match->value = malloc(sizeof *match->value * (len + 1));
             LY_CHECK_ERR_RET(!match->value, LOGMEM(ctx), LY_EMEM);
-            memcpy(match->value, value, len);
+            if (len) {
+                memcpy(match->value, value, len);
+            }
             match->value[len] = '\0';
         }
     } else {
@@ -372,7 +374,7 @@ lyht_dup(const struct hash_table *orig)
         return NULL;
     }
 
-    memcpy(ht->recs, orig->recs, orig->used * orig->rec_size);
+    memcpy(ht->recs, orig->recs, (size_t)orig->used * (size_t)orig->rec_size);
     ht->used = orig->used;
     ht->invalid = orig->invalid;
     return ht;

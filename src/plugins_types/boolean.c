@@ -15,9 +15,7 @@
 #include "plugins_types.h"
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "libyang.h"
 
@@ -60,7 +58,7 @@ lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type,
         i = *(int8_t *)value;
         storage->boolean = i ? 1 : 0;
 
-        /* store canonical value */
+        /* store canonical value, it always is */
         ret = lydict_insert(ctx, i ? "true" : "false", 0, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
 
@@ -160,7 +158,8 @@ const struct lyplg_type_record plugins_boolean[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_boolean,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = 1,
     },
     {0}
 };

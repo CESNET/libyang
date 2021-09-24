@@ -102,8 +102,13 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_s
 
     LY_CHECK_ARG_RET(NULL, set, newset_p, LY_EINVAL);
 
-    newset = malloc(sizeof *newset);
+    newset = calloc(1, sizeof *newset);
     LY_CHECK_ERR_RET(!newset, LOGMEM(NULL), LY_EMEM);
+    if (!set->count) {
+        *newset_p = newset;
+        return LY_SUCCESS;
+    }
+
     newset->count = set->count;
     newset->size = set->count; /* optimize the size */
     newset->objs = malloc(newset->size * sizeof *(newset->objs));

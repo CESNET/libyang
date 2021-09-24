@@ -156,7 +156,7 @@ struct lysc_type_leafref;
  */
 
 /**
- * @brief Extensions API version
+ * @brief Type API version
  */
 #define LYPLG_TYPE_API_VERSION 1
 
@@ -213,13 +213,16 @@ struct lysc_type_leafref;
  * @param[in] vecode Validity error code in case of LY_EVALID error code.
  * @param[in] path Path to the node causing the error.
  * @param[in] apptag Error-app-tag value.
- * @param[in] err_msg error formating message.
+ * @param[in] err_format Format string (same like at printf) or string literal.
+ * If you want to print just an unknown string, use "%s" for the @p err_format, otherwise undefined behavior may occur
+ * because the unknown string may contain the % character, which is interpreted as conversion specifier.
  * @return The given @p ecode value if the @p err is successfully created. The structure can be freed using ::ly_err_free()
  * or passed back from callback into libyang.
  * @return LY_EMEM If there is not enough memory for allocating error record, the @p err is not touched in that case.
  * @return LY_SUCCESS if @p ecode is LY_SUCCESS, the @p err is not touched in this case.
  */
-LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_msg, ...);
+LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_format, ...)
+_FORMAT_PRINTF(6, 7);
 
 /**
  * @brief Destructor for the error records created with ::ly_err_new().
@@ -545,6 +548,8 @@ struct lyplg_type {
     lyplg_type_print_clb print;         /**< printer callback to get string representing the value */
     lyplg_type_dup_clb duplicate;       /**< data duplication callback */
     lyplg_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
+    int32_t lyb_data_len;               /**< Length of the data in [LYB format](@ref howtoDataLYB).
+                                             For variable-length is set to -1. */
 };
 
 struct lyplg_type_record {

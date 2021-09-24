@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
 
 #include "plugins_types.h"
 
@@ -292,7 +291,7 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
         *dynamic = 0;
     }
     if (value_len) {
-        *value_len = strlen(value->_canonical);
+        *value_len = ly_strlen(value->_canonical);
     }
     return value->_canonical;
 }
@@ -300,7 +299,8 @@ lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 API LY_ERR
 lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, strlen(original->_canonical), &dup->_canonical));
+    memset(dup, 0, sizeof *dup);
+    LY_CHECK_RET(lydict_insert(ctx, original->_canonical, 0, &dup->_canonical));
     memcpy(dup->fixed_mem, original->fixed_mem, sizeof dup->fixed_mem);
     dup->realtype = original->realtype;
     return LY_SUCCESS;
@@ -383,7 +383,7 @@ lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_
     if (!value_len) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty decimal64 value.");
     } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %lu. character of decimal64 value \"%.*s\".",
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %zu. character of decimal64 value \"%.*s\".",
                 len + 1, (int)value_len, value);
     }
 
@@ -491,13 +491,13 @@ lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, si
             PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
             pcre2_get_error_message(rc, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
 
-            return ly_err_new(err, LY_ESYS, 0, NULL, NULL, (const char *)pcre2_errmsg);
+            return ly_err_new(err, LY_ESYS, 0, NULL, NULL, "%s", (const char *)pcre2_errmsg);
         } else if (((rc == PCRE2_ERROR_NOMATCH) && !patterns[u]->inverted) ||
                 ((rc != PCRE2_ERROR_NOMATCH) && patterns[u]->inverted)) {
             char *eapptag = patterns[u]->eapptag ? strdup(patterns[u]->eapptag) : NULL;
 
             if (patterns[u]->emsg) {
-                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, patterns[u]->emsg);
+                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", patterns[u]->emsg);
             } else {
                 const char *inverted = patterns[u]->inverted ? "inverted " : "";
                 return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
@@ -524,7 +524,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             if ((uint64_t)value < range->parts[u].min_u64) {
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
                             is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
@@ -536,7 +536,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
                             is_length ? LY_ERRMSG_NOLENGTH : LY_ERRMSG_NORANGE, (int)strval_len, strval);
@@ -547,7 +547,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             if (value < range->parts[u].min_64) {
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
@@ -558,7 +558,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
                 if (range->emsg) {
-                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, range->emsg);
+                    return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, LY_ERRMSG_NORANGE, (int)strval_len, strval);
                 }
@@ -711,8 +711,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
     /* parse the value */
-    ret = ly_path_parse(ctx, ctx_node, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE,
-            prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
+    ret = ly_path_parse(ctx, ctx_node, value, value_len, 0, LY_PATH_BEGIN_ABSOLUTE, prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
         ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
@@ -725,8 +724,8 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     }
 
     /* resolve it on schema tree */
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, LY_PATH_LREF_FALSE, (ctx_node->flags & LYS_IS_OUTPUT) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, unres, path);
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node->flags & LYS_IS_OUTPUT) ?
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, path);
     if (ret) {
         ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
                 "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
@@ -752,11 +751,12 @@ lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path)
 API LY_ERR
 lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres)
 {
-    LY_CHECK_RET(lys_set_implemented_r(mod, features, unres));
-
-    if (unres->recompile) {
-        return LY_ERECOMPILE;
+    if (mod->implemented) {
+        return LY_SUCCESS;
     }
+
+    LY_CHECK_RET(lys_implement(mod, features, unres));
+    LY_CHECK_RET(lys_compile(mod, &unres->ds_unres));
 
     return LY_SUCCESS;
 }
@@ -787,12 +787,14 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     uint32_t i;
     int rc;
 
+    LY_CHECK_ARG_RET(NULL, lref, node, value, errmsg, LY_EINVAL);
+
     /* find all target data instances */
-    ret = lyxp_eval(lref->cur_mod->ctx, lref->path, lref->cur_mod, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, node, tree,
-            &set, 0);
+    ret = lyxp_eval(LYD_CTX(node), lref->path, node->schema->module, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
+            node, tree, &set, LYXP_IGNORE_WHEN);
     if (ret) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+        val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
@@ -812,7 +814,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     }
     if (i == set.used) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(lref->cur_mod->ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
+        val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (set.used) {
             rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
         } else {

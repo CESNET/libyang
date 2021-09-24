@@ -17,7 +17,6 @@
 
 #include "log.h"
 #include "plugins_types.h"
-#include "set.h"
 #include "tree_data.h"
 
 #include <stddef.h>
@@ -234,8 +233,9 @@ struct lyd_node *lyd_insert_get_next_anchor(const struct lyd_node *first_sibling
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
  * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
  * @param[in] node Individual node (without siblings) to insert.
+ * @param[in] last If set, do not search for the correct anchor but always insert at the end.
  */
-void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node);
+void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node, ly_bool last);
 
 /**
  * @brief Insert a metadata (last) into a parent
@@ -268,7 +268,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, ly_bool clear_dlft, ly_bool *incomplete);
+        void *prefix_data, uint32_t hints, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
  * @brief Insert an attribute (last) into a parent
@@ -360,6 +360,7 @@ LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node
 /**
  * @defgroup datahash Data nodes hash manipulation
  * @ingroup datatree
+ * @{
  */
 
 /**
@@ -388,6 +389,14 @@ LY_ERR lyd_insert_hash(struct lyd_node *node);
 void lyd_unlink_hash(struct lyd_node *node);
 
 /** @} datahash */
+
+/**
+ * @brief Update node pointer to point to the first data node of a module, leave unchanged if there is none.
+ *
+ * @param[in,out] node Node pointer, may be updated.
+ * @param[in] mod Module whose data to search for.
+ */
+void lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod);
 
 /**
  * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
@@ -426,13 +435,13 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  * @brief Set data flags for a newly parsed node.
  *
  * @param[in] node Node to use.
- * @param[in,out] when_check Set of nodes with unresolved when.
- * @param[in,out] exts_check Set of nodes and their extension instances if they have own validation callback.
+ * @param[in,out] node_when Set of nodes with unresolved when.
+ * @param[in,out] node_exts Set of nodes and their extension instances if they have own validation callback.
  * @param[in,out] meta Node metadata, may be removed from.
- * @param[in] options Parse options.
+ * @param[in] parse_opts Parse options.
  */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct ly_set *exts_check,
-        struct lyd_meta **meta, uint32_t options);
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts,
+        struct lyd_meta **meta, uint32_t parse_opts);
 
 /**
  * @brief Append all list key predicates to path.

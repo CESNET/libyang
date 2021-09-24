@@ -131,7 +131,6 @@ struct ly_in;
  * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
  * all the keys, leaf(-lists) correct values),
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
- * - if-feature statements are evaluated,
  * - invalid multiple data instances/data from several cases cause a validation error,
  * - implicit nodes (NP containers and default values) are added.
  * @{
@@ -152,6 +151,12 @@ struct ly_in;
 #define LYD_PARSE_LYB_MOD_UPDATE  0x100000  /**< Only for LYB format, allow parsing data printed using a specific module
                                                  revision to be loaded even with a module with the same name but newer
                                                  revision. */
+#define LYD_PARSE_ORDERED 0x200000          /**< Do not search for the correct place of each node but instead expect
+                                                 that the nodes are being parsed in the correct schema-based order,
+                                                 which is always true if the data were printed by libyang and not
+                                                 modified manually. If this flag is used incorrectly (for unordered data),
+                                                 the behavior is undefined and most functions executed with these
+                                                 data will not work correctly. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
@@ -211,7 +216,7 @@ LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct 
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] data The input data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the input data to be parsed.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
@@ -229,7 +234,7 @@ LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the input data in the
  * specified @p format to parse.
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the input data to be parsed.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
@@ -246,7 +251,7 @@ LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, ui
  *
  * @param[in] ctx Context to connect with the tree being built here.
  * @param[in] path Path to the file with the input data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
+ * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from @p path extension.
  * @param[in] parse_options Options for parser, see @ref dataparseroptions.
  * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Full parsed data tree, note that NULL can be a valid tree
@@ -342,7 +347,7 @@ enum lyd_type {
  * @param[in] format Expected format of the data in @p in.
  * @param[in] data_type Expected operation to parse (@ref datatype).
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
- * @param[out] op Optional parsed operation node.
+ * @param[out] op Optional pointer to the operation (action/RPC) node.
  * @return LY_ERR value.
  * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */
@@ -385,7 +390,7 @@ LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly
  * @param[in] format Expected format of the data in @p in.
  * @param[in] data_type Expected operation to parse (@ref datatype).
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
- * @param[out] op Optional parsed operation node.
+ * @param[out] op Optional pointer to the operation (action/RPC) node.
  * @return LY_ERR value.
  * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */

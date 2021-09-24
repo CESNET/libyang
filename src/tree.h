@@ -124,7 +124,7 @@ extern "C" {
  */
 #define LY_ARRAY_FOR_ITER(ARRAY, TYPE, ITER) \
     for (ITER = ARRAY; \
-         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+         (ARRAY) && ((char *)ITER - (char *)ARRAY)/(sizeof(TYPE)) < (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
          ITER = (TYPE*)ITER + 1)
 
 /**
@@ -225,7 +225,7 @@ typedef enum
 #define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
 
 /**
- * @brief Stringified YANG built-in data types
+ * @brief Stringfield YANG built-in data types
  */
 extern const char *ly_data_type2str[LY_DATA_TYPE_COUNT];
 

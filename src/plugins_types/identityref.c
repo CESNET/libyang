@@ -12,16 +12,13 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE /* asprintf, strdup */
-#include <sys/cdefs.h>
+#define _GNU_SOURCE /* asprintf */
 
 #include "plugins_types.h"
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "libyang.h"
 
@@ -132,7 +129,7 @@ identityref_str2ident(const char *value, size_t value_len, LY_VALUE_FORMAT forma
 /**
  * @brief Check that an identityref is derived from the type base.
  *
- * @param[in] ident Identityref.
+ * @param[in] ident Derived identity to which identityref points.
  * @param[in] type Identityref type.
  * @param[in] value String value for logging.
  * @param[in] value_len Length of @p value.
@@ -184,6 +181,44 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check if @p ident is not disabled.
+ *
+ * Identity is disabled if it is located in an unimplemented model or
+ * it can be disabled by if-feature. Calling this function may invoke
+ * the implementation of another module.
+ *
+ * @param[in] ident Derived identity to which identityref points.
+ * @param[in] value Value of identityref.
+ * @param[in] value_len Length (number of bytes) of the given @p value.
+ * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
+ * @param[in,out] unres Global unres structure for newly implemented modules.
+ * @param[out] err Error information on error.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+identityref_check_ident(const struct lysc_ident *ident, const char *value,
+        size_t value_len, uint32_t options, struct lys_glob_unres *unres, struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    if (!ident->module->implemented) {
+        if (options & LYPLG_TYPE_STORE_IMPLEMENT) {
+            ret = lyplg_type_make_implemented(ident->module, NULL, unres);
+        } else {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                    "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
+                    (int)value_len, (char *)value, ident->module->name);
+        }
+    } else if (lys_identity_iffeature_value(ident) == LY_ENOT) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Invalid identityref \"%.*s\" value - identity is disabled by if-feature.",
+                (int)value_len, value);
+    }
+
+    return ret;
+}
+
 API LY_ERR
 lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
@@ -192,7 +227,7 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     char *canon;
-    struct lysc_ident *ident;
+    struct lysc_ident *ident = NULL;
 
     /* init storage */
     memset(storage, 0, sizeof *storage);
@@ -206,18 +241,9 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     ret = identityref_str2ident(value, value_len, format, prefix_data, ctx, ctx_node, &ident, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* handle identity in a non-implemented module */
-    if (!ident->module->implemented) {
-        if (options & LYPLG_TYPE_STORE_IMPLEMENT) {
-            ret = lyplg_type_make_implemented(ident->module, NULL, unres);
-            LY_CHECK_GOTO(ret, cleanup);
-        } else {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                    "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                    (int)value_len, (char *)value, ident->module->name);
-            goto cleanup;
-        }
-    }
+    /* check if the identity is enabled */
+    ret = identityref_check_ident(ident, value, value_len, options, unres, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* check that the identity is derived form all the bases */
     ret = identityref_check_base(ident, type_ident, value, value_len, err);
@@ -313,7 +339,8 @@ const struct lyplg_type_record plugins_identityref[] = {
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_identityref,
         .plugin.duplicate = lyplg_type_dup_simple,
-        .plugin.free = lyplg_type_free_simple
+        .plugin.free = lyplg_type_free_simple,
+        .plugin.lyb_data_len = -1,
     },
     {0}
 };
