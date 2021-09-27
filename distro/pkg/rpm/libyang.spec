@@ -63,6 +63,7 @@ make DESTDIR=%{buildroot} install
 %{_bindir}/yanglint
 %{_bindir}/yangre
 %{_datadir}/man/man1/yanglint.1.gz
+%{_datadir}/man/man1/yangre.1.gz
 
 %files devel
 %{_libdir}/libyang.so
