@@ -46,10 +46,6 @@ cmake \
     ..
 make
 
-%check
-cd build
-ctest --output-on-failure
-
 %install
 cd build
 make DESTDIR=%{buildroot} install
