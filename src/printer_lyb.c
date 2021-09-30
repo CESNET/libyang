@@ -756,18 +756,13 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
     if (wd_mod) {
         /* write the "default" metadata */
-        LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));
         LY_CHECK_RET(lyb_print_model(out, wd_mod, lybctx->lybctx));
         LY_CHECK_RET(lyb_write_string("default", 0, sizeof(uint16_t), out, lybctx->lybctx));
         LY_CHECK_RET(lyb_write_string("true", 0, sizeof(uint16_t), out, lybctx->lybctx));
-        LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx->lybctx));
     }
 
     /* write all the node metadata */
     LY_LIST_FOR(node->meta, iter) {
-        /* each metadata is a sibling */
-        LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));
-
         /* model */
         LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, lybctx->lybctx));
 
@@ -776,9 +771,6 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
         /* metadata value */
         LY_CHECK_RET(lyb_write_string(lyd_get_meta_value(iter), 0, sizeof(uint64_t), out, lybctx->lybctx));
-
-        /* finish metadata sibling */
-        LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx->lybctx));
     }
 
     return LY_SUCCESS;
@@ -811,9 +803,6 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
 
     /* write all the attributes */
     LY_LIST_FOR(node->attr, iter) {
-        /* each attribute is a sibling */
-        LY_CHECK_RET(lyb_write_start_siblings(out, lybctx));
-
         /* prefix */
         LY_CHECK_RET(lyb_write_string(iter->name.prefix, 0, sizeof(uint16_t), out, lybctx));
 
@@ -831,9 +820,6 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
 
         /* value */
         LY_CHECK_RET(lyb_write_string(iter->value, 0, sizeof(uint64_t), out, lybctx));
-
-        /* finish attribute sibling */
-        LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx));
     }
 
     return LY_SUCCESS;
