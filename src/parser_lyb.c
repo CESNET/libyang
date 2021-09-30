@@ -195,48 +195,25 @@ lyb_read_number(void *num, size_t num_size, size_t bytes, struct lylyb_ctx *lybc
  * @brief Read a string.
  *
  * @param[in] str Destination buffer, is allocated.
- * @param[in] with_length Whether the string is preceded with its length or it ends at the end of this "sibling".
+ * @param[in] len_size Number of bytes on which the length of the string is written.
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
+lyb_read_string(char **str, uint8_t len_size, struct lylyb_ctx *lybctx)
 {
-    ly_bool next_chunk = 0;
-    size_t len = 0, cur_len;
+    uint64_t len = 0;
+
+    assert((len_size == 1) || (len_size == 2) || (len_size == 4) || (len_size == 8));
 
     *str = NULL;
 
-    if (with_length) {
-        lyb_read_number(&len, sizeof len, 2, lybctx);
-    } else {
-        /* read until the end of this "sibling" */
-        len = LYB_LAST_SIBLING(lybctx).written;
-        if (LYB_LAST_SIBLING(lybctx).position) {
-            next_chunk = 1;
-        }
-    }
+    lyb_read_number(&len, sizeof len, len_size, lybctx);
 
     *str = malloc((len + 1) * sizeof **str);
     LY_CHECK_ERR_RET(!*str, LOGMEM(lybctx->ctx), LY_EMEM);
 
     lyb_read((uint8_t *)*str, len, lybctx);
-
-    while (next_chunk) {
-        cur_len = LYB_LAST_SIBLING(lybctx).written;
-        if (LYB_LAST_SIBLING(lybctx).position) {
-            next_chunk = 1;
-        } else {
-            next_chunk = 0;
-        }
-
-        *str = ly_realloc(*str, (len + cur_len + 1) * sizeof **str);
-        LY_CHECK_ERR_RET(!*str, LOGMEM(lybctx->ctx), LY_EMEM);
-
-        lyb_read(((uint8_t *)*str) + len, cur_len, lybctx);
-
-        len += cur_len;
-    }
 
     (*str)[len] = '\0';
     return LY_SUCCESS;
@@ -254,7 +231,7 @@ lyb_read_string(char **str, ly_bool with_length, struct lylyb_ctx *lybctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_term_value(const struct lysc_node_leaf *term, uint8_t **term_value, uint32_t *term_value_len,
+lyb_read_term_value(const struct lysc_node_leaf *term, uint8_t **term_value, uint64_t *term_value_len,
         struct lylyb_ctx *lybctx)
 {
     uint32_t allocated_size;
@@ -454,11 +431,11 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
         }
 
         /* meta name */
-        ret = lyb_read_string(&meta_name, 1, lybctx->lybctx);
+        ret = lyb_read_string(&meta_name, sizeof(uint16_t), lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* meta value */
-        ret = lyb_read_string(&meta_value, 0, lybctx->lybctx);
+        ret = lyb_read_string(&meta_value, sizeof(uint64_t), lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         dynamic = 1;
 
@@ -521,10 +498,10 @@ lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_VALUE_FORMAT format, void **p
             ns = calloc(1, sizeof *ns);
 
             /* prefix */
-            LY_CHECK_GOTO(ret = lyb_read_string(&ns->prefix, 1, lybctx), cleanup);
+            LY_CHECK_GOTO(ret = lyb_read_string(&ns->prefix, sizeof(uint16_t), lybctx), cleanup);
 
             /* namespace */
-            LY_CHECK_GOTO(ret = lyb_read_string(&ns->uri, 1, lybctx), cleanup);
+            LY_CHECK_GOTO(ret = lyb_read_string(&ns->uri, sizeof(uint16_t), lybctx), cleanup);
 
             LY_CHECK_GOTO(ret = ly_set_add(set, ns, 1, NULL), cleanup);
             ns = NULL;
@@ -581,7 +558,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* prefix, may be empty */
-        ret = lyb_read_string(&prefix, 1, lybctx);
+        ret = lyb_read_string(&prefix, sizeof(uint16_t), lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         if (!prefix[0]) {
             free(prefix);
@@ -589,7 +566,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         }
 
         /* namespace, may be empty */
-        ret = lyb_read_string(&module_name, 1, lybctx);
+        ret = lyb_read_string(&module_name, sizeof(uint16_t), lybctx);
         LY_CHECK_GOTO(ret, cleanup);
         if (!module_name[0]) {
             free(module_name);
@@ -597,7 +574,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         }
 
         /* name */
-        ret = lyb_read_string(&name, 1, lybctx);
+        ret = lyb_read_string(&name, sizeof(uint16_t), lybctx);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* format */
@@ -608,7 +585,7 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* value */
-        ret = lyb_read_string(&value, 0, lybctx);
+        ret = lyb_read_string(&value, sizeof(uint64_t), lybctx);
         LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
         dynamic = 1;
 
@@ -977,7 +954,7 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struc
     LY_ERR ret;
     ly_bool dynamic;
     uint8_t *term_value;
-    uint32_t term_value_len;
+    uint64_t term_value_len;
 
     ret = lyb_read_term_value((struct lysc_node_leaf *)snode, &term_value, &term_value_len, lybctx->lybctx);
     LY_CHECK_RET(ret);
@@ -1059,19 +1036,19 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     lyb_read_number(&flags, sizeof flags, sizeof flags, lybctx->lybctx);
 
     /* parse prefix */
-    ret = lyb_read_string(&prefix, 1, lybctx->lybctx);
+    ret = lyb_read_string(&prefix, sizeof(uint16_t), lybctx->lybctx);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse module key */
-    ret = lyb_read_string(&module_key, 1, lybctx->lybctx);
+    ret = lyb_read_string(&module_key, sizeof(uint16_t), lybctx->lybctx);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse name */
-    ret = lyb_read_string(&name, 1, lybctx->lybctx);
+    ret = lyb_read_string(&name, sizeof(uint16_t), lybctx->lybctx);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse value */
-    ret = lyb_read_string(&value, 1, lybctx->lybctx);
+    ret = lyb_read_string(&value, sizeof(uint64_t), lybctx->lybctx);
     LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
     dynamic = 1;
 
@@ -1161,7 +1138,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     }
 
     /* read anydata content */
-    ret = lyb_read_string(&value, 1, lybctx->lybctx);
+    ret = lyb_read_string(&value, sizeof(uint64_t), lybctx->lybctx);
     LY_CHECK_GOTO(ret, error);
 
     if (value_type == LYD_ANYDATA_LYB) {
