@@ -239,9 +239,9 @@ lyb_write_sibling_meta(struct ly_out *out, struct lyd_lyb_sibling *sib)
     uint64_t num = 0;
 
     /* write the meta chunk information */
-    num = htole64(sib->written & LYB_SIZE_MAX);
+    num = htole64((uint64_t)sib->written & LYB_SIZE_MAX);
     memcpy(meta_buf, &num, LYB_SIZE_BYTES);
-    num = htole64(sib->inner_chunks & LYB_INCHUNK_MAX);
+    num = htole64((uint64_t)sib->inner_chunks & LYB_INCHUNK_MAX);
     memcpy(meta_buf + LYB_SIZE_BYTES, &num, LYB_INCHUNK_BYTES);
 
     LY_CHECK_RET(ly_write_skipped(out, sib->position, (char *)&meta_buf, LYB_META_BYTES));
