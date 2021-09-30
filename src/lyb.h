@@ -23,6 +23,48 @@
 struct ly_ctx;
 struct lysc_node;
 
+/*
+ * LYB format
+ *
+ * Unlike XML or JSON, it is binary format so most data are represented in similar way but in binary.
+ * Some notable differences:
+ *
+ * - schema nodes are identified based on their hash instead of their string name. In case of collisions
+ * an array of hashes is created with each next hash one bit shorter until a unique sequence of all these
+ * hashes is found and then all of them are stored.
+ *
+ * - tree structure is represented as individual strictly bounded "siblings". Each "siblings" begins
+ * with its metadata, which consist of 1) the whole "sibling" length in bytes and 2) number
+ * of included metadata chunks of nested "siblings".
+ *
+ * - since length of a "sibling" is not known before it is printed, holes are first written and
+ * after the "sibling" is printed, they are filled with actual valid metadata. As a consequence,
+ * LYB data cannot be directly printed into streams!
+ *
+ * - data are preceded with information about all the used modules. It is needed because of
+ * possible augments and deviations which must be known beforehand, otherwise schema hashes
+ * could be matched to the wrong nodes.
+ *
+ * This is a short summary of the format:
+ * @verbatim
+
+ sb          = siblings_start
+ se          = siblings_end
+ siblings    = zero-LYB_SIZE_BYTES | (sb instance+ se)
+ instance    = model hash node
+ model       = 16bit_zero | (model_name_length model_name revision)
+ node        = opaq | leaflist | list | any | inner | leaf
+ opaq        = opaq_data siblings
+ leaflist    = sb leaf+ se
+ list        = sb (node_header siblings)+ se
+ any         = node_header anydata_data
+ inner       = node_header siblings
+ leaf        = node_header term_value
+ node_header = metadata node_flags
+
+ @endverbatim
+ */
+
 /**
  * @brief LYB format parser context
  */
@@ -51,29 +93,6 @@ struct lylyb_ctx {
  * @brief Destructor for the lylyb_ctx structure
  */
 void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
-
-/**
- * LYB format
- *
- * Unlike XML or JSON, it is binary format so most data are represented in similar way but in binary.
- * Some notable differences:
- *
- * - schema nodes are identified based on their hash instead of their string name. In case of collisions
- * an array of hashes is created with each next hash one bit shorter until a unique sequence of all these
- * hashes is found and then all of them are stored.
- *
- * - tree structure is represented as individual strictly bounded "siblings". Each "siblings" begins
- * with its metadata, which consist of 1) the whole "sibling" length in bytes and 2) number
- * of included metadata chunks of nested "siblings".
- *
- * - since length of a "sibling" is not known before it is printed, holes are first written and
- * after the "sibling" is printed, they are filled with actual valid metadata. As a consequence,
- * LYB data cannot be directly printed into streams!
- *
- * - data are preceded with information about all the used modules. It is needed because of
- * possible augments and deviations which must be known beforehand, otherwise schema hashes
- * could be matched to the wrong nodes.
- */
 
 /* just a shortcut */
 #define LYB_LAST_SIBLING(lybctx) lybctx->siblings[LY_ARRAY_COUNT(lybctx->siblings) - 1]
