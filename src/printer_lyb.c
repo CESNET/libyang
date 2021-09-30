@@ -397,30 +397,47 @@ lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lylyb_ct
  *
  * @param[in] str String to write.
  * @param[in] str_len Length of @p str.
- * @param[in] with_length Whether to precede the string with its length.
+ * @param[in] len_size Size of @ str_len in bytes.
  * @param[in] out Out structure.
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_string(const char *str, size_t str_len, ly_bool with_length, struct ly_out *out, struct lylyb_ctx *lybctx)
+lyb_write_string(const char *str, size_t str_len, uint8_t len_size, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
+    ly_bool error;
+
     if (!str) {
         str = "";
         LY_CHECK_ERR_RET(str_len, LOGINT(lybctx->ctx), LY_EINT);
     }
+
     if (!str_len) {
         str_len = strlen(str);
     }
 
-    if (with_length) {
-        /* print length on 2 bytes */
-        if (str_len > UINT16_MAX) {
-            LOGINT(lybctx->ctx);
-            return LY_EINT;
-        }
-        LY_CHECK_RET(lyb_write_number(str_len, 2, out, lybctx));
+    switch (len_size) {
+    case sizeof(uint8_t):
+        error = str_len > UINT8_MAX;
+        break;
+    case sizeof(uint16_t):
+        error = str_len > UINT16_MAX;
+        break;
+    case sizeof(uint32_t):
+        error = str_len > UINT32_MAX;
+        break;
+    case sizeof(uint64_t):
+        error = str_len > UINT64_MAX;
+        break;
+    default:
+        error = 1;
     }
+    if (error) {
+        LOGINT(lybctx->ctx);
+        return LY_EINT;
+    }
+
+    LY_CHECK_RET(lyb_write_number(str_len, len_size, out, lybctx));
 
     LY_CHECK_RET(lyb_write(out, (const uint8_t *)str, str_len, lybctx));
 
@@ -442,7 +459,7 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
 
     /* model name length and model name */
     if (mod) {
-        LY_CHECK_RET(lyb_write_string(mod->name, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(mod->name, 0, sizeof(uint16_t), out, lybctx));
     } else {
         lyb_write_number(0, 2, out, lybctx);
         return LY_SUCCESS;
@@ -610,10 +627,10 @@ lyb_print_prefix_data(struct ly_out *out, LY_VALUE_FORMAT format, const void *pr
             ns = set->objs[i];
 
             /* prefix */
-            LY_CHECK_RET(lyb_write_string(ns->prefix, 0, 1, out, lybctx));
+            LY_CHECK_RET(lyb_write_string(ns->prefix, 0, sizeof(uint16_t), out, lybctx));
 
             /* namespace */
-            LY_CHECK_RET(lyb_write_string(ns->uri, 0, 1, out, lybctx));
+            LY_CHECK_RET(lyb_write_string(ns->uri, 0, sizeof(uint16_t), out, lybctx));
         }
         break;
     case LY_VALUE_JSON:
@@ -668,8 +685,8 @@ lyb_print_term_value(struct lyd_node_term *term, struct ly_out *out, struct lyly
             goto cleanup;
         }
 
-        /* Print the length of the data as 32-bit unsigned integer. */
-        ret = lyb_write_number(value_len, sizeof(uint32_t), out, lybctx);
+        /* Print the length of the data as 64-bit unsigned integer. */
+        ret = lyb_write_number(value_len, sizeof(uint64_t), out, lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* Fixed-length data. */
@@ -741,8 +758,8 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
         /* write the "default" metadata */
         LY_CHECK_RET(lyb_write_start_siblings(out, lybctx->lybctx));
         LY_CHECK_RET(lyb_print_model(out, wd_mod, lybctx->lybctx));
-        LY_CHECK_RET(lyb_write_string("default", 0, 1, out, lybctx->lybctx));
-        LY_CHECK_RET(lyb_write_string("true", 0, 0, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string("default", 0, sizeof(uint16_t), out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string("true", 0, sizeof(uint16_t), out, lybctx->lybctx));
         LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx->lybctx));
     }
 
@@ -755,10 +772,10 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
         LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, lybctx->lybctx));
 
         /* annotation name with length */
-        LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name, 0, sizeof(uint16_t), out, lybctx->lybctx));
 
         /* metadata value */
-        LY_CHECK_RET(lyb_write_string(lyd_get_meta_value(iter), 0, 0, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string(lyd_get_meta_value(iter), 0, sizeof(uint64_t), out, lybctx->lybctx));
 
         /* finish metadata sibling */
         LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx->lybctx));
@@ -798,13 +815,13 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
         LY_CHECK_RET(lyb_write_start_siblings(out, lybctx));
 
         /* prefix */
-        LY_CHECK_RET(lyb_write_string(iter->name.prefix, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name.prefix, 0, sizeof(uint16_t), out, lybctx));
 
         /* namespace */
-        LY_CHECK_RET(lyb_write_string(iter->name.module_name, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name.module_name, 0, sizeof(uint16_t), out, lybctx));
 
         /* name */
-        LY_CHECK_RET(lyb_write_string(iter->name.name, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name.name, 0, sizeof(uint16_t), out, lybctx));
 
         /* format */
         LY_CHECK_RET(lyb_write_number(iter->format, 1, out, lybctx));
@@ -813,7 +830,7 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
         LY_CHECK_RET(lyb_print_prefix_data(out, iter->format, iter->val_prefix_data, lybctx));
 
         /* value */
-        LY_CHECK_RET(lyb_write_string(iter->value, 0, 0, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->value, 0, sizeof(uint64_t), out, lybctx));
 
         /* finish attribute sibling */
         LY_CHECK_RET(lyb_write_stop_siblings(out, lybctx));
@@ -959,16 +976,16 @@ lyb_print_node_opaq(struct ly_out *out, const struct lyd_node_opaq *opaq, struct
     LY_CHECK_RET(lyb_write_number(opaq->flags, sizeof opaq->flags, out, lybctx));
 
     /* prefix */
-    LY_CHECK_RET(lyb_write_string(opaq->name.prefix, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->name.prefix, 0, sizeof(uint16_t), out, lybctx));
 
     /* module reference */
-    LY_CHECK_RET(lyb_write_string(opaq->name.module_name, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->name.module_name, 0, sizeof(uint16_t), out, lybctx));
 
     /* name */
-    LY_CHECK_RET(lyb_write_string(opaq->name.name, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->name.name, 0, sizeof(uint16_t), out, lybctx));
 
     /* value */
-    LY_CHECK_RET(lyb_write_string(opaq->value, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->value, 0, sizeof(uint64_t), out, lybctx));
 
     /* format */
     LY_CHECK_RET(lyb_write_number(opaq->format, 1, out, lybctx));
@@ -1032,7 +1049,7 @@ lyb_print_node_any(struct ly_out *out, struct lyd_node_any *anydata, struct lyd_
     }
 
     /* followed by the content */
-    LY_CHECK_GOTO(ret = lyb_write_string(str, (size_t)len, 1, out, lybctx), cleanup);
+    LY_CHECK_GOTO(ret = lyb_write_string(str, (size_t)len, sizeof(uint64_t), out, lybctx), cleanup);
 
 cleanup:
     ly_out_free(out2, NULL, 1);
