@@ -63,6 +63,7 @@ struct context {
     /* specification of printing schema node subtree, option --schema-node */
     const char *schema_node_path;
     const struct lysc_node *schema_node;
+    const char *submodule;
 
     /* value of --format in case of schema format */
     LYS_OUTFORMAT schema_out_format;
@@ -167,6 +168,9 @@ help(int shortout)
             "  -q, --single-node\n"
             "                Supplement to the --schema-node option to print information\n"
             "                only about a single node specified as PATH argument.\n\n");
+
+    printf("  -s SUBMODULE, --submodule=SUBMODULE\n"
+            "                Print the specific submodule instead of the main module.\n\n");
 
     printf("  -n, --not-strict\n"
             "                Do not require strict data parsing (silently skip unknown data),\n"
@@ -367,6 +371,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"makeimplemented",  no_argument,       NULL, 'i'},
         {"schema-node",      required_argument, NULL, 'P'},
         {"single-node",      no_argument,       NULL, 'q'},
+        {"submodule",        required_argument, NULL, 's'},
         {"not-strict",       no_argument,       NULL, 'n'},
         {"present",          no_argument,       NULL, 'e'},
         {"type",             required_argument, NULL, 't'},
@@ -390,9 +395,9 @@ fill_context(int argc, char *argv[], struct context *c)
     c->line_length = 0;
 
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qnet:d:lL:o:Omy", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:Omy", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qnet:d:lL:o:OmyG:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:OmyG:", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'h': /* --help */
@@ -492,6 +497,10 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'q': /* --single-node */
             c->schema_print_options |= LYS_PRINT_NO_SUBSTMT;
+            break;
+
+        case 's': /* --submodule */
+            c->submodule = optarg;
             break;
 
         case 'n': /* --not-strict */
@@ -728,6 +737,18 @@ main_ni(int argc, char *argv[])
                 ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, 0, c.schema_print_options);
                 if (ret) {
                     YLMSG_E("Unable to print schema node %s.\n", c.schema_node_path);
+                    goto cleanup;
+                }
+            } else if (c.submodule) {
+                const struct lysp_submodule *submod = ly_ctx_get_submodule_latest(c.ctx, c.submodule);
+                if (!submod) {
+                    YLMSG_E("Unable to find submodule %s.\n", c.submodule);
+                    goto cleanup;
+                }
+
+                ret = lys_print_submodule(c.out, submod, c.schema_out_format, c.line_length, c.schema_print_options);
+                if (ret) {
+                    YLMSG_E("Unable to print submodule %s.\n", submod->name);
                     goto cleanup;
                 }
             } else {
