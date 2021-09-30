@@ -1188,24 +1188,6 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
 /**
  * @brief Print siblings.
  *
- * @verbatim
-
- sb          = siblings_start
- se          = siblings_end
- siblings    = zero-LYB_SIZE_BYTES | (sb instance+ se)
- instance    = model hash node
- model       = 16bit_zero | (model_name_length model_name revision)
- node        = opaq | leaflist | list | any | inner | leaf
- opaq        = opaq_data siblings
- leaflist    = sb leaf+ se
- list        = sb (node_header siblings)+ se
- any         = node_header anydata_data
- inner       = node_header siblings
- leaf        = node_header term_value
- node_header = metadata node_flags
-
- @endverbatim
- *
  * @param[in] out Out structure.
  * @param[in] node Current data node to print.
  * @param[in] lybctx LYB context.
