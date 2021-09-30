@@ -101,7 +101,7 @@ void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 #define LYB_SIBLING_STEP 4
 
 /* current LYB format version */
-#define LYB_VERSION_NUM 0x02
+#define LYB_VERSION_NUM 0x03
 
 /* LYB format version mask of the header byte */
 #define LYB_VERSION_MASK 0x0F
