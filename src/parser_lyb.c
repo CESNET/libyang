@@ -220,6 +220,22 @@ lyb_read_string(char **str, uint8_t len_size, struct lylyb_ctx *lybctx)
 }
 
 /**
+ * @brief Skip string.
+ *
+ * @param[in] len_size Number of bytes on which the length of the string is written.
+ * @param[in] lybctx LYB context.
+ */
+static void
+lyb_skip_string(uint8_t len_size, struct lylyb_ctx *lybctx)
+{
+    size_t len = 0;
+
+    lyb_read_number(&len, sizeof len, len_size, lybctx);
+
+    lyb_read(NULL, len, lybctx);
+}
+
+/**
  * @brief Read value of term node.
  *
  * @param[in] term Compiled term node.
@@ -415,19 +431,17 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 
     /* read attributes */
     for (i = 0; i < count; ++i) {
-        ret = lyb_read_start_siblings(lybctx->lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-
         /* find model */
         ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (!mod) {
-            /* skip it */
-            do {
-                lyb_read(NULL, LYB_LAST_SIBLING(lybctx->lybctx).written, lybctx->lybctx);
-            } while (LYB_LAST_SIBLING(lybctx->lybctx).written);
-            goto stop_sibling;
+            /* skip meta name */
+            lyb_skip_string(sizeof(uint16_t), lybctx->lybctx);
+
+            /* skip meta value */
+            lyb_skip_string(sizeof(uint16_t), lybctx->lybctx);
+            continue;
         }
 
         /* meta name */
@@ -451,10 +465,6 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
             dynamic = 0;
         }
 
-        LY_CHECK_GOTO(ret, cleanup);
-
-stop_sibling:
-        ret = lyb_read_stop_siblings(lybctx->lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -554,9 +564,6 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
 
     /* read attributes */
     for (i = 0; i < count; ++i) {
-        ret = lyb_read_start_siblings(lybctx);
-        LY_CHECK_GOTO(ret, cleanup);
-
         /* prefix, may be empty */
         ret = lyb_read_string(&prefix, sizeof(uint16_t), lybctx);
         LY_CHECK_GOTO(ret, cleanup);
@@ -607,7 +614,6 @@ lyb_parse_attributes(struct lylyb_ctx *lybctx, struct lyd_attr **attr)
             *attr = attr2;
         }
 
-        ret = lyb_read_stop_siblings(lybctx);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
