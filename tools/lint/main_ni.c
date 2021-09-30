@@ -133,33 +133,22 @@ help(int shortout)
             "  -v, --version Show version number and exit.\n"
             "  -V, --verbose Show verbose messages, can be used multiple times to\n"
             "                increase verbosity.\n");
-#ifndef NDEBUG
-    printf("  -G GROUPS, --debug=GROUPS\n"
-            "                Enable printing of specific debugging message group\n"
-            "                (nothing will be printed unless verbosity is set to debug):\n"
-            "                <group>[,<group>]* (dict, xpath)\n\n");
-#endif
 
-    printf("  -d MODE, --default=MODE\n"
-            "                Print data with default values, according to the MODE\n"
-            "                (to print attributes, ietf-netconf-with-defaults model\n"
-            "                must be loaded):\n"
-            "      all             - Add missing default nodes.\n"
-            "      all-tagged      - Add missing default nodes and mark all the default\n"
-            "                        nodes with the attribute.\n"
-            "      trim            - Remove all nodes with a default value.\n"
-            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n\n");
+    printf("  -f FORMAT, --format=FORMAT\n"
+            "                Convert input into FORMAT. Supported formats: \n"
+            "                yang, yin, tree and info for schemas,\n"
+            "                xml, json for data.\n\n");
+
+    printf("  -p PATH, --path=PATH\n"
+            "                Search path for schema (YANG/YIN) modules. The option can be\n"
+            "                used multiple times. The current working directory and the\n"
+            "                path of the module being added is used implicitly.\n\n");
 
     printf("  -D, --disable-searchdir\n"
             "                Do not implicitly search in current working directory for\n"
             "                schema modules. If specified a second time, do not even\n"
             "                search in the module directory (all modules must be \n"
             "                explicitly specified).\n\n");
-
-    printf("  -p PATH, --path=PATH\n"
-            "                Search path for schema (YANG/YIN) modules. The option can be\n"
-            "                used multiple times. The current working directory and the\n"
-            "                path of the module being added is used implicitly.\n\n");
 
     printf("  -F FEATURES, --features=FEATURES\n"
             "                Features to support, default all.\n"
@@ -169,23 +158,6 @@ help(int shortout)
             "                Make the imported modules \"referenced\" from any loaded\n"
             "                module also implemented. If specified a second time, all the\n"
             "                modules are set implemented.\n\n");
-
-    printf("  -l, --list    Print info about the loaded schemas.\n"
-            "                (i - imported module, I - implemented module)\n"
-            "                In case the -f option with data encoding is specified,\n"
-            "                the list is printed as ietf-yang-library data.\n\n");
-
-    printf("  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
-            "                The limit of the maximum line length on which the 'tree'\n"
-            "                format will try to be printed.\n\n");
-
-    printf("  -o OUTFILE, --output=OUTFILE\n"
-            "                Write the output to OUTFILE instead of stdout.\n\n");
-
-    printf("  -f FORMAT, --format=FORMAT\n"
-            "                Convert input into FORMAT. Supported formats: \n"
-            "                yang, yin, tree and info for schemas,\n"
-            "                xml, json for data.\n\n");
 
     printf("  -P PATH, --schema-node=PATH\n"
             "                Print only the specified subtree of the schema.\n"
@@ -220,7 +192,29 @@ help(int shortout)
             "                        RPC/Action. This is necessary to identify appropriate\n"
             "                        data definitions in the schema module.\n"
             "        notif         - Notification instance (content of the <notification>\n"
-            "                        element without <eventTime>).\n");
+            "                        element without <eventTime>).\n\n");
+
+    printf("  -d MODE, --default=MODE\n"
+            "                Print data with default values, according to the MODE\n"
+            "                (to print attributes, ietf-netconf-with-defaults model\n"
+            "                must be loaded):\n"
+            "      all             - Add missing default nodes.\n"
+            "      all-tagged      - Add missing default nodes and mark all the default\n"
+            "                        nodes with the attribute.\n"
+            "      trim            - Remove all nodes with a default value.\n"
+            "      implicit-tagged - Add missing nodes and mark them with the attribute.\n\n");
+
+    printf("  -l, --list    Print info about the loaded schemas.\n"
+            "                (i - imported module, I - implemented module)\n"
+            "                In case the -f option with data encoding is specified,\n"
+            "                the list is printed as ietf-yang-library data.\n\n");
+
+    printf("  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
+            "                The limit of the maximum line length on which the 'tree'\n"
+            "                format will try to be printed.\n\n");
+
+    printf("  -o OUTFILE, --output=OUTFILE\n"
+            "                Write the output to OUTFILE instead of stdout.\n\n");
 
     printf("  -O FILE, --operational=FILE\n"
             "                Provide optional data to extend validation of the 'rpc',\n"
@@ -235,6 +229,13 @@ help(int shortout)
             "                Load and implement internal \"ietf-yang-library\" YANG module.\n"
             "                Note that this module includes definitions of mandatory state\n"
             "                data that can result in unexpected data validation errors.\n\n");
+
+#ifndef NDEBUG
+    printf("  -G GROUPS, --debug=GROUPS\n"
+            "                Enable printing of specific debugging message group\n"
+            "                (nothing will be printed unless verbosity is set to debug):\n"
+            "                <group>[,<group>]* (dict, xpath)\n\n");
+#endif
 }
 
 static void
@@ -356,29 +357,29 @@ fill_context(int argc, char *argv[], struct context *c)
 
     int opt, opt_index;
     struct option options[] = {
-        {"default",          required_argument, NULL, 'd'},
-        {"disable-searchdir", no_argument,      NULL, 'D'},
-        {"present",          no_argument,       NULL, 'e'},
-        {"format",           required_argument, NULL, 'f'},
-        {"features",         required_argument, NULL, 'F'},
-#ifndef NDEBUG
-        {"debug",            required_argument, NULL, 'G'},
-#endif
         {"help",             no_argument,       NULL, 'h'},
-        {"makeimplemented",  no_argument,       NULL, 'i'},
-        {"list",             no_argument,       NULL, 'l'},
-        {"tree-line-length", required_argument, NULL, 'L'},
-        {"merge",            no_argument,       NULL, 'm'},
-        {"yang-library",     no_argument,       NULL, 'y'},
-        {"output",           required_argument, NULL, 'o'},
-        {"operational",      required_argument, NULL, 'O'},
+        {"version",          no_argument,       NULL, 'v'},
+        {"verbose",          no_argument,       NULL, 'V'},
+        {"format",           required_argument, NULL, 'f'},
         {"path",             required_argument, NULL, 'p'},
+        {"disable-searchdir", no_argument,      NULL, 'D'},
+        {"features",         required_argument, NULL, 'F'},
+        {"makeimplemented",  no_argument,       NULL, 'i'},
         {"schema-node",      required_argument, NULL, 'P'},
         {"single-node",      no_argument,       NULL, 'q'},
         {"not-strict",       no_argument,       NULL, 'n'},
+        {"present",          no_argument,       NULL, 'e'},
         {"type",             required_argument, NULL, 't'},
-        {"version",          no_argument,       NULL, 'v'},
-        {"verbose",          no_argument,       NULL, 'V'},
+        {"default",          required_argument, NULL, 'd'},
+        {"list",             no_argument,       NULL, 'l'},
+        {"tree-line-length", required_argument, NULL, 'L'},
+        {"output",           required_argument, NULL, 'o'},
+        {"operational",      required_argument, NULL, 'O'},
+        {"merge",            no_argument,       NULL, 'm'},
+        {"yang-library",     no_argument,       NULL, 'y'},
+#ifndef NDEBUG
+        {"debug",            required_argument, NULL, 'G'},
+#endif
         {NULL,               0,                 NULL, 0}
     };
 
@@ -389,93 +390,28 @@ fill_context(int argc, char *argv[], struct context *c)
     c->line_length = 0;
 
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:Def:F:hilL:myo:p:P:qnt:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qnet:d:lL:o:Omy", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "d:Def:F:G:hilL:myo:p:P:qnt:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qnet:d:lL:o:OmyG:", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
-        case 'd': /* --default */
-            if (!strcasecmp(optarg, "all")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
-            } else if (!strcasecmp(optarg, "all-tagged")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
-            } else if (!strcasecmp(optarg, "trim")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
-            } else if (!strcasecmp(optarg, "implicit-tagged")) {
-                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
-            } else {
-                YLMSG_E("Unknown default mode %s\n", optarg);
-                help(1);
-                return -1;
+        case 'h': /* --help */
+            help(0);
+            return 1;
+
+        case 'v': /* --version */
+            version();
+            return 1;
+
+        case 'V': { /* --verbose */
+            LY_LOG_LEVEL verbosity = ly_log_level(LY_LLERR);
+            ly_log_level(verbosity);
+
+            if (verbosity < LY_LLDBG) {
+                ly_log_level(verbosity + 1);
             }
             break;
-
-        case 'D': /* --disable-search */
-            if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
-                YLMSG_W("The -D option specified too many times.\n");
-            }
-            if (options_ctx & LY_CTX_DISABLE_SEARCHDIR_CWD) {
-                options_ctx &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-                options_ctx |= LY_CTX_DISABLE_SEARCHDIRS;
-            } else {
-                options_ctx |= LY_CTX_DISABLE_SEARCHDIR_CWD;
-            }
-            break;
-
-        case 'p': { /* --path */
-            struct stat st;
-
-            if (stat(optarg, &st) == -1) {
-                YLMSG_E("Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
-                return -1;
-            }
-            if (!S_ISDIR(st.st_mode)) {
-                YLMSG_E("Provided search path is not a directory.\n");
-                return -1;
-            }
-
-            if (ly_set_add(&c->searchpaths, optarg, 0, NULL)) {
-                YLMSG_E("Storing searchpath failed.\n");
-                return -1;
-            }
-
-            break;
-        } /* case 'p' */
-
-        case 'i': /* --makeimplemented */
-            if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
-                options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
-                options_ctx |= LY_CTX_ALL_IMPLEMENTED;
-            } else {
-                options_ctx |= LY_CTX_REF_IMPLEMENTED;
-            }
-            break;
-
-        case 'F': /* --features */
-            if (parse_features(optarg, &c->schema_features)) {
-                return -1;
-            }
-            break;
-
-        case 'l': /* --list */
-            c->list = 1;
-            break;
-
-        case 'L': /* --tree-line-length */
-            c->line_length = atoi(optarg);
-            break;
-
-        case 'o': /* --output */
-            if (c->out) {
-                YLMSG_E("Only a single output can be specified.\n");
-                return -1;
-            } else {
-                if (ly_out_new_filepath(optarg, &c->out)) {
-                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
-                    return -1;
-                }
-            }
-            break;
+        } /* case 'V' */
 
         case 'f': /* --format */
             if (!strcasecmp(optarg, "yang")) {
@@ -500,6 +436,53 @@ fill_context(int argc, char *argv[], struct context *c)
                 YLMSG_E("Unknown output format %s\n", optarg);
                 help(1);
                 return -1;
+            }
+            break;
+
+        case 'p': { /* --path */
+            struct stat st;
+
+            if (stat(optarg, &st) == -1) {
+                YLMSG_E("Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
+                return -1;
+            }
+            if (!S_ISDIR(st.st_mode)) {
+                YLMSG_E("Provided search path is not a directory.\n");
+                return -1;
+            }
+
+            if (ly_set_add(&c->searchpaths, optarg, 0, NULL)) {
+                YLMSG_E("Storing searchpath failed.\n");
+                return -1;
+            }
+
+            break;
+        } /* case 'p' */
+
+        case 'D': /* --disable-search */
+            if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
+                YLMSG_W("The -D option specified too many times.\n");
+            }
+            if (options_ctx & LY_CTX_DISABLE_SEARCHDIR_CWD) {
+                options_ctx &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
+                options_ctx |= LY_CTX_DISABLE_SEARCHDIRS;
+            } else {
+                options_ctx |= LY_CTX_DISABLE_SEARCHDIR_CWD;
+            }
+            break;
+
+        case 'F': /* --features */
+            if (parse_features(optarg, &c->schema_features)) {
+                return -1;
+            }
+            break;
+
+        case 'i': /* --makeimplemented */
+            if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
+                options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
+                options_ctx |= LY_CTX_ALL_IMPLEMENTED;
+            } else {
+                options_ctx |= LY_CTX_REF_IMPLEMENTED;
             }
             break;
 
@@ -551,6 +534,42 @@ fill_context(int argc, char *argv[], struct context *c)
             data_type_set = 1;
             break;
 
+        case 'd': /* --default */
+            if (!strcasecmp(optarg, "all")) {
+                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL;
+            } else if (!strcasecmp(optarg, "all-tagged")) {
+                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_ALL_TAG;
+            } else if (!strcasecmp(optarg, "trim")) {
+                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_TRIM;
+            } else if (!strcasecmp(optarg, "implicit-tagged")) {
+                c->data_print_options = (c->data_print_options & ~LYD_PRINT_WD_MASK) | LYD_PRINT_WD_IMPL_TAG;
+            } else {
+                YLMSG_E("Unknown default mode %s\n", optarg);
+                help(1);
+                return -1;
+            }
+            break;
+
+        case 'l': /* --list */
+            c->list = 1;
+            break;
+
+        case 'L': /* --tree-line-length */
+            c->line_length = atoi(optarg);
+            break;
+
+        case 'o': /* --output */
+            if (c->out) {
+                YLMSG_E("Only a single output can be specified.\n");
+                return -1;
+            } else {
+                if (ly_out_new_filepath(optarg, &c->out)) {
+                    YLMSG_E("Unable open output file %s (%s)\n", optarg, strerror(errno));
+                    return -1;
+                }
+            }
+            break;
+
         case 'O': /* --operational */
             if (c->data_operational.path) {
                 YLMSG_E("The operational datastore (-O) cannot be set multiple times.\n");
@@ -566,24 +585,6 @@ fill_context(int argc, char *argv[], struct context *c)
         case 'y': /* --yang-library */
             options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
             break;
-
-        case 'h': /* --help */
-            help(0);
-            return 1;
-
-        case 'v': /* --version */
-            version();
-            return 1;
-
-        case 'V': { /* --verbose */
-            LY_LOG_LEVEL verbosity = ly_log_level(LY_LLERR);
-            ly_log_level(verbosity);
-
-            if (verbosity < LY_LLDBG) {
-                ly_log_level(verbosity + 1);
-            }
-            break;
-        } /* case 'V' */
 
 #ifndef NDEBUG
         case 'G': { /* --debug */
