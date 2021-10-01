@@ -98,19 +98,23 @@ lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, con
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* set the value, matters for big-endian */
+    /* set the value (matters for big-endian) and get the correct int64 number */
     switch (type->basetype) {
     case LY_TYPE_INT8:
         storage->int8 = num;
+        num = storage->int8;
         break;
     case LY_TYPE_INT16:
         storage->int16 = num;
+        num = storage->int16;
         break;
     case LY_TYPE_INT32:
         storage->int32 = num;
+        num = storage->int32;
         break;
     case LY_TYPE_INT64:
         storage->int64 = num;
+        num = storage->int64;
         break;
     default:
         break;
