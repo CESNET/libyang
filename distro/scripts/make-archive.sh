@@ -10,6 +10,8 @@ NAMEVER=libyang-$VERSION
 ARCHIVE=$NAMEVER.tar.gz
 
 git archive --format tgz --output $ARCHIVE --prefix $NAMEVER/ HEAD
+mkdir -p pkg/archives/dev/
+mv $ARCHIVE pkg/archives/dev/
 
 # apkg expects stdout to list archive files
-echo $ARCHIVE
+echo pkg/archives/dev/$ARCHIVE
