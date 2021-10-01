@@ -1211,9 +1211,8 @@ set_insert_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos,
     set->val.nodes[idx].pos = pos;
     ++set->used;
 
-    if (set->val.nodes[idx].type == LYXP_NODE_ELEM) {
-        set_insert_node_hash(set, (struct lyd_node *)node, node_type);
-    }
+    /* add into hash table */
+    set_insert_node_hash(set, (struct lyd_node *)node, node_type);
 }
 
 LY_ERR
