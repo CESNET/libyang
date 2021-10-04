@@ -1298,6 +1298,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
     LY_ERR ret;
     struct lyxp_set xp_set;
     struct lysc_must *musts;
+    struct ly_err_item *err;
     const struct lyd_node *tree;
     const struct lysc_node *schema;
     LY_ARRAY_COUNT_TYPE u;
@@ -1342,6 +1343,19 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
         if (!xp_set.val.bln) {
             LOGVAL(LYD_CTX(node), LY_VCODE_NOMUST, musts[u].cond->expr);
+
+            err = ly_err_last(LYD_CTX(node));
+            if (err) {
+                if (musts[u].emsg) {
+                    free(err->msg);
+                    err->msg = strdup(musts[u].emsg);
+                }
+                if (musts[u].eapptag) {
+                    free(err->apptag);
+                    err->apptag = strdup(musts[u].eapptag);
+                }
+            }
+
             return LY_EVALID;
         }
     }
