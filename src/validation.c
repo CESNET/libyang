@@ -838,7 +838,7 @@ lyd_validate_mandatory(const struct lyd_node *first, const struct lyd_node *pare
     if (!disabled) {
         /* node instance not found */
         if (snode->nodetype == LYS_CHOICE) {
-            LOGVAL(snode->module->ctx, LY_VCODE_NOMAND_CHOIC, snode->name);
+            LOGVAL_APPTAG(snode->module->ctx, "missing-choice", LY_VCODE_NOMAND_CHOIC, snode->name);
         } else {
             LOGVAL(snode->module->ctx, LY_VCODE_NOMAND, snode->name);
         }
@@ -898,11 +898,11 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lyd_node *parent,
         }
 
         if (!disabled) {
-            LOGVAL(snode->module->ctx, LY_VCODE_NOMIN, snode->name);
+            LOGVAL_APPTAG(snode->module->ctx, "too-few-elements", LY_VCODE_NOMIN, snode->name);
             goto failure;
         }
     } else if (max && (count > max)) {
-        LOGVAL(snode->module->ctx, LY_VCODE_NOMAX, snode->name);
+        LOGVAL_APPTAG(snode->module->ctx, "too-many-elements", LY_VCODE_NOMAX, snode->name);
         goto failure;
     }
 
@@ -1037,7 +1037,7 @@ uniquecheck:
                 ptr += strlen(ptr);
             }
             LOG_LOCSET(NULL, second, NULL, NULL);
-            LOGVAL(ctx, LY_VCODE_NOUNIQ, uniq_str, path1, path2);
+            LOGVAL_APPTAG(ctx, "data-not-unique", LY_VCODE_NOUNIQ, uniq_str, path1, path2);
             LOG_LOCBACK(0, 1, 0, 0);
 
             free(path1);
@@ -1300,6 +1300,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
     struct lysc_must *musts;
     const struct lyd_node *tree;
     const struct lysc_node *schema;
+    const char *emsg, *eapptag;
     LY_ARRAY_COUNT_TYPE u;
 
     assert((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) != (LYD_INTOPT_RPC | LYD_INTOPT_REPLY));
@@ -1341,7 +1342,14 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
         if (!xp_set.val.bln) {
-            LOGVAL(LYD_CTX(node), LY_VCODE_NOMUST, musts[u].cond->expr);
+            /* use specific error information */
+            emsg = musts[u].emsg;
+            eapptag = musts[u].eapptag ? musts[u].eapptag : "must-violation";
+            if (emsg) {
+                LOGVAL_APPTAG(LYD_CTX(node), eapptag, LYVE_DATA, "%s", emsg);
+            } else {
+                LOGVAL_APPTAG(LYD_CTX(node), eapptag, LY_VCODE_NOMUST, musts[u].cond->expr);
+            }
             return LY_EVALID;
         }
     }

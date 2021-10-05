@@ -1184,6 +1184,18 @@ test_data_xml(void **state)
     CHECK_LYD_NODE_TERM((struct lyd_node_term *)lyd_root->child, 0, 0, 0, 1, 1,
             INT8, "30", 30);
     lyd_free_all(tree);
+
+    /*
+     * specific error
+     */
+    schema = MODULE_CREATE_YANG("T2", "leaf port {type int8 {range \"0 .. 50 | 105\" {"
+            "        error-app-tag \"range-violation\";"
+            "        error-message \"invalid range of value\";"
+            "}}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    TEST_ERROR_XML("T2", "120");
+    CHECK_LOG_CTX_APPTAG("invalid range of value", "Schema location /T2:port, line number 1.", "range-violation");
 }
 
 static void

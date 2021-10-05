@@ -158,34 +158,34 @@ test_data_xml(void **state)
      * representation without canonical prefixes */
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2", LY_ENOTFOUND);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/mod:cont/l2\" value - required instance not found.",
-            "Schema location /defs:l1, data location /defs:l1.");
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/mod:cont/l2\" value - required instance not found.",
+            "Schema location /defs:l1, data location /defs:l1.", "instance-required");
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='2']", LY_ENOTFOUND);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/defs:llist[.='2']\" value - required instance not found.",
-            "Schema location /defs:l1, data location /defs:l1.");
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:llist[.='2']\" value - required instance not found.",
+            "Schema location /defs:l1, data location /defs:l1.", "instance-required");
 
     TEST_ERROR_XML2("<list2 xmlns=\"urn:tests:defs\"><id>a</id><id2>a</id2></list2>"
             "<list2 xmlns=\"urn:tests:defs\"><id>c</id><id2>b</id2></list2>"
             "<llist xmlns=\"urn:tests:defs\">a</llist>"
             "<llist xmlns=\"urn:tests:defs\">b</llist>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list2[a:id='a'][a:id2='a']/a:id", LY_ENOTFOUND);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/defs:list2[id='a'][id2='a']/id\" value - required instance not found.",
-            "Schema location /defs:l1, data location /defs:l1.");
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:list2[id='a'][id2='a']/id\" value - required instance not found.",
+            "Schema location /defs:l1, data location /defs:l1.", "instance-required");
 
     TEST_ERROR_XML2("<list2 xmlns=\"urn:tests:defs\"><id>a</id><id2>a</id2></list2>"
             "<list2 xmlns=\"urn:tests:defs\"><id>c</id><id2>b</id2></list2>"
             "<llist xmlns=\"urn:tests:defs\">1</llist>"
             "<llist xmlns=\"urn:tests:defs\">2</llist>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='3']", LY_ENOTFOUND);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/defs:llist[.='3']\" value - required instance not found.",
-            "Schema location /defs:l1, data location /defs:l1.");
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:llist[.='3']\" value - required instance not found.",
+            "Schema location /defs:l1, data location /defs:l1.", "instance-required");
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list-keyless[3]", LY_ENOTFOUND);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/defs:list-keyless[3]\" value - required instance not found.",
-            "Schema location /defs:l1, data location /defs:l1.");
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:list-keyless[3]\" value - required instance not found.",
+            "Schema location /defs:l1, data location /defs:l1.", "instance-required");
 
     /* more errors */
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">x</llist>",

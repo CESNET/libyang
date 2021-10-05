@@ -736,15 +736,15 @@ test_data_xml(void **state)
     schema = MODULE_CREATE_YANG("T1", "leaf port {type string {"
             "       length  \"5 .. 10 | 20\";"
             "       pattern '[a-zA-Z_][a-zA-Z0-9\\-_.<]*' ;"
-            "       pattern 'p4.*' {modifier invert-match;}"
+            "       pattern 'p4.*' {modifier invert-match;"
+            "           error-app-tag \"pattern-violation\"; error-message \"invalid pattern of value\";}"
             "}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     /* inverted value */
     TEST_SUCCESS_XML("T1", "abcde",    STRING, "abcde");
     TEST_SUCCESS_XML("T1", "abcde&lt;", STRING, "abcde<");
     TEST_ERROR_XML("T1", "p4abc");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"p4abc\" does not conform to inverted \"p4.*\".",
-            "Schema location /T1:port, line number 1.");
+    CHECK_LOG_CTX_APPTAG("invalid pattern of value", "Schema location /T1:port, line number 1.", "pattern-violation");
     /* size 20 */
     TEST_SUCCESS_XML("T1", "ahojahojahojahojahoj", STRING, "ahojahojahojahojahoj");
     TEST_SUCCESS_XML("T1", "abc-de", STRING, "abc-de");

@@ -1248,6 +1248,24 @@ struct utest_context {
     ly_err_clean(_UC->ctx, NULL)
 
 /**
+ * @brief Check expected error in libyang context including error-app-tag.
+ *
+ * @param[in] MSG Expected error message.
+ * @param[in] PATH Expected error path.
+ * @param[in] APPTAG Expected error-app-tag.
+ */
+#define CHECK_LOG_CTX_APPTAG(MSG, PATH, APPTAG) \
+    if (!MSG) { \
+        assert_null(ly_err_last(_UC->ctx)); \
+    } else { \
+        assert_non_null(ly_err_last(_UC->ctx)); \
+        CHECK_STRING(ly_err_last(_UC->ctx)->msg, MSG); \
+        CHECK_STRING(ly_err_last(_UC->ctx)->path, PATH); \
+        CHECK_STRING(ly_err_last(_UC->ctx)->apptag, APPTAG); \
+    } \
+    ly_err_clean(_UC->ctx, NULL)
+
+/**
  * @brief Clean up the logging callback's storage.
  */
 #define UTEST_LOG_CLEAN \

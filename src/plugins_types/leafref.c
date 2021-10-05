@@ -11,6 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _GNU_SOURCE /* strdup */
 
 #include "plugins_types.h"
 
@@ -67,7 +68,7 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
 {
     LY_ERR ret;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
-    char *errmsg = NULL;
+    char *errmsg = NULL, *path;
 
     *err = NULL;
 
@@ -78,7 +79,8 @@ lyplg_type_validate_leafref(const struct ly_ctx *UNUSED(ctx), const struct lysc_
 
     /* check leafref target existence */
     if (lyplg_type_resolve_leafref(type_lr, ctx_node, storage, tree, NULL, &errmsg)) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "%s", errmsg);
+        path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), "%s", errmsg);
         free(errmsg);
         return ret;
     }

@@ -11,6 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _GNU_SOURCE /* strdup */
 
 #include "plugins_types.h"
 
@@ -209,11 +210,13 @@ cleanup:
 
 API LY_ERR
 lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
-        const struct lyd_node *UNUSED(ctx_node), const struct lyd_node *tree, struct lyd_value *storage,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage,
         struct ly_err_item **err)
 {
-    struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)storage->realtype;
     LY_ERR ret = LY_SUCCESS;
+    struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)storage->realtype;
+    const char *value;
+    char *path;
 
     *err = NULL;
 
@@ -224,8 +227,9 @@ lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type 
 
     /* find the target in data */
     if ((ret = ly_path_eval(storage->target, tree, NULL))) {
-        const char *value = lyplg_type_print_instanceid(ctx, storage, LY_VALUE_CANON, NULL, NULL, NULL);
-        return ly_err_new(err, ret, LYVE_DATA, NULL, NULL, LY_ERRMSG_NOINST, value);
+        value = lyplg_type_print_instanceid(ctx, storage, LY_VALUE_CANON, NULL, NULL, NULL);
+        path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
+        return ly_err_new(err, ret, LYVE_DATA, path, strdup("instance-required"), LY_ERRMSG_NOINST, value);
     }
 
     return LY_SUCCESS;

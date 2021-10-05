@@ -406,7 +406,7 @@ mem_fail:
 }
 
 static void
-log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *path,
+log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *path, const char *apptag,
         const char *format, va_list args)
 {
     char *msg = NULL;
@@ -449,7 +449,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
             /* assume we are inheriting the error, so inherit vecode as well */
             vecode = ly_vecode(ctx);
         }
-        if (log_store(ctx, level, no, vecode, msg, path, NULL)) {
+        if (log_store(ctx, level, no, vecode, msg, path, apptag ? strdup(apptag) : NULL)) {
             return;
         }
         free_strs = 0;
@@ -514,7 +514,7 @@ ly_log_dbg(uint32_t group, const char *format, ...)
     }
 
     va_start(ap, format);
-    log_vprintf(NULL, LY_LLDBG, 0, 0, NULL, dbg_format, ap);
+    log_vprintf(NULL, LY_LLDBG, 0, 0, NULL, NULL, dbg_format, ap);
     va_end(ap);
 }
 
@@ -526,7 +526,7 @@ ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *form
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(ctx, level, no, 0, NULL, format, ap);
+    log_vprintf(ctx, level, no, 0, NULL, NULL, format, ap);
     va_end(ap);
 }
 
@@ -589,7 +589,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
 }
 
 void
-ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...)
+ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...)
 {
     va_list ap;
     char *path = NULL;
@@ -599,7 +599,7 @@ ly_vlog(const struct ly_ctx *ctx, LY_VECODE code, const char *format, ...)
     }
 
     va_start(ap, format);
-    log_vprintf(ctx, LY_LLERR, LY_EVALID, code, path, format, ap);
+    log_vprintf(ctx, LY_LLERR, LY_EVALID, code, path, apptag, format, ap);
     /* path is spent and should not be freed! */
     va_end(ap);
 }
@@ -621,7 +621,8 @@ lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR er
     }
 
     va_start(ap, format);
-    log_vprintf(ext->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER, path ? strdup(path) : NULL, plugin_msg, ap);
+    log_vprintf(ext->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER,
+            path ? strdup(path) : NULL, NULL, plugin_msg, ap);
     va_end(ap);
 
     free(plugin_msg);
@@ -645,7 +646,7 @@ _ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem, const char *f
     }
 
     va_start(ap, format);
-    log_vprintf(ctx, eitem->level, eitem->no, eitem->vecode, path_dup, format, ap);
+    log_vprintf(ctx, eitem->level, eitem->no, eitem->vecode, path_dup, eitem->apptag, format, ap);
     va_end(ap);
 }
 

@@ -116,45 +116,45 @@ test_data_xml(void **state)
     /* invalid value */
     TEST_ERROR_XML2("<leaflisttarget xmlns=\"urn:tests:defs\">x</leaflisttarget>",
             "defs", "", "lref", "y", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"y\" - no target instance \"/leaflisttarget\" with the same value.",
-            "Schema location /defs:lref, data location /defs:lref.");
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"y\" - no target instance \"/leaflisttarget\" with the same value.",
+            "Schema location /defs:lref, data location /defs:lref.", "instance-required");
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list>"
             "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>",
             "defs", "", "lref2", "b", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"b\" - "
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"b\" - "
             "no target instance \"../list[id = current()/../str-norestr]/targets\" with the same value.",
-            "Schema location /defs:lref2, data location /defs:lref2.");
+            "Schema location /defs:lref2, data location /defs:lref2.", "instance-required");
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list>",
             "defs", "", "lref2", "b", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"b\" - "
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"b\" - "
             "no existing target instance \"../list[id = current()/../str-norestr]/targets\".",
-            "Schema location /defs:lref2, data location /defs:lref2.");
+            "Schema location /defs:lref2, data location /defs:lref2.", "instance-required");
 
     TEST_ERROR_XML2("<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>",
             "defs", "", "lref2", "b", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"b\" - "
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"b\" - "
             "no existing target instance \"../list[id = current()/../str-norestr]/targets\".",
-            "Schema location /defs:lref2, data location /defs:lref2.");
+            "Schema location /defs:lref2, data location /defs:lref2.", "instance-required");
 
     TEST_ERROR_XML2("<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>",
             "leafrefs", "", "c", "<l><id>x</id><value>x</value><lr1>a</lr1></l>", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"a\" - no target instance \"../../../t:str-norestr\" with the same value.",
-            "Schema location /leafrefs:c/l/lr1, data location /leafrefs:c/l[id='x'][value='x']/lr1.");
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"a\" - no target instance \"../../../t:str-norestr\" with the same value.",
+            "Schema location /leafrefs:c/l/lr1, data location /leafrefs:c/l[id='x'][value='x']/lr1.", "instance-required");
 
     TEST_ERROR_XML2("<str-norestr xmlns=\"urn:tests:defs\">z</str-norestr>",
             "leafrefs", "", "c", "<l><id>y</id><value>y</value></l><l><id>x</id><value>x</value><lr2>z</lr2></l>", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"z\" - no existing target instance \"../../l[id=current()/../../../t:str-norestr]"
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"z\" - no existing target instance \"../../l[id=current()/../../../t:str-norestr]"
             "[value=current()/../../../t:str-norestr]/value\".",
-            "Schema location /leafrefs:c/l/lr2, data location /leafrefs:c/l[id='x'][value='x']/lr2.");
+            "Schema location /leafrefs:c/l/lr2, data location /leafrefs:c/l[id='x'][value='x']/lr2.", "instance-required");
 
     TEST_ERROR_XML2("",
             "defs", "", "lref", "%n", LY_EVALID);
-    CHECK_LOG_CTX("Invalid leafref value \"%n\" - no existing target instance \"/leaflisttarget\".",
-            "Schema location /defs:lref, data location /defs:lref.");
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"%n\" - no existing target instance \"/leaflisttarget\".",
+            "Schema location /defs:lref, data location /defs:lref.", "instance-required");
 }
 
 static void
