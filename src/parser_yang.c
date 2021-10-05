@@ -2057,12 +2057,6 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct lysp_restr **patterns
     /* get value */
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    /* empty pattern is not valid */
-    if (!strlen(word)) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "pattern");
-        return LY_EVALID;
-    }
-
     /* add special meaning first byte */
     if (buf) {
         buf = ly_realloc(buf, word_len + 2);

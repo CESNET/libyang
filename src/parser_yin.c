@@ -650,13 +650,6 @@ yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &real_value, Y_STR_ARG, LY_STMT_PATTERN));
     size_t len = strlen(real_value);
 
-    /* empty pattern is not valid */
-    if (!len) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, real_value, "value", ly_stmt2str(LY_STMT_PATTERN));
-        lydict_remove(ctx->xmlctx->ctx, real_value);
-        return LY_EVALID;
-    }
-
     saved_value = malloc(len + 2);
     LY_CHECK_ERR_RET(!saved_value, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
     memmove(saved_value + 1, real_value, len);
