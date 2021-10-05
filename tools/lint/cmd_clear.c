@@ -28,9 +28,13 @@
 void
 cmd_clear_help(void)
 {
-    printf("Usage: clear [--yang-library]\n"
+    printf("Usage: clear [-i] [-y]\n"
             "                  Replace the current context with an empty one, searchpaths\n"
-            "                  are not kept.\n"
+            "                  are not kept.\n\n"
+            "  -i, --makeimplemented\n"
+            "                Make the imported modules \"referenced\" from any loaded\n"
+            "                module also implemented. If specified a second time, all the\n"
+            "                modules are set implemented.\n"
             "  -y, --yang-library\n"
             "                  Load and implement internal \"ietf-yang-library\" YANG module.\n"
             "                  Note that this module includes definitions of mandatory state\n"
@@ -48,6 +52,7 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
     char **argv = NULL;
     int opt, opt_index;
     struct option options[] = {
+        {"makeimplemented", no_argument, NULL, 'i'},
         {"yang-library", no_argument, NULL, 'y'},
         {"help",         no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -59,8 +64,16 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
         goto cleanup;
     }
 
-    while ((opt = getopt_long(argc, argv, "yh", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "iyh", options, &opt_index)) != -1) {
         switch (opt) {
+        case 'i':
+            if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
+                options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
+                options_ctx |= LY_CTX_ALL_IMPLEMENTED;
+            } else {
+                options_ctx |= LY_CTX_REF_IMPLEMENTED;
+            }
+            break;
         case 'y':
             options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
             break;
