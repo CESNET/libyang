@@ -1215,7 +1215,9 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
     struct lyb_state lybs;
 
     if (!ctx || !data) {
-        LOGARG;
+        if (!ctx) {
+            LOGARG;
+        }
         return NULL;
     }
 
