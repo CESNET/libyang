@@ -391,6 +391,51 @@ test_derived_from(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_augment(void **state)
+{
+    const char *schema_b =
+            "module b {\n"
+            "    namespace urn:tests:b;\n"
+            "    prefix b;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    import a {\n"
+            "        prefix a;\n"
+            "    }\n"
+            "\n"
+            "    augment /a:c {\n"
+            "        leaf a {\n"
+            "            type uint16;\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data =
+            "<c xmlns=\"urn:tests:a\">\n"
+            "    <x>value</x>\n"
+            "    <ll>\n"
+            "        <a>key</a>\n"
+            "    </ll>\n"
+            "    <a xmlns=\"urn:tests:b\">25</a>\n"
+            "    <ll2>c1</ll2>\n"
+            "</c>";
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    UTEST_ADD_MODULE(schema_b, LYS_IN_YANG, NULL, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    /* get all children ignoring their module */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/*", &set));
+    assert_int_equal(4, set->count);
+
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -401,6 +446,7 @@ main(void)
         UTEST(test_atomize, setup),
         UTEST(test_canonize, setup),
         UTEST(test_derived_from, setup),
+        UTEST(test_augment, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

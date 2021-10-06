@@ -5419,7 +5419,6 @@ moveto_root(struct lyxp_set *set, uint32_t options)
  * @brief Check @p node as a part of NameTest processing.
  *
  * @param[in] node Node to check.
- * @param[in] ctx_node Context node.
  * @param[in] set Set to read general context from.
  * @param[in] node_name Node name in the dictionary to move to, NULL for any node.
  * @param[in] moveto_mod Expected module of the node, NULL for no prefix.
@@ -5428,34 +5427,12 @@ moveto_root(struct lyxp_set *set, uint32_t options)
  * LY_EINVAL if netither node nor any children match)
  */
 static LY_ERR
-moveto_node_check(const struct lyd_node *node, const struct lyd_node *ctx_node, const struct lyxp_set *set,
-        const char *node_name, const struct lys_module *moveto_mod, uint32_t options)
+moveto_node_check(const struct lyd_node *node, const struct lyxp_set *set, const char *node_name,
+        const struct lys_module *moveto_mod, uint32_t options)
 {
     if (!node->schema) {
         /* opaque node never matches */
         return LY_ENOT;
-    }
-
-    if (!moveto_mod && (!node_name || strcmp(node_name, "*"))) {
-        switch (set->format) {
-        case LY_VALUE_SCHEMA:
-        case LY_VALUE_SCHEMA_RESOLVED:
-            /* use current module */
-            moveto_mod = set->cur_mod;
-            break;
-        case LY_VALUE_JSON:
-        case LY_VALUE_LYB:
-            /* inherit module of the context node, if any */
-            if (ctx_node) {
-                moveto_mod = ctx_node->schema->module;
-            }
-            break;
-        case LY_VALUE_CANON:
-        case LY_VALUE_XML:
-            /* not defined */
-            LOGINT(set->ctx);
-            return LY_EINVAL;
-        }
     }
 
     /* module check */
@@ -5555,7 +5532,7 @@ static LY_ERR
 moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname, uint32_t options)
 {
     uint32_t i;
-    const struct lyd_node *siblings, *sub, *ctx_node;
+    const struct lyd_node *siblings, *sub;
     LY_ERR rc;
 
     if (options & LYXP_SKIP_EXPR) {
@@ -5574,16 +5551,14 @@ moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const cha
             assert(!set->val.nodes[i].node);
 
             /* search in all the trees */
-            ctx_node = NULL;
             siblings = set->tree;
         } else {
             /* search in children */
-            ctx_node = set->val.nodes[i].node;
-            siblings = lyd_child(ctx_node);
+            siblings = lyd_child(set->val.nodes[i].node);
         }
 
         for (sub = siblings; sub; sub = sub->next) {
-            rc = moveto_node_check(sub, ctx_node, set, ncname, moveto_mod, options);
+            rc = moveto_node_check(sub, set, ncname, moveto_mod, options);
             if (rc == LY_SUCCESS) {
                 if (!replaced) {
                     set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
@@ -5831,7 +5806,7 @@ moveto_node_alldesc(struct lyxp_set *set, const struct lys_module *moveto_mod, c
         /* TREE DFS */
         start = set->val.nodes[i].node;
         for (elem = next = start; elem; elem = next) {
-            rc = moveto_node_check(elem, start, set, ncname, moveto_mod, options);
+            rc = moveto_node_check(elem, set, ncname, moveto_mod, options);
             if (!rc) {
                 /* add matching node into result set */
                 set_insert_node(&ret_set, elem, 0, LYXP_NODE_ELEM, ret_set.used);
