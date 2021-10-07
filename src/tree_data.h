@@ -2353,6 +2353,22 @@ void lyxp_vars_free(struct lyxp_var *vars);
 LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
 
 /**
+ * @brief Search in the given data for instances of nodes matching the provided XPath.
+ *
+ * It is just lyd_find_xpath() with @p vars added.
+ *
+ * @param[in] ctx_node XPath context node.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
+ * the returned set is empty.
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath,
+        const struct lyxp_var *vars, struct ly_set **set);
+
+/**
  * @brief Evaluate an XPath on data and return the result converted to boolean.
  *
  * Optimizations similar as in ::lyd_find_xpath().
@@ -2364,6 +2380,21 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result);
+
+/**
+ * @brief Evaluate an XPath on data and return the result converted to boolean.
+ *
+ * The lyd_eval_xpath() with @p vars added.
+ *
+ * @param[in] ctx_node XPath context node.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[out] result Expression result comverted to boolean.
+ * @return LY_SUCCESS on success, @p result is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath,
+        const struct lyxp_var *vars, ly_bool *result);
 
 /**
  * @brief Search in given data for a node uniquely identified by a path.

@@ -4409,7 +4409,7 @@ lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struc
 }
 
 API LY_ERR
-lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
+lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set = {0};
@@ -4425,7 +4425,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, vars, &xp_set, LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -4458,7 +4458,13 @@ cleanup:
 }
 
 API LY_ERR
-lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
+lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
+{
+    return lyd_find_xpath2(ctx_node, xpath, NULL, set);
+}
+
+API LY_ERR
+lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, ly_bool *result)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set = {0};
@@ -4471,7 +4477,7 @@ lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *resu
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, &xp_set, LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, vars, &xp_set, LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into boolean */
@@ -4485,6 +4491,12 @@ cleanup:
     lyxp_set_free_content(&xp_set);
     lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
     return ret;
+}
+
+API LY_ERR
+lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
+{
+    return lyd_eval_xpath2(ctx_node, xpath, NULL, result);
 }
 
 API LY_ERR
