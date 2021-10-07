@@ -115,6 +115,38 @@ test_predicate(void **state)
 }
 
 static void
+test_union(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>\n"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a3</a>\n"
+            "    <b>b3</b>\n"
+            "    <c>c3</c>\n"
+            "</l1>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    /* Predicate for operand. */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/l1[c[../a = 'a1'] | c]/a", &set));
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+}
+
+static void
 test_invalid(void **state)
 {
     const char *data =
@@ -460,6 +492,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_predicate, setup),
+        UTEST(test_union, setup),
         UTEST(test_invalid, setup),
         UTEST(test_hash, setup),
         UTEST(test_toplevel, setup),
