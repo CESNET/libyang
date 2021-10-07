@@ -528,6 +528,56 @@ test_data_hash(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_lyxp_vars(void **UNUSED(state))
+{
+    struct lyxp_var *vars;
+
+    /* Test free. */
+    vars = NULL;
+    lyxp_vars_free(vars);
+
+    /* Bad arguments for lyxp_vars_add(). */
+    assert_int_equal(LY_EINVAL, lyxp_vars_set(NULL, "var1", "val1"));
+    assert_int_equal(LY_EINVAL, lyxp_vars_set(&vars, NULL, "val1"));
+    assert_int_equal(LY_EINVAL, lyxp_vars_set(&vars, "var1", NULL));
+    lyxp_vars_free(vars);
+    vars = NULL;
+
+    /* Add one item. */
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "val1"));
+    assert_int_equal(LY_ARRAY_COUNT(vars), 1);
+    assert_string_equal(vars[0].name, "var1");
+    assert_string_equal(vars[0].value, "val1");
+    lyxp_vars_free(vars);
+    vars = NULL;
+
+    /* Add three items. */
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "val1"));
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var2", "val2"));
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var3", "val3"));
+    assert_int_equal(LY_ARRAY_COUNT(vars), 3);
+    assert_string_equal(vars[0].name, "var1");
+    assert_string_equal(vars[0].value, "val1");
+    assert_string_equal(vars[1].name, "var2");
+    assert_string_equal(vars[1].value, "val2");
+    assert_string_equal(vars[2].name, "var3");
+    assert_string_equal(vars[2].value, "val3");
+    lyxp_vars_free(vars);
+    vars = NULL;
+
+    /* Change value of a variable. */
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "val1"));
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var2", "val2"));
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "new_value"));
+    assert_string_equal(vars[0].name, "var1");
+    assert_string_equal(vars[0].value, "new_value");
+    assert_string_equal(vars[1].name, "var2");
+    assert_string_equal(vars[1].value, "val2");
+    lyxp_vars_free(vars);
+    vars = NULL;
+}
+
 int
 main(void)
 {
@@ -540,6 +590,7 @@ main(void)
         UTEST(test_first_sibling, setup),
         UTEST(test_find_path, setup),
         UTEST(test_data_hash, setup),
+        UTEST(test_lyxp_vars),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
