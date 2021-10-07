@@ -7260,7 +7260,7 @@ moveto:
     /* Predicate* */
     while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_BRACK1)) {
         rc = eval_predicate(exp, tok_idx, set, options, 1);
-        LY_CHECK_RET(rc);
+        LY_CHECK_GOTO(rc, cleanup);
     }
 
 cleanup:
