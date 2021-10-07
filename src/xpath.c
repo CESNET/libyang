@@ -1117,6 +1117,9 @@ lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
     }
 
     if (!set1->used) {
+        /* release hidden allocated data (lyxp_set.size) */
+        lyxp_set_free_content(set1);
+        /* direct copying of the entire structure */
         memcpy(set1, set2, sizeof *set1);
         return;
     }
@@ -6038,6 +6041,9 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2)
     }
 
     if (!set1->used) {
+        /* release hidden allocated data (lyxp_set.size) */
+        lyxp_set_free_content(set1);
+        /* direct copying of the entire structure */
         memcpy(set1, set2, sizeof *set1);
         /* dynamic memory belongs to set1 now, do not free */
         memset(set2, 0, sizeof *set2);
