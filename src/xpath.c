@@ -117,6 +117,8 @@ lyxp_print_token(enum lyxp_token tok)
         return "NameTest";
     case LYXP_TOKEN_NODETYPE:
         return "NodeType";
+    case LYXP_TOKEN_VARREF:
+        return "VariableReference";
     case LYXP_TOKEN_FUNCNAME:
         return "FunctionName";
     case LYXP_TOKEN_OPER_LOG:
@@ -783,6 +785,7 @@ set_init(struct lyxp_set *new, const struct lyxp_set *set)
         new->cur_mod = set->cur_mod;
         new->format = set->format;
         new->prefix_data = set->prefix_data;
+        new->vars = set->vars;
     }
 }
 
@@ -2345,7 +2348,7 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
  *                 | PrimaryExpr Predicate* '/' RelativeLocationPath
  *                 | PrimaryExpr Predicate* '//' RelativeLocationPath
  * [2] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
- * [8] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
+ * [8] PrimaryExpr ::= VariableReference | '(' Expr ')' | Literal | Number | FunctionCall
  *
  * @param[in] ctx Context for logging.
  * @param[in] exp Parsed XPath expression.
@@ -2383,6 +2386,10 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
         rc = reparse_relative_location_path(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
         break;
+    case LYXP_TOKEN_VARREF:
+        /* VariableReference */
+        ++(*tok_idx);
+        goto predicate;
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
         rc = reparse_function_call(ctx, exp, tok_idx, depth);
@@ -2850,6 +2857,19 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 for ( ; isdigit(expr_str[parsed + tok_len]); ++tok_len) {}
             }
             tok_type = LYXP_TOKEN_NUMBER;
+
+        } else if (expr_str[parsed] == '$') {
+
+            /* VariableReference */
+            parsed++;
+            long int ncname_len = parse_ncname(&expr_str[parsed]);
+            LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+                    parsed - ncname_len + 1, expr_str); ret = LY_EVALID, error);
+            tok_len = ncname_len;
+            LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == ':',
+                    LOGVAL(ctx, LYVE_XPATH, "Variable with prefix is not supported."); ret = LY_EVALID,
+                    error);
+            tok_type = LYXP_TOKEN_VARREF;
 
         } else if (expr_str[parsed] == '/') {
 
@@ -7758,13 +7778,56 @@ lyxp_vars_find(struct lyxp_var *vars, const char *name, size_t name_len, struct 
 }
 
 /**
+ * @brief Evaluate VariableReference.
+ *
+ * @param[in] exp Parsed XPath expression.
+ * @param[in] tok_idx Position in the expression @p exp.
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[in,out] set Context and result set.
+ * @param[in] options XPath options.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+eval_variable_reference(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
+{
+    LY_ERR ret;
+    const char *name;
+    struct lyxp_var *var;
+    const struct lyxp_var *vars;
+    struct lyxp_expr *tokens = NULL;
+    uint16_t token_index;
+
+    vars = set->vars;
+
+    /* Find out the name and value of the variable. */
+    name = &exp->expr[exp->tok_pos[*tok_idx]];
+    ret = lyxp_vars_find((struct lyxp_var *)vars, name, exp->tok_len[*tok_idx], &var);
+    LY_CHECK_ERR_RET(ret, LOGERR(set->ctx, ret,
+            "XPath variable \"%s\" not defined.", name), ret);
+
+    /* Parse value. */
+    ret = lyxp_expr_parse(set->ctx, var->value, 0, 1, &tokens);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* Evaluate value. */
+    token_index = 0;
+    ret = eval_expr_select(tokens, &token_index, 0, set, options);
+    LY_CHECK_GOTO(ret, cleanup);
+
+cleanup:
+    lyxp_expr_free(set->ctx, tokens);
+
+    return ret;
+}
+
+/**
  * @brief Evaluate PathExpr. Logs directly on error.
  *
  * [12] PathExpr ::= LocationPath | PrimaryExpr Predicate*
  *                 | PrimaryExpr Predicate* '/' RelativeLocationPath
  *                 | PrimaryExpr Predicate* '//' RelativeLocationPath
  * [2] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
- * [10] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
+ * [10] PrimaryExpr ::= VariableReference | '(' Expr ')' | Literal | Number | FunctionCall
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
@@ -7809,6 +7872,15 @@ eval_path_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
         rc = eval_relative_location_path(exp, tok_idx, 0, set, options);
         LY_CHECK_RET(rc);
         break;
+
+    case LYXP_TOKEN_VARREF:
+        /* VariableReference */
+        rc = eval_variable_reference(exp, tok_idx, set, options);
+        LY_CHECK_RET(rc);
+        ++(*tok_idx);
+
+        parent_pos_pred = 1;
+        goto predicate;
 
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
@@ -8529,7 +8601,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 LY_ERR
 lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        struct lyxp_set *set, uint32_t options)
+        const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
     LY_ERR rc;
@@ -8563,6 +8635,7 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
     set->cur_mod = cur_mod;
     set->format = format;
     set->prefix_data = prefix_data;
+    set->vars = vars;
 
     LOG_LOCSET(NULL, set->cur_node, NULL, NULL);
 

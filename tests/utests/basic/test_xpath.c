@@ -487,6 +487,261 @@ test_augment(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_variables(void **state)
+{
+    struct lyd_node *tree, *node;
+    struct ly_set *set;
+    const char *data;
+    struct lyxp_var *vars = NULL;
+
+#define LOCAL_SETUP(DATA, TREE) \
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, DATA, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &TREE)); \
+    assert_non_null(TREE);
+
+#define SET_NODE(NODE, SET, INDEX) \
+    assert_non_null(SET); \
+    assert_true(INDEX < SET->count); \
+    NODE = SET->objs[INDEX];
+
+#define LOCAL_TEARDOWN(SET, TREE, VARS) \
+    ly_set_free(SET, NULL); \
+    lyd_free_all(TREE); \
+    lyxp_vars_free(VARS); \
+    vars = NULL;
+
+    /* Eval variable to number. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "    <c>c2</c>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "2"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a2");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Eval variable to string. */
+    data =
+            "<foo xmlns=\"urn:tests:a\">mstr</foo>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "\"mstr\""));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/foo[text() = $var]", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "mstr");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Eval variable to set of nodes. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "    <c>c2</c>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "c"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a2");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Variable in union expr. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "    <c>c2</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a3</a>\n"
+            "    <b>b3</b>\n"
+            "    <c>c3</c>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "c[../a = 'a3']"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[c[../a = 'a1'] | $var]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a1");
+    SET_NODE(node, set, 1);
+    assert_string_equal(lyd_get_value(node), "a3");
+    assert_int_equal(set->count, 2);
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Predicate after variable. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "    <c>c2</c>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "c"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var[../a = 'a1']]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a1");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Variable in variable. */
+    data =
+            "<foo xmlns=\"urn:tests:a\">mstr</foo>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "$var2"));
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var2", "\"mstr\""));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/foo[text() = $var]", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "mstr");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Compare two variables. */
+    data =
+            "<foo xmlns=\"urn:tests:a\">mstr</foo>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "\"str\""));
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var2", "\"str\""));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/foo[$var1 = $var2]", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "mstr");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Arithmetic operation with variable. */
+    data =
+            "<foo2 xmlns=\"urn:tests:a\">4</foo2>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "2"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/foo2[.= ($var1 * 2)]", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "4");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Variable as function parameter. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "./c"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[count($var) = 1]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a1");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Variable in path expr. */
+    /* NOTE: The variable can only be at the beginning of the expression path. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "/l1"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var/a]", vars, &set));
+    assert_int_equal(set->count, 2);
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Variable as function. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "position()"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var = 2]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a2");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Dynamic change of value. */
+    data =
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a1</a>\n"
+            "    <b>b1</b>\n"
+            "    <c>c1</c>\n"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">\n"
+            "    <a>a2</a>\n"
+            "    <b>b2</b>\n"
+            "    <c>c2</c>\n"
+            "</l1>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "1"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a1");
+    ly_set_free(set, NULL);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "2"));
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath2(tree, "/l1[$var]/a", vars, &set));
+    SET_NODE(node, set, 0);
+    assert_string_equal(lyd_get_value(node), "a2");
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Variable not defined. */
+    data =
+            "<foo xmlns=\"urn:tests:a\">mstr</foo>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var1", "\"mstr\""));
+    assert_int_equal(LY_ENOTFOUND, lyd_find_xpath2(tree, "/foo[text() = $var55]", vars, &set));
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Syntax error in value. */
+    data =
+            "<foo xmlns=\"urn:tests:a\">mstr</foo>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "\""));
+    assert_int_equal(LY_EVALID, lyd_find_xpath2(tree, "/foo[$var]", vars, &set));
+    LOCAL_TEARDOWN(set, tree, vars);
+
+    /* Prefix is not supported. */
+    data =
+            "<foo xmlns=\"urn:tests:a\">mstr</foo>";
+    LOCAL_SETUP(data, tree);
+    assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "\""));
+    assert_int_equal(LY_EVALID, lyd_find_xpath2(tree, "/foo[$pref:var]", vars, &set));
+    assert_string_equal("Variable with prefix is not supported.", _UC->err_msg);
+    LOCAL_TEARDOWN(set, tree, vars);
+
+#undef LOCAL_SETUP
+#undef LOCAL_TEARDOWN
+}
+
 int
 main(void)
 {
@@ -500,6 +755,7 @@ main(void)
         UTEST(test_canonize, setup),
         UTEST(test_derived_from, setup),
         UTEST(test_augment, setup),
+        UTEST(test_variables, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

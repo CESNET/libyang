@@ -2072,10 +2072,10 @@ test_type_leafref(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module xx {namespace urn:xx;prefix xx;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
-            "leaf address {type leafref{ path \"/interface[name = current()/../$node]/ip\";}}}",
+            "leaf address {type leafref{ path \"/interface[name = current()/../#node]/ip\";}}}",
             LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Parsing module \"xx\" failed.", NULL,
-            "Invalid character '$'[32] of expression '/interface[name = current()/../$node]/ip'.", "Line number 4.");
+            "Invalid character '#'[32] of expression '/interface[name = current()/../#node]/ip'.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module yy {namespace urn:yy;prefix yy;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"

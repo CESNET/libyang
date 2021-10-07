@@ -37,10 +37,8 @@ struct lyd_node;
  * @subsection internalsXpathGrammar Parsed Grammar
  *
  * Full axes are not supported, abbreviated forms must be used,
- * variables are not supported, "id()" function is not supported,
- * and processing instruction and comment nodes are not supported,
- * which is also reflected in the grammar. Undefined rules and
- * constants are tokens.
+ * "id()" function is not supported, and processing instruction and comment nodes are not supported,
+ * which is also reflected in the grammar. Undefined rules and constants are tokens.
  *
  * Modified full grammar:
  * @code
@@ -54,7 +52,7 @@ struct lyd_node;
  * [7] NameTest ::= '*' | NCName ':' '*' | QName
  * [8] NodeType ::= 'text' | 'node'
  * [9] Predicate ::= '[' Expr ']'
- * [10] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
+ * [10] PrimaryExpr ::= VariableReference | '(' Expr ')' | Literal | Number | FunctionCall
  * [11] FunctionCall ::= FunctionName '(' ( Expr ( ',' Expr )* )? ')'
  * [12] PathExpr ::= LocationPath | PrimaryExpr Predicate*
  *                 | PrimaryExpr Predicate* '/' RelativeLocationPath
@@ -111,6 +109,7 @@ enum lyxp_token {
     /* LYXP_TOKEN_DCOLON,      * '::' * axes not supported */
     LYXP_TOKEN_NAMETEST,      /* NameTest */
     LYXP_TOKEN_NODETYPE,      /* NodeType */
+    LYXP_TOKEN_VARREF,        /* VariableReference */
     LYXP_TOKEN_FUNCNAME,      /* FunctionName */
     LYXP_TOKEN_OPER_LOG,      /* Operator 'and', 'or' */
     LYXP_TOKEN_OPER_EQUAL,    /* Operator '=' */
@@ -289,6 +288,8 @@ struct lyxp_set {
     const struct lys_module *cur_mod;       /**< Current module for the expression (where it was "instantiated"). */
     LY_VALUE_FORMAT format;                 /**< Format of the XPath expression. */
     void *prefix_data;                      /**< Format-specific prefix data (see ::ly_resolve_prefix). */
+    const struct lyxp_var *vars;            /**< XPath variables. [Sized array](@ref sizedarrays).
+                                                 Set of variable bindings. */
 };
 
 /**
@@ -311,6 +312,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @param[in] ctx_node Current (context) data node, NULL in case of the root node.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node). Can be any node of the tree, it is adjusted.
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions.
  * @return LY_EVALID for invalid argument types/count,
@@ -319,7 +321,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  */
 LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        struct lyxp_set *set, uint32_t options);
+        const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
