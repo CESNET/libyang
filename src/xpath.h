@@ -222,6 +222,15 @@ struct lyxp_set_hash_node {
 } _PACKED;
 
 /**
+ * @brief XPath variable bindings.
+ */
+struct lyxp_var {
+    char *name;     /**< Variable name. In the XPath expression, the name is preceded by a '$' character. */
+    char *value;    /**< The value of a variable is an object, which can be of any of the type that are possible
+                         for the value of an expression. */
+};
+
+/**
  * @brief XPath set - (partial) result.
  */
 struct lyxp_set {
@@ -458,6 +467,17 @@ LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, ui
  */
 LY_ERR lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx,
         enum lyxp_token want_tok1, enum lyxp_token want_tok2);
+
+/**
+ * @brief Find variable named @name in @p vars.
+ *
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[in] name Name of the variable being searched.
+ * @param[in] name_len Name length can be set to 0 if @p name is terminated by null byte.
+ * @param[out] var Variable that was found. The parameter is optional.
+ * @return LY_SUCCESS if the variable was found, otherwise LY_ENOTFOUND.
+ */
+LY_ERR lyxp_vars_find(struct lyxp_var *vars, const char *name, size_t name_len, struct lyxp_var **var);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.

@@ -7733,6 +7733,30 @@ eval_number(struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, 
     return LY_SUCCESS;
 }
 
+LY_ERR
+lyxp_vars_find(struct lyxp_var *vars, const char *name, size_t name_len, struct lyxp_var **var)
+{
+    LY_ERR ret = LY_ENOTFOUND;
+    LY_ARRAY_COUNT_TYPE u;
+
+    assert(vars && name);
+
+    name_len = name_len ? name_len : strlen(name);
+
+    LY_ARRAY_FOR(vars, u) {
+        if (!strncmp(vars[u].name, name, name_len)) {
+            ret = LY_SUCCESS;
+            break;
+        }
+    }
+
+    if (var && !ret) {
+        *var = &vars[u];
+    }
+
+    return ret;
+}
+
 /**
  * @brief Evaluate PathExpr. Logs directly on error.
  *

@@ -41,6 +41,7 @@ struct lyd_node;
 struct lyd_node_opaq;
 struct lyd_node_term;
 struct timespec;
+struct lyxp_var;
 
 /**
  * @page howtoData Data Instances
@@ -2313,6 +2314,26 @@ LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const stru
  * @return LY_ERR value is an error occurred.
  */
 LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struct lyd_node **match);
+
+/**
+ * @brief Set a new XPath variable to @p vars.
+ *
+ * @param[in,out] vars Pointer to [sized array](@ref sizedarrays) of XPath variables.
+ * To create a new array, set the @p vars target pointer to NULL.
+ * Otherwise variable named @p name with a value @p value will be added to the @p vars
+ * or its value will be changed if the variable is already defined.
+ * @param[in] name Name of the added/edited variable.
+ * @param[in] value Value of the variable.
+ * @return LY_ERR value.
+ */
+LY_ERR lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value);
+
+/**
+ * @brief Free the XPath variables.
+ *
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ */
+void lyxp_vars_free(struct lyxp_var *vars);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.

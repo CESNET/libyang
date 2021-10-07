@@ -39,6 +39,7 @@
 #include "tree_schema_internal.h"
 #include "validation.h"
 #include "xml.h"
+#include "xpath.h"
 
 /**
  * @brief Find an entry in duplicate instance cache for an instance. Create it if it does not exist.
@@ -161,6 +162,61 @@ lyd_node_child_p(struct lyd_node *node)
             return NULL;
         }
     }
+}
+
+API LY_ERR
+lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *var_name = NULL, *var_value = NULL;
+    struct lyxp_var *item;
+
+    if (!vars || !name || !value) {
+        return LY_EINVAL;
+    }
+
+    /* If variable is already defined then change its value. */
+    if (*vars && !lyxp_vars_find(*vars, name, 0, &item)) {
+        var_value = strdup(value);
+        LY_CHECK_RET(!var_value, LY_EMEM);
+
+        /* Set new value. */
+        free(item->value);
+        item->value = var_value;
+    } else {
+        var_name = strdup(name);
+        var_value = strdup(value);
+        LY_CHECK_ERR_GOTO(!var_name || !var_value, ret = LY_EMEM, error);
+
+        /* Add new variable. */
+        LY_ARRAY_NEW_GOTO(NULL, *vars, item, ret, error);
+        item->name = var_name;
+        item->value = var_value;
+    }
+
+    return LY_SUCCESS;
+
+error:
+    free(var_name);
+    free(var_value);
+    return ret;
+}
+
+API void
+lyxp_vars_free(struct lyxp_var *vars)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (!vars) {
+        return;
+    }
+
+    LY_ARRAY_FOR(vars, u) {
+        free(vars[u].name);
+        free(vars[u].value);
+    }
+
+    LY_ARRAY_FREE(vars);
 }
 
 API struct lyd_node *
