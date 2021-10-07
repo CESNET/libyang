@@ -60,7 +60,7 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 #### Optional
 
 * doxygen (for generating documentation)
-* cmocka >= 1.0.0 (for [tests](#Tests))
+* cmocka >= 1.0.1 (for [tests](#Tests))
 * valgrind (for enhanced testing)
 * gcov (for code coverage)
 * lcov (for code coverage)

@@ -274,7 +274,7 @@ if(ENABLE_VALGRIND_TESTS)
 endif()
 
 if(ENABLE_TESTS)
-    find_package(CMocka 1.0.0)
+    find_package(CMocka 1.0.1)
     if(NOT CMOCKA_FOUND)
         message(STATUS "Disabling tests because of missing CMocka")
         set(ENABLE_TESTS OFF)
