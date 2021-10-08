@@ -459,6 +459,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
         const char **orig_default, char **orig_value)
 {
     const struct lysc_node *schema;
+    const char *str_val;
 
     assert(first || second);
 
@@ -526,7 +527,8 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
     /* orig-value */
     if ((schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) && (*op == LYD_DIFF_OP_REPLACE)) {
         if (schema->nodetype == LYS_LEAF) {
-            *orig_value = strdup(lyd_get_value(first));
+            str_val = lyd_get_value(first);
+            *orig_value = strdup(str_val ? str_val : "");
             LY_CHECK_ERR_RET(!*orig_value, LOGMEM(schema->module->ctx), LY_EMEM);
         } else {
             LY_CHECK_RET(lyd_any_value_str(first, orig_value));
