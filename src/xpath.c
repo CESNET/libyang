@@ -48,6 +48,26 @@ static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, e
 static LY_ERR moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_set *set,
         const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod);
 
+/* Functions are divided into the following basic classes:
+ *
+ * (re)parse functions:
+ * Parse functions parse the expression into
+ * tokens (syntactic analysis).
+ * Reparse functions perform semantic analysis
+ * (do not save the result, just a check) of
+ * the expression and fill repeat indices.
+ *
+ * warn functions:
+ * Warn functions check specific reasonable conditions for schema XPath
+ * and print a warning if they are not satisfied.
+ *
+ * moveto functions:
+ * They and only they actually change the context (set).
+ *
+ * eval functions:
+ * They execute a parsed XPath expression on some data subtree.
+ */
+
 /**
  * @brief Print the type of an XPath \p set.
  *
@@ -1858,17 +1878,6 @@ copy_nodes:
     return LY_SUCCESS;
 }
 
-/*
- * (re)parse functions
- *
- * Parse functions parse the expression into
- * tokens (syntactic analysis).
- *
- * Reparse functions perform semantic analysis
- * (do not save the result, just a check) of
- * the expression and fill repeat indices.
- */
-
 LY_ERR
 lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t tok_idx, enum lyxp_token want_tok)
 {
@@ -3053,13 +3062,6 @@ cleanup:
     }
     return ret;
 }
-
-/*
- * warn functions
- *
- * Warn functions check specific reasonable conditions for schema XPath
- * and print a warning if they are not satisfied.
- */
 
 /**
  * @brief Get the last-added schema node that is currently in the context.
@@ -5316,12 +5318,6 @@ xpath_true(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
     return LY_SUCCESS;
 }
 
-/*
- * moveto functions
- *
- * They and only they actually change the context (set).
- */
-
 /**
  * @brief Skip prefix and return corresponding model if there is a prefix. Logs directly.
  *
@@ -6756,12 +6752,6 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
 
     return LY_SUCCESS;
 }
-
-/*
- * eval functions
- *
- * They execute a parsed XPath expression on some data subtree.
- */
 
 /**
  * @brief Evaluate Predicate. Logs directly on error.
