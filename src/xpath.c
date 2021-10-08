@@ -2043,7 +2043,6 @@ step:
         case LYXP_TOKEN_NAMETEST:
             ++(*tok_idx);
             goto reparse_predicate;
-            break;
 
         case LYXP_TOKEN_NODETYPE:
             ++(*tok_idx);
@@ -2366,7 +2365,6 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
         LY_CHECK_RET(rc);
         ++(*tok_idx);
         goto predicate;
-        break;
     case LYXP_TOKEN_DOT:
     case LYXP_TOKEN_DDOT:
     case LYXP_TOKEN_AT:
@@ -2381,7 +2379,6 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
         rc = reparse_function_call(ctx, exp, tok_idx, depth);
         LY_CHECK_RET(rc);
         goto predicate;
-        break;
     case LYXP_TOKEN_OPER_PATH:
     case LYXP_TOKEN_OPER_RPATH:
         /* AbsoluteLocationPath */
@@ -2392,12 +2389,10 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok
         /* Literal */
         ++(*tok_idx);
         goto predicate;
-        break;
     case LYXP_TOKEN_NUMBER:
         /* Number */
         ++(*tok_idx);
         goto predicate;
-        break;
     default:
         LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EVALID;
