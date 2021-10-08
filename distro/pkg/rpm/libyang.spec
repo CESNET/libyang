@@ -40,7 +40,7 @@ mkdir build
 cd build
 cmake \
     -DCMAKE_INSTALL_PREFIX:PATH=%{_prefix} \
-    -DCMAKE_BUILD_TYPE:String="Package" \
+    -DCMAKE_BUILD_TYPE:String="Release" \
     -DCMAKE_C_FLAGS="${RPM_OPT_FLAGS}" \
     -DCMAKE_CXX_FLAGS="${RPM_OPT_FLAGS}" \
     ..

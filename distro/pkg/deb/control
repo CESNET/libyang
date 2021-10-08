@@ -6,7 +6,7 @@ Priority: optional
 Standards-Version: 4.5.0
 Build-Depends: cmake,
                debhelper (>= 10),
-               libpcre2-dev,
+               libpcre2-dev (>= 10.21),
                pkg-config
 Vcs-Browser: https://github.com/CESNET/libyang/tree/master
 Vcs-Git: https://github.com/CESNET/libyang.git
@@ -28,7 +28,7 @@ Description: parser toolkit for IETF YANG data modeling - runtime
  to use in processing configurations.
 
 Package: libyang2-dev
-Depends: libpcre2-dev,
+Depends: libpcre2-dev (>= 10.21),
          libyang2 (= ${binary:Version}),
          ${misc:Depends}
 Conflicts: libyang-dev
