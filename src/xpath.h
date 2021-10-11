@@ -160,15 +160,15 @@ enum lyxp_node_type {
  * @brief Structure holding a parsed XPath expression.
  */
 struct lyxp_expr {
-    enum lyxp_token *tokens; /* array of tokens */
-    uint16_t *tok_pos;       /* array of the token offsets in expr */
-    uint16_t *tok_len;       /* array of token lengths in expr */
-    enum lyxp_expr_type **repeat; /* array of expression types that this token begins and is repeated ended with 0,
-                                     more in the comment after this declaration */
-    uint16_t used;           /* used array items */
-    uint16_t size;           /* allocated array items */
+    enum lyxp_token *tokens; /**< Array of tokens. */
+    uint16_t *tok_pos;       /**< Array of the token offsets in expr. */
+    uint16_t *tok_len;       /**< Array of token lengths in expr. */
+    enum lyxp_expr_type **repeat; /**< Array of expression types that this token begins and is repeated ended with 0,
+                                       more in the comment after this declaration. */
+    uint16_t used;           /**< Used array items. */
+    uint16_t size;           /**< Allocated array items. */
 
-    const char *expr;        /* the original XPath expression */
+    const char *expr;        /**< The original XPath expression. */
 };
 
 /*
@@ -225,16 +225,16 @@ struct lyxp_set_hash_node {
  * @brief XPath set - (partial) result.
  */
 struct lyxp_set {
-    enum lyxp_set_type type;
+    enum lyxp_set_type type;             /**< Type of the object (value). */
     union {
         struct lyxp_set_node {
-            struct lyd_node *node;
-            enum lyxp_node_type type;
-            uint32_t pos;
-        } *nodes;
+            struct lyd_node *node;       /**< Data node. */
+            enum lyxp_node_type type;    /**< Type of the node. */
+            uint32_t pos;                /**< Unique node position in the data. */
+        } *nodes;                        /**< Set of data nodes. */
         struct lyxp_set_scnode {
-            struct lysc_node *scnode;
-            enum lyxp_node_type type;
+            struct lysc_node *scnode;    /**< Compiled YANG node. */
+            enum lyxp_node_type type;    /**< Type of the node. */
 
 /* _START and _ATOM values should have grouped values */
 #define LYXP_SET_SCNODE_START         -2 /**< scnode not traversed, currently (the only node) in context */
@@ -245,39 +245,41 @@ struct lyxp_set {
 #define LYXP_SET_SCNODE_ATOM_NEW_CTX   3 /**< scnode in context and just added, so skip it for the current operation */
 #define LYXP_SET_SCNODE_ATOM_PRED_CTX  4 /**< includes any higher value - scnode is not in context because we are in
                                               a predicate and this scnode was used/will be used later */
-            int32_t in_ctx; /**< values defined as LYXP_SET_SCNODE_* */
-        } *scnodes;
+            int32_t in_ctx;             /**< Flag specifies the state of the node in context. Values are defined
+                                             as LYXP_SET_SCNODE_* */
+        } *scnodes;                     /**< Set of compiled YANG data nodes. */
         struct lyxp_set_meta {
-            struct lyd_meta *meta;
-            enum lyxp_node_type type;
-            uint32_t pos; /* if node_type is LYXP_SET_NODE_META, it is the parent node position */
-        } *meta;
-        char *str;
-        long double num;
-        ly_bool bln; /* boolean */
-    } val;
+            struct lyd_meta *meta;      /**< Node that provides information about metadata of a data element. */
+            enum lyxp_node_type type;   /**< Type of the node. */
+            uint32_t pos;               /**< Unique node position in the data. if node_type is LYXP_SET_NODE_META,
+                                             it is the parent node position */
+        } *meta;                        /**< Set of YANG metadata objects. */
+        char *str;                      /**< String object. */
+        long double num;                /**< Object of the floating-point number. */
+        ly_bool bln;                    /**< Boolean object. */
+    } val;                              /**< Evaluated object (value). */
 
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
-    uint32_t used;
-    uint32_t size;
-    struct hash_table *ht;
+    uint32_t used;          /**< Number of nodes in the set. */
+    uint32_t size;          /**< Allocated size for the set. */
+    struct hash_table *ht;  /**< Hash table for quick determination of whether a node is in the set. */
 
     /* XPath context information, this is valid only for type LYXP_SET_NODE_SET */
-    uint32_t ctx_pos;
-    uint32_t ctx_size;
+    uint32_t ctx_pos;       /**< Position of the current examined node in the set. */
+    uint32_t ctx_size;      /**< Position of the last node at the time the node was examined. */
 
     /* general context */
-    struct ly_ctx *ctx;
+    struct ly_ctx *ctx;                     /**< General context for logging. */
     union {
-        const struct lyd_node *cur_node;
-        const struct lysc_node *cur_scnode;
+        const struct lyd_node *cur_node;    /**< Current (original context) node. */
+        const struct lysc_node *cur_scnode; /**< Current (original context) compiled node. */
     };
-    enum lyxp_node_type root_type;
-    const struct lysc_node *context_op;
-    const struct lyd_node *tree;
-    const struct lys_module *cur_mod;
-    LY_VALUE_FORMAT format;
-    void *prefix_data;
+    enum lyxp_node_type root_type;          /**< Type of root node. */
+    const struct lysc_node *context_op;     /**< Schema of the current node. */
+    const struct lyd_node *tree;            /**< Data tree on which to perform the evaluation. */
+    const struct lys_module *cur_mod;       /**< Current module for the expression (where it was "instantiated"). */
+    LY_VALUE_FORMAT format;                 /**< Format of the XPath expression. */
+    void *prefix_data;                      /**< Format-specific prefix data (see ::ly_resolve_prefix). */
 };
 
 /**
