@@ -184,16 +184,19 @@ struct lyxp_expr {
  * we do not parse it as an OrExpr but directly as PathExpr).
  * Examples:
  *
- * Expression: "/ *[key1 and key2 or key1 < key2]"
- * Tokens: '/',  '*',  '[',  NameTest,  'and', NameTest, 'or', NameTest,        '<',  NameTest, ']'
- * Repeat: NULL, NULL, NULL, [AndExpr,  NULL,  NULL,     NULL, [RelationalExpr, NULL, NULL,     NULL
- *                            OrExpr,                           0],
- *                            0],
+ * Expr:   "/ *[key1 and key2 or key1 < key2]"
+ * Tokens: '/'  '*'  '['  NameTest 'and'  NameTest 'or' NameTest       '<'  NameTest ']'
+ * Repeat: NULL NULL NULL _        NULL   NULL     NULL _              NULL NULL     NULL
+ *                        |                             v
+ *                        v                             RelationalExpr 0
+ *                        AndExpr  OrExpr 0
  *
- * Expression: "//node[key and node2]/key | /cont"
- * Tokens: '//',       'NameTest', '[',  'NameTest', 'and', 'NameTest', ']',  '/',  'NameTest', '|',  '/',  'NameTest'
- * Repeat: [UnionExpr, NULL,       NULL, [AndExpr,   NULL,  NULL,       NULL, NULL, NULL,       NULL, NULL, NULL
- *          0],                           0],
+ * Expr:   "//node[key and node2]/key | /cont"
+ * Tokens: '//'      NameTest '['  NameTest 'and' NameTest ']'  '/'  NameTest '|'  '/'  NameTest
+ * Repeat: _         NULL     NULL _        NULL  NULL     NULL NULL NULL     NULL NULL NULL
+ *         |                       v
+ *         v                       AndExpr  0
+ *         UnionExpr 0
  *
  * Operators between expressions which this concerns:
  *     'or', 'and', '=', '!=', '<', '>', '<=', '>=', '+', '-', '*', 'div', 'mod', '|'
