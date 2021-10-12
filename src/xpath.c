@@ -3760,21 +3760,21 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
     const struct lysc_node *target;
     struct ly_path *p;
     struct lyd_node *node;
-    char *errmsg = NULL;
+    char *errmsg = NULL, *path = NULL;
     uint8_t oper;
     LY_ERR r;
 
     if (options & LYXP_SCNODE_ALL) {
         if (args[0]->type != LYXP_SET_SCNODE_SET) {
-            LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
+            LOGWRN(set->ctx, "Argument #1 of deref() not a node-set as expected.");
         } else if ((sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
-            if (!(sleaf->nodetype & LYD_NODE_TERM)) {
-                LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype),
-                        sleaf->name);
-            } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) &&
-                    !warn_is_specific_type(sleaf->type, LY_TYPE_INST)) {
-                LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"leafref\" nor \"instance-identifier\".",
-                        __func__, sleaf->name);
+            if (!(sleaf->nodetype & LYD_NODE_TERM) ||
+                    (!warn_is_specific_type(sleaf->type, LY_TYPE_LEAFREF) &&
+                     !warn_is_specific_type(sleaf->type, LY_TYPE_INST))) {
+                path = lysc_path((struct lysc_node*)sleaf, LYSC_PATH_LOG, NULL, 0);
+                LOGWRN(set->ctx, "Argument #1 of deref() is a %s node \"%s\". Expected \"leafref\" or \"instance-identifier\".",
+                        lys_nodetype2str(sleaf->nodetype), path);
+                free(path);
             }
         }
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
