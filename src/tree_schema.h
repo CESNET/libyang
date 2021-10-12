@@ -2172,7 +2172,7 @@ LY_ERR lys_identity_iffeature_value(const struct lysc_ident *ident);
  * @brief Get the next feature in the module or submodules.
  *
  * @param[in] last Last returned feature.
- * @param[in] pmod Parsed module and submodoules whose features to iterate over.
+ * @param[in] pmod Parsed module and submodules whose features to iterate over.
  * @param[in,out] idx Submodule index, set to 0 on first call.
  * @return Next found feature, NULL if the last has already been returned.
  */
