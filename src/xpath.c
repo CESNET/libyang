@@ -7150,20 +7150,20 @@ continue_search:
  * @param[in] all_desc Whether to search all the descendants or children only.
  * @param[in,out] set Context and result set.
  * @param[in] options XPath options.
- * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
+ * @return LY_ERR (LY_EINCOMPLETE on unresolved when, LY_ENOT for not found schema node)
  */
 static LY_ERR
 eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, ly_bool attr_axis, ly_bool all_desc,
         struct lyxp_set *set, uint32_t options)
 {
-    char *path;
+    LY_ERR rc = LY_SUCCESS, r;
     const char *ncname, *ncname_dict = NULL;
     uint16_t ncname_len;
     const struct lys_module *moveto_mod = NULL;
     const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
     enum ly_path_pred_type pred_type = 0;
-    LY_ERR rc = LY_SUCCESS;
+    int scnode_skip_pred = 0;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
@@ -7228,6 +7228,22 @@ moveto:
     } else {
         if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
             int64_t i;
+            const struct lyxp_set_scnode *scparent = NULL;
+            char *path = NULL, *ppath = NULL;
+
+            /* remember parent if there is only one, to print in the warning */
+            for (i = 0; i < set->used; ++i) {
+                if (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) {
+                    if (!scparent) {
+                        /* remember the context node */
+                        scparent = &set->val.scnodes[i];
+                    } else {
+                        /* several context nodes, no reasonable error possible */
+                        scparent = NULL;
+                        break;
+                    }
+                }
+            }
 
             if (all_desc) {
                 rc = moveto_scnode_alldesc(set, moveto_mod, ncname_dict, options);
@@ -7243,9 +7259,30 @@ moveto:
             }
             if (i == -1) {
                 path = lysc_path(set->cur_scnode, LYSC_PATH_LOG, NULL, 0);
-                LOGWRN(set->ctx, "Schema node \"%.*s\" not found (\"%.*s\") with context node \"%s\".",
-                        ncname_len, ncname, (ncname - exp->expr) + ncname_len, exp->expr, path);
+                if (scparent) {
+                    /* generate path for the parent */
+                    if (scparent->type == LYXP_NODE_ELEM) {
+                        ppath = lysc_path(scparent->scnode, LYSC_PATH_LOG, NULL, 0);
+                    } else if (scparent->type == LYXP_NODE_ROOT) {
+                        ppath = strdup("<root>");
+                    } else if (scparent->type == LYXP_NODE_ROOT_CONFIG) {
+                        ppath = strdup("<config-root>");
+                    }
+                }
+                if (ppath) {
+                    LOGWRN(set->ctx,
+                            "Schema node \"%.*s\" for parent \"%s\" not found; in expr \"%.*s\" with context node \"%s\".",
+                            ncname_len, ncname, ppath, (ncname - exp->expr) + ncname_len, exp->expr, path);
+                } else {
+                    LOGWRN(set->ctx, "Schema node \"%.*s\" not found; in expr \"%.*s\" with context node \"%s\".",
+                            ncname_len, ncname, (ncname - exp->expr) + ncname_len, exp->expr, path);
+                }
                 free(path);
+                free(ppath);
+
+                /* skip the predicates and the rest of this path to not generate invalid warnings */
+                rc = LY_ENOT;
+                scnode_skip_pred = 1;
             }
         } else {
             if (all_desc) {
@@ -7262,13 +7299,22 @@ moveto:
         }
     }
 
+    if (scnode_skip_pred) {
+        /* skip predicates */
+        options |= LYXP_SKIP_EXPR;
+    }
+
     /* Predicate* */
     while (!lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_BRACK1)) {
-        rc = eval_predicate(exp, tok_idx, set, options, 1);
-        LY_CHECK_GOTO(rc, cleanup);
+        r = eval_predicate(exp, tok_idx, set, options, 1);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
 cleanup:
+    if (scnode_skip_pred) {
+        /* restore options */
+        options &= ~LYXP_SKIP_EXPR;
+    }
     if (!(options & LYXP_SKIP_EXPR)) {
         lydict_remove(set->ctx, ncname_dict);
         ly_path_predicates_free(set->ctx, pred_type, predicates);
@@ -7360,7 +7406,8 @@ eval_relative_location_path(const struct lyxp_expr *exp, uint16_t *tok_idx, ly_b
         uint32_t options)
 {
     ly_bool attr_axis;
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
+    int scnode_skip_path = 0;
 
     goto step;
     do {
@@ -7396,7 +7443,7 @@ step:
             } else {
                 rc = moveto_self(set, all_desc, options);
             }
-            LY_CHECK_RET(rc);
+            LY_CHECK_GOTO(rc, cleanup);
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                     lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
@@ -7409,7 +7456,7 @@ step:
             } else {
                 rc = moveto_parent(set, all_desc, options);
             }
-            LY_CHECK_RET(rc);
+            LY_CHECK_GOTO(rc, cleanup);
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (options & LYXP_SKIP_EXPR ? "skipped" : "parsed"),
                     lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
             ++(*tok_idx);
@@ -7418,21 +7465,34 @@ step:
         case LYXP_TOKEN_NAMETEST:
             /* evaluate NameTest Predicate* */
             rc = eval_name_test_with_predicate(exp, tok_idx, attr_axis, all_desc, set, options);
-            LY_CHECK_RET(rc);
+            if (rc == LY_ENOT) {
+                assert(options & LYXP_SCNODE_ALL);
+                /* skip the rest of this path */
+                rc = LY_SUCCESS;
+                scnode_skip_path = 1;
+                options |= LYXP_SKIP_EXPR;
+            }
+            LY_CHECK_GOTO(rc, cleanup);
             break;
 
         case LYXP_TOKEN_NODETYPE:
             /* evaluate NodeType Predicate* */
             rc = eval_node_type_with_predicate(exp, tok_idx, attr_axis, all_desc, set, options);
-            LY_CHECK_RET(rc);
+            LY_CHECK_GOTO(rc, cleanup);
             break;
 
         default:
-            LOGINT_RET(set->ctx);
+            LOGINT(set->ctx);
+            rc = LY_EINT;
+            goto cleanup;
         }
     } while (!exp_check_token2(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH));
 
-    return LY_SUCCESS;
+cleanup:
+    if (scnode_skip_path) {
+        options &= ~LYXP_SKIP_EXPR;
+    }
+    return rc;
 }
 
 /**
