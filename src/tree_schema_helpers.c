@@ -1222,6 +1222,17 @@ lysc_has_when(const struct lysc_node *node)
     return NULL;
 }
 
+API const struct lys_module *
+lysc_owner_module(const struct lysc_node *node)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    for ( ; node->parent; node = node->parent) {}
+    return node->module;
+}
+
 API const char *
 lys_nodetype2str(uint16_t nodetype)
 {

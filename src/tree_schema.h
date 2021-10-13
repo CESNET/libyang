@@ -105,6 +105,7 @@ struct lyxp_expr;
  * - ::lys_set_implemented()
  *
  * - ::lysc_has_when()
+ * - ::lysc_owner_module()
  *
  * - ::lysc_node_child()
  * - ::lysc_node_actions()
@@ -2016,6 +2017,15 @@ struct lysc_module {
  * @return When condition associated with the node data instance, NULL if there is none.
  */
 const struct lysc_when *lysc_has_when(const struct lysc_node *node);
+
+/**
+ * @brief Get the owner module of the schema node. It is the module of the top-level node. Generally,
+ * in case of augments it is the target module, recursively, otherwise it is the module where the node is defined.
+ *
+ * @param[in] node Schema node to examine.
+ * @return Module owner of the node.
+ */
+const struct lys_module *lysc_owner_module(const struct lysc_node *node);
 
 /**
  * @brief Get the groupings linked list of the given (parsed) schema node.

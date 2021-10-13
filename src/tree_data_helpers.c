@@ -267,8 +267,7 @@ lyd_owner_module(const struct lyd_node *node)
         }
     }
 
-    for (schema = node->schema; schema->parent; schema = schema->parent) {}
-    return schema->module;
+    return lysc_owner_module(node->schema);
 }
 
 void
