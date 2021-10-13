@@ -248,7 +248,6 @@ lyd_child_no_keys(const struct lyd_node *node)
 API const struct lys_module *
 lyd_owner_module(const struct lyd_node *node)
 {
-    const struct lysc_node *schema;
     const struct lyd_node_opaq *opaq;
 
     if (!node) {
