@@ -725,7 +725,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
 
     /* resolve it on schema tree */
     ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node->flags & LYS_IS_OUTPUT) ?
-            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, path);
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, 1, format, prefix_data, path);
     if (ret) {
         ret = ly_err_new(err, ret, LYVE_DATA, NULL, NULL,
                 "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);

@@ -805,6 +805,8 @@ cleanup:
  * @param[in] lref Whether leafref is being compiled or not.
  * @param[in] oper Oper option (@ref path_oper_options).
  * @param[in] target Target option (@ref path_target_options).
+ * @param[in] limit_access_tree Whether to limit accessible tree as described in
+ * [XPath context](https://datatracker.ietf.org/doc/html/rfc7950#section-6.4.1).
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] path Compiled path.
@@ -814,7 +816,7 @@ cleanup:
 static LY_ERR
 _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
         const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, ly_bool lref, uint8_t oper, uint8_t target,
-        LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
+        ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t tok_idx = 0;
@@ -830,8 +832,12 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
     assert((oper == LY_PATH_OPER_INPUT) || (oper == LY_PATH_OPER_OUTPUT));
     assert((target == LY_PATH_TARGET_SINGLE) || (target == LY_PATH_TARGET_MANY));
 
-    /* find operation, if we are in any */
-    for (op = ctx_node; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
+    if (!limit_access_tree) {
+        op = NULL;
+    } else {
+        /* find operation, if we are in any */
+        for (op = ctx_node; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
+    }
 
     *path = NULL;
 
@@ -943,9 +949,10 @@ cleanup:
 LY_ERR
 ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
         const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
-        LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
+        ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
 {
-    return _ly_path_compile(ctx, cur_mod, ctx_node, ext, expr, 0, oper, target, format, prefix_data, path);
+    return _ly_path_compile(ctx, cur_mod, ctx_node, ext, expr, 0, oper, target, limit_access_tree, format, prefix_data,
+            path);
 }
 
 LY_ERR
@@ -953,7 +960,7 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
         const struct lyxp_expr *expr, uint8_t oper, uint8_t target, LY_VALUE_FORMAT format, void *prefix_data,
         struct ly_path **path)
 {
-    return _ly_path_compile(ctx, ctx_node->module, ctx_node, ext, expr, 1, oper, target, format, prefix_data, path);
+    return _ly_path_compile(ctx, ctx_node->module, ctx_node, ext, expr, 1, oper, target, 1, format, prefix_data, path);
 }
 
 LY_ERR
