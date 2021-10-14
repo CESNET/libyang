@@ -2375,7 +2375,7 @@ LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath,
  *
  * @param[in] ctx_node XPath context node.
  * @param[in] xpath [XPath](@ref howtoXPath) to select.
- * @param[out] result Expression result comverted to boolean.
+ * @param[out] result Expression result converted to boolean.
  * @return LY_SUCCESS on success, @p result is returned.
  * @return LY_ERR value if an error occurred.
  */
@@ -2389,7 +2389,7 @@ LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_boo
  * @param[in] ctx_node XPath context node.
  * @param[in] xpath [XPath](@ref howtoXPath) to select.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
- * @param[out] result Expression result comverted to boolean.
+ * @param[out] result Expression result converted to boolean.
  * @return LY_SUCCESS on success, @p result is returned.
  * @return LY_ERR value if an error occurred.
  */
