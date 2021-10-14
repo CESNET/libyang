@@ -400,7 +400,10 @@ LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *pa
 /**
  * @brief Fully validate a data tree.
  *
- * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
+ * The data tree is modified in-place.  As a result of the validation, some data might be removed
+ * from the tree. In that case, the removed items are freed, not just unlinked.
+ *
+ * @param[in,out] tree Data tree to recursively validate. May be changed by validation, might become NULL.
  * @param[in] ctx libyang context. Can be NULL if @p tree is set.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @param[out] diff Optional diff with any changes made by the validation.
@@ -412,7 +415,10 @@ LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32
 /**
  * @brief Fully validate a data tree of a module.
  *
- * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
+ * The data tree is modified in-place.  As a result of the validation, some data might be removed
+ * from the tree. In that case, the removed items are freed, not just unlinked.
+ *
+ * @param[in,out] tree Data tree to recursively validate. May be changed by validation, might become NULL.
  * @param[in] module Module whose data (and schema restrictions) to validate.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @param[out] diff Optional diff with any changes made by the validation.
