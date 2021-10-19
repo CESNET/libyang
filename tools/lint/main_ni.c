@@ -152,7 +152,7 @@ help(int shortout)
             "                explicitly specified).\n\n");
 
     printf("  -F FEATURES, --features=FEATURES\n"
-            "                Features to support, default all.\n"
+            "                Features to support, default all in all implemented modules.\n"
             "                <modname>:[<feature>,]*\n\n");
 
     printf("  -i, --make-implemented\n"
@@ -294,6 +294,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
             char *dir, *module;
             const char **features = NULL;
+            uint16_t ctx_opts = 0;
             struct lys_module *mod;
 
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
@@ -308,12 +309,20 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             /* get features list for this module */
             get_features(&c->schema_features, module, &features);
 
+            /* set imp feature flag if all should be enabled */
+            if (!c->schema_features.count) {
+                ctx_opts = LY_CTX_ENABLE_IMP_FEATURES;
+                ly_ctx_set_options(c->ctx, ctx_opts);
+            }
+
             /* temporary cleanup */
             free(dir);
             free(module);
 
+            /* parse module */
             ret = lys_parse(c->ctx, in, format_schema, features, &mod);
             ly_ctx_unset_searchdir_last(c->ctx, path_unset);
+            ly_ctx_unset_options(c->ctx, ctx_opts);
             ly_in_free(in, 1);
             in = NULL;
             if (ret) {

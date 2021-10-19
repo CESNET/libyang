@@ -38,7 +38,7 @@ cmd_add_help(void)
             "                  even search in the module directory (all modules must be \n"
             "                  explicitly specified).\n"
             "  -F FEATURES, --features=FEATURES\n"
-            "                  Features to support, default all.\n"
+            "                  Features to support, default all in all implemented modules.\n"
             "                  <modname>:[<feature>,]*\n"
             "  -i, --make-implemented\n"
             "                  Make the imported modules \"referenced\" from any loaded\n"
@@ -109,6 +109,11 @@ cmd_add(struct ly_ctx **ctx, const char *cmdline)
         /* no argument */
         cmd_add_help();
         goto cleanup;
+    }
+
+    if (!fset.count) {
+        /* no features, enable all of them */
+        options_ctx |= LY_CTX_ENABLE_IMP_FEATURES;
     }
 
     if (options_ctx) {
