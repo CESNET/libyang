@@ -1277,6 +1277,7 @@ lys_compile_unres_depset(struct ly_ctx *ctx, struct lys_glob_unres *unres)
     struct lys_depset_unres *ds_unres;
     struct ly_path *path;
     LY_ARRAY_COUNT_TYPE v;
+    struct lysc_unres_leafref *l;
     uint32_t i, processed_leafrefs = 0;
 
     ds_unres = &unres->ds_unres;
@@ -1293,7 +1294,25 @@ resolve_all:
      * point to the starting leafref type). The second round stores the first non-leafref type for later data validation.
      * Also do the same check for set of the disabled leafrefs, but without the second round. */
     while (ds_unres->disabled_leafrefs.count) {
-        struct lysc_unres_leafref *l = ds_unres->disabled_leafrefs.objs[ds_unres->disabled_leafrefs.count - 1];
+        /* remember index, it can change before we get to free this item */
+        i = ds_unres->disabled_leafrefs.count - 1;
+        l = ds_unres->disabled_leafrefs.objs[i];
+        cctx.cur_mod = l->node->module;
+        cctx.pmod = l->node->module->parsed;
+
+        LOG_LOCSET(l->node, NULL, NULL, NULL);
+        v = 0;
+        while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(l->node, &v))) {
+            ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod, unres);
+        }
+        LOG_LOCBACK(1, 0, 0, 0);
+        LY_CHECK_RET(ret);
+
+        ly_set_rm_index(&ds_unres->disabled_leafrefs, i, free);
+    }
+
+    for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
+        l = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = l->node->module;
         cctx.pmod = l->node->module->parsed;
         LOG_LOCSET(l->node, NULL, NULL, NULL);
@@ -1305,26 +1324,9 @@ resolve_all:
 
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
-        free(l);
-        ly_set_rm_index(&ds_unres->disabled_leafrefs, ds_unres->disabled_leafrefs.count - 1, NULL);
-    }
-
-    for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
-        struct lysc_unres_leafref *l = ds_unres->leafrefs.objs[i];
-        cctx.cur_mod = l->node->module;
-        cctx.pmod = l->node->module->parsed;
-        LOG_LOCSET(l->node, NULL, NULL, NULL);
-
-        v = 0;
-        while ((ret == LY_SUCCESS) && (lref = lys_type_leafref_next(l->node, &v))) {
-            ret = lys_compile_unres_leafref(&cctx, l->node, lref, l->local_mod, unres);
-        }
-
-        LOG_LOCBACK(1, 0, 0, 0);
-        LY_CHECK_RET(ret);
     }
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
-        struct lysc_unres_leafref *l = ds_unres->leafrefs.objs[i];
+        l = ds_unres->leafrefs.objs[i];
 
         /* store pointer to the real type */
         v = 0;
@@ -1343,7 +1345,8 @@ resolve_all:
 
     /* check when */
     while (ds_unres->whens.count) {
-        node = ds_unres->whens.objs[ds_unres->whens.count - 1];
+        i = ds_unres->whens.count - 1;
+        node = ds_unres->whens.objs[i];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
 
@@ -1352,12 +1355,13 @@ resolve_all:
         LOG_LOCBACK(1, 0, 0, 0);
         LY_CHECK_RET(ret);
 
-        ly_set_rm_index(&ds_unres->whens, ds_unres->whens.count - 1, NULL);
+        ly_set_rm_index(&ds_unres->whens, i, NULL);
     }
 
     /* check must */
     while (ds_unres->musts.count) {
-        struct lysc_unres_must *m = ds_unres->musts.objs[ds_unres->musts.count - 1];
+        i = ds_unres->musts.count - 1;
+        struct lysc_unres_must *m = ds_unres->musts.objs[i];
         cctx.cur_mod = m->node->module;
         cctx.pmod = m->node->module->parsed;
 
@@ -1367,12 +1371,13 @@ resolve_all:
         LY_CHECK_RET(ret);
 
         lysc_unres_must_free(m);
-        ly_set_rm_index(&ds_unres->musts, ds_unres->musts.count - 1, NULL);
+        ly_set_rm_index(&ds_unres->musts, i, NULL);
     }
 
     /* finish incomplete default values compilation */
     while (ds_unres->dflts.count) {
-        struct lysc_unres_dflt *r = ds_unres->dflts.objs[ds_unres->dflts.count - 1];
+        i = ds_unres->dflts.count - 1;
+        struct lysc_unres_dflt *r = ds_unres->dflts.objs[i];
         cctx.cur_mod = r->leaf->module;
         cctx.pmod = r->leaf->module->parsed;
 
@@ -1386,7 +1391,7 @@ resolve_all:
         LY_CHECK_RET(ret);
 
         lysc_unres_dflt_free(ctx, r);
-        ly_set_rm_index(&ds_unres->dflts, ds_unres->dflts.count - 1, NULL);
+        ly_set_rm_index(&ds_unres->dflts, i, NULL);
     }
 
     /* some unres items may have been added */
@@ -1410,7 +1415,7 @@ resolve_all:
 
     /* also check if the leafref target has not been disabled */
     for (i = 0; i < ds_unres->leafrefs.count; ++i) {
-        struct lysc_unres_leafref *l = ds_unres->leafrefs.objs[ds_unres->leafrefs.count - 1];
+        l = ds_unres->leafrefs.objs[i];
         cctx.cur_mod = l->node->module;
         cctx.pmod = l->node->module->parsed;
 
