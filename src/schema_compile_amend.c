@@ -2195,6 +2195,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
     struct lys_module *m;
     struct lysp_submodule *submod;
     struct lysp_node_augment *aug;
+    const char **imp_f, *all_f[] = {"*", NULL};
     uint32_t i;
     struct ly_set mod_set = {0}, set = {0};
 
@@ -2290,7 +2291,8 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
 
         if (!m->implemented) {
             /* implement the target module */
-            r = lys_implement(m, NULL, unres);
+            imp_f = (mod->ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            r = lys_implement(m, imp_f, unres);
             if (r == LY_ERECOMPILE) {
                 /* implement all the modules right away to save possible later recompilation */
                 ret = r;

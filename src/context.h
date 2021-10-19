@@ -193,6 +193,9 @@ struct ly_ctx;
                                         requiring compilation include adding new modules, changing their features,
                                         and implementing parsed-only modules. This option allows efficient compiled
                                         context creation without redundant recompilations. */
+#define LY_CTX_ENABLE_IMP_FEATURES 0x0100 /**< By default, all features of newly implemented imported modules of
+                                        a module that is being loaded are disabled. With this flag they all become
+                                        enabled. */
 
 /** @} contextoptions */
 

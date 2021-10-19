@@ -228,8 +228,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
-    char *search_dir_list;
-    char *sep, *dir;
+    char *search_dir_list, *sep, *dir;
+    const char **imp_f, *all_f[] = {"*", NULL};
     uint32_t i;
     struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
@@ -294,7 +294,8 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
         ly_in_memory(in, internal_modules[i].data);
         LY_CHECK_GOTO(rc = lys_parse_in(ctx, in, internal_modules[i].format, NULL, NULL, &unres.creating, &module), cleanup);
         if (internal_modules[i].implemented || (ctx->flags & LY_CTX_ALL_IMPLEMENTED)) {
-            LY_CHECK_GOTO(rc = lys_implement(module, NULL, &unres), cleanup);
+            imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            LY_CHECK_GOTO(rc = lys_implement(module, imp_f, &unres), cleanup);
         }
     }
 

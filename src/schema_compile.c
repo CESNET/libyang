@@ -784,7 +784,7 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
         void *prefix_data, ly_bool implement, struct lys_glob_unres *unres, const struct lys_module **mod_p)
 {
     uint32_t i;
-    const char *ptr, *start;
+    const char *ptr, *start, **imp_f, *all_f[] = {"*", NULL};
     const struct lys_module *mod;
 
     assert(implement || mod_p);
@@ -815,7 +815,8 @@ lys_compile_expr_implement(const struct ly_ctx *ctx, const struct lyxp_expr *exp
 
         if (!mod->implemented) {
             /* implement if not implemented */
-            LY_CHECK_RET(lys_implement((struct lys_module *)mod, NULL, unres));
+            imp_f = (ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            LY_CHECK_RET(lys_implement((struct lys_module *)mod, imp_f, unres));
         }
         if (!mod->compiled) {
             /* compile if not implemented before or only marked for compilation */

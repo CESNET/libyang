@@ -808,6 +808,7 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *mod_iter;
+    const char **imp_f, *all_f[] = {"*", NULL};
     uint32_t i;
 
     if (mod->implemented) {
@@ -836,7 +837,8 @@ _lys_set_implemented(struct lys_module *mod, const char **features, struct lys_g
                 continue;
             }
 
-            r = lys_implement(mod, NULL, unres);
+            imp_f = (mod->ctx->flags & LY_CTX_ENABLE_IMP_FEATURES) ? all_f : NULL;
+            r = lys_implement(mod, imp_f, unres);
             LY_CHECK_ERR_GOTO(r && (r != LY_ERECOMPILE), ret = r, cleanup);
         }
     }
