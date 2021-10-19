@@ -173,6 +173,10 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     /* store value */
     storage->target = path;
 
+    /* check status */
+    ret = lyplg_type_lypath_check_status(ctx_node, path, format, prefix_data, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* store canonical value */
     if (format == LY_VALUE_CANON) {
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {

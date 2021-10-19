@@ -685,6 +685,81 @@ lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_D
 }
 
 API LY_ERR
+lyplg_type_check_status(const struct lysc_node *ctx_node, uint16_t val_flags, LY_VALUE_FORMAT format, void *prefix_data,
+        const char *val_name, struct ly_err_item **err)
+{
+    LY_ERR ret;
+    const struct lys_module *mod2;
+    uint16_t flg1, flg2;
+
+    if (format != LY_VALUE_SCHEMA) {
+        /* nothing/unable to check */
+        return LY_SUCCESS;
+    }
+
+    mod2 = ((struct lysp_module *)prefix_data)->mod;
+
+    if (mod2 == ctx_node->module) {
+        /* use flags of the context node since the definition is local */
+        flg1 = (ctx_node->flags & LYS_STATUS_MASK) ? (ctx_node->flags & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+    } else {
+        /* definition is foreign (deviation, refine), always current */
+        flg1 = LYS_STATUS_CURR;
+    }
+    flg2 = (val_flags & LYS_STATUS_MASK) ? (val_flags & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+
+    if ((flg1 < flg2) && (ctx_node->module == mod2)) {
+        ret = ly_err_new(err, LY_EVALID, LYVE_REFERENCE, NULL, NULL,
+                "A %s definition \"%s\" is not allowed to reference %s value \"%s\".",
+                flg1 == LYS_STATUS_CURR ? "current" : "deprecated", ctx_node->name,
+                flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", val_name);
+        return ret;
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyplg_type_lypath_check_status(const struct lysc_node *ctx_node, const struct ly_path *path, LY_VALUE_FORMAT format,
+        void *prefix_data, struct ly_err_item **err)
+{
+    LY_ERR ret;
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lys_module *val_mod;
+    const struct lysc_node *node;
+    uint16_t flg1, flg2;
+
+    if (format != LY_VALUE_SCHEMA) {
+        /* nothing to check */
+        return LY_SUCCESS;
+    }
+
+    val_mod = ((struct lysp_module *)prefix_data)->mod;
+    if (val_mod == ctx_node->module) {
+        /* use flags of the context node since the definition is local */
+        flg1 = (ctx_node->flags & LYS_STATUS_MASK) ? (ctx_node->flags & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+    } else {
+        /* definition is foreign (deviation, refine), always current */
+        flg1 = LYS_STATUS_CURR;
+    }
+
+    LY_ARRAY_FOR(path, u) {
+        node = path[u].node;
+
+        flg2 = (node->flags & LYS_STATUS_MASK) ? (node->flags & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+        if ((flg1 < flg2) && (val_mod == node->module)) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_REFERENCE, NULL, NULL,
+                    "A %s definition \"%s\" is not allowed to reference %s value \"%s\".",
+                    flg1 == LYS_STATUS_CURR ? "current" : "deprecated", ctx_node->name,
+                    flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", node->name);
+            return ret;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
 lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node, struct lys_glob_unres *unres,
         struct ly_path **path, struct ly_err_item **err)

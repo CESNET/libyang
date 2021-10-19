@@ -249,6 +249,10 @@ lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *t
     ret = identityref_check_base(ident, type_ident, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
+    /* check status */
+    ret = lyplg_type_check_status(ctx_node, ident->flags, format, prefix_data, ident->name, err);
+    LY_CHECK_GOTO(ret, cleanup);
+
     /* store value */
     storage->ident = ident;
 

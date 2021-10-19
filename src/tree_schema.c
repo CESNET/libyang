@@ -1161,7 +1161,8 @@ lys_unres_glob_erase(struct lys_glob_unres *unres)
     ly_set_erase(&unres->implementing, NULL);
     ly_set_erase(&unres->creating, NULL);
 
-    assert(!unres->ds_unres.xpath.count);
+    assert(!unres->ds_unres.whens.count);
+    assert(!unres->ds_unres.musts.count);
     assert(!unres->ds_unres.leafrefs.count);
     assert(!unres->ds_unres.disabled_leafrefs.count);
     assert(!unres->ds_unres.dflts.count);

@@ -3239,6 +3239,58 @@ test_deviation(void **state)
     assert_string_equal(node->name, "l");
     assert_null(node->next);
 
+    /* default identity referencing deprecated */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a1-imp {namespace urn:a1-imp;prefix a1i;"
+            "identity id-base;"
+            "identity id1 {base id-base; status deprecated;}"
+            "leaf l {type identityref {base \"id-base\";}}"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a1 {namespace urn:a1;prefix a1;"
+            "import a1-imp {prefix a1i;}"
+            "deviation \"/a1i:l\" {deviate add {default \"a1i:id1\";}}"
+            "}", LYS_IN_YANG, NULL));
+
+    /* default instance-identifier referencing deprecated */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a2-imp {namespace urn:a2-imp;prefix a2i;"
+            "leaf l {type instance-identifier;}"
+            "leaf k {type string; status deprecated;}"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a2 {namespace urn:a2;prefix a2;"
+            "import a2-imp {prefix a2i;}"
+            "deviation \"/a2i:l\" {deviate add {default \"/a2i:k\";}}"
+            "}", LYS_IN_YANG, NULL));
+
+    /* must referencing deprecated */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a3-imp {namespace urn:a3-imp;prefix a3i;"
+            "leaf l {type string;}"
+            "leaf k {type string; status deprecated;}"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a3 {namespace urn:a3;prefix a3;"
+            "import a3-imp {prefix a3i;}"
+            "deviation \"/a3i:l\" {deviate add {must \"string-length(/a3i:k) > 0\";}}"
+            "}", LYS_IN_YANG, NULL));
+
+    /* type leafref referencing deprecated */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a4-imp {namespace urn:a4-imp;prefix a4i;"
+            "leaf l {type string;}"
+            "leaf k {type string; status deprecated;}"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a4 {namespace urn:a4;prefix a4;"
+            "import a4-imp {prefix a4i;}"
+            "deviation \"/a4i:l\" {deviate replace {type leafref {path \"/a4i:k\";}}}"
+            "}", LYS_IN_YANG, NULL));
+
+    /* unique referencing deprecated */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a5-imp {namespace urn:a5-imp;prefix a5i;"
+            "list l1 {key \"k\";"
+            "  leaf k {type string;}"
+            "  leaf l {type string; status deprecated;}"
+            "}}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module a5 {namespace urn:a5;prefix a5;"
+            "import a5-imp {prefix a5i;}"
+            "deviation \"/a5i:l1\" {deviate add {unique \"a5i:l\";}}"
+            "}", LYS_IN_YANG, NULL));
+
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
             "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Deviation(s) target node \"/a:top/a:z\" from module \"aa1\" was not found.", "/a:{deviation='/a:top/a:z'}");

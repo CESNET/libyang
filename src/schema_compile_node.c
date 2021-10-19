@@ -53,6 +53,105 @@ lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
 }
 
 /**
+ * @brief Add a node with must(s) to unres.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Compiled node with must(s).
+ * @param[in] pnode Parsed ndoe with must(s).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_node *pnode)
+{
+    struct lysc_unres_must *m = NULL;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_must *musts;
+    struct lysp_restr *pmusts;
+    LY_ERR ret;
+
+    /* do not check must(s) in a grouping */
+    if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+        return LY_SUCCESS;
+    }
+
+    musts = lysc_node_musts(node);
+    pmusts = lysp_node_musts(pnode);
+    assert(LY_ARRAY_COUNT(musts) == LY_ARRAY_COUNT(pmusts));
+
+    if (!musts) {
+        /* no must */
+        return LY_SUCCESS;
+    }
+
+    /* add new unres must */
+    m = calloc(1, sizeof *m);
+    LY_CHECK_ERR_GOTO(!m, ret = LY_EMEM, error);
+    m->node = node;
+
+    /* add must local modules */
+    LY_ARRAY_CREATE_GOTO(ctx->ctx, m->local_mods, LY_ARRAY_COUNT(pmusts), ret, error);
+    LY_ARRAY_FOR(pmusts, u) {
+        m->local_mods[u] = pmusts[u].arg.mod;
+        LY_ARRAY_INCREMENT(m->local_mods);
+    }
+
+    LY_CHECK_ERR_GOTO(ly_set_add(&ctx->unres->musts, m, 1, NULL), ret = LY_EMEM, error);
+
+    return LY_SUCCESS;
+
+error:
+    if (m) {
+        LY_ARRAY_FREE(m->local_mods);
+        free(m);
+    }
+    LOGMEM(ctx->ctx);
+    return ret;
+}
+
+static LY_ERR
+lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const struct lysp_module *local_mod)
+{
+    struct lysc_unres_leafref *l = NULL;
+    struct ly_set *leafrefs_set;
+    LY_ARRAY_COUNT_TYPE u;
+    int is_lref = 0;
+
+    if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+        /* do not check leafrefs in groupings */
+        return LY_SUCCESS;
+    }
+
+    /* use special set for disabled leafrefs */
+    leafrefs_set = ctx->compile_opts & LYS_COMPILE_DISABLED ? &ctx->unres->disabled_leafrefs : &ctx->unres->leafrefs;
+
+    if (leaf->type->basetype == LY_TYPE_LEAFREF) {
+        /* leafref */
+        is_lref = 1;
+    } else if (leaf->type->basetype == LY_TYPE_UNION) {
+        /* union with leafrefs */
+        LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
+            if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
+                is_lref = 1;
+                break;
+            }
+        }
+    }
+
+    if (is_lref) {
+        /* add new unresolved leafref node */
+        l = calloc(1, sizeof *l);
+        LY_CHECK_ERR_RET(!l, LOGMEM(ctx->ctx), LY_EMEM);
+
+        l->node = &leaf->node;
+        l->local_mod = local_mod;
+
+        LY_CHECK_ERR_RET(ly_set_add(leafrefs_set, l, 1, NULL), free(l); LOGMEM(ctx->ctx), LY_EMEM);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Add/replace a leaf default value in unres.
  * Can also be used for a single leaf-list default value.
  *
@@ -337,7 +436,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent
     if (!(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
         /* do not check "when" semantics in a grouping, but repeat the check for different node because
          * of dummy node check */
-        LY_CHECK_RET(ly_set_add(&ctx->unres->xpath, node, 0, NULL));
+        LY_CHECK_RET(ly_set_add(&ctx->unres->whens, node, 0, NULL));
     }
 
     return LY_SUCCESS;
@@ -2567,6 +2666,10 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
     lysc_update_path(ctx, NULL, NULL);
     LY_CHECK_GOTO(ret, done);
 
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, &action->input.node, &input->node);
+    LY_CHECK_GOTO(ret, done);
+
     /* output */
     lysc_update_path(ctx, action->module, "output");
     if (action_p->output.nodetype == LYS_UNKNOWN) {
@@ -2578,11 +2681,9 @@ lys_compile_node_action(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
     lysc_update_path(ctx, NULL, NULL);
     LY_CHECK_GOTO(ret, done);
 
-    /* do not check "must" semantics in a grouping */
-    if ((action->input.musts || action->output.musts) && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        ret = ly_set_add(&ctx->unres->xpath, action, 0, NULL);
-        LY_CHECK_GOTO(ret, done);
-    }
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, &action->output.node, &output->node);
+    LY_CHECK_GOTO(ret, done);
 
 done:
     return ret;
@@ -2605,11 +2706,10 @@ lys_compile_node_notif(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lys
     struct lysp_node *child_p;
 
     COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, lys_compile_must, ret, done);
-    if (notif_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->unres->xpath, notif, 0, NULL);
-        LY_CHECK_GOTO(ret, done);
-    }
+
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, node, pnode);
+    LY_CHECK_GOTO(ret, done);
 
     LY_LIST_FOR(notif_p->child, child_p) {
         ret = lys_compile_node(ctx, child_p, node, 0, NULL);
@@ -2652,11 +2752,10 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
     }
 
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, lys_compile_must, ret, done);
-    if (cont_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->unres->xpath, cont, 0, NULL);
-        LY_CHECK_GOTO(ret, done);
-    }
+
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, node, pnode);
+    LY_CHECK_GOTO(ret, done);
 
     LY_LIST_FOR((struct lysp_node *)cont_p->actions, child_p) {
         ret = lys_compile_node(ctx, child_p, node, 0, NULL);
@@ -2684,7 +2783,6 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         struct lysc_node_leaf *leaf)
 {
     struct lysp_qname *dflt;
-    struct ly_set *leafrefs_set;
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
@@ -2694,19 +2792,10 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         LY_CHECK_RET(lysc_unres_leaf_dflt_add(ctx, leaf, dflt));
     }
 
-    leafrefs_set = ctx->compile_opts & LYS_COMPILE_DISABLED ? &ctx->unres->disabled_leafrefs : &ctx->unres->leafrefs;
-    if ((leaf->type->basetype == LY_TYPE_LEAFREF) && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-        LY_CHECK_RET(ly_set_add(leafrefs_set, leaf, 0, NULL));
-    } else if ((leaf->type->basetype == LY_TYPE_UNION) && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        LY_ARRAY_COUNT_TYPE u;
-        LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
-            if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
-                /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-                LY_CHECK_RET(ly_set_add(leafrefs_set, leaf, 0, NULL));
-            }
-        }
-    } else if (leaf->type->basetype == LY_TYPE_EMPTY) {
+    /* store leafref(s) to be resolved */
+    LY_CHECK_RET(lysc_unres_leafref_add(ctx, leaf, type_p->pmod));
+
+    if (leaf->type->basetype == LY_TYPE_EMPTY) {
         if ((leaf->nodetype == LYS_LEAFLIST) && (ctx->pmod->version < LYS_VERSION_1_1)) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
             return LY_EVALID;
@@ -2732,11 +2821,11 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, lys_compile_must, ret, done);
-    if (leaf_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->unres->xpath, leaf, 0, NULL);
-        LY_CHECK_GOTO(ret, done);
-    }
+
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, node, pnode);
+    LY_CHECK_GOTO(ret, done);
+
     if (leaf_p->units) {
         LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, leaf_p->units, 0, &leaf->units), done);
         leaf->flags |= LYS_SET_UNITS;
@@ -2778,11 +2867,11 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, lys_compile_must, ret, done);
-    if (llist_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->unres->xpath, llist, 0, NULL);
-        LY_CHECK_GOTO(ret, done);
-    }
+
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, node, pnode);
+    LY_CHECK_GOTO(ret, done);
+
     if (llist_p->units) {
         LY_CHECK_GOTO(ret = lydict_insert(ctx->ctx, llist_p->units, 0, &llist->units), done);
         llist->flags |= LYS_SET_UNITS;
@@ -3044,7 +3133,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
             }
 
             /* check status */
-            LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name,
+            LY_CHECK_RET(lysc_check_status(ctx, list->flags, uniques[v].mod->mod, list->name,
                     (*key)->flags, (*key)->module, (*key)->name));
 
             /* mark leaf as unique */
@@ -3089,10 +3178,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, lys_compile_must, ret, done);
-    if (list_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "must" semantics in a grouping */
-        LY_CHECK_RET(ly_set_add(&ctx->unres->xpath, list, 0, NULL));
-    }
+
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, node, pnode);
+    LY_CHECK_GOTO(ret, done);
 
     /* keys */
     if ((list->flags & LYS_CONFIG_W) && (!list_p->key || !list_p->key[0])) {
@@ -3400,11 +3489,10 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, lys_compile_must, ret, done);
-    if (any_p->musts && !(ctx->compile_opts & LYS_COMPILE_GROUPING)) {
-        /* do not check "must" semantics in a grouping */
-        ret = ly_set_add(&ctx->unres->xpath, any, 0, NULL);
-        LY_CHECK_GOTO(ret, done);
-    }
+
+    /* add must(s) to unres */
+    ret = lysc_unres_must_add(ctx, node, pnode);
+    LY_CHECK_GOTO(ret, done);
 
     if (any->flags & LYS_CONFIG_W) {
         LOGVRB("Use of %s to define configuration data is not recommended. %s",

@@ -136,6 +136,8 @@ struct lysc_type_leafref;
  * - ::lyplg_type_get_prefix()
  *
  * - ::lyplg_type_check_hints()
+ * - ::lyplg_type_check_status()
+ * - ::lyplg_type_lypath_check_status()
  * - ::lyplg_type_identity_isderived()
  * - ::lyplg_type_identity_module()
  * - ::lyplg_type_make_implemented()
@@ -251,6 +253,33 @@ void ly_err_free(void *ptr);
  */
 LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base,
         struct ly_err_item **err);
+
+/**
+ * @brief Check that the value of a type is allowed based on its status.
+ *
+ * @param[in] ctx_node Context node (which references the value).
+ * @param[in] val_flags Flags fo the value.
+ * @param[in] format Format of the value.
+ * @param[in] prefix_data Prefix data of the value.
+ * @param[in] val_name Name of the value, only for logging.
+ * @param[out] err Pointer to store error information in case of failure.
+ * @return LY_ERR value.
+ */
+LY_ERR lyplg_type_check_status(const struct lysc_node *ctx_node, uint16_t val_flags, LY_VALUE_FORMAT format,
+        void *prefix_data, const char *val_name, struct ly_err_item **err);
+
+/**
+ * @brief Check that the lypath instance-identifier value is allowed based on the status of the nodes.
+ *
+ * @param[in] ctx_node Context node (which references the value).
+ * @param[in] path Path of the instance-identifier.
+ * @param[in] format Format of the value.
+ * @param[in] prefix_data Prefix data of the value.
+ * @param[out] err Pointer to store error information in case of failure.
+ * @return LY_ERR value.
+ */
+LY_ERR lyplg_type_lypath_check_status(const struct lysc_node *ctx_node, const struct ly_path *path,
+        LY_VALUE_FORMAT format, void *prefix_data, struct ly_err_item **err);
 
 /**
  * @brief Get the corresponding module for the identity value.

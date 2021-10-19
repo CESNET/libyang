@@ -61,7 +61,8 @@ struct lysc_ctx {
  * so their resolution can only be performed after the whole dep set compilation is done.
  */
 struct lys_depset_unres {
-    struct ly_set xpath;                /**< when/must to check */
+    struct ly_set whens;                /**< nodes with when to check */
+    struct ly_set musts;                /**< set of musts to check */
     struct ly_set leafrefs;             /**< to validate target of leafrefs */
     struct ly_set dflts;                /**< set of incomplete default values */
     struct ly_set disabled;             /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
@@ -78,6 +79,22 @@ struct lys_glob_unres {
     struct ly_set creating;     /**< set of YANG schemas being atomically created (parsed); it is a subset of implemented
                                     and all these modules are freed if any error occurs */
     struct lys_depset_unres ds_unres;   /**< unres specific for the current dependency set */
+};
+
+/**
+ * @brief Structure for storing schema nodes with must expressions and local module for each of them.
+ */
+struct lysc_unres_must {
+    struct lysc_node *node;     /**< node with the must expression(s) */
+    const struct lysp_module **local_mods;  /**< sized array of local modules for must(s) */
+};
+
+/**
+ * @brief Structure for storing leafref node and its local module.
+ */
+struct lysc_unres_leafref {
+    struct lysc_node *node;     /**< leaf/leaf-list node with leafref type */
+    const struct lysp_module *local_mod;    /**< local module of the leafref type */
 };
 
 /**
