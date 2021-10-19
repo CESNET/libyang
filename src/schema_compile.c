@@ -873,7 +873,8 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node, stru
         lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (i = 0; i < tmp_set.used; ++i) {
             /* skip roots'n'stuff */
-            if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
+            if ((tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) &&
+                    (tmp_set.val.scnodes[i].in_ctx != LYXP_SET_SCNODE_START_USED)) {
                 struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
 
                 /* XPath expression cannot reference "lower" status than the node that has the definition */

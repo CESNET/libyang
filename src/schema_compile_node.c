@@ -2754,8 +2754,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 
     /* checks */
     if ((leaf->flags & LYS_SET_DFLT) && (leaf->flags & LYS_MAND_TRUE)) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                "Invalid mandatory leaf with a default value.");
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid mandatory leaf with a default value.");
         return LY_EVALID;
     }
 
@@ -2796,8 +2795,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *pnode, struct 
     /* store/update default values */
     if (llist_p->dflts) {
         if (ctx->pmod->version < LYS_VERSION_1_1) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                    "Leaf-list default values are allowed only in YANG 1.1 modules.");
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list default values are allowed only in YANG 1.1 modules.");
             return LY_EVALID;
         }
 
@@ -3136,7 +3134,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         lysc_update_path(ctx, list->module, key->name);
         /* key must have the same config flag as the list itself */
         if ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Key of a configuration list must not be a state leaf.");
             return LY_EVALID;
         }
         if (ctx->pmod->version < LYS_VERSION_1_1) {
@@ -3149,8 +3147,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         } else {
             /* when and if-feature are illegal on list keys */
             if (key->when) {
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "List's key must not have any \"when\" statement.");
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "List's key must not have any \"when\" statement.");
                 return LY_EVALID;
             }
             /* TODO check key, it cannot have any if-features */
@@ -3229,8 +3226,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
 
     /* checks */
     if (list->min > list->max) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "List min-elements %u is bigger than max-elements %u.",
-                list->min, list->max);
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "List min-elements %u is bigger than max-elements %u.", list->min, list->max);
         return LY_EVALID;
     }
 

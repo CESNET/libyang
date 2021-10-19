@@ -424,7 +424,7 @@ test_node_list(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;"
             "list l {key x; leaf x {type string; config false;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Key of the configuration list must not be status leaf.", "/dd:l/x");
+    CHECK_LOG_CTX("Key of a configuration list must not be a state leaf.", "/dd:l/x");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;"
             "list l {config false;key x; leaf x {type string; config true;}}}", LYS_IN_YANG, NULL));

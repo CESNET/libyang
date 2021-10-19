@@ -616,7 +616,8 @@ type_get_hints_base(uint32_t hints)
 }
 
 API LY_ERR
-lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base, struct ly_err_item **err)
+lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base,
+        struct ly_err_item **err)
 {
     LY_CHECK_ARG_RET(NULL, value || !value_len, err, LY_EINVAL);
 
