@@ -542,7 +542,8 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
     uint32_t i;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
-    LY_CHECK_ERR_RET(option & LY_CTX_NO_YANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+    LY_CHECK_ERR_RET((option & LY_CTX_NO_YANGLIBRARY) && !(ctx->flags & LY_CTX_NO_YANGLIBRARY),
+            LOGARG(ctx, option), LY_EINVAL);
 
     if (!(ctx->flags & LY_CTX_SET_PRIV_PARSED) && (option & LY_CTX_SET_PRIV_PARSED)) {
         ctx->flags |= LY_CTX_SET_PRIV_PARSED;

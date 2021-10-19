@@ -127,12 +127,6 @@ test_options(void **state)
     assert_int_equal(LY_EINVAL, ly_ctx_unset_options(NULL, 0));
     CHECK_LOG("Invalid argument ctx (ly_ctx_unset_options()).", NULL);
 
-    /* option not allowed to be changed */
-    assert_int_equal(LY_EINVAL, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_NO_YANGLIBRARY));
-    CHECK_LOG_CTX("Invalid argument option (ly_ctx_set_options()).", NULL);
-    assert_int_equal(LY_EINVAL, ly_ctx_set_options(UTEST_LYCTX, LY_CTX_NO_YANGLIBRARY));
-    CHECK_LOG_CTX("Invalid argument option (ly_ctx_set_options()).", NULL);
-
     /* unset */
     /* LY_CTX_ALL_IMPLEMENTED */
     assert_int_not_equal(0, UTEST_LYCTX->flags & LY_CTX_ALL_IMPLEMENTED);
