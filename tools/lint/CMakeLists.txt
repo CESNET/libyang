@@ -8,6 +8,7 @@ set(lintsrc
     cmd_clear.c
     cmd_data.c
     cmd_list.c
+    cmd_feature.c
     cmd_load.c
     cmd_print.c
     cmd_searchpath.c

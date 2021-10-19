@@ -49,6 +49,10 @@ void cmd_data_help(void);
 void cmd_list(struct ly_ctx **ctx, const char *cmdline);
 void cmd_list_help(void);
 
+/* cmd_feature.c */
+void cmd_feature(struct ly_ctx **ctx, const char *cmdline);
+void cmd_feature_help(void);
+
 /* cmd_load.c */
 void cmd_load(struct ly_ctx **ctx, const char *cmdline);
 void cmd_load_help(void);

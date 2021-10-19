@@ -238,12 +238,13 @@ cleanup:
 COMMAND commands[] = {
     {"help", cmd_help, cmd_help_help, "Display commands description"},
     {"add", cmd_add, cmd_add_help, "Add a new module from a specific file"},
-    {"load", cmd_load, cmd_load_help, "Load a new model from the searchdirs"},
-    {"print", cmd_print, cmd_print_help, "Print a schema module"},
+    {"load", cmd_load, cmd_load_help, "Load a new schema from the searchdirs"},
+    {"print", cmd_print, cmd_print_help, "Print a module"},
     {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
-    {"list", cmd_list, cmd_list_help, "List all the loaded models"},
-    {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for models"},
-    {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded models"},
+    {"list", cmd_list, cmd_list_help, "List all the loaded modules"},
+    {"feature", cmd_feature, cmd_feature_help, "Print all features of module(s) with their state"},
+    {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for schemas"},
+    {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded modules"},
     {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
 #ifndef NDEBUG
     {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups"},
