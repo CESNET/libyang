@@ -293,8 +293,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             LY_ERR ret;
             uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
             char *dir, *module;
-            const char *fall = "*";
-            const char **features = &fall;
+            const char **features = NULL;
             struct lys_module *mod;
 
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
