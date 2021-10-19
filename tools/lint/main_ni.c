@@ -155,7 +155,7 @@ help(int shortout)
             "                Features to support, default all.\n"
             "                <modname>:[<feature>,]*\n\n");
 
-    printf("  -i, --makeimplemented\n"
+    printf("  -i, --make-implemented\n"
             "                Make the imported modules \"referenced\" from any loaded\n"
             "                module also implemented. If specified a second time, all the\n"
             "                modules are set implemented.\n\n");
@@ -367,7 +367,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"path",             required_argument, NULL, 'p'},
         {"disable-searchdir", no_argument,      NULL, 'D'},
         {"features",         required_argument, NULL, 'F'},
-        {"makeimplemented",  no_argument,       NULL, 'i'},
+        {"make-implemented", no_argument,       NULL, 'i'},
         {"schema-node",      required_argument, NULL, 'P'},
         {"single-node",      no_argument,       NULL, 'q'},
         {"submodule",        required_argument, NULL, 's'},
@@ -481,7 +481,7 @@ fill_context(int argc, char *argv[], struct context *c)
             }
             break;
 
-        case 'i': /* --makeimplemented */
+        case 'i': /* --make-implemented */
             if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
                 options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
                 options_ctx |= LY_CTX_ALL_IMPLEMENTED;

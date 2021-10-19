@@ -36,7 +36,7 @@ cmd_load_help(void)
             "  -F FEATURES, --features=FEATURES\n"
             "                  Features to support, default all.\n"
             "                  <modname>:[<feature>,]*\n"
-            "  -i, --makeimplemented\n"
+            "  -i, --make-implemented\n"
             "                  Make the imported modules \"referenced\" from any loaded\n"
             "                  <schema> module also implemented. If specified a second time,\n"
             "                  all the modules are set implemented.\n");
@@ -51,7 +51,7 @@ cmd_load(struct ly_ctx **ctx, const char *cmdline)
     struct option options[] = {
         {"features", required_argument, NULL, 'F'},
         {"help", no_argument, NULL, 'h'},
-        {"makeimplemented", no_argument, NULL, 'i'},
+        {"make-implemented", no_argument, NULL, 'i'},
         {NULL, 0, NULL, 0}
     };
     uint16_t options_ctx = 0;
@@ -73,7 +73,7 @@ cmd_load(struct ly_ctx **ctx, const char *cmdline)
             cmd_load_help();
             goto cleanup;
 
-        case 'i': /* --makeimplemented */
+        case 'i': /* --make-implemented */
             if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
                 options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
                 options_ctx |= LY_CTX_ALL_IMPLEMENTED;

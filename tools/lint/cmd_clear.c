@@ -31,7 +31,7 @@ cmd_clear_help(void)
     printf("Usage: clear [-i] [-y]\n"
             "                  Replace the current context with an empty one, searchpaths\n"
             "                  are not kept.\n\n"
-            "  -i, --makeimplemented\n"
+            "  -i, --make-implemented\n"
             "                Make the imported modules \"referenced\" from any loaded\n"
             "                module also implemented. If specified a second time, all the\n"
             "                modules are set implemented.\n"
@@ -52,9 +52,9 @@ cmd_clear(struct ly_ctx **ctx, const char *cmdline)
     char **argv = NULL;
     int opt, opt_index;
     struct option options[] = {
-        {"makeimplemented", no_argument, NULL, 'i'},
-        {"yang-library", no_argument, NULL, 'y'},
-        {"help",         no_argument, NULL, 'h'},
+        {"make-implemented", no_argument, NULL, 'i'},
+        {"yang-library",     no_argument, NULL, 'y'},
+        {"help",             no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
     uint16_t options_ctx = LY_CTX_NO_YANGLIBRARY;
