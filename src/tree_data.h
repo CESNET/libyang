@@ -1962,7 +1962,7 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  *                 /\    /\   /\   /\
  *                ....  .... .... ....
  *
- * @param[in,out] target Target data tree to merge into, must be a top-level tree.
+ * @param[in,out] target Target data tree to merge into, must be a top-level tree. Always points to the first sibling.
  * @param[in] source Source data tree to merge, must be a top-level tree.
  * @param[in] options Bitmask of option flags, see @ref mergeoptions.
  * @return LY_SUCCESS on success,
@@ -1985,7 +1985,7 @@ LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, u
  *                 /\    /\   /\   /\   /\   /\
  *                ....  .... .... .... .... ....
  *
- * @param[in,out] target Target data tree to merge into, must be a top-level tree.
+ * @param[in,out] target Target data tree to merge into, must be a top-level tree. Always points to the first sibling.
  * @param[in] source Source data tree to merge, must be a top-level tree.
  * @param[in] options Bitmask of option flags, see @ref mergeoptions.
  * @return LY_SUCCESS on success,
@@ -2009,7 +2009,7 @@ typedef LY_ERR (*lyd_merge_cb)(struct lyd_node *trg_node, const struct lyd_node 
  * complete until validation called on the resulting data tree (data from more cases may be present, default
  * and non-default values).
  *
- * @param[in,out] target Target data tree to merge into, must be a top-level tree.
+ * @param[in,out] target Target data tree to merge into, must be a top-level tree. Always points to the first sibling.
  * @param[in] source Source data tree to merge, must be a top-level tree.
  * @param[in] mod Module, whose source data only to consider, NULL for all modules.
  * @param[in] merge_cb Optional merge callback that will be called for every merged node, before merging its descendants.
