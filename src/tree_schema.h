@@ -2212,8 +2212,10 @@ LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substm
  * Options to modify behavior of ::lys_find_xpath() and ::lys_find_xpath_atoms() searching for schema nodes in schema tree.
  * @{
  */
-#define LYS_FIND_XP_SCHEMA 0x08 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYS_FIND_XP_OUTPUT 0x10 /**< Search RPC/action output nodes instead of input ones. */
+#define LYS_FIND_XP_SCHEMA  0x08    /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYS_FIND_XP_OUTPUT  0x10    /**< Search RPC/action output nodes instead of input ones. */
+#define LYS_FIND_NO_MATCH_ERROR 0x40    /**< Return error if a path segmenbt matches no nodes, otherwise only warning
+                                             is printed. */
 /** @} findxpathoptions */
 
 /**

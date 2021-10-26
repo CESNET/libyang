@@ -7138,6 +7138,53 @@ continue_search:
 }
 
 /**
+ * @brief Generate message when no matching schema nodes were found for a path segment.
+ *
+ * @param[in] set XPath set.
+ * @param[in] scparent Previous schema parent in the context, if only one.
+ * @param[in] ncname XPath NCName being evaluated.
+ * @param[in] ncname_len Length of @p ncname.
+ * @param[in] expr Whole XPath expression.
+ * @param[in] options XPath options.
+ */
+static void
+eval_name_test_scnode_no_match_msg(struct lyxp_set *set, const struct lyxp_set_scnode *scparent, const char *ncname,
+        uint16_t ncname_len, const char *expr, uint32_t options)
+{
+    const char *format;
+    char *path = NULL, *ppath = NULL;
+
+    path = lysc_path(set->cur_scnode, LYSC_PATH_LOG, NULL, 0);
+    if (scparent) {
+        /* generate path for the parent */
+        if (scparent->type == LYXP_NODE_ELEM) {
+            ppath = lysc_path(scparent->scnode, LYSC_PATH_LOG, NULL, 0);
+        } else if (scparent->type == LYXP_NODE_ROOT) {
+            ppath = strdup("<root>");
+        } else if (scparent->type == LYXP_NODE_ROOT_CONFIG) {
+            ppath = strdup("<config-root>");
+        }
+    }
+    if (ppath) {
+        format = "Schema node \"%.*s\" for parent \"%s\" not found; in expr \"%.*s\" with context node \"%s\".";
+        if (options & LYXP_SCNODE_ERROR) {
+            LOGERR(set->ctx, LY_EVALID, format, ncname_len, ncname, ppath, (ncname - expr) + ncname_len, expr, path);
+        } else {
+            LOGWRN(set->ctx, format, ncname_len, ncname, ppath, (ncname - expr) + ncname_len, expr, path);
+        }
+    } else {
+        format = "Schema node \"%.*s\" not found; in expr \"%.*s\" with context node \"%s\".";
+        if (options & LYXP_SCNODE_ERROR) {
+            LOGERR(set->ctx, LY_EVALID, format, ncname_len, ncname, (ncname - expr) + ncname_len, expr, path);
+        } else {
+            LOGWRN(set->ctx, format, ncname_len, ncname, (ncname - expr) + ncname_len, expr, path);
+        }
+    }
+    free(path);
+    free(ppath);
+}
+
+/**
  * @brief Evaluate NameTest and any following Predicates. Logs directly on error.
  *
  * [5] Step ::= '@'? NodeTest Predicate* | '.' | '..'
@@ -7229,7 +7276,6 @@ moveto:
         if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
             int64_t i;
             const struct lyxp_set_scnode *scparent = NULL;
-            char *path = NULL, *ppath = NULL;
 
             /* remember parent if there is only one, to print in the warning */
             for (i = 0; i < set->used; ++i) {
@@ -7258,27 +7304,14 @@ moveto:
                 }
             }
             if (i == -1) {
-                path = lysc_path(set->cur_scnode, LYSC_PATH_LOG, NULL, 0);
-                if (scparent) {
-                    /* generate path for the parent */
-                    if (scparent->type == LYXP_NODE_ELEM) {
-                        ppath = lysc_path(scparent->scnode, LYSC_PATH_LOG, NULL, 0);
-                    } else if (scparent->type == LYXP_NODE_ROOT) {
-                        ppath = strdup("<root>");
-                    } else if (scparent->type == LYXP_NODE_ROOT_CONFIG) {
-                        ppath = strdup("<config-root>");
-                    }
+                /* generate message */
+                eval_name_test_scnode_no_match_msg(set, scparent, ncname, ncname_len, exp->expr, options);
+
+                if (options & LYXP_SCNODE_ERROR) {
+                    /* error */
+                    rc = LY_EVALID;
+                    goto cleanup;
                 }
-                if (ppath) {
-                    LOGWRN(set->ctx,
-                            "Schema node \"%.*s\" for parent \"%s\" not found; in expr \"%.*s\" with context node \"%s\".",
-                            ncname_len, ncname, ppath, (ncname - exp->expr) + ncname_len, exp->expr, path);
-                } else {
-                    LOGWRN(set->ctx, "Schema node \"%.*s\" not found; in expr \"%.*s\" with context node \"%s\".",
-                            ncname_len, ncname, (ncname - exp->expr) + ncname_len, exp->expr, path);
-                }
-                free(path);
-                free(ppath);
 
                 /* skip the predicates and the rest of this path to not generate invalid warnings */
                 rc = LY_ENOT;

@@ -340,7 +340,7 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
         LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
         uint32_t options);
 
-/* used only internally, maps with @ref findxpathoptions */
+/** used only internally, maps with @ref findxpathoptions */
 #define LYXP_IGNORE_WHEN    0x01    /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */
 #define LYXP_SCHEMA         0x02    /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 #define LYXP_SCNODE         0x04    /**< No special tree access modifiers. */
@@ -348,6 +348,8 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
 #define LYXP_SCNODE_OUTPUT  LYS_FIND_XP_OUTPUT  /**< Search RPC/action output nodes instead of input ones. */
 #define LYXP_SCNODE_ALL     0x1C    /**< mask for all the LYXP_* values */
 #define LYXP_SKIP_EXPR      0x20    /**< The rest of the expression will not be evaluated (lazy evaluation) */
+#define LYXP_SCNODE_ERROR   LYS_FIND_NO_MATCH_ERROR /**< Return error if a path segment matches no nodes, otherwise only
+                                                         warning is printed. */
 
 /**
  * @brief Cast XPath set to another type.

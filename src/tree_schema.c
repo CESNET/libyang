@@ -484,7 +484,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
 
     LY_CHECK_ARG_RET(NULL, ctx || ctx_node, xpath, set, LY_EINVAL);
     if (!(options & LYXP_SCNODE_ALL)) {
-        options = LYXP_SCNODE;
+        options |= LYXP_SCNODE;
     }
     if (!ctx) {
         ctx = ctx_node->module->ctx;
