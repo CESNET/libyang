@@ -1443,12 +1443,6 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
 {
     LY_ERR ret;
     ly_bool top_level;
-    uint8_t zero[LYB_SIZE_BYTES] = {0};
-
-    if (!memcmp(zero, lybctx->lybctx->in->current, LYB_SIZE_BYTES)) {
-        lyb_read(NULL, LYB_SIZE_BYTES, lybctx->lybctx);
-        return LY_SUCCESS;
-    }
 
     top_level = !LY_ARRAY_COUNT(lybctx->lybctx->siblings);
 

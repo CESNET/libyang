@@ -1199,12 +1199,6 @@ lyb_print_siblings(struct ly_out *out, const struct lyd_node *node, struct lyd_l
     struct hash_table *sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
     ly_bool top_level;
-    uint8_t zero[LYB_SIZE_BYTES] = {0};
-
-    if (!node) {
-        lyb_write(out, zero, LYB_SIZE_BYTES, lybctx->lybctx);
-        return LY_SUCCESS;
-    }
 
     top_level = !LY_ARRAY_COUNT(lybctx->lybctx->siblings);
 
