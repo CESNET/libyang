@@ -610,14 +610,18 @@ lysp_dup_single(const struct ly_ctx *ctx, const struct lysp_node *pnode, ly_bool
     LY_CHECK_GOTO(ret = lysp_node_dup(ctx, mem, pnode), cleanup);
 
     if (with_links) {
-        /* copy also parent and child pointers */
+        /* copy also parent, child, action, and notification pointers */
         ((struct lysp_node *)mem)->parent = pnode->parent;
         switch (pnode->nodetype) {
         case LYS_CONTAINER:
             ((struct lysp_node_container *)mem)->child = ((struct lysp_node_container *)pnode)->child;
+            ((struct lysp_node_container *)mem)->actions = ((struct lysp_node_container *)pnode)->actions;
+            ((struct lysp_node_container *)mem)->notifs = ((struct lysp_node_container *)pnode)->notifs;
             break;
         case LYS_LIST:
             ((struct lysp_node_list *)mem)->child = ((struct lysp_node_list *)pnode)->child;
+            ((struct lysp_node_list *)mem)->actions = ((struct lysp_node_list *)pnode)->actions;
+            ((struct lysp_node_list *)mem)->notifs = ((struct lysp_node_list *)pnode)->notifs;
             break;
         case LYS_CHOICE:
             ((struct lysp_node_choice *)mem)->child = ((struct lysp_node_choice *)pnode)->child;
@@ -1517,9 +1521,13 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
     switch (dev_pnode->nodetype) {
     case LYS_CONTAINER:
         ((struct lysp_node_container *)dev_pnode)->child = NULL;
+        ((struct lysp_node_container *)dev_pnode)->actions = NULL;
+        ((struct lysp_node_container *)dev_pnode)->notifs = NULL;
         break;
     case LYS_LIST:
         ((struct lysp_node_list *)dev_pnode)->child = NULL;
+        ((struct lysp_node_list *)dev_pnode)->actions = NULL;
+        ((struct lysp_node_list *)dev_pnode)->notifs = NULL;
         break;
     case LYS_CHOICE:
         ((struct lysp_node_choice *)dev_pnode)->child = NULL;
