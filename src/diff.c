@@ -1438,7 +1438,7 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
 static LY_ERR
 lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, const struct lyd_node *src_diff)
 {
-    struct lyd_node *next, *child;
+    struct lyd_node *child;
     struct lyd_meta *meta;
     const char *meta_name;
 
@@ -1462,7 +1462,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         } /* else key-less list, for which all the descendants act as keys */
         break;
     case LYD_DIFF_OP_REPLACE:
-        /* similar to none operation but also remove the redundant metadata */
+        /* remove the redundant metadata */
         if (lysc_is_userordered(diff_match->schema)) {
             if (lysc_is_dup_inst_list(diff_match->schema)) {
                 meta_name = "position";
@@ -1494,17 +1494,12 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         }
         lyd_diff_del_meta(diff_match, meta_name);
 
-    /* fall through */
+        /* it was being changed, but should be deleted instead -> set DELETE operation */
+        LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_DELETE));
+        break;
     case LYD_DIFF_OP_NONE:
         /* it was not modified, but should be deleted -> set DELETE operation */
         LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_DELETE));
-
-        /* all descendants not in the diff will be deleted and redundant in the diff, so remove them */
-        LY_LIST_FOR_SAFE(lyd_child_no_keys(diff_match), next, child) {
-            if (lyd_find_sibling_first(lyd_child(src_diff), child, NULL) == LY_ENOTFOUND) {
-                lyd_free_tree(child);
-            }
-        }
         break;
     default:
         /* delete operation is not valid */

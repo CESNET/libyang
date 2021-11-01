@@ -60,7 +60,7 @@
                     lyd_free_all(diff2);\
                 }
 
-const char *schema =
+const char *schema1 =
         "module defaults {\n"
         "    yang-version 1.1;\n"
         "    namespace \"urn:libyang:tests:defaults\";\n"
@@ -137,8 +137,17 @@ const char *schema =
         "                type int32;\n"
         "                default \"42\";\n"
         "            }\n"
-        "        }\n"
-        ""
+        "            list list2 {\n"
+        "                key \"name2\";\n"
+        "                leaf name2 {\n"
+        "                    type string;\n"
+        "                }\n"
+        "                leaf value2 {\n"
+        "                    type int32;\n"
+        "                }\n"
+        "            }\n"
+        "        }\n";
+const char *schema2 =
         "        choice select {\n"
         "            default \"a\";\n"
         "            case a {\n"
@@ -276,8 +285,17 @@ const char *schema =
 static int
 setup(void **state)
 {
+    char *schema;
+
     UTEST_SETUP;
+
+    /* create one schema, longer than 4095 chars */
+    schema = malloc(strlen(schema1) + strlen(schema2) + 1);
+    strcpy(schema, schema1);
+    strcat(schema, schema2);
+
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+    free(schema);
 
     return 0;
 }
@@ -445,6 +463,46 @@ test_empty_nested(void **state)
             "</df>\n");
 
     lyd_free_all(model_1);
+    lyd_free_all(diff1);
+    lyd_free_all(diff2);
+}
+
+static void
+test_delete_merge(void **state)
+{
+    (void) state;
+    struct lyd_node *diff1, *diff2;
+    const char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <list>\n"
+            "    <name>a</name>\n"
+            "    <list2 yang:operation=\"delete\">\n"
+            "      <name2>a</name2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "</df>\n";
+    const char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <list yang:operation=\"delete\">\n"
+            "    <name>a</name>\n"
+            "  </list>\n"
+            "</df>\n";
+    const char *xml_merge =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <list yang:operation=\"delete\">\n"
+            "    <name>a</name>\n"
+            "    <list2 yang:operation=\"delete\">\n"
+            "      <name2>a</name2>\n"
+            "    </list2>\n"
+            "  </list>\n"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(xml1, diff1);
+    CHECK_PARSE_LYD(xml2, diff2);
+
+    assert_int_equal(lyd_diff_merge_all(&diff1, diff2, 0), LY_SUCCESS);
+    CHECK_LYD_STRING(diff1, xml_merge);
+
     lyd_free_all(diff1);
     lyd_free_all(diff2);
 }
@@ -1068,6 +1126,7 @@ main(void)
         UTEST(test_empty1, setup),
         UTEST(test_empty2, setup),
         UTEST(test_empty_nested, setup),
+        UTEST(test_delete_merge, setup),
         UTEST(test_leaf, setup),
         UTEST(test_list, setup),
         UTEST(test_userord_llist, setup),
