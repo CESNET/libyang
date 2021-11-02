@@ -880,9 +880,6 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
             assert(expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH);
             ++tok_idx;
         }
-
-        /* we are not storing the parent */
-        (void)ctx_node;
     }
 
     do {
