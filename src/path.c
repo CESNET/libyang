@@ -858,6 +858,13 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
         ++tok_idx;
     } else {
         /* relative path */
+        if (!ctx_node) {
+            LOGVAL(ctx, LYVE_XPATH, "No initial schema parent for a relative path.");
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+
+        /* go up the parents for leafref */
         while (lref && (expr->tokens[tok_idx] == LYXP_TOKEN_DDOT)) {
             if (!ctx_node) {
                 LOGVAL(ctx, LYVE_XPATH, "Too many parent references in path.");
