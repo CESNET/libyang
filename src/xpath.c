@@ -5147,7 +5147,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *s
     set_init(&set_item, set);
 
     set_item.type = LYXP_SET_NODE_SET;
-    set_item.val.nodes = malloc(sizeof *set_item.val.nodes);
+    set_item.val.nodes = calloc(1, sizeof *set_item.val.nodes);
     LY_CHECK_ERR_RET(!set_item.val.nodes, LOGMEM(set->ctx), LY_EMEM);
 
     set_item.used = 1;
