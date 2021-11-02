@@ -1164,6 +1164,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     case LYD_ANYDATA_JSON:
         /* value is expected to be in the dictionary */
         ret = lydict_insert_zc(ctx, value, &val_dict);
+        value = NULL;
         LY_CHECK_GOTO(ret, error);
 
         /* use the value in the dictionary */
