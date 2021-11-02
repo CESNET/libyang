@@ -461,7 +461,7 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
     if (mod) {
         LY_CHECK_RET(lyb_write_string(mod->name, 0, sizeof(uint16_t), out, lybctx));
     } else {
-        lyb_write_number(0, 2, out, lybctx);
+        LY_CHECK_RET(lyb_write_number(0, 2, out, lybctx));
         return LY_SUCCESS;
     }
 
