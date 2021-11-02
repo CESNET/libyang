@@ -584,11 +584,14 @@ lyd_node_schema(const struct lyd_node *node)
         } else {
             /* get module */
             mod = lyd_owner_module(iter);
+            if (!mod && !schema) {
+                /* top-level opaque node has unknown module */
+                break;
+            }
 
             /* get schema node */
             schema = lys_find_child(schema, mod ? mod : schema->module, LYD_NAME(iter), 0, 0, 0);
         }
-
     } while (schema && (iter != node));
 
     return schema;
