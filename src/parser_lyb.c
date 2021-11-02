@@ -1032,7 +1032,6 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     void *val_prefix_data = NULL;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
     uint32_t flags;
-    uint8_t zero[LYB_SIZE_BYTES] = {0};
 
     /* parse opaq node attributes */
     ret = lyb_parse_attributes(lybctx->lybctx, &attr);
@@ -1066,18 +1065,12 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(lybctx->parse_opts & LYD_PARSE_OPAQ)) {
-        if (memcmp(zero, lybctx->lybctx->in->current, LYB_SIZE_BYTES)) {
-            /* skip children */
-            ret = lyb_read_start_siblings(lybctx->lybctx);
-            LY_CHECK_RET(ret);
-            lyb_skip_siblings(lybctx->lybctx);
-            ret = lyb_read_stop_siblings(lybctx->lybctx);
-            LY_CHECK_RET(ret);
-        } else {
-            /* opaq node has no children */
-            lyb_read(NULL, LYB_SIZE_BYTES, lybctx->lybctx);
-        }
-
+        /* skip children */
+        ret = lyb_read_start_siblings(lybctx->lybctx);
+        LY_CHECK_GOTO(ret, cleanup);
+        lyb_skip_siblings(lybctx->lybctx);
+        ret = lyb_read_stop_siblings(lybctx->lybctx);
+        LY_CHECK_GOTO(ret, cleanup);
         goto cleanup;
     }
 
