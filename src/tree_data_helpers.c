@@ -560,6 +560,40 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     return LY_SUCCESS;
 }
 
+const struct lysc_node *
+lyd_node_schema(const struct lyd_node *node)
+{
+    const struct lysc_node *schema = NULL;
+    const struct lyd_node *prev_iter = NULL, *iter;
+    const struct lys_module *mod;
+
+    if (!node) {
+        return NULL;
+    } else if (node->schema) {
+        return node->schema;
+    }
+
+    /* get schema node of an opaque node */
+    do {
+        /* get next data node */
+        for (iter = node; lyd_parent(iter) != prev_iter; iter = lyd_parent(iter)) {}
+
+        /* get equivalent schema node */
+        if (iter->schema) {
+            schema = iter->schema;
+        } else {
+            /* get module */
+            mod = lyd_owner_module(iter);
+
+            /* get schema node */
+            schema = lys_find_child(schema, mod ? mod : schema->module, LYD_NAME(iter), 0, 0, 0);
+        }
+
+    } while (schema && (iter != node));
+
+    return schema;
+}
+
 void
 lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod)
 {

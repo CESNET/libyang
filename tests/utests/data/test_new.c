@@ -32,6 +32,15 @@ const char *schema_a = "module a {\n"
         "      type string;\n"
         "    }\n"
         "  }\n"
+        "  list l11 {\n"
+        "    key \"a\";\n"
+        "    leaf a {\n"
+        "      type uint32;\n"
+        "    }\n"
+        "    leaf b {\n"
+        "      type uint32;\n"
+        "    }\n"
+        "  }\n"
         "  leaf foo {\n"
         "    type uint16;\n"
         "  }\n"
@@ -250,6 +259,23 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_null(root->schema);
+
+    lyd_free_tree(root);
+
+    ret = lyd_new_path(NULL, UTEST_LYCTX, "/a:l11", NULL, LYD_NEW_PATH_OPAQ, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_null(root->schema);
+
+    ret = lyd_new_path(root, NULL, "a", NULL, LYD_NEW_PATH_OPAQ, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(lyd_child(root));
+    assert_null(lyd_child(root)->schema);
+
+    ret = lyd_new_path(root, NULL, "b", NULL, LYD_NEW_PATH_OPAQ, NULL);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(lyd_child(root)->next);
+    assert_null(lyd_child(root)->next->schema);
 
     lyd_free_tree(root);
 

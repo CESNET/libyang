@@ -59,25 +59,6 @@ LY_ERR lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings
 void lyd_dup_inst_free(struct lyd_dup_inst *dup_inst);
 
 /**
- * @brief Check whether a node to be deleted is the root node, move it if it is.
- *
- * @param[in] root Root sibling.
- * @param[in] to_del Node to be deleted.
- * @param[in] mod If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
- * the first top-level sibling.
- */
-void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod);
-
-/**
- * @brief Get address of a node's child pointer if any.
- *
- * @param[in] node Node to check.
- * @return Address of the node's child member,
- * @return NULL if there is no child pointer.
- */
-struct lyd_node **lyd_node_child_p(struct lyd_node *node);
-
-/**
  * @brief Just like ::lys_getnext() but iterates over all data instances of the schema nodes.
  *
  * @param[in] last Last returned data node.
@@ -91,8 +72,136 @@ struct lyd_node **lyd_node_child_p(struct lyd_node *node);
  * @return NULL if last data node was already returned.
  */
 struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling,
-        const struct lysc_node **slast, const struct lysc_node *parent,
-        const struct lysc_module *module);
+        const struct lysc_node **slast, const struct lysc_node *parent, const struct lysc_module *module);
+
+/**
+ * @brief Get address of a node's child pointer if any.
+ *
+ * @param[in] node Node to check.
+ * @return Address of the node's child member,
+ * @return NULL if there is no child pointer.
+ */
+struct lyd_node **lyd_node_child_p(struct lyd_node *node);
+
+/**
+ * @brief Update node pointer to point to the first data node of a module, leave unchanged if there is none.
+ *
+ * @param[in,out] node Node pointer, may be updated.
+ * @param[in] mod Module whose data to search for.
+ */
+void lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod);
+
+/**
+ * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
+ *
+ * @param[in] tree Data tree.
+ * @param[in] module Selected module, NULL for all.
+ * @param[in] ctx Context, NULL for selected modules.
+ * @param[in,out] i Iterator, set to 0 on first call.
+ * @param[out] first First sibling of the returned module.
+ * @return Next module.
+ * @return NULL if all modules were traversed.
+ */
+const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module,
+        const struct ly_ctx *ctx, uint32_t *i, struct lyd_node **first);
+
+/**
+ * @brief Iterate over modules for functions that want to traverse all the top-level data.
+ *
+ * @param[in,out] next Pointer to the next module data, set to first top-level sibling on first call.
+ * @param[out] first First sibling of the returned module.
+ * @return Next module.
+ * @return NULL if all modules were traversed.
+ */
+const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
+
+/**
+ * @brief Check that a list has all its keys.
+ *
+ * @param[in] node List to check.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT on a missing key.
+ */
+LY_ERR lyd_parse_check_keys(struct lyd_node *node);
+
+/**
+ * @brief Set data flags for a newly parsed node.
+ *
+ * @param[in] node Node to use.
+ * @param[in,out] node_when Set of nodes with unresolved when.
+ * @param[in,out] node_exts Set of nodes and their extension instances if they have own validation callback.
+ * @param[in,out] meta Node metadata, may be removed from.
+ * @param[in] parse_opts Parse options.
+ */
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts,
+        struct lyd_meta **meta, uint32_t parse_opts);
+
+/**
+ * @brief Get schema node of a data node. Useful especially for opaque nodes.
+ *
+ * @param[in] node Data node to use.
+ * @return Schema node represented by data @p node, NULL if there is none.
+ */
+const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
+
+/**
+ * @brief Check whether a node to be deleted is the root node, move it if it is.
+ *
+ * @param[in] root Root sibling.
+ * @param[in] to_del Node to be deleted.
+ * @param[in] mod If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
+ * the first top-level sibling.
+ */
+void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod);
+
+/**
+ * @brief Free stored prefix data.
+ *
+ * @param[in] format Format of the prefixes.
+ * @param[in] prefix_data Format-specific data to free:
+ *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
+ *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
+ *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_PREF_JSON            - NULL
+ */
+void ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data);
+
+/**
+ * @brief Duplicate prefix data.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Prefix data to duplicate.
+ * @param[out] prefix_data_p Duplicated prefix data.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *prefix_data, void **prefix_data_p);
+
+/**
+ * @brief Store used prefixes in a string.
+ *
+ * If @p prefix_data_p are non-NULL, they are treated as valid according to the @p format_p and new possible
+ * prefixes are simply added. This way it is possible to store prefix data for several strings together.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] value Value to be parsed.
+ * @param[in] value_len Length of the @p value.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in,out] format_p Resulting format of the prefixes.
+ * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
+        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
+
+/**
+ * @brief Get string name of the format.
+ *
+ * @param[in] format Format whose name to get.
+ * @return Format string name.
+ */
+const char *ly_format2str(LY_VALUE_FORMAT format);
 
 /**
  * @brief Create a term (leaf/leaf-list) node from a string value.
@@ -391,59 +500,6 @@ void lyd_unlink_hash(struct lyd_node *node);
 /** @} datahash */
 
 /**
- * @brief Update node pointer to point to the first data node of a module, leave unchanged if there is none.
- *
- * @param[in,out] node Node pointer, may be updated.
- * @param[in] mod Module whose data to search for.
- */
-void lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod);
-
-/**
- * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
- *
- * @param[in] tree Data tree.
- * @param[in] module Selected module, NULL for all.
- * @param[in] ctx Context, NULL for selected modules.
- * @param[in,out] i Iterator, set to 0 on first call.
- * @param[out] first First sibling of the returned module.
- * @return Next module.
- * @return NULL if all modules were traversed.
- */
-const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module,
-        const struct ly_ctx *ctx, uint32_t *i, struct lyd_node **first);
-
-/**
- * @brief Iterate over modules for functions that want to traverse all the top-level data.
- *
- * @param[in,out] next Pointer to the next module data, set to first top-level sibling on first call.
- * @param[out] first First sibling of the returned module.
- * @return Next module.
- * @return NULL if all modules were traversed.
- */
-const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
-
-/**
- * @brief Check that a list has all its keys.
- *
- * @param[in] node List to check.
- * @return LY_SUCCESS on success.
- * @return LY_ENOT on a missing key.
- */
-LY_ERR lyd_parse_check_keys(struct lyd_node *node);
-
-/**
- * @brief Set data flags for a newly parsed node.
- *
- * @param[in] node Node to use.
- * @param[in,out] node_when Set of nodes with unresolved when.
- * @param[in,out] node_exts Set of nodes and their extension instances if they have own validation callback.
- * @param[in,out] meta Node metadata, may be removed from.
- * @param[in] parse_opts Parse options.
- */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts,
-        struct lyd_meta **meta, uint32_t parse_opts);
-
-/**
  * @brief Append all list key predicates to path.
  *
  * @param[in] node Node with keys to print.
@@ -454,54 +510,5 @@ void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, s
  * @return LY_ERR
  */
 LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static);
-
-/**
- * @brief Free stored prefix data.
- *
- * @param[in] format Format of the prefixes.
- * @param[in] prefix_data Format-specific data to free:
- *      LY_PREF_SCHEMA          - const struct lysp_module * (module used for resolving prefixes from imports)
- *      LY_PREF_SCHEMA_RESOLVED - struct lyd_value_prefix * (sized array of pairs: prefix - module)
- *      LY_PREF_XML             - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
- *      LY_PREF_JSON            - NULL
- */
-void ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data);
-
-/**
- * @brief Duplicate prefix data.
- *
- * @param[in] ctx libyang context.
- * @param[in] format Format of the prefixes in the value.
- * @param[in] prefix_data Prefix data to duplicate.
- * @param[out] prefix_data_p Duplicated prefix data.
- * @return LY_ERR value.
- */
-LY_ERR ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *prefix_data, void **prefix_data_p);
-
-/**
- * @brief Store used prefixes in a string.
- *
- * If @p prefix_data_p are non-NULL, they are treated as valid according to the @p format_p and new possible
- * prefixes are simply added. This way it is possible to store prefix data for several strings together.
- *
- * @param[in] ctx libyang context.
- * @param[in] value Value to be parsed.
- * @param[in] value_len Length of the @p value.
- * @param[in] format Format of the prefixes in the value.
- * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
- * @param[in,out] format_p Resulting format of the prefixes.
- * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
- * @return LY_ERR value.
- */
-LY_ERR ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
-        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
-
-/**
- * @brief Get string name of the format.
- *
- * @param[in] format Format whose name to get.
- * @return Format string name.
- */
-const char *ly_format2str(LY_VALUE_FORMAT format);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

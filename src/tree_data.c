@@ -1862,9 +1862,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, parent ? parent->schema : NULL, ext, exp,
-            options & LYD_NEW_PATH_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0,
-            LY_VALUE_JSON, NULL, &p), cleanup);
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, lyd_node_schema(parent), ext, exp, options & LYD_NEW_PATH_OUTPUT ?
+            LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* check the compiled path before searching existing nodes, it may be shortened */
     orig_count = LY_ARRAY_COUNT(p);
@@ -1965,17 +1964,21 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             }
             break;
         case LYS_LEAF:
-            if (lysc_is_key(schema)) {
+            if (lysc_is_key(schema) && cur_parent->schema) {
                 /* it must have been already created or some error will occur later */
-                assert(cur_parent);
                 lyd_find_sibling_schema(lyd_child(cur_parent), schema, &node);
                 assert(node);
                 goto next_iter;
             }
 
             if (options & LYD_NEW_PATH_OPAQ) {
-                /* validate value */
-                r = lyd_value_validate(NULL, schema, value ? value : "", value_len, NULL, NULL, NULL);
+                if (cur_parent && !cur_parent->schema) {
+                    /* always create opaque nodes for opaque parents */
+                    r = LY_ENOT;
+                } else {
+                    /* validate value */
+                    r = lyd_value_validate(NULL, schema, value ? value : "", value_len, NULL, NULL, NULL);
+                }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
                     LY_CHECK_GOTO(ret = lyd_create_opaq(ctx, schema->name, strlen(schema->name), value, value_len,
