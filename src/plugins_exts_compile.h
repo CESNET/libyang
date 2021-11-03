@@ -91,6 +91,20 @@ LIBYANG_API_DECL uint32_t *lysc_ctx_get_options(const struct lysc_ctx *ctx);
 LIBYANG_API_DECL const char *lysc_ctx_get_path(const struct lysc_ctx *ctx);
 
 /**
+ * @brief YANG schema compilation context getter for current module.
+ * @param[in] ctx YANG schema compilation context.
+ * @return current module.
+ */
+const struct lys_module *lysc_ctx_get_cur_mod(const struct lysc_ctx *ctx);
+
+/**
+ * @brief YANG schema compilation context getter for currently processed module.
+ * @param[in] ctx YANG schema compilation context.
+ * @return Currently processed module.
+ */
+struct lysp_module *lysc_ctx_get_pmod(const struct lysc_ctx *ctx);
+
+/**
  * @brief Compile substatements of an extension instance.
  *
  * Uses standard libyang schema compiler to transform YANG statements into the compiled schema structures. The plugins are

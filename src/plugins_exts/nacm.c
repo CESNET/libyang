@@ -158,6 +158,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
 
         .plugin.id = "libyang 2 - NACM, version 1",
         .plugin.compile = &nacm_compile,
+        .plugin.parse = NULL,
         .plugin.validate = NULL,
         .plugin.sprinter = NULL,
         .plugin.free = NULL
@@ -168,6 +169,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
 
         .plugin.id = "libyang 2 - NACM, version 1",
         .plugin.compile = &nacm_compile,
+        .plugin.parse = NULL,
         .plugin.validate = NULL,
         .plugin.sprinter = NULL,
         .plugin.free = NULL
@@ -178,6 +180,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
 
         .plugin.id = "libyang 2 - NACM, version 1",
         .plugin.compile = &nacm_compile,
+        .plugin.parse = NULL,
         .plugin.validate = NULL,
         .plugin.sprinter = NULL,
         .plugin.free = NULL
@@ -188,6 +191,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
 
         .plugin.id = "libyang 2 - NACM, version 1",
         .plugin.compile = &nacm_compile,
+        .plugin.parse = NULL,
         .plugin.validate = NULL,
         .plugin.sprinter = NULL,
         .plugin.free = NULL

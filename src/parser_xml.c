@@ -24,6 +24,7 @@
 #include "log.h"
 #include "parser_data.h"
 #include "parser_internal.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -418,7 +419,10 @@ restore:
 static LY_ERR
 lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
+    LY_ARRAY_COUNT_TYPE u;
+
+    lyplg_ext_data_parse_clb ext_parse;
     const char *prefix, *name, *val;
     size_t prefix_len, name_len;
     struct lyxml_ctx *xmlctx;
@@ -431,6 +435,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     uint32_t prev_parse_opts, prev_int_opts;
     struct lyd_node *node = NULL, *anchor;
     void *val_prefix_data = NULL;
+    struct lysc_ext_instance *exts = NULL;
     LY_VALUE_FORMAT format;
     uint32_t getnext_opts;
 
@@ -481,6 +486,22 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
         }
         if (!snode) {
+            /* Check if data of an extension */
+            if (parent && parent->schema) {
+                exts = parent->schema->exts;
+            }
+            LY_ARRAY_FOR(exts, u) {
+                ext_parse = exts[u].def->plugin->parse;
+                r = ext_parse(xmlctx->in, LYD_XML, &exts[u], parent, lydctx->parse_opts,
+                        lydctx->val_opts);
+                if (r == LY_SUCCESS) {
+                    /* Data was from this module*/
+                    return LY_SUCCESS;
+                } else if (r != LY_ENOT) {
+                    /* Error while parsing */
+                }
+                /* Data was not from this module */
+            }
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 if (parent) {
                     LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",

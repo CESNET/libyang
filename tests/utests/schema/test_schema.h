@@ -23,7 +23,7 @@
 #include "tests_config.h"
 
 LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT * format,
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
         const char **module_data, void (**free_module_data)(void *model_data, void *user_data));
 
 #define TEST_YANG_MODULE_10(MOD_NAME, MOD_PREFIX, MOD_NS, CONTENT) \
