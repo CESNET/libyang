@@ -148,6 +148,7 @@ set(libsrc
     src/plugins_exts/metadata.c
     src/plugins_exts/nacm.c
     src/plugins_exts/yangdata.c
+    src/plugins_exts/schema_mount.c
     src/xml.c
     src/xpath.c
     src/validation.c
@@ -468,4 +469,3 @@ add_custom_target(cclean
         COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
         COMMAND rm -rf Makefile Doxyfile
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-

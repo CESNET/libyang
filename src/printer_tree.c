@@ -181,11 +181,11 @@ struct trt_pck_print {
  */
 typedef enum {
     TRD_INDENT_EMPTY = 0,               /**< If the node is a case node, there is no space before the \<name\>. */
-    TRD_INDENT_LONG_LINE_BREAK = 2,     /**< The new line should be indented so that it starts below \<name\> with a whitespace offset of at least two characters. */
-    TRD_INDENT_LINE_BEGIN = 2,          /**< Indent below the keyword (module, augment ...).  */
-    TRD_INDENT_BTW_SIBLINGS = 2,        /**< Indent between | and | characters. */
-    TRD_INDENT_BEFORE_KEYS = 1,         /**< "..."___\<keys\>. */
-    TRD_INDENT_BEFORE_TYPE = 4,         /**< "..."___\<type\>, but if mark is set then indent == 3. */
+            TRD_INDENT_LONG_LINE_BREAK = 2, /**< The new line should be indented so that it starts below \<name\> with a whitespace offset of at least two characters. */
+            TRD_INDENT_LINE_BEGIN = 2,  /**< Indent below the keyword (module, augment ...).  */
+            TRD_INDENT_BTW_SIBLINGS = 2, /**< Indent between | and | characters. */
+            TRD_INDENT_BEFORE_KEYS = 1, /**< "..."___\<keys\>. */
+            TRD_INDENT_BEFORE_TYPE = 4, /**< "..."___\<type\>, but if mark is set then indent == 3. */
     TRD_INDENT_BEFORE_IFFEATURES = 1    /**< "..."___\<iffeatures\>. */
 } trt_cnf_indent;
 
@@ -194,7 +194,7 @@ typedef enum {
  */
 typedef enum {
     TRD_INDENT_IN_NODE_NORMAL = 0,  /**< Node fits on one line. */
-    TRD_INDENT_IN_NODE_DIVIDED,     /**< The node must be split into multiple rows. */
+            TRD_INDENT_IN_NODE_DIVIDED, /**< The node must be split into multiple rows. */
     TRD_INDENT_IN_NODE_FAILED       /**< Cannot be crammed into one line. The condition for the maximum line length is violated. */
 } trt_indent_in_node_type;
 
@@ -297,8 +297,8 @@ struct trt_pck_indent {
  */
 typedef enum {
     TRD_STATUS_TYPE_EMPTY = 0,
-    TRD_STATUS_TYPE_CURRENT,    /**< ::LYS_STATUS_CURR */
-    TRD_STATUS_TYPE_DEPRECATED, /**< ::LYS_STATUS_DEPRC */
+            TRD_STATUS_TYPE_CURRENT, /**< ::LYS_STATUS_CURR */
+            TRD_STATUS_TYPE_DEPRECATED, /**< ::LYS_STATUS_DEPRC */
     TRD_STATUS_TYPE_OBSOLETE    /**< ::LYS_STATUS_OBSLT */
 } trt_status_type;
 
@@ -313,12 +313,12 @@ typedef enum {
  */
 typedef enum {
     TRD_FLAGS_TYPE_EMPTY = 0,           /**< -- */
-    TRD_FLAGS_TYPE_RW,                  /**< rw */
-    TRD_FLAGS_TYPE_RO,                  /**< ro */
-    TRD_FLAGS_TYPE_RPC_INPUT_PARAMS,    /**< -w */
-    TRD_FLAGS_TYPE_USES_OF_GROUPING,    /**< -u */
-    TRD_FLAGS_TYPE_RPC,                 /**< -x */
-    TRD_FLAGS_TYPE_NOTIF,               /**< -n */
+            TRD_FLAGS_TYPE_RW,          /**< rw */
+            TRD_FLAGS_TYPE_RO,          /**< ro */
+            TRD_FLAGS_TYPE_RPC_INPUT_PARAMS, /**< -w */
+            TRD_FLAGS_TYPE_USES_OF_GROUPING, /**< -u */
+            TRD_FLAGS_TYPE_RPC,         /**< -x */
+            TRD_FLAGS_TYPE_NOTIF,       /**< -n */
     TRD_FLAGS_TYPE_MOUNT_POINT          /**< mp */
 } trt_flags_type;
 
@@ -338,15 +338,15 @@ typedef enum {
  */
 typedef enum {
     TRD_NODE_ELSE = 0,          /**< For some node which does not require special treatment. \<name\> */
-    TRD_NODE_CASE,              /**< For case node. :(\<name\>) */
-    TRD_NODE_CHOICE,            /**< For choice node. (\<name\>) */
-    TRD_NODE_OPTIONAL_CHOICE,   /**< For choice node with optional mark. (\<name\>)? */
-    TRD_NODE_OPTIONAL,          /**< For an optional leaf, anydata, or anyxml. \<name\>? */
-    TRD_NODE_CONTAINER,         /**< For a presence container. \<name\>! */
-    TRD_NODE_LISTLEAFLIST,      /**< For a leaf-list or list (without keys). \<name\>* */
-    TRD_NODE_KEYS,              /**< For a list's keys. \<name\>* [\<keys\>] */
-    TRD_NODE_TOP_LEVEL1,        /**< For a top-level data node in a mounted module. \<name\>/ */
-    TRD_NODE_TOP_LEVEL2,        /**< For a top-level data node of a module identified in a mount point parent reference. \<name\>@ */
+            TRD_NODE_CASE,      /**< For case node. :(\<name\>) */
+            TRD_NODE_CHOICE,    /**< For choice node. (\<name\>) */
+            TRD_NODE_OPTIONAL_CHOICE, /**< For choice node with optional mark. (\<name\>)? */
+            TRD_NODE_OPTIONAL,  /**< For an optional leaf, anydata, or anyxml. \<name\>? */
+            TRD_NODE_CONTAINER, /**< For a presence container. \<name\>! */
+            TRD_NODE_LISTLEAFLIST, /**< For a leaf-list or list (without keys). \<name\>* */
+            TRD_NODE_KEYS,      /**< For a list's keys. \<name\>* [\<keys\>] */
+            TRD_NODE_TOP_LEVEL1, /**< For a top-level data node in a mounted module. \<name\>/ */
+            TRD_NODE_TOP_LEVEL2, /**< For a top-level data node of a module identified in a mount point parent reference. \<name\>@ */
     TRD_NODE_TRIPLE_DOT         /**< For collapsed sibling nodes and their children. Special case which doesn't belong here very well. */
 } trt_node_type;
 
@@ -392,8 +392,8 @@ struct trt_node_name {
  */
 typedef enum {
     TRD_TYPE_NAME = 0,  /**< Type is just a name that does not require special treatment. */
-    TRD_TYPE_TARGET,    /**< Should have a form "-> TARGET", where TARGET is the leafref path. */
-    TRD_TYPE_LEAFREF,   /**< This type is set automatically by the 'trp' algorithm.
+            TRD_TYPE_TARGET, /**< Should have a form "-> TARGET", where TARGET is the leafref path. */
+            TRD_TYPE_LEAFREF, /**< This type is set automatically by the 'trp' algorithm.
                              So set type as ::TRD_TYPE_TARGET. */
     TRD_TYPE_EMPTY      /**< Type is not used at all. */
 } trt_type_type;
@@ -500,12 +500,12 @@ struct trt_pair_indent_node {
  */
 typedef enum {
     TRD_KEYWORD_EMPTY = 0,
-    TRD_KEYWORD_MODULE,
-    TRD_KEYWORD_SUBMODULE,
-    TRD_KEYWORD_AUGMENT,
-    TRD_KEYWORD_RPC,
-    TRD_KEYWORD_NOTIF,
-    TRD_KEYWORD_GROUPING,
+            TRD_KEYWORD_MODULE,
+            TRD_KEYWORD_SUBMODULE,
+            TRD_KEYWORD_AUGMENT,
+            TRD_KEYWORD_RPC,
+            TRD_KEYWORD_NOTIF,
+            TRD_KEYWORD_GROUPING,
     TRD_KEYWORD_YANG_DATA
 } trt_keyword_type;
 
@@ -617,10 +617,10 @@ struct trt_printer_ctx {
  */
 typedef enum {
     TRD_SECT_MODULE = 0,    /**< The node belongs to the "module: <module_name>:" label. */
-    TRD_SECT_AUGMENT,       /**< The node belongs to some "augment <target-node>:" label. */
-    TRD_SECT_RPCS,          /**< The node belongs to the "rpcs:" label. */
-    TRD_SECT_NOTIF,         /**< The node belongs to the "notifications:" label. */
-    TRD_SECT_GROUPING,      /**< The node belongs to some "grouping <grouping-name>:" label. */
+            TRD_SECT_AUGMENT, /**< The node belongs to some "augment <target-node>:" label. */
+            TRD_SECT_RPCS,  /**< The node belongs to the "rpcs:" label. */
+            TRD_SECT_NOTIF, /**< The node belongs to the "notifications:" label. */
+            TRD_SECT_GROUPING, /**< The node belongs to some "grouping <grouping-name>:" label. */
     TRD_SECT_YANG_DATA      /**< The node belongs to some "yang-data <yang-data-name>:" label. */
 } trt_actual_section;
 
@@ -629,8 +629,8 @@ typedef enum {
  */
 typedef enum {
     TRD_ANCESTOR_ELSE = 0,      /**< Everything not listed. */
-    TRD_ANCESTOR_RPC_INPUT,     /**< ::LYS_INPUT */
-    TRD_ANCESTOR_RPC_OUTPUT,    /**< ::LYS_OUTPUT */
+            TRD_ANCESTOR_RPC_INPUT, /**< ::LYS_INPUT */
+            TRD_ANCESTOR_RPC_OUTPUT, /**< ::LYS_OUTPUT */
     TRD_ANCESTOR_NOTIF          /**< ::LYS_NOTIF */
 } trt_ancestor_type;
 

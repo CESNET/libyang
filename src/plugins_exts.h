@@ -17,6 +17,7 @@
 
 #include "log.h"
 #include "plugins.h"
+#include "tree_data.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 
@@ -24,6 +25,7 @@
 #include "plugins_exts_print.h"
 
 struct ly_ctx;
+struct ly_in;
 struct lyd_node;
 struct lysc_ext_substmt;
 struct lysp_ext_instance;
@@ -171,14 +173,31 @@ typedef LY_ERR (*lyplg_ext_data_validation_clb)(struct lysc_ext_instance *ext, s
 typedef LY_ERR (*lyplg_ext_schema_printer_clb)(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_bool *flag);
 
 /**
+ * @brief Callback to data according to extension specification.
+ *
+ * @param[in] in
+ * @param[in] format
+ * @param[in] ext
+ * @param[in] parent
+ * @param[in] parse_opts
+ * @param[in] val_opts
+ * @param[out] ly_err
+ */
+typedef LY_ERR (*lyplg_ext_data_parse_clb)(struct ly_in *in, LYD_FORMAT format,
+        struct lysc_ext_instance *ext, struct lyd_node *parent,
+        uint32_t parse_opts, uint32_t val_opts);
+
+/**
  * @brief Extension plugin implementing various aspects of a YANG extension
  */
 struct lyplg_ext {
     const char *id;                         /**< Plugin identification (mainly for distinguish incompatible versions of the plugins for external tools) */
     lyplg_ext_compile_clb compile;          /**< Callback to compile extension instance from the parsed data */
-    lyplg_ext_data_validation_clb validate; /**< Callback to decide if data instance is valid according to the schema. */
     lyplg_ext_schema_printer_clb sprinter;  /**< Callback to print the compiled content (info format) of the extension instance */
     lyplg_ext_free_clb free;                /**< Free the extension instance specific data created by ::lyplg_ext.compile callback */
+
+    lyplg_ext_data_parse_clb parse;         /**< Callback to parse data instance according to the extension definition. */
+    lyplg_ext_data_validation_clb validate; /**< Callback to decide if data instance is valid according to the schema. */
 };
 
 struct lyplg_ext_record {
@@ -189,7 +208,7 @@ struct lyplg_ext_record {
                                       Instead, there should be defined multiple items in the plugins list, each with the
                                       different revision, but all with the same pointer to the plugin functions. The
                                       only valid use case for the NULL revision is the case the module has no revision. */
-    const char *name;            /**< name of the extension */
+    const char *name;            /**< YANG name of the extension */
 
     /* runtime data */
     struct lyplg_ext plugin;     /**< data to utilize plugin implementation */

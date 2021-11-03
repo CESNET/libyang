@@ -18,11 +18,6 @@
 
 #include <stdint.h>
 
-extern struct lyplg_ext metadata_plugin; /* plugins_exts_metadata.c */
-extern struct lyplg_ext nacm_plugin;     /* plugins_exts_nacm.c */
-extern struct lyplg_ext yangdata_plugin; /* plugins_exts_yangdata.c */
-
-/* internal libyang headers - do not make them accessible to the extension plugins in plugins_exts_*.c */
 #include "common.h"
 #include "printer_internal.h"
 #include "schema_compile.h"
@@ -61,4 +56,16 @@ LIBYANG_API_DEF uint16_t *
 lys_ypr_ctx_get_level(const struct lyspr_ctx *ctx)
 {
     return &((struct lyspr_ctx *)ctx)->level;
+}
+
+API const struct lys_module *
+lysc_ctx_get_cur_mod(const struct lysc_ctx *ctx)
+{
+    return ctx->cur_mod;
+}
+
+API struct lysp_module *
+lysc_ctx_get_pmod(const struct lysc_ctx *ctx)
+{
+    return ctx->pmod;
 }
