@@ -3902,7 +3902,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
     const char *val;
     char quot;
 
-    for (key = lyd_child(node); key && (key->schema->flags & LYS_KEY); key = key->next) {
+    for (key = lyd_child(node); key && key->schema && (key->schema->flags & LYS_KEY); key = key->next) {
         val = lyd_get_value(key);
         len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
         LY_CHECK_RET(lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static));
