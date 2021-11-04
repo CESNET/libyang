@@ -333,10 +333,19 @@ static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
     ly_bool dynamic;
+    LY_DATA_TYPE basetype;
     const char *value = val->realtype->plugin->print(ctx->ctx, val, LY_VALUE_JSON, NULL, &dynamic, NULL);
 
+    basetype = val->realtype->basetype;
+
+print_val:
     /* leafref is not supported */
-    switch (val->realtype->basetype) {
+    switch (basetype) {
+    case LY_TYPE_UNION:
+        /* use the resolved type */
+        basetype = val->subvalue->value.realtype->basetype;
+        goto print_val;
+
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
     case LY_TYPE_BITS:
@@ -346,7 +355,6 @@ json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
     case LY_TYPE_UINT64:
     case LY_TYPE_DEC64:
     case LY_TYPE_IDENT:
-    case LY_TYPE_UNION:
         json_print_string(ctx->out, value);
         break;
 
