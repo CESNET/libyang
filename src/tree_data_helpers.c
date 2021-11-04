@@ -592,6 +592,9 @@ lyd_node_schema(const struct lyd_node *node)
             /* get schema node */
             schema = lys_find_child(schema, mod ? mod : schema->module, LYD_NAME(iter), 0, 0, 0);
         }
+
+        /* remember to move to the descendant */
+        prev_iter = iter;
     } while (schema && (iter != node));
 
     return schema;
