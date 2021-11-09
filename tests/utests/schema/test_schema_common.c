@@ -997,17 +997,18 @@ test_key_order(void **state)
 
     struct module_clb_list list1[] = {
         {"a", "module a {"
-                "yang-version 1.1;"
-                "namespace urn:test:a;"
-                "prefix a;"
-                "list l {"
-                "  key \"k1 k2\";"
-                "  leaf k2 {type string;}"
-                "  leaf k1 {type string;}"
-                "}"
-                "}"},
+            "yang-version 1.1;"
+            "namespace urn:test:a;"
+            "prefix a;"
+            "list l {"
+            "  key \"k1 k2\";"
+            "  leaf k2 {type string;}"
+            "  leaf k1 {type string;}"
+            "}"
+            "}"},
         {NULL, NULL}
     };
+
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list1);
     mod = ly_ctx_load_module(UTEST_LYCTX, "a", NULL, NULL);
     assert_non_null(mod);
@@ -1019,23 +1020,24 @@ test_key_order(void **state)
 
     struct module_clb_list list2[] = {
         {"b", "module b {"
-                "yang-version 1.1;"
-                "namespace urn:test:b;"
-                "prefix b;"
-                "list l {"
-                "  key \"k1 k2 k3 k4\";"
-                "  leaf k4 {type string;}"
-                "  container c {"
-                "    leaf l1 {type string;}"
-                "  }"
-                "  leaf k2 {type string;}"
-                "  leaf l2 {type string;}"
-                "  leaf k1 {type string;}"
-                "  leaf k3 {type string;}"
-                "}"
-                "}"},
+            "yang-version 1.1;"
+            "namespace urn:test:b;"
+            "prefix b;"
+            "list l {"
+            "  key \"k1 k2 k3 k4\";"
+            "  leaf k4 {type string;}"
+            "  container c {"
+            "    leaf l1 {type string;}"
+            "  }"
+            "  leaf k2 {type string;}"
+            "  leaf l2 {type string;}"
+            "  leaf k1 {type string;}"
+            "  leaf k3 {type string;}"
+            "}"
+            "}"},
         {NULL, NULL}
     };
+
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list2);
     mod = ly_ctx_load_module(UTEST_LYCTX, "b", NULL, NULL);
     assert_non_null(mod);
