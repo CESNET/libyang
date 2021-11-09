@@ -988,3 +988,64 @@ test_includes(void **state)
         CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (sub_c_one) are not necessary.", NULL);
     }
 }
+
+void
+test_key_order(void **state)
+{
+    struct lys_module *mod;
+    const struct lysc_node *node;
+
+    struct module_clb_list list1[] = {
+        {"a", "module a {"
+                "yang-version 1.1;"
+                "namespace urn:test:a;"
+                "prefix a;"
+                "list l {"
+                "  key \"k1 k2\";"
+                "  leaf k2 {type string;}"
+                "  leaf k1 {type string;}"
+                "}"
+                "}"},
+        {NULL, NULL}
+    };
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list1);
+    mod = ly_ctx_load_module(UTEST_LYCTX, "a", NULL, NULL);
+    assert_non_null(mod);
+
+    node = lysc_node_child(mod->compiled->data);
+    assert_string_equal("k1", node->name);
+    node = node->next;
+    assert_string_equal("k2", node->name);
+
+    struct module_clb_list list2[] = {
+        {"b", "module b {"
+                "yang-version 1.1;"
+                "namespace urn:test:b;"
+                "prefix b;"
+                "list l {"
+                "  key \"k1 k2 k3 k4\";"
+                "  leaf k4 {type string;}"
+                "  container c {"
+                "    leaf l1 {type string;}"
+                "  }"
+                "  leaf k2 {type string;}"
+                "  leaf l2 {type string;}"
+                "  leaf k1 {type string;}"
+                "  leaf k3 {type string;}"
+                "}"
+                "}"},
+        {NULL, NULL}
+    };
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list2);
+    mod = ly_ctx_load_module(UTEST_LYCTX, "b", NULL, NULL);
+    assert_non_null(mod);
+
+    node = lysc_node_child(mod->compiled->data);
+    assert_string_equal("k1", node->name);
+    node = node->next;
+    assert_string_equal("k2", node->name);
+    node = node->next;
+    assert_string_equal("k3", node->name);
+    node = node->next;
+    assert_string_equal("k4", node->name);
+}
