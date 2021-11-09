@@ -1427,10 +1427,13 @@ LY_ERR lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
 /**
  * @brief Create new JSON attribute for an opaque data node. To create an XML attribute, use ::lyd_new_attr2().
  *
- * @param[in] parent Parent opaque node for the attribute being created.
- * @param[in] module_name Name of the module of the attribute being created. There may be none.
- * @param[in] name Attribute name. It can include the module name as the prefix.
- * @param[in] value Attribute value, may be NULL.
+ * Note that for an attribute to be later resolved as YANG metadata, it needs @p module_nane and a prefix in @p name.
+ *
+ * @param[in] parent Parent opaque node for the attribute.
+ * @param[in] module_name Optional name of the module of the attribute.
+ * @param[in] name Attribute name with optional prefix, which is a module name. If the prefix is set, it is also stored
+ * as the explicit module name if @p module_name is not set.
+ * @param[in] value Optional attribute value.
  * @param[out] attr Optional created attribute.
  * @return LY_ERR value.
  */
@@ -1440,10 +1443,12 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
 /**
  * @brief Create new XML attribute for an opaque data node. To create a JSON attribute, use ::lyd_new_attr().
  *
+ * Note that for an attribute to be later resolved as YANG metadata, it needs @p module_ns and a prefix in @p name.
+ *
  * @param[in] parent Parent opaque node for the attribute being created.
- * @param[in] module_ns Namespace of the module of the attribute being created. There may be none.
- * @param[in] name Attribute name. It can include an XML prefix.
- * @param[in] value Attribute value, may be NULL.
+ * @param[in] module_ns Optional namespace of the module of the attribute.
+ * @param[in] name Attribute name with optional prefix, which is an XML prefix.
+ * @param[in] value Optional attribute value.
  * @param[out] attr Optional created attribute.
  * @return LY_ERR value.
  */
