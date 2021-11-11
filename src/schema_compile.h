@@ -65,8 +65,11 @@ struct lys_depset_unres {
     struct ly_set musts;                /**< set of musts to check */
     struct ly_set leafrefs;             /**< to validate target of leafrefs */
     struct ly_set dflts;                /**< set of incomplete default values */
-    struct ly_set disabled;             /**< set of compiled nodes whose if-feature(s) was not satisfied (stored ::lysc_node *) */
+    struct ly_set disabled;             /**< set of compiled nodes whose if-feature(s) was not satisfied
+                                             (stored ::lysc_node *) */
     struct ly_set disabled_leafrefs;    /**< subset of the lys_depset_unres.disabled to validate target of disabled leafrefs */
+    struct ly_set disabled_bitenums;    /**< set of enumation/bits leaves/leaf-lists with bits/enums to disable
+                                             (stored ::lysc_node_leaf *) */
 };
 
 /**

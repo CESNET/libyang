@@ -244,6 +244,26 @@ lysc_unres_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llis
 }
 
 /**
+ * @brief Add a bits/enumeration type to unres.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] leaf Leaf of type bits/enumeration whose disabled items to free.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysc_unres_bitenum_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf)
+{
+    if (ctx->compile_opts & (LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING)) {
+        /* skip groupings and redundant for disabled nodes */
+        return LY_SUCCESS;
+    }
+
+    LY_CHECK_RET(ly_set_add(&ctx->unres->disabled_bitenums, leaf, 1, NULL));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Duplicate the compiled pattern structure.
  *
  * Instead of duplicating memory, the reference counter in the @p orig is increased.
@@ -1457,12 +1477,6 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             }
         }
 
-        /* evaluate if-ffeatures */
-        LY_CHECK_RET(lys_eval_iffeatures(ctx->ctx, enums_p[u].iffeatures, &enabled));
-        if (!enabled) {
-            continue;
-        }
-
         /* add new enum/bit */
         LY_ARRAY_NEW_RET(ctx->ctx, *bitenums, e, LY_EMEM);
         DUP_STRING_GOTO(ctx->ctx, enums_p[u].name, e->name, ret, done);
@@ -1475,6 +1489,13 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
             e->position = cur_pos;
         }
         COMPILE_EXTS_GOTO(ctx, enums_p[u].exts, e->exts, e, ret, done);
+
+        /* evaluate if-ffeatures */
+        LY_CHECK_RET(lys_eval_iffeatures(ctx->ctx, enums_p[u].iffeatures, &enabled));
+        if (!enabled) {
+            /* set only flag, later resolved and removed */
+            e->flags |= LYS_DISABLED;
+        }
 
         if (basetype == LY_TYPE_BITS) {
             /* keep bits ordered by position */
@@ -2783,6 +2804,9 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
         struct lysc_node_leaf *leaf)
 {
     struct lysp_qname *dflt;
+    struct lysc_type **t;
+    LY_ARRAY_COUNT_TYPE u, count;
+    ly_bool in_unres = 0;
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, leaf->name, type_p, &leaf->type,
             leaf->units ? NULL : &leaf->units, &dflt));
@@ -2795,10 +2819,24 @@ lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, stru
     /* store leafref(s) to be resolved */
     LY_CHECK_RET(lysc_unres_leafref_add(ctx, leaf, type_p->pmod));
 
-    if (leaf->type->basetype == LY_TYPE_EMPTY) {
-        if ((leaf->nodetype == LYS_LEAFLIST) && (ctx->pmod->version < LYS_VERSION_1_1)) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
-            return LY_EVALID;
+    /* type-specific checks */
+    if (leaf->type->basetype == LY_TYPE_UNION) {
+        t = ((struct lysc_type_union *)leaf->type)->types;
+        count = LY_ARRAY_COUNT(t);
+    } else {
+        t = &leaf->type;
+        count = 1;
+    }
+    for (u = 0; u < count; ++u) {
+        if (t[u]->basetype == LY_TYPE_EMPTY) {
+            if ((leaf->nodetype == LYS_LEAFLIST) && (ctx->pmod->version < LYS_VERSION_1_1)) {
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
+                return LY_EVALID;
+            }
+        } else if (!in_unres && ((t[u]->basetype == LY_TYPE_BITS) || (t[u]->basetype == LY_TYPE_ENUM))) {
+            /* store in unres for all disabled bits/enums to be removed */
+            LY_CHECK_RET(lysc_unres_bitenum_add(ctx, leaf));
+            in_unres = 1;
         }
     }
 

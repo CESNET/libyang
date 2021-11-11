@@ -648,7 +648,7 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
     free(*pattern);
 }
 
-static void
+void
 lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_bitenum_item *item)
 {
     lydict_remove(ctx, item->name);

@@ -50,6 +50,7 @@ void test_collision_feature(void **state);
 void test_accessible_tree(void **state);
 void test_includes(void **state);
 void test_key_order(void **state);
+void test_disabled_enum(void **state);
 
 /* test_schema_stmts.c */
 void test_identity(void **state);
@@ -74,6 +75,7 @@ main(void)
         UTEST(test_accessible_tree),
         UTEST(test_includes),
         UTEST(test_key_order),
+        UTEST(test_disabled_enum),
 
         /** test_schema_stmts.c */
         UTEST(test_identity),

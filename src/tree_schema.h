@@ -840,11 +840,11 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x|x|x|x| |x|
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x|x|x|x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x|x|x|x| |x|
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x|x|x|x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x|x|x|x| |x|
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x|x|x|x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -856,6 +856,7 @@ struct lysp_deviation {
  *         LYS_UNIQUE       | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
+ *         LYS_DISABLED     | | | | | | | | | | | | |x| |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | |
  *         LYS_IS_ENUM      | | | | | | | | | | | | |x| |
@@ -903,6 +904,7 @@ struct lysp_deviation {
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x0100      /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_KEYLESS      0x0200      /**< flag for list without any key, applicable only to ::lysc_node_list */
+#define LYS_DISABLED     0x0100      /**< internal flag for a disabled statement, used only for bits/enums */
 #define LYS_FENABLED     0x20        /**< feature enabled flag, applicable only to ::lysp_feature. */
 #define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by system configuration lists, applicable only to
                                           ::lysc_node_leaflist/::lysp_node_leaflist and ::lysc_node_list/::lysp_node_list */
@@ -1571,8 +1573,8 @@ struct lysc_type_bitenum_item {
         int32_t value;           /**< integer value associated with the enumeration */
         uint32_t position;       /**< non-negative integer value associated with the bit */
     };
-    uint16_t flags;              /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_SET_VALUE
-                                          values are allowed */
+    uint16_t flags;              /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_IS_ENUM values
+                                      are allowed */
 };
 
 struct lysc_type_enum {

@@ -990,6 +990,75 @@ cleanup:
 }
 
 /**
+ * @brief Remove all disabled bits/enums from a sized array.
+ *
+ * @param[in] ctx Context with the dictionary.
+ * @param[in] items Sized array of bits/enums.
+ */
+static void
+lys_compile_unres_disabled_bitenum_remove(struct ly_ctx *ctx, struct lysc_type_bitenum_item *items)
+{
+    LY_ARRAY_COUNT_TYPE u = 0, last_u;
+
+    while (u < LY_ARRAY_COUNT(items)) {
+        if (items[u].flags & LYS_DISABLED) {
+            /* free the disabled item */
+            lysc_enum_item_free(ctx, &items[u]);
+
+            /* replace it with the following items */
+            last_u = LY_ARRAY_COUNT(items) - 1;
+            if (u < last_u) {
+                memmove(items + u, items + u + 1, (last_u - u) * sizeof *items);
+            }
+
+            /* one item less */
+            LY_ARRAY_DECREMENT(items);
+            continue;
+        }
+
+        ++u;
+    }
+}
+
+/**
+ * @brief Find and remove all disabled bits/enums in a leaf/leaf-list type.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] leaf Leaf/leaf-list to check.
+ * @return LY_ERR value
+ */
+static LY_ERR
+lys_compile_unres_disabled_bitenum(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf)
+{
+    struct lysc_type **t;
+    LY_ARRAY_COUNT_TYPE u, count;
+    struct lysc_type_enum *ent;
+
+    if (leaf->type->basetype == LY_TYPE_UNION) {
+        t = ((struct lysc_type_union *)leaf->type)->types;
+        count = LY_ARRAY_COUNT(t);
+    } else {
+        t = &leaf->type;
+        count = 1;
+    }
+    for (u = 0; u < count; ++u) {
+        if ((t[u]->basetype == LY_TYPE_BITS) || (t[u]->basetype == LY_TYPE_ENUM)) {
+            /* remove all disabled items */
+            ent = (struct lysc_type_enum *)(t[u]);
+            lys_compile_unres_disabled_bitenum_remove(ctx->ctx, ent->enums);
+
+            if (!LY_ARRAY_COUNT(ent->enums)) {
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS, "%s type of node \"%s\" without any (or all disabled) valid values.",
+                        (ent->basetype == LY_TYPE_BITS) ? "Bits" : "Enumeration", leaf->name);
+                return LY_EVALID;
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check leafref for its target existence on a complete compiled schema tree.
  *
  * @param[in] ctx Compile context.
@@ -1375,6 +1444,20 @@ resolve_all:
         ly_set_rm_index(&ds_unres->musts, i, NULL);
     }
 
+    /* remove disabled enums/bits */
+    for (i = 0; i < ds_unres->disabled_bitenums.count; ++i) {
+        node = ds_unres->disabled_bitenums.objs[i];
+        cctx.cur_mod = node->module;
+        cctx.pmod = node->module->parsed;
+
+        LOG_LOCSET(node, NULL, NULL, NULL);
+        ret = lys_compile_unres_disabled_bitenum(&cctx, (struct lysc_node_leaf *)node);
+        LOG_LOCBACK(1, 0, 0, 0);
+        LY_CHECK_RET(ret);
+
+        ly_set_rm_index(&ds_unres->disabled_bitenums, i, NULL);
+    }
+
     /* finish incomplete default values compilation */
     while (ds_unres->dflts.count) {
         i = ds_unres->dflts.count - 1;
@@ -1462,8 +1545,9 @@ lys_compile_unres_depset_erase(const struct ly_ctx *ctx, struct lys_glob_unres *
         lysc_unres_dflt_free(ctx, unres->ds_unres.dflts.objs[i]);
     }
     ly_set_erase(&unres->ds_unres.dflts, NULL);
-    ly_set_erase(&unres->ds_unres.disabled_leafrefs, free);
     ly_set_erase(&unres->ds_unres.disabled, NULL);
+    ly_set_erase(&unres->ds_unres.disabled_leafrefs, free);
+    ly_set_erase(&unres->ds_unres.disabled_bitenums, NULL);
 }
 
 /**

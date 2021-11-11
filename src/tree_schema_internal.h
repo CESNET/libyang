@@ -693,7 +693,16 @@ LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void 
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 /**
+ * @brief Free a bit/enum item.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] item Bit/enum item to free.
+ */
+void lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_bitenum_item *item);
+
+/**
  * @brief Free the compiled type structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] type Compiled type structure to be freed. The structure has refcount, so it is freed only in case the value is decreased to 0.
  */
@@ -701,6 +710,7 @@ void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 
 /**
  * @brief Free the compiled if-feature structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] iff Compiled if-feature structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
@@ -709,6 +719,7 @@ void lysc_iffeature_free(struct ly_ctx *ctx, struct lysc_iffeature *iff);
 
 /**
  * @brief Free the compiled identity structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] ident Compiled identity structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
@@ -717,6 +728,7 @@ void lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident);
 
 /**
  * @brief Free the compiled must structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] must Compiled must structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
@@ -741,6 +753,7 @@ void lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action);
 
 /**
  * @brief Free the items inside the compiled Notification structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] notif Compiled Notification structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
@@ -749,6 +762,7 @@ void lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif);
 
 /**
  * @brief Free the compiled extension definition and NULL the provided pointer.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] ext Compiled extension definition to be freed.
  */
@@ -756,6 +770,7 @@ void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 
 /**
  * @brief Free the compiled extension instance structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] ext Compiled extension instance structure to be cleaned.
  * Since the structure is typically part of the sized array, the structure itself is not freed.
@@ -764,6 +779,7 @@ void lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
  * @brief Free the compiled node structure.
+ *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in] node Compiled node structure to be freed.
  * @param[in] unlink Whether to first unlink the node before freeing.
@@ -783,12 +799,14 @@ void lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *no
 
 /**
  * @brief Free the compiled schema structure.
+ *
  * @param[in,out] module Compiled schema module structure to free.
  */
 void lysc_module_free(struct lysc_module *module);
 
 /**
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
+ *
  * @param[in,out] module Schema module structure to free.
  */
 void lys_module_free(struct lys_module *module);

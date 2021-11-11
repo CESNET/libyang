@@ -1051,3 +1051,41 @@ test_key_order(void **state)
     node = node->next;
     assert_string_equal("k4", node->name);
 }
+
+void
+test_disabled_enum(void **state)
+{
+    const char *str;
+
+    /* no enabled enum */
+    str = "module a {"
+            "yang-version 1.1;"
+            "namespace urn:test:a;"
+            "prefix a;"
+            "feature f;"
+            "leaf l {type enumeration {"
+            "  enum e1 {if-feature f;}"
+            "  enum e2 {if-feature f;}"
+            "}}"
+            "}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG_CTX("Enumeration type of node \"l\" without any (or all disabled) valid values.", "Schema location /a:l.");
+
+    /* disabled default value */
+    str = "module a {"
+            "yang-version 1.1;"
+            "namespace urn:test:a;"
+            "prefix a;"
+            "feature f;"
+            "leaf l {"
+            "  type enumeration {"
+            "    enum e1 {if-feature f;}"
+            "    enum e2;"
+            "  }"
+            "  default e1;"
+            "}"
+            "}";
+    assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid enumeration value \"e1\".).",
+            "Schema location /a:l.");
+}
