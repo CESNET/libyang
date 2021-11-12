@@ -605,8 +605,8 @@ LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root,
  * and free all structures internally used by libyang. If the caller uses
  * multiple contexts, the function should be called for each used context.
  *
- * All instance data are supposed to be freed before destroying the context.
- * Data models are destroyed automatically as part of ::ly_ctx_destroy() call.
+ * All instance data are supposed to be freed before destroying the context using ::lyd_free_all(), for example.
+ * Data models (schemas) are destroyed automatically as part of ::ly_ctx_destroy() call.
  *
  * Note that the data stored by user into the ::lysc_node.priv pointer are kept
  * untouched and the caller is responsible for freeing this private data.
