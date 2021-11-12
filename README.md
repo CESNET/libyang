@@ -47,6 +47,11 @@ the whole documentation and the API.
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
+## Packages
+
+Binary RPM or DEB packages of the latest release can be built locally using `apkg`, look into `README` in
+the `distro` directory.
+
 ## Requirements
 
 ### Build Requirements
