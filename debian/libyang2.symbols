@@ -111,12 +111,16 @@ libyang.so.2 libyang2 #MINVER#
  lyd_dup_meta_single@Base 2.0.0~
  lyd_dup_siblings@Base 2.0.0~
  lyd_dup_single@Base 2.0.0~
+ lyd_eval_xpath2@Base 2.0.112~
+ lyd_eval_xpath@Base 2.0.112~
  lyd_find_meta@Base 2.0.0~
  lyd_find_path@Base 2.0.0~
  lyd_find_sibling_dup_inst_set@Base 2.0.0~
  lyd_find_sibling_first@Base 2.0.0~
  lyd_find_sibling_opaq_next@Base 2.0.0~
  lyd_find_sibling_val@Base 2.0.0~
+ lyd_find_target@Base 2.0.112~
+ lyd_find_xpath2@Base 2.0.112~
  lyd_find_xpath@Base 2.0.0~
  lyd_first_sibling@Base 2.0.0~
  lyd_free_all@Base 2.0.0~
@@ -150,6 +154,8 @@ libyang.so.2 libyang2 #MINVER#
  lyd_new_inner@Base 2.0.0~
  lyd_new_list2@Base 2.0.0~
  lyd_new_list@Base 2.0.0~
+ lyd_new_list_bin@Base 2.0.112~
+ lyd_new_list_canon@Base 2.0.112~
  lyd_new_meta2@Base 2.0.0~
  lyd_new_meta@Base 2.0.0~
  lyd_new_opaq2@Base 2.0.0~
@@ -176,6 +182,7 @@ libyang.so.2 libyang2 #MINVER#
  lyd_print_path@Base 2.0.0~
  lyd_print_tree@Base 2.0.0~
  lyd_target@Base 2.0.0~
+ lyd_unlink_siblings@Base 2.0.112~
  lyd_unlink_tree@Base 2.0.0~
  lyd_validate_all@Base 2.0.0~
  lyd_validate_module@Base 2.0.0~
@@ -192,6 +199,7 @@ libyang.so.2 libyang2 #MINVER#
  lyplg_type_bits_bitmap_size@Base 2.0.7
  lyplg_type_bits_is_bit_set@Base 2.0.7
  lyplg_type_check_hints@Base 2.0.0~
+ lyplg_type_check_status@Base 2.0.112~
  lyplg_type_compare_binary@Base 2.0.7
  lyplg_type_compare_bits@Base 2.0.7
  lyplg_type_compare_boolean@Base 2.0.7
@@ -223,6 +231,7 @@ libyang.so.2 libyang2 #MINVER#
 #MISSING: 2.0.7# lyplg_type_hash_union@Base 2.0.0~
  lyplg_type_identity_isderived@Base 2.0.0~
  lyplg_type_identity_module@Base 2.0.0~
+ lyplg_type_lypath_check_status@Base 2.0.112~
  lyplg_type_lypath_free@Base 2.0.0~
  lyplg_type_lypath_new@Base 2.0.0~
  lyplg_type_make_implemented@Base 2.0.0~
@@ -275,6 +284,7 @@ libyang.so.2 libyang2 #MINVER#
  lys_find_xpath_atoms@Base 2.0.0~
  lys_getnext@Base 2.0.0~
  lys_getnext_ext@Base 2.0.0~
+ lys_identity_iffeature_value@Base 2.0.112~
  lys_nodetype2stmt@Base 2.0.0~
  lys_nodetype2str@Base 2.0.0~
  lys_parse@Base 2.0.0~
@@ -306,6 +316,7 @@ libyang.so.2 libyang2 #MINVER#
  lysc_node_musts@Base 2.0.0~
  lysc_node_notifs@Base 2.0.0~
  lysc_node_when@Base 2.0.0~
+ lysc_owner_module@Base 2.0.112~
  lysc_path@Base 2.0.0~
  lysc_tree_dfs_full@Base 2.0.0~
  lysp_feature_next@Base 2.0.0~
@@ -315,3 +326,5 @@ libyang.so.2 libyang2 #MINVER#
  lysp_node_notifs@Base 2.0.0~
  lysp_node_typedefs@Base 2.0.0~
  lyxp_get_expr@Base 2.0.0~
+ lyxp_vars_free@Base 2.0.112~
+ lyxp_vars_set@Base 2.0.112~
