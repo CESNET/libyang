@@ -1,3 +1,9 @@
+libyang2 (2.0.112-2) unstable; urgency=medium
+
+  * Fix the autopkgtests for libyang2 package
+
+ -- Ondřej Surý <ondrej@debian.org>  Sat, 13 Nov 2021 13:26:48 +0100
+
 libyang2 (2.0.112-1) unstable; urgency=medium
 
   * New upstream version.
