@@ -1445,7 +1445,8 @@ resolve_all:
     }
 
     /* remove disabled enums/bits */
-    for (i = 0; i < ds_unres->disabled_bitenums.count; ++i) {
+    while (ds_unres->disabled_bitenums.count) {
+        i = ds_unres->disabled_bitenums.count - 1;
         node = ds_unres->disabled_bitenums.objs[i];
         cctx.cur_mod = node->module;
         cctx.pmod = node->module->parsed;
