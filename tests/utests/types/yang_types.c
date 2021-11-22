@@ -101,6 +101,10 @@ test_data_xml(void **state)
     /* canonize */
     TEST_SUCCESS_XML("a", "l", "2005-02-29T23:15:15-02:00", STRING, "2005-03-01T23:15:15-02:00");
 
+    /* unknown timezone */
+    TEST_SUCCESS_XML("a", "l", "2017-02-01T00:00:00-00:00", STRING, "2017-02-01T00:00:00-00:00");
+    TEST_SUCCESS_XML("a", "l", "2021-02-29T00:00:00-00:00", STRING, "2021-03-01T00:00:00-00:00");
+
     TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00");
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
             "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
@@ -178,6 +182,7 @@ test_lyb(void **state)
     /* date-and-time */
     TEST_SUCCESS_LYB("a", "l", "2005-05-25T23:15:15.88888Z");
     TEST_SUCCESS_LYB("a", "l", "2005-05-31T23:15:15-08:59");
+    TEST_SUCCESS_LYB("a", "l", "2005-05-01T20:15:15-00:00");
 
     /* xpath1.0 */
     TEST_SUCCESS_LYB("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']");
