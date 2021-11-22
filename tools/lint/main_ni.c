@@ -271,10 +271,25 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
     }
 }
 
+static struct schema_features *
+get_features_not_applied(const struct ly_set *fset)
+{
+    for (uint32_t u = 0; u < fset->count; ++u) {
+        struct schema_features *sf = fset->objs[u];
+        if (!sf->applied) {
+            return sf;
+        }
+    }
+
+    return NULL;
+}
+
 static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {
     struct ly_in *in;
+    struct schema_features *sf;
+    const char *all_features[] = {"*", NULL};
 
     /* process the operational content if any */
     if (c->data_operational.path) {
@@ -345,6 +360,19 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             ly_in_free(in, 1);
             in = NULL;
         }
+    }
+
+    /* check that all secified features were applied */
+    sf = get_features_not_applied(&c->schema_features);
+    if (sf) {
+        if (ly_ctx_get_module_implemented(c->ctx, sf->mod_name)) {
+            YLMSG_E("Specified features not applied, module \"%s\" must be parsed explicitly.\n", sf->mod_name);
+        } else if (ly_ctx_get_module_latest(c->ctx, sf->mod_name)) {
+            YLMSG_E("Specified features not applied, module \"%s\" not implemented.\n", sf->mod_name);
+        } else {
+            YLMSG_E("Specified features not applied, module \"%s\" not found.\n", sf->mod_name);
+        }
+        goto error;
     }
 
     return 0;

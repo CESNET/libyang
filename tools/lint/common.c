@@ -114,6 +114,7 @@ get_features(struct ly_set *fset, const char *module, const char ***features)
         if (!strcmp(module, sf->mod_name)) {
             /* matched module - explicitly set features */
             *features = (const char **)sf->features;
+            sf->applied = 1;
             return;
         }
     }
