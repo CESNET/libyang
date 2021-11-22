@@ -152,8 +152,11 @@ help(int shortout)
             "                explicitly specified).\n\n");
 
     printf("  -F FEATURES, --features=FEATURES\n"
-            "                Features to support, default all in all implemented modules.\n"
-            "                <modname>:[<feature>,]*\n\n");
+            "                Specific module features to support in the form <module-name>:(<feature>,)*\n"
+            "                Use <feature> '*' to enable all features of a module. This option can be\n"
+            "                specified multiple times, to enable features in multiple modules. If this\n"
+            "                option is not specified, all the features in all the implemented modules\n"
+            "                are enabled.\n\n");
 
     printf("  -i, --make-implemented\n"
             "                Make the imported modules \"referenced\" from any loaded\n"
@@ -293,8 +296,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             LY_ERR ret;
             uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
             char *dir, *module;
-            const char **features = NULL;
-            uint16_t ctx_opts = 0;
+            const char **features;
             struct lys_module *mod;
 
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
@@ -307,12 +309,10 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             }
 
             /* get features list for this module */
-            get_features(&c->schema_features, module, &features);
-
-            /* set imp feature flag if all should be enabled */
             if (!c->schema_features.count) {
-                ctx_opts = LY_CTX_ENABLE_IMP_FEATURES;
-                ly_ctx_set_options(c->ctx, ctx_opts);
+                features = all_features;
+            } else {
+                get_features(&c->schema_features, module, &features);
             }
 
             /* temporary cleanup */
@@ -322,7 +322,6 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             /* parse module */
             ret = lys_parse(c->ctx, in, format_schema, features, &mod);
             ly_ctx_unset_searchdir_last(c->ctx, path_unset);
-            ly_ctx_unset_options(c->ctx, ctx_opts);
             ly_in_free(in, 1);
             in = NULL;
             if (ret) {
@@ -630,6 +629,11 @@ fill_context(int argc, char *argv[], struct context *c)
         } /* case 'G' */
 #endif
         } /* switch */
+    }
+
+    /* set imp feature flag if all should be enabled */
+    if (!c->schema_features.count) {
+        options_ctx |= LY_CTX_ENABLE_IMP_FEATURES;
     }
 
     /* libyang context */
