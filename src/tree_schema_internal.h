@@ -929,4 +929,13 @@ ly_bool lys_has_compiled(const struct lys_module *mod);
  */
 ly_bool lys_has_groupings(const struct lys_module *mod);
 
+/**
+ * @brief Learn whether the module qualifies for a single dep set with only this module or not.
+ *
+ * @param[in] mod Module to examine.
+ * @return Whether it qualifies as a single dep set or not.
+ */
+#define LYS_IS_SINGLE_DEP_SET(mod) \
+        (!(mod)->parsed->features && (!lys_has_compiled(mod) || ((mod)->compiled && !lys_has_recompiled(mod))))
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
