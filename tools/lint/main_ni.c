@@ -241,7 +241,7 @@ help(int shortout)
     printf("  -G GROUPS, --debug=GROUPS\n"
             "                Enable printing of specific debugging message group\n"
             "                (nothing will be printed unless verbosity is set to debug):\n"
-            "                <group>[,<group>]* (dict, xpath)\n\n");
+            "                <group>[,<group>]* (dict, xpath, dep-sets)\n\n");
 #endif
 }
 
@@ -429,10 +429,11 @@ fill_context(int argc, char *argv[], struct context *c)
     c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
     c->line_length = 0;
 
+    opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:Omy", options, &opt_index)) != -1) {
-#else
     while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:OmyG:", options, &opt_index)) != -1) {
+#else
+    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:Omy", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'h': /* --help */
@@ -642,6 +643,9 @@ fill_context(int argc, char *argv[], struct context *c)
                 } else if (!strncasecmp(ptr, "xpath", sizeof "xpath" - 1)) {
                     dbg_groups |= LY_LDGXPATH;
                     ptr += sizeof "xpath" - 1;
+                } else if (!strncasecmp(ptr, "dep-sets", sizeof "dep-sets" - 1)) {
+                    dbg_groups |= LY_LDGDEPSETS;
+                    ptr += sizeof "dep-sets" - 1;
                 }
 
                 if (ptr[0]) {
@@ -656,6 +660,9 @@ fill_context(int argc, char *argv[], struct context *c)
             break;
         } /* case 'G' */
 #endif
+        default:
+            YLMSG_E("Invalid option or missing argument: -%c\n", optopt);
+            return -1;
         } /* switch */
     }
 
