@@ -671,6 +671,7 @@ struct lyd_value_ipv6_prefix {
 struct lyd_value_date_and_time {
     time_t time;        /**< UNIX timestamp */
     char *fractions_s;  /**< Optional fractions of a second */
+    ly_bool unknown_tz; /**< Whether the value is in the special -00:00 timezone. */
 };
 
 /**
