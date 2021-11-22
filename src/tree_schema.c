@@ -889,9 +889,9 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
     LY_ARRAY_COUNT_TYPE u, v;
     ly_bool found;
 
-    if (!lys_has_compiled(mod) || (mod->compiled && !lys_has_recompiled(mod))) {
+    if (LYS_IS_SINGLE_DEP_SET(mod)) {
         /* is already in a separate dep set */
-        if (!lys_has_groupings(mod)) {
+        if (!lys_has_groupings(mod) && !mod->parsed->features) {
             /* break the dep set here, no modules depend on this one */
             return LY_SUCCESS;
         }
@@ -926,8 +926,8 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
         imports = mod->parsed->includes[v].submodule->imports;
         LY_ARRAY_FOR(imports, u) {
             mod2 = imports[u].module;
-            if (!lys_has_compiled(mod2) || (mod2->compiled && !lys_has_recompiled(mod2))) {
-                if (!lys_has_groupings(mod2)) {
+            if (LYS_IS_SINGLE_DEP_SET(mod2)) {
+                if (!lys_has_groupings(mod2) && !mod2->parsed->features) {
                     /* break the dep set here, no modules depend on this one */
                     continue;
                 }
@@ -991,7 +991,7 @@ lys_unres_dep_sets_create_single(struct ly_set *ctx_set, struct ly_set *main_set
 
     while (i < ctx_set->count) {
         m = ctx_set->objs[i];
-        if (!lys_has_compiled(m) || (m->compiled && !lys_has_recompiled(m))) {
+        if (LYS_IS_SINGLE_DEP_SET(m)) {
             /* remove it from the set, we are processing it now */
             ly_set_rm_index(ctx_set, i, NULL);
 
