@@ -94,7 +94,7 @@ free_features(void *flist)
     struct schema_features *rec = (struct schema_features *)flist;
 
     if (rec) {
-        free(rec->module);
+        free(rec->mod_name);
         if (rec->features) {
             for (uint32_t u = 0; rec->features[u]; ++u) {
                 free(rec->features[u]);
@@ -113,7 +113,7 @@ get_features(struct ly_set *fset, const char *module, const char ***features)
     /* get features list for this module */
     for (uint32_t u = 0; u < fset->count; ++u) {
         struct schema_features *sf = (struct schema_features *)fset->objs[u];
-        if (!strcmp(module, sf->module)) {
+        if (!strcmp(module, sf->mod_name)) {
             /* matched module - explicitly set features */
             *features = (const char **)sf->features;
             return;
@@ -147,7 +147,7 @@ parse_features(const char *fstring, struct ly_set *fset)
         YLMSG_E("Invalid format of the features specification (%s)", fstring);
         return -1;
     }
-    rec->module = strndup(fstring, p - fstring);
+    rec->mod_name = strndup(fstring, p - fstring);
 
     /* start count on 2 to include terminating NULL byte */
     for (int count = 2; p; ++count) {

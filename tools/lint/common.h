@@ -48,7 +48,7 @@
  * @brief Storage for the list of the features (their names) in a specific YANG module.
  */
 struct schema_features {
-    char *module;
+    char *mod_name;
     char **features;
 };
 

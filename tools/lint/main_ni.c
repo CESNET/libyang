@@ -50,7 +50,7 @@ struct context {
     /*
      * schema
      */
-    /* set schema modules' features via --feature option (struct schema_features *) */
+    /* set schema modules' features via --features option (struct schema_features *) */
     struct ly_set schema_features;
 
     /* set of loaded schema modules (struct lys_module *) */
