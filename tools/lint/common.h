@@ -50,6 +50,7 @@
 struct schema_features {
     char *mod_name;
     char **features;
+    ly_bool applied;
 };
 
 /**
