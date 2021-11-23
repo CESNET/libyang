@@ -143,7 +143,7 @@ parse_features(const char *fstring, struct ly_set *fset)
     /* fill the record */
     p = strchr(fstring, ':');
     if (!p) {
-        YLMSG_E("Invalid format of the features specification (%s)", fstring);
+        YLMSG_E("Invalid format of the features specification (%s).\n", fstring);
         return -1;
     }
     rec->mod_name = strndup(fstring, p - fstring);
@@ -264,7 +264,7 @@ parse_cmdline(const char *cmdline, int *argc_p, char **argv_p[])
         ++count;
         r = realloc(vector, (count + 1) * sizeof *vector);
         if (!r) {
-            YLMSG_E("Memory allocation failed (%s:%d, %s),", __FILE__, __LINE__, strerror(errno));
+            YLMSG_E("Memory allocation failed (%s:%d, %s).\n", __FILE__, __LINE__, strerror(errno));
             free(vector);
             return -1;
         }
