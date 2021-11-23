@@ -289,6 +289,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 {
     struct ly_in *in;
     struct schema_features *sf;
+    struct lys_module *mod;
     const char *all_features[] = {"*", NULL};
 
     /* process the operational content if any */
@@ -340,7 +341,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             ly_in_free(in, 1);
             in = NULL;
             if (ret) {
-                YLMSG_E("Processing schema module from %s failed.\n", argv[optind + i]);
+                YLMSG_E("Parsing schema module \"%s\" failed.\n", argv[optind + i]);
                 goto error;
             }
 
@@ -362,17 +363,24 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
         }
     }
 
-    /* check that all secified features were applied */
-    sf = get_features_not_applied(&c->schema_features);
-    if (sf) {
-        if (ly_ctx_get_module_implemented(c->ctx, sf->mod_name)) {
-            YLMSG_E("Specified features not applied, module \"%s\" must be parsed explicitly.\n", sf->mod_name);
-        } else if (ly_ctx_get_module_latest(c->ctx, sf->mod_name)) {
-            YLMSG_E("Specified features not applied, module \"%s\" not implemented.\n", sf->mod_name);
-        } else {
-            YLMSG_E("Specified features not applied, module \"%s\" not found.\n", sf->mod_name);
+    /* check that all specified features were applied, apply now if possible */
+    while ((sf = get_features_not_applied(&c->schema_features))) {
+        /* try to find implemented or the latest revision of this module */
+        mod = ly_ctx_get_module_implemented(c->ctx, sf->mod_name);
+        if (!mod) {
+            mod = ly_ctx_get_module_latest(c->ctx, sf->mod_name);
         }
-        goto error;
+        if (!mod) {
+            YLMSG_E("Specified features not applied, module \"%s\" not loaded.\n", sf->mod_name);
+            goto error;
+        }
+
+        /* we have the module, implement it if needed and enable the specific features */
+        if (lys_set_implemented(mod, (const char **)sf->features)) {
+            YLMSG_E("Implementing module \"%s\" failed.\n", mod->name);
+            goto error;
+        }
+        sf->applied = 1;
     }
 
     return 0;
