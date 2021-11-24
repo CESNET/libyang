@@ -21,8 +21,8 @@
 /** plugins */
 #define LYPLG_SUFFIX "@CMAKE_SHARED_MODULE_SUFFIX@"
 #define LYPLG_SUFFIX_LEN (sizeof LYPLG_SUFFIX - 1)
-#define LYPLG_TYPE_DIR "@PLUGINS_DIR_EXTENSIONS@"
-#define LYPLG_EXT_DIR "@PLUGINS_DIR_TYPES@"
+#define LYPLG_TYPE_DIR "@PLUGINS_DIR_TYPES@"
+#define LYPLG_EXT_DIR "@PLUGINS_DIR_EXTENSIONS@"
 
 /** atomic compiler operations, to be able to use uint32_t */
 #define LY_ATOMIC_INC_BARRIER(var) __sync_fetch_and_add(&(var), 1)
