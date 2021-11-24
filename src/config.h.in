@@ -29,7 +29,7 @@
 #define LY_ATOMIC_DEC_BARRIER(var) __sync_fetch_and_sub(&(var), 1)
 
 /** printf compiler attribute */
-#if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)
+#ifdef __GNUC__
 # define _FORMAT_PRINTF(FORM, ARGS) __attribute__((format (printf, FORM, ARGS)))
 #else
 # define _FORMAT_PRINTF(FORM, ARGS)
