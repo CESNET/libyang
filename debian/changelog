@@ -1,3 +1,9 @@
+libyang2 (2.0.112-5) unstable; urgency=medium
+
+  * Update the autopkgtest to have separate test directory
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 24 Nov 2021 20:40:37 +0100
+
 libyang2 (2.0.112-4) unstable; urgency=medium
 
   * Fix autopkgtest test file location after package rename
