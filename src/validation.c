@@ -1594,6 +1594,7 @@ API LY_ERR
 lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, ctx, LY_EINVAL);
     if (!ctx) {
         ctx = LYD_CTX(*tree);
     }
@@ -1608,6 +1609,7 @@ API LY_ERR
 lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_CHECK_ARG_RET(NULL, tree, *tree || module, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
@@ -1780,6 +1782,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
 
     LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_RPC_YANG) ||
             (data_type == LYD_TYPE_NOTIF_YANG) || (data_type == LYD_TYPE_REPLY_YANG), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(op_tree), dep_tree ? LYD_CTX(dep_tree) : NULL, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }

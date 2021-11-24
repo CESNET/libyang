@@ -871,9 +871,10 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
 {
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
-    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -941,12 +942,13 @@ _lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const ch
 {
     struct lyd_node *ret = NULL, *key;
     const struct lysc_node *schema, *key_s;
-    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
     const void *key_val;
     uint32_t key_len;
     LY_ERR rc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -1085,9 +1087,10 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
 {
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
-    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -1141,6 +1144,7 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -1216,9 +1220,10 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
 {
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
-    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
     LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -1273,6 +1278,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
     size_t pref_len, name_len;
 
     LY_CHECK_ARG_RET(ctx, ctx || parent, name, module || strchr(name, ':'), parent || meta, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     if (!ctx) {
         ctx = LYD_CTX(parent);
     }
@@ -1314,6 +1320,7 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_d
     const struct lys_module *mod;
 
     LY_CHECK_ARG_RET(NULL, ctx, attr, parent || meta, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
     if (parent && !parent->schema) {
         LOGERR(ctx, LY_EINVAL, "Cannot add metadata to an opaque node \"%s\".", ((struct lyd_node_opaq *)parent)->name);
@@ -1353,6 +1360,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
     struct lyd_node *ret = NULL;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, !prefix || !strcmp(prefix, module_name), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -1380,6 +1388,7 @@ lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *nam
     struct lyd_node *ret = NULL;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_ns, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, LY_EINVAL);
 
     if (!ctx) {
         ctx = LYD_CTX(parent);
@@ -2046,6 +2055,7 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, NULL, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
@@ -2057,6 +2067,8 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
+
     return lyd_new_path_(parent, ctx, NULL, path, value, value_len, value_type, options, new_parent, new_node);
 }
 
@@ -2068,6 +2080,8 @@ lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, c
 
     LY_CHECK_ARG_RET(ctx, ext, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_PATH_BIN_VALUE) || !(options & LYD_NEW_PATH_CANON_VALUE), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
+
     return lyd_new_path_(parent, ctx, ext, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
 
@@ -2257,6 +2271,7 @@ lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t 
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(ctx, tree, *tree || ctx, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, ctx, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
@@ -2288,13 +2303,15 @@ cleanup:
 }
 
 API LY_ERR
-lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options, struct lyd_node **diff)
+lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options,
+        struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *root, *d = NULL;
     struct ly_set node_when = {0}, node_exts = {0};
 
     LY_CHECK_ARG_RET(NULL, tree, module, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(*tree ? LYD_CTX(*tree) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }
@@ -2656,6 +2673,7 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
     struct lyd_node *iter;
 
     LY_CHECK_ARG_RET(NULL, parent, node, !parent->schema || (parent->schema->nodetype & LYD_NODE_INNER), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(parent), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(parent->schema, NULL, node->schema));
 
@@ -2683,6 +2701,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     struct lyd_node *iter;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(sibling ? LYD_CTX(sibling) : NULL, LYD_CTX(node), LY_EINVAL);
 
     if (sibling) {
         LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
@@ -2724,6 +2743,7 @@ API LY_ERR
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
@@ -2743,6 +2763,7 @@ API LY_ERR
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
@@ -3812,6 +3833,8 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(*target ? LYD_CTX(*target) : NULL, source ? LYD_CTX(source) : NULL, mod ? mod->ctx : NULL,
+            LY_EINVAL);
 
     if (!source) {
         /* nothing to merge */
@@ -4080,6 +4103,7 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
     size_t pref_len, name_len;
 
     LY_CHECK_ARG_RET(NULL, module || strchr(name, ':'), name, NULL);
+    LY_CHECK_CTX_EQUAL_RET(first ? first->annotation->module->ctx : NULL, module ? module->ctx : NULL, NULL);
 
     if (!first) {
         return NULL;
@@ -4121,6 +4145,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     ly_bool found;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
 
     if (!siblings || (siblings->schema && target->schema &&
             (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
@@ -4288,6 +4313,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     struct lyd_node *target = NULL;
 
     LY_CHECK_ARG_RET(NULL, schema, !(schema->nodetype & (LYS_CHOICE | LYS_CASE)), LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, schema->module->ctx, LY_EINVAL);
 
     if (!siblings || (siblings->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(schema)))) {
         /* no data or schema mismatch */
@@ -4330,6 +4356,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     struct lyd_node_inner *parent;
 
     LY_CHECK_ARG_RET(NULL, target, lysc_is_dup_inst_list(target->schema), set, LY_EINVAL);
+    LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
 
     LY_CHECK_RET(ly_set_new(set));
 

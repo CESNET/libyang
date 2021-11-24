@@ -1845,6 +1845,8 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
 /**
  * @brief Compare 2 data nodes if they are equivalent.
  *
+ * Works correctly even if @p node1 and @p node2 have different contexts.
+ *
  * @param[in] node1 The first node to compare.
  * @param[in] node2 The second node to compare.
  * @param[in] options Various @ref datacompareoptions.
@@ -1856,6 +1858,8 @@ LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *n
 /**
  * @brief Compare 2 lists of siblings if they are equivalent.
  *
+ * Works correctly even if @p node1 and @p node2 have different contexts.
+ *
  * @param[in] node1 The first sibling list to compare.
  * @param[in] node2 The second sibling list to compare.
  * @param[in] options Various @ref datacompareoptions.
@@ -1866,6 +1870,8 @@ LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node 
 
 /**
  * @brief Compare 2 metadata.
+ *
+ * If @p meta1 and @p meta2 have different contexts, they are never equivalent.
  *
  * @param[in] meta1 First metadata.
  * @param[in] meta2 Second metadata.
