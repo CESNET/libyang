@@ -1,3 +1,9 @@
+libyang2 (2.0.112-6) unstable; urgency=medium
+
+  * Add proper Multi-Arch headers
+
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 25 Nov 2021 10:05:05 +0100
+
 libyang2 (2.0.112-5) unstable; urgency=medium
 
   * Update the autopkgtest to have separate test directory
