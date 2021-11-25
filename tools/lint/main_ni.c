@@ -132,8 +132,10 @@ help(int shortout)
     printf("Options:\n"
             "  -h, --help    Show this help message and exit.\n"
             "  -v, --version Show version number and exit.\n"
-            "  -V, --verbose Show verbose messages, can be used multiple times to\n"
-            "                increase verbosity.\n");
+            "  -V, --verbose Increase libyang verbosity and show verbose messages. If specified\n"
+            "                a second time, show even debug messages.\n"
+            "  -Q, --quiet   Decrease libyang verbosity and hide warnings. If specified a second\n"
+            "                time, hide errors so no libyang messages are printed.\n");
 
     printf("  -f FORMAT, --format=FORMAT\n"
             "                Convert input into FORMAT. Supported formats: \n"
@@ -407,6 +409,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"help",             no_argument,       NULL, 'h'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
+        {"quiet",            no_argument,       NULL, 'Q'},
         {"format",           required_argument, NULL, 'f'},
         {"path",             required_argument, NULL, 'p'},
         {"disable-searchdir", no_argument,      NULL, 'D'},
@@ -439,9 +442,9 @@ fill_context(int argc, char *argv[], struct context *c)
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:OmyG:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:OmyG:", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "hvVf:p:DF:iP:qs:net:d:lL:o:Omy", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:Omy", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'h': /* --help */
@@ -454,13 +457,24 @@ fill_context(int argc, char *argv[], struct context *c)
 
         case 'V': { /* --verbose */
             LY_LOG_LEVEL verbosity = ly_log_level(LY_LLERR);
-            ly_log_level(verbosity);
-
             if (verbosity < LY_LLDBG) {
-                ly_log_level(verbosity + 1);
+                ++verbosity;
             }
+            ly_log_level(verbosity);
             break;
         } /* case 'V' */
+
+        case 'Q': { /* --quiet */
+            LY_LOG_LEVEL verbosity = ly_log_level(LY_LLERR);
+            if (verbosity == LY_LLERR) {
+                /* turn logging off */
+                ly_log_options(LY_LOSTORE_LAST);
+            } else if (verbosity > LY_LLERR) {
+                --verbosity;
+            }
+            ly_log_level(verbosity);
+            break;
+        } /* case 'Q' */
 
         case 'f': /* --format */
             if (!strcasecmp(optarg, "yang")) {
