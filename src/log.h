@@ -75,7 +75,7 @@ typedef uint8_t ly_bool;
  * @{
  *
  * Publicly visible functions and values of the libyang logger. For more
- * information, see \ref howtoLogger.
+ * information, see @ref howtoLogger.
  */
 
 /**
@@ -84,11 +84,11 @@ typedef uint8_t ly_bool;
  */
 typedef enum
 {
-    LY_LLERR = 0, /**< Print only error messages, default value. */
-    LY_LLWRN = 1, /**< Print error and warning messages. */
+    LY_LLERR = 0, /**< Print only error messages. */
+    LY_LLWRN = 1, /**< Print error and warning messages, default value. */
     LY_LLVRB = 2, /**< Besides errors and warnings, print some other verbose messages. */
-    LY_LLDBG = 3 /**< Print all messages including some development debug messages (be careful,
-     without subsequently calling ::ly_log_dbg_groups() no debug messages will be printed!). */
+    LY_LLDBG = 3  /**< Print all messages including some development debug messages (be careful,
+                       without subsequently calling ::ly_log_dbg_groups() no debug messages will be printed!). */
 } LY_LOG_LEVEL;
 
 /**
