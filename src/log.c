@@ -33,12 +33,12 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 
-volatile LY_LOG_LEVEL ly_ll = LY_LLWRN;
-volatile uint32_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
+ATOMIC_T ly_ll = (uint_fast32_t)LY_LLWRN;
+ATOMIC_T ly_log_opts = (uint_fast32_t)(LY_LOLOG | LY_LOSTORE_LAST);
 static ly_log_clb log_clb;
-static volatile ly_bool path_flag = 1;
+static ATOMIC_T path_flag = 1;
 #ifndef NDEBUG
-volatile uint32_t ly_ldbg_groups = 0;
+ATOMIC_T ly_ldbg_groups = 0;
 #endif
 
 THREAD_LOCAL struct ly_log_location_s log_location = {0};
@@ -226,18 +226,18 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 API LY_LOG_LEVEL
 ly_log_level(LY_LOG_LEVEL level)
 {
-    LY_LOG_LEVEL prev = ly_ll;
+    LY_LOG_LEVEL prev = ATOMIC_LOAD_RELAXED(ly_ll);
 
-    ly_ll = level;
+    ATOMIC_STORE_RELAXED(ly_ll, level);
     return prev;
 }
 
 API uint32_t
 ly_log_options(uint32_t opts)
 {
-    uint32_t prev = ly_log_opts;
+    uint32_t prev = ATOMIC_LOAD_RELAXED(ly_log_opts);
 
-    ly_log_opts = opts;
+    ATOMIC_STORE_RELAXED(ly_log_opts, opts);
     return prev;
 }
 
@@ -245,9 +245,9 @@ API uint32_t
 ly_log_dbg_groups(uint32_t dbg_groups)
 {
 #ifndef NDEBUG
-    uint32_t prev = ly_ldbg_groups;
+    uint32_t prev = ATOMIC_LOAD_RELAXED(ly_ldbg_groups);
 
-    ly_ldbg_groups = dbg_groups;
+    ATOMIC_STORE_RELAXED(ly_ldbg_groups, dbg_groups);
     return prev;
 #else
     (void)dbg_groups;
@@ -259,7 +259,7 @@ API void
 ly_set_log_clb(ly_log_clb clb, ly_bool path)
 {
     log_clb = clb;
-    path_flag = path;
+    ATOMIC_STORE_RELAXED(path_flag, path);
 }
 
 API ly_log_clb
@@ -372,7 +372,7 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vec
         } while (eitem->prev->next);
         /* last error was not found */
         assert(0);
-    } else if ((ly_log_opts & LY_LOSTORE_LAST) == LY_LOSTORE_LAST) {
+    } else if ((ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE_LAST) == LY_LOSTORE_LAST) {
         /* overwrite last message */
         free(eitem->msg);
         free(eitem->path);
@@ -412,7 +412,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     char *msg = NULL;
     ly_bool free_strs;
 
-    if (level > ly_ll) {
+    if (level > ATOMIC_LOAD_RELAXED(ly_ll)) {
         /* do not print or store the message */
         free(path);
         return;
@@ -420,7 +420,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
 
     if (no == LY_EMEM) {
         /* just print it, anything else would most likely fail anyway */
-        if (ly_log_opts & LY_LOLOG) {
+        if (ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG) {
             if (log_clb) {
                 log_clb(level, LY_EMEM_MSG, path);
             } else {
@@ -438,7 +438,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
-    if ((level < LY_LLVRB) && ctx && (ly_log_opts & LY_LOSTORE)) {
+    if ((level < LY_LLVRB) && ctx && (ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOSTORE)) {
         assert(format);
         if (vasprintf(&msg, format, args) == -1) {
             LOGMEM(ctx);
@@ -463,7 +463,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 
     /* if we are only storing errors internally, never print the message (yet) */
-    if (ly_log_opts & LY_LOLOG) {
+    if (ATOMIC_LOAD_RELAXED(ly_log_opts) & LY_LOLOG) {
         if (log_clb) {
             log_clb(level, msg, path);
         } else {
@@ -489,7 +489,7 @@ ly_log_dbg(uint32_t group, const char *format, ...)
     const char *str_group;
     va_list ap;
 
-    if (!(ly_ldbg_groups & group)) {
+    if (!(ATOMIC_LOAD_RELAXED(ly_ldbg_groups) & group)) {
         return;
     }
 
@@ -594,7 +594,7 @@ ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char
     va_list ap;
     char *path = NULL;
 
-    if (path_flag && ctx) {
+    if (ATOMIC_LOAD_RELAXED(path_flag) && ctx) {
         ly_vlog_build_path(ctx, &path);
     }
 
@@ -611,7 +611,7 @@ lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR er
     char *plugin_msg;
     int ret;
 
-    if (ly_ll < level) {
+    if (ATOMIC_LOAD_RELAXED(ly_ll) < level) {
         return;
     }
     ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s", ext->def->plugin->id, format);
