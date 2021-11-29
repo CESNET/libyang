@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "compat.h"
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
@@ -59,8 +60,8 @@ struct lysc_node;
  * Logger
  *****************************************************************************/
 
-extern volatile LY_LOG_LEVEL ly_ll;
-extern volatile uint32_t ly_log_opts;
+extern ATOMIC_T ly_ll;
+extern ATOMIC_T ly_log_opts;
 
 struct ly_log_location_s {
     uint64_t line;                   /**< One-time line value being reset after use - replaces whatever is in inputs */
