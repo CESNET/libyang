@@ -1372,7 +1372,8 @@ static LY_ERR
 lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *sparent,
         const struct lys_module *mod, uint32_t val_opts, uint32_t int_opts)
 {
-    const char *innode = NULL;
+    LY_ERR r;
+    const char *innode;
     struct lyd_node *next = NULL, *node;
 
     /* validate all restrictions of nodes themselves */
@@ -1387,30 +1388,37 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         /* opaque data */
         if (!node->schema) {
             LOGVAL(LYD_CTX(node), LYVE_DATA, "Invalid opaque node \"%s\" found.", ((struct lyd_node_opaq *)node)->name.name);
-            LOG_LOCBACK(0, 1, 0, 0);
+            LOG_LOCBACK(1, 1, 0, 0);
             return LY_EVALID;
         }
 
         /* no state/input/output data */
+        innode = NULL;
         if ((val_opts & LYD_VALIDATE_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
             innode = "state";
-            goto unexpected_node;
         } else if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION)) && (node->schema->flags & LYS_IS_OUTPUT)) {
             innode = "output";
-            goto unexpected_node;
         } else if ((int_opts & LYD_INTOPT_REPLY) && (node->schema->flags & LYS_IS_INPUT)) {
             innode = "input";
-            goto unexpected_node;
+        }
+        if (innode) {
+            LOGVAL(LYD_CTX(node), LY_VCODE_UNEXPNODE, innode, node->schema->name);
+            LOG_LOCBACK(1, 1, 0, 0);
+            return LY_EVALID;
         }
 
         /* obsolete data */
         lyd_validate_obsolete(node);
 
         /* node's musts */
-        LY_CHECK_RET(lyd_validate_must(node, int_opts));
+        if ((r = lyd_validate_must(node, int_opts))) {
+            LOG_LOCBACK(1, 1, 0, 0);
+            return r;
+        }
 
         /* node value was checked by plugins */
 
+        /* next iter */
         LOG_LOCBACK(1, 1, 0, 0);
     }
 
@@ -1440,11 +1448,6 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
     }
 
     return LY_SUCCESS;
-
-unexpected_node:
-    LOGVAL(LYD_CTX(node), LY_VCODE_UNEXPNODE, innode, node->schema->name);
-    LOG_LOCBACK(1, 1, 0, 0);
-    return LY_EVALID;
 }
 
 /**
