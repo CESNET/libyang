@@ -846,7 +846,7 @@ const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
 /**
  * @brief Same as ::lysc_data_node() but never returns the node itself.
  */
-#define lysc_data_parent(SCHEMA) lysc_data_node((SCHEMA)->parent)
+#define lysc_data_parent(SCHEMA) lysc_data_node((SCHEMA) ? (SCHEMA)->parent : NULL)
 
 /**
  * @brief Get format-specific prefix for a module.
