@@ -1392,7 +1392,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
             return LY_EVALID;
         }
 
-        /* no state/input/output data */
+        /* no state/input/output/op data */
         innode = NULL;
         if ((val_opts & LYD_VALIDATE_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
             innode = "state";
@@ -1400,6 +1400,12 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
             innode = "output";
         } else if ((int_opts & LYD_INTOPT_REPLY) && (node->schema->flags & LYS_IS_INPUT)) {
             innode = "input";
+        } else if (!(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) && (node->schema->nodetype == LYS_RPC)) {
+            innode = "rpc";
+        } else if (!(int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) && (node->schema->nodetype == LYS_ACTION)) {
+            innode = "action";
+        } else if (!(int_opts & LYD_INTOPT_NOTIF) && (node->schema->nodetype == LYS_NOTIF)) {
+            innode = "notification";
         }
         if (innode) {
             LOGVAL(LYD_CTX(node), LY_VCODE_UNEXPNODE, innode, node->schema->name);
