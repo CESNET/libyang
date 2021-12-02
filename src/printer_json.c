@@ -35,12 +35,13 @@
  */
 struct jsonpr_ctx {
     struct ly_out *out;         /**< output specification */
+    const struct lyd_node *root;    /**< root node of the subtree being printed */
     uint16_t level;             /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
     uint32_t options;           /**< [Data printer flags](@ref dataprinterflags) */
     const struct ly_ctx *ctx;   /**< libyang context */
 
     uint16_t level_printed;     /* level where some data were already printed */
-    struct ly_set open; /* currently open array(s) */
+    struct ly_set open;         /* currently open array(s) */
     const struct lyd_node *print_sibling_metadata;
 };
 
@@ -659,6 +660,29 @@ json_print_container(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 }
 
 /**
+ * @brief Check whether a node is the last printed instance of a (leaf-)list.
+ *
+ * @param[in] ctx JSON printer context.
+ * @param[in] node Last printed node.
+ * @return Whether it is the last printed instance or not.
+ */
+static ly_bool
+json_print_array_is_last_inst(struct jsonpr_ctx *ctx, const struct lyd_node *node)
+{
+    if ((ctx->root == node) && !(ctx->options & LYD_PRINT_WITHSIBLINGS)) {
+        /* the only printed instance */
+        return 1;
+    }
+
+    if (is_open_array(ctx, node) && (!node->next || (node->next->schema != node->schema))) {
+        /* last instance */
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
  * @brief Print single leaf-list or list instance.
  *
  * In case of list, metadata are printed inside the list object. For the leaf-list,
@@ -700,7 +724,7 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         }
     }
 
-    if (is_open_array(ctx, node) && (!node->next || (node->next->schema != node->schema))) {
+    if (json_print_array_is_last_inst(ctx, node)) {
         json_print_array_close(ctx);
     }
 
@@ -825,7 +849,7 @@ static LY_ERR
 json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     if (!ly_should_print(node, ctx->options)) {
-        if (is_open_array(ctx, node) && (!node->next || (node->next->schema != node->schema))) {
+        if (json_print_array_is_last_inst(ctx, node)) {
             json_print_array_close(ctx);
         }
         return LY_SUCCESS;
@@ -892,6 +916,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
 
     /* content */
     LY_LIST_FOR(root, node) {
+        ctx.root = node;
         LY_CHECK_RET(json_print_node(&ctx, node));
         if (!(options & LYD_PRINT_WITHSIBLINGS)) {
             break;
