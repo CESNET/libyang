@@ -5587,6 +5587,9 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
 
     assert(scnode && (!(scnode->nodetype & (LYS_LIST | LYS_LEAFLIST)) || predicates));
 
+    /* init result set */
+    set_init(&result, set);
+
     if (options & LYXP_SKIP_EXPR) {
         goto cleanup;
     }
@@ -5613,9 +5616,6 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
     } else if (scnode->nodetype == LYS_LEAFLIST) {
         LY_CHECK_GOTO(ret = lyd_create_term2(scnode, &predicates[0].value, &inst), cleanup);
     }
-
-    /* init result set */
-    set_init(&result, set);
 
     for (i = 0; i < set->used; ++i) {
         siblings = NULL;
