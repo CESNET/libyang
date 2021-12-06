@@ -55,6 +55,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
  * the first top-level sibling.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
+ * @param[in] when_xp_opts Additional XPath options to use for evaluating "when".
  * @param[in] node_exts Set with nodes with extension instances with validation plugin callback, can be NULL.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
@@ -62,7 +63,8 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
-        struct ly_set *node_exts, struct ly_set *node_types, struct ly_set *meta_types, struct lyd_node **diff);
+        uint32_t when_xp_opts, struct ly_set *node_exts, struct ly_set *node_types, struct ly_set *meta_types,
+        struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
