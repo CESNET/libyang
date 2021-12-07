@@ -377,12 +377,11 @@ yprp_when(struct lys_ypr_ctx *ctx, struct lysp_when *when, int8_t *flag)
 {
     int8_t inner_flag = 0;
 
-    (void)flag;
-
     if (!when) {
         return;
     }
 
+    ypr_close_parent(ctx, flag);
     ly_print_(ctx->out, "%*s<when condition=\"", INDENT);
     lyxml_dump_text(ctx->out, when->cond, 1);
     ly_print_(ctx->out, "\"");
