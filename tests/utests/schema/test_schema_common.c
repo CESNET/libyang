@@ -976,7 +976,7 @@ test_includes(void **state)
         struct module_clb_list list[] = {
             {"main_c", "module main_c { yang-version 1.1; namespace urn:test:main_c; prefix mc; include sub_c_one; include sub_c_two;}"},
             {"sub_c_one", "submodule sub_c_one { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_two;}"},
-            {"sub_c_two", "submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } }"},
+            {"sub_c_two", "submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_one;}"},
             {NULL, NULL}
         };
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
@@ -985,7 +985,7 @@ test_includes(void **state)
         assert_int_equal(2, LY_ARRAY_COUNT(mod->parsed->includes));
         assert_false(mod->parsed->includes[1].injected);
         /* result is ok, but log includes the warning */
-        CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (sub_c_one) are not necessary.", NULL);
+        CHECK_LOG_CTX("YANG version 1.1 expects all includes in main module, includes in submodules (sub_c_two) are not necessary.", NULL);
     }
 }
 

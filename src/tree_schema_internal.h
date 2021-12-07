@@ -67,7 +67,7 @@ extern const char * const ly_devmod_list[];
  * @param[in] PARENT parent statement where the KW is present - for logging.
  */
 #define PARSER_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
-    if ((CTX)->parsed_mod->version < LYS_VERSION_1_1) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
+    if (PARSER_CUR_PMOD(CTX)->version < LYS_VERSION_1_1) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
 
 /* These 2 macros checks YANG's identifier grammar rule */
 #define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
@@ -138,7 +138,8 @@ enum yang_arg {
     Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
 };
 
-#define PARSER_CTX(CTX) ((CTX)->parsed_mod->mod->ctx)
+#define PARSER_CUR_PMOD(CTX) ((struct lysp_module *)(CTX)->parsed_mods->objs[(CTX)->parsed_mods->count - 1])
+#define PARSER_CTX(CTX) (PARSER_CUR_PMOD(CTX)->mod->ctx)
 #define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX) ? PARSER_CTX(CTX) : NULL, __VA_ARGS__)
 
 struct lys_parser_ctx {
@@ -147,7 +148,7 @@ struct lys_parser_ctx {
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
-    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
                                           otherwise it points to the beginning of this structure. */
@@ -162,7 +163,7 @@ struct lys_yang_parser_ctx {
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
-    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
                                           otherwise it points to the beginning of this structure. */
@@ -185,7 +186,7 @@ struct lys_yin_parser_ctx {
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
-    struct lysp_module *parsed_mod;  /**< (sub)module being parsed */
+    struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
                                           otherwise it points to the beginning of this structure. */
