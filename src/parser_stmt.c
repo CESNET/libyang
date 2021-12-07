@@ -168,7 +168,7 @@ lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     /* allocate new pointer */
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *qnames, item, LY_EMEM);
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &item->str));
-    item->mod = ctx->parsed_mod;
+    item->mod = PARSER_CUR_PMOD(ctx);
 
     for (const struct lysp_stmt *child = stmt->child; child; child = child->next) {
         switch (child->kw) {
@@ -416,7 +416,7 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
 {
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &restr->arg.str));
-    restr->arg.mod = ctx->parsed_mod;
+    restr->arg.mod = PARSER_CUR_PMOD(ctx);
 
     for (const struct lysp_stmt *child = stmt->child; child; child = child->next) {
         switch (child->kw) {
@@ -844,7 +844,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     buf[0] = LYSP_RESTR_PATTERN_ACK; /* pattern's default regular-match flag */
     buf[arg_len + 1] = '\0'; /* terminating NULL byte */
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
-    restr->arg.mod = ctx->parsed_mod;
+    restr->arg.mod = PARSER_CUR_PMOD(ctx);
 
     for (const struct lysp_stmt *child = stmt->child; child; child = child->next) {
         switch (child->kw) {
@@ -898,7 +898,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
 
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_PREF_IDENTIF_ARG, stmt->arg));
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &type->name));
-    type->pmod = ctx->parsed_mod;
+    type->pmod = PARSER_CUR_PMOD(ctx);
 
     for (const struct lysp_stmt *child = stmt->child; child; child = child->next) {
         switch (child->kw) {
@@ -1005,7 +1005,7 @@ lysp_stmt_leaf(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             break;
         case LY_STMT_DEFAULT:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &leaf->dflt.str, Y_STR_ARG, &leaf->exts));
-            leaf->dflt.mod = ctx->parsed_mod;
+            leaf->dflt.mod = PARSER_CUR_PMOD(ctx);
             break;
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &leaf->dsc, Y_STR_ARG, &leaf->exts));
@@ -1403,7 +1403,7 @@ lysp_stmt_typedef(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, stru
         switch (child->kw) {
         case LY_STMT_DEFAULT:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &tpdf->dflt.str, Y_STR_ARG, &tpdf->exts));
-            tpdf->dflt.mod = ctx->parsed_mod;
+            tpdf->dflt.mod = PARSER_CUR_PMOD(ctx);
             break;
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &tpdf->dsc, Y_STR_ARG, &tpdf->exts));
@@ -2045,7 +2045,7 @@ lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
             break;
         case LY_STMT_DEFAULT:
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &choice->dflt.str, Y_PREF_IDENTIF_ARG, &choice->exts));
-            choice->dflt.mod = ctx->parsed_mod;
+            choice->dflt.mod = PARSER_CUR_PMOD(ctx);
             break;
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "choice");
@@ -2306,9 +2306,15 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **resul
     LY_ERR ret = LY_SUCCESS;
     uint16_t flags;
     struct lys_parser_ctx pctx = {0};
+    struct ly_set pmods = {0};
+    void *objs;
 
+    /* local context */
     pctx.format = LYS_IN_YANG;
-    pctx.parsed_mod = ctx->pmod;
+    pctx.parsed_mods = &pmods;
+    objs = &ctx->pmod;
+    pmods.objs = objs;
+    pmods.count = 1;
 
     LOG_LOCSET(NULL, NULL, ctx->path, NULL);
 

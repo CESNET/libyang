@@ -1143,6 +1143,10 @@ yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx)
             ly_set_erase(&ctx->tpdfs_nodes, NULL);
             ly_set_erase(&ctx->grps_nodes, NULL);
         }
+        ly_set_rm_index(ctx->parsed_mods, ctx->parsed_mods->count - 1, NULL);
+        if (!ctx->parsed_mods->count) {
+            ly_set_free(ctx->parsed_mods, NULL);
+        }
         free(ctx);
     }
 }
@@ -1154,6 +1158,10 @@ yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx)
         if (ctx->main_ctx == (struct lys_parser_ctx *)ctx) {
             ly_set_erase(&ctx->tpdfs_nodes, NULL);
             ly_set_erase(&ctx->grps_nodes, NULL);
+        }
+        ly_set_rm_index(ctx->parsed_mods, ctx->parsed_mods->count - 1, NULL);
+        if (!ctx->parsed_mods->count) {
+            ly_set_free(ctx->parsed_mods, NULL);
         }
         lyxml_ctx_free(ctx->xmlctx);
         free(ctx);

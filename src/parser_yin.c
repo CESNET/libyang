@@ -657,7 +657,7 @@ yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     saved_value[0] = LYSP_RESTR_PATTERN_ACK;
     saved_value[len + 1] = '\0';
     LY_CHECK_RET(lydict_insert_zc(ctx->xmlctx->ctx, saved_value, &restr->arg.str));
-    restr->arg.mod = ctx->parsed_mod;
+    restr->arg.mod = PARSER_CUR_PMOD(ctx);
     type->flags |= LYS_SET_PATTERN;
 
     struct yin_subelement subelems[] = {
@@ -961,7 +961,7 @@ yin_parse_restriction(struct lys_yin_parser_ctx *ctx, enum ly_stmt restr_kw, str
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, &restr->arg.str, Y_STR_ARG, restr_kw));
-    restr->arg.mod = ctx->parsed_mod;
+    restr->arg.mod = PARSER_CUR_PMOD(ctx);
 
     return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), restr_kw, NULL, &restr->exts);
 }
@@ -1045,19 +1045,19 @@ yin_parse_qname(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_sube
             qnames = (struct lysp_qname **)subinfo->dest;
             LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *qnames, qname, LY_EMEM);
         }
-        qname->mod = ctx->parsed_mod;
+        qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_VALUE, Y_STR_ARG, exts);
     case LY_STMT_UNIQUE:
         assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
         qnames = (struct lysp_qname **)subinfo->dest;
         LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *qnames, qname, LY_EMEM);
-        qname->mod = ctx->parsed_mod;
+        qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_TAG, Y_STR_ARG, exts);
     case LY_STMT_IF_FEATURE:
         assert(!(subinfo->flags & YIN_SUBELEM_UNIQUE));
         qnames = (struct lysp_qname **)subinfo->dest;
         LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *qnames, qname, LY_EMEM);
-        qname->mod = ctx->parsed_mod;
+        qname->mod = PARSER_CUR_PMOD(ctx);
         return yin_parse_simple_element(ctx, kw, &qname->str, YIN_ARG_NAME, Y_STR_ARG, exts);
     default:
         break;
@@ -1161,9 +1161,9 @@ yin_parse_belongs_to(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *subm
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_MODULE, &belongsto, Y_IDENTIF_ARG, LY_STMT_BELONGS_TO));
-    if (ctx->parsed_mod->mod->name != belongsto) {
+    if (PARSER_CUR_PMOD(ctx)->mod->name != belongsto) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YIN, "Submodule \"belongs-to\" value \"%s\" does not match its module name \"%s\".",
-                belongsto, ctx->parsed_mod->mod->name);
+                belongsto, PARSER_CUR_PMOD(ctx)->mod->name);
         lydict_remove(ctx->xmlctx->ctx, belongsto);
         return LY_EVALID;
     }
@@ -1255,7 +1255,7 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
         type = nested_type;
     }
 
-    type->pmod = ctx->parsed_mod;
+    type->pmod = PARSER_CUR_PMOD(ctx);
 
     struct yin_subelement subelems[] = {
         {LY_STMT_BASE, type, 0},
@@ -3333,7 +3333,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             }
             if (subelem->flags & YIN_SUBELEM_VER2) {
                 /* subelement is supported only in version 1.1 or higher */
-                if (ctx->parsed_mod->version < LYS_VERSION_1_1) {
+                if (PARSER_CUR_PMOD(ctx)->version < LYS_VERSION_1_1) {
                     LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INSUBELEM2, ly_stmt2str(kw), ly_stmt2str(current_element));
                     ret = LY_EVALID;
                     goto cleanup;
@@ -3435,9 +3435,9 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
                 ret = yin_parse_import(ctx, (struct import_meta *)subelem->dest);
                 break;
             case LY_STMT_INCLUDE:
-                if ((current_element == LY_STMT_SUBMODULE) && (ctx->parsed_mod->version == LYS_VERSION_1_1)) {
+                if ((current_element == LY_STMT_SUBMODULE) && (PARSER_CUR_PMOD(ctx)->version == LYS_VERSION_1_1)) {
                     LOGWRN(PARSER_CTX(ctx), "YANG version 1.1 expects all includes in main module, includes in submodules (%s) are not necessary.",
-                            ((struct lysp_submodule *)(ctx->parsed_mod))->name);
+                            ((struct lysp_submodule *)PARSER_CUR_PMOD(ctx))->name);
                 }
                 ret = yin_parse_include(ctx, (struct include_meta *)subelem->dest);
                 break;
@@ -3717,9 +3717,12 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-    mod_p->mod = main_ctx->parsed_mod->mod;
+    mod_p->mod = PARSER_CUR_PMOD(main_ctx)->mod;
     mod_p->parsing = 1;
-    (*yin_ctx)->parsed_mod = (struct lysp_module *)mod_p;
+
+    /* use main context parsed mods adding the current one */
+    (*yin_ctx)->parsed_mods = main_ctx->parsed_mods;
+    ly_set_add((*yin_ctx)->parsed_mods, mod_p, 1, NULL);
 
     /* check submodule */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
@@ -3774,13 +3777,14 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
+    LY_CHECK_ERR_RET(ly_set_new(&(*yin_ctx)->parsed_mods), free(*yin_ctx); LOGMEM(mod->ctx), LY_EMEM);
     LY_CHECK_RET(lyxml_ctx_new(mod->ctx, in, &(*yin_ctx)->xmlctx));
     (*yin_ctx)->main_ctx = (struct lys_parser_ctx *)(*yin_ctx);
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
     mod_p->mod = mod;
-    (*yin_ctx)->parsed_mod = mod_p;
+    ly_set_add((*yin_ctx)->parsed_mods, mod_p, 1, NULL);
 
     /* check module */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
