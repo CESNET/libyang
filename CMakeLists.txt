@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 2.8.12)
+if(WIN32)
+    cmake_minimum_required(VERSION 3.22.0)
+else()
+    cmake_minimum_required(VERSION 2.8.12)
+endif()
 
 # force out-of-source build
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
@@ -42,11 +46,6 @@ elseif("${BUILD_TYPE_UPPER}" STREQUAL "DOCONLY")
     set(CMAKE_BUILD_TYPE "DocOnly" CACHE STRING "Build Type" FORCE)
 endif()
 
-# check the supported platform
-if(NOT UNIX)
-    message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
-
 #
 # variables
 #
@@ -71,8 +70,14 @@ set(LIBYANG_MICRO_SOVERSION 1)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
-# global C flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
+if(WIN32)
+    set(C_STANDARD 11)
+    set(C_STANDARD_REQUIRED ON)
+    set(CMAKE_C_FLAGS "/Zc:preprocessor /W3 /wd4711 /w14013 ${CMAKE_C_FLAGS}")
+else()
+    # global C flags
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
+endif()
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 
