@@ -16,7 +16,6 @@
 #define _COMPAT_H_
 
 #include <limits.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -57,7 +56,6 @@
 #cmakedefine HAVE_STRDUPA
 #cmakedefine HAVE_STRCHRNUL
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
-#cmakedefine HAVE_PTHREAD_MUTEX_TIMEDLOCK
 
 #ifndef bswap64
 #define bswap64(val) \
@@ -149,10 +147,6 @@ char *strchrnul(const char *s, int c);
 
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 char *get_current_dir_name(void);
-#endif
-
-#ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
-int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime);
 #endif
 
 #endif /* _COMPAT_H_ */

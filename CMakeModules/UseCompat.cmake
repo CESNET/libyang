@@ -27,7 +27,6 @@ macro(USE_COMPAT)
     set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -D__BSD_VISIBLE=1)
-    set(CMAKE_REQUIRED_LIBRARIES pthread)
 
     check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
     check_symbol_exists(asprintf "stdio.h" HAVE_ASPRINTF)
@@ -40,8 +39,6 @@ macro(USE_COMPAT)
     check_symbol_exists(strchrnul "string.h" HAVE_STRCHRNUL)
 
     check_symbol_exists(get_current_dir_name "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
-
-    check_function_exists(pthread_mutex_timedlock HAVE_PTHREAD_MUTEX_TIMEDLOCK)
 
     TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 

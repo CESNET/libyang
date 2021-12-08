@@ -37,7 +37,6 @@ check_compat_func strnstr
 check_compat_func strdupa
 check_compat_func strchrnul
 check_compat_func get_current_dir_name
-check_compat_func pthread_mutex_timedlock
 check_compat_func UNUSED
 check_compat_macro _PACKED
 
