@@ -40,7 +40,7 @@
 #  endif
 #endif
 
-#if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)
+#if defined (__GNUC__) || defined (__llvm__)
 # define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 # define _PACKED __attribute__((__packed__))
 #else
