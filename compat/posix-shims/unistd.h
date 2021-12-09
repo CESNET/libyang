@@ -52,4 +52,12 @@ typedef unsigned __int16  uint16_t;
 typedef unsigned __int32  uint32_t;
 typedef unsigned __int64  uint64_t;
 
+#include <windows.h>
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+#ifndef _POSIX_PATH_MAX
+#define _POSIX_PATH_MAX 256
+#endif
+
 #endif /* unistd.h  */
