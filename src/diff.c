@@ -788,13 +788,13 @@ lyd_diff(const struct lyd_node *first, const struct lyd_node *second, uint16_t o
     return lyd_diff_siblings_r(first, second, options, nosiblings, diff);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff)
 {
     return lyd_diff(first, second, options, 1, diff);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff)
 {
     return lyd_diff(first, second, options, 0, diff);
@@ -1099,7 +1099,7 @@ next_iter_r:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
         lyd_diff_cb diff_cb, void *cb_data)
 {
@@ -1124,7 +1124,7 @@ lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff)
 {
     return lyd_diff_apply_module(data, diff, NULL, NULL, NULL);
@@ -1710,7 +1710,7 @@ add_diff:
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
@@ -1733,7 +1733,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options)
 {
@@ -1749,7 +1749,7 @@ lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint16_t options)
 {
     return lyd_diff_merge_module(diff, src_diff, NULL, NULL, NULL, options);
@@ -1882,7 +1882,7 @@ lyd_diff_reverse_remove_op_r(struct lyd_node *diff, enum lyd_diff_op op)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;

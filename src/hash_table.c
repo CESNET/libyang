@@ -156,7 +156,7 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, ly_bool mod, void *cb_data)
     return 0;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lydict_remove(const struct ly_ctx *ctx, const char *value)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -262,7 +262,7 @@ dict_insert(const struct ly_ctx *ctx, char *value, size_t len, ly_bool zerocopy,
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const char **str_p)
 {
     LY_ERR result;
@@ -285,7 +285,7 @@ lydict_insert(const struct ly_ctx *ctx, const char *value, size_t len, const cha
     return result;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lydict_insert_zc(const struct ly_ctx *ctx, char *value, const char **str_p)
 {
     LY_ERR result;

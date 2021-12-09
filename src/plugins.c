@@ -486,7 +486,7 @@ error:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_add(const char *pathname)
 {
 #ifdef STATIC

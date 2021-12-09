@@ -74,21 +74,21 @@ struct lysc_ctx;
  * @param[in] ctx YANG schema compilation context.
  * @return libyang context connected with the compilation context.
  */
-struct ly_ctx *lysc_ctx_get_ctx(const struct lysc_ctx *ctx);
+LIBYANG_API_DECL struct ly_ctx *lysc_ctx_get_ctx(const struct lysc_ctx *ctx);
 
 /**
  * @brief YANG schema compilation context getter for compilation options.
  * @param[in] ctx YANG schema compilation context.
  * @return pointer to the compilation options to allow modifying them with @ref scflags values.
  */
-uint32_t *lysc_ctx_get_options(const struct lysc_ctx *ctx);
+LIBYANG_API_DECL uint32_t *lysc_ctx_get_options(const struct lysc_ctx *ctx);
 
 /**
  * @brief YANG schema compilation context getter for path being currently processed.
  * @param[in] ctx YANG schema compilation context.
  * @return path identifying the place in schema being currently processed by the schema compiler.
  */
-const char *lysc_ctx_get_path(const struct lysc_ctx *ctx);
+LIBYANG_API_DECL const char *lysc_ctx_get_path(const struct lysc_ctx *ctx);
 
 /**
  * @brief Compile substatements of an extension instance.
@@ -105,7 +105,7 @@ const char *lysc_ctx_get_path(const struct lysc_ctx *ctx);
  * @return LY_EVALID if compilation of the substatements fails.
  * @return LY_ENOT if the extension is disabled (by if-feature) and should be ignored.
  */
-LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext);
+LIBYANG_API_DECL LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext);
 
 /**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
@@ -115,7 +115,7 @@ LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ex
  * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is `{keyword}`, the following
  * call updates the segment to the form `{keyword='name'}` (to remove this compound segment, 2 calls with NULL @p name must be used).
  */
-void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name);
+LIBYANG_API_DECL void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name);
 
 /**
  * @brief Duplicate the compiled extension (definition) structure.
@@ -123,7 +123,7 @@ void lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, co
  * @param[in] orig The extension structure to duplicate.
  * @return The duplicated structure to use.
  */
-struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
+LIBYANG_API_DECL struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
 
 /** @} extensions */
 

@@ -35,4 +35,28 @@
 # define _FORMAT_PRINTF(FORM, ARGS)
 #endif
 
+/** Exporting symbols to a shared library and importing back afterwards
+ *
+ * - use LIBYANG_API_DECL to mark a declaration in the public header
+ * - use LIBYANG_API_DEF to mark a definition (in the source code for the actual implementaiton)
+ * */
+#ifdef _MSC_VER
+#  ifndef STATIC
+#    define LIBYANG_API_DEF __declspec(dllexport)
+#    ifdef LIBYANG_BUILD
+#      define LIBYANG_API_DECL __declspec(dllexport)
+#    else
+#      define LIBYANG_API_DECL __declspec(dllimport)
+#    endif
+#  endif
+#else
+/*
+ * If the compiler supports attribute to mark objects as hidden, mark all
+ * objects as hidden and export only objects explicitly marked to be part of
+ * the public API.
+ */
+#  define LIBYANG_API_DEF __attribute__((visibility("default")))
+#  define LIBYANG_API_DECL
+#endif
+
 #endif /* LY_CONFIG_H_ */

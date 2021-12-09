@@ -104,7 +104,7 @@ typedef enum {
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features,
+LIBYANG_API_DECL LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features,
         struct lys_module **module);
 
 /**
@@ -119,7 +119,7 @@ LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, cons
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module);
+LIBYANG_API_DECL LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Read a schema from file descriptor into the specified context.
@@ -136,7 +136,7 @@ LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module);
+LIBYANG_API_DECL LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context from a file.
@@ -150,7 +150,7 @@ LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_
  * @param[out] module Optional parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module);
+LIBYANG_API_DECL LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module);
 
 /**
  * @brief Search for the schema file in the specified searchpaths.
@@ -167,7 +167,7 @@ LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format,
  * file suffix.
  * @return LY_ERR value (LY_SUCCESS is returned even if the file is not found, then the *localfile is NULL).
  */
-LY_ERR lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
+LIBYANG_API_DECL LY_ERR lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format);
 
 /** @} schematree */

@@ -164,7 +164,7 @@ lyd_node_child_p(struct lyd_node *node)
     }
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -202,7 +202,7 @@ error:
     return ret;
 }
 
-API void
+LIBYANG_API_DEF void
 lyxp_vars_free(struct lyxp_var *vars)
 {
     LY_ARRAY_COUNT_TYPE u;
@@ -219,7 +219,7 @@ lyxp_vars_free(struct lyxp_var *vars)
     LY_ARRAY_FREE(vars);
 }
 
-API struct lyd_node *
+LIBYANG_API_DEF struct lyd_node *
 lyd_child_no_keys(const struct lyd_node *node)
 {
     struct lyd_node **children;
@@ -245,7 +245,7 @@ lyd_child_no_keys(const struct lyd_node *node)
     }
 }
 
-API const struct lys_module *
+LIBYANG_API_DEF const struct lys_module *
 lyd_owner_module(const struct lyd_node *node)
 {
     const struct lyd_node_opaq *opaq;
@@ -434,7 +434,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct
     }
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
 {
     LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
@@ -443,7 +443,7 @@ lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
            (const char *)value->realtype->plugin->print(ctx, value, LY_VALUE_CANON, NULL, NULL, NULL);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_any_value_str(const struct lyd_node *any, char **value_str)
 {
     const struct lyd_node_any *a;
@@ -500,7 +500,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type)
 {
     struct lyd_node_any *t;
@@ -854,7 +854,7 @@ ly_format2str(LY_VALUE_FORMAT format)
     return NULL;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_time_str2time(const char *value, time_t *time, char **fractions_s)
 {
     struct tm tm = {0};
@@ -917,7 +917,7 @@ ly_time_str2time(const char *value, time_t *time, char **fractions_s)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_time_time2str(time_t time, const char *fractions_s, char **str)
 {
     struct tm tm;
@@ -962,7 +962,7 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_time_str2ts(const char *value, struct timespec *ts)
 {
     LY_ERR rc;
@@ -991,7 +991,7 @@ ly_time_str2ts(const char *value, struct timespec *ts)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_time_ts2str(const struct timespec *ts, char **str)
 {
     char frac_buf[10];

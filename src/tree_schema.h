@@ -433,14 +433,14 @@ enum ly_stmt {
  * @param[in] stmt The statement identifier to stringify.
  * @return Constant string representation of the given @p stmt.
  */
-const char *ly_stmt2str(enum ly_stmt stmt);
+LIBYANG_API_DECL const char *ly_stmt2str(enum ly_stmt stmt);
 
 /**
  * @brief Convert nodetype to statement identifier
  * @param[in] nodetype Nodetype to convert.
  * @return Statement identifier representing the given @p nodetype.
  */
-enum ly_stmt lys_nodetype2stmt(uint16_t nodetype);
+LIBYANG_API_DECL enum ly_stmt lys_nodetype2stmt(uint16_t nodetype);
 
 /**
  * @brief Possible cardinalities of the YANG statements.
@@ -2018,7 +2018,7 @@ struct lysc_module {
  * @param[in] node Schema node to examine.
  * @return When condition associated with the node data instance, NULL if there is none.
  */
-const struct lysc_when *lysc_has_when(const struct lysc_node *node);
+LIBYANG_API_DECL const struct lysc_when *lysc_has_when(const struct lysc_node *node);
 
 /**
  * @brief Get the owner module of the schema node. It is the module of the top-level node. Generally,
@@ -2027,7 +2027,7 @@ const struct lysc_when *lysc_has_when(const struct lysc_node *node);
  * @param[in] node Schema node to examine.
  * @return Module owner of the node.
  */
-const struct lys_module *lysc_owner_module(const struct lysc_node *node);
+LIBYANG_API_DECL const struct lys_module *lysc_owner_module(const struct lysc_node *node);
 
 /**
  * @brief Get the groupings linked list of the given (parsed) schema node.
@@ -2035,7 +2035,7 @@ const struct lys_module *lysc_owner_module(const struct lysc_node *node);
  * @param[in] node Node to examine.
  * @return The node's groupings linked list if any, NULL otherwise.
  */
-const struct lysp_node_grp *lysp_node_groupings(const struct lysp_node *node);
+LIBYANG_API_DECL const struct lysp_node_grp *lysp_node_groupings(const struct lysp_node *node);
 
 /**
  * @brief Get the typedefs sized array of the given (parsed) schema node.
@@ -2043,7 +2043,7 @@ const struct lysp_node_grp *lysp_node_groupings(const struct lysp_node *node);
  * @param[in] node Node to examine.
  * @return The node's typedefs sized array if any, NULL otherwise.
  */
-const struct lysp_tpdf *lysp_node_typedefs(const struct lysp_node *node);
+LIBYANG_API_DECL const struct lysp_tpdf *lysp_node_typedefs(const struct lysp_node *node);
 
 /**
  * @brief Get the actions/RPCs linked list of the given (parsed) schema node.
@@ -2051,7 +2051,7 @@ const struct lysp_tpdf *lysp_node_typedefs(const struct lysp_node *node);
  * @param[in] node Node to examine.
  * @return The node's actions/RPCs linked list if any, NULL otherwise.
  */
-const struct lysp_node_action *lysp_node_actions(const struct lysp_node *node);
+LIBYANG_API_DECL const struct lysp_node_action *lysp_node_actions(const struct lysp_node *node);
 
 /**
  * @brief Get the Notifications linked list of the given (parsed) schema node.
@@ -2059,7 +2059,7 @@ const struct lysp_node_action *lysp_node_actions(const struct lysp_node *node);
  * @param[in] node Node to examine.
  * @return The node's Notifications linked list if any, NULL otherwise.
  */
-const struct lysp_node_notif *lysp_node_notifs(const struct lysp_node *node);
+LIBYANG_API_DECL const struct lysp_node_notif *lysp_node_notifs(const struct lysp_node *node);
 
 /**
  * @brief Get the children linked list of the given (parsed) schema node.
@@ -2067,7 +2067,7 @@ const struct lysp_node_notif *lysp_node_notifs(const struct lysp_node *node);
  * @param[in] node Node to examine.
  * @return The node's children linked list if any, NULL otherwise.
  */
-const struct lysp_node *lysp_node_child(const struct lysp_node *node);
+LIBYANG_API_DECL const struct lysp_node *lysp_node_child(const struct lysp_node *node);
 
 /**
  * @brief Get the actions/RPCs linked list of the given (compiled) schema node.
@@ -2075,7 +2075,7 @@ const struct lysp_node *lysp_node_child(const struct lysp_node *node);
  * @param[in] node Node to examine.
  * @return The node's actions/RPCs linked list if any, NULL otherwise.
  */
-const struct lysc_node_action *lysc_node_actions(const struct lysc_node *node);
+LIBYANG_API_DECL const struct lysc_node_action *lysc_node_actions(const struct lysc_node *node);
 
 /**
  * @brief Get the Notifications linked list of the given (compiled) schema node.
@@ -2083,7 +2083,7 @@ const struct lysc_node_action *lysc_node_actions(const struct lysc_node *node);
  * @param[in] node Node to examine.
  * @return The node's Notifications linked list if any, NULL otherwise.
  */
-const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
+LIBYANG_API_DECL const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
 
 /**
  * @brief Get the children linked list of the given (compiled) schema node.
@@ -2095,7 +2095,7 @@ const struct lysc_node_notif *lysc_node_notifs(const struct lysc_node *node);
  * @return Children linked list if any,
  * @return NULL otherwise.
  */
-const struct lysc_node *lysc_node_child(const struct lysc_node *node);
+LIBYANG_API_DECL const struct lysc_node *lysc_node_child(const struct lysc_node *node);
 
 /**
  * @brief Get the must statements list if present in the @p node
@@ -2104,7 +2104,7 @@ const struct lysc_node *lysc_node_child(const struct lysc_node *node);
  * @return Pointer to the list of must restrictions ([sized array](@ref sizedarrays))
  * @return NULL if there is no must statement in the node, no matter if it is not even allowed or just present
  */
-struct lysc_must *lysc_node_musts(const struct lysc_node *node);
+LIBYANG_API_DECL struct lysc_must *lysc_node_musts(const struct lysc_node *node);
 
 /**
  * @brief Get the when statements list if present in the @p node
@@ -2113,7 +2113,7 @@ struct lysc_must *lysc_node_musts(const struct lysc_node *node);
  * @return Pointer to the list of pointers to when statements ([sized array](@ref sizedarrays))
  * @return NULL if there is no when statement in the node, no matter if it is not even allowed or just present
  */
-struct lysc_when **lysc_node_when(const struct lysc_node *node);
+LIBYANG_API_DECL struct lysc_when **lysc_node_when(const struct lysc_node *node);
 
 /**
  * @brief Callback to be called for every schema node in a DFS traversal.
@@ -2142,7 +2142,7 @@ typedef LY_ERR (*lysc_dfs_clb)(struct lysc_node *node, void *data, ly_bool *dfs_
  * @return LY_SUCCESS on success,
  * @return LY_ERR value returned by @p dfs_clb.
  */
-LY_ERR lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data);
+LIBYANG_API_DECL LY_ERR lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data);
 
 /**
  * @brief DFS traversal of all the schema nodes in a module including RPCs and notifications.
@@ -2155,7 +2155,7 @@ LY_ERR lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, vo
  * @return LY_SUCCESS on success,
  * @return LY_ERR value returned by @p dfs_clb.
  */
-LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data);
+LIBYANG_API_DECL LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.
@@ -2165,7 +2165,7 @@ LY_ERR lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, 
  * @return LY_ENOT if it evaluates to false,
  * @return LY_ERR on error.
  */
-LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
+LIBYANG_API_DECL LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
 
 /**
  * @brief Get how the if-feature statement is evaluated for certain identity.
@@ -2178,7 +2178,7 @@ LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
  * @return LY_ENOT if it evaluates to false,
  * @return LY_ERR on error.
  */
-LY_ERR lys_identity_iffeature_value(const struct lysc_ident *ident);
+LIBYANG_API_DECL LY_ERR lys_identity_iffeature_value(const struct lysc_ident *ident);
 
 /**
  * @brief Get the next feature in the module or submodules.
@@ -2188,7 +2188,7 @@ LY_ERR lys_identity_iffeature_value(const struct lysc_ident *ident);
  * @param[in,out] idx Submodule index, set to 0 on first call.
  * @return Next found feature, NULL if the last has already been returned.
  */
-struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx);
+LIBYANG_API_DECL struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx);
 
 /**
  * @brief Get pointer to the storage of the specified substatement in the given extension instance.
@@ -2206,7 +2206,7 @@ struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const st
  * @return LY_SUCCESS if the @p substmt found.
  * @return LY_ENOT in case the @p ext is not able to store (does not allow) the specified @p substmt.
  */
-LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt,
+LIBYANG_API_DECL LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt,
         void **instance_p, enum ly_stmt_cardinality *cardinality_p);
 
 /**
@@ -2231,7 +2231,7 @@ LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substm
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value on error.
  */
-LY_ERR lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath,
+LIBYANG_API_DECL LY_ERR lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath,
         uint32_t options, struct ly_set **set);
 
 /**
@@ -2246,7 +2246,7 @@ LY_ERR lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ct
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value on error.
  */
-LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod,
+LIBYANG_API_DECL LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod,
         const struct lyxp_expr *expr, const struct lysc_prefix *prefixes, uint32_t options, struct ly_set **set);
 
 /**
@@ -2260,7 +2260,7 @@ LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_mo
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
+LIBYANG_API_DECL LY_ERR lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
         struct ly_set **set);
 
 /**
@@ -2271,7 +2271,7 @@ LY_ERR lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value on error.
  */
-LY_ERR lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set);
+LIBYANG_API_DECL LY_ERR lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set);
 
 /**
  * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
@@ -2283,7 +2283,7 @@ LY_ERR lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set);
  * @param[out] set Set of found atoms (schema nodes).
  * @return LY_ERR value on error.
  */
-LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
+LIBYANG_API_DECL LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
         struct ly_set **set);
 
 /**
@@ -2295,7 +2295,7 @@ LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx
  * @param[in] output Search operation output instead of input.
  * @return Found schema node or NULL.
  */
-const struct lysc_node *lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path,
+LIBYANG_API_DECL const struct lysc_node *lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path,
         ly_bool output);
 
 /**
@@ -2317,7 +2317,7 @@ typedef enum {
  * @return NULL in case of memory allocation error, path of the node otherwise.
  * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
-char *lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen);
+LIBYANG_API_DECL char *lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 /**
  * @brief Available YANG schema tree structures representing YANG module.
@@ -2380,7 +2380,7 @@ struct lys_module {
  * @return LY_ENOT if the feature is disabled,
  * @return LY_ENOTFOUND if the feature was not found.
  */
-LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
+LIBYANG_API_DECL LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
@@ -2402,7 +2402,7 @@ LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
-const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct lysc_node *parent,
+LIBYANG_API_DECL const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct lysc_node *parent,
         const struct lysc_module *module, uint32_t options);
 
 /**
@@ -2428,7 +2428,7 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
-const struct lysc_node *lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent,
+LIBYANG_API_DECL const struct lysc_node *lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent,
         const struct lysc_ext_instance *ext, uint32_t options);
 
 /**
@@ -2458,7 +2458,7 @@ const struct lysc_node *lys_getnext_ext(const struct lysc_node *last, const stru
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Found node if any.
  */
-const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
+LIBYANG_API_DECL const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
         const char *name, size_t name_len, uint16_t nodetype, uint32_t options);
 
 /**
@@ -2476,7 +2476,7 @@ const struct lysc_node *lys_find_child(const struct lysc_node *parent, const str
  * @return LY_EDENIED in case the context contains some other revision of the same module which is already implemented.
  * @return LY_ERR on other errors during module compilation.
  */
-LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
+LIBYANG_API_DECL LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
 
 /**
  * @brief Stringify schema nodetype.
@@ -2484,7 +2484,7 @@ LY_ERR lys_set_implemented(struct lys_module *mod, const char **features);
  * @param[in] nodetype Nodetype to stringify.
  * @return Constant string with the name of the node's type.
  */
-const char *lys_nodetype2str(uint16_t nodetype);
+LIBYANG_API_DECL const char *lys_nodetype2str(uint16_t nodetype);
 
 /**
  * @brief Getter for original XPath expression from a parsed expression.
@@ -2492,7 +2492,7 @@ const char *lys_nodetype2str(uint16_t nodetype);
  * @param[in] path Parsed expression.
  * @return Original string expression.
  */
-const char *lyxp_get_expr(const struct lyxp_expr *path);
+LIBYANG_API_DECL const char *lyxp_get_expr(const struct lyxp_expr *path);
 
 /** @} schematree */
 

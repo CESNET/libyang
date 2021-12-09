@@ -84,7 +84,7 @@ lysc_iffeature_value_(const struct lysc_iffeature *iff, size_t *index_e, size_t 
     return LY_ENOT;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lysc_iffeature_value(const struct lysc_iffeature *iff)
 {
     size_t index_e = 0, index_f = 0;
@@ -97,7 +97,7 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
     return LY_ENOT;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_identity_iffeature_value(const struct lysc_ident *ident)
 {
     LY_ARRAY_COUNT_TYPE u, v;
@@ -141,7 +141,7 @@ lys_identity_iffeature_value(const struct lysc_ident *ident)
     return LY_SUCCESS;
 }
 
-API struct lysp_feature *
+LIBYANG_API_DEF struct lysp_feature *
 lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx)
 {
     struct lysp_feature *features;
@@ -211,7 +211,7 @@ lysp_feature_find(const struct lysp_module *pmod, const char *name, size_t len, 
     return NULL;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_feature_value(const struct lys_module *module, const char *feature)
 {
     const struct lysp_feature *f;

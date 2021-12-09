@@ -1032,7 +1032,7 @@ lyd_child(const struct lyd_node *node)
  * @param[in] node Node to use.
  * @return Pointer to the first child node (if any) of the @p node.
  */
-struct lyd_node *lyd_child_no_keys(const struct lyd_node *node);
+LIBYANG_API_DECL struct lyd_node *lyd_child_no_keys(const struct lyd_node *node);
 
 /**
  * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,
@@ -1043,7 +1043,7 @@ struct lyd_node *lyd_child_no_keys(const struct lyd_node *node);
  * @param[in] node Data node to examine.
  * @return Module owner of the node.
  */
-const struct lys_module *lyd_owner_module(const struct lyd_node *node);
+LIBYANG_API_DECL const struct lys_module *lyd_owner_module(const struct lyd_node *node);
 
 /**
  * @brief Check whether a node value equals to its default one.
@@ -1051,7 +1051,7 @@ const struct lys_module *lyd_owner_module(const struct lyd_node *node);
  * @param[in] node Term node to test.
  * @return false (no, it is not a default node) or true (yes, it is default)
  */
-ly_bool lyd_is_default(const struct lyd_node *node);
+LIBYANG_API_DECL ly_bool lyd_is_default(const struct lyd_node *node);
 
 /**
  * @brief Learn the relative position of a list or leaf-list instance within other instances of the same schema node.
@@ -1060,7 +1060,7 @@ ly_bool lyd_is_default(const struct lyd_node *node);
  * @return 0 on error.
  * @return Positive integer of the @p instance position.
  */
-uint32_t lyd_list_pos(const struct lyd_node *instance);
+LIBYANG_API_DECL uint32_t lyd_list_pos(const struct lyd_node *instance);
 
 /**
  * @brief Get the first sibling of the given node.
@@ -1068,7 +1068,7 @@ uint32_t lyd_list_pos(const struct lyd_node *instance);
  * @param[in] node Node which first sibling is going to be the result.
  * @return The first sibling of the given node or the node itself if it is the first child of the parent.
  */
-struct lyd_node *lyd_first_sibling(const struct lyd_node *node);
+LIBYANG_API_DECL struct lyd_node *lyd_first_sibling(const struct lyd_node *node);
 
 /**
  * @brief Learn the length of LYB data.
@@ -1077,7 +1077,7 @@ struct lyd_node *lyd_first_sibling(const struct lyd_node *node);
  * @return Length of the LYB data chunk,
  * @return -1 on error.
  */
-int lyd_lyb_data_length(const char *data);
+LIBYANG_API_DECL int lyd_lyb_data_length(const char *data);
 
 /**
  * @brief Get the (canonical) value of a lyd_value.
@@ -1088,7 +1088,7 @@ int lyd_lyb_data_length(const char *data);
  * @param[in] value Value structure to use.
  * @return Canonical value.
  */
-const char *lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value);
+LIBYANG_API_DECL const char *lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value);
 
 /**
  * @brief Get the (canonical) value of a data node.
@@ -1137,7 +1137,7 @@ lyd_get_meta_value(const struct lyd_meta *meta)
  * @param[out] value_str String representation of the value.
  * @return LY_ERR value.
  */
-LY_ERR lyd_any_value_str(const struct lyd_node *any, char **value_str);
+LIBYANG_API_DECL LY_ERR lyd_any_value_str(const struct lyd_node *any, char **value_str);
 
 /**
  * @brief Copy anydata value from one node to another. Target value is freed first.
@@ -1147,7 +1147,7 @@ LY_ERR lyd_any_value_str(const struct lyd_node *any, char **value_str);
  * @param[in] value_type Source value type.
  * @return LY_ERR value.
  */
-LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type);
+LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @brief Create a new inner node in the data tree.
@@ -1164,7 +1164,7 @@ LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node);
 
 /**
@@ -1180,7 +1180,7 @@ LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, c
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -1196,7 +1196,7 @@ LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, 
  * key-less lists.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...);
 
 /**
@@ -1212,7 +1212,7 @@ LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, co
  * by its length. No keys are expected for key-less lists.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+LIBYANG_API_DECL LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...);
 
 /**
@@ -1228,7 +1228,7 @@ LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module
  * key-less lists.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
+LIBYANG_API_DECL LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...);
 
 /**
@@ -1245,7 +1245,7 @@ LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *modu
  * key-less lists.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node, ...);
+LIBYANG_API_DECL LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -1261,7 +1261,7 @@ LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, s
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
+LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
         ly_bool output, struct lyd_node **node);
 
 /**
@@ -1278,7 +1278,7 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
+LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
         ly_bool output, struct lyd_node **node);
 
 /**
@@ -1294,7 +1294,7 @@ LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, co
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         size_t value_len, ly_bool output, struct lyd_node **node);
 
 /**
@@ -1309,7 +1309,7 @@ LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_term_canon(struct lyd_node *parent, const struct lys_module *module, const char *name,
+LIBYANG_API_DECL LY_ERR lyd_new_term_canon(struct lyd_node *parent, const struct lys_module *module, const char *name,
         const char *val_str, ly_bool output, struct lyd_node **node);
 
 /**
@@ -1325,7 +1325,7 @@ LY_ERR lyd_new_term_canon(struct lyd_node *parent, const struct lys_module *modu
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str, struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
@@ -1343,7 +1343,7 @@ LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, c
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
 
 /**
@@ -1360,7 +1360,7 @@ LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, con
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, ly_bool use_value,
+LIBYANG_API_DECL LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, ly_bool use_value,
         LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
 
 /**
@@ -1377,7 +1377,7 @@ LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, co
  * @param[out] meta Optional created metadata. Must be set if @p parent is NULL.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module, const char *name,
+LIBYANG_API_DECL LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module, const char *name,
         const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta);
 
 /**
@@ -1392,7 +1392,7 @@ LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const str
  * @return LY_ENOT if the attribute could not be parsed into any metadata.
  * @return LY_ERR on error.
  */
-LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt, const struct lyd_attr *attr,
+LIBYANG_API_DECL LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt, const struct lyd_attr *attr,
         struct lyd_meta **meta);
 
 /**
@@ -1407,7 +1407,7 @@ LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool 
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
+LIBYANG_API_DECL LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
         const char *prefix, const char *module_name, struct lyd_node **node);
 
 /**
@@ -1422,7 +1422,7 @@ LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
+LIBYANG_API_DECL LY_ERR lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
         const char *prefix, const char *module_ns, struct lyd_node **node);
 
 /**
@@ -1438,7 +1438,7 @@ LY_ERR lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  * @param[out] attr Optional created attribute.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *value,
+LIBYANG_API_DECL LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *value,
         struct lyd_attr **attr);
 
 /**
@@ -1453,7 +1453,7 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
  * @param[out] attr Optional created attribute.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, const char *value,
+LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, const char *value,
         struct lyd_attr **attr);
 
 /**
@@ -1510,7 +1510,7 @@ LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char 
  * @param[out] node Optional first created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
+LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
         uint32_t options, struct lyd_node **node);
 
 /**
@@ -1533,7 +1533,7 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @param[out] new_node Optional last node created.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
+LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
         size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node);
 
@@ -1555,7 +1555,7 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  * @param[out] node Optional first created node.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path, const void *value,
+LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path, const void *value,
         uint32_t options, struct lyd_node **node);
 
 /**
@@ -1587,7 +1587,7 @@ LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance 
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct lyd_node **diff);
 
 /**
  * @brief Add any missing implicit nodes. Default nodes with a false "when" are not added.
@@ -1600,7 +1600,7 @@ LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, s
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t implicit_options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t implicit_options, struct lyd_node **diff);
 
 /**
  * @brief Add any missing implicit nodes of one module. Default nodes with a false "when" are not added.
@@ -1613,7 +1613,7 @@ LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, ui
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options,
+LIBYANG_API_DECL LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options,
         struct lyd_node **diff);
 
 /**
@@ -1629,7 +1629,7 @@ LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *
  * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
-LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
+LIBYANG_API_DECL LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
 
 /**
  * @brief Change the value of a term (leaf or leaf-list) node to a binary value.
@@ -1645,7 +1645,7 @@ LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
  * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
-LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len);
+LIBYANG_API_DECL LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len);
 
 /**
  * @brief Change the value of a term (leaf or leaf-list) node to a canonical string value.
@@ -1661,7 +1661,7 @@ LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, size_t valu
  * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
-LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
+LIBYANG_API_DECL LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
 
 /**
  * @brief Change the value of a metadata instance.
@@ -1672,7 +1672,7 @@ LY_ERR lyd_change_term_canon(struct lyd_node *term, const char *val_str);
  * @return LY_ENOT if the values were equal and no change occurred,
  * @return LY_ERR value on other errors.
  */
-LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
+LIBYANG_API_DECL LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
 
 /**
  * @brief Insert a child into a parent.
@@ -1685,7 +1685,7 @@ LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_insert_child(struct lyd_node *parent, struct lyd_node *node);
+LIBYANG_API_DECL LY_ERR lyd_insert_child(struct lyd_node *parent, struct lyd_node *node);
 
 /**
  * @brief Insert a node into siblings.
@@ -1699,7 +1699,7 @@ LY_ERR lyd_insert_child(struct lyd_node *parent, struct lyd_node *node);
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_node **first);
+LIBYANG_API_DECL LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_node **first);
 
 /**
  * @brief Insert a node before another node, can be used only for user-ordered nodes.
@@ -1712,7 +1712,7 @@ LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struc
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
+LIBYANG_API_DECL LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert a node after another node, can be used only for user-ordered nodes.
@@ -1725,56 +1725,56 @@ LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+LIBYANG_API_DECL LY_ERR lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Unlink the specified node with all the following siblings.
  *
  * @param[in] node Data tree node to be unlinked (together with all the children and following siblings).
  */
-void lyd_unlink_siblings(struct lyd_node *node);
+LIBYANG_API_DECL void lyd_unlink_siblings(struct lyd_node *node);
 
 /**
  * @brief Unlink the specified data subtree.
  *
  * @param[in] node Data tree node to be unlinked (together with all the children).
  */
-void lyd_unlink_tree(struct lyd_node *node);
+LIBYANG_API_DECL void lyd_unlink_tree(struct lyd_node *node);
 
 /**
  * @brief Free all the nodes (even parents of the node) in the data tree.
  *
  * @param[in] node Any of the nodes inside the tree.
  */
-void lyd_free_all(struct lyd_node *node);
+LIBYANG_API_DECL void lyd_free_all(struct lyd_node *node);
 
 /**
  * @brief Free all the sibling nodes (preceding as well as succeeding).
  *
  * @param[in] node Any of the sibling nodes to free.
  */
-void lyd_free_siblings(struct lyd_node *node);
+LIBYANG_API_DECL void lyd_free_siblings(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data (sub)tree.
  *
  * @param[in] node Root of the (sub)tree to be freed.
  */
-void lyd_free_tree(struct lyd_node *node);
+LIBYANG_API_DECL void lyd_free_tree(struct lyd_node *node);
 
 /**
  * @brief Free a single metadata instance.
  *
  * @param[in] meta Metadata to free.
  */
-void lyd_free_meta_single(struct lyd_meta *meta);
+LIBYANG_API_DECL void lyd_free_meta_single(struct lyd_meta *meta);
 
 /**
  * @brief Free the metadata instance with any following instances.
  *
  * @param[in] meta Metadata to free.
  */
-void lyd_free_meta_siblings(struct lyd_meta *meta);
+LIBYANG_API_DECL void lyd_free_meta_siblings(struct lyd_meta *meta);
 
 /**
  * @brief Free a single attribute.
@@ -1782,7 +1782,7 @@ void lyd_free_meta_siblings(struct lyd_meta *meta);
  * @param[in] ctx Context where the attributes were created.
  * @param[in] attr Attribute to free.
  */
-void lyd_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
+LIBYANG_API_DECL void lyd_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
 
 /**
  * @brief Free the attribute with any following attributes.
@@ -1790,7 +1790,7 @@ void lyd_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
  * @param[in] ctx Context where the attributes were created.
  * @param[in] attr First attribute to free.
  */
-void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
+LIBYANG_API_DECL void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -1810,7 +1810,7 @@ void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
+LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
         const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
 
 /**
@@ -1825,7 +1825,7 @@ LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *sche
  * @return LY_ENOT if the values do not match,
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len);
+LIBYANG_API_DECL LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len);
 
 /**
  * @ingroup datatree
@@ -1853,7 +1853,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  * @return LY_SUCCESS if the nodes are equivalent.
  * @return LY_ENOT if the nodes are not equivalent.
  */
-LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options);
+LIBYANG_API_DECL LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options);
 
 /**
  * @brief Compare 2 lists of siblings if they are equivalent.
@@ -1866,7 +1866,7 @@ LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *n
  * @return LY_SUCCESS if all the siblings are equivalent.
  * @return LY_ENOT if the siblings are not equivalent.
  */
-LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options);
+LIBYANG_API_DECL LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options);
 
 /**
  * @brief Compare 2 metadata.
@@ -1878,7 +1878,7 @@ LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node 
  * @return LY_SUCCESS if the metadata are equivalent.
  * @return LY_ENOT if not.
  */
-LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2);
+LIBYANG_API_DECL LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2);
 
 /**
  * @ingroup datatree
@@ -1914,7 +1914,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
  * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the specified data tree \p node with any following siblings. Schema references are kept the same.
@@ -1928,7 +1928,7 @@ LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent
  * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the metadata.
@@ -1938,7 +1938,7 @@ LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *pare
  * @param[out] dup Optional created metadata copy.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent, struct lyd_meta **dup);
+LIBYANG_API_DECL LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent, struct lyd_meta **dup);
 
 /**
  * @ingroup datatree
@@ -1980,7 +1980,7 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
+LIBYANG_API_DECL LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
 
 /**
  * @brief Merge the source data tree with any following siblings into the target data tree. Merge may not be
@@ -2003,7 +2003,7 @@ LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, u
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
+LIBYANG_API_DECL LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
 
 /**
  * @brief Callback for matching merge nodes.
@@ -2031,7 +2031,7 @@ typedef LY_ERR (*lyd_merge_cb)(struct lyd_node *trg_node, const struct lyd_node 
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_merge_module(struct lyd_node **target, const struct lyd_node *source, const struct lys_module *mod,
+LIBYANG_API_DECL LY_ERR lyd_merge_module(struct lyd_node **target, const struct lyd_node *source, const struct lys_module *mod,
         lyd_merge_cb merge_cb, void *cb_data, uint16_t options);
 
 /**
@@ -2076,7 +2076,7 @@ LY_ERR lyd_merge_module(struct lyd_node **target, const struct lyd_node *source,
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
 
 /**
  * @brief Learn the differences between 2 data trees including all the following siblings.
@@ -2090,7 +2090,7 @@ LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
 
 /**
  * @brief Callback for diff nodes.
@@ -2118,7 +2118,7 @@ typedef LY_ERR (*lyd_diff_cb)(const struct lyd_node *diff_node, struct lyd_node 
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
+LIBYANG_API_DECL LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
         lyd_diff_cb diff_cb, void *cb_data);
 
 /**
@@ -2131,7 +2131,7 @@ LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
 
 /**
  * @ingroup datatree
@@ -2172,7 +2172,7 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
+LIBYANG_API_DECL LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
 
 /**
@@ -2191,7 +2191,7 @@ LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
+LIBYANG_API_DECL LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
         lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
 
 /**
@@ -2205,7 +2205,7 @@ LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_p
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint16_t options);
+LIBYANG_API_DECL LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff, uint16_t options);
 
 /**
  * @brief Reverse a diff and make the opposite changes. Meaning change create to delete, delete to create,
@@ -2216,7 +2216,7 @@ LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_dif
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
  * @brief Deprecated, use ::lyd_find_target() instead.
@@ -2226,7 +2226,7 @@ LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **d
  * @return Found target node,
  * @return NULL if not found.
  */
-const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct lyd_node *tree);
+LIBYANG_API_DECL const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct lyd_node *tree);
 
 /**
  * @brief Types of the different data paths.
@@ -2249,7 +2249,7 @@ typedef enum {
  * @return NULL in case of memory allocation error, path of the node otherwise.
  * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
-char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
+LIBYANG_API_DECL char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 /**
  * @brief Find a specific metadata.
@@ -2260,7 +2260,7 @@ char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer
  * @return Found metadata,
  * @return NULL if not found.
  */
-struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name);
+LIBYANG_API_DECL struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name);
 
 /**
  * @brief Search in the given siblings (NOT recursively) for the first target instance with the same value.
@@ -2273,7 +2273,7 @@ struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_mo
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
  * @return LY_ERR value if another error occurred.
  */
-LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
 
 /**
  * @brief Search in the given siblings for the first schema instance.
@@ -2299,7 +2299,7 @@ LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_
  * @return LY_EINVAL if @p schema is a key-less list.
  * @return LY_ERR value if another error occurred.
  */
-LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
         size_t val_len, struct lyd_node **match);
 
 /**
@@ -2313,7 +2313,7 @@ LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_n
  * @return LY_ENOTFOUND if not found, empty @p set returned.
  * @return LY_ERR value if another error occurred.
  */
-LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
 
 /**
  * @brief Search the given siblings for an opaque node with a specific name.
@@ -2325,7 +2325,7 @@ LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const stru
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
  * @return LY_ERR value is an error occurred.
  */
-LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struct lyd_node **match);
 
 /**
  * @brief Set a new XPath variable to @p vars.
@@ -2338,14 +2338,14 @@ LY_ERR lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name
  * @param[in] value Value of the variable.
  * @return LY_ERR value.
  */
-LY_ERR lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value);
+LIBYANG_API_DECL LY_ERR lyxp_vars_set(struct lyxp_var **vars, const char *name, const char *value);
 
 /**
  * @brief Free the XPath variables.
  *
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  */
-void lyxp_vars_free(struct lyxp_var *vars);
+LIBYANG_API_DECL void lyxp_vars_free(struct lyxp_var *vars);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
@@ -2362,7 +2362,7 @@ void lyxp_vars_free(struct lyxp_var *vars);
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
+LIBYANG_API_DECL LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
@@ -2377,7 +2377,7 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars,
+LIBYANG_API_DECL LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars,
         struct ly_set **set);
 
 /**
@@ -2394,7 +2394,7 @@ LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
+LIBYANG_API_DECL LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
         const struct lyxp_var *vars, struct ly_set **set);
 
 /**
@@ -2408,7 +2408,7 @@ LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *t
  * @return LY_SUCCESS on success, @p result is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result);
+LIBYANG_API_DECL LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result);
 
 /**
  * @brief Evaluate an XPath on data and return the result converted to boolean.
@@ -2422,7 +2422,7 @@ LY_ERR lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_boo
  * @return LY_SUCCESS on success, @p result is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath,
+LIBYANG_API_DECL LY_ERR lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath,
         const struct lyxp_var *vars, ly_bool *result);
 
 /**
@@ -2440,7 +2440,7 @@ LY_ERR lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath,
  * @return LY_ENOTFOUND if no nodes in the path were found.
  * @return LY_ERR on other errors.
  */
-LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
 
 /**
  * @brief Find the target node of a compiled path (::lyd_value instance-identifier).
@@ -2452,7 +2452,7 @@ LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool 
  * @return LY_ENOTFOUND if no match was found.
  * @return LY_ERR on other errors.
  */
-LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match);
 
 /**
  * @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.
@@ -2462,7 +2462,7 @@ LY_ERR lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, 
  * @param[out] fractions_s Optional fractions of a second, set to NULL if none.
  * @return LY_ERR value.
  */
-LY_ERR ly_time_str2time(const char *value, time_t *time, char **fractions_s);
+LIBYANG_API_DECL LY_ERR ly_time_str2time(const char *value, time_t *time, char **fractions_s);
 
 /**
  * @brief Convert UNIX timestamp and fractions of a second into canonical date-and-time string value.
@@ -2472,7 +2472,7 @@ LY_ERR ly_time_str2time(const char *value, time_t *time, char **fractions_s);
  * @param[out] str String date-and-time value in the local timezone.
  * @return LY_ERR value.
  */
-LY_ERR ly_time_time2str(time_t time, const char *fractions_s, char **str);
+LIBYANG_API_DECL LY_ERR ly_time_time2str(time_t time, const char *fractions_s, char **str);
 
 /**
  * @brief Convert date-and-time from string to timespec.
@@ -2481,7 +2481,7 @@ LY_ERR ly_time_time2str(time_t time, const char *fractions_s, char **str);
  * @param[out] ts Timespec.
  * @return LY_ERR value.
  */
-LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
+LIBYANG_API_DECL LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
 
 /**
  * @brief Convert timespec into date-and-time string value.
@@ -2490,7 +2490,7 @@ LY_ERR ly_time_str2ts(const char *value, struct timespec *ts);
  * @param[out] str String date-and-time value in the local timezone.
  * @return LY_ERR value.
  */
-LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
+LIBYANG_API_DECL LY_ERR ly_time_ts2str(const struct timespec *ts, char **str);
 
 #ifdef __cplusplus
 }

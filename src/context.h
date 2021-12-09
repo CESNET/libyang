@@ -220,7 +220,7 @@ struct ly_ctx;
  * @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value.
  */
-LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx);
+LIBYANG_API_DECL LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -243,7 +243,7 @@ LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_
  * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx);
+LIBYANG_API_DECL LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -266,7 +266,7 @@ LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT fo
  * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx);
+LIBYANG_API_DECL LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx);
 
 /**
  * @brief Compile (recompile) the context applying all the performed changes after the last context compilation.
@@ -275,7 +275,7 @@ LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT for
  * @param[in] ctx Context to compile.
  * @return LY_ERR return value.
  */
-LY_ERR ly_ctx_compile(struct ly_ctx *ctx);
+LIBYANG_API_DECL LY_ERR ly_ctx_compile(struct ly_ctx *ctx);
 
 /**
  * @brief Add the search path into libyang context
@@ -287,7 +287,7 @@ LY_ERR ly_ctx_compile(struct ly_ctx *ctx);
  * @param[in] search_dir New search path to add to the current paths previously set in ctx.
  * @return LY_ERR return value.
  */
-LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
+LIBYANG_API_DECL LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
  * @brief Clean the search path(s) from the libyang context
@@ -298,7 +298,7 @@ LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @param[in] value Searchdir to be removed, use NULL to remove them all.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value);
+LIBYANG_API_DECL LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value);
 
 /**
  * @brief Remove the least recently added search path(s) from the libyang context.
@@ -311,7 +311,7 @@ LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value);
  * Value 0 does not change the search path set.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count);
+LIBYANG_API_DECL LY_ERR ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context. Do not modify the result!
@@ -320,7 +320,7 @@ LY_ERR ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count);
  * @return NULL-terminated list (array) of the search paths, NULL if no searchpath was set.
  * Do not modify the provided data in any way!
  */
-const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
+LIBYANG_API_DECL const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the currently set context's options.
@@ -328,7 +328,7 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * @param[in] ctx Context to query.
  * @return Combination of all the currently set context's options, see @ref contextoptions.
  */
-uint16_t ly_ctx_get_options(const struct ly_ctx *ctx);
+LIBYANG_API_DECL uint16_t ly_ctx_get_options(const struct ly_ctx *ctx);
 
 /**
  * @brief Set some of the context's options, see @ref contextoptions.
@@ -338,7 +338,7 @@ uint16_t ly_ctx_get_options(const struct ly_ctx *ctx);
  * and all ::lysc_node.priv in the modules will be overwritten, see ::LY_CTX_SET_PRIV_PARSED.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
+LIBYANG_API_DECL LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
 
 /**
  * @brief Unset some of the context's options, see @ref contextoptions.
@@ -346,7 +346,7 @@ LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
  * @param[in] option Combination of the context's options to be unset, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
+LIBYANG_API_DECL LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
 
 /**
  * @brief Get the change count of the context (module set) during its life-time.
@@ -354,7 +354,7 @@ LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
  * @param[in] ctx Context to be examined.
  * @return Context change count.
  */
-uint16_t ly_ctx_get_change_count(const struct ly_ctx *ctx);
+LIBYANG_API_DECL uint16_t ly_ctx_get_change_count(const struct ly_ctx *ctx);
 
 /**
  * @brief Callback for freeing returned module data in #ly_module_imp_clb.
@@ -396,7 +396,7 @@ typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, c
  * @param[in] user_data Optional pointer for getting the user-supplied callback data.
  * @return Callback or NULL if not set.
  */
-ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data);
+LIBYANG_API_DECL ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data);
 
 /**
  * @brief Set missing include or import module callback. It is meant to be used when the models
@@ -407,7 +407,7 @@ ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **use
  * @param[in] clb Callback responsible for returning the missing model.
  * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
  */
-void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
+LIBYANG_API_DECL void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
 
 /**
  * @brief Get YANG module of the given name and revision.
@@ -418,7 +418,7 @@ void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *
  * the schema with no revision is returned, if it is present in the context.
  * @return Pointer to the YANG module, NULL if no schema in the context follows the name and revision requirements.
  */
-struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Get the latest revision of the YANG module specified by its name.
@@ -430,7 +430,7 @@ struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name,
  * @return The latest revision of the specified YANG module in the given context, NULL if no YANG module of the
  * given name is present in the context.
  */
-struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name);
 
 /**
  * @brief Get the (only) implemented YANG module specified by its name.
@@ -440,7 +440,7 @@ struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char
  * @return The only implemented YANG module revision of the given name in the given context. NULL if there is no
  * implemented module of the given name.
  */
-struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
 
 /**
  * @brief Iterate over all modules in the given context.
@@ -451,7 +451,7 @@ struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const
  * to be used in all calls starting with value 0.
  * @return Next context module, NULL if the last was already returned.
  */
-struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
 
 /**
  * @brief Get YANG module of the given namespace and revision.
@@ -462,7 +462,7 @@ struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *in
  * the schema with no revision is returned, if it is present in the context.
  * @return Pointer to the YANG module, NULL if no schema in the context follows the namespace and revision requirements.
  */
-struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
  * @brief Get the latest revision of the YANG module specified by its namespace.
@@ -474,7 +474,7 @@ struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns
  * @return The latest revision of the specified YANG module in the given context, NULL if no YANG module of the
  * given namespace is present in the context.
  */
-struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
  * @brief Get the (only) implemented YANG module specified by its namespace.
@@ -484,7 +484,7 @@ struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const c
  * @return The only implemented YANG module revision of the given namespace in the given context. NULL if there is no
  * implemented module of the given namespace.
  */
-struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
+LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
  * @brief Get a specific submodule from context. If its belongs-to module is known, use ::ly_ctx_get_submodule2().
@@ -494,7 +494,7 @@ struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, co
  * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
  * @return Found submodule, NULL if there is none.
  */
-const struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision);
+LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision);
 
 /**
  * @brief Get the latests revision of a submodule from context. If its belongs-to module is known,
@@ -504,7 +504,7 @@ const struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, cons
  * @param[in] submodule Submodule name to find.
  * @return Found submodule, NULL if there is none.
  */
-const struct lysp_submodule *ly_ctx_get_submodule_latest(const struct ly_ctx *ctx, const char *submodule);
+LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule_latest(const struct ly_ctx *ctx, const char *submodule);
 
 /**
  * @brief Get a specific submodule from a module. If the belongs-to module is not known, use ::ly_ctx_get_submodule().
@@ -514,7 +514,7 @@ const struct lysp_submodule *ly_ctx_get_submodule_latest(const struct ly_ctx *ct
  * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
  * @return Found submodule, NULL if there is none.
  */
-const struct lysp_submodule *ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule,
+LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule,
         const char *revision);
 
 /**
@@ -525,7 +525,7 @@ const struct lysp_submodule *ly_ctx_get_submodule2(const struct lys_module *modu
  * @param[in] submodule Submodule name to find.
  * @return Found submodule, NULL if there is none.
  */
-const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule);
+LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.
@@ -544,7 +544,7 @@ const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_modul
  *
  * @param[in] ctx libyang context where the latest revision information is going to be reset.
  */
-void ly_ctx_reset_latests(struct ly_ctx *ctx);
+LIBYANG_API_DECL void ly_ctx_reset_latests(struct ly_ctx *ctx);
 
 /**
  * @brief Learn the number of internal modules of a context. Internal modules
@@ -553,7 +553,7 @@ void ly_ctx_reset_latests(struct ly_ctx *ctx);
  * @param[in] ctx libyang context to examine.
  * @return Number of internal modules.
  */
-uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
+LIBYANG_API_DECL uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
 
 /**
  * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
@@ -574,7 +574,7 @@ uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);
  * with the current features settings in case the module is already present in the context.
  * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
-struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features);
+LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features);
 
 /**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.
@@ -596,7 +596,7 @@ struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, cons
  * @param[in] ... Parameters for @p content_id_format.
  * @return LY_ERR value
  */
-LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root, const char *content_id_format, ...);
+LIBYANG_API_DECL LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root, const char *content_id_format, ...);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -613,7 +613,7 @@ LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root,
  *
  * @param[in] ctx libyang context to destroy
  */
-void ly_ctx_destroy(struct ly_ctx *ctx);
+LIBYANG_API_DECL void ly_ctx_destroy(struct ly_ctx *ctx);
 
 /** @} context */
 
