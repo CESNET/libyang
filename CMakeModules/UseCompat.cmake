@@ -47,6 +47,10 @@ macro(USE_COMPAT)
 
     check_include_file("stdatomic.h" HAVE_STDATOMIC)
 
+    include(CheckStructHasMember)
+    check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_TM_GMTOFF)
+    check_symbol_exists(timezone time.h HAVE_TIME_H_TIMEZONE)
+
     unset(CMAKE_REQUIRED_DEFINITIONS)
     unset(CMAKE_REQUIRED_LIBRARIES)
 
