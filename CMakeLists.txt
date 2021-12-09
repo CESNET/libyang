@@ -343,8 +343,30 @@ else()
     target_compile_definitions(yangobj PRIVATE LIBYANG_BUILD)
     add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
 
+    if(WIN32)
+        find_package(dlfcn-win32 REQUIRED)
+        set(CMAKE_DL_LIBS dlfcn-win32::dl)
+    endif()
+
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
+endif()
+
+if(WIN32)
+    find_path(DIRENT_INCLUDE_DIR NAMES dirent.h REQUIRED)
+    message(STATUS "Found <dirent.h> at ${DIRENT_INCLUDE_DIR}")
+
+    set(COMPAT_POSIX_INCLUDES
+        ${CMAKE_CURRENT_SOURCE_DIR}/compat/posix-shims
+        ${DIRENT_INCLUDE_DIR})
+
+    if(TARGET yangobj)
+        target_include_directories(yangobj PRIVATE ${COMPAT_POSIX_INCLUDES})
+    endif()
+    target_include_directories(yang PRIVATE ${COMPAT_POSIX_INCLUDES})
+
+    find_package(pthreads REQUIRED)
+    target_link_libraries(yang PThreads4W::PThreads4W)
 endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
