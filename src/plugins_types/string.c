@@ -33,7 +33,7 @@
  * | string length | yes | `char *` | string itself |
  */
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),

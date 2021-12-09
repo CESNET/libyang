@@ -73,7 +73,7 @@ static struct internal_modules_s {
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
     struct stat st;
@@ -120,7 +120,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     }
 }
 
-API const char * const *
+LIBYANG_API_DEF const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
 #define LY_CTX_SEARCHDIRS_SIZE_STEP 8
@@ -142,7 +142,7 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
     return (const char * const *)ctx->search_paths.objs;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
@@ -175,7 +175,7 @@ ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
@@ -187,7 +187,7 @@ ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
     return LY_SUCCESS;
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features)
 {
     struct lys_module *mod = NULL;
@@ -223,7 +223,7 @@ cleanup:
     return mod;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
@@ -490,21 +490,21 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx)
 {
     LY_CHECK_ARG_RET(NULL, path, ctx, LY_EINVAL);
     return ly_ctx_new_yl_common(search_dir, path, format, options, lyd_parse_data_path, ctx);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx)
 {
     LY_CHECK_ARG_RET(NULL, data, ctx, LY_EINVAL);
     return ly_ctx_new_yl_common(search_dir, data, format, options, lyd_parse_data_mem, ctx);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_compile(struct ly_ctx *ctx)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -526,7 +526,7 @@ cleanup:
     return ret;
 }
 
-API uint16_t
+LIBYANG_API_DEF uint16_t
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
@@ -534,7 +534,7 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
     return ctx->flags;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_ERR lyrc = LY_SUCCESS;
@@ -609,7 +609,7 @@ lysc_node_clear_all_priv(struct lys_module *mod)
     }
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
@@ -631,7 +631,7 @@ ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
     return LY_SUCCESS;
 }
 
-API uint16_t
+LIBYANG_API_DEF uint16_t
 ly_ctx_get_change_count(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
@@ -639,7 +639,7 @@ ly_ctx_get_change_count(const struct ly_ctx *ctx)
     return ctx->change_count;
 }
 
-API void
+LIBYANG_API_DEF void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
     LY_CHECK_ARG_RET(ctx, ctx, );
@@ -648,7 +648,7 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
     ctx->imp_clb_data = user_data;
 }
 
-API ly_module_imp_clb
+LIBYANG_API_DEF ly_module_imp_clb
 ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
@@ -659,7 +659,7 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->imp_clb;
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {
     LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
@@ -735,14 +735,14 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offse
     return NULL;
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
     return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision);
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
@@ -771,14 +771,14 @@ ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t ke
     return NULL;
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
     return ly_ctx_get_module_latest_by(ctx, name, offsetof(struct lys_module, name));
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
@@ -808,7 +808,7 @@ ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size
     return NULL;
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
@@ -822,7 +822,7 @@ ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_
     return ly_ctx_get_module_implemented_by(ctx, name, name_len, offsetof(struct lys_module, name));
 }
 
-API struct lys_module *
+LIBYANG_API_DEF struct lys_module *
 ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
@@ -899,31 +899,31 @@ _ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const cha
     return submod;
 }
 
-API const struct lysp_submodule *
+LIBYANG_API_DEF const struct lysp_submodule *
 ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision)
 {
     return _ly_ctx_get_submodule(ctx, submodule, revision, 0);
 }
 
-API const struct lysp_submodule *
+LIBYANG_API_DEF const struct lysp_submodule *
 ly_ctx_get_submodule_latest(const struct ly_ctx *ctx, const char *submodule)
 {
     return _ly_ctx_get_submodule(ctx, submodule, NULL, 1);
 }
 
-API const struct lysp_submodule *
+LIBYANG_API_DEF const struct lysp_submodule *
 ly_ctx_get_submodule2(const struct lys_module *module, const char *submodule, const char *revision)
 {
     return _ly_ctx_get_submodule2(module, submodule, revision, 0);
 }
 
-API const struct lysp_submodule *
+LIBYANG_API_DEF const struct lysp_submodule *
 ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule)
 {
     return _ly_ctx_get_submodule2(module, submodule, NULL, 1);
 }
 
-API void
+LIBYANG_API_DEF void
 ly_ctx_reset_latests(struct ly_ctx *ctx)
 {
     struct lys_module *mod;
@@ -945,7 +945,7 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
     }
 }
 
-API uint32_t
+LIBYANG_API_DEF uint32_t
 ly_ctx_internal_modules_count(const struct ly_ctx *ctx)
 {
     if (!ctx) {
@@ -1053,7 +1053,7 @@ ylib_submodules(struct lyd_node *parent, const struct lysp_module *pmod, ly_bool
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p, const char *content_id_format, ...)
 {
     LY_ERR ret;
@@ -1202,7 +1202,7 @@ error:
     return ret;
 }
 
-API void
+LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
     struct lys_module *mod;

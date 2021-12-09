@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "config.h"
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
@@ -50,13 +51,6 @@ struct lysc_node;
 #define GETMACRO4(_1, _2, _3, _4, NAME, ...) NAME
 #define GETMACRO5(_1, _2, _3, _4, _5, NAME, ...) NAME
 #define GETMACRO6(_1, _2, _3, _4, _5, _6, NAME, ...) NAME
-
-/*
- * If the compiler supports attribute to mark objects as hidden, mark all
- * objects as hidden and export only objects explicitly marked to be part of
- * the public API.
- */
-#define API __attribute__((visibility("default")))
 
 /******************************************************************************
  * Logger

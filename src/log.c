@@ -46,7 +46,7 @@ THREAD_LOCAL struct ly_log_location_s log_location = {0};
 /* how many bytes add when enlarging buffers */
 #define LY_BUF_STEP 128
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_errcode(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
@@ -59,7 +59,7 @@ ly_errcode(const struct ly_ctx *ctx)
     return LY_SUCCESS;
 }
 
-API LY_VECODE
+LIBYANG_API_DEF LY_VECODE
 ly_vecode(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
@@ -72,7 +72,7 @@ ly_vecode(const struct ly_ctx *ctx)
     return LYVE_SUCCESS;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 ly_errmsg(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
@@ -87,7 +87,7 @@ ly_errmsg(const struct ly_ctx *ctx)
     return NULL;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 ly_errpath(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
@@ -102,7 +102,7 @@ ly_errpath(const struct ly_ctx *ctx)
     return NULL;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 ly_errapptag(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
@@ -117,7 +117,7 @@ ly_errapptag(const struct ly_ctx *ctx)
     return NULL;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_format, ...)
 {
     char *msg = NULL;
@@ -165,7 +165,7 @@ ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path,
     return e->no;
 }
 
-API struct ly_err_item *
+LIBYANG_API_DEF struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
@@ -173,7 +173,7 @@ ly_err_first(const struct ly_ctx *ctx)
     return pthread_getspecific(ctx->errlist_key);
 }
 
-API struct ly_err_item *
+LIBYANG_API_DEF struct ly_err_item *
 ly_err_last(const struct ly_ctx *ctx)
 {
     const struct ly_err_item *e;
@@ -184,7 +184,7 @@ ly_err_last(const struct ly_ctx *ctx)
     return e ? e->prev : NULL;
 }
 
-API void
+LIBYANG_API_DEF void
 ly_err_free(void *ptr)
 {
     struct ly_err_item *i, *next;
@@ -199,7 +199,7 @@ ly_err_free(void *ptr)
     }
 }
 
-API void
+LIBYANG_API_DEF void
 ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
     struct ly_err_item *i, *first;
@@ -223,7 +223,7 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
     }
 }
 
-API LY_LOG_LEVEL
+LIBYANG_API_DEF LY_LOG_LEVEL
 ly_log_level(LY_LOG_LEVEL level)
 {
     LY_LOG_LEVEL prev = ATOMIC_LOAD_RELAXED(ly_ll);
@@ -232,7 +232,7 @@ ly_log_level(LY_LOG_LEVEL level)
     return prev;
 }
 
-API uint32_t
+LIBYANG_API_DEF uint32_t
 ly_log_options(uint32_t opts)
 {
     uint32_t prev = ATOMIC_LOAD_RELAXED(ly_log_opts);
@@ -241,7 +241,7 @@ ly_log_options(uint32_t opts)
     return prev;
 }
 
-API uint32_t
+LIBYANG_API_DEF uint32_t
 ly_log_dbg_groups(uint32_t dbg_groups)
 {
 #ifndef NDEBUG
@@ -255,14 +255,14 @@ ly_log_dbg_groups(uint32_t dbg_groups)
 #endif
 }
 
-API void
+LIBYANG_API_DEF void
 ly_set_log_clb(ly_log_clb clb, ly_bool path)
 {
     log_clb = clb;
     ATOMIC_STORE_RELAXED(path_flag, path);
 }
 
-API ly_log_clb
+LIBYANG_API_DEF ly_log_clb
 ly_get_log_clb(void)
 {
     return log_clb;
@@ -604,7 +604,7 @@ ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char
     va_end(ap);
 }
 
-API void
+LIBYANG_API_DEF void
 lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...)
 {
     va_list ap;
@@ -650,7 +650,7 @@ _ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem, const char *f
     va_end(ap);
 }
 
-API void
+LIBYANG_API_DEF void
 ly_err_print(const struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
     /* String ::ly_err_item.msg cannot be used directly because it may contain the % character */

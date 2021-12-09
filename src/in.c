@@ -50,14 +50,14 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
-API LY_IN_TYPE
+LIBYANG_API_DEF LY_IN_TYPE
 ly_in_type(const struct ly_in *in)
 {
     LY_CHECK_ARG_RET(NULL, in, LY_IN_ERROR);
     return in->type;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_new_fd(int fd, struct ly_in **in)
 {
     size_t length;
@@ -83,7 +83,7 @@ ly_in_new_fd(int fd, struct ly_in **in)
     return LY_SUCCESS;
 }
 
-API int
+LIBYANG_API_DEF int
 ly_in_fd(struct ly_in *in, int fd)
 {
     int prev_fd;
@@ -112,7 +112,7 @@ ly_in_fd(struct ly_in *in, int fd)
     return prev_fd;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_new_file(FILE *f, struct ly_in **in)
 {
     LY_CHECK_ARG_RET(NULL, f, in, LY_EINVAL);
@@ -126,7 +126,7 @@ ly_in_new_file(FILE *f, struct ly_in **in)
     return LY_SUCCESS;
 }
 
-API FILE *
+LIBYANG_API_DEF FILE *
 ly_in_file(struct ly_in *in, FILE *f)
 {
     FILE *prev_f;
@@ -153,7 +153,7 @@ ly_in_file(struct ly_in *in, FILE *f)
     return prev_f;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_new_memory(const char *str, struct ly_in **in)
 {
     LY_CHECK_ARG_RET(NULL, str, in, LY_EINVAL);
@@ -168,7 +168,7 @@ ly_in_new_memory(const char *str, struct ly_in **in)
     return LY_SUCCESS;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 ly_in_memory(struct ly_in *in, const char *str)
 {
     const char *data;
@@ -185,7 +185,7 @@ ly_in_memory(struct ly_in *in, const char *str)
     return data;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_reset(struct ly_in *in)
 {
     LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
@@ -195,7 +195,7 @@ ly_in_reset(struct ly_in *in)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
 {
     LY_ERR ret;
@@ -224,7 +224,7 @@ ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
     return LY_SUCCESS;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 ly_in_filepath(struct ly_in *in, const char *filepath, size_t len)
 {
     int fd, prev_fd;
@@ -310,7 +310,7 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
 
 }
 
-API void
+LIBYANG_API_DEF void
 ly_in_free(struct ly_in *in, ly_bool destroy)
 {
     if (!in) {
@@ -363,7 +363,7 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
     return LY_SUCCESS;
 }
 
-API size_t
+LIBYANG_API_DEF size_t
 ly_in_parsed(const struct ly_in *in)
 {
     return in->current - in->func_start;

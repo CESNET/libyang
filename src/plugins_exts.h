@@ -117,7 +117,7 @@ extern "C" {
  * @param[in] substmts The sized array of extension instance's substatements. The whole array is freed except the storage
  * places which are expected to be covered by the extension plugin.
  */
-void lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
+LIBYANG_API_DECL void lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
  * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
@@ -204,7 +204,7 @@ struct lyplg_ext_record {
  * @param[in] path Path relevant to the message.
  * @param[in] format Format string to print.
  */
-void lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
+LIBYANG_API_DECL void lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
         const char *format, ...);
 
 /** @} pluginsExtensions */

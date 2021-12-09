@@ -1647,7 +1647,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     return _lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, parsed, lydctx_p);
 }
 
-API int
+LIBYANG_API_DEF int
 lyd_lyb_data_length(const char *data)
 {
     LY_ERR ret = LY_SUCCESS;
