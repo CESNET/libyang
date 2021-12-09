@@ -38,6 +38,8 @@ struct lysc_node;
     defined __SUNPRO_C || \
     defined __xlC__
 # define THREAD_LOCAL __thread
+#elif defined _MSC_VER
+# define THREAD_LOCAL __declspec(thread)
 #else
 # error "Cannot define THREAD_LOCAL"
 #endif
