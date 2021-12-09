@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
 #ifndef __WORDSIZE
 #  if defined __x86_64__ && !defined __ILP32__
