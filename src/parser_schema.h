@@ -15,6 +15,8 @@
 #ifndef LY_PARSER_SCHEMA_H_
 #define LY_PARSER_SCHEMA_H_
 
+#include "log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
