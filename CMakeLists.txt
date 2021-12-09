@@ -372,8 +372,10 @@ endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
-# link math
-target_link_libraries(yang m)
+if(NOT WIN32)
+    # link math
+    target_link_libraries(yang m)
+endif()
 
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
