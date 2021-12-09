@@ -115,6 +115,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     ret = ly_time_str2time(value, &val->time, &val->fractions_s);
     LY_CHECK_GOTO(ret, cleanup);
 
+#ifdef HAVE_TIME_H_TIMEZONE
     if (!strncmp(((char *)value + value_len) - 6, "-00:00", 6)) {
         /* unknown timezone, move the timestamp to UTC */
         tzset();
@@ -136,6 +137,10 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
             }
         }
     }
+#else
+    (void)tm;
+    val->unknown_tz = 1;
+#endif
 
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
