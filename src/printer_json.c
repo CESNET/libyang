@@ -669,12 +669,17 @@ json_print_container(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 static ly_bool
 json_print_array_is_last_inst(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
+    if (!is_open_array(ctx, node)) {
+        /* no array open */
+        return 0;
+    }
+
     if ((ctx->root == node) && !(ctx->options & LYD_PRINT_WITHSIBLINGS)) {
         /* the only printed instance */
         return 1;
     }
 
-    if (is_open_array(ctx, node) && (!node->next || (node->next->schema != node->schema))) {
+    if (!node->next || (node->next->schema != node->schema)) {
         /* last instance */
         return 1;
     }
