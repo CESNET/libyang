@@ -93,7 +93,7 @@ typedef enum LY_IN_TYPE {
  * @param[in] in Input handler.
  * @return Type of the parser's input.
  */
-LY_IN_TYPE ly_in_type(const struct ly_in *in);
+LIBYANG_API_DECL LY_IN_TYPE ly_in_type(const struct ly_in *in);
 
 /**
  * @brief Reset the input medium to read from its beginning, so the following parser function will read from the object's beginning.
@@ -107,7 +107,7 @@ LY_IN_TYPE ly_in_type(const struct ly_in *in);
  * @return LY_SUCCESS in case of success
  * @return LY_ESYS in case of failure
  */
-LY_ERR ly_in_reset(struct ly_in *in);
+LIBYANG_API_DECL LY_ERR ly_in_reset(struct ly_in *in);
 
 /**
  * @brief Create input handler using file descriptor.
@@ -117,7 +117,7 @@ LY_ERR ly_in_reset(struct ly_in *in);
  * @return LY_SUCCESS in case of success
  * @return LY_ERR value in case of failure.
  */
-LY_ERR ly_in_new_fd(int fd, struct ly_in **in);
+LIBYANG_API_DECL LY_ERR ly_in_new_fd(int fd, struct ly_in **in);
 
 /**
  * @brief Get or reset file descriptor input handler.
@@ -127,7 +127,7 @@ LY_ERR ly_in_new_fd(int fd, struct ly_in **in);
  * @return Previous value of the file descriptor. Note that caller is responsible for closing the returned file descriptor in case of setting new descriptor @p fd.
  * @return -1 in case of error when setting up the new file descriptor.
  */
-int ly_in_fd(struct ly_in *in, int fd);
+LIBYANG_API_DECL int ly_in_fd(struct ly_in *in, int fd);
 
 /**
  * @brief Create input handler using file stream.
@@ -137,7 +137,7 @@ int ly_in_fd(struct ly_in *in, int fd);
  * @return LY_SUCCESS in case of success
  * @return LY_ERR value in case of failure.
  */
-LY_ERR ly_in_new_file(FILE *f, struct ly_in **in);
+LIBYANG_API_DECL LY_ERR ly_in_new_file(FILE *f, struct ly_in **in);
 
 /**
  * @brief Get or reset file stream input handler.
@@ -147,7 +147,7 @@ LY_ERR ly_in_new_file(FILE *f, struct ly_in **in);
  * @return NULL in case of invalid argument or an error when setting up the new input file, original input handler @p in is untouched in this case.
  * @return Previous file stream of the handler. Note that caller is responsible for closing the returned stream in case of setting new stream @p f.
  */
-FILE *ly_in_file(struct ly_in *in, FILE *f);
+LIBYANG_API_DECL FILE *ly_in_file(struct ly_in *in, FILE *f);
 
 /**
  * @brief Create input handler using memory to read data.
@@ -159,7 +159,7 @@ FILE *ly_in_file(struct ly_in *in, FILE *f);
  * @return LY_SUCCESS in case of success
  * @return LY_ERR value in case of failure.
  */
-LY_ERR ly_in_new_memory(const char *str, struct ly_in **in);
+LIBYANG_API_DECL LY_ERR ly_in_new_memory(const char *str, struct ly_in **in);
 
 /**
  * @brief Get or change memory where the data are read from.
@@ -171,7 +171,7 @@ LY_ERR ly_in_new_memory(const char *str, struct ly_in **in);
  * @return Previous starting address to read data from. Note that the caller is responsible to free
  * the data in case of changing string pointer @p str.
  */
-const char *ly_in_memory(struct ly_in *in, const char *str);
+LIBYANG_API_DECL const char *ly_in_memory(struct ly_in *in, const char *str);
 
 /**
  * @brief Create input handler file of the given filename.
@@ -183,7 +183,7 @@ const char *ly_in_memory(struct ly_in *in, const char *str);
  * @return LY_SUCCESS in case of success
  * @return LY_ERR value in case of failure.
  */
-LY_ERR ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in);
+LIBYANG_API_DECL LY_ERR ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in);
 
 /**
  * @brief Get or change the filepath of the file where the parser reads the data.
@@ -199,7 +199,7 @@ LY_ERR ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in);
  * @return Previous filepath string in case the @p filepath argument is NULL.
  * @return NULL if changing filepath succeedes and ((void *)-1) otherwise.
  */
-const char *ly_in_filepath(struct ly_in *in, const char *filepath, size_t len);
+LIBYANG_API_DECL const char *ly_in_filepath(struct ly_in *in, const char *filepath, size_t len);
 
 /**
  * @brief Get the number of parsed bytes by the last function.
@@ -207,7 +207,7 @@ const char *ly_in_filepath(struct ly_in *in, const char *filepath, size_t len);
  * @param[in] in In structure used.
  * @return Number of parsed bytes.
  */
-size_t ly_in_parsed(const struct ly_in *in);
+LIBYANG_API_DECL size_t ly_in_parsed(const struct ly_in *in);
 
 /**
  * @brief Free the input handler.
@@ -215,7 +215,7 @@ size_t ly_in_parsed(const struct ly_in *in);
  * @param[in] destroy Flag to free the input data buffer (for LY_IN_MEMORY) or to
  * close stream/file descriptor (for LY_IN_FD and LY_IN_FILE)
  */
-void ly_in_free(struct ly_in *in, ly_bool destroy);
+LIBYANG_API_DECL void ly_in_free(struct ly_in *in, ly_bool destroy);
 
 #ifdef __cplusplus
 }

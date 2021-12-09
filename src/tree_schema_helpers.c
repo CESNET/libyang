@@ -1246,7 +1246,7 @@ search_file:
     return LY_SUCCESS;
 }
 
-API const struct lysc_when *
+LIBYANG_API_DEF const struct lysc_when *
 lysc_has_when(const struct lysc_node *node)
 {
     struct lysc_when **when;
@@ -1266,7 +1266,7 @@ lysc_has_when(const struct lysc_node *node)
     return NULL;
 }
 
-API const struct lys_module *
+LIBYANG_API_DEF const struct lys_module *
 lysc_owner_module(const struct lysc_node *node)
 {
     if (!node) {
@@ -1277,7 +1277,7 @@ lysc_owner_module(const struct lysc_node *node)
     return node->module;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 lys_nodetype2str(uint16_t nodetype)
 {
     switch (nodetype) {
@@ -1310,7 +1310,7 @@ lys_nodetype2str(uint16_t nodetype)
     }
 }
 
-API enum ly_stmt
+LIBYANG_API_DEF enum ly_stmt
 lys_nodetype2stmt(uint16_t nodetype)
 {
     switch (nodetype) {
@@ -1394,7 +1394,7 @@ lys_datatype2str(LY_DATA_TYPE basetype)
     }
 }
 
-API const struct lysp_tpdf *
+LIBYANG_API_DEF const struct lysp_tpdf *
 lysp_node_typedefs(const struct lysp_node *node)
 {
     switch (node->nodetype) {
@@ -1417,7 +1417,7 @@ lysp_node_typedefs(const struct lysp_node *node)
     }
 }
 
-API const struct lysp_node_grp *
+LIBYANG_API_DEF const struct lysp_node_grp *
 lysp_node_groupings(const struct lysp_node *node)
 {
     switch (node->nodetype) {
@@ -1459,7 +1459,7 @@ lysp_node_actions_p(struct lysp_node *node)
     }
 }
 
-API const struct lysp_node_action *
+LIBYANG_API_DEF const struct lysp_node_action *
 lysp_node_actions(const struct lysp_node *node)
 {
     struct lysp_node_action **actions;
@@ -1490,7 +1490,7 @@ lysp_node_notifs_p(struct lysp_node *node)
     }
 }
 
-API const struct lysp_node_notif *
+LIBYANG_API_DEF const struct lysp_node_notif *
 lysp_node_notifs(const struct lysp_node *node)
 {
     struct lysp_node_notif **notifs;
@@ -1530,7 +1530,7 @@ lysp_node_child_p(struct lysp_node *node)
     }
 }
 
-API const struct lysp_node *
+LIBYANG_API_DEF const struct lysp_node *
 lysp_node_child(const struct lysp_node *node)
 {
     struct lysp_node **child;
@@ -1648,7 +1648,7 @@ lysc_node_actions_p(struct lysc_node *node)
     }
 }
 
-API const struct lysc_node_action *
+LIBYANG_API_DEF const struct lysc_node_action *
 lysc_node_actions(const struct lysc_node *node)
 {
     struct lysc_node_action **actions;
@@ -1675,7 +1675,7 @@ lysc_node_notifs_p(struct lysc_node *node)
     }
 }
 
-API const struct lysc_node_notif *
+LIBYANG_API_DEF const struct lysc_node_notif *
 lysc_node_notifs(const struct lysc_node *node)
 {
     struct lysc_node_notif **notifs;
@@ -1712,7 +1712,7 @@ lysc_node_child_p(const struct lysc_node *node)
     }
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lysc_node_child(const struct lysc_node *node)
 {
     struct lysc_node **child;
@@ -1762,7 +1762,7 @@ lysc_node_musts_p(const struct lysc_node *node)
     }
 }
 
-API struct lysc_must *
+LIBYANG_API_DEF struct lysc_must *
 lysc_node_musts(const struct lysc_node *node)
 {
     struct lysc_must **must_p;
@@ -1808,7 +1808,7 @@ lysc_node_when_p(const struct lysc_node *node)
     }
 }
 
-API struct lysc_when **
+LIBYANG_API_DEF struct lysc_when **
 lysc_node_when(const struct lysc_node *node)
 {
     struct lysc_when ***when_p;

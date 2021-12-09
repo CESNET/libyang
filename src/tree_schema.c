@@ -127,7 +127,7 @@ struct stmt_info_s stmt_attr_info[] = {
     [LY_STMT_YIN_ELEMENT] = {"yin-element", "value", STMT_FLAG_ID},
 };
 
-API const char *
+LIBYANG_API_DEF const char *
 ly_stmt2str(enum ly_stmt stmt)
 {
     if (stmt == LY_STMT_EXTENSION_INSTANCE) {
@@ -144,7 +144,7 @@ const char * const ly_devmod_list[] = {
     [LYS_DEV_REPLACE] = "replace",
 };
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *data)
 {
     struct lysc_node *elem, *elem2;
@@ -181,7 +181,7 @@ lysc_tree_dfs_full(const struct lysc_node *root, lysc_dfs_clb dfs_clb, void *dat
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *data)
 {
     const struct lysc_node *root;
@@ -396,13 +396,13 @@ check:
     return next;
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
     return lys_getnext_(last, parent, module, NULL, options);
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_ext_instance *ext, uint32_t options)
 {
     return lys_getnext_(last, parent, NULL, ext, options);
@@ -441,7 +441,7 @@ lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module 
     return NULL;
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
         uint16_t nodetype, uint32_t options)
 {
@@ -474,7 +474,7 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
     return NULL;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
         struct ly_set **set)
 {
@@ -524,7 +524,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_expr_atoms(const struct lysc_node *ctx_node, const struct lys_module *cur_mod, const struct lyxp_expr *expr,
         const struct lysc_prefix *prefixes, uint32_t options, struct ly_set **set)
 {
@@ -570,7 +570,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
         struct ly_set **set)
 {
@@ -622,7 +622,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_lypath_atoms(const struct ly_path *path, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -652,7 +652,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
         struct ly_set **set)
 {
@@ -686,7 +686,7 @@ cleanup:
     return ret;
 }
 
-API const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output)
 {
     const struct lysc_node *snode = NULL;
@@ -803,7 +803,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
     }
 }
 
-API char *
+LIBYANG_API_DEF char *
 lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
     return lysc_path_until(node, NULL, pathtype, buffer, buflen);
@@ -1177,7 +1177,7 @@ lys_unres_glob_erase(struct lys_glob_unres *unres)
     assert(!unres->ds_unres.disabled.count);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_set_implemented(struct lys_module *mod, const char **features)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1753,7 +1753,7 @@ lys_parse_get_format(const struct ly_in *in, LYS_INFORMAT format)
     return format;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const char **features, struct lys_module **module)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1799,7 +1799,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
@@ -1815,7 +1815,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
@@ -1831,7 +1831,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_module 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct lys_module **module)
 {
     LY_ERR ret;
@@ -1848,7 +1848,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, struct
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format)
 {

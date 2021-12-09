@@ -9008,7 +9008,7 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     return ret;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 lyxp_get_expr(const struct lyxp_expr *path)
 {
     if (!path) {

@@ -155,7 +155,7 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
         const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical)
 {
@@ -230,7 +230,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -256,7 +256,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     return ret;
 }
 
-API ly_bool
+LIBYANG_API_DEF ly_bool
 lyd_is_default(const struct lyd_node *node)
 {
     const struct lysc_node_leaf *leaf;
@@ -414,7 +414,7 @@ cleanup:
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_ext_data(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
 {
@@ -427,7 +427,7 @@ lyd_parse_ext_data(const struct lysc_ext_instance *ext, struct lyd_node *parent,
     return lyd_parse(ctx, ext, parent, tree, in, format, parse_options, validate_options, NULL);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
 {
@@ -438,7 +438,7 @@ lyd_parse_data(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *
     return lyd_parse(ctx, NULL, parent, tree, in, format, parse_options, validate_options, NULL);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format, uint32_t parse_options,
         uint32_t validate_options, struct lyd_node **tree)
 {
@@ -452,7 +452,7 @@ lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, uint32_t parse_options, uint32_t validate_options,
         struct lyd_node **tree)
 {
@@ -466,7 +466,7 @@ lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, uint32_t 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT format, uint32_t parse_options,
         uint32_t validate_options, struct lyd_node **tree)
 {
@@ -619,7 +619,7 @@ cleanup:
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op)
 {
@@ -628,7 +628,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     return lyd_parse_op_(ctx, NULL, parent, in, format, data_type, tree, op);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op)
 {
@@ -865,7 +865,7 @@ finish:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node)
 {
@@ -895,7 +895,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node)
 {
     struct lyd_node *ret = NULL;
@@ -989,7 +989,7 @@ cleanup:
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...)
 {
@@ -1004,7 +1004,7 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...)
 {
@@ -1019,7 +1019,7 @@ lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node, ...)
 {
@@ -1034,7 +1034,7 @@ lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, con
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node, ...)
 {
     struct lyd_node *ret = NULL, *key;
@@ -1081,7 +1081,7 @@ cleanup:
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
         ly_bool output, struct lyd_node **node)
 {
@@ -1165,28 +1165,28 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
         ly_bool output, struct lyd_node **node)
 {
     return _lyd_new_term(parent, module, name, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_JSON, output, node);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         size_t value_len, ly_bool output, struct lyd_node **node)
 {
     return _lyd_new_term(parent, module, name, value, value_len, LY_VALUE_LYB, output, node);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_term_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
         ly_bool output, struct lyd_node **node)
 {
     return _lyd_new_term(parent, module, name, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_CANON, output, node);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str, struct lyd_node **node)
 {
     LY_ERR rc;
@@ -1214,7 +1214,7 @@ lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const ch
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node)
 {
@@ -1243,7 +1243,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, ly_bool use_value,
         LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node)
 {
@@ -1270,7 +1270,7 @@ lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const voi
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module, const char *name,
         const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta)
 {
@@ -1313,7 +1313,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
             NULL, LYD_HINT_DATA, clear_dflt, NULL);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt, const struct lyd_attr *attr,
         struct lyd_meta **meta)
 {
@@ -1353,7 +1353,7 @@ lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_d
             NULL, attr->format, attr->val_prefix_data, attr->hints, clear_dflt, NULL);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
         const char *prefix, const char *module_name, struct lyd_node **node)
 {
@@ -1381,7 +1381,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
         const char *prefix, const char *module_ns, struct lyd_node **node)
 {
@@ -1409,7 +1409,7 @@ lyd_new_opaq2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *nam
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *value,
         struct lyd_attr **attr)
 {
@@ -1459,7 +1459,7 @@ lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name,
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_attr2(struct lyd_node *parent, const char *module_ns, const char *name, const char *value,
         struct lyd_attr **attr)
 {
@@ -1596,7 +1596,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_change_term(struct lyd_node *term, const char *val_str)
 {
     LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
@@ -1604,7 +1604,7 @@ lyd_change_term(struct lyd_node *term, const char *val_str)
     return _lyd_change_term(term, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_JSON);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len)
 {
     LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
@@ -1612,7 +1612,7 @@ lyd_change_term_bin(struct lyd_node *term, const void *value, size_t value_len)
     return _lyd_change_term(term, value, value_len, LY_VALUE_LYB);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_change_term_canon(struct lyd_node *term, const char *val_str)
 {
     LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
@@ -1620,7 +1620,7 @@ lyd_change_term_canon(struct lyd_node *term, const char *val_str)
     return _lyd_change_term(term, val_str, val_str ? strlen(val_str) : 0, LY_VALUE_CANON);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_change_meta(struct lyd_meta *meta, const char *val_str)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2049,7 +2049,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, uint32_t options,
         struct lyd_node **node)
 {
@@ -2060,7 +2060,7 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
     return lyd_new_path_(parent, ctx, NULL, path, value, 0, LYD_ANYDATA_STRING, options, node, NULL);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
         size_t value_len, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node)
@@ -2072,7 +2072,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     return lyd_new_path_(parent, ctx, NULL, path, value, value_len, value_type, options, new_parent, new_node);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path, const void *value,
         uint32_t options, struct lyd_node **node)
 {
@@ -2226,7 +2226,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2263,7 +2263,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t implicit_options, struct lyd_node **diff)
 {
     const struct lys_module *mod;
@@ -2303,7 +2303,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options,
         struct lyd_node **diff)
 {
@@ -2669,7 +2669,7 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lyd_node *iter;
@@ -2697,7 +2697,7 @@ lyd_insert_child(struct lyd_node *parent, struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_node **first)
 {
     struct lyd_node *iter;
@@ -2741,7 +2741,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
@@ -2761,7 +2761,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
@@ -2781,7 +2781,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-API void
+LIBYANG_API_DEF void
 lyd_unlink_siblings(struct lyd_node *node)
 {
     struct lyd_node *next, *elem, *first = NULL;
@@ -2792,7 +2792,7 @@ lyd_unlink_siblings(struct lyd_node *node)
     }
 }
 
-API void
+LIBYANG_API_DEF void
 lyd_unlink_tree(struct lyd_node *node)
 {
     struct lyd_node *iter;
@@ -3020,7 +3020,7 @@ finish:
     return LY_SUCCESS;
 }
 
-API const struct lyd_node_term *
+LIBYANG_API_DEF const struct lyd_node_term *
 lyd_target(const struct ly_path *path, const struct lyd_node *tree)
 {
     struct lyd_node *target;
@@ -3306,13 +3306,13 @@ all_children_compare:
     return LY_EINT;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)
 {
     return lyd_compare_single_(node1, node2, options, 0);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options)
 {
     for ( ; node1 && node2; node1 = node1->next, node2 = node2->next) {
@@ -3325,7 +3325,7 @@ lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2,
     return LY_ENOT;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
 {
     if (!meta1 || !meta2) {
@@ -3659,19 +3659,19 @@ error:
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
 {
     return lyd_dup(node, parent, options, 1, dup);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
 {
     return lyd_dup(node, parent, options, 0, dup);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct lyd_meta **dup)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3878,19 +3878,19 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, const struct 
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, uint16_t options)
 {
     return lyd_merge(target, source, NULL, NULL, NULL, options, 1);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint16_t options)
 {
     return lyd_merge(target, source, NULL, NULL, NULL, options, 0);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_merge_module(struct lyd_node **target, const struct lyd_node *source, const struct lys_module *mod,
         lyd_merge_cb merge_cb, void *cb_data, uint16_t options)
 {
@@ -4008,7 +4008,7 @@ cleanup:
     return rc;
 }
 
-API char *
+LIBYANG_API_DEF char *
 lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
     ly_bool is_static = 0;
@@ -4095,7 +4095,7 @@ iter_print:
     return buffer;
 }
 
-API struct lyd_meta *
+LIBYANG_API_DEF struct lyd_meta *
 lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name)
 {
     struct lyd_meta *ret = NULL;
@@ -4139,7 +4139,7 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match)
 {
     struct lyd_node **match_p, *iter;
@@ -4307,7 +4307,7 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     return LY_SUCCESS;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
         size_t val_len, struct lyd_node **match)
 {
@@ -4351,7 +4351,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set)
 {
     struct lyd_node **match_p, *first, *iter;
@@ -4423,7 +4423,7 @@ error:
     return LY_EMEM;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struct lyd_node **match)
 {
     LY_CHECK_ARG_RET(NULL, name, LY_EINVAL);
@@ -4440,7 +4440,7 @@ lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struc
     return first ? LY_SUCCESS : LY_ENOTFOUND;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
         const struct lyxp_var *vars, struct ly_set **set)
 {
@@ -4490,7 +4490,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
 {
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
@@ -4498,7 +4498,7 @@ lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
     return lyd_find_xpath3(ctx_node, ctx_node, xpath, vars, set);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
 {
     LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
@@ -4506,7 +4506,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     return lyd_find_xpath3(ctx_node, ctx_node, xpath, NULL, set);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, ly_bool *result)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4536,13 +4536,13 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
 {
     return lyd_eval_xpath2(ctx_node, xpath, NULL, result);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4570,7 +4570,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct lyd_node **match)
 {
     LY_ERR ret;
@@ -4592,7 +4592,7 @@ lyd_find_target(const struct ly_path *path, const struct lyd_node *tree, struct 
     return LY_SUCCESS;
 }
 
-API uint32_t
+LIBYANG_API_DEF uint32_t
 lyd_list_pos(const struct lyd_node *instance)
 {
     const struct lyd_node *iter = NULL;
@@ -4614,7 +4614,7 @@ lyd_list_pos(const struct lyd_node *instance)
     return pos;
 }
 
-API struct lyd_node *
+LIBYANG_API_DEF struct lyd_node *
 lyd_first_sibling(const struct lyd_node *node)
 {
     struct lyd_node *start;

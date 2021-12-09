@@ -1041,7 +1041,7 @@ lys_module_free(struct lys_module *module)
     free(module);
 }
 
-API void
+LIBYANG_API_DEF void
 lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
 {
     LY_ARRAY_COUNT_TYPE u;

@@ -1601,7 +1601,7 @@ cleanup:
     return ret;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx, LY_EINVAL);
@@ -1616,7 +1616,7 @@ lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_
     return lyd_validate(tree, NULL, ctx, val_opts, 1, NULL, NULL, NULL, NULL, diff);
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_CHECK_ARG_RET(NULL, tree, *tree || module, LY_EINVAL);
@@ -1785,7 +1785,7 @@ cleanup:
     return rc;
 }
 
-API LY_ERR
+LIBYANG_API_DEF LY_ERR
 lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum lyd_type data_type, struct lyd_node **diff)
 {
     struct lyd_node *op_node;

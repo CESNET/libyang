@@ -27,37 +27,37 @@ extern struct lyplg_ext yangdata_plugin; /* plugins_exts_yangdata.c */
 #include "printer_internal.h"
 #include "schema_compile.h"
 
-API struct ly_ctx *
+LIBYANG_API_DEF struct ly_ctx *
 lysc_ctx_get_ctx(const struct lysc_ctx *ctx)
 {
     return ctx->ctx;
 }
 
-API uint32_t *
+LIBYANG_API_DEF uint32_t *
 lysc_ctx_get_options(const struct lysc_ctx *ctx)
 {
     return &((struct lysc_ctx *)ctx)->compile_opts;
 }
 
-API const char *
+LIBYANG_API_DEF const char *
 lysc_ctx_get_path(const struct lysc_ctx *ctx)
 {
     return ctx->path;
 }
 
-API struct ly_out **
+LIBYANG_API_DEF struct ly_out **
 lys_ypr_ctx_get_out(const struct lyspr_ctx *ctx)
 {
     return &((struct lyspr_ctx *)ctx)->out;
 }
 
-API uint32_t *
+LIBYANG_API_DEF uint32_t *
 lys_ypr_ctx_get_options(const struct lyspr_ctx *ctx)
 {
     return &((struct lyspr_ctx *)ctx)->options;
 }
 
-API uint16_t *
+LIBYANG_API_DEF uint16_t *
 lys_ypr_ctx_get_level(const struct lyspr_ctx *ctx)
 {
     return &((struct lyspr_ctx *)ctx)->level;
