@@ -291,6 +291,14 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
         if (fcntl(in->method.fd, F_GETPATH, path) != -1) {
             lydict_insert(ctx, path, 0, filepath);
         }
+#elif defined _WIN32
+        HANDLE h = _get_osfhandle(in->method.fd);
+        FILE_NAME_INFO info;
+        if (GetFileInformationByHandleEx(h, FileNameInfo, &info, sizeof info)) {
+            char *buf = calloc(info.FileNameLength + 1 /* trailing NULL */, MB_CUR_MAX);
+            len = wcstombs(buf, info.FileName, info.FileNameLength * MB_CUR_MAX);
+            lydict_insert(ctx, buf, len, filepath);
+        }
 #else
         /* get URI if there is /proc */
         sprintf(proc_path, "/proc/self/fd/%d", in->method.fd);
