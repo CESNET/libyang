@@ -32,6 +32,7 @@
 #define isatty _isatty
 #define lseek _lseek
 #define fsync _commit
+#define timegm _mkgmtime
 /* read, write, and close are NOT being #defined here, because while there are file handle specific versions for Windows, they probably don't work for sockets. You need to look at your app and consider whether to call e.g. closesocket(). */
 
 #ifdef _WIN64
