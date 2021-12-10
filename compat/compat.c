@@ -202,6 +202,7 @@ get_current_dir_name(void)
 
 #endif
 
+#ifndef _MSC_VER
 #ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
 int
 pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime)
@@ -249,6 +250,7 @@ pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime)
     return rc;
 }
 
+#endif
 #endif
 
 #ifndef HAVE_REALPATH
