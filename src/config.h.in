@@ -25,8 +25,14 @@
 #define LYPLG_EXT_DIR "@PLUGINS_DIR_EXTENSIONS@"
 
 /** atomic compiler operations, to be able to use uint32_t */
-#define LY_ATOMIC_INC_BARRIER(var) __sync_fetch_and_add(&(var), 1)
-#define LY_ATOMIC_DEC_BARRIER(var) __sync_fetch_and_sub(&(var), 1)
+#ifndef _WIN32
+# define LY_ATOMIC_INC_BARRIER(var) __sync_fetch_and_add(&(var), 1)
+# define LY_ATOMIC_DEC_BARRIER(var) __sync_fetch_and_sub(&(var), 1)
+#else
+#  include <windows.h>
+# define LY_ATOMIC_INC_BARRIER(var) InterlockedExchangeAdd(&(var), 1)
+# define LY_ATOMIC_DEC_BARRIER(var) InterlockedExchangeAdd(&(var), -1)
+#endif
 
 /** printf compiler attribute */
 #ifdef __GNUC__

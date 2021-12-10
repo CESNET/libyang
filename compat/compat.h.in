@@ -108,10 +108,18 @@
 
 # define ATOMIC_STORE_RELAXED(var, x) ((var) = (x))
 # define ATOMIC_LOAD_RELAXED(var) (var)
-# define ATOMIC_INC_RELAXED(var) __sync_fetch_and_add(&(var), 1)
-# define ATOMIC_ADD_RELAXED(var, x) __sync_fetch_and_add(&(var), x)
-# define ATOMIC_DEC_RELAXED(var) __sync_fetch_and_sub(&(var), 1)
-# define ATOMIC_SUB_RELAXED(var, x) __sync_fetch_and_sub(&(var), x)
+# ifndef _WIN32
+#  define ATOMIC_INC_RELAXED(var) __sync_fetch_and_add(&(var), 1)
+#  define ATOMIC_ADD_RELAXED(var, x) __sync_fetch_and_add(&(var), x)
+#  define ATOMIC_DEC_RELAXED(var) __sync_fetch_and_sub(&(var), 1)
+#  define ATOMIC_SUB_RELAXED(var, x) __sync_fetch_and_sub(&(var), x)
+# else
+#  include <windows.h>
+#  define ATOMIC_INC_RELAXED(var) InterlockedExchangeAdd(&(var), 1)
+#  define ATOMIC_ADD_RELAXED(var, x) InterlockedExchangeAdd(&(var), x)
+#  define ATOMIC_DEC_RELAXED(var) InterlockedExchangeAdd(&(var), -1)
+#  define ATOMIC_SUB_RELAXED(var, x) InterlockedExchangeAdd(&(var), -(x))
+# endif
 #endif
 
 #ifndef HAVE_VDPRINTF
