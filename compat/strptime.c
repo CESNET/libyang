@@ -3,21 +3,20 @@
  *
  * Downloaded from https://git.musl-libc.org/cgit/musl/plain/src/time/strptime.c,
  * commit 98e688a9da5e7b2925dda17a2d6820dddf1fb287.
+ *
+ * Lobotomized to remove references to nl_langinfo().
  * */
 
+#include <stdio.h>
 #include <stdlib.h>
-#include <langinfo.h>
 #include <time.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <string.h>
-#include <strings.h>
 
 char *strptime(const char *restrict s, const char *restrict f, struct tm *restrict tm)
 {
 	int i, w, neg, adj, min, range, *dest, dummy;
-	const char *ex;
-	size_t len;
 	int want_century = 0, century = 0, relyear = 0;
 	while (*f) {
 		if (*f != '%') {
@@ -39,19 +38,9 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 		adj=0;
 		switch (*f++) {
 		case 'a': case 'A':
-			dest = &tm->tm_wday;
-			min = ABDAY_1;
-			range = 7;
-			goto symbolic_range;
 		case 'b': case 'B': case 'h':
-			dest = &tm->tm_mon;
-			min = ABMON_1;
-			range = 12;
-			goto symbolic_range;
 		case 'c':
-			s = strptime(s, nl_langinfo(D_T_FMT), tm);
-			if (!s) return 0;
-			break;
+			goto fail_nl_langinfo;
 		case 'C':
 			dest = &century;
 			if (w<0) w=2;
@@ -97,26 +86,8 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			for (; *s && isspace(*s); s++);
 			break;
 		case 'p':
-			ex = nl_langinfo(AM_STR);
-			len = strlen(ex);
-			if (!strncasecmp(s, ex, len)) {
-				tm->tm_hour %= 12;
-				s += len;
-				break;
-			}
-			ex = nl_langinfo(PM_STR);
-			len = strlen(ex);
-			if (!strncasecmp(s, ex, len)) {
-				tm->tm_hour %= 12;
-				tm->tm_hour += 12;
-				s += len;
-				break;
-			}
-			return 0;
 		case 'r':
-			s = strptime(s, nl_langinfo(T_FMT_AMPM), tm);
-			if (!s) return 0;
-			break;
+			goto fail_nl_langinfo;
 		case 'R':
 			s = strptime(s, "%H:%M", tm);
 			if (!s) return 0;
@@ -143,13 +114,8 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			range = 7;
 			goto numeric_range;
 		case 'x':
-			s = strptime(s, nl_langinfo(D_FMT), tm);
-			if (!s) return 0;
-			break;
 		case 'X':
-			s = strptime(s, nl_langinfo(T_FMT), tm);
-			if (!s) return 0;
-			break;
+			goto fail_nl_langinfo;
 		case 'y':
 			dest = &relyear;
 			w = 2;
@@ -188,17 +154,6 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 			if (neg) *dest = -*dest;
 			*dest -= adj;
 			goto update;
-		symbolic_range:
-			for (i=2*range-1; i>=0; i--) {
-				ex = nl_langinfo(min+i);
-				len = strlen(ex);
-				if (strncasecmp(s, ex, len)) continue;
-				s += len;
-				*dest = i % range;
-				break;
-			}
-			if (i<0) return 0;
-			goto update;
 		update:
 			//FIXME
 			;
@@ -210,4 +165,7 @@ char *strptime(const char *restrict s, const char *restrict f, struct tm *restri
 		else if (tm->tm_year <= 68) tm->tm_year += 100;
 	}
 	return (char *)s;
+fail_nl_langinfo:
+	fprintf(stderr, "strptime: nl_langinfo not available");
+	return NULL;
 }
