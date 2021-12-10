@@ -51,6 +51,8 @@ macro(USE_COMPAT)
     check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_TM_GMTOFF)
     check_symbol_exists(timezone time.h HAVE_TIME_H_TIMEZONE)
 
+    check_symbol_exists(realpath "stdlib.h" HAVE_REALPATH)
+
     unset(CMAKE_REQUIRED_DEFINITIONS)
     unset(CMAKE_REQUIRED_LIBRARIES)
 

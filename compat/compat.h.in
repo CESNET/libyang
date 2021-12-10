@@ -61,6 +61,7 @@
 #cmakedefine HAVE_PTHREAD_MUTEX_TIMEDLOCK
 #cmakedefine HAVE_TM_GMTOFF
 #cmakedefine HAVE_TIME_H_TIMEZONE
+#cmakedefine HAVE_REALPATH
 
 #ifndef bswap64
 #define bswap64(val) \
@@ -156,6 +157,10 @@ char *get_current_dir_name(void);
 
 #ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
 int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime);
+#endif
+
+#ifndef HAVE_REALPATH
+char *realpath(const char *path, char *resolved_path);
 #endif
 
 #endif /* _COMPAT_H_ */

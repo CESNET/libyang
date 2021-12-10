@@ -250,3 +250,21 @@ pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime)
 }
 
 #endif
+
+#ifndef HAVE_REALPATH
+#ifdef _WIN32
+char *
+realpath(const char *path, char *resolved_path)
+{
+    char *resolved = _fullpath(resolved_path, path, PATH_MAX);
+
+    if ((_access(resolved, 0) == -1) && (errno == ENOENT)) {
+        return NULL;
+    }
+    return resolved;
+}
+
+#else
+#error No realpath() implementation for this platform is available.
+#endif
+#endif
