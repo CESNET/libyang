@@ -67,6 +67,7 @@
 #cmakedefine HAVE_MMAP
 #cmakedefine HAVE_DIRNAME
 #cmakedefine HAVE_STRCASECMP
+#cmakedefine HAVE_SETENV
 
 #ifndef bswap64
 #define bswap64(val) \
@@ -186,6 +187,10 @@ char *strptime(const char *s, const char *format, struct tm *tm);
 
 #if defined (_WIN32)
 # define strtok_r strtok_s
+#endif
+
+#ifndef HAVE_SETENV
+int setenv(const char *name, const char *value, int overwrite);
 #endif
 
 #endif /* _COMPAT_H_ */
