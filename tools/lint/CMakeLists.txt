@@ -1,7 +1,12 @@
 # yanglint
 
+if(WIN32)
+    set(YANGLINT_INTERACTIVE OFF)
+else()
+    set(YANGLINT_INTERACTIVE ON)
+endif()
+
 set(lintsrc
-    main.c
     main_ni.c
     cmd.c
     cmd_add.c
@@ -13,9 +18,17 @@ set(lintsrc
     cmd_print.c
     cmd_searchpath.c
     common.c
-    completion.c
-    configuration.c
-    linenoise/linenoise.c)
+)
+if(YANGLINT_INTERACTIVE)
+    set(lintsrc ${lintsrc}
+        main.c
+        completion.c
+        configuration.c
+        linenoise/linenoise.c)
+else()
+    set(lintsrc ${lintsrc}
+        main_ni_only.c)
+endif()
 
 set(format_sources
     ${format_sources}
@@ -53,7 +66,7 @@ if(ENABLE_TESTS)
     find_program(PATH_EXPECT NAMES expect)
     if(NOT PATH_EXPECT)
         message(WARNING "'expect' not found! The yanglint(1) interactive tests will not be available.")
-    else()
+    elseif(YANGLINT_INTERACTIVE)
 #        add_yanglint_test(NAME in_list SCRIPT expect/list.exp)
     endif()
 endif()
