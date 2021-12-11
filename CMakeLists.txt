@@ -364,6 +364,7 @@ if(WIN32)
         target_include_directories(yangobj PRIVATE ${COMPAT_POSIX_INCLUDES})
     endif()
     target_include_directories(yang PRIVATE ${COMPAT_POSIX_INCLUDES})
+    include_directories(${COMPAT_POSIX_INCLUDES})
 
     find_package(pthreads REQUIRED)
     target_link_libraries(yang PThreads4W::PThreads4W)
