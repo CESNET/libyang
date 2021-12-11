@@ -42,6 +42,14 @@ install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR})
 
+if(WIN32)
+    find_library(GETOPT_LIBRARY NAMES getopt REQUIRED)
+    find_path(GETOPT_INCLUDE_DIR NAMES getopt.h REQUIRED)
+    message(STATUS "Found <getopt.h> at ${GETOPT_INCLUDE_DIR}, library at ${GETOPT_LIBRARY}")
+    target_include_directories(yanglint PRIVATE ${GETOPT_INCLUDE_DIR})
+    target_link_libraries(yanglint ${GETOPT_LIBRARY})
+endif()
+
 #
 # tests
 #
