@@ -289,3 +289,18 @@ localtime_r(const time_t *timep, struct tm *result)
 #error No localtime_r() implementation for this platform is available.
 #endif
 #endif
+
+#ifndef HAVE_DIRNAME
+#ifdef _WIN32
+#include <shlwapi.h>
+char *
+dirname(char *path)
+{
+    PathRemoveFileSpecA(path);
+    return path;
+}
+
+#else
+#error No dirname() implementation for this platform is available.
+#endif
+#endif
