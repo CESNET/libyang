@@ -66,6 +66,7 @@
 #cmakedefine HAVE_STRPTIME
 #cmakedefine HAVE_MMAP
 #cmakedefine HAVE_DIRNAME
+#cmakedefine HAVE_STRCASECMP
 
 #ifndef bswap64
 #define bswap64(val) \
