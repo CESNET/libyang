@@ -14,6 +14,7 @@ function(ly_add_utest)
     endforeach()
 
     add_executable(${TEST_NAME} ${TEST_SOURCES} $<TARGET_OBJECTS:yangobj>)
+    target_compile_definitions(${TEST_NAME} PRIVATE LIBYANG_BUILD)
 
     # Set common attributes of all tests
     set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
