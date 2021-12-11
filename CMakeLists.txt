@@ -367,7 +367,7 @@ if(WIN32)
     include_directories(${COMPAT_POSIX_INCLUDES})
 
     find_package(pthreads REQUIRED)
-    target_link_libraries(yang PThreads4W::PThreads4W)
+    target_link_libraries(yang PThreads4W::PThreads4W shlwapi.lib)
 endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
