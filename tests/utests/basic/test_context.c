@@ -22,6 +22,74 @@
 #include "tree_schema_internal.h"
 #include "utests.h"
 
+#ifdef _WIN32
+static void
+slashes_to_backslashes(char *path)
+{
+    while ((path = strchr(path, '/'))) {
+        *path++ = '\\';
+    }
+}
+
+static void
+test_searchdirs(void **state)
+{
+    const char * const *list;
+    char *path1 = strdup(TESTS_BIN "/utests");
+    char *path2 = strdup(TESTS_SRC);
+
+    slashes_to_backslashes(path1);
+    slashes_to_backslashes(path2);
+
+    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(NULL, NULL));
+    CHECK_LOG("Invalid argument ctx (ly_ctx_set_searchdir()).", NULL);
+    assert_null(ly_ctx_get_searchdirs(NULL));
+    CHECK_LOG("Invalid argument ctx (ly_ctx_get_searchdirs()).", NULL);
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(NULL, NULL));
+    CHECK_LOG("Invalid argument ctx (ly_ctx_unset_searchdir()).", NULL);
+
+    /* correct path */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
+    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[0]);
+
+    /* duplicated paths */
+    assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(UTEST_LYCTX, path1));
+    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(path1, UTEST_LYCTX->search_paths.objs[0]);
+
+    /* another path */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, path2));
+    assert_int_equal(2, UTEST_LYCTX->search_paths.count);
+    assert_string_equal(path2, UTEST_LYCTX->search_paths.objs[1]);
+
+    /* get searchpaths */
+    list = ly_ctx_get_searchdirs(UTEST_LYCTX);
+    assert_non_null(list);
+    assert_string_equal(path1, list[0]);
+    assert_string_equal(path2, list[1]);
+    assert_null(list[2]);
+
+    /* removing searchpaths */
+    /* nonexisting */
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(UTEST_LYCTX, "/nonexistingfile"));
+    CHECK_LOG_CTX("Invalid argument value (ly_ctx_unset_searchdir()).", NULL);
+
+    /* first */
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path1));
+    assert_int_equal(1, UTEST_LYCTX->search_paths.count);
+    assert_string_not_equal(path1, list[0]);
+
+    /* second */
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path2));
+    assert_int_equal(0, UTEST_LYCTX->search_paths.count);
+
+    free(path1);
+    free(path2);
+}
+
+#else
+
 static void
 test_searchdirs(void **state)
 {
@@ -111,6 +179,8 @@ test_searchdirs(void **state)
     assert_string_equal(TESTS_SRC, UTEST_LYCTX->search_paths.objs[0]);
     assert_string_equal(TESTS_BIN, UTEST_LYCTX->search_paths.objs[1]);
 }
+
+#endif
 
 static void
 test_options(void **state)
