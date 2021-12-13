@@ -104,7 +104,9 @@ test_searchdirs(void **state)
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &UTEST_LYCTX));
     CHECK_LOG("Unable to use search directory \"/nonexistingfile\" (No such file or directory).", NULL);
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC ":"TESTS_BIN ":"TESTS_BIN ":"TESTS_SRC, LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
+    assert_int_equal(LY_SUCCESS,
+            ly_ctx_new(TESTS_SRC PATH_SEPARATOR TESTS_BIN PATH_SEPARATOR TESTS_BIN PATH_SEPARATOR TESTS_SRC,
+            LY_CTX_DISABLE_SEARCHDIRS, &UTEST_LYCTX));
     assert_int_equal(2, UTEST_LYCTX->search_paths.count);
     assert_string_equal(TESTS_SRC, UTEST_LYCTX->search_paths.objs[0]);
     assert_string_equal(TESTS_BIN, UTEST_LYCTX->search_paths.objs[1]);
