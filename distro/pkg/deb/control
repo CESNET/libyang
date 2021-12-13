@@ -6,7 +6,8 @@ Priority: optional
 Standards-Version: 4.5.0
 Build-Depends: cmake,
                debhelper (>= 10),
-               libpcre2-dev (>= 10.21),
+               libcmocka-dev <!nocheck>,
+               libpcre2-dev,
                pkg-config
 Vcs-Browser: https://github.com/CESNET/libyang/tree/master
 Vcs-Git: https://github.com/CESNET/libyang.git
@@ -15,6 +16,7 @@ Package: libyang2
 Depends: ${misc:Depends},
          ${shlibs:Depends}
 Architecture: any
+Multi-Arch: same
 Description: parser toolkit for IETF YANG data modeling - runtime
  Libyang implements functions to process schemas expressed in the
  YANG data modeling language defined by the IETF in RFCs 6020/7950.
@@ -28,12 +30,13 @@ Description: parser toolkit for IETF YANG data modeling - runtime
  to use in processing configurations.
 
 Package: libyang2-dev
-Depends: libpcre2-dev (>= 10.21),
+Depends: libpcre2-dev,
          libyang2 (= ${binary:Version}),
          ${misc:Depends}
 Conflicts: libyang-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Description: parser toolkit for IETF YANG data modeling - development files
  Libyang implements functions to process schemas expressed in the
  YANG data modeling language defined by the IETF in RFCs 6020/7950.
@@ -54,6 +57,7 @@ Breaks: libyang-tools (<< ${source:Version})
 Replaces: libyang-tools (<< ${source:Version})
 Section: devel
 Architecture: any
+Multi-Arch: foreign
 Description: parser toolkit for IETF YANG data modeling - executable tools
  This package provides the "yanglint" and "yangre" tools which can be used
  during the creation of IETF YANG schemas.  The tools are not generally
@@ -65,6 +69,7 @@ Depends: libyang2-tools (>= ${source:Version}),
          ${misc:Depends}
 Section: oldlibs
 Architecture: all
+Multi-Arch: foreign
 Description: parser toolkit for IETF YANG data modeling [dummy package]
  This is empty dependency package to pull the executable tools.  It's
  safe to remove.
