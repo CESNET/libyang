@@ -3700,12 +3700,22 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_NODE);
 
-        LY_CHECK_RET(lyxp_set_scnode_insert_node(set, set->cur_scnode, LYXP_NODE_ELEM, NULL));
+        if (set->cur_scnode) {
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, set->cur_scnode, LYXP_NODE_ELEM, NULL));
+        } else {
+            /* root node */
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, NULL, set->root_type, NULL));
+        }
     } else {
         lyxp_set_free_content(set);
 
-        /* position is filled later */
-        set_insert_node(set, set->cur_node, 0, LYXP_NODE_ELEM, 0);
+        if (set->cur_node) {
+            /* position is filled later */
+            set_insert_node(set, set->cur_node, 0, LYXP_NODE_ELEM, 0);
+        } else {
+            /* root node */
+            set_insert_node(set, NULL, 0, set->root_type, 0);
+        }
     }
 
     return LY_SUCCESS;
