@@ -68,10 +68,12 @@ test_input_fd(void **UNUSED(state))
     /* fd1 is still open */
     assert_int_equal(0, fstat(fd1, &statbuf));
     close(fd1);
-    /* but fd2 was closed by ly_in_free() */
+#ifndef _WIN32
+    /* But fd2 was closed by ly_in_free(). This results in an "invalid handler" on Windows. */
     errno = 0;
     assert_int_equal(-1, fstat(fd2, &statbuf));
     assert_int_equal(errno, EBADF);
+#endif
 }
 
 static void
