@@ -258,7 +258,7 @@ ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
         search_dir_list = strdup(search_dir);
         LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL); rc = LY_EMEM, cleanup);
 
-        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
+        for (dir = search_dir_list; (sep = strchr(dir, PATH_SEPARATOR[0])) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
             *sep = 0;
             rc = ly_ctx_set_searchdir(ctx, dir);
             if (rc == LY_EEXIST) {
