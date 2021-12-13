@@ -2377,7 +2377,24 @@ LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath,
+LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars,
+        struct ly_set **set);
+
+/**
+ * @brief Search in the given data for instances of nodes matching the provided XPath.
+ *
+ * It is just lyd_find_xpath2() with @p tree added so that @p ctx_node may be the root.
+ *
+ * @param[in] ctx_node XPath context node, NULL for the root node.
+ * @param[in] tree Data tree to evaluate on.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
+ * the returned set is empty.
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
         const struct lyxp_var *vars, struct ly_set **set);
 
 /**
