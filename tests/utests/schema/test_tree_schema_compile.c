@@ -1094,7 +1094,7 @@ test_type_enum(void **state)
     assert_string_equal("automin", ((struct lysc_type_enum *)type)->enums[0].name);
     assert_int_equal(0, ((struct lysc_type_enum *)type)->enums[0].value);
     assert_string_equal("min", ((struct lysc_type_enum *)type)->enums[1].name);
-    assert_int_equal(-2147483648, ((struct lysc_type_enum *)type)->enums[1].value);
+    assert_int_equal(INT64_C(-2147483648), ((struct lysc_type_enum *)type)->enums[1].value);
     assert_string_equal("two", ((struct lysc_type_enum *)type)->enums[2].name);
     assert_int_equal(2, ((struct lysc_type_enum *)type)->enums[2].value);
     assert_string_equal("seven", ((struct lysc_type_enum *)type)->enums[3].name);
