@@ -226,3 +226,22 @@ ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj))
 
     return ly_set_rm_index(set, i, destructor);
 }
+
+LY_ERR
+ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj))
+{
+    if (destructor) {
+        destructor(set->objs[index]);
+    }
+    set->count--;
+    if (index == set->count) {
+        /* removing last item in set */
+        set->objs[index] = NULL;
+    } else {
+        /* removing item somewhere in a middle, move following items */
+        memmove(set->objs + index, set->objs + index + 1, (set->count - index) * sizeof *set->objs);
+        set->objs[set->count] = NULL;
+    }
+
+    return LY_SUCCESS;
+}
