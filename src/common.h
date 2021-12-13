@@ -629,4 +629,10 @@ LY_ERR ly_munmap(void *addr, size_t length);
  */
 LY_ERR ly_strcat(char **dest, const char *format, ...);
 
+#ifndef _WIN32
+# define PATH_SEPARATOR ":"
+#else
+# define PATH_SEPARATOR ";"
+#endif
+
 #endif /* LY_COMMON_H_ */

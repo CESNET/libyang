@@ -214,8 +214,9 @@ struct ly_ctx;
  * also affects the number of instances of both tree types. While you can have only one instance of
  * specific schema connected with a single context, number of data tree instances is not connected.
  *
- * @param[in] search_dir Directory where libyang will search for the imported or included modules
- * and submodules. If no such directory is available, NULL is accepted.
+ * @param[in] search_dir Directory (or directories) where libyang will search for the imported or included modules
+ * and submodules. If no such directory is available, NULL is accepted. Several directories can be specified,
+ * delimited by colon ":" (on Windows, use semicolon ";" instead).
  * @param[in] options Context options, see @ref contextoptions.
  * @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value.
