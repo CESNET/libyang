@@ -1730,7 +1730,7 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = trg->cur_node; root->parent; root = lyd_parent(root)) {}
+    for (root = trg->tree; root->parent; root = lyd_parent(root)) {}
     for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
