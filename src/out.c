@@ -329,7 +329,7 @@ ly_out_new_filepath(const char *filepath, struct ly_out **out)
     LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
 
     (*out)->type = LY_OUT_FILEPATH;
-    (*out)->method.fpath.f = fopen(filepath, "w");
+    (*out)->method.fpath.f = fopen(filepath, "wb");
     if (!(*out)->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
         free(*out);
@@ -353,7 +353,7 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
 
     /* replace filepath */
     f = out->method.fpath.f;
-    out->method.fpath.f = fopen(filepath, "w");
+    out->method.fpath.f = fopen(filepath, "wb");
     if (!out->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
         out->method.fpath.f = f;
