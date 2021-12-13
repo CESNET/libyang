@@ -511,4 +511,14 @@ void lyd_unlink_hash(struct lyd_node *node);
  */
 LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static);
 
+/**
+ * @brief Remove an object on the specific set index keeping the order of the other objects.
+ *
+ * @param[in] set Set from which a node will be removed.
+ * @param[in] index Index of the object to remove in the \p set.
+ * @param[in] destructor Optional function to free the objects being removed.
+ * @return LY_ERR return value.
+ */
+LY_ERR ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

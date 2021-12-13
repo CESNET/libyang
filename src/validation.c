@@ -241,8 +241,8 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                 node->flags |= LYD_WHEN_TRUE;
             }
 
-            /* remove this node from the set, its when was resolved */
-            ly_set_rm_index(node_when, i, NULL);
+            /* remove this node from the set keeping the order, its when was resolved */
+            ly_set_rm_index_ordered(node_when, i, NULL);
         } else if (ret != LY_EINCOMPLETE) {
             /* error */
             goto error;
