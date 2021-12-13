@@ -154,7 +154,7 @@ test_output_fd(void **UNUSED(state))
     struct ly_out *out = NULL;
     int fd1, fd2;
     char buf[31] = {0};
-    const char *filepath = "/tmp/libyang_test_output";
+    const char *filepath = TESTS_BIN "/libyang_test_output";
 
     assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
     assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
@@ -201,7 +201,7 @@ test_output_file(void **UNUSED(state))
     struct ly_out *out = NULL;
     FILE *f1, *f2;
     char buf[31] = {0};
-    const char *filepath = "/tmp/libyang_test_output";
+    const char *filepath = TESTS_BIN "/libyang_test_output";
 
     assert_int_not_equal(-1, f1 = fopen(filepath, "w"));
     assert_int_not_equal(-1, f2 = fopen(filepath, "w"));
@@ -246,8 +246,8 @@ test_output_filepath(void **UNUSED(state))
     struct ly_out *out = NULL;
     FILE *f1;
     char buf[31] = {0};
-    const char *fp1 = "/tmp/libyang_test_output";
-    const char *fp2 = "/tmp/libyang_test_output2";
+    const char *fp1 = TESTS_BIN "/libyang_test_output";
+    const char *fp2 = TESTS_BIN "/libyang_test_output2";
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
@@ -299,7 +299,7 @@ test_output_clb(void **UNUSED(state))
     struct ly_out *out = NULL;
     int fd1, fd2;
     char buf[31] = {0};
-    const char *filepath = "/tmp/libyang_test_output";
+    const char *filepath = TESTS_BIN "/libyang_test_output";
 
     assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
     assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
