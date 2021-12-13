@@ -72,7 +72,7 @@ set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
 # global C flags
-set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 
