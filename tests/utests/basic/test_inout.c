@@ -83,8 +83,8 @@ test_input_file(void **UNUSED(state))
     assert_int_equal(LY_EINVAL, ly_in_new_file(NULL, NULL));
     assert_null(ly_in_file(NULL, NULL));
 
-    assert_int_not_equal(-1, f1 = fopen(__FILE__, "r"));
-    assert_int_not_equal(-1, f2 = fopen(__FILE__, "r"));
+    assert_int_not_equal(-1, f1 = fopen(__FILE__, "rb"));
+    assert_int_not_equal(-1, f2 = fopen(__FILE__, "rb"));
 
     assert_int_equal(LY_EINVAL, ly_in_new_file(f1, NULL));
 
@@ -203,8 +203,8 @@ test_output_file(void **UNUSED(state))
     char buf[31] = {0};
     const char *filepath = TESTS_BIN "/libyang_test_output";
 
-    assert_int_not_equal(-1, f1 = fopen(filepath, "w"));
-    assert_int_not_equal(-1, f2 = fopen(filepath, "w"));
+    assert_int_not_equal(-1, f1 = fopen(filepath, "wb"));
+    assert_int_not_equal(-1, f2 = fopen(filepath, "wb"));
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_file(f1, &out));
@@ -218,8 +218,8 @@ test_output_file(void **UNUSED(state))
     ly_out_free(out, NULL, 1);
 
     /* writing data */
-    assert_int_not_equal(-1, f1 = fopen(filepath, "w"));
-    assert_int_not_equal(-1, f2 = fopen(filepath, "r"));
+    assert_int_not_equal(-1, f1 = fopen(filepath, "wb"));
+    assert_int_not_equal(-1, f2 = fopen(filepath, "rb"));
 
     assert_int_equal(LY_SUCCESS, ly_out_new_file(f1, &out));
     assert_int_equal(LY_SUCCESS, ly_print(out, "test %s", "print"));
@@ -260,7 +260,7 @@ test_output_filepath(void **UNUSED(state))
     ly_out_free(out, NULL, 1);
 
     /* writing data */
-    assert_int_not_equal(-1, f1 = fopen(fp1, "r"));
+    assert_int_not_equal(-1, f1 = fopen(fp1, "rb"));
 
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
     assert_int_equal(LY_SUCCESS, ly_print(out, "test %s", "print"));
