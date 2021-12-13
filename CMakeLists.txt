@@ -73,7 +73,7 @@ set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 if(WIN32)
     set(C_STANDARD 11)
     set(C_STANDARD_REQUIRED ON)
-    set(CMAKE_C_FLAGS "/Zc:preprocessor /W3 /wd4711 /w14013 ${CMAKE_C_FLAGS}")
+    set(CMAKE_C_FLAGS "/Zc:preprocessor /W3 /wd4711 /w14013 /utf-8 ${CMAKE_C_FLAGS}")
 else()
     # global C flags
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -std=c11")
