@@ -1637,7 +1637,7 @@ set_sort(struct lyxp_set *set)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = set->cur_node; root->parent; root = lyd_parent(root)) {}
+    for (root = set->tree; root->parent; root = lyd_parent(root)) {}
     for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
@@ -4669,7 +4669,9 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_s
     *pattern = calloc(1, sizeof **pattern);
     LOG_LOCSET(NULL, set->cur_node, NULL, NULL);
     rc = lys_compile_type_pattern_check(set->ctx, args[1]->val.str, &(*pattern)->code);
-    LOG_LOCBACK(0, 1, 0, 0);
+    if (set->cur_node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     if (rc != LY_SUCCESS) {
         LY_ARRAY_FREE(patterns);
         return rc;
@@ -8735,7 +8737,9 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
         lyxp_set_free_content(set);
     }
 
-    LOG_LOCBACK(0, 1, 0, 0);
+    if (set->cur_node) {
+        LOG_LOCBACK(0, 1, 0, 0);
+    }
     return rc;
 }
 
