@@ -4441,23 +4441,24 @@ lyd_find_sibling_opaq_next(const struct lyd_node *first, const char *name, struc
 }
 
 API LY_ERR
-lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
+lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
+        const struct lyxp_var *vars, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set = {0};
     struct lyxp_expr *exp = NULL;
     uint32_t i;
 
-    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, tree, xpath, set, LY_EINVAL);
 
     *set = NULL;
 
     /* compile expression */
-    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(ctx_node), xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, vars, &xp_set, LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(LYD_CTX(tree), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, tree, vars, &xp_set, LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -4468,7 +4469,7 @@ lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
     if (xp_set.type == LYXP_SET_NODE_SET) {
         /* allocate memory for all the elements once (even though not all items must be elements but most likely will be) */
         (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
-        LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_CTX(ctx_node)); ret = LY_EMEM, cleanup);
+        LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_CTX(tree)); ret = LY_EMEM, cleanup);
         (*set)->size = xp_set.used;
 
         for (i = 0; i < xp_set.used; ++i) {
@@ -4481,7 +4482,7 @@ lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
 
 cleanup:
     lyxp_set_free_content(&xp_set);
-    lyxp_expr_free((struct ly_ctx *)LYD_CTX(ctx_node), exp);
+    lyxp_expr_free((struct ly_ctx *)LYD_CTX(tree), exp);
     if (ret) {
         ly_set_free(*set, NULL);
         *set = NULL;
@@ -4490,9 +4491,19 @@ cleanup:
 }
 
 API LY_ERR
+lyd_find_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, struct ly_set **set)
+{
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+
+    return lyd_find_xpath3(ctx_node, ctx_node, xpath, vars, set);
+}
+
+API LY_ERR
 lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
 {
-    return lyd_find_xpath2(ctx_node, xpath, NULL, set);
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+
+    return lyd_find_xpath3(ctx_node, ctx_node, xpath, NULL, set);
 }
 
 API LY_ERR
