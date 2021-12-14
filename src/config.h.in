@@ -15,6 +15,12 @@
 #ifndef LY_CONFIG_H_
 #define LY_CONFIG_H_
 
+#ifdef _WIN32
+/* headers are broken on Windows, which means that some of them simply *have* to come first */
+# include <winsock2.h>
+# include <ws2tcpip.h>
+#endif
+
 /** size of fixed_mem in lyd_value, minimum is 8 (B) */
 #define LYD_VALUE_FIXED_MEM_SIZE @LYD_VALUE_SIZE@
 
