@@ -367,7 +367,7 @@ if(WIN32)
     include_directories(${COMPAT_POSIX_INCLUDES})
 
     find_package(pthreads REQUIRED)
-    set(COMPAT_WIN_LIBRARIES PThreads4W::PThreads4W shlwapi.lib)
+    set(COMPAT_WIN_LIBRARIES PThreads4W::PThreads4W shlwapi.lib ws2_32)
     target_link_libraries(yang ${COMPAT_WIN_LIBRARIES})
 endif()
 

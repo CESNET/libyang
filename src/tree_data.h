@@ -16,10 +16,15 @@
 #ifndef LY_TREE_DATA_H_
 #define LY_TREE_DATA_H_
 
-#include <arpa/inet.h>
-#if defined (__FreeBSD__) || defined (__NetBSD__) || defined (__OpenBSD__)
-#include <netinet/in.h>
-#include <sys/socket.h>
+#ifdef _WIN32
+# include <winsock2.h>
+# include <ws2tcpip.h>
+#else
+#  include <arpa/inet.h>
+#  if defined (__FreeBSD__) || defined (__NetBSD__) || defined (__OpenBSD__)
+#    include <netinet/in.h>
+#    include <sys/socket.h>
+#  endif
 #endif
 #include <stddef.h>
 #include <stdint.h>

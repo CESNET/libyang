@@ -15,6 +15,12 @@
 #ifndef _COMPAT_H_
 #define _COMPAT_H_
 
+#ifdef _WIN32
+/* headers are broken on Windows, which means that some of them simply *have* to come first */
+# include <winsock2.h>
+# include <ws2tcpip.h>
+#endif
+
 #include <limits.h>
 #include <pthread.h>
 #include <stdarg.h>
