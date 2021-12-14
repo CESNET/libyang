@@ -268,3 +268,22 @@ realpath(const char *path, char *resolved_path)
 #error No realpath() implementation for this platform is available.
 #endif
 #endif
+
+#ifndef HAVE_LOCALTIME_R
+#ifdef _WIN32
+struct tm *
+localtime_r(const time_t *timep, struct tm *result)
+{
+    errno_t res = localtime_s(result, timep);
+
+    if (res) {
+        return NULL;
+    } else {
+        return result;
+    }
+}
+
+#else
+#error No localtime_r() implementation for this platform is available.
+#endif
+#endif
