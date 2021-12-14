@@ -4180,8 +4180,10 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod)
         case LY_STMT_RPC:
         case LY_STMT_TYPEDEF:
         case LY_STMT_USES:
-        case LY_STMT_EXTENSION_INSTANCE:
             mod_stmt = Y_MOD_BODY;
+            break;
+        case LY_STMT_EXTENSION_INSTANCE:
+            /* no place in the statement order defined */
             break;
         default:
             /* error handled in the next switch */
@@ -4386,8 +4388,10 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
         case LY_STMT_RPC:
         case LY_STMT_TYPEDEF:
         case LY_STMT_USES:
-        case LY_STMT_EXTENSION_INSTANCE:
             mod_stmt = Y_MOD_BODY;
+            break;
+        case LY_STMT_EXTENSION_INSTANCE:
+            /* no place in the statement order defined */
             break;
         default:
             /* error handled in the next switch */
