@@ -52,6 +52,7 @@ macro(USE_COMPAT)
     check_symbol_exists(timezone time.h HAVE_TIME_H_TIMEZONE)
 
     check_symbol_exists(realpath "stdlib.h" HAVE_REALPATH)
+    check_symbol_exists(localtime_r "time.h" HAVE_LOCALTIME_R)
 
     unset(CMAKE_REQUIRED_DEFINITIONS)
     unset(CMAKE_REQUIRED_LIBRARIES)
