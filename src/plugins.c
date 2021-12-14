@@ -494,6 +494,11 @@ lyplg_add(const char *pathname)
 
     LOGERR(NULL, LY_EINVAL, "Plugins are not supported in statically built library.");
     return LY_EINVAL;
+#elif defined (_WIN32)
+    (void)pathname;
+
+    LOGERR(NULL, LY_EINVAL, "Plugins are not (yet) supported on Windows.");
+    return LY_EINVAL;
 #else
     LY_ERR ret = LY_SUCCESS;
 
