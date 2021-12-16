@@ -2465,6 +2465,12 @@ test_uses(void **state)
     assert_non_null(child = lysc_node_child(child));
     assert_string_equal("x", child->name);
 
+    /* unique */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module j {namespace urn:j;prefix j;"
+            "grouping grp {list l {key \"k\"; unique \"l\"; leaf k {type string;} leaf l {type string;}}}}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module k {namespace urn:k;prefix k;import j {prefix j;}"
+            "container a {uses j:grp;}}", LYS_IN_YANG, NULL));
+
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Grouping \"missinggrp\" referenced by a uses statement not found.", "/aa:{uses='missinggrp'}");
@@ -3007,7 +3013,7 @@ test_deviation(void **state)
             "         leaf c {type string;} leaf d {type string;}}}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module j {namespace urn:j;prefix j;import i {prefix i;}"
             "augment /i:l1 {leaf j_c {type string;}}"
-            "deviation /i:l1 {deviate add {unique \"i:b j_c\"; }}"
+            "deviation /i:l1 {deviate add {unique \"b j:j_c\"; }}"
             "deviation /i:l1 {deviate add {unique \"i:c\";}}"
             "deviation /i:l2 {deviate delete {unique \"d\"; unique \"b c\";}}}", LYS_IN_YANG, NULL));
     assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "i")));

@@ -2966,7 +2966,6 @@ done:
  * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
  * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
  * @param[in] ctx_node Context node for a relative nodeid.
- * @param[in] cur_mod Current module for the nodeid (where it was "instantiated").
  * @param[in] format Format of any prefixes.
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
  * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
@@ -2979,8 +2978,7 @@ done:
  */
 static LY_ERR
 lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *ctx_node,
-        const struct lys_module *cur_mod, LY_VALUE_FORMAT format, void *prefix_data, uint16_t nodetype,
-        const struct lysc_node **target, uint16_t *result_flag)
+        LY_VALUE_FORMAT format, void *prefix_data, uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
@@ -3037,7 +3035,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
             case LY_VALUE_SCHEMA:
             case LY_VALUE_SCHEMA_RESOLVED:
                 /* use the current module */
-                mod = cur_mod;
+                mod = ctx->cur_mod;
                 break;
             case LY_VALUE_JSON:
             case LY_VALUE_LYB:
@@ -3152,8 +3150,8 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lysp_qname *uniques, s
 
             /* unique node must be present */
             LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
-            ret = lysc_resolve_schema_nodeid(ctx, keystr, len, &list->node, uniques[v].mod->mod,
-                    LY_VALUE_SCHEMA, (void *)uniques[v].mod, LYS_LEAF, (const struct lysc_node **)key, &flags);
+            ret = lysc_resolve_schema_nodeid(ctx, keystr, len, &list->node, LY_VALUE_SCHEMA, (void *)uniques[v].mod,
+                    LYS_LEAF, (const struct lysc_node **)key, &flags);
             if (ret != LY_SUCCESS) {
                 if (ret == LY_EDENIED) {
                     LOGVAL(ctx->ctx, LYVE_REFERENCE,
