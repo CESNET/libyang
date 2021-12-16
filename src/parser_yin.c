@@ -2869,6 +2869,11 @@ yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum l
     assert(parrent == LY_STMT_MODULE || parrent == LY_STMT_SUBMODULE);
     enum yang_module_stmt gr, next_gr;
 
+    if (kw == LY_STMT_EXTENSION_INSTANCE) {
+        /* no order defined */
+        return LY_SUCCESS;
+    }
+
     LY_CHECK_RET(kw2kw_group(ctx, kw, &gr));
     LY_CHECK_RET(kw2kw_group(ctx, next_kw, &next_gr));
 
