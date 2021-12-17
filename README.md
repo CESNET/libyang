@@ -75,6 +75,18 @@ the `distro` directory.
 
 * libpcre2 >= 10.21
 
+### Windows
+
+* Visual Studio 17 (2022)
+* cmake >= 3.22.0
+* libpcre2 (same considerations as on POSIX)
+* [`pthreads-win32`](https://sourceware.org/pthreads-win32/)
+* [`dirent`](https://github.com/tronkko/dirent)
+* [`dlfcn-win32`](https://github.com/dlfcn-win32/dlfcn-win32)
+* [`getopt-win32`](https://github.com/libimobiledevice-win32/getopt)
+
+The Windows version [does not support plugins](https://github.com/CESNET/libyang/commit/323c31221645052e13db83f7d0e6e51c3ce9d802), and the `yanglint` works in a [non-interactive mode](https://github.com/CESNET/libyang/commit/2e3f935ed6f4a47e65b31de5aeebcd8877d5a09b) only.
+
 ## Building
 
 ```
@@ -134,6 +146,8 @@ The directory path can be also changed runtime via environment variable, e.g.:
 ```
 $ LIBYANG_EXTENSIONS_PLUGINS_DIR=`pwd`/my/relative/path yanglint
 ```
+
+Note that plugins are [not available on Windows](https://github.com/CESNET/libyang/commit/323c31221645052e13db83f7d0e6e51c3ce9d802).
 
 #### Optimizations
 
