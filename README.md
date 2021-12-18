@@ -54,7 +54,7 @@ the `distro` directory.
 
 ## Requirements
 
-### Build Requirements
+### Unix Build Requirements
 
 * C compiler
 * cmake >= 2.8.12
@@ -71,11 +71,11 @@ the `distro` directory.
 * lcov (for code coverage)
 * genhtml (for code coverage)
 
-### Runtime Requirements
+### Unix Runtime Requirements
 
 * libpcre2 >= 10.21
 
-### Windows
+### Windows Build Requirements
 
 * Visual Studio 17 (2022)
 * cmake >= 3.22.0
