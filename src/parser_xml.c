@@ -1457,7 +1457,7 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         rc = LY_EVALID;
         goto cleanup;
     }
-    if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lydctx->op_node) {
+    if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lydctx->op_node) {
         LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
         rc = LY_EVALID;
         goto cleanup;
