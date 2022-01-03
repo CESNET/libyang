@@ -304,9 +304,7 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
         } else if ((status == LYJSON_OBJECT) && (current == LYJSON_OBJECT_CLOSED)) {
             sublevels--;
         }
-    } while (current != status + 1 || sublevels);
-    /* open the next sibling */
-    LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
+    } while ((current != status + 1) || sublevels);
 
     return LY_SUCCESS;
 }
