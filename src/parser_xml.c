@@ -499,7 +499,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
                 ret = LY_EVALID;
                 goto error;
             } else if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
-                LOGVRB("Skipping parsing of unkown node \"%.*s\".", name_len, name);
+                LOGVRB("Skipping parsing of unknown node \"%.*s\".", name_len, name);
 
                 /* skip element with children */
                 LY_CHECK_GOTO(ret = lydxml_data_skip(xmlctx), error);
