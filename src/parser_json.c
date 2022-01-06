@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in_internal.h"
@@ -1160,14 +1161,17 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
         enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR ret;
-    uint32_t type_hints = 0;
-    uint32_t prev_parse_opts, prev_int_opts;
+    uint32_t type_hints = 0, prev_parse_opts, prev_int_opts;
+    char *val;
     struct lyd_node *tree = NULL;
 
     ret = lydjson_data_check_opaq(lydctx, snode, &type_hints);
     if (ret == LY_SUCCESS) {
         assert(snode->nodetype & (LYD_NODE_TERM | LYD_NODE_INNER | LYD_NODE_ANY));
         if (snode->nodetype & LYD_NODE_TERM) {
+            LY_CHECK_RET((*status != LYJSON_ARRAY) && (*status != LYJSON_NUMBER) && (*status != LYJSON_STRING) &&
+                    (*status != LYJSON_FALSE) && (*status != LYJSON_TRUE) && (*status != LYJSON_NULL), LY_EINVAL);
+
             /* create terminal node */
             ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, lydctx->jsonctx->value,
                     lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL,
@@ -1183,9 +1187,32 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
                 assert(*status == LYJSON_ARRAY_CLOSED);
             }
             LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
+        } else if (snode->nodetype == LYS_ANYXML) {
+            LY_CHECK_RET((*status != LYJSON_STRING) && (*status != LYJSON_NULL), LY_EINVAL);
+
+            /* create anyxml node */
+            if (*status == LYJSON_NULL) {
+                ret = lyd_create_any(snode, NULL, LYD_ANYDATA_STRING, 1, node);
+                LY_CHECK_RET(ret);
+            } else if (lydctx->jsonctx->dynamic) {
+                ret = lyd_create_any(snode, lydctx->jsonctx->value, LYD_ANYDATA_STRING, 1, node);
+                LY_CHECK_RET(ret);
+                lydctx->jsonctx->dynamic = 0;
+            } else {
+                val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
+                LY_CHECK_ERR_RET(!val, LOGMEM(lydctx->jsonctx->ctx), LY_EMEM);
+                ret = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, node);
+                if (ret) {
+                    free(val);
+                    return ret;
+                }
+            }
+
+            /* move JSON parser */
+            LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
         } else if (snode->nodetype & LYD_NODE_INNER) {
             /* create inner node */
-            LY_CHECK_RET(*status != LYJSON_OBJECT && *status != LYJSON_OBJECT_EMPTY, LY_EINVAL);
+            LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY), LY_EINVAL);
 
             ret = lyd_create_inner(snode, node);
             LY_CHECK_RET(ret);
@@ -1193,7 +1220,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             LOG_LOCSET(snode, *node, NULL, NULL);
 
             /* process children */
-            while (*status != LYJSON_OBJECT_CLOSED && *status != LYJSON_OBJECT_EMPTY) {
+            while ((*status != LYJSON_OBJECT_CLOSED) && (*status != LYJSON_OBJECT_EMPTY)) {
                 ret = lydjson_subtree_r(lydctx, *node, lyd_node_child_p(*node), NULL);
                 LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
                 *status = lyjson_ctx_status(lydctx->jsonctx, 0);
@@ -1225,9 +1252,9 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             /* move JSON parser */
             ret = lyjson_ctx_next(lydctx->jsonctx, status);
             LY_CHECK_RET(ret);
-        } else if (snode->nodetype & LYD_NODE_ANY) {
+        } else if (snode->nodetype == LYS_ANYDATA) {
             /* create any node */
-            LY_CHECK_RET(*status != LYJSON_OBJECT && *status != LYJSON_OBJECT_EMPTY, LY_EINVAL);
+            LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY), LY_EINVAL);
 
             /* parse any data tree with correct options */
             /* first backup the current options and then make the parser to process data as opaq nodes */
@@ -1238,7 +1265,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
 
             /* process the anydata content */
-            while (*status != LYJSON_OBJECT_CLOSED && *status != LYJSON_OBJECT_EMPTY) {
+            while ((*status != LYJSON_OBJECT_CLOSED) && (*status != LYJSON_OBJECT_EMPTY)) {
                 ret = lydjson_subtree_r(lydctx, NULL, &tree, NULL);
                 LY_CHECK_RET(ret);
                 *status = lyjson_ctx_status(lydctx->jsonctx, 0);
@@ -1402,7 +1429,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
         case LYS_RPC:
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if (snode->nodetype == LYS_LEAF) {
+            if (snode->nodetype & (LYS_LEAF | LYS_ANYXML)) {
                 if (status == LYJSON_ARRAY) {
                     expected = "name/[null]";
                 } else {

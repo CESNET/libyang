@@ -518,21 +518,27 @@ json_print_leaf(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 }
 
 /**
- * @brief Print anydata data node including its metadata.
+ * @brief Print anydata/anyxml content.
  *
  * @param[in] ctx JSON printer context.
  * @param[in] any Anydata node to print.
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_anydata(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
+json_print_any_content(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *iter;
     uint32_t prev_opts, prev_lo;
 
+    /* anyxml - printed as name/value pair;
+     * anydata - printed as an object */
+
     if (!any->value.tree) {
         /* no content */
+        if (any->schema->nodetype == LYS_ANYXML) {
+            ly_print_(ctx->out, "null");
+        }
         return LY_SUCCESS;
     }
 
@@ -556,6 +562,11 @@ json_print_anydata(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
 
     switch (any->value_type) {
     case LYD_ANYDATA_DATATREE:
+        if (any->schema->nodetype == LYS_ANYXML) {
+            /* print always as a string */
+            ly_print_(ctx->out, "\"%s", DO_FORMAT ? "\n" : "");
+        }
+
         /* close opening tag and print data */
         prev_opts = ctx->options;
         ctx->options &= ~LYD_PRINT_WITHSIBLINGS;
@@ -566,28 +577,42 @@ json_print_anydata(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
         }
 
         ctx->options = prev_opts;
+
+        if (any->schema->nodetype == LYS_ANYXML) {
+            /* terminate the string */
+            ly_print_(ctx->out, "\"");
+        }
         break;
     case LYD_ANYDATA_JSON:
         /* print without escaping special characters */
-        if (!any->value.str[0]) {
-            return LY_SUCCESS;
+        if (any->schema->nodetype == LYS_ANYXML) {
+            /* print as a string */
+            ly_print_(ctx->out, "\"%s\"", any->value.str);
+        } else if (any->value.str[0]) {
+            /* print with indent */
+            ly_print_(ctx->out, "%*s%s", INDENT, any->value.str);
         }
-        ly_print_(ctx->out, "%*s%s", INDENT, any->value.str);
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
+        if (any->schema->nodetype == LYS_ANYXML) {
+            /* print as a string */
+            ly_print_(ctx->out, "\"%s\"", any->value.str);
+            break;
+        }
+    /* fallthrough */
     case LYD_ANYDATA_LYB:
         /* JSON and LYB format is not supported */
         LOGWRN(ctx->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
-        return LY_SUCCESS;
+        break;
     }
 
     return LY_SUCCESS;
 }
 
 /**
- * @brief Print content of a single container/list data node including its metadata.
- * The envelope specific to container and list are expected to be printed by the caller.
+ * @brief Print content of a single container/list/anydata data node including its metadata.
+ * The envelope specific to nodes are expected to be printed by the caller.
  *
  * @param[in] ctx JSON printer context.
  * @param[in] node Data node to print.
@@ -629,7 +654,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         }
     } else {
         /* anydata */
-        json_print_anydata(ctx, (struct lyd_node_any *)node);
+        json_print_any_content(ctx, (struct lyd_node_any *)node);
     }
 
     LEVEL_DEC;
@@ -655,6 +680,26 @@ json_print_container(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     LY_CHECK_RET(json_print_member(ctx, node, 0));
     LY_CHECK_RET(json_print_inner(ctx, node));
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Print anyxml data node including its metadata.
+ *
+ * @param[in] ctx JSON printer context.
+ * @param[in] node Data node to print.
+ * @return LY_ERR value.
+ */
+static int
+json_print_anyxml(struct jsonpr_ctx *ctx, const struct lyd_node *node)
+{
+    LY_CHECK_RET(json_print_member(ctx, node, 0));
+    LY_CHECK_RET(json_print_any_content(ctx, (struct lyd_node_any *)node));
+    LEVEL_PRINTED;
+
+    /* print attributes as sibling */
+    json_print_attributes(ctx, node, 0);
 
     return LY_SUCCESS;
 }
@@ -867,6 +912,7 @@ json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         case LYS_RPC:
         case LYS_ACTION:
         case LYS_NOTIF:
+        case LYS_ANYDATA:
         case LYS_CONTAINER:
             LY_CHECK_RET(json_print_container(ctx, node));
             break;
@@ -878,8 +924,7 @@ json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node)
             LY_CHECK_RET(json_print_leaf_list(ctx, node));
             break;
         case LYS_ANYXML:
-        case LYS_ANYDATA:
-            LY_CHECK_RET(json_print_container(ctx, node));
+            LY_CHECK_RET(json_print_anyxml(ctx, node));
             break;
         default:
             LOGINT(node->schema->module->ctx);

@@ -496,15 +496,18 @@ test_rpc(void **state)
     struct ly_in *in;
     struct lyd_node *tree, *op;
     const struct lyd_node *node;
-    const char *dsc = "The <edit-config> operation loads all or part of a specified\n"
-            "configuration to the specified target configuration.";
-    const char *ref = "RFC 6241, Section 7.2";
-    const char *feats[] = {"writable-running", NULL};
+    const char *dsc = "Edit data in an NMDA datastore.\n"
+            "\n"
+            "If an error condition occurs such that an error severity\n"
+            "<rpc-error> element is generated, the server will stop\n"
+            "processing the <edit-data> operation and restore the\n"
+            "specified configuration to its complete state at\n"
+            "the start of this <edit-data> operation.";
 
-    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf", "2011-06-01", feats)));
+    assert_non_null((ly_ctx_load_module(UTEST_LYCTX, "ietf-netconf-nmda", "2019-01-07", NULL)));
 
-    data = "{\"ietf-netconf:edit-config\":{"
-            "\"target\":{\"running\":[null]},"
+    data = "{\"ietf-netconf-nmda:edit-data\":{"
+            "\"datastore\":\"ietf-datastores:running\","
             "\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},"
             "\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
             "}}";
@@ -515,16 +518,16 @@ test_rpc(void **state)
     assert_non_null(op);
 
     CHECK_LYSC_ACTION((struct lysc_node_action *)op->schema, dsc, 0, LYS_STATUS_CURR,
-            1, 0, 0, 1, "edit-config", LYS_RPC,
-            0, 0, 0, 0, 0, ref, 0);
+            1, 0, 0, 1, "edit-data", LYS_RPC,
+            0, 0, 0, 0, 0, NULL, 0);
 
     node = tree;
     CHECK_LYSC_ACTION((struct lysc_node_action *)node->schema, dsc, 0, LYS_STATUS_CURR,
-            1, 0, 0, 1, "edit-config", LYS_RPC,
-            0, 0, 0, 0, 0, ref, 0);
+            1, 0, 0, 1, "edit-data", LYS_RPC,
+            0, 0, 0, 0, 0, NULL, 0);
     node = lyd_child(node)->next;
-    CHECK_LYSC_NODE(node->schema, "Inline Config content.", 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config",
-            0, LYS_ANYXML, 1, 0, NULL, 0);
+    CHECK_LYSC_NODE(node->schema, "Inline config content.", 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config",
+            0, LYS_ANYDATA, 1, 0, NULL, 0);
 
     node = ((struct lyd_node_any *)node)->value.tree;
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
