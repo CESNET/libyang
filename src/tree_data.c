@@ -4041,7 +4041,8 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
 iter_print:
             /* print prefix and name */
             mod = NULL;
-            if (iter->schema && (!iter->parent || (iter->schema->module != iter->parent->schema->module))) {
+            if (iter->schema && (!iter->parent || !iter->parent->schema ||
+                    (iter->schema->module != iter->parent->schema->module))) {
                 mod = iter->schema->module;
             }
 
