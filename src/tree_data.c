@@ -2225,6 +2225,10 @@ lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *p
                         lyd_free(ret);
                         return NULL;
                     }
+                    if (options & LYD_PATH_OPT_NOPARENTRET) {
+                        /* last created node */
+                        return node;
+                    }
                     return ret;
                 }
             }
