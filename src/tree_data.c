@@ -1748,6 +1748,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 {
     LY_ERR r;
     struct ly_path_predicate *pred;
+    struct lyd_value val;
     const struct lysc_node *schema = NULL;
     LY_ARRAY_COUNT_TYPE u, new_count;
     int create = 0;
@@ -1784,14 +1785,15 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
                 r = lyd_value_validate(NULL, schema, value, value_len, NULL, NULL, NULL);
             }
             if (!r) {
+                /* try to store the value */
+                LY_CHECK_RET(lyd_value_store(schema->module->ctx, &val, ((struct lysc_node_leaflist *)schema)->type,
+                        value, value_len, NULL, format, NULL, LYD_HINT_DATA, schema, NULL));
+                ++((struct lysc_type *)val.realtype)->refcount;
+
                 /* store the new predicate so that it is used when searching for this instance */
                 path[u].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
                 LY_ARRAY_NEW_RET(schema->module->ctx, path[u].predicates, pred, LY_EMEM);
-
-                LY_CHECK_RET(lyd_value_store(schema->module->ctx, &pred->value,
-                        ((struct lysc_node_leaflist *)schema)->type, value, value_len, NULL, format, NULL,
-                        LYD_HINT_DATA, schema, NULL));
-                ++((struct lysc_type *)pred->value.realtype)->refcount;
+                pred->value = val;
             } /* else we have opaq flag and the value is not valid, leave no predicate and then create an opaque node */
         }
     }
