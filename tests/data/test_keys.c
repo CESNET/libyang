@@ -140,6 +140,35 @@ test_keys_missing2(void **state)
 }
 
 static void
+test_keys_missing3(void **state)
+{
+    const char *schemafile = TESTS_DIR"/data/files/keys2.yang";
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    static const char *data =
+    "{"
+        "\"keys2:l\": ["
+            "{"
+                "\"key1\": 11,"
+                "\"key2\": 12"
+            "},"
+            "{"
+                "\"key1\": 21"
+            "}"
+        "]"
+    "}";
+
+    /* load special schema for this test */
+    mod = lys_parse_path(st->ctx, schemafile, LYS_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* validation should fail as the second entry in the list is missing key2 */ 
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_equal(st->dt, NULL);
+}
+
+static void
 test_keys_inorder(void **state)
 {
     struct state *st = (*state);
@@ -211,6 +240,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_keys_correct2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_keys_missing, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_keys_missing2, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_keys_missing3, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_keys_inorder, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_keys_inorder2, setup_f, teardown_f), };
 

@@ -1360,8 +1360,8 @@ attr_repeat:
                 new->prev = list;
                 list->next = new;
 
-                /* copy the validity and when flags */
-                new->validity = list->validity;
+                /* set the validity and when flags */
+                new->validity = ly_new_node_validity(list->schema);
                 new->when_status = list->when_status;
 
                 /* fix the "last" pointer */

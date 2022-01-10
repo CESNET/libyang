@@ -1,0 +1,15 @@
+module keys2 {
+  yang-version 1.1;
+  namespace "urn:test:keys2";
+  prefix keys2;
+
+  list l {
+    key "key1 key2";
+    leaf key1 {
+      type uint16;
+    }
+    leaf key2 {
+      type uint16;
+    }
+  }
+}
