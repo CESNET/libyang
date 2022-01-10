@@ -1059,8 +1059,7 @@ lydxml_env_netconf_rpc_reply_error_info(struct lyxml_ctx *xmlctx, struct lyd_nod
             /* custom elements */
             r = lydxml_opaq_r(xmlctx, parent);
             LY_CHECK_GOTO(r, error);
-
-            no_dup = 0;
+            continue;
         }
 
 check_child:
