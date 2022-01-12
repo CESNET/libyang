@@ -810,10 +810,8 @@ cleanup:
  * @param[in] ctx libyang context where to work.
  * @param[in] name Name of module to load.
  * @param[in] revision Revision of module to load.
- * @param[in] mod_latest Module with the latest revision found in
- * context and the searchdirs should be searched, otherwise set to NULL.
- * @param[in,out] new_mods Set of all the new mods added to the context.
- * Includes this module and all of its imports.
+ * @param[in] mod_latest Module with the latest revision found in context, otherwise set to NULL.
+ * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @param[out] mod Loaded module.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
@@ -829,30 +827,46 @@ lys_parse_load_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char
     struct lysp_load_module_check_data check_data = {0};
     struct ly_in *in;
 
-    /* Module not present in the context, get the input data and parse it. */
+    *mod = NULL;
+
+    if (mod_latest && (!ctx->imp_clb || (mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB)) &&
+            ((ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) || (mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
+        /* we are not able to find a newer revision */
+        return LY_SUCCESS;
+    }
+
     if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-        if (ctx->imp_clb && !ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data,
-                &module_data_free)) {
-            LY_CHECK_RET(ly_in_new_memory(module_data, &in));
-            check_data.name = name;
-            check_data.revision = revision;
-            lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
-            ly_in_free(in, 0);
-            if (module_data_free) {
-                module_data_free((void *)module_data, ctx->imp_clb_data);
+        /* check there is a callback and should be called */
+        if (ctx->imp_clb && (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_IMPCLB))) {
+            if (!ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data, &module_data_free)) {
+                LY_CHECK_RET(ly_in_new_memory(module_data, &in));
+                check_data.name = name;
+                check_data.revision = revision;
+                lys_parse_in(ctx, in, format, lysp_load_module_check, &check_data, new_mods, mod);
+                ly_in_free(in, 0);
+                if (module_data_free) {
+                    module_data_free((void *)module_data, ctx->imp_clb_data);
+                }
             }
         }
-        if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (*mod && !revision) {
+            /* we got the latest revision module from the callback */
+            (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
+        } else if (!*mod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_file;
         }
     } else {
 search_file:
-        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-            /* Module was not received from the callback or there is no callback set. */
+        /* check we can use searchdirs and that we should */
+        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS) &&
+                (!mod_latest || !(mod_latest->latest_revision & LYS_MOD_LATEST_SEARCHDIRS))) {
             lys_parse_localfile(ctx, name, revision, NULL, NULL, mod_latest ? 0 : 1, new_mods, (void **)mod);
         }
-        if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (*mod && !revision) {
+            /* we got the latest revision module in the searchdirs */
+            (*mod)->latest_revision |= LYS_MOD_LATEST_IMPCLB;
+        } else if (!*mod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
     }
@@ -869,17 +883,13 @@ search_file:
  *
  * @param[in] ctx libyang context where module is searched.
  * @param[in] name Name of the searched module.
- * @param[out] keep_search Flag set to 1 if searchpaths or module
- * callback must be searched to obtain latest available revision.
  * @return Found module from context or NULL.
  */
 static struct lys_module *
-lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *keep_search)
+lys_get_module_without_revision(struct ly_ctx *ctx, const char *name)
 {
     struct lys_module *mod, *mod_impl;
     uint32_t index;
-
-    *keep_search = 0;
 
     /* Try to find module with LYS_MOD_IMPORTED_REV flag. */
     index = 0;
@@ -892,8 +902,7 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *k
     /* Try to find the implemented module. */
     mod_impl = ly_ctx_get_module_implemented(ctx, name);
     if (mod && mod_impl) {
-        LOGVRB("Implemented module \"%s@%s\" is not used for import, "
-                "revision \"%s\" is imported instead.",
+        LOGVRB("Implemented module \"%s@%s\" is not used for import, revision \"%s\" is imported instead.",
                 mod_impl->name, mod_impl->revision, mod->revision);
         return mod;
     } else if (mod_impl) {
@@ -902,7 +911,6 @@ lys_get_module_without_revision(struct ly_ctx *ctx, const char *name, ly_bool *k
 
     /* Try to find the latest module in the current context. */
     mod = ly_ctx_get_module_latest(ctx, name);
-    *keep_search = 1;
 
     return mod;
 }
@@ -932,7 +940,6 @@ LY_ERR
 lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struct ly_set *new_mods,
         struct lys_module **mod)
 {
-    ly_bool keep_search;
     struct lys_module *mod_latest = NULL;
 
     assert(mod && new_mods);
@@ -944,9 +951,9 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
         /* Get the specific revision. */
         *mod = ly_ctx_get_module(ctx, name, revision);
     } else {
-        /* Get the requested module of the latest revision in the context. */
-        *mod = lys_get_module_without_revision(ctx, name, &keep_search);
-        if (keep_search) {
+        /* Get the requested module in a suitable revision in the context. */
+        *mod = lys_get_module_without_revision(ctx, name);
+        if (*mod && !(*mod)->implemented && !((*mod)->latest_revision & LYS_MOD_IMPORTED_REV)) {
             /* Let us now search with callback and searchpaths to check
              * if there is newer revision outside the context.
              */
@@ -957,9 +964,7 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
 
     if (!*mod) {
         /* No suitable module in the context, try to load it. */
-        LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision,
-                mod_latest, new_mods, mod));
-
+        LY_CHECK_RET(lys_parse_load_from_clb_or_file(ctx, name, revision, mod_latest, new_mods, mod));
         if (!*mod && !mod_latest) {
             LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
             return LY_EVALID;
