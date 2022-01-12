@@ -304,7 +304,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     val->ctx = ctx;
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, value, value_len, 1, &val->exp);
+    ret = lyxp_expr_parse(ctx, value_len ? value : "", value_len, 1, &val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store canonical value */
@@ -314,7 +314,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
             LY_CHECK_GOTO(ret, cleanup);
         } else {
-            ret = lydict_insert(ctx, value, value_len, &storage->_canonical);
+            ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
     } else {
