@@ -930,16 +930,10 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
 
     for (uint32_t v = 0; v < ctx->list.count; ++v) {
         mod = ctx->list.objs[v];
-        if (mod->latest_revision & LYS_MOD_LATEST_SEARCHDIRS) {
-            mod->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
-            assert(mod->latest_revision & LYS_MOD_LATEST_REV);
-        }
+        mod->latest_revision &= ~(LYS_MOD_LATEST_SEARCHDIRS | LYS_MOD_LATEST_IMPCLB);
         if (mod->parsed && mod->parsed->includes) {
             for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
-                if (mod->parsed->includes[u].submodule->latest_revision & LYS_MOD_LATEST_SEARCHDIRS) {
-                    mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_SEARCHDIRS;
-                    assert(mod->latest_revision & LYS_MOD_LATEST_REV);
-                }
+                mod->parsed->includes[u].submodule->latest_revision &= ~(LYS_MOD_LATEST_SEARCHDIRS | LYS_MOD_LATEST_IMPCLB);
             }
         }
     }

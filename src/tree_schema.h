@@ -2364,8 +2364,10 @@ struct lys_module {
  */
 #define LYS_MOD_LATEST_REV          0x01 /**< This is the latest revision of the module in the current context. */
 #define LYS_MOD_LATEST_SEARCHDIRS   0x02 /**< This is the latest revision of the module found in searchdirs. */
-#define LYS_MOD_IMPORTED_REV        0x04 /**< This is the module revision used when importing the module without an explicit revision-date.
-                                              It is used for all such imports regardless of any changes made in the context. */
+#define LYS_MOD_IMPORTED_REV        0x04 /**< This is the module revision used when importing the module without
+                                              an explicit revision-date. It is used for all such imports regardless of
+                                              any changes made in the context. */
+#define LYS_MOD_LATEST_IMPCLB       0x08 /**< This is the latest revision of the module obtained from import callback. */
 /** @} latestrevflags */
 
 /**
