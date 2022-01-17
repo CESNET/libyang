@@ -319,7 +319,7 @@ cleanup:
 }
 
 static LY_ERR
-ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
+ly_ctx_new_yl_legacy(struct ly_ctx *ctx, const struct lyd_node *yltree)
 {
     struct lyd_node *module, *node;
     struct ly_set *set;
@@ -329,11 +329,12 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
     ly_bool imported = 0;
     const struct lys_module *mod;
     LY_ERR ret = LY_SUCCESS;
+    uint32_t i, j;
 
     LY_CHECK_RET(ret = lyd_find_xpath(yltree, "/ietf-yang-library:yang-library/modules-state/module", &set));
 
     /* process the data tree */
-    for (uint32_t i = 0; i < set->count; ++i) {
+    for (i = 0; i < set->count; ++i) {
         module = set->dnodes[i];
 
         /* initiate */
@@ -365,8 +366,8 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
         LY_CHECK_ERR_GOTO(!feature_arr, ret = LY_EMEM, cleanup);
 
         /* Parse features into an array of strings */
-        for (uint32_t u = 0; u < features.count; u++) {
-            feature_arr[u] = lyd_get_value(features.dnodes[u]);
+        for (j = 0; j < features.count; ++j) {
+            feature_arr[j] = lyd_get_value(features.dnodes[j]);
         }
         feature_arr[features.count] = NULL;
         ly_set_clean(&features, free);
@@ -387,32 +388,72 @@ cleanup:
     return ret;
 }
 
-static LY_ERR
-ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format, int options,
-        LY_ERR (*parser_func)(const struct ly_ctx *, const char *, LYD_FORMAT, uint32_t, uint32_t, struct lyd_node **),
-        struct ly_ctx **ctx)
+LIBYANG_API_DEF LY_ERR
+ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_ctx *ctx_yl = NULL;
+    struct lyd_node *data_yl = NULL;
+
+    LY_CHECK_ARG_RET(NULL, path, ctx, LY_EINVAL);
+
+    /* create a seperate context for the data */
+    LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, 0, &ctx_yl), cleanup);
+
+    /* parse yang library data tree */
+    LY_CHECK_GOTO(ret = lyd_parse_data_path(ctx_yl, path, format, 0, LYD_VALIDATE_PRESENT, &data_yl), cleanup);
+
+    /* create the new context */
+    ret = ly_ctx_new_yldata(search_dir, data_yl, options, ctx);
+
+cleanup:
+    lyd_free_all(data_yl);
+    ly_ctx_destroy(ctx_yl);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_ctx *ctx_yl = NULL;
+    struct lyd_node *data_yl = NULL;
+
+    LY_CHECK_ARG_RET(NULL, data, ctx, LY_EINVAL);
+
+    /* create a seperate context for the data */
+    LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, 0, &ctx_yl), cleanup);
+
+    /* parse yang library data tree */
+    LY_CHECK_GOTO(ret = lyd_parse_data_mem(ctx_yl, data, format, 0, LYD_VALIDATE_PRESENT, &data_yl), cleanup);
+
+    /* create the new context */
+    ret = ly_ctx_new_yldata(search_dir, data_yl, options, ctx);
+
+cleanup:
+    lyd_free_all(data_yl);
+    ly_ctx_destroy(ctx_yl);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int options, struct ly_ctx **ctx)
 {
     const char *name = NULL, *revision = NULL;
     struct lyd_node *module, *node;
-    struct lyd_node *yltree = NULL;
     struct ly_set *set = NULL;
     const char **feature_arr = NULL;
     struct ly_set features = {0};
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
-    struct ly_ctx *ctx_yl = NULL, *ctx_new = NULL;
+    struct ly_ctx *ctx_new = NULL;
     ly_bool no_expl_compile = 0;
+    uint32_t i, j;
 
-    /* create a seperate context in case it is LY_CTX_NO_YANGLIBRARY since it needs it for parsing */
-    if (options & LY_CTX_NO_YANGLIBRARY) {
-        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, 0, &ctx_yl), cleanup);
-        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
-    } else {
-        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
-    }
+    LY_CHECK_ARG_RET(NULL, tree, ctx, LY_EINVAL);
 
-    /* parse yang library data tree */
-    LY_CHECK_GOTO(ret = parser_func(ctx_yl ? ctx_yl : ctx_new, input, format, 0, LYD_VALIDATE_PRESENT, &yltree), cleanup);
+    /* create a new context */
+    LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
 
     /* redundant to compile modules one-by-one */
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
@@ -420,20 +461,20 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
         no_expl_compile = 1;
     }
 
-    LY_CHECK_GOTO(ret = lyd_find_xpath(yltree, "/ietf-yang-library:yang-library/module-set[1]/module", &set), cleanup);
+    LY_CHECK_GOTO(ret = lyd_find_xpath(tree, "/ietf-yang-library:yang-library/module-set[1]/module", &set), cleanup);
     if (set->count == 0) {
         /* perhaps a legacy data tree? */
-        LY_CHECK_GOTO(ret = ly_ctx_new_yl_legacy(ctx_new, yltree), cleanup);
+        LY_CHECK_GOTO(ret = ly_ctx_new_yl_legacy(ctx_new, tree), cleanup);
     } else {
         /* process the data tree */
-        for (uint32_t i = 0; i < set->count; ++i) {
+        for (i = 0; i < set->count; ++i) {
             module = set->dnodes[i];
 
             /* initiate */
             name = NULL;
             revision = NULL;
 
-            /* Iterate over data */
+            /* iterate over data */
             LY_LIST_FOR(lyd_child(module), node) {
                 if (!strcmp(node->schema->name, "name")) {
                     name = lyd_get_value(node);
@@ -447,9 +488,9 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
             feature_arr = malloc((features.count + 1) * sizeof *feature_arr);
             LY_CHECK_ERR_GOTO(!feature_arr, ret = LY_EMEM, cleanup);
 
-            /* Parse features into an array of strings */
-            for (uint32_t u = 0; u < features.count; u++) {
-                feature_arr[u] = lyd_get_value(features.dnodes[u]);
+            /* parse features into an array of strings */
+            for (j = 0; j < features.count; ++j) {
+                feature_arr[j] = lyd_get_value(features.dnodes[j]);
             }
             feature_arr[features.count] = NULL;
             ly_set_clean(&features, NULL);
@@ -466,10 +507,6 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
         }
     }
 
-    /* free data because their context may be recompiled */
-    lyd_free_all(yltree);
-    yltree = NULL;
-
     /* compile */
     LY_CHECK_GOTO(ret = ly_ctx_compile(ctx_new), cleanup);
 
@@ -479,31 +516,14 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     }
 
 cleanup:
-    lyd_free_all(yltree);
     ly_set_free(set, NULL);
     ly_set_erase(&features, NULL);
-    ly_ctx_destroy(ctx_yl);
     *ctx = ctx_new;
     if (ret) {
         ly_ctx_destroy(*ctx);
         *ctx = NULL;
     }
-
     return ret;
-}
-
-LIBYANG_API_DEF LY_ERR
-ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options, struct ly_ctx **ctx)
-{
-    LY_CHECK_ARG_RET(NULL, path, ctx, LY_EINVAL);
-    return ly_ctx_new_yl_common(search_dir, path, format, options, lyd_parse_data_path, ctx);
-}
-
-LIBYANG_API_DEF LY_ERR
-ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options, struct ly_ctx **ctx)
-{
-    LY_CHECK_ARG_RET(NULL, data, ctx, LY_EINVAL);
-    return ly_ctx_new_yl_common(search_dir, data, format, options, lyd_parse_data_mem, ctx);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -641,15 +661,6 @@ ly_ctx_get_change_count(const struct ly_ctx *ctx)
     return ctx->change_count;
 }
 
-LIBYANG_API_DEF void
-ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
-{
-    LY_CHECK_ARG_RET(ctx, ctx, );
-
-    ctx->imp_clb = clb;
-    ctx->imp_clb_data = user_data;
-}
-
 LIBYANG_API_DEF ly_module_imp_clb
 ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {
@@ -659,6 +670,29 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
         *user_data = ctx->imp_clb_data;
     }
     return ctx->imp_clb;
+}
+
+LIBYANG_API_DEF void
+ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, );
+
+    ctx->imp_clb = clb;
+    ctx->imp_clb_data = user_data;
+}
+
+LIBYANG_API_DEF ly_ext_data_clb
+ly_ctx_set_ext_data_clb(struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data)
+{
+    ly_ext_data_clb prev;
+
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    prev = ctx->ext_clb;
+    ctx->ext_clb = clb;
+    ctx->ext_clb_data = user_data;
+
+    return prev;
 }
 
 LIBYANG_API_DEF struct lys_module *

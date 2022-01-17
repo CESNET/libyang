@@ -129,12 +129,10 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  *
  * @param[in] node Node to use.
  * @param[in,out] node_when Set of nodes with unresolved when.
- * @param[in,out] node_exts Set of nodes and their extension instances if they have own validation callback.
  * @param[in,out] meta Node metadata, may be removed from.
  * @param[in] parse_opts Parse options.
  */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts,
-        struct lyd_meta **meta, uint32_t parse_opts);
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct lyd_meta **meta, uint32_t parse_opts);
 
 /**
  * @brief Get schema node of a data node. Useful especially for opaque nodes.
@@ -316,15 +314,14 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
  * @param[in] node_when Optional set to add nodes with "when" conditions into.
- * @param[in] node_exts Optional set to add nodes and extension instances having own validation plugin callback into it.
  * @param[in] node_types Optional set to add nodes with unresolved types into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_exts, struct ly_set *node_types,
-        uint32_t impl_opts, struct lyd_node **diff);
+        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, uint32_t impl_opts,
+        struct lyd_node **diff);
 
 /**
  * @brief Find the next node, before which to insert the new node.
@@ -369,6 +366,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
+ * @param[in] ctx_node Value context node, may be NULL for metadata.
  * @param[in] clear_dflt Whether to clear dflt flag starting from @p parent, recursively all NP containers.
  * @param[out] incomplete Whether the value needs to be resolved.
  * @return LY_SUCCESS on success.
@@ -377,7 +375,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta, ly_bool cle
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
         size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, ly_bool clear_dflt, ly_bool *incomplete);
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
  * @brief Insert an attribute (last) into a parent

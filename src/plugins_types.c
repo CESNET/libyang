@@ -134,6 +134,7 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_le
         mod = ly_schema_resolved_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
     case LY_VALUE_XML:
+    case LY_VALUE_STR_NS:
         mod = ly_xml_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         break;
     case LY_VALUE_CANON:
@@ -147,8 +148,8 @@ ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, size_t prefix_le
 }
 
 LIBYANG_API_DEF const struct lys_module *
-lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data)
+lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *prefix,
+        size_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data)
 {
     if (prefix_len) {
         return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
@@ -163,8 +164,9 @@ lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx
         case LY_VALUE_CANON:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
+        case LY_VALUE_STR_NS:
             /* use context node module (as specified) */
-            return ctx_node->module;
+            return ctx_node ? ctx_node->module : NULL;
         case LY_VALUE_XML:
             /* use the default namespace */
             return ly_xml_resolve_prefix(ctx, NULL, 0, prefix_data);
@@ -253,6 +255,7 @@ ly_get_prefix(const struct lys_module *mod, LY_VALUE_FORMAT format, void *prefix
         prefix = ly_schema_resolved_get_prefix(mod, prefix_data);
         break;
     case LY_VALUE_XML:
+    case LY_VALUE_STR_NS:
         prefix = ly_xml_get_prefix(mod, prefix_data);
         break;
     case LY_VALUE_CANON:
@@ -784,6 +787,7 @@ lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_
     case LY_VALUE_CANON:
     case LY_VALUE_LYB:
     case LY_VALUE_JSON:
+    case LY_VALUE_STR_NS:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
         break;
     }
@@ -861,7 +865,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 {
     LY_ERR ret;
     struct lyxp_set set = {0};
-    const char *val_str;
+    const char *val_str, *xp_err_msg;
     uint32_t i;
     int rc;
 
@@ -871,9 +875,19 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
     ret = lyxp_eval(LYD_CTX(node), lref->path, node->schema->module, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
             node, tree, NULL, &set, LYXP_IGNORE_WHEN);
     if (ret) {
-        ret = LY_ENOTFOUND;
+        if (ly_errcode(LYD_CTX(node)) == ret) {
+            xp_err_msg = ly_errmsg(LYD_CTX(node));
+        } else {
+            xp_err_msg = NULL;
+        }
+
         val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
-        if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
+        if (xp_err_msg) {
+            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error (%s).", val_str, xp_err_msg);
+        } else {
+            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str);
+        }
+        if (rc == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
         }

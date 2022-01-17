@@ -161,10 +161,10 @@ const struct lyplg_ext_record plugins_metadata[] = {
 
         .plugin.id = "libyang 2 - metadata, version 1",
         .plugin.compile = &annotation_compile,
-        .plugin.parse = NULL,
-        .plugin.validate = NULL,
         .plugin.sprinter = &annotation_schema_printer,
-        .plugin.free = annotation_free
+        .plugin.free = annotation_free,
+        .plugin.parse = NULL,
+        .plugin.validate = NULL
     },
     {0}     /* terminating zeroed record */
 };

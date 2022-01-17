@@ -414,11 +414,12 @@ cleanup:
  * @brief Parse YANG node metadata.
  *
  * @param[in] lybctx LYB context.
+ * @param[in] sparent Schema parent node of the metadata.
  * @param[out] meta Parsed metadata.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
+lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, struct lyd_meta **meta)
 {
     LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic;
@@ -455,7 +456,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, struct lyd_meta **meta)
 
         /* create metadata */
         ret = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
-                ly_strlen(meta_value), &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA);
+                ly_strlen(meta_value), &dynamic, LY_VALUE_JSON, NULL, LYD_HINT_DATA, sparent);
 
         /* free strings */
         free(meta_name);
@@ -927,17 +928,18 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
  * @brief Parse header for non-opaq node.
  *
  * @param[in] lybctx LYB context.
+ * @param[in] sparent Schema parent node of the metadata.
  * @param[out] flags Parsed node flags.
  * @param[out] meta Parsed metadata of the node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, uint32_t *flags, struct lyd_meta **meta)
+lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t *flags, struct lyd_meta **meta)
 {
     LY_ERR ret;
 
     /* create and read metadata */
-    ret = lyb_parse_metadata(lybctx, meta);
+    ret = lyb_parse_metadata(lybctx, sparent, meta);
     LY_CHECK_RET(ret);
 
     /* read flags */
@@ -1002,9 +1004,8 @@ lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snod
 
         /* add any missing default children */
         impl_opts = (lybctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0;
-        ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL,
-                NULL, &lybctx->node_when, &lybctx->node_exts,
-                &lybctx->node_types, impl_opts, NULL);
+        ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lybctx->node_when, &lybctx->node_types,
+                impl_opts, NULL);
         LY_CHECK_RET(ret);
     }
 
@@ -1124,7 +1125,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
     /* read necessary basic data */
-    ret = lyb_parse_node_header(lybctx, &flags, &meta);
+    ret = lyb_parse_node_header(lybctx, snode, &flags, &meta);
     LY_CHECK_GOTO(ret, error);
 
     /* parse value type */
@@ -1212,7 +1213,7 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     uint32_t flags;
 
     /* read necessary basic data */
-    ret = lyb_parse_node_header(lybctx, &flags, &meta);
+    ret = lyb_parse_node_header(lybctx, snode, &flags, &meta);
     LY_CHECK_GOTO(ret, error);
 
     /* create node */
@@ -1263,7 +1264,7 @@ lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     uint32_t flags;
 
     /* read necessary basic data */
-    ret = lyb_parse_node_header(lybctx, &flags, &meta);
+    ret = lyb_parse_node_header(lybctx, snode, &flags, &meta);
     LY_CHECK_GOTO(ret, error);
 
     /* read value of term node and create it */
@@ -1338,7 +1339,7 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
 
     while (LYB_LAST_SIBLING(lybctx->lybctx).written) {
         /* read necessary basic data */
-        ret = lyb_parse_node_header(lybctx, &flags, &meta);
+        ret = lyb_parse_node_header(lybctx, snode, &flags, &meta);
         LY_CHECK_GOTO(ret, error);
 
         /* create list node */
@@ -1619,12 +1620,14 @@ cleanup:
 LY_ERR
 lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
 {
     uint32_t int_opts;
 
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
+
+    LY_CHECK_ARG_RET(ctx, !(parse_opts & LYD_PARSE_SUBTREE), LY_EINVAL);
 
     switch (data_type) {
     case LYD_TYPE_DATA_YANG:
@@ -1644,6 +1647,9 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         return LY_EINT;
     }
 
+    if (subtree_sibling) {
+        *subtree_sibling = 0;
+    }
     return _lyd_parse_lyb(ctx, ext, parent, first_p, in, parse_opts, val_opts, int_opts, parsed, lydctx_p);
 }
 

@@ -58,6 +58,16 @@ ly_in_type(const struct ly_in *in)
 }
 
 LIBYANG_API_DEF LY_ERR
+ly_in_reset(struct ly_in *in)
+{
+    LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
+
+    in->current = in->func_start = in->start;
+    in->line = 1;
+    return LY_SUCCESS;
+}
+
+LIBYANG_API_DEF LY_ERR
 ly_in_new_fd(int fd, struct ly_in **in)
 {
     size_t length;
@@ -186,16 +196,6 @@ ly_in_memory(struct ly_in *in, const char *str)
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_in_reset(struct ly_in *in)
-{
-    LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
-
-    in->current = in->func_start = in->start;
-    in->line = 1;
-    return LY_SUCCESS;
-}
-
-LIBYANG_API_DEF LY_ERR
 ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
 {
     LY_ERR ret;
@@ -318,6 +318,12 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
 
 }
 
+LIBYANG_API_DEF size_t
+ly_in_parsed(const struct ly_in *in)
+{
+    return in->current - in->func_start;
+}
+
 LIBYANG_API_DEF void
 ly_in_free(struct ly_in *in, ly_bool destroy)
 {
@@ -371,12 +377,6 @@ ly_in_read(struct ly_in *in, void *buf, size_t count)
     return LY_SUCCESS;
 }
 
-LIBYANG_API_DEF size_t
-ly_in_parsed(const struct ly_in *in)
-{
-    return in->current - in->func_start;
-}
-
 LY_ERR
 ly_in_skip(struct ly_in *in, size_t count)
 {
@@ -395,7 +395,7 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
     ly_set_erase(&lydctx->node_types, NULL);
     ly_set_erase(&lydctx->meta_types, NULL);
     ly_set_erase(&lydctx->node_when, NULL);
-    ly_set_erase(&lydctx->node_exts, NULL);
+    ly_set_erase(&lydctx->ext_val, free);
 }
 
 LY_ERR
@@ -525,7 +525,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
         const char *name, size_t name_len, const void *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints)
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node)
 {
     ly_bool incomplete;
     struct lyd_meta *first = NULL;
@@ -536,7 +536,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
     LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
-            hints, 0, &incomplete));
+            hints, ctx_node, 0, &incomplete));
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->meta_types, *meta, 1, NULL));

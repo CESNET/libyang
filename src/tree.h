@@ -238,7 +238,8 @@ typedef enum {
     LY_VALUE_SCHEMA_RESOLVED, /**< resolved YANG schema value, prefixes map to module structures directly */
     LY_VALUE_XML,             /**< XML data value, prefixes map to XML namespace prefixes */
     LY_VALUE_JSON,            /**< JSON data value, prefixes map to module names */
-    LY_VALUE_LYB              /**< LYB data binary value, prefix mapping is type-specific (but usually like JSON) */
+    LY_VALUE_LYB,             /**< LYB data binary value, prefix mapping is type-specific (but usually like JSON) */
+    LY_VALUE_STR_NS           /**< any data format value, prefixes map to XML namespace prefixes */
 } LY_VALUE_FORMAT;
 
 /** @} trees */

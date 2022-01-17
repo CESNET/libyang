@@ -27,15 +27,6 @@ struct lys_module;
 struct lysc_node;
 
 /**
- * @brief Add information about the node's extensions having their own validation callback into an unres set.
- *
- * @param[in,out] node_exts Unres set for holding information for validating extension instances.
- * @param[in] node Data node to be examined.
- * @return LY_ERR values.
- */
-LY_ERR lysc_node_ext_tovalidate(struct ly_set *node_exts, struct lyd_node *node);
-
-/**
  * @brief Add new changes into a diff. They are always merged.
  *
  * @param[in] node Node/subtree to add.
@@ -56,15 +47,16 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * the first top-level sibling.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] when_xp_opts Additional XPath options to use for evaluating "when".
- * @param[in] node_exts Set with nodes with extension instances with validation plugin callback, can be NULL.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
+ * @param[in] ext_val Set with extension data to validate, can be NULL.
+ * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
-        uint32_t when_xp_opts, struct ly_set *node_exts, struct ly_set *node_types, struct ly_set *meta_types,
-        struct lyd_node **diff);
+        uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
+        uint32_t val_opts, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
@@ -89,14 +81,14 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
  * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
- * @param[in] node_exts_p Set with nodes with extension instances with validation plugin callback, if NULL a local set is used.
  * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
  * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
+ * @param[in] ext_val_p Set of unres extension data to validate, if NULL a local set is used.
  * @param[out] diff Generated validation diff, not generated if NULL.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t val_opts,
-        ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_exts_p,
-        struct ly_set *node_types_p, struct ly_set *meta_types_p, struct lyd_node **diff);
+        ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
+        struct ly_set *ext_val_p, struct lyd_node **diff);
 
 #endif /* LY_VALIDATION_H_ */

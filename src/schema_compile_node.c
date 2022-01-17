@@ -1917,29 +1917,6 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Find the correct plugin implementing the described type
- *
- * @param[in] mod Module where the type is defined
- * @param[in] name Name of the type (typedef)
- * @param[in] basetype Type's basetype (when the built-in base plugin is supposed to be used)
- * @return Pointer to the plugin implementing the described data type.
- */
-static struct lyplg_type *
-lys_compile_type_get_plugin(struct lys_module *mod, const char *name, LY_DATA_TYPE basetype)
-{
-    struct lyplg_type *p;
-
-    /* try to find loaded user type plugins */
-    p = lyplg_find(LYPLG_TYPE, mod->name, mod->revision, name);
-    if (!p) {
-        /* use the internal built-in type implementation */
-        p = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
-    }
-
-    return p;
-}
-
 LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t context_flags, const char *context_name,
         struct lysp_type *type_p, struct lysc_type **type, const char **units, struct lysp_qname **dflt)
@@ -2121,8 +2098,13 @@ preparenext:
             continue;
         }
 
-        /* get plugin for the specific typedef */
-        plugin = lys_compile_type_get_plugin(tctx->tpdf->type.pmod->mod, tctx->tpdf->name, basetype);
+        /* try to find loaded user type plugins */
+        plugin = lyplg_find(LYPLG_TYPE, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
+                tctx->tpdf->name);
+        if (!plugin) {
+            /* use the internal built-in type implementation */
+            plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
+        }
         assert(plugin);
 
         if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags) &&
@@ -3048,6 +3030,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 break;
             case LY_VALUE_CANON:
             case LY_VALUE_XML:
+            case LY_VALUE_STR_NS:
                 /* not really defined */
                 LOGINT_RET(ctx->ctx);
             }

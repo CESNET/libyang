@@ -64,6 +64,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     case LY_VALUE_CANON:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
+    case LY_VALUE_STR_NS:
         /* the same prefix is inherited and skipped */
         inherit_prefix = 1;
         break;
@@ -172,6 +173,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
     case LY_VALUE_CANON:
     case LY_VALUE_LYB:
     case LY_VALUE_JSON:
+    case LY_VALUE_STR_NS:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
         break;
     }
@@ -191,7 +193,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
 
     /* resolve it on schema tree, use JSON format instead of LYB because for this type they are equal but for some
      * nested types (such as numbers in predicates in the path) LYB would be invalid */
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node->flags & LYS_IS_OUTPUT) ?
+    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, exp, (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 1, (format == LY_VALUE_LYB) ?
             LY_VALUE_JSON : format, prefix_data, &path);
     if (ret) {

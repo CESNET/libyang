@@ -680,6 +680,16 @@ struct lyd_value_date_and_time {
 };
 
 /**
+ * @brief Special lyd_value structure for ietf-yang-types xpath1.0 values.
+ */
+struct lyd_value_xpath10 {
+    struct lyxp_expr *exp;
+    const struct ly_ctx *ctx;
+    void *prefix_data;
+    LY_VALUE_FORMAT format;
+};
+
+/**
  * @brief Metadata structure.
  *
  * The structure provides information about metadata of a data element. Such attributes must map to
@@ -722,7 +732,7 @@ struct lyd_attr {
     struct ly_opaq_name name;       /**< attribute name with module information */
     const char *value;              /**< attribute value */
     uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
-    LY_VALUE_FORMAT format;        /**< format of the attribute and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
+    LY_VALUE_FORMAT format;         /**< format of the attribute and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
 };
 
@@ -753,9 +763,10 @@ struct lyd_attr {
  *
  */
 
-#define LYD_DEFAULT      0x01        /**< default (implicit) node */
-#define LYD_WHEN_TRUE    0x02        /**< all when conditions of this node were evaluated to true */
-#define LYD_NEW          0x04        /**< node was created after the last validation, is needed for the next validation */
+#define LYD_DEFAULT     0x01        /**< default (implicit) node */
+#define LYD_WHEN_TRUE   0x02        /**< all when conditions of this node were evaluated to true */
+#define LYD_NEW         0x04        /**< node was created after the last validation, is needed for the next validation */
+#define LYD_EXT         0x08        /**< node is the first sibling parsed as extension instance data */
 
 /** @} */
 
@@ -1908,32 +1919,63 @@ LIBYANG_API_DECL LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const str
 /** @} dupoptions */
 
 /**
- * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
+ * @brief Create a copy of the specified data tree @p node. Schema references are kept the same.
  *
  * @param[in] node Data tree node to be duplicated.
- * @param[in] parent Optional parent node where to connect the duplicated node(s).
- * If set in combination with LYD_DUP_WITH_PARENTS, the parents chain is duplicated until it comes to and connects with
- * the @p parent.
+ * @param[in] parent Optional parent node where to connect the duplicated node(s). If set in combination with
+ * ::LYD_DUP_WITH_PARENTS, the missing parents' chain is duplicated and connected with @p parent.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @param[out] dup Optional created copy of the node. Note that in case the parents chain is duplicated for the duplicated
- * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
+ * node(s) (when ::LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options,
+        struct lyd_node **dup);
 
 /**
- * @brief Create a copy of the specified data tree \p node with any following siblings. Schema references are kept the same.
+ * @brief Create a copy of the specified data tree @p node. Schema references are assigned from @p trg_ctx.
  *
  * @param[in] node Data tree node to be duplicated.
- * @param[in] parent Optional parent node where to connect the duplicated node(s).
- * If set in combination with LYD_DUP_WITH_PARENTS, the parents chain is duplicated until it comes to and connects with
- * the @p parent.
+ * @param[in] trg_ctx Target context for duplicated nodes.
+ * @param[in] parent Optional parent node where to connect the duplicated node(s). If set in combination with
+ * ::LYD_DUP_WITH_PARENTS, the missing parents' chain is duplicated and connected with @p parent.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @param[out] dup Optional created copy of the node. Note that in case the parents chain is duplicated for the duplicated
- * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
+ * node(s) (when ::LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+LIBYANG_API_DECL LY_ERR lyd_dup_single_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx,
+        struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+
+/**
+ * @brief Create a copy of the specified data tree @p node with any following siblings. Schema references are kept the same.
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] parent Optional parent node where to connect the duplicated node(s). If set in combination with
+ * ::LYD_DUP_WITH_PARENTS, the missing parents' chain is duplicated and connected with @p parent.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @param[out] dup Optional created copy of the node. Note that in case the parents chain is duplicated for the duplicated
+ * node(s) (when ::LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options,
+        struct lyd_node **dup);
+
+/**
+ * @brief Create a copy of the specified data tree @p node with any following siblings. Schema references are assigned
+ * from @p trg_ctx.
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] trg_ctx Target context for duplicated nodes.
+ * @param[in] parent Optional parent node where to connect the duplicated node(s). If set in combination with
+ * ::LYD_DUP_WITH_PARENTS, the missing parents' chain is duplicated and connected with @p parent.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @param[out] dup Optional created copy of the node. Note that in case the parents chain is duplicated for the duplicated
+ * node(s) (when ::LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyd_dup_siblings_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx,
+        struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the metadata.
@@ -2265,7 +2307,8 @@ LIBYANG_API_DECL char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE patht
  * @return Found metadata,
  * @return NULL if not found.
  */
-LIBYANG_API_DECL struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name);
+LIBYANG_API_DECL struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module,
+        const char *name);
 
 /**
  * @brief Search in the given siblings (NOT recursively) for the first target instance with the same value.
@@ -2278,7 +2321,8 @@ LIBYANG_API_DECL struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, co
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
  * @return LY_ERR value if another error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target,
+        struct lyd_node **match);
 
 /**
  * @brief Search in the given siblings for the first schema instance.
@@ -2304,8 +2348,8 @@ LIBYANG_API_DECL LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, 
  * @return LY_EINVAL if @p schema is a key-less list.
  * @return LY_ERR value if another error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
-        size_t val_len, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema,
+        const char *key_or_value, size_t val_len, struct lyd_node **match);
 
 /**
  * @brief Search the given siblings for all the exact same instances of a specific node instance. Accepts only nodes
@@ -2318,7 +2362,8 @@ LIBYANG_API_DECL LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, co
  * @return LY_ENOTFOUND if not found, empty @p set returned.
  * @return LY_ERR value if another error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
+LIBYANG_API_DECL LY_ERR lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target,
+        struct ly_set **set);
 
 /**
  * @brief Search the given siblings for an opaque node with a specific name.
@@ -2361,7 +2406,7 @@ LIBYANG_API_DECL void lyxp_vars_free(struct lyxp_var *vars);
  * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
  *
  * @param[in] ctx_node XPath context node.
- * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
  * the returned set is empty.
  * @return LY_SUCCESS on success, @p set is returned.
@@ -2372,10 +2417,10 @@ LIBYANG_API_DECL LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const ch
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
- * It is just lyd_find_xpath() with @p vars added.
+ * It is just ::lyd_find_xpath() with @p vars added.
  *
  * @param[in] ctx_node XPath context node.
- * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
  * the returned set is empty.
@@ -2388,11 +2433,11 @@ LIBYANG_API_DECL LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const c
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
- * It is just lyd_find_xpath2() with @p tree added so that @p ctx_node may be the root.
+ * It is just ::lyd_find_xpath2() with @p tree added so that @p ctx_node may be the root.
  *
  * @param[in] ctx_node XPath context node, NULL for the root node.
  * @param[in] tree Data tree to evaluate on.
- * @param[in] xpath [XPath](@ref howtoXPath) to select.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
  * the returned set is empty.
@@ -2401,6 +2446,25 @@ LIBYANG_API_DECL LY_ERR lyd_find_xpath2(const struct lyd_node *ctx_node, const c
  */
 LIBYANG_API_DECL LY_ERR lyd_find_xpath3(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
         const struct lyxp_var *vars, struct ly_set **set);
+
+/**
+ * @brief Search in the given data for instances of nodes matching the provided XPath.
+ *
+ * It is just ::lyd_find_xpath3() with @p format and @p prefix_data added for special use-cases.
+ *
+ * @param[in] ctx_node XPath context node, NULL for the root node.
+ * @param[in] tree Data tree to evaluate on.
+ * @param[in] xpath [XPath](@ref howtoXPath) to select with prefix in @p format.
+ * @param[in] format Format of any prefixes in @p xpath.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
+ * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
+ * the returned set is empty.
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LIBYANG_API_DECL LY_ERR lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, const char *xpath,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, struct ly_set **set);
 
 /**
  * @brief Evaluate an XPath on data and return the result converted to boolean.

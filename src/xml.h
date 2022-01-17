@@ -133,6 +133,13 @@ LY_ERR lyxml_ctx_next(struct lyxml_ctx *xmlctx);
 LY_ERR lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next);
 
 /**
+ * @brief Remove all the namespaces defined in the element recently closed (removed from the xmlctx->elements).
+ *
+ * @param[in] xmlctx XML context to work with.
+ */
+void lyxml_ns_rm(struct lyxml_ctx *xmlctx);
+
+/**
  * @brief Get a namespace record for the given prefix in the current context.
  *
  * @param[in] ns_set Set with namespaces from the XML context.

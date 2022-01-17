@@ -241,8 +241,7 @@ LIBYANG_API_DECL ly_log_clb ly_get_log_clb(void);
  * @typedef LY_ERR
  * @brief libyang's error codes returned by the libyang functions.
  */
-typedef enum
-{
+typedef enum {
     LY_SUCCESS = 0, /**< no error, not set by functions, included just to complete #LY_ERR enumeration */
     LY_EMEM,        /**< Memory allocation failure */
     LY_ESYS,        /**< System call failure */

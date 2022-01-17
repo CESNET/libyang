@@ -23,7 +23,6 @@
 #include "xml.h"
 
 LY_ERR lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri);
-LY_ERR lyxml_ns_rm(struct lyxml_ctx *xmlctx);
 
 static void
 test_element(void **state)
