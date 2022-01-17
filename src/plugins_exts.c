@@ -58,13 +58,13 @@ lys_ypr_ctx_get_level(const struct lyspr_ctx *ctx)
     return &((struct lyspr_ctx *)ctx)->level;
 }
 
-API const struct lys_module *
+LIBYANG_API_DEF const struct lys_module *
 lysc_ctx_get_cur_mod(const struct lysc_ctx *ctx)
 {
     return ctx->cur_mod;
 }
 
-API struct lysp_module *
+LIBYANG_API_DEF struct lysp_module *
 lysc_ctx_get_pmod(const struct lysc_ctx *ctx)
 {
     return ctx->pmod;
