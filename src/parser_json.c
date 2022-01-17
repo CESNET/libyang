@@ -793,7 +793,7 @@ next_entry:
                 ret = LY_EVALID;
                 goto cleanup;
             }
-            if (!(lydctx->parse_opts & LYD_PARSE_OPAQ)) {
+            if (node->schema) {
                 /* skip element with children */
                 ret = lydjson_data_skip(lydctx->jsonctx);
                 LY_CHECK_GOTO(ret, cleanup);
@@ -801,6 +801,7 @@ next_entry:
                 /* end of the item */
                 continue;
             }
+            assert(lydctx->parse_opts & LYD_PARSE_OPAQ);
         }
 
         /* get the value */
