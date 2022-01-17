@@ -181,11 +181,6 @@ lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, ch
     return LY_SUCCESS;
 }
 
-/**
- * @brief Remove all the namespaces defined in the element recently closed (removed from the xmlctx->elements).
- *
- * @param[in] xmlctx XML context to work with.
- */
 void
 lyxml_ns_rm(struct lyxml_ctx *xmlctx)
 {

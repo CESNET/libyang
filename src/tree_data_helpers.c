@@ -401,8 +401,7 @@ lyd_parse_check_keys(struct lyd_node *node)
 }
 
 void
-lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct ly_set *node_exts, struct lyd_meta **meta,
-        uint32_t parse_opts)
+lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct lyd_meta **meta, uint32_t parse_opts)
 {
     struct lyd_meta *meta2, *prev_meta = NULL;
 
@@ -412,7 +411,6 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct
             LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL), );
         }
     }
-    LY_CHECK_RET(lysc_node_ext_tovalidate(node_exts, node), );
 
     LY_LIST_FOR(*meta, meta2) {
         if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults") &&
@@ -634,6 +632,7 @@ ly_free_prefix_data(LY_VALUE_FORMAT format, void *prefix_data)
 
     switch (format) {
     case LY_VALUE_XML:
+    case LY_VALUE_STR_NS:
         ns_list = prefix_data;
         for (i = 0; i < ns_list->count; ++i) {
             free(((struct lyxml_ns *)ns_list->objs[i])->prefix);
@@ -689,6 +688,7 @@ ly_dup_prefix_data(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void 
         }
         break;
     case LY_VALUE_XML:
+    case LY_VALUE_STR_NS:
         /* copy all the namespaces */
         LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
         *prefix_data_p = ns_list;
@@ -775,15 +775,16 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
         }
         break;
     case LY_VALUE_XML:
+    case LY_VALUE_STR_NS:
         /* copy all referenced namespaces as prefix - namespace pairs */
         if (!*prefix_data_p) {
             /* new prefix data */
             LY_CHECK_GOTO(ret = ly_set_new(&ns_list), cleanup);
-            *format_p = LY_VALUE_XML;
+            *format_p = format;
             *prefix_data_p = ns_list;
         } else {
             /* reuse prefix data */
-            assert(*format_p == LY_VALUE_XML);
+            assert(*format_p == format);
             ns_list = *prefix_data_p;
         }
 

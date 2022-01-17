@@ -343,8 +343,8 @@ cast_string_realloc(const struct ly_ctx *ctx, uint16_t needed, char **str, uint1
  * @return LY_ERR
  */
 static LY_ERR
-cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type root_type, uint16_t indent, char **str,
-        uint16_t *used, uint16_t *size)
+cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type root_type, uint16_t indent,
+        char **str, uint16_t *used, uint16_t *size)
 {
     char *buf, *line, *ptr = NULL;
     const char *value_str;
@@ -415,7 +415,8 @@ cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_
 
             if (any->value_type == LYD_ANYDATA_LYB) {
                 /* try to parse it into a data tree */
-                if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
+                if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB,
+                        LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
                     /* successfully parsed */
                     free(any->value.mem);
                     any->value.tree = tree;
@@ -1242,7 +1243,8 @@ set_insert_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos,
 }
 
 LY_ERR
-lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, uint32_t *index_p)
+lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+        uint32_t *index_p)
 {
     uint32_t index;
 
@@ -5368,6 +5370,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_
         case LY_VALUE_CANON:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
+        case LY_VALUE_STR_NS:
             /* inherit parent (context node) module */
             if (ctx_scnode) {
                 mod = ctx_scnode->module;
@@ -5481,6 +5484,7 @@ moveto_scnode_check(const struct lysc_node *node, const struct lysc_node *ctx_sc
             break;
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
+        case LY_VALUE_STR_NS:
             /* inherit module of the context node, if any */
             if (ctx_scnode) {
                 moveto_mod = ctx_scnode->module;
@@ -5591,7 +5595,7 @@ static LY_ERR
 moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const struct ly_path_predicate *predicates,
         uint32_t options)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     uint32_t i;
     const struct lyd_node *siblings;
     struct lyxp_set result;
@@ -5644,10 +5648,11 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
 
         /* find the node using hashes */
         if (inst) {
-            lyd_find_sibling_first(siblings, inst, &sub);
+            r = lyd_find_sibling_first(siblings, inst, &sub);
         } else {
-            lyd_find_sibling_val(siblings, scnode, NULL, 0, &sub);
+            r = lyd_find_sibling_val(siblings, scnode, NULL, 0, &sub);
         }
+        LY_CHECK_ERR_GOTO(r && (r != LY_ENOTFOUND), ret = r, cleanup);
 
         /* when check */
         if (!(options & LYXP_IGNORE_WHEN) && sub && lysc_has_when(sub->schema) && !(sub->flags & LYD_WHEN_TRUE)) {
@@ -8696,11 +8701,12 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
         const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
+    const struct lysc_node *snode;
     LY_ERR rc;
 
     LY_CHECK_ARG_RET(ctx, ctx, exp, set, LY_EINVAL);
     if (!cur_mod && ((format == LY_VALUE_SCHEMA) || (format == LY_VALUE_SCHEMA_RESOLVED))) {
-        LOGARG(NULL, "Current module must be set if schema format is used.");
+        LOGERR(ctx, LY_EINVAL, "Current module must be set if schema format is used.");
         return LY_EINVAL;
     }
 
@@ -8710,6 +8716,14 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
             tree = lyd_parent(tree);
         }
         tree = lyd_first_sibling(tree);
+
+        for (snode = tree->schema->parent; snode && (snode->nodetype & (LYS_CASE | LYS_CHOICE)); snode = snode->parent) {}
+        if (snode) {
+            /* unable to evaluate absolute paths */
+            LOGERR(ctx, LY_EINVAL, "Data node \"%s\" has no parent but is not instance of a top-level schema node.",
+                    LYD_NAME(tree));
+            return LY_EINVAL;
+        }
     }
 
     /* prepare set for evaluation */

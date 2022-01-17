@@ -157,6 +157,9 @@ struct ly_in;
                                                  modified manually. If this flag is used incorrectly (for unordered data),
                                                  the behavior is undefined and most functions executed with these
                                                  data will not work correctly. */
+#define LYD_PARSE_SUBTREE 0x400000          /**< Parse only the current data subtree with any descendants, no siblings.
+                                                 Also, a new return value ::LY_ENOT is returned if there is a sibling
+                                                 subtree following in the input data. */
 
 #define LYD_PARSE_OPTS_MASK 0xFFFF0000      /**< Mask for all the LYD_PARSE_ options. */
 
@@ -258,8 +261,8 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
-LIBYANG_API_DECL LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT format, uint32_t parse_options,
-        uint32_t validate_options, struct lyd_node **tree);
+LIBYANG_API_DECL LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT format,
+        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) data from the input handler as an extension data tree following the schema tree of the given
@@ -280,8 +283,8 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
-LIBYANG_API_DECL LY_ERR lyd_parse_ext_data(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
-        uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
+LIBYANG_API_DECL LY_ERR lyd_parse_ext_data(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in,
+        LYD_FORMAT format, uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
 
 /**
  * @ingroup datatree
@@ -394,13 +397,13 @@ LIBYANG_API_DECL LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *
  * @return LY_ERR value.
  * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
  */
-LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
-        enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
+LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in,
+        LYD_FORMAT format, enum lyd_type data_type, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @brief Fully validate a data tree.
  *
- * The data tree is modified in-place.  As a result of the validation, some data might be removed
+ * The data tree is modified in-place. As a result of the validation, some data might be removed
  * from the tree. In that case, the removed items are freed, not just unlinked.
  *
  * @param[in,out] tree Data tree to recursively validate. May be changed by validation, might become NULL.
@@ -410,12 +413,13 @@ LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, st
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_opts, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_opts,
+        struct lyd_node **diff);
 
 /**
  * @brief Fully validate a data tree of a module.
  *
- * The data tree is modified in-place.  As a result of the validation, some data might be removed
+ * The data tree is modified in-place. As a result of the validation, some data might be removed
  * from the tree. In that case, the removed items are freed, not just unlinked.
  *
  * @param[in,out] tree Data tree to recursively validate. May be changed by validation, might become NULL.
@@ -425,7 +429,8 @@ LIBYANG_API_DECL LY_ERR lyd_validate_all(struct lyd_node **tree, const struct ly
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts,
+        struct lyd_node **diff);
 
 /**
  * @brief Validate an RPC/action request, reply, or notification.

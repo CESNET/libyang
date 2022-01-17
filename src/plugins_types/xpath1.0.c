@@ -12,17 +12,22 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE
+
 #include "plugins_types.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libyang.h"
 
 #include "common.h"
 #include "compat.h"
 
-/* internal header */
+/* internal headers */
+#include "xml.h"
 #include "xpath.h"
 
 /**
@@ -33,16 +38,6 @@
  * | :------  | :-------: | :--: | :-----: |
  * | string length | yes | `char *` | string JSON format of the XPath expression |
  */
-
-/**
- * @brief Stored value structure for xpath1.0
- */
-struct lyd_value_xpath10 {
-    struct lyxp_expr *exp;
-    const struct ly_ctx *ctx;
-    void *prefix_data;
-    LY_VALUE_FORMAT format;
-};
 
 /**
  * @brief Print xpath1.0 token in the specific format.
@@ -268,9 +263,8 @@ xpath10_print_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT form
 
 LIBYANG_API_DEF LY_ERR
 lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
@@ -298,17 +292,28 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     ret = lyplg_type_validate_patterns(type_str->patterns, value, value_len, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* store format-specific data and context for later prefix resolution */
-    ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &val->format, &val->prefix_data);
-    LY_CHECK_GOTO(ret, cleanup);
-    val->ctx = ctx;
-
     /* parse */
     ret = lyxp_expr_parse(ctx, value_len ? value : "", value_len, 1, &val->exp);
     LY_CHECK_GOTO(ret, cleanup);
+    val->ctx = ctx;
 
-    /* store canonical value */
-    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
+    if (ctx_node && !strcmp(ctx_node->name, "parent-reference") && !strcmp(ctx_node->module->name, "ietf-yang-schema-mount")) {
+        /* special case, this type uses prefix-namespace mapping provided directly in data, keep empty for now */
+        val->format = format = LY_VALUE_STR_NS;
+        ret = ly_set_new((struct ly_set **)&val->prefix_data);
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        /* store format-specific data and context for later prefix resolution */
+        ret = lyplg_type_prefix_data_new(ctx, value, value_len, format, prefix_data, &val->format, &val->prefix_data);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    switch (format) {
+    case LY_VALUE_CANON:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+    case LY_VALUE_STR_NS:
+        /* store canonical value */
         if (options & LYPLG_TYPE_STORE_DYNAMIC) {
             ret = lydict_insert_zc(ctx, (char *)value, &storage->_canonical);
             options &= ~LYPLG_TYPE_STORE_DYNAMIC;
@@ -317,13 +322,17 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
             ret = lydict_insert(ctx, value_len ? value : "", value_len, &storage->_canonical);
             LY_CHECK_GOTO(ret, cleanup);
         }
-    } else {
+        break;
+    case LY_VALUE_SCHEMA:
+    case LY_VALUE_SCHEMA_RESOLVED:
+    case LY_VALUE_XML:
         /* JSON format with prefix is the canonical one */
         ret = xpath10_print_value(val, LY_VALUE_JSON, NULL, &canon, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         ret = lydict_insert_zc(ctx, canon, &storage->_canonical);
         LY_CHECK_GOTO(ret, cleanup);
+        break;
     }
 
 cleanup:
@@ -333,6 +342,91 @@ cleanup:
 
     if (ret) {
         lyplg_type_free_xpath10(ctx, storage);
+    } else if (val->format == LY_VALUE_STR_NS) {
+        /* needs validation */
+        return LY_EINCOMPLETE;
+    }
+    return ret;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_validate_clb for the xpath1.0 ietf-yang-types type.
+ */
+static LY_ERR
+lyplg_type_validate_xpath10(const struct ly_ctx *UNUSED(ctx), const struct lysc_type *UNUSED(type),
+        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), struct lyd_value *storage,
+        struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_value_xpath10 *val;
+    struct ly_set *set = NULL;
+    uint32_t i;
+    const char *pref, *uri;
+    struct lyxml_ns *ns;
+
+    *err = NULL;
+    LYD_VALUE_GET(storage, val);
+
+    if (val->format != LY_VALUE_STR_NS) {
+        /* nothing to validate */
+        return LY_SUCCESS;
+    }
+
+    /* the XML namespace set must exist */
+    assert(val->prefix_data);
+
+    /* special handling of this particular node */
+    assert(!strcmp(LYD_NAME(ctx_node), "parent-reference") &&
+            !strcmp(ctx_node->schema->module->name, "ietf-yang-schema-mount"));
+
+    /* get all the prefix mappings */
+    if ((ret = lyd_find_xpath(ctx_node, "../../../namespace", &set))) {
+        goto cleanup;
+    }
+
+    for (i = 0; i < set->count; ++i) {
+        assert(!strcmp(LYD_NAME(lyd_child(set->dnodes[i])), "prefix"));
+        pref = lyd_get_value(lyd_child(set->dnodes[i]));
+
+        if (!lyd_child(set->dnodes[i])->next) {
+            /* missing URI - invalid mapping, skip */
+            continue;
+        }
+        assert(!strcmp(LYD_NAME(lyd_child(set->dnodes[i])->next), "uri"));
+        uri = lyd_get_value(lyd_child(set->dnodes[i])->next);
+
+        /* create new ns */
+        ns = calloc(1, sizeof *ns);
+        if (!ns) {
+            ret = LY_EMEM;
+            goto cleanup;
+        }
+        ns->prefix = strdup(pref);
+        ns->uri = strdup(uri);
+        if (!ns->prefix || !ns->uri) {
+            free(ns->prefix);
+            free(ns->uri);
+            free(ns);
+            ret = LY_EMEM;
+            goto cleanup;
+        }
+        ns->depth = 1;
+
+        /* add into the XML namespace set */
+        if ((ret = ly_set_add(val->prefix_data, ns, 1, NULL))) {
+            free(ns->prefix);
+            free(ns->uri);
+            free(ns);
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    ly_set_free(set, NULL);
+    if (ret == LY_EMEM) {
+        ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, LY_EMEM_MSG);
+    } else if (ret) {
+        ly_err_new(err, ret, LYVE_DATA, NULL, NULL, "%s", ly_errmsg(LYD_CTX(ctx_node)));
     }
     return ret;
 }
@@ -347,7 +441,9 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
 
     LYD_VALUE_GET(value, val);
 
-    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
+    /* LY_VALUE_STR_NS should never be transformed */
+    if ((val->format == LY_VALUE_STR_NS) || (format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) ||
+            (format == LY_VALUE_LYB)) {
         /* canonical */
         if (dynamic) {
             *dynamic = 0;
@@ -437,7 +533,7 @@ const struct lyplg_type_record plugins_xpath10[] = {
 
         .plugin.id = "libyang 2 - xpath1.0, version 1",
         .plugin.store = lyplg_type_store_xpath10,
-        .plugin.validate = NULL,
+        .plugin.validate = lyplg_type_validate_xpath10,
         .plugin.compare = lyplg_type_compare_simple,
         .plugin.sort = NULL,
         .plugin.print = lyplg_type_print_xpath10,

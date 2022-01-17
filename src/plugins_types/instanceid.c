@@ -64,6 +64,7 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     case LY_VALUE_CANON:
     case LY_VALUE_JSON:
     case LY_VALUE_LYB:
+    case LY_VALUE_STR_NS:
         /* the same prefix is inherited and skipped */
         inherit_prefix = 1;
         break;

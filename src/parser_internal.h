@@ -56,9 +56,9 @@ struct lyd_ctx {
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
     struct ly_set node_when;       /**< set of nodes with "when" conditions */
-    struct ly_set node_exts;       /**< set of nodes and extensions connected with a plugin providing own validation callback */
     struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
+    struct ly_set ext_val;         /**< set of first siblings parsed by extensions to validate */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
 
     /* callbacks */
@@ -82,9 +82,9 @@ struct lyd_xml_ctx {
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
     struct ly_set node_when;
-    struct ly_set node_exts;
     struct ly_set node_types;
     struct ly_set meta_types;
+    struct ly_set ext_val;
     struct lyd_node *op_node;
 
     /* callbacks */
@@ -104,9 +104,9 @@ struct lyd_json_ctx {
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
     struct ly_set node_when;
-    struct ly_set node_exts;
     struct ly_set node_types;
     struct ly_set meta_types;
+    struct ly_set ext_val;
     struct lyd_node *op_node;
 
     /* callbacks */
@@ -131,9 +131,9 @@ struct lyd_lyb_ctx {
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
     struct ly_set node_when;
-    struct ly_set node_exts;
     struct ly_set node_types;
     struct ly_set meta_types;
+    struct ly_set ext_val;
     struct lyd_node *op_node;
 
     /* callbacks */
@@ -143,9 +143,17 @@ struct lyd_lyb_ctx {
 };
 
 /**
+ * @brief Parsed extension instance data to validate.
+ */
+struct lyd_ctx_ext_val {
+    struct lysc_ext_instance *ext;
+    struct lyd_node *sibling;
+};
+
+/**
  * @brief Common part to supplement the specific ::lyd_ctx_free_clb callbacks.
  */
-void lyd_ctx_free(struct lyd_ctx *);
+void lyd_ctx_free(struct lyd_ctx *ctx);
 
 /**
  * @brief Parse submodule from YANG data.
@@ -207,12 +215,13 @@ LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *c
  * @param[out] envp Individual parsed envelopes tree, returned only by specific @p data_type and possibly even if
  * an error occurs later.
  * @param[out] parsed Set to add all the parsed siblings into.
+ * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
+        struct lyd_node **envp, struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse JSON string as a YANG data tree.
@@ -226,12 +235,13 @@ LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *e
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] data_type Expected data type of the data.
  * @param[out] parsed Set to add all the parsed siblings into.
+ * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct ly_set *parsed, struct lyd_ctx **lydctx_p);
+        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse binary LYB data as a YANG data tree.
@@ -245,12 +255,13 @@ LY_ERR lyd_parse_json(const struct ly_ctx *ctx, const struct lysc_ext_instance *
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] data_type Expected data type of the data.
  * @param[out] parsed Set to add all the parsed siblings into.
+ * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct ly_set *parsed, struct lyd_ctx **lydctx_p);
+        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Search all the parents for an operation node, check validity based on internal parser flags.
@@ -305,10 +316,11 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @param[in] format Prefix format.
  * @param[in] prefix_data Prefix format data (see ::ly_resolve_prefix()).
  * @param[in] hints [Value hint](@ref lydvalhints) from the parser regarding the value type.
+ * @param[in] ctx_node Value context node.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
-        const struct lys_module *mod, const char *name, size_t name_len, const void *value,
-        size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
+        const struct lys_module *mod, const char *name, size_t name_len, const void *value, size_t value_len,
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node);
 
 #endif /* LY_PARSER_INTERNAL_H_ */

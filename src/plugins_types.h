@@ -223,8 +223,8 @@ struct lysc_type_leafref;
  * @return LY_EMEM If there is not enough memory for allocating error record, the @p err is not touched in that case.
  * @return LY_SUCCESS if @p ecode is LY_SUCCESS, the @p err is not touched in this case.
  */
-LIBYANG_API_DECL LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag, const char *err_format, ...)
-_FORMAT_PRINTF(6, 7);
+LIBYANG_API_DECL LY_ERR ly_err_new(struct ly_err_item **err, LY_ERR ecode, LY_VECODE vecode, char *path, char *apptag,
+        const char *err_format, ...) _FORMAT_PRINTF(6, 7);
 
 /**
  * @brief Destructor for the error records created with ::ly_err_new().
@@ -251,8 +251,8 @@ LIBYANG_API_DECL void ly_err_free(void *ptr);
  * @param[out] err Pointer to store error information in case of failure.
  * @return LY_ERR value
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type, int *base,
-        struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_check_hints(uint32_t hints, const char *value, size_t value_len, LY_DATA_TYPE type,
+        int *base, struct ly_err_item **err);
 
 /**
  * @brief Check that the value of a type is allowed based on its status.
@@ -297,8 +297,9 @@ LIBYANG_API_DECL LY_ERR lyplg_type_lypath_check_status(const struct lysc_node *c
  * @return Resolved prefix module,
  * @return NULL otherwise.
  */
-LIBYANG_API_DECL const struct lys_module *lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data);
+LIBYANG_API_DECL const struct lys_module *lyplg_type_identity_module(const struct ly_ctx *ctx,
+        const struct lysc_node *ctx_node, const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format,
+        const void *prefix_data);
 
 /**
  * @brief Implement a module (just like ::lys_set_implemented()), but keep maintaining unresolved items.
@@ -311,7 +312,8 @@ LIBYANG_API_DECL const struct lys_module *lyplg_type_identity_module(const struc
  * @return LY_ERECOMPILE if the context need to be recompiled, should be returned.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_make_implemented(struct lys_module *mod, const char **features, struct lys_glob_unres *unres);
+LIBYANG_API_DECL LY_ERR lyplg_type_make_implemented(struct lys_module *mod, const char **features,
+        struct lys_glob_unres *unres);
 
 /**
  * @brief Get the bitmap size of a bits value bitmap.
@@ -364,8 +366,8 @@ LIBYANG_API_DECL const char *lyplg_type_get_prefix(const struct lys_module *mod,
  * @param[in,out] prefix_data_p Resulting prefix data for the value in format @p format_p.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, size_t value_len, LY_VALUE_FORMAT format,
-        const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
+LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, const void *value, size_t value_len,
+        LY_VALUE_FORMAT format, const void *prefix_data, LY_VALUE_FORMAT *format_p, void **prefix_data_p);
 /**
  * @brief Duplicate prefix data.
  *
@@ -377,7 +379,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_new(const struct ly_ctx *ctx, con
  * @param[out] dup Duplicated prefix data.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *orig, void **dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_prefix_data_dup(const struct ly_ctx *ctx, LY_VALUE_FORMAT format, const void *orig,
+        void **dup);
 
 /**
  * @brief Free internal prefix data.
@@ -396,7 +399,7 @@ LIBYANG_API_DECL void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *
  *
  * @param[in] ctx libyang Context
  * @param[in] value Lexical representation of the value to be stored.
- * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] value_len Length (number of bytes) of the given @p value.
  * @param[in] options [Type plugin store options](@ref plugintypestoreopts).
  * @param[in] format Input format of the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
@@ -408,8 +411,8 @@ LIBYANG_API_DECL void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *
  * @return LY_ERECOMPILE if the context need to be recompiled, should be returned.
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len, uint32_t options,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
+LIBYANG_API_DECL LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, size_t value_len,
+        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
         struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
 
 /**
@@ -457,18 +460,18 @@ LIBYANG_API_DECL void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly
  * @param[in] format Input format of the value, see the description for details.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
- * @param[in] ctx_node Schema context node of @p value.
+ * @param[in] ctx_node Schema context node of @p value, may be NULL for metadata.
  * @param[out] storage Storage for the value in the type's specific encoding. Except for _canonical, all the members
  * should be filled by the plugin (if it fills them at all).
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
- *             error message is prepared instead. The error structure can be created by ::ly_err_new().
+ * error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
  * @return LY_EINCOMPLETE in case the ::lyplg_type_validate_clb should be called to finish value validation in data,
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
-        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const void *value, size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -612,13 +615,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_simple(const struct lyd_value *val1, 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for a generic simple type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_simple(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of ::lyplg_type_free_clb for a generic simple type.
@@ -638,9 +642,9 @@ LIBYANG_API_DECL void lyplg_type_free_simple(const struct ly_ctx *ctx, struct ly
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in binary type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in binary type.
@@ -650,13 +654,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_binary(const struct lyd_value *val1, 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in binary type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for the built-in binary type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_binary(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of ::lyplg_type_free_clb for the built-in binary type.
@@ -676,9 +681,9 @@ LIBYANG_API_DECL void lyplg_type_free_binary(const struct ly_ctx *ctx, struct ly
 /**
  * @brief Implementation of the ::lyplg_type_store_clb for the built-in bits type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_bits(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of the ::lyplg_type_compare_clb for the built-in bits type.
@@ -688,13 +693,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_bits(const struct lyd_value *val1, co
 /**
  * @brief Implementation of the ::lyplg_type_print_clb for the built-in bits type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_bits(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of the ::lyplg_type_dup_clb for the built-in bits type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of the ::lyplg_type_free_clb for the built-in bits type.
@@ -714,9 +720,9 @@ LIBYANG_API_DECL void lyplg_type_free_bits(const struct ly_ctx *ctx, struct lyd_
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in boolean type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_boolean(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in boolean type.
@@ -726,8 +732,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_boolean(const struct lyd_value *val1,
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in boolean type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_boolean(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_boolean(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesBoolean */
 
@@ -742,9 +748,9 @@ LIBYANG_API_DECL const void *lyplg_type_print_boolean(const struct ly_ctx *ctx, 
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in decimal64 type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_decimal64(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const void *value, size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in decimal64 type.
@@ -754,8 +760,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_decimal64(const struct lyd_value *val
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in decimal64 type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_decimal64(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_decimal64(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesDecimal64 */
 
@@ -770,9 +776,9 @@ LIBYANG_API_DECL const void *lyplg_type_print_decimal64(const struct ly_ctx *ctx
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in empty type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesEmpty */
 
@@ -787,15 +793,15 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_empty(const struct ly_ctx *ctx, const s
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in enumeration type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in enumeration type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_enum(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_enum(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesEnumeration */
 
@@ -810,9 +816,9 @@ LIBYANG_API_DECL const void *lyplg_type_print_enum(const struct ly_ctx *ctx, con
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in identityref type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const void *value, size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in identityref type.
@@ -822,8 +828,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_identityref(const struct lyd_value *v
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in identityref type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_identityref(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesIdentityref */
 
@@ -838,15 +844,15 @@ LIBYANG_API_DECL const void *lyplg_type_print_identityref(const struct ly_ctx *c
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in instance-identifier type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const void *value, size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_validate_clb for the built-in instance-identifier type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in instance-identifier type.
@@ -856,13 +862,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_instanceid(const struct lyd_value *va
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in instance-identifier type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_instanceid(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for the built-in instance-identifier type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of ::lyplg_type_free_clb for the built-in instance-identifier type.
@@ -882,9 +889,9 @@ LIBYANG_API_DECL void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struc
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in signed integer types.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_int(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in signed integer types.
@@ -894,15 +901,15 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_int(const struct lyd_value *val1, con
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in signed integer types.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_int(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_int(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in unsigned integer types.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_uint(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in unsigned integer types.
@@ -912,8 +919,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_uint(const struct lyd_value *val1, co
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in unsigned integer types.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_uint(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_uint(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /** @} pluginsTypesInteger */
 
@@ -928,9 +935,9 @@ LIBYANG_API_DECL const void *lyplg_type_print_uint(const struct ly_ctx *ctx, con
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in leafref type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in leafref type.
@@ -940,19 +947,20 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_leafref(const struct lyd_value *val1,
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in leafref type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_leafref(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for the built-in leafref type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of ::lyplg_type_validate_clb for the built-in leafref type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_leafref(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_free_clb for the built-in leafref type.
@@ -972,9 +980,9 @@ LIBYANG_API_DECL void lyplg_type_free_leafref(const struct ly_ctx *ctx, struct l
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in string type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /** @} pluginsTypesString */
 
@@ -989,9 +997,9 @@ LIBYANG_API_DECL LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const 
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the built-in union type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the built-in union type.
@@ -1001,19 +1009,20 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_union(const struct lyd_value *val1, c
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the built-in union type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_union(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for the built-in union type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of ::lyplg_type_validate_clb for the built-in union type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type,
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_free_clb for the built-in union type.
@@ -1033,9 +1042,9 @@ LIBYANG_API_DECL void lyplg_type_free_union(const struct ly_ctx *ctx, struct lyd
 /**
  * @brief Implementation of ::lyplg_type_store_clb for the ietf-yang-types xpath1.0 type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
-        uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_compare_clb for the ietf-yang-types xpath1.0 type.
@@ -1045,13 +1054,14 @@ LIBYANG_API_DECL LY_ERR lyplg_type_compare_xpath10(const struct lyd_value *val1,
 /**
  * @brief Implementation of ::lyplg_type_print_clb for the ietf-yang-types xpath1.0 type.
  */
-LIBYANG_API_DECL const void *lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, size_t *value_len);
+LIBYANG_API_DECL const void *lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value,
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, size_t *value_len);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for the ietf-yang-types xpath1.0 type.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+LIBYANG_API_DECL LY_ERR lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *original,
+        struct lyd_value *dup);
 
 /**
  * @brief Implementation of ::lyplg_type_free_clb for the ietf-yang-types xpath1.0 type.
@@ -1074,8 +1084,8 @@ LIBYANG_API_DECL void lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct l
  * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
-        int64_t *ret, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value,
+        size_t value_len, int64_t *ret, struct ly_err_item **err);
 
 /**
  * @brief Unsigned integer value parser and validator.
@@ -1090,8 +1100,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_parse_int(const char *datatype, int base, int
  * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len,
-        uint64_t *ret, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value,
+        size_t value_len, uint64_t *ret, struct ly_err_item **err);
 
 /**
  * @brief Convert a string with a decimal64 value into libyang representation:
@@ -1104,7 +1114,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_parse_uint(const char *datatype, int base, ui
  * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret,
+        struct ly_err_item **err);
 
 /**
  * @brief Decide if the @p derived identity is derived from (based on) the @p base identity.
@@ -1127,8 +1138,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_identity_isderived(const struct lysc_ident *b
  * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-        size_t strval_len, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value,
+        const char *strval, size_t strval_len, struct ly_err_item **err);
 
 /**
  * @brief Data type validator for pattern-restricted string values.
@@ -1142,7 +1153,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_range(LY_DATA_TYPE basetype, struct 
  * @return LY_EVALID when @p does not match any of the patterns.
  * @return LY_ESYS in case of PCRE2 error.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err);
+LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len,
+        struct ly_err_item **err);
 
 /**
  * @brief Find leafref target in data.
@@ -1155,8 +1167,8 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(struct lysc_pattern **patte
  * @param[out] errmsg Error message in case of error.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-        const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
+LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node,
+        struct lyd_value *value, const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
 
 /** @} pluginsTypes */
 

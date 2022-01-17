@@ -471,6 +471,7 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
             }
         }
     }
+
     return NULL;
 }
 
