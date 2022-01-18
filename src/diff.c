@@ -919,7 +919,10 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
         /* find the anchor sibling */
         if (lysc_is_dup_inst_list(new_node->schema)) {
             anchor_pos = atoi(userord_anchor);
-            LY_CHECK_ERR_RET(!anchor_pos, LOGINT(LYD_CTX(new_node)), LY_EINT);
+            if (!anchor_pos) {
+                LOGERR(LYD_CTX(new_node), LY_EINVAL, "Invalid user-ordered anchor value \"%s\".", userord_anchor);
+                return LY_EINVAL;
+            }
 
             found = 0;
             pos = 1;
@@ -1055,7 +1058,9 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
         } else {
             /* none operation on nodes without children is redundant and hence forbidden */
             if (!lyd_child_no_keys(diff_node)) {
-                LOGINT_RET(ctx);
+                LOGERR(ctx, LY_EINVAL, "Operation \"none\" is invalid for node \"%s\" without children.",
+                        LYD_NAME(diff_node));
+                return LY_EINVAL;
             }
         }
         break;
@@ -1092,7 +1097,11 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
         /* we are not going recursively in this case, the whole subtree was already deleted */
         return LY_SUCCESS;
     case LYD_DIFF_OP_REPLACE:
-        LY_CHECK_ERR_RET(!(diff_node->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)), LOGINT(ctx), LY_EINT);
+        if (!(diff_node->schema->nodetype & (LYS_LEAF | LYS_ANYDATA))) {
+            LOGERR(ctx, LY_EINVAL, "Operation \"replace\" is invalid for %s node \"%s\".",
+                    lys_nodetype2str(diff_node->schema->nodetype), LYD_NAME(diff_node));
+            return LY_EINVAL;
+        }
 
         /* find the node */
         LY_CHECK_RET(lyd_diff_find_match(*first_node, diff_node, 1, dup_inst, &match));
