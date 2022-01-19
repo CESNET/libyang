@@ -26,6 +26,57 @@
 #include "log.h"
 #include "out.h"
 
+#define TEST_INPUT_FILE TESTS_BIN "/libyang_test_input"
+#define TEST_OUTPUT_FILE TESTS_BIN "/libyang_test_output"
+#define TEST_OUTPUT_FILE2 TESTS_BIN "/libyang_test_output2"
+
+static int
+setup_files(void **state)
+{
+    int fd;
+
+    UTEST_SETUP;
+
+    /* create input */
+    fd = open(TEST_INPUT_FILE, O_CREAT | O_WRONLY, 00600);
+    if (fd == -1) {
+        return 1;
+    }
+
+    /* write something */
+    if (write(fd, "data", 4) != 4) {
+        return 1;
+    }
+    close(fd);
+
+    /* create output */
+    fd = open(TEST_OUTPUT_FILE, O_CREAT | O_RDONLY, 00600);
+    if (fd == -1) {
+        return 1;
+    }
+    close(fd);
+
+    /* create output2 */
+    fd = open(TEST_OUTPUT_FILE2, O_CREAT | O_RDONLY, 00600);
+    if (fd == -1) {
+        return 1;
+    }
+    close(fd);
+
+    return 0;
+}
+
+static int
+teardown_files(void **state)
+{
+    unlink(TEST_INPUT_FILE);
+    unlink(TEST_OUTPUT_FILE);
+    unlink(TEST_OUTPUT_FILE2);
+
+    UTEST_TEARDOWN;
+    return 0;
+}
+
 static void
 test_input_mem(void **UNUSED(state))
 {
@@ -54,8 +105,8 @@ test_input_fd(void **UNUSED(state))
     assert_int_equal(LY_EINVAL, ly_in_new_fd(-1, NULL));
     assert_int_equal(-1, ly_in_fd(NULL, -1));
 
-    assert_int_not_equal(-1, fd1 = open(__FILE__, O_RDONLY));
-    assert_int_not_equal(-1, fd2 = open(__FILE__, O_RDONLY));
+    assert_int_not_equal(-1, fd1 = open(TEST_INPUT_FILE, O_RDONLY));
+    assert_int_not_equal(-1, fd2 = open(TEST_INPUT_FILE, O_RDONLY));
 
     assert_int_equal(LY_EINVAL, ly_in_new_fd(fd1, NULL));
 
@@ -85,8 +136,8 @@ test_input_file(void **UNUSED(state))
     assert_int_equal(LY_EINVAL, ly_in_new_file(NULL, NULL));
     assert_null(ly_in_file(NULL, NULL));
 
-    assert_int_not_equal(-1, f1 = fopen(__FILE__, "rb"));
-    assert_int_not_equal(-1, f2 = fopen(__FILE__, "rb"));
+    assert_non_null(f1 = fopen(TEST_INPUT_FILE, "rb"));
+    assert_non_null(f2 = fopen(TEST_INPUT_FILE, "rb"));
 
     assert_int_equal(LY_EINVAL, ly_in_new_file(f1, NULL));
 
@@ -106,7 +157,7 @@ static void
 test_input_filepath(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
-    const char *path1 = __FILE__, *path2 = __FILE__;
+    const char *path1 = TEST_INPUT_FILE, *path2 = TEST_INPUT_FILE;
 
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(NULL, 0, NULL));
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(path1, 0, NULL));
@@ -156,10 +207,9 @@ test_output_fd(void **UNUSED(state))
     struct ly_out *out = NULL;
     int fd1, fd2;
     char buf[31] = {0};
-    const char *filepath = TESTS_BIN "/libyang_test_output";
 
-    assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
-    assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
+    assert_int_not_equal(-1, fd1 = open(TEST_OUTPUT_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
+    assert_int_not_equal(-1, fd2 = open(TEST_OUTPUT_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_fd(fd1, &out));
@@ -173,8 +223,8 @@ test_output_fd(void **UNUSED(state))
     ly_out_free(out, NULL, 1);
 
     /* writing data */
-    assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
-    assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
+    assert_int_not_equal(-1, fd1 = open(TEST_OUTPUT_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
+    assert_int_not_equal(-1, fd2 = open(TEST_OUTPUT_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
     /* truncate file to start with no data */
     assert_int_equal(0, ftruncate(fd1, 0));
 
@@ -203,10 +253,9 @@ test_output_file(void **UNUSED(state))
     struct ly_out *out = NULL;
     FILE *f1, *f2;
     char buf[31] = {0};
-    const char *filepath = TESTS_BIN "/libyang_test_output";
 
-    assert_int_not_equal(-1, f1 = fopen(filepath, "wb"));
-    assert_int_not_equal(-1, f2 = fopen(filepath, "wb"));
+    assert_non_null(f1 = fopen(TEST_OUTPUT_FILE, "wb"));
+    assert_non_null(f2 = fopen(TEST_OUTPUT_FILE, "wb"));
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_file(f1, &out));
@@ -220,8 +269,8 @@ test_output_file(void **UNUSED(state))
     ly_out_free(out, NULL, 1);
 
     /* writing data */
-    assert_int_not_equal(-1, f1 = fopen(filepath, "wb"));
-    assert_int_not_equal(-1, f2 = fopen(filepath, "rb"));
+    assert_non_null(f1 = fopen(TEST_OUTPUT_FILE, "wb"));
+    assert_non_null(f2 = fopen(TEST_OUTPUT_FILE, "rb"));
 
     assert_int_equal(LY_SUCCESS, ly_out_new_file(f1, &out));
     assert_int_equal(LY_SUCCESS, ly_print(out, "test %s", "print"));
@@ -248,8 +297,8 @@ test_output_filepath(void **UNUSED(state))
     struct ly_out *out = NULL;
     FILE *f1;
     char buf[31] = {0};
-    const char *fp1 = TESTS_BIN "/libyang_test_output";
-    const char *fp2 = TESTS_BIN "/libyang_test_output2";
+    const char *fp1 = TEST_OUTPUT_FILE;
+    const char *fp2 = TEST_OUTPUT_FILE2;
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
@@ -262,7 +311,7 @@ test_output_filepath(void **UNUSED(state))
     ly_out_free(out, NULL, 1);
 
     /* writing data */
-    assert_int_not_equal(-1, f1 = fopen(fp1, "rb"));
+    assert_non_null(f1 = fopen(fp1, "rb"));
 
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
     assert_int_equal(LY_SUCCESS, ly_print(out, "test %s", "print"));
@@ -301,10 +350,9 @@ test_output_clb(void **UNUSED(state))
     struct ly_out *out = NULL;
     int fd1, fd2;
     char buf[31] = {0};
-    const char *filepath = TESTS_BIN "/libyang_test_output";
 
-    assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
-    assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
+    assert_int_not_equal(-1, fd1 = open(TEST_OUTPUT_FILE, O_RDWR));
+    assert_int_not_equal(-1, fd2 = open(TEST_OUTPUT_FILE, O_RDWR));
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_clb(write_clb, (void *)(intptr_t)fd1, &out));
@@ -319,8 +367,8 @@ test_output_clb(void **UNUSED(state))
     ly_out_free(out, close_clb, 0);
 
     /* writing data */
-    assert_int_not_equal(-1, fd1 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
-    assert_int_not_equal(-1, fd2 = open(filepath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR));
+    assert_int_not_equal(-1, fd1 = open(TEST_OUTPUT_FILE, O_RDWR));
+    assert_int_not_equal(-1, fd2 = open(TEST_OUTPUT_FILE, O_RDWR));
     /* truncate file to start with no data */
     assert_int_equal(0, ftruncate(fd1, 0));
 
@@ -339,14 +387,14 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_input_mem),
-        UTEST(test_input_fd),
-        UTEST(test_input_file),
-        UTEST(test_input_filepath),
+        UTEST(test_input_fd, setup_files, teardown_files),
+        UTEST(test_input_file, setup_files, teardown_files),
+        UTEST(test_input_filepath, setup_files, teardown_files),
         UTEST(test_output_mem),
-        UTEST(test_output_fd),
-        UTEST(test_output_file),
-        UTEST(test_output_filepath),
-        UTEST(test_output_clb),
+        UTEST(test_output_fd, setup_files, teardown_files),
+        UTEST(test_output_file, setup_files, teardown_files),
+        UTEST(test_output_filepath, setup_files, teardown_files),
+        UTEST(test_output_clb, setup_files, teardown_files),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
