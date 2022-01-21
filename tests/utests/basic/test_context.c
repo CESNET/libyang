@@ -475,7 +475,7 @@ test_get_models(void **state)
     /* invalid attempts - implementing module of the same name and inserting the same module */
     assert_int_equal(LY_SUCCESS, lys_parse_in(UTEST_LYCTX, in2, LYS_IN_YANG, NULL, NULL, &unres.creating, &mod2));
     assert_int_equal(LY_EDENIED, lys_implement(mod2, NULL, &unres));
-    CHECK_LOG_CTX("Module \"a@2018-10-24\" is present in the context in other implemented revision (2018-10-23).", NULL);
+    CHECK_LOG_CTX("Module \"a@2018-10-24\" is already implemented in revision \"2018-10-23\".", NULL);
     lys_unres_glob_erase(&unres);
     ly_in_reset(in1);
     /* it is already there, fine */
