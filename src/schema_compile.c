@@ -1911,15 +1911,19 @@ lys_implement(struct lys_module *mod, const char **features, struct lys_glob_unr
 
     assert(!mod->implemented);
 
-    /* we have module from the current context */
+    /* check collision with other implemented revision */
     m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
     if (m) {
         assert(m != mod);
-
-        /* check collision with other implemented revision */
-        LOGERR(mod->ctx, LY_EDENIED, "Module \"%s%s%s\" is present in the context in other implemented revision (%s).",
-                mod->name, mod->revision ? "@" : "", mod->revision ? mod->revision : "", m->revision ? m->revision : "none");
-        return LY_EDENIED;
+        if (!strcmp(mod->name, "yang") && (strcmp(m->revision, mod->revision) > 0)) {
+            /* special case for newer internal module, continue */
+            LOGVRB("Internal module \"%s@%s\" is already implemented in revision \"%s\", using it instead.",
+                    mod->name, mod->revision ? mod->revision : "<none>", m->revision ? m->revision : "<none>");
+        } else {
+            LOGERR(mod->ctx, LY_EDENIED, "Module \"%s@%s\" is already implemented in revision \"%s\".",
+                    mod->name, mod->revision ? mod->revision : "<none>", m->revision ? m->revision : "<none>");
+            return LY_EDENIED;
+        }
     }
 
     /* set features */
