@@ -2470,7 +2470,8 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node)
         node->flags &= ~LYS_CONFIG_MASK;
     } else if (!(node->flags & LYS_CONFIG_MASK)) {
         /* config not explicitly set, inherit it from parent */
-        if (node->parent) {
+        assert(!node->parent || (node->parent->flags & LYS_CONFIG_MASK) || (node->parent->nodetype & LYS_AUGMENT));
+        if (node->parent && (node->parent->flags & LYS_CONFIG_MASK)) {
             node->flags |= node->parent->flags & LYS_CONFIG_MASK;
         } else {
             /* default is config true */
@@ -3936,6 +3937,13 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
     LY_ERR ret;
     char *path;
     int len;
+    uint16_t cont_flags;
+
+    cont_flags = pnode ? pnode->flags & LYS_FLAGS_COMPILED_MASK : 0;
+    if (!(cont_flags & LYS_CONFIG_MASK)) {
+        /* default config */
+        cont_flags |= LYS_CONFIG_W;
+    }
 
     struct lysp_node_uses fake_uses = {
         .parent = pnode,
@@ -3947,7 +3955,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
     };
     struct lysc_node_container fake_container = {
         .nodetype = LYS_CONTAINER,
-        .flags = pnode ? (pnode->flags & LYS_FLAGS_COMPILED_MASK) : 0,
+        .flags = cont_flags,
         .module = ctx->cur_mod,
         .parent = NULL, .next = NULL,
         .prev = &fake_container.node,
