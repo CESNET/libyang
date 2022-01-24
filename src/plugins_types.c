@@ -155,9 +155,11 @@ lyplg_type_identity_module(const struct ly_ctx *ctx, const struct lysc_node *ctx
     } else {
         switch (format) {
         case LY_VALUE_SCHEMA:
+            /* use local module */
+            return ly_schema_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         case LY_VALUE_SCHEMA_RESOLVED:
-            /* use context node module, handles augments */
-            return ctx_node->module;
+            /* use local module */
+            return ly_schema_resolved_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
         case LY_VALUE_CANON:
         case LY_VALUE_JSON:
         case LY_VALUE_LYB:
