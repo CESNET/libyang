@@ -2354,6 +2354,17 @@ test_grouping(void **state)
             "  list mylist {key \"name\"; unique \"value\"; uses z2:leafs_group;}"
             "}"
             "augment /z1:root { uses list_group;} }", LYS_IN_YANG, NULL));
+
+    /* identity */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module y1 {namespace urn:y1;prefix y1;"
+            "identity base_identity;"
+            "identity id1 {base \"base_identity\";}"
+            "grouping attrs_group {"
+            "  leaf name {type identityref {base \"base_identity\";} default \"id1\";}"
+            "}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module y2 {namespace urn:y2;prefix y2;"
+            "import y1 {prefix y1;}"
+            "container root {uses y1:attrs_group;}}", LYS_IN_YANG, NULL));
 }
 
 static void
