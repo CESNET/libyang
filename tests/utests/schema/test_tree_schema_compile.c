@@ -2338,6 +2338,22 @@ test_grouping(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container a {grouping grp {leaf x {type leafref;}}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Missing path substatement for leafref type.", "/aa:a/{grouping='grp'}/x");
+
+    /* config check */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module z1 {namespace urn:z1;prefix z1;"
+            "container root;}\n"
+            "module z2 {namespace urn:z2;prefix z2;"
+            "grouping leafs_group {"
+            "  leaf name {type string; config true;}"
+            "  leaf value {type uint32; config true;}"
+            "}}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module z3 {namespace urn:z3;prefix z3;"
+            "import z1 {prefix z1;} import z2 {prefix z2;}"
+            "grouping grp_a_top {leaf a1 {type int8;}}"
+            "grouping list_group {"
+            "  list mylist {key \"name\"; unique \"value\"; uses z2:leafs_group;}"
+            "}"
+            "augment /z1:root { uses list_group;} }", LYS_IN_YANG, NULL));
 }
 
 static void
