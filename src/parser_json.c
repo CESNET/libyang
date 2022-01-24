@@ -855,8 +855,8 @@ next_entry:
 representation_error:
     LOGVAL(ctx, LYVE_SYNTAX_JSON,
             "The attribute(s) of %s \"%s\" is expected to be represented as JSON %s, but input data contains @%s/%s.",
-            lys_nodetype2str(nodetype), node->schema ? node->schema->name : ((struct lyd_node_opaq *)node)->name.name,
-            expected, lyjson_token2str(status), in_parent ? "" : "name");
+            lys_nodetype2str(nodetype), node ? LYD_NAME(node) : LYD_NAME(prev), expected, lyjson_token2str(status),
+            in_parent ? "" : "name");
 
     ret = LY_EVALID;
 
