@@ -3725,6 +3725,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
 {
     const struct lyd_node *child_src, *tmp, *sibling_src;
     struct lyd_node *match_trg, *dup_src, *elem;
+    struct lyd_node_opaq *opaq_trg, *opaq_src;
     struct lysc_type *type;
     struct lyd_dup_inst *child_dup_inst = NULL;
     LY_ERR ret;
@@ -3757,7 +3758,23 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
         }
 
         /* node found, make sure even value matches for all node types */
-        if ((match_trg->schema->nodetype == LYS_LEAF) && lyd_compare_single(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
+        if (!match_trg->schema) {
+            if (lyd_compare_single(sibling_src, match_trg, 0)) {
+                /* update value */
+                opaq_trg = (struct lyd_node_opaq *)match_trg;
+                opaq_src = (struct lyd_node_opaq *)sibling_src;
+
+                lydict_remove(LYD_CTX(opaq_trg), opaq_trg->value);
+                lydict_insert(LYD_CTX(opaq_trg), opaq_src->value, 0, &opaq_trg->value);
+                opaq_trg->hints = opaq_src->hints;
+
+                ly_free_prefix_data(opaq_trg->format, opaq_trg->val_prefix_data);
+                opaq_trg->format = opaq_src->format;
+                ly_dup_prefix_data(LYD_CTX(opaq_trg), opaq_src->format, opaq_src->val_prefix_data,
+                        &opaq_trg->val_prefix_data);
+            }
+        } else if ((match_trg->schema->nodetype == LYS_LEAF) &&
+                lyd_compare_single(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
             /* since they are different, they cannot both be default */
             assert(!(sibling_src->flags & LYD_DEFAULT) || !(match_trg->flags & LYD_DEFAULT));
 
