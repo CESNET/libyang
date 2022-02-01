@@ -210,7 +210,8 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
 
         /* attr2 is always changed to the created attribute */
         ret = lyd_create_attr(NULL, &attr2, xmlctx->ctx, name, name_len, prefix, prefix_len, ns ? ns->uri : NULL,
-                ns ? strlen(ns->uri) : 0, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, 0);
+                ns ? strlen(ns->uri) : 0, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data,
+                LYD_HINT_DATA);
         LY_CHECK_GOTO(ret, cleanup);
 
         if (!*attr) {
