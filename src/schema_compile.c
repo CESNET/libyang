@@ -146,7 +146,8 @@ lysc_ext_dup(struct lysc_ext *orig)
 }
 
 LIBYANG_API_DEF LY_ERR
-lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p, enum ly_stmt_cardinality *cardinality_p)
+lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p,
+        enum ly_stmt_cardinality *cardinality_p)
 {
     LY_ARRAY_COUNT_TYPE u;
 
