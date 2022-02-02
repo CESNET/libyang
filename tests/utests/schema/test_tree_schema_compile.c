@@ -3727,6 +3727,47 @@ test_when(void **state)
             LYS_IN_YANG, NULL));
 }
 
+static void
+test_must(void **state)
+{
+    /* "*" must not be restricted to any module */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb,
+            "module a {"
+            "  namespace urn:a;"
+            "  prefix a;"
+            "  container cont {"
+            "    leaf l {"
+            "      type empty;"
+            "    }"
+            "    list lst {"
+            "      key \"k\";"
+            "      leaf k {"
+            "        type uint8;"
+            "      }"
+            "    }"
+            "  }"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module a-aug {"
+            "  namespace urn:aa;"
+            "  prefix aa;"
+            "  import a {"
+            "    prefix a;"
+            "  }"
+            "  augment /a:cont {"
+            "    container cont2 {"
+            "      must \"/a:cont/*/a:k\";"
+            "      leaf aug {"
+            "        type empty;"
+            "      }"
+            "    }"
+            "  }"
+            "}",
+            LYS_IN_YANG, NULL));
+    /* no warnings */
+    CHECK_LOG_CTX(NULL, NULL);
+}
+
 int
 main(void)
 {
@@ -3759,6 +3800,7 @@ main(void)
         UTEST(test_augment, setup),
         UTEST(test_deviation, setup),
         UTEST(test_when, setup),
+        UTEST(test_must, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
