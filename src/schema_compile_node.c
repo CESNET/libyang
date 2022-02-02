@@ -3765,14 +3765,14 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     ret = lys_precompile_uses_augments_refines(ctx, uses_p, parent);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* switch context's parsed module being processed */
-    ctx->pmod = grp_mod;
-
     /* compile special uses status flags */
     uses_flags = uses_p->flags;
     ret = lys_compile_status(ctx, &uses_flags, "<uses>", parent ? parent->flags : 0, parent ? parent->name : NULL, 0);
     LY_CHECK_GOTO(ret, cleanup);
     uses_flags |= LYS_STATUS_USES;
+
+    /* switch context's parsed module being processed */
+    ctx->pmod = grp_mod;
 
     /* compile data nodes */
     LY_LIST_FOR(grp->child, pnode) {
@@ -3783,16 +3783,6 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     if (child_set) {
         /* add these children to our compiled child_set as well since uses is a schema-only node */
         LY_CHECK_GOTO(ret = ly_set_merge(child_set, &uses_child_set, 1, NULL), cleanup);
-    }
-
-    if (uses_p->when) {
-        /* pass uses's when to all the data children */
-        for (i = 0; i < uses_child_set.count; ++i) {
-            child = uses_child_set.snodes[i];
-
-            ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
     }
 
     /* compile actions */
@@ -3809,14 +3799,6 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         LY_LIST_FOR((struct lysp_node *)grp->actions, pnode) {
             ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
             LY_CHECK_GOTO(ret, cleanup);
-        }
-
-        if (uses_p->when) {
-            /* inherit when */
-            LY_LIST_FOR((struct lysc_node *)*actions, child) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
         }
     }
 
@@ -3836,13 +3818,18 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
             LY_CHECK_GOTO(ret, cleanup);
         }
+    }
 
-        if (uses_p->when) {
-            /* inherit when */
-            LY_LIST_FOR((struct lysc_node *)*notifs, child) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
+    /* restore the previous context parsed module where uses is defined */
+    ctx->pmod = mod_old;
+
+    if (uses_p->when) {
+        /* pass uses's when to all the data children */
+        for (i = 0; i < uses_child_set.count; ++i) {
+            child = uses_child_set.snodes[i];
+
+            ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -3873,7 +3860,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_CHECK_GOTO(ret, cleanup);
 
 cleanup:
-    /* reload previous context's parsed module being processed */
+    /* restore previous context's parsed module being processed */
     ctx->pmod = mod_old;
 
     /* remove the grouping from the stack for circular groupings dependency check */

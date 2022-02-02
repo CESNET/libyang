@@ -3688,6 +3688,43 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
+
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb,
+            "module c1 {"
+            "  namespace urn:c1;"
+            "  prefix c1;"
+            "  container my-container {"
+            "    leaf my-type {"
+            "      type string;"
+            "    }"
+            "  }"
+            "}\n"
+            "module c2 {"
+            "  namespace \"urn:c2\";"
+            "  prefix c2;"
+            "  grouping my-group {"
+            "    leaf my-leaf {"
+            "      type string;"
+            "    }"
+            "  }"
+            "}");
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
+            "module c3 {"
+            "  namespace \"urn:c3\";"
+            "  prefix c3;"
+            "  import c1 {"
+            "    prefix c1;"
+            "  }"
+            "  import c2 {"
+            "    prefix c2;"
+            "  }"
+            "  augment \"/c1:my-container\" {"
+            "    uses c2:my-group {"
+            "      when \"./c1:my-type = '42'\";"
+            "    }"
+            "  }"
+            "}",
+            LYS_IN_YANG, NULL));
 }
 
 int
