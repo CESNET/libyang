@@ -1020,14 +1020,29 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
             }
 
             /* special node test */
-            if (((col ? col[0] : str[0]) == '.') || ((col ? col[0] : str[0]) == '*')) {
-                free(str);
-                str = NULL;
-
-                if (end_token) {
-                    LOGERR(ctx, LY_EINVAL, "Invalid path used (%s in a subexpression).", str);
+            if ((col ? col[0] : str[0]) == '.') {
+                if (first) {
+                    LOGERR(ctx, LY_EINVAL, "Invalid start of the path (%s).", col ? col : str);
                     goto error;
                 }
+
+                /* adjust the parent */
+                if (!strcmp(col ? col : str, "..")) {
+                    parent = parent->parent;
+                }
+
+                /* copy the token */
+                if (ly_path_data2schema_copy_token(ctx, exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+                break;
+            } else if ((col ? col[0] : str[0]) == '*') {
+                if (end_token) {
+                    LOGERR(ctx, LY_EINVAL, "Invalid path used (%s in a subexpression).", col ? col : str);
+                    goto error;
+                }
+                free(str);
+                str = NULL;
 
                 /* we can no longer evaluate the path, so just copy the rest */
                 path_lost = 1;
