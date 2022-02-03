@@ -250,6 +250,15 @@ test_anydata(void **state)
             1, LYS_ANYDATA, 0, 0, NULL, 0);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
+
+    data = "{\"a:any\":{}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_SET_ENUM | LYS_CONFIG_R | LYS_YIN_ARGUMENT, 1, "any",
+            1, LYS_ANYDATA, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
 }
 
 static void

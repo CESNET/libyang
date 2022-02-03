@@ -1187,7 +1187,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
                 LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
                 assert(*status == LYJSON_ARRAY_CLOSED);
             }
-            LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
         } else if (snode->nodetype == LYS_ANYXML) {
             LY_CHECK_RET((*status != LYJSON_STRING) && (*status != LYJSON_NULL), LY_EINVAL);
 
@@ -1208,9 +1207,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
                     return ret;
                 }
             }
-
-            /* move JSON parser */
-            LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
         } else if (snode->nodetype & LYD_NODE_INNER) {
             /* create inner node */
             LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY), LY_EINVAL);
@@ -1249,10 +1245,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             }
 
             LOG_LOCBACK(1, 1, 0, 0);
-
-            /* move JSON parser */
-            ret = lyjson_ctx_next(lydctx->jsonctx, status);
-            LY_CHECK_RET(ret);
         } else if (snode->nodetype == LYS_ANYDATA) {
             /* create any node */
             LY_CHECK_RET((*status != LYJSON_OBJECT) && (*status != LYJSON_OBJECT_EMPTY), LY_EINVAL);
@@ -1283,6 +1275,9 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             ret = lyd_create_any(snode, tree, LYD_ANYDATA_DATATREE, 1, node);
             LY_CHECK_RET(ret);
         }
+
+        /* move JSON parser */
+        LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status));
 
         /* add/correct flags */
         lyd_parse_set_data_flags(*node, &lydctx->node_when, &lydctx->node_exts, &(*node)->meta, lydctx->parse_opts);
