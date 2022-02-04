@@ -34,6 +34,8 @@
  */
 struct context {
     /* libyang context for the run */
+    const char *yang_lib_file;
+    uint16_t ctx_options;
     struct ly_ctx *ctx;
 
     /* prepared output (--output option or stdout by default) */
@@ -215,8 +217,8 @@ help(int shortout)
 
     printf("  -l, --list    Print info about the loaded schemas.\n"
             "                (i - imported module, I - implemented module)\n"
-            "                In case the -f option with data encoding is specified,\n"
-            "                the list is printed as ietf-yang-library data.\n\n");
+            "                In case the '-f' option with data encoding is specified,\n"
+            "                the list is printed as \"ietf-yang-library\" data.\n\n");
 
     printf("  -L LINE_LENGTH, --tree-line-length=LINE_LENGTH\n"
             "                The limit of the maximum line length on which the 'tree'\n"
@@ -238,6 +240,11 @@ help(int shortout)
             "                Load and implement internal \"ietf-yang-library\" YANG module.\n"
             "                Note that this module includes definitions of mandatory state\n"
             "                data that can result in unexpected data validation errors.\n\n");
+
+    printf("  -Y FILE, --yang-library-file=FILE\n"
+            "                Parse FILE with \"ietf-yang-library\" data and use them to\n"
+            "                create an exact YANG schema context. If specified, the '-F'\n"
+            "                parameter (enabled features) is ignored.\n\n");
 
 #ifndef NDEBUG
     printf("  -G GROUPS, --debug=GROUPS\n"
@@ -289,10 +296,41 @@ get_features_not_applied(const struct ly_set *fset)
 static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {
-    struct ly_in *in;
+    struct ly_in *in = NULL;
     struct schema_features *sf;
     struct lys_module *mod;
-    const char *all_features[] = {"*", NULL};
+    const char *all_features[] = {"*", NULL}, *searchdir;
+    char *dir = NULL, *module = NULL;
+
+    /* get the first searchdir */
+    searchdir = c->searchpaths.count ? c->searchpaths.objs[0] : NULL;
+
+    if (c->yang_lib_file) {
+        /* ignore features */
+        ly_set_erase(&c->schema_features, free_features);
+
+        /* create context from the yang-library file */
+        if (ly_ctx_new_ylpath(searchdir, c->yang_lib_file, LYD_UNKNOWN, c->ctx_options, &c->ctx)) {
+            YLMSG_E("Unable to create libyang context from yang-library data.\n");
+            return -1;
+        }
+    } else {
+        /* set imp feature flag if all should be enabled */
+        if (!c->schema_features.count) {
+            c->ctx_options |= LY_CTX_ENABLE_IMP_FEATURES;
+        }
+
+        /* libyang context */
+        if (ly_ctx_new(searchdir, c->ctx_options, &c->ctx)) {
+            YLMSG_E("Unable to create libyang context.\n");
+            return -1;
+        }
+
+        /* set the rest of searchdirs */
+        for (uint32_t i = 1; i < c->searchpaths.count; ++i) {
+            ly_ctx_set_searchdir(c->ctx, c->searchpaths.objs[i]);
+        }
+    }
 
     /* process the operational content if any */
     if (c->data_operational.path) {
@@ -304,7 +342,6 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
     for (int i = 0; i < argc - optind; i++) {
         LYS_INFORMAT format_schema = LYS_IN_UNKNOWN;
         LYD_FORMAT format_data = LYD_UNKNOWN;
-        in = NULL;
 
         if (get_input(argv[optind + i], &format_schema, &format_data, &in)) {
             goto error;
@@ -313,42 +350,51 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
         if (format_schema) {
             LY_ERR ret;
             uint8_t path_unset = 1; /* flag to unset the path from the searchpaths list (if not already present) */
-            char *dir, *module;
             const char **features;
             struct lys_module *mod;
 
+            /* parse the input */
             if (parse_schema_path(argv[optind + i], &dir, &module)) {
                 goto error;
             }
 
-            /* add temporarily also the path of the module itself */
-            if (ly_ctx_set_searchdir(c->ctx, dir) == LY_EEXIST) {
-                path_unset = 0;
-            }
-
-            /* get features list for this module */
-            if (!c->schema_features.count) {
-                features = all_features;
+            if (c->yang_lib_file) {
+                /* just get the module, it should already be parsed */
+                mod = ly_ctx_get_module_implemented(c->ctx, module);
+                if (!mod) {
+                    YLMSG_E("Schema module \"%s\" not implemented in yang-library data.\n", module);
+                    goto error;
+                }
             } else {
-                get_features(&c->schema_features, module, &features);
+                /* add temporarily also the path of the module itself */
+                if (ly_ctx_set_searchdir(c->ctx, dir) == LY_EEXIST) {
+                    path_unset = 0;
+                }
+
+                /* get features list for this module */
+                if (!c->schema_features.count) {
+                    features = all_features;
+                } else {
+                    get_features(&c->schema_features, module, &features);
+                }
+
+                /* parse module */
+                ret = lys_parse(c->ctx, in, format_schema, features, &mod);
+                ly_ctx_unset_searchdir_last(c->ctx, path_unset);
+                if (ret) {
+                    YLMSG_E("Parsing schema module \"%s\" failed.\n", argv[optind + i]);
+                    goto error;
+                }
             }
 
             /* temporary cleanup */
             free(dir);
+            dir = NULL;
             free(module);
-
-            /* parse module */
-            ret = lys_parse(c->ctx, in, format_schema, features, &mod);
-            ly_ctx_unset_searchdir_last(c->ctx, path_unset);
-            ly_in_free(in, 1);
-            in = NULL;
-            if (ret) {
-                YLMSG_E("Parsing schema module \"%s\" failed.\n", argv[optind + i]);
-                goto error;
-            }
+            module = NULL;
 
             if (c->schema_out_format) {
-                /* modules will be printed */
+                /* module will be printed */
                 if (ly_set_add(&c->schema_modules, (void *)mod, 1, NULL)) {
                     YLMSG_E("Storing parsed schema module (%s) for print failed.\n", argv[optind + i]);
                     goto error;
@@ -359,10 +405,10 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
                 goto error;
             }
             in = NULL;
-        } else {
-            ly_in_free(in, 1);
-            in = NULL;
         }
+
+        ly_in_free(in, 1);
+        in = NULL;
     }
 
     /* check that all specified features were applied, apply now if possible */
@@ -389,6 +435,8 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
 
 error:
     ly_in_free(in, 1);
+    free(dir);
+    free(module);
     return -1;
 }
 
@@ -406,45 +454,45 @@ fill_context(int argc, char *argv[], struct context *c)
 
     int opt, opt_index;
     struct option options[] = {
-        {"help",             no_argument,       NULL, 'h'},
-        {"version",          no_argument,       NULL, 'v'},
-        {"verbose",          no_argument,       NULL, 'V'},
-        {"quiet",            no_argument,       NULL, 'Q'},
-        {"format",           required_argument, NULL, 'f'},
-        {"path",             required_argument, NULL, 'p'},
+        {"help",              no_argument,       NULL, 'h'},
+        {"version",           no_argument,       NULL, 'v'},
+        {"verbose",           no_argument,       NULL, 'V'},
+        {"quiet",             no_argument,       NULL, 'Q'},
+        {"format",            required_argument, NULL, 'f'},
+        {"path",              required_argument, NULL, 'p'},
         {"disable-searchdir", no_argument,      NULL, 'D'},
-        {"features",         required_argument, NULL, 'F'},
-        {"make-implemented", no_argument,       NULL, 'i'},
-        {"schema-node",      required_argument, NULL, 'P'},
-        {"single-node",      no_argument,       NULL, 'q'},
-        {"submodule",        required_argument, NULL, 's'},
-        {"not-strict",       no_argument,       NULL, 'n'},
-        {"present",          no_argument,       NULL, 'e'},
-        {"type",             required_argument, NULL, 't'},
-        {"default",          required_argument, NULL, 'd'},
-        {"list",             no_argument,       NULL, 'l'},
-        {"tree-line-length", required_argument, NULL, 'L'},
-        {"output",           required_argument, NULL, 'o'},
-        {"operational",      required_argument, NULL, 'O'},
-        {"merge",            no_argument,       NULL, 'm'},
-        {"yang-library",     no_argument,       NULL, 'y'},
+        {"features",          required_argument, NULL, 'F'},
+        {"make-implemented",  no_argument,       NULL, 'i'},
+        {"schema-node",       required_argument, NULL, 'P'},
+        {"single-node",       no_argument,       NULL, 'q'},
+        {"submodule",         required_argument, NULL, 's'},
+        {"not-strict",        no_argument,       NULL, 'n'},
+        {"present",           no_argument,       NULL, 'e'},
+        {"type",              required_argument, NULL, 't'},
+        {"default",           required_argument, NULL, 'd'},
+        {"list",              no_argument,       NULL, 'l'},
+        {"tree-line-length",  required_argument, NULL, 'L'},
+        {"output",            required_argument, NULL, 'o'},
+        {"operational",       required_argument, NULL, 'O'},
+        {"merge",             no_argument,       NULL, 'm'},
+        {"yang-library",      no_argument,       NULL, 'y'},
+        {"yang-library-file", required_argument, NULL, 'Y'},
 #ifndef NDEBUG
         {"debug",            required_argument, NULL, 'G'},
 #endif
         {NULL,               0,                 NULL, 0}
     };
-
-    uint16_t options_ctx = YL_DEFAULT_CTX_OPTIONS;
     uint8_t data_type_set = 0;
 
+    c->ctx_options = YL_DEFAULT_CTX_OPTIONS;
     c->data_parse_options = YL_DEFAULT_DATA_PARSE_OPTIONS;
     c->line_length = 0;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:OmyG:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:OmyY:G:", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:Omy", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:OmyY:", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'h': /* --help */
@@ -523,14 +571,14 @@ fill_context(int argc, char *argv[], struct context *c)
         } /* case 'p' */
 
         case 'D': /* --disable-search */
-            if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
+            if (c->ctx_options & LY_CTX_DISABLE_SEARCHDIRS) {
                 YLMSG_W("The -D option specified too many times.\n");
             }
-            if (options_ctx & LY_CTX_DISABLE_SEARCHDIR_CWD) {
-                options_ctx &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-                options_ctx |= LY_CTX_DISABLE_SEARCHDIRS;
+            if (c->ctx_options & LY_CTX_DISABLE_SEARCHDIR_CWD) {
+                c->ctx_options &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
+                c->ctx_options |= LY_CTX_DISABLE_SEARCHDIRS;
             } else {
-                options_ctx |= LY_CTX_DISABLE_SEARCHDIR_CWD;
+                c->ctx_options |= LY_CTX_DISABLE_SEARCHDIR_CWD;
             }
             break;
 
@@ -541,11 +589,11 @@ fill_context(int argc, char *argv[], struct context *c)
             break;
 
         case 'i': /* --make-implemented */
-            if (options_ctx & LY_CTX_REF_IMPLEMENTED) {
-                options_ctx &= ~LY_CTX_REF_IMPLEMENTED;
-                options_ctx |= LY_CTX_ALL_IMPLEMENTED;
+            if (c->ctx_options & LY_CTX_REF_IMPLEMENTED) {
+                c->ctx_options &= ~LY_CTX_REF_IMPLEMENTED;
+                c->ctx_options |= LY_CTX_ALL_IMPLEMENTED;
             } else {
-                options_ctx |= LY_CTX_REF_IMPLEMENTED;
+                c->ctx_options |= LY_CTX_REF_IMPLEMENTED;
             }
             break;
 
@@ -650,7 +698,12 @@ fill_context(int argc, char *argv[], struct context *c)
             break;
 
         case 'y': /* --yang-library */
-            options_ctx &= ~LY_CTX_NO_YANGLIBRARY;
+            c->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
+            break;
+
+        case 'Y': /* --yang-library-file */
+            c->ctx_options &= ~LY_CTX_NO_YANGLIBRARY;
+            c->yang_lib_file = optarg;
             break;
 
 #ifndef NDEBUG
@@ -686,20 +739,6 @@ fill_context(int argc, char *argv[], struct context *c)
             YLMSG_E("Invalid option or missing argument: -%c\n", optopt);
             return -1;
         } /* switch */
-    }
-
-    /* set imp feature flag if all should be enabled */
-    if (!c->schema_features.count) {
-        options_ctx |= LY_CTX_ENABLE_IMP_FEATURES;
-    }
-
-    /* libyang context */
-    if (ly_ctx_new(NULL, options_ctx, &c->ctx)) {
-        YLMSG_E("Unable to create libyang context.\n");
-        return -1;
-    }
-    for (uint32_t u = 0; u < c->searchpaths.count; ++u) {
-        ly_ctx_set_searchdir(c->ctx, c->searchpaths.objs[u]);
     }
 
     /* additional checks for the options combinations */
@@ -738,7 +777,7 @@ fill_context(int argc, char *argv[], struct context *c)
 
     if (c->schema_out_format == LYS_OUT_TREE) {
         /* print tree from lysc_nodes */
-        ly_ctx_set_options(c->ctx, LY_CTX_SET_PRIV_PARSED);
+        c->ctx_options |= LY_CTX_SET_PRIV_PARSED;
     }
 
     /* process input files provided as standalone command line arguments,
