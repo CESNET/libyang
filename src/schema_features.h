@@ -33,7 +33,17 @@ struct lysp_qname;
 LY_ERR lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_bool *enabled);
 
 /**
- * @brief Set the specified features of a parsed module, with all the checks.
+ * @brief Check whether all enabled features have their if-features satisfied.
+ *
+ * @param[in] pmod Parsed module features to check.
+ * @return LY_SUCCESS on success.
+ * @return LY_EDENIED if there was an enabled feature with disabled if-feature.
+ */
+LY_ERR lys_check_features(const struct lysp_module *pmod);
+
+/**
+ * @brief Set the specified features of a parsed module ignoring their own if-features. These are all checked before
+ * compiling the module(s).
  *
  * @param[in] pmod Parsed module to modify.
  * @param[in] features Array of features ended with NULL to be enabled if the module is being implemented.

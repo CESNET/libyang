@@ -386,7 +386,8 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
     }
     if (j) {
         /* not matching count of ( and ) */
-        LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.", qname->str);
+        LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.",
+                qname->str);
         return LY_EVALID;
     }
     if (f_exp != f_size) {
@@ -399,7 +400,8 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
     if (checkversion || (expr_size > 1)) {
         /* check that we have 1.1 module */
         if (qname->mod->version != LYS_VERSION_1_1) {
-            LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", qname->str);
+            LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.",
+                    qname->str);
             return LY_EVALID;
         }
     }
@@ -529,15 +531,8 @@ lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_
     return LY_SUCCESS;
 }
 
-/**
- * @brief Check whether all enabled features have their if-features satisfied.
- * Enabled features with false if-features are disabled with a warning.
- *
- * @param[in] pmod Parsed module features to check.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_check_features(struct lysp_module *pmod)
+LY_ERR
+lys_check_features(const struct lysp_module *pmod)
 {
     LY_ERR r;
     uint32_t i = 0;
@@ -552,12 +547,9 @@ lys_check_features(struct lysp_module *pmod)
         assert(f->iffeatures_c);
         r = lysc_iffeature_value(f->iffeatures_c);
         if (r == LY_ENOT) {
-            LOGWRN(pmod->mod->ctx, "Feature \"%s\" cannot be enabled because its \"if-feature\" is not satisfied.",
+            LOGERR(pmod->mod->ctx, LY_EDENIED, "Feature \"%s\" cannot be enabled because its \"if-feature\" is not satisfied.",
                     f->name);
-
-            /* disable feature and re-evaluate all the feature if-features again */
-            f->flags &= ~LYS_FENABLED;
-            return lys_check_features(pmod);
+            return LY_EDENIED;
         } else if (r) {
             return r;
         } /* else if-feature satisfied */
@@ -626,8 +618,7 @@ lys_set_features(struct lysp_module *pmod, const char **features)
         return LY_EEXIST;
     }
 
-    /* check final features if-feature state */
-    return lys_check_features(pmod);
+    return LY_SUCCESS;
 }
 
 /**
