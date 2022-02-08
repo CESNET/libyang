@@ -1605,12 +1605,39 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Check if-feature of all features of all modules in a dep set.
+ *
+ * @param[in] dep_set Dep set to check.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_depset_check_features(struct ly_set *dep_set)
+{
+    struct lys_module *mod;
+    uint32_t i;
+
+    for (i = 0; i < dep_set->count; ++i) {
+        mod = dep_set->objs[i];
+        if (!mod->to_compile) {
+            /* skip */
+            continue;
+        }
+
+        /* check features of this module */
+        LY_CHECK_RET(lys_check_features(mod->parsed));
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_compile_depset_all(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     uint32_t i;
 
     for (i = 0; i < unres->dep_sets.count; ++i) {
+        LY_CHECK_RET(lys_compile_depset_check_features(unres->dep_sets.objs[i]));
         LY_CHECK_RET(lys_compile_depset_r(ctx, unres->dep_sets.objs[i], unres));
     }
 
