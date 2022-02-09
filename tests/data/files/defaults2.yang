@@ -37,4 +37,17 @@ module defaults2 {
         choice ch;
       }
     }
+
+    rpc rpc1 {
+      input {
+        leaf l1 {
+          type string;
+        }
+        leaf l2 {
+          when "../l1='special-val'";
+          type string;
+          default "dflt";
+        }
+      }
+    }
 }

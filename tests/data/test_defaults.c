@@ -421,6 +421,31 @@ test_rpc_input_default(void **state)
 }
 
 static void
+test_rpc_input_default_when(void **state)
+{
+    struct state *st = (*state);
+    const char *xml =
+            "<rpc1 xmlns=\"urn:defaults2\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                "<l1>my-val</l1>"
+            "</rpc1>";
+
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml);
+
+    free(st->xml);
+    st->xml = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_RPC | LYD_OPT_NOEXTDEPS, NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml);
+}
+
+static void
 test_rpc_output_default(void **state)
 {
     struct state *st = (*state);
@@ -686,6 +711,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_df3, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df4, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_rpc_input_default, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_rpc_input_default_when, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_rpc_output_default, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_rpc_augment, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_notif_default, setup_f, teardown_f),
