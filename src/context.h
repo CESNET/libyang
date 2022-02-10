@@ -415,13 +415,35 @@ LIBYANG_API_DECL ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx
  *
  * @param[in] ctx Context that will use this callback.
  * @param[in] clb Callback responsible for returning the missing model.
- * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
+ * @param[in] user_data Arbitrary data that will always be passed to the callback @p clb.
  */
 LIBYANG_API_DECL void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
 
+/**
+ * @brief Callback for getting arbitrary run-time data required by an extension instance.
+ *
+ * @param[in] ext Compiled extension instance.
+ * @param[in] user_data User-supplied callback data.
+ * @param[out] ext_data Provided extension instance data.
+ * @param[out] ext_data_free Whether the extension instance should free @p ext_data or not.
+ * @return LY_ERR value.
+ */
 typedef LY_ERR (*ly_ext_data_clb)(const struct lysc_ext_instance *ext, void *user_data, void **ext_data,
         ly_bool *ext_data_free);
 
+/**
+ * @brief Set callback providing run-time extension instance data. The expected data depend on the extension.
+ * Data expected by internal extensions:
+ *
+ * - *ietf-yang-schema-mount:mount-point* (struct lyd_node \*\*ext_data)\n
+ * Operational data tree with at least `ietf-yang-library` data describing the mounted schema and
+ * `ietf-yang-schema-mount` **validated** data describing the specific mount point
+ * ([ref](https://datatracker.ietf.org/doc/html/rfc8528#section-3.3)).
+ *
+ * @param[in] ctx Context that will use this callback.
+ * @param[in] clb Callback responsible for returning the extension instance data.
+ * @param[in] user_data Arbitrary data that will always be passed to the callback @p clb.
+ */
 LIBYANG_API_DECL ly_ext_data_clb ly_ctx_set_ext_data_clb(struct ly_ctx *ctx, ly_ext_data_clb clb, void *user_data);
 
 /**
@@ -509,7 +531,8 @@ LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_implemented_ns(const struc
  * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
  * @return Found submodule, NULL if there is none.
  */
-LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule, const char *revision);
+LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *submodule,
+        const char *revision);
 
 /**
  * @brief Get the latests revision of a submodule from context. If its belongs-to module is known,
@@ -540,7 +563,8 @@ LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2(const struct
  * @param[in] submodule Submodule name to find.
  * @return Found submodule, NULL if there is none.
  */
-LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule);
+LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const struct lys_module *module,
+        const char *submodule);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.
@@ -589,7 +613,8 @@ LIBYANG_API_DECL uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx
  * with the current features settings in case the module is already present in the context.
  * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
-LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision, const char **features);
+LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision,
+        const char **features);
 
 /**
  * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.
@@ -611,7 +636,8 @@ LIBYANG_API_DECL struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const
  * @param[in] ... Parameters for @p content_id_format.
  * @return LY_ERR value
  */
-LIBYANG_API_DECL LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root, const char *content_id_format, ...);
+LIBYANG_API_DECL LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root,
+        const char *content_id_format, ...);
 
 /**
  * @brief Free all internal structures of the specified context.

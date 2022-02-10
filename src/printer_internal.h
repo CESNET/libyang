@@ -48,8 +48,8 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lysp_module *mo
 /**
  * @brief Helper macros for data printers
  */
-#define DO_FORMAT (!(ctx->options & LY_PRINT_SHRINK))
-#define LEVEL ctx->level                      /**< current level */
+#define DO_FORMAT (!(pctx->options & LY_PRINT_SHRINK))
+#define LEVEL pctx->level                     /**< current level */
 #define INDENT (DO_FORMAT ? (LEVEL)*2 : 0),"" /**< indentation parameters for printer functions */
 #define LEVEL_INC LEVEL++                     /**< increase indentation level */
 #define LEVEL_DEC LEVEL--                     /**< decrease indentation level */

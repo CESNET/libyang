@@ -219,6 +219,16 @@ struct lyplg_ext_record {
     struct lyplg_ext plugin;     /**< data to utilize plugin implementation */
 };
 
+/**
+ * @brief Get specific run-time extension instance data from a callback set by ::ly_ctx_set_ext_data_clb().
+ *
+ * @param[in] ctx Context with the callback.
+ * @param[in] ext Compiled extension instance.
+ * @param[out] ext_data Provided extension instance data.
+ * @param[out] ext_data_free Whether the extension instance should free @p ext_data or not.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
 LIBYANG_API_DECL LY_ERR lyplg_ext_get_data(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, void **ext_data,
         ly_bool *ext_data_free);
 

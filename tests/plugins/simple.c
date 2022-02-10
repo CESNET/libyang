@@ -53,7 +53,9 @@ LYPLG_EXTENSIONS = {
         .plugin.id = "libyang 2 - simple test, version 1",
         .plugin.compile = &hint_compile,
         .plugin.sprinter = NULL,
-        .plugin.free = NULL
+        .plugin.free = NULL,
+        .plugin.parse = NULL,
+        .plugin.validate = NULL
     },
     {0} /* terminating zeroed item */
 };

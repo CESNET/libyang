@@ -30,6 +30,14 @@ struct ly_in;
 /* Macro to test if character is valid string character */
 #define is_jsonstrchar(c) (c == 0x20 || c == 0x21 || (c >= 0x23 && c <= 0x5b) || (c >= 0x5d && c <= 0x10ffff))
 
+/* Macro to push JSON parser status */
+#define LYJSON_STATUS_PUSH_RET(CTX, STATUS) \
+    LY_CHECK_RET(ly_set_add(&CTX->status, (void *)(uintptr_t)(STATUS), 1, NULL))
+
+/* Macro to pop JSON parser status */
+#define LYJSON_STATUS_POP_RET(CTX) \
+    assert(CTX->status.count); CTX->status.count--;
+
 /**
  * @brief Status of the parser providing information what is expected next (which function is supposed to be called).
  */
@@ -77,10 +85,11 @@ struct lyjson_ctx {
  *
  * @param[in] ctx libyang context.
  * @param[in] in JSON string data to parse.
+ * @param[in] subtree Whether this is a special case of parsing a subtree (starting with object name).
  * @param[out] jsonctx New JSON context with status referring the parsed value.
  * @return LY_ERR value.
  */
-LY_ERR lyjson_ctx_new(const struct ly_ctx *ctx,  struct ly_in *in, struct lyjson_ctx **jsonctx);
+LY_ERR lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, ly_bool subtree, struct lyjson_ctx **jsonctx);
 
 /**
  * @brief Get status of the parser as the last/previous parsed token

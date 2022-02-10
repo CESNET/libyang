@@ -1330,6 +1330,11 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
     /* validate all restrictions of nodes themselves */
     LY_LIST_FOR_SAFE(first, next, node) {
+        if (node->flags & LYD_EXT) {
+            /* ext instance data should have already been validated */
+            continue;
+        }
+
         if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
             /* all top-level data from this module checked */
             break;

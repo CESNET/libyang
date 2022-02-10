@@ -22,9 +22,7 @@ module sm {
             leaf name {
                 type string;
             }
-            container mnt-root {
-                yangmnt:mount-point "mnt-root";
-            }
+            yangmnt:mount-point "mnt-root";
         }
     }
     leaf target {

@@ -495,7 +495,7 @@ struct lyxp_var;
  * @param ELEM Iterator.
  */
 #define LYD_LIST_FOR_INST_SAFE(START, SCHEMA, NEXT, ELEM) \
-    for (lyd_find_sibling_val(START, SCHEMA, NULL, 0, &(ELEM)); \
+    for ((NEXT) = (ELEM) = NULL, lyd_find_sibling_val(START, SCHEMA, NULL, 0, &(ELEM)); \
          (ELEM) && ((ELEM)->schema == (SCHEMA)) ? ((NEXT) = (ELEM)->next, 1) : 0; \
          (ELEM) = (NEXT))
 
