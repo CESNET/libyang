@@ -453,7 +453,7 @@ lydxml_nested_ext(struct lyd_xml_ctx *lydctx, struct lyd_node *parent)
                 ext_val = malloc(sizeof *ext_val);
                 LY_CHECK_ERR_RET(!ext_val, LOGMEM(lydctx->xmlctx->ctx), LY_EMEM);
                 ext_val->ext = &nested_exts[u];
-                ext_val->sibling = lyd_child(parent);
+                ext_val->sibling = lyd_child_no_keys(parent);
                 LY_CHECK_RET(ly_set_add(&lydctx->ext_val, ext_val, 1, NULL));
             }
 
@@ -585,7 +585,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                 if (parent) {
                     LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
-                            (int)name_len, name, parent->schema->name);
+                            (int)name_len, name, LYD_NAME(parent));
                 } else if (lydctx->ext) {
                     if (lydctx->ext->argument) {
                         LOGVAL(ctx, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" %s extension instance.",

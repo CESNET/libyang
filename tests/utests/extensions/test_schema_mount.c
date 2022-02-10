@@ -31,7 +31,7 @@ setup(void **state)
             "container root2 {yangmnt:mount-point \"root\";}"
             "container root3 {"
             "  list ls { key name; leaf name {type string;}"
-            "    container mnt-root {yangmnt:mount-point \"mnt-root\";}"
+            "    yangmnt:mount-point \"mnt-root\";"
             "  }"
             "}"
             "leaf target{type string;}"
@@ -178,9 +178,9 @@ test_ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **e
 }
 
 static void
-test_parse_xml_invalid(void **state)
+test_parse_invalid(void **state)
 {
-    const char *xml;
+    const char *xml, *json;
     struct lyd_node *data;
 
     /* no callback set */
@@ -197,6 +197,23 @@ test_parse_xml_invalid(void **state)
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": Failed to get extension data, no callback set.",
             NULL);
 
+    json =
+            "{"
+            "  \"sm:root\": {"
+            "    \"unknown:unknown\": {"
+            "      \"interface\": ["
+            "        {"
+            "          \"name\": \"bu\","
+            "          \"type\": \"iana-if-type:ethernetCsmacd\""
+            "        }"
+            "      ]"
+            "    }"
+            "  }"
+            "}";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EINVAL, data);
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": Failed to get extension data, no callback set.",
+            NULL);
+
     /* unknown data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb, NULL);
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
@@ -210,6 +227,17 @@ test_parse_xml_invalid(void **state)
     CHECK_LOG_CTX("No module with namespace \"unknown\" in the context.",
             "Schema location /sm:root, data location /sm:root, line number 1.");
 
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    assert_string_equal(LYD_NAME(data), "root");
+    assert_null(lyd_child(data));
+    assert_non_null(data->next);
+    assert_true(data->next->flags & LYD_DEFAULT);
+    lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("No module named \"unknown\" in the context.",
+            "Schema location /sm:root, data location /sm:root, line number 1.");
+
     /* missing required callback data */
     xml =
             "<root xmlns=\"urn:sm\">"
@@ -220,6 +248,22 @@ test_parse_xml_invalid(void **state)
             "  </interfaces>"
             "</root>";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
+            "Schema location /sm:root, data location /sm:root, line number 1.");
+
+    json =
+            "{"
+            "  \"sm:root\": {"
+            "    \"ietf-interfaces:interfaces\": {"
+            "      \"interface\": ["
+            "        {"
+            "          \"name\": \"bu\""
+            "        }"
+            "      ]"
+            "    }"
+            "  }"
+            "}";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
             "Schema location /sm:root, data location /sm:root, line number 1.");
 
@@ -252,6 +296,8 @@ test_parse_xml_invalid(void **state)
             "  <module-set-id>1</module-set-id>"
             "</modules-state>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
 
     /* missing module in yang-library data */
@@ -291,6 +337,8 @@ test_parse_xml_invalid(void **state)
             "  </mount-point>"
             "</schema-mounts>");
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.", NULL);
 
     /* callback data correct, invalid YANG data */
@@ -358,10 +406,24 @@ test_parse_xml_invalid(void **state)
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Mandatory node \"type\" instance does not exist.",
             "Schema location /ietf-interfaces:interfaces/interface/type.");
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+            "Mandatory node \"type\" instance does not exist.",
+            "Schema location /ietf-interfaces:interfaces/interface/type.");
 
-    /* validation fail */
+    /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+            "Mandatory node \"type\" instance does not exist.",
+            "Schema location /ietf-interfaces:interfaces/interface/type.");
+    lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
+    assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+            "Mandatory node \"type\" instance does not exist.",
+            "Schema location /ietf-interfaces:interfaces/interface/type.");
     lyd_free_siblings(data);
 
     /* success */
@@ -377,14 +439,32 @@ test_parse_xml_invalid(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_free_siblings(data);
+
+    json =
+            "{\n"
+            "  \"sm:root\": {\n"
+            "    \"ietf-interfaces:interfaces\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\"\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
 }
 
 static void
-test_parse_xml_inline(void **state)
+test_parse_inline(void **state)
 {
-    const char *xml;
+    const char *xml, *json;
     struct lyd_node *data;
 
+    /* valid */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
             "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
@@ -468,6 +548,35 @@ test_parse_xml_inline(void **state)
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_free_siblings(data);
 
+    json =
+            "{\n"
+            "  \"sm:root\": {\n"
+            "    \"ietf-interfaces:interfaces\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\"\n"
+            "        }\n"
+            "      ]\n"
+            "    },\n"
+            "    \"ietf-interfaces:interfaces-state\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\",\n"
+            "          \"oper-status\": \"not-present\",\n"
+            "          \"statistics\": {\n"
+            "            \"discontinuity-time\": \"2022-01-01T10:00:00-00:00\"\n"
+            "          }\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
+
     /* different yang-lib data */
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
@@ -537,12 +646,16 @@ test_parse_xml_inline(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
 }
 
 static void
-test_parse_xml_shared(void **state)
+test_parse_shared(void **state)
 {
-    const char *xml;
+    const char *xml, *json;
     struct lyd_node *data;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -626,6 +739,35 @@ test_parse_xml_shared(void **state)
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
+
+    json =
+            "{\n"
+            "  \"sm:root\": {\n"
+            "    \"ietf-interfaces:interfaces\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\"\n"
+            "        }\n"
+            "      ]\n"
+            "    },\n"
+            "    \"ietf-interfaces:interfaces-state\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\",\n"
+            "          \"oper-status\": \"not-present\",\n"
+            "          \"statistics\": {\n"
+            "            \"discontinuity-time\": \"2022-01-01T10:00:00-00:00\"\n"
+            "          }\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
     lyd_free_siblings(data);
 
     /* different yang-lib data */
@@ -819,12 +961,63 @@ test_parse_xml_shared(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_free_siblings(data);
+
+    json =
+            "{\n"
+            "  \"sm:root\": {\n"
+            "    \"ietf-interfaces:interfaces\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\"\n"
+            "        }\n"
+            "      ]\n"
+            "    },\n"
+            "    \"ietf-interfaces:interfaces-state\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"bu\",\n"
+            "          \"type\": \"iana-if-type:ethernetCsmacd\",\n"
+            "          \"oper-status\": \"not-present\",\n"
+            "          \"statistics\": {\n"
+            "            \"discontinuity-time\": \"2022-01-01T10:00:00-00:00\"\n"
+            "          }\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  },\n"
+            "  \"sm:root2\": {\n"
+            "    \"ietf-interfaces:interfaces\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"fu\",\n"
+            "          \"type\": \"iana-if-type:fddi\"\n"
+            "        }\n"
+            "      ]\n"
+            "    },\n"
+            "    \"ietf-interfaces:interfaces-state\": {\n"
+            "      \"interface\": [\n"
+            "        {\n"
+            "          \"name\": \"fu\",\n"
+            "          \"type\": \"iana-if-type:fddi\",\n"
+            "          \"oper-status\": \"down\",\n"
+            "          \"statistics\": {\n"
+            "            \"discontinuity-time\": \"2020-01-01T10:00:00-00:00\"\n"
+            "          }\n"
+            "        }\n"
+            "      ]\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
 }
 
 static void
-test_parse_xml_shared_parent_ref(void **state)
+test_parse_shared_parent_ref(void **state)
 {
-    const char *xml;
+    const char *xml, *json;
     struct lyd_node *data;
 
     /* wrong leafref value */
@@ -894,7 +1087,7 @@ test_parse_xml_shared_parent_ref(void **state)
             "    <module>sm</module>"
             "    <label>mnt-root</label>"
             "    <shared-schema>"
-            "      <parent-reference>/smp:target[. = current()/../smp:name]</parent-reference>"
+            "      <parent-reference>/smp:target[. = current()/smp:name]</parent-reference>"
             "    </shared-schema>"
             "  </mount-point>"
             "</schema-mounts>");
@@ -902,19 +1095,43 @@ test_parse_xml_shared_parent_ref(void **state)
             "<root3 xmlns=\"urn:sm\">\n"
             "  <ls>\n"
             "    <name>target-value</name>\n"
-            "    <mnt-root>\n"
-            "      <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
-            "        <interface>\n"
-            "          <name>bu</name>\n"
-            "          <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
-            "          <sm-name xmlns=\"urn:sm\">target-value</sm-name>\n"
-            "        </interface>\n"
-            "      </interfaces>\n"
-            "    </mnt-root>\n"
+            "    <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "      <interface>\n"
+            "        <name>bu</name>\n"
+            "        <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "        <sm-name xmlns=\"urn:sm\">target-value</sm-name>\n"
+            "      </interface>\n"
+            "    </interfaces>\n"
             "  </ls>\n"
             "</root3>\n"
             "<target xmlns=\"urn:sm\">wrong-target-value</target>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
+    CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
+            "Invalid leafref value \"target-value\" - no existing target instance \"/sm:target\".",
+            "Schema location /ietf-interfaces:interfaces/interface/sm:sm-name, "
+            "data location /ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name.");
+
+    json =
+            "{\n"
+            "  \"sm:root3\": {\n"
+            "    \"ls\": ["
+            "      {\n"
+            "        \"name\": \"target-value\",\n"
+            "        \"ietf-interfaces:interfaces\": {\n"
+            "          \"interface\": [\n"
+            "            {\n"
+            "              \"name\": \"bu\",\n"
+            "              \"type\": \"iana-if-type:ethernetCsmacd\",\n"
+            "              \"sm:sm-name\": \"target-value\"\n"
+            "            }\n"
+            "          ]\n"
+            "        }\n"
+            "      }\n"
+            "    ]\n"
+            "  },\n"
+            "  \"sm:target\": \"wrong-target-value\"\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Invalid leafref value \"target-value\" - no existing target instance \"/sm:target\".",
             "Schema location /ietf-interfaces:interfaces/interface/sm:sm-name, "
@@ -925,25 +1142,47 @@ test_parse_xml_shared_parent_ref(void **state)
             "<root3 xmlns=\"urn:sm\">\n"
             "  <ls>\n"
             "    <name>target-value</name>\n"
-            "    <mnt-root>\n"
-            "      <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
-            "        <interface>\n"
-            "          <name>bu</name>\n"
-            "          <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
-            "          <sm-name xmlns=\"urn:sm\">target-value</sm-name>\n"
-            "        </interface>\n"
-            "      </interfaces>\n"
-            "    </mnt-root>\n"
+            "    <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "      <interface>\n"
+            "        <name>bu</name>\n"
+            "        <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "        <sm-name xmlns=\"urn:sm\">target-value</sm-name>\n"
+            "      </interface>\n"
+            "    </interfaces>\n"
             "  </ls>\n"
             "</root3>\n"
             "<target xmlns=\"urn:sm\">target-value</target>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_free_siblings(data);
+
+    json =
+            "{\n"
+            "  \"sm:root3\": {\n"
+            "    \"ls\": [\n"
+            "      {\n"
+            "        \"name\": \"target-value\",\n"
+            "        \"ietf-interfaces:interfaces\": {\n"
+            "          \"interface\": [\n"
+            "            {\n"
+            "              \"name\": \"bu\",\n"
+            "              \"type\": \"iana-if-type:ethernetCsmacd\",\n"
+            "              \"sm:sm-name\": \"target-value\"\n"
+            "            }\n"
+            "          ]\n"
+            "        }\n"
+            "      }\n"
+            "    ]\n"
+            "  },\n"
+            "  \"sm:target\": \"target-value\"\n"
+            "}\n";
+    CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
 }
 
 static void
-test_parse_xml_config(void **state)
+test_parse_config(void **state)
 {
     const char *xml;
     struct lyd_node *data;
@@ -1044,11 +1283,11 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_schema),
-        UTEST(test_parse_xml_invalid, setup),
-        UTEST(test_parse_xml_inline, setup),
-        UTEST(test_parse_xml_shared, setup),
-        UTEST(test_parse_xml_shared_parent_ref, setup),
-        UTEST(test_parse_xml_config, setup),
+        UTEST(test_parse_invalid, setup),
+        UTEST(test_parse_inline, setup),
+        UTEST(test_parse_shared, setup),
+        UTEST(test_parse_shared_parent_ref, setup),
+        UTEST(test_parse_config, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -2358,6 +2358,8 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
         return NULL;
     }
 
+    assert(!first_sibling || (LYD_CTX(first_sibling) == LYD_CTX(new_node)));
+
     getnext_opts = 0;
     if (new_node->schema->flags & LYS_IS_OUTPUT) {
         getnext_opts = LYS_GETNEXT_OUTPUT;
@@ -2707,7 +2709,7 @@ lyd_insert_ext(struct lyd_node *parent, struct lyd_node *first)
     while (first) {
         iter = first->next;
         lyd_unlink_tree(first);
-        lyd_insert_node(parent, NULL, first, 0);
+        lyd_insert_node(parent, NULL, first, 1);
         first = iter;
     }
     return LY_SUCCESS;
