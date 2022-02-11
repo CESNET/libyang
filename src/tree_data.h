@@ -194,6 +194,14 @@ struct lyxp_var;
  * - ::lyd_new_ext_term()
  * - ::lyd_new_ext_any()
  * - ::lyd_new_ext_path()
+ *
+ * @section howtoDataMountpoint mount-point Support
+ *
+ * [RFC 8528](https://tools.ietf.org/html/rfc8528) defines mount-point extension in ietf-yang-schema-mount YANG module.
+ * This extension is supported out-of-the-box but to be able to parse data in a mount point, additional run-time data
+ * need to be provided by a callback:
+ *
+ * - ::ly_ctx_set_ext_data_clb()
  */
 
 /**
