@@ -95,14 +95,14 @@ LIBYANG_API_DECL const char *lysc_ctx_get_path(const struct lysc_ctx *ctx);
  * @param[in] ctx YANG schema compilation context.
  * @return current module.
  */
-const struct lys_module *lysc_ctx_get_cur_mod(const struct lysc_ctx *ctx);
+LIBYANG_API_DECL const struct lys_module *lysc_ctx_get_cur_mod(const struct lysc_ctx *ctx);
 
 /**
  * @brief YANG schema compilation context getter for currently processed module.
  * @param[in] ctx YANG schema compilation context.
  * @return Currently processed module.
  */
-struct lysp_module *lysc_ctx_get_pmod(const struct lysc_ctx *ctx);
+LIBYANG_API_DECL struct lysp_module *lysc_ctx_get_pmod(const struct lysc_ctx *ctx);
 
 /**
  * @brief Compile substatements of an extension instance.
@@ -119,7 +119,8 @@ struct lysp_module *lysc_ctx_get_pmod(const struct lysc_ctx *ctx);
  * @return LY_EVALID if compilation of the substatements fails.
  * @return LY_ENOT if the extension is disabled (by if-feature) and should be ignored.
  */
-LIBYANG_API_DECL LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext);
+LIBYANG_API_DECL LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p,
+        struct lysc_ext_instance *ext);
 
 /**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
