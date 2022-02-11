@@ -58,13 +58,14 @@ extern "C" {
  * - Support for [default values in the instance data](@ref howtoDataWD) ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
  * - Support for [YANG extensions and user types](@ref howtoPlugins).
  * - Support for [YANG Metadata](@ref howtoDataMetadata) ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
+ * - Support for [YANG Schema Mount](@ref howtoDataMountpoint) ([RFC 8528](https://tools.ietf.org/html/rfc8528)).
  *
  * The current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020)) as well as
  * YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
  *
  * @section about-license License
  *
- * Copyright (c) 2015-2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2022 CESNET, z.s.p.o.
  *
  * (The BSD 3-Clause License)
  *
