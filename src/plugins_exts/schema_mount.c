@@ -148,6 +148,7 @@ schema_mount_compile_find_shared(const struct lys_module *mod, const struct lysc
 
     /* try to find the same mount point */
     r = lysc_module_dfs_full(mod, schema_mount_compile_mod_dfs_cb, &cb_data);
+    (void)r;
     assert((!r && !cb_data.sm_shared) || ((r == LY_EEXIST) && cb_data.sm_shared));
 
     return cb_data.sm_shared;
