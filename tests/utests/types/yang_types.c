@@ -103,15 +103,29 @@ test_data_xml(void **state)
     /* canonize */
     TEST_SUCCESS_XML("a", "l", "2005-02-29T23:15:15-02:00", STRING, "2005-03-01T23:15:15-02:00");
 
-    /* unknown timezone */
+    /* fractional hours */
+    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888+04:30", STRING, "2005-05-25T16:45:15.88888-02:00");
+#else
+    /* Tests run with a TZ offset of +02:00, but this platform cannot represent that in time_t,
+     * so libyang always returns unspecified TZ. */
+    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T23:15:15.88888-00:00");
+    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-08:59", STRING, "2005-06-01T08:14:15-00:00");
+    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-23:00", STRING, "2005-06-01T22:15:15-00:00");
+
+    /* test 1 second before epoch (mktime returns -1, but it is a correct value), with and without DST */
+    TEST_SUCCESS_XML("a", "l", "1970-01-01T00:59:59-02:00", STRING, "1970-01-01T02:59:59-00:00");
+    TEST_SUCCESS_XML("a", "l", "1969-12-31T23:59:59-02:00", STRING, "1970-01-01T01:59:59-00:00");
+
+    /* canonize */
+    TEST_SUCCESS_XML("a", "l", "2005-02-29T23:15:15-02:00", STRING, "2005-03-02T01:15:15-00:00");
+
+    /* fractional hours */
+    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888+04:30", STRING, "2005-05-25T18:45:15.88888-00:00");
+#endif
+
+    /* unknown timezone -- timezone conversion MUST NOT happen */
     TEST_SUCCESS_XML("a", "l", "2017-02-01T00:00:00-00:00", STRING, "2017-02-01T00:00:00-00:00");
     TEST_SUCCESS_XML("a", "l", "2021-02-29T00:00:00-00:00", STRING, "2021-03-01T00:00:00-00:00");
-#else
-    /* Tests run with a TZ offset of +02:00.
-     * Strictly speaking, this result is "not wrong" because we're indeed saying "unspecified TZ". */
-    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T21:15:15.88888-00:00");
-    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888+04:30", STRING, "2005-05-25T16:45:15.88888-00:00");
-#endif
 
     TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00");
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
