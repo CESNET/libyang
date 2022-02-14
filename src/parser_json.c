@@ -214,6 +214,10 @@ lydjson_nested_ext(struct lyd_json_ctx *lydctx, struct lyd_node *parent)
         if ((in_start.current[0] == '\"') && (in_start.current[-1] != '\\')) {
             ++quot_count;
         }
+        if (in_start.current == in_start.start) {
+            /* invalid JSON */
+            return LY_ENOT;
+        }
     } while (quot_count < 2);
 
     /* check if there are any nested extension instances */
