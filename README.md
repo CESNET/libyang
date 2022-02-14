@@ -86,6 +86,7 @@ the `distro` directory.
 * [`getopt-win32`](https://github.com/libimobiledevice-win32/getopt)
 
 The Windows version [does not support plugins](https://github.com/CESNET/libyang/commit/323c31221645052e13db83f7d0e6e51c3ce9d802), and the `yanglint` works in a [non-interactive mode](https://github.com/CESNET/libyang/commit/2e3f935ed6f4a47e65b31de5aeebcd8877d5a09b) only.
+On Windows, all YANG date-and-time values are first converted to UTC (if TZ offset was specified), and then returned with "unspecified timezone".
 
 ## Building
 

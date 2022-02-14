@@ -930,12 +930,12 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
     /* initialize the local timezone */
     tzset();
 
+#ifdef HAVE_TM_GMTOFF
     /* convert */
     if (!localtime_r(&time, &tm)) {
         return LY_ESYS;
     }
 
-#ifdef HAVE_TM_GMTOFF
     /* get timezone offset */
     if (tm.tm_gmtoff == 0) {
         /* time is Zulu (UTC) */
@@ -948,6 +948,11 @@ ly_time_time2str(time_t time, const char *fractions_s, char **str)
     }
     sprintf(zoneshift, "%+03d:%02d", zonediff_h, zonediff_m);
 #else
+    /* convert */
+    if (!gmtime_r(&time, &tm)) {
+        return LY_ESYS;
+    }
+
     (void)zonediff_h;
     (void)zonediff_m;
     sprintf(zoneshift, "-00:00");
