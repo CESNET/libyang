@@ -290,6 +290,25 @@ localtime_r(const time_t *timep, struct tm *result)
 #endif
 #endif
 
+#ifndef HAVE_GMTIME_R
+#ifdef _WIN32
+struct tm *
+gmtime_r(const time_t *timep, struct tm *result)
+{
+    errno_t res = gmtime_s(result, timep);
+
+    if (res) {
+        return NULL;
+    } else {
+        return result;
+    }
+}
+
+#else
+#error No gmtime_r() implementation for this platform is available.
+#endif
+#endif
+
 #ifndef HAVE_DIRNAME
 #ifdef _WIN32
 #include <shlwapi.h>
