@@ -151,6 +151,13 @@ lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void
 {
     LY_ARRAY_COUNT_TYPE u;
 
+    if (instance_p) {
+        *instance_p = NULL;
+    }
+    if (cardinality_p) {
+        *cardinality_p = 0;
+    }
+
     LY_ARRAY_FOR(ext->substmts, u) {
         if (LY_STMT_IS_DATA_NODE(substmt)) {
             if (!LY_STMT_IS_DATA_NODE(ext->substmts[u].stmt)) {
