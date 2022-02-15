@@ -963,7 +963,7 @@ lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
 
     if (toplevel) {
         /* we are done */
-        return LY_SUCCESS;
+        goto result;
     }
 
     /* continue with the next token */
