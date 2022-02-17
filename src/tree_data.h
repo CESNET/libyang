@@ -1171,7 +1171,8 @@ LIBYANG_API_DECL LY_ERR lyd_any_value_str(const struct lyd_node *any, char **val
  * @param[in] value_type Source value type.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type);
+LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value,
+        LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @brief Create a new inner node in the data tree.
@@ -1188,8 +1189,8 @@ LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
-        struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new top-level inner node defined in the given extension instance.
@@ -1220,8 +1221,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, c
  * key-less lists.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
-        struct lyd_node **node, ...);
+LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        ly_bool output, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -1236,8 +1237,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_m
  * by its length. No keys are expected for key-less lists.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
-        struct lyd_node **node, ...);
+LIBYANG_API_DECL LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        ly_bool output, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -1252,8 +1253,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_list_bin(struct lyd_node *parent, const struct l
  * key-less lists.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
-        struct lyd_node **node, ...);
+LIBYANG_API_DECL LY_ERR lyd_new_list_canon(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        ly_bool output, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new top-level list node defined in the given extension instance.
@@ -1285,8 +1286,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, co
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
-        ly_bool output, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char *keys, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -1302,8 +1303,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-        ly_bool output, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const char *val_str, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -1318,8 +1319,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_m
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-        size_t value_len, ly_bool output, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const void *value, size_t value_len, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -1349,7 +1350,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_term_canon(struct lyd_node *parent, const struct
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const char *val_str,
+        struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
@@ -1367,8 +1369,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, co
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-        ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
+        const void *value, ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, ly_bool output, struct lyd_node **node);
 
 /**
  * @brief Create a new top-level any node defined in the given extension instance.
@@ -1384,8 +1386,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_mo
  * @param[out] node The created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value, ly_bool use_value,
-        LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value,
+        ly_bool use_value, LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
 
 /**
  * @brief Create new metadata.
@@ -1401,8 +1403,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, con
  * @param[out] meta Optional created metadata. Must be set if @p parent is NULL.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta);
+LIBYANG_API_DECL LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys_module *module,
+        const char *name, const char *val_str, ly_bool clear_dflt, struct lyd_meta **meta);
 
 /**
  * @brief Create new metadata from an opaque node attribute if possible.
@@ -1416,8 +1418,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *
  * @return LY_ENOT if the attribute could not be parsed into any metadata.
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt, const struct lyd_attr *attr,
-        struct lyd_meta **meta);
+LIBYANG_API_DECL LY_ERR lyd_new_meta2(const struct ly_ctx *ctx, struct lyd_node *parent, ly_bool clear_dflt,
+        const struct lyd_attr *attr, struct lyd_meta **meta);
 
 /**
  * @brief Create a new JSON opaque node in the data tree. To create an XML opaque node, use ::lyd_new_opaq2().
@@ -1579,8 +1581,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_c
  * @param[out] node Optional first created node.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path, const void *value,
-        uint32_t options, struct lyd_node **node);
+LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path,
+        const void *value, uint32_t options, struct lyd_node **node);
 
 /**
  * @ingroup datatree
@@ -1624,7 +1626,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, uint32_t im
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t implicit_options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t implicit_options,
+        struct lyd_node **diff);
 
 /**
  * @brief Add any missing implicit nodes of one module. Default nodes with a false "when" are not added.
@@ -1637,8 +1640,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struc
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options,
-        struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module,
+        uint32_t implicit_options, struct lyd_node **diff);
 
 /**
  * @brief Change the value of a term (leaf or leaf-list) node to a string value.
@@ -1834,8 +1837,8 @@ LIBYANG_API_DECL void lyd_free_attr_siblings(const struct ly_ctx *ctx, struct ly
  * (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value, size_t value_len,
-        const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
+LIBYANG_API_DECL LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, const char *value,
+        size_t value_len, const struct lyd_node *ctx_node, const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to
@@ -2131,7 +2134,8 @@ LIBYANG_API_DECL LY_ERR lyd_merge_module(struct lyd_node **target, const struct 
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options,
+        struct lyd_node **diff);
 
 /**
  * @brief Learn the differences between 2 data trees including all the following siblings.
@@ -2145,7 +2149,8 @@ LIBYANG_API_DECL LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
+LIBYANG_API_DECL LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options,
+        struct lyd_node **diff);
 
 /**
  * @brief Callback for diff nodes.
@@ -2173,8 +2178,8 @@ typedef LY_ERR (*lyd_diff_cb)(const struct lyd_node *diff_node, struct lyd_node 
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
-        lyd_diff_cb diff_cb, void *cb_data);
+LIBYANG_API_DECL LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff,
+        const struct lys_module *mod, lyd_diff_cb diff_cb, void *cb_data);
 
 /**
  * @brief Apply the whole diff tree on a data tree.
@@ -2227,8 +2232,8 @@ LIBYANG_API_DECL LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct 
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
-        lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
+LIBYANG_API_DECL LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff,
+        const struct lys_module *mod, lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
 
 /**
  * @brief Merge 2 diff trees into each other.
@@ -2246,8 +2251,8 @@ LIBYANG_API_DECL LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const stru
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
-        lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
+LIBYANG_API_DECL LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent,
+        const struct lyd_node *src_sibling, lyd_diff_cb diff_cb, void *cb_data, uint16_t options);
 
 /**
  * @brief Merge 2 diffs into each other.
@@ -2517,7 +2522,8 @@ LIBYANG_API_DECL LY_ERR lyd_eval_xpath2(const struct lyd_node *ctx_node, const c
  * @return LY_ENOTFOUND if no nodes in the path were found.
  * @return LY_ERR on other errors.
  */
-LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output, struct lyd_node **match);
+LIBYANG_API_DECL LY_ERR lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
+        struct lyd_node **match);
 
 /**
  * @brief Find the target node of a compiled path (::lyd_value instance-identifier).

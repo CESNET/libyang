@@ -793,7 +793,8 @@ cleanup:
 }
 
 static LY_ERR
-lyd_diff(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, ly_bool nosiblings, struct lyd_node **diff)
+lyd_diff(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, ly_bool nosiblings,
+        struct lyd_node **diff)
 {
     const struct ly_ctx *ctx;
 
