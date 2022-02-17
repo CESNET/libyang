@@ -767,6 +767,8 @@ struct lyd_attr {
  *       2 LYD_WHEN_TRUE    |x|x|x|x|x| | |
  *                          +-+-+-+-+-+-+-+
  *       3 LYD_NEW          |x|x|x|x|x|x|x|
+ *                          +-+-+-+-+-+-+-+
+ *       4 LYD_EXT          |x|x|x|x|x|x|x|
  *     ---------------------+-+-+-+-+-+-+-+
  *
  */
