@@ -47,7 +47,7 @@ test_basics(void **UNUSED(state))
     assert_non_null(set->objs[0]);
 
     /* check the presence of the testing data */
-    assert_int_not_equal(0, ly_set_contains(set, str, &index));
+    assert_int_equal(1, ly_set_contains(set, str, &index));
     assert_int_equal(0, index);
     assert_int_equal(0, ly_set_contains(set, str - 1, NULL));
 
