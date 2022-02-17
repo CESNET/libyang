@@ -2192,7 +2192,7 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
     return LY_ARRAY_COUNT(ext);
 }
 
-const struct lysc_node *
+LIBYANG_API_DEF const struct lysc_node *
 lysc_data_node(const struct lysc_node *schema)
 {
     const struct lysc_node *parent;

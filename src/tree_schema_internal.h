@@ -837,19 +837,6 @@ char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *pare
         size_t buflen);
 
 /**
- * @brief Get nearest @p schema parent (including the node itself) that can be instantiated in data.
- *
- * @param[in] schema Schema node to get the nearest data node for.
- * @return Schema data node, NULL if top-level (in data).
- */
-const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
-
-/**
- * @brief Same as ::lysc_data_node() but never returns the node itself.
- */
-#define lysc_data_parent(SCHEMA) lysc_data_node((SCHEMA) ? (SCHEMA)->parent : NULL)
-
-/**
  * @brief Get format-specific prefix for a module.
  *
  * This function is available for type plugins via ::lyplg_type_get_prefix() API function.
