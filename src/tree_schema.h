@@ -2009,6 +2009,19 @@ struct lysc_module {
             ((lysc_node->nodetype == LYS_LEAFLIST) && !(lysc_node->flags & LYS_CONFIG_W)))) ? 1 : 0)
 
 /**
+ * @brief Get nearest @p schema parent (including the node itself) that can be instantiated in data.
+ *
+ * @param[in] schema Schema node to get the nearest data node for.
+ * @return Schema data node, NULL if top-level (in data).
+ */
+LIBYANG_API_DECL const struct lysc_node *lysc_data_node(const struct lysc_node *schema);
+
+/**
+ * @brief Same as ::lysc_data_node() but never returns the node itself.
+ */
+#define lysc_data_parent(SCHEMA) lysc_data_node((SCHEMA) ? (SCHEMA)->parent : NULL)
+
+/**
  * @brief Check whether the schema node data instance existence depends on any when conditions.
  * This node and any direct parent choice and case schema nodes are also examined for when conditions.
  *
