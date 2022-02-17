@@ -3436,7 +3436,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p_next = child_p->next;
     struct lysp_node_case *cs_p;
-    struct lysc_node_case *compiled_case;
+    struct lysc_node_case *cs_c;
 
     if (child_p->nodetype == LYS_CASE) {
         /* standard case under choice */
@@ -3455,20 +3455,25 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
         LY_CHECK_GOTO(ret = lys_compile_node(ctx, (struct lysp_node *)cs_p, node, 0, child_set), revert_sh_case);
 
         if (((struct lysc_node_choice *)node)->cases) {
-            /* get last case node */
-            compiled_case = (struct lysc_node_case *)((struct lysc_node_choice *)node)->cases->prev;
-
-            if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
-                /* Compiled case node cannot point to his corresponding parsed node
-                 * because it exists temporarily. Therefore, it must be set to NULL.
-                 */
-                compiled_case->priv = NULL;
+            /* find our case node */
+            cs_c = (struct lysc_node_case *)((struct lysc_node_choice *)node)->cases;
+            while (cs_c->name != cs_p->name) {
+                cs_c = (struct lysc_node_case *)cs_c->next;
+                assert(cs_c);
             }
 
-            /* The status is copied from his child and not from his parent as usual. */
-            if (compiled_case->child) {
-                compiled_case->flags &= ~LYS_STATUS_MASK;
-                compiled_case->flags |= LYS_STATUS_MASK & compiled_case->child->flags;
+            if (ctx->ctx->flags & LY_CTX_SET_PRIV_PARSED) {
+                /* compiled case node cannot point to his corresponding parsed node
+                 * because it exists temporarily so it must be set to NULL
+                 */
+                assert(cs_c->priv == cs_p);
+                cs_c->priv = NULL;
+            }
+
+            /* status is copied from his child and not from his parent as usual. */
+            if (cs_c->child) {
+                cs_c->flags &= ~LYS_STATUS_MASK;
+                cs_c->flags |= (LYS_STATUS_MASK & cs_c->child->flags);
             }
         } /* else it was removed by a deviation */
 
