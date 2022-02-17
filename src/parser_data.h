@@ -139,9 +139,8 @@ struct ly_in;
  * but since they are used (as a separate parameter) together in some functions, we want to keep them in a separated
  * range to be able detect that the caller put wrong flags into the parser/validate options parameter. */
 #define LYD_PARSE_ONLY      0x010000        /**< Data will be only parsed and no validation will be performed. When statements
-                                                 are kept unevaluated, union types may not be fully resolved, if-feature
-                                                 statements are not checked, and default values are not added (only the ones
-                                                 parsed are present). */
+                                                 are kept unevaluated, union types may not be fully resolved, and
+                                                 default values are not added (only the ones parsed are present). */
 #define LYD_PARSE_STRICT    0x020000        /**< Instead of silently ignoring data without schema definition raise an error.
                                                  Do not combine with ::LYD_PARSE_OPAQ (except for ::LYD_LYB). */
 #define LYD_PARSE_OPAQ      0x040000        /**< Instead of silently ignoring data without definition, parse them into
