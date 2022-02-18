@@ -211,6 +211,51 @@ binary_base64_validate(const char *value, size_t value_len, const struct lysc_ty
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Remove all newlines from a base64 string if present.
+ *
+ * @param[in,out] value Value, may be dynamic and modified.
+ * @param[in,out] value_len Length of @p value, is updated.
+ * @param[in,out] options Type options, are updated.
+ * @param[out] err Error information.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+binary_base64_newlines(char **value, size_t *value_len, uint32_t *options, struct ly_err_item **err)
+{
+    char *val;
+    size_t len;
+
+    if ((*value_len < 65) || ((*value)[64] != '\n')) {
+        /* no newlines */
+        return LY_SUCCESS;
+    }
+
+    if (!(*options & LYPLG_TYPE_STORE_DYNAMIC)) {
+        /* make the value dynamic so we can modify it */
+        *value = strndup(*value, *value_len);
+        LY_CHECK_RET(!*value, LY_EMEM);
+        *options |= LYPLG_TYPE_STORE_DYNAMIC;
+    }
+
+    val = *value;
+    len = *value_len;
+    while (len > 64) {
+        if (val[64] != '\n') {
+            /* missing, error */
+            return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Newlines are expected every 64 Base64 characters.");
+        }
+
+        /* remove the newline */
+        memmove(val + 64, val + 65, len - 64);
+        --(*value_len);
+        val += 64;
+        len -= 65;
+    }
+
+    return LY_SUCCESS;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, size_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
@@ -252,8 +297,12 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* validate */
     if (format != LY_VALUE_CANON) {
+        /* accept newline every 64 characters (PEM data) */
+        ret = binary_base64_newlines((char **)&value, &value_len, &options, err);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* validate */
         ret = binary_base64_validate(value, value_len, type_bin, err);
         LY_CHECK_GOTO(ret, cleanup);
     }

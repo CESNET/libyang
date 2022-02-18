@@ -125,6 +125,34 @@ test_plugin_store(void **state)
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
+    /* newlines after every 64 chars */
+    val = "MIIEAzCCAuugAwIBAgIURc4sipHvJSlNrQIhRhZilBvV4RowDQYJKoZIhvcNAQEL\n"
+            "BQAwgZAxCzAJBgNVBAYTAkNaMRYwFAYDVQQIDA1Tb3V0aCBNb3JhdmlhMQ0wCwYD\n"
+            "VQQHDARCcm5vMRgwFgYDVQQKDA9DRVNORVQgei5zLnAuby4xDDAKBgNVBAsMA1RN\n"
+            "QzETMBEGA1UEAwwKZXhhbXBsZSBDQTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBs\n"
+            "ZS5vcmcwHhcNMjEwOTAzMTAyMTAxWhcNMzEwOTAxMTAyMTAxWjCBkDELMAkGA1UE\n"
+            "BhMCQ1oxFjAUBgNVBAgMDVNvdXRoIE1vcmF2aWExDTALBgNVBAcMBEJybm8xGDAW\n"
+            "BgNVBAoMD0NFU05FVCB6LnMucC5vLjEMMAoGA1UECwwDVE1DMRMwEQYDVQQDDApl\n"
+            "eGFtcGxlIENBMR0wGwYJKoZIhvcNAQkBFg5jYUBleGFtcGxlLm9yZzCCASIwDQYJ\n"
+            "KoZIhvcNAQEBBQADggEPADCCAQoCggEBAN4Ld3JDDocyy9KXNJhEUPeZpQW3UdUN\n"
+            "Xloeh5n/bxasgThkBuQ7oF/nKyVUe517U1CJA993ZIc0jhIWThAnqXkz70DX5EZ7\n"
+            "ancPd01MidA6T8k1RYYJWr+vyIRYYBYzK7LSnU6wMWqPTgzZB+KMWwb065ooLEB5\n"
+            "XwqAeTIMPLRqM1Galewl4ZSuRJnrXxRjfF3AWNyC9dZw6wIg8cppvoLdBGQiFJQf\n"
+            "9SgiVy+HyedAytFEixqKAAIgQUJwhCgbEd6jGFbeaL8HT4MFp1VmaaUBQMkZj/Gn\n"
+            "KBwCk5BEMu76EN1pzHc4Dd6DabQNGCnsqOPe31yhQGmNFy9R6zNnWZMCAwEAAaNT\n"
+            "MFEwHQYDVR0OBBYEFM7w/pO8vk5oowvWPoCKo0RW/JcnMB8GA1UdIwQYMBaAFM7w\n"
+            "/pO8vk5oowvWPoCKo0RW/JcnMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEL\n"
+            "BQADggEBAG/xfYuRKnCyiwYC/K7kAjHmCNnLCr1mx8P1ECsSJPme3OThDTNeGf8i\n"
+            "N2952tGmMFDa+DaAwPc6Gt3cWTb/NYMTLWlt2yj5rJAcLXxIU0SMafBf+F7E/R8A\n"
+            "b/HDDjs0pQaJ0EJhQJVkMdfj3Wq9l0dJT5iEBUrUQflDufiMdEJEIGKZh86MgzEL\n"
+            "bcn1QX8dlLc91M2OifWStqLzXPicG+jjuoPUceC0flMQDb2qx03sxvJKfYfS5ArA\n"
+            "CqvdWyXLoP7DI9THJrMI/vBHJKpl4Wtmsh2OLn9VHauFMzPSGke5GwjXCpbXGepj\n"
+            "9qWN8Gd/FWgSDH2OBvZ6aHdB1pPjN9k=";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    assert_ptr_equal(value.realtype, lysc_type);
+    type->free(UTEST_LYCTX, &value);
+
     /* empty value */
     val = "";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
