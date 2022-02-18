@@ -723,6 +723,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
                     LOGVAL(set->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
+                    LOG_LOCBACK(1, 0, 0, 0);
                     goto cleanup;
                 }
 
@@ -736,6 +737,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                             LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition cyclic dependency on the node \"%s\".",
                                     tmp_set.val.scnodes[j].scnode->name);
                             ret = LY_EVALID;
+                            LOG_LOCBACK(1, 0, 0, 0);
                             goto cleanup;
                         }
 

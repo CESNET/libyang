@@ -269,8 +269,8 @@ ly_get_log_clb(void)
 }
 
 void
-ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
-        const char *path, const struct ly_in *in, uint64_t line, ly_bool reset)
+ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, const char *path, const struct ly_in *in,
+        uint64_t line, ly_bool reset)
 {
     if (scnode) {
         ly_set_add(&log_location.scnodes, (void *)scnode, 1, NULL);
@@ -304,8 +304,7 @@ ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
 }
 
 void
-ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps,
-        uint32_t path_steps, uint32_t in_steps)
+ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps)
 {
     for (uint32_t i = scnode_steps; i && log_location.scnodes.count; i--) {
         log_location.scnodes.count--;
