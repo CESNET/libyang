@@ -32,6 +32,7 @@
 #include "schema_features.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data_internal.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -269,15 +270,46 @@ cleanup:
 }
 
 static LY_ERR
+lysp_ext_children_dup(const struct ly_ctx *ctx, struct lysp_stmt **child, const struct lysp_stmt *orig_child)
+{
+    LY_LIST_FOR(orig_child, orig_child) {
+        /* new child */
+        if (!*child) {
+            *child = calloc(1, sizeof **child);
+            LY_CHECK_ERR_RET(!*child, LOGMEM(ctx), LY_EMEM);
+        } else {
+            (*child)->next = calloc(1, sizeof **child);
+            LY_CHECK_ERR_RET(!(*child)->next, LOGMEM(ctx), LY_EMEM);
+            *child = (*child)->next;
+        }
+
+        /* fill */
+        DUP_STRING_RET(ctx, orig_child->stmt, (*child)->stmt);
+        (*child)->flags = orig_child->flags;
+        DUP_STRING_RET(ctx, orig_child->arg, (*child)->arg);
+        (*child)->format = orig_child->format;
+        LY_CHECK_RET(ly_dup_prefix_data(ctx, orig_child->format, orig_child->prefix_data, &((*child)->prefix_data)));
+        (*child)->kw = orig_child->kw;
+
+        /* recursive children */
+        LY_CHECK_RET(lysp_ext_children_dup(ctx, &(*child)->child, orig_child->child));
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 lysp_ext_dup(const struct ly_ctx *ctx, struct lysp_ext_instance *ext, const struct lysp_ext_instance *orig_ext)
 {
-    LY_ERR ret = LY_SUCCESS;
-
     *ext = *orig_ext;
-    DUP_STRING(ctx, orig_ext->name, ext->name, ret);
-    DUP_STRING(ctx, orig_ext->argument, ext->argument, ret);
+    DUP_STRING_RET(ctx, orig_ext->name, ext->name);
+    DUP_STRING_RET(ctx, orig_ext->argument, ext->argument);
+    ext->parsed = NULL;
 
-    return ret;
+    ext->child = NULL;
+    LY_CHECK_RET(lysp_ext_children_dup(ctx, &ext->child, orig_ext->child));
+
+    return LY_SUCCESS;
 }
 
 static LY_ERR
