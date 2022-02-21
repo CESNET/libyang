@@ -274,6 +274,8 @@ lysp_ext_children_dup(const struct ly_ctx *ctx, struct lysp_stmt **child, const 
 {
     struct lysp_stmt *ch;
 
+    assert(!*child);
+
     LY_LIST_FOR(orig_child, orig_child) {
         /* new child */
         if (!*child) {
