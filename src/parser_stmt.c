@@ -2344,6 +2344,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **resul
         ret = lysp_stmt_choice(&pctx, stmt, NULL, (struct lysp_node **)result);
         break;
     case LY_STMT_CONFIG:
+        assert(*result);
         ret = lysp_stmt_config(&pctx, stmt, *(uint16_t **)result, exts);
         break;
     case LY_STMT_CONTACT:
