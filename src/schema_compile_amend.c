@@ -272,27 +272,29 @@ cleanup:
 static LY_ERR
 lysp_ext_children_dup(const struct ly_ctx *ctx, struct lysp_stmt **child, const struct lysp_stmt *orig_child)
 {
+    struct lysp_stmt *ch;
+
     LY_LIST_FOR(orig_child, orig_child) {
         /* new child */
         if (!*child) {
-            *child = calloc(1, sizeof **child);
-            LY_CHECK_ERR_RET(!*child, LOGMEM(ctx), LY_EMEM);
+            *child = ch = calloc(1, sizeof *ch);
+            LY_CHECK_ERR_RET(!ch, LOGMEM(ctx), LY_EMEM);
         } else {
-            (*child)->next = calloc(1, sizeof **child);
-            LY_CHECK_ERR_RET(!(*child)->next, LOGMEM(ctx), LY_EMEM);
-            *child = (*child)->next;
+            ch->next = calloc(1, sizeof *ch);
+            LY_CHECK_ERR_RET(!ch->next, LOGMEM(ctx), LY_EMEM);
+            ch = ch->next;
         }
 
         /* fill */
-        DUP_STRING_RET(ctx, orig_child->stmt, (*child)->stmt);
-        (*child)->flags = orig_child->flags;
-        DUP_STRING_RET(ctx, orig_child->arg, (*child)->arg);
-        (*child)->format = orig_child->format;
-        LY_CHECK_RET(ly_dup_prefix_data(ctx, orig_child->format, orig_child->prefix_data, &((*child)->prefix_data)));
-        (*child)->kw = orig_child->kw;
+        DUP_STRING_RET(ctx, orig_child->stmt, ch->stmt);
+        ch->flags = orig_child->flags;
+        DUP_STRING_RET(ctx, orig_child->arg, ch->arg);
+        ch->format = orig_child->format;
+        LY_CHECK_RET(ly_dup_prefix_data(ctx, orig_child->format, orig_child->prefix_data, &(ch->prefix_data)));
+        ch->kw = orig_child->kw;
 
         /* recursive children */
-        LY_CHECK_RET(lysp_ext_children_dup(ctx, &(*child)->child, orig_child->child));
+        LY_CHECK_RET(lysp_ext_children_dup(ctx, &ch->child, orig_child->child));
     }
 
     return LY_SUCCESS;
@@ -1544,8 +1546,6 @@ lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn)
 void
 lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
 {
-    LY_ARRAY_COUNT_TYPE u;
-
     if (!dev_pnode) {
         return;
     }
@@ -1590,12 +1590,6 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
     default:
         LOGINT(ctx);
         return;
-    }
-
-    /* extension parsed tree and children were not duplicated */
-    LY_ARRAY_FOR(dev_pnode->exts, u) {
-        dev_pnode->exts[u].parsed = NULL;
-        dev_pnode->exts[u].child = NULL;
     }
 
     lysp_node_free((struct ly_ctx *)ctx, dev_pnode);
