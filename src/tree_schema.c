@@ -898,7 +898,7 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
 
     if (LYS_IS_SINGLE_DEP_SET(mod)) {
         /* is already in a separate dep set */
-        if (!lys_has_groupings(mod) && !mod->parsed->features) {
+        if (!lys_has_dep_mods(mod)) {
             /* break the dep set here, no modules depend on this one */
             return LY_SUCCESS;
         }
@@ -933,11 +933,9 @@ lys_unres_dep_sets_create_mod_r(struct lys_module *mod, struct ly_set *ctx_set, 
         imports = mod->parsed->includes[v].submodule->imports;
         LY_ARRAY_FOR(imports, u) {
             mod2 = imports[u].module;
-            if (LYS_IS_SINGLE_DEP_SET(mod2)) {
-                if (!lys_has_groupings(mod2) && !mod2->parsed->features) {
-                    /* break the dep set here, no modules depend on this one */
-                    continue;
-                }
+            if (LYS_IS_SINGLE_DEP_SET(mod2) && !lys_has_dep_mods(mod2)) {
+                /* break the dep set here, no modules depend on this one */
+                continue;
             }
 
             LY_CHECK_RET(lys_unres_dep_sets_create_mod_r(imports[u].module, ctx_set, dep_set, aux_set));

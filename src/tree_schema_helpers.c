@@ -2243,16 +2243,31 @@ lys_has_compiled(const struct lys_module *mod)
 }
 
 ly_bool
-lys_has_groupings(const struct lys_module *mod)
+lys_has_dep_mods(const struct lys_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
 
-    if (mod->parsed->groupings) {
+    /* features */
+    if (mod->parsed->features) {
         return 1;
     }
 
+    /* groupings */
+    if (mod->parsed->groupings) {
+        return 1;
+    }
     LY_ARRAY_FOR(mod->parsed->includes, u) {
         if (mod->parsed->includes[u].submodule->groupings) {
+            return 1;
+        }
+    }
+
+    /* augments (adding nodes with leafrefs) */
+    if (mod->parsed->augments) {
+        return 1;
+    }
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        if (mod->parsed->includes[u].submodule->augments) {
             return 1;
         }
     }

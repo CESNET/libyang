@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -915,7 +915,7 @@ ly_bool lys_has_compiled(const struct lys_module *mod);
  * @param[in] mod Module to examine.
  * @return Whether it has groupings or not.
  */
-ly_bool lys_has_groupings(const struct lys_module *mod);
+ly_bool lys_has_dep_mods(const struct lys_module *mod);
 
 /**
  * @brief Learn whether the module qualifies for a single dep set with only this module or not.
