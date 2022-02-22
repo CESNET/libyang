@@ -2771,6 +2771,10 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
         LOGERR(LYD_CTX(sibling), LY_EINVAL, "Can be used only for user-ordered nodes.");
         return LY_EINVAL;
     }
+    if (lysc_is_key(sibling->schema)) {
+        LOGERR(LYD_CTX(sibling), LY_EINVAL, "Cannot insert before keys.");
+        return LY_EINVAL;
+    }
 
     lyd_unlink_tree(node);
     lyd_insert_before_node(sibling, node);
@@ -2789,6 +2793,10 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 
     if (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER)) {
         LOGERR(LYD_CTX(sibling), LY_EINVAL, "Can be used only for user-ordered nodes.");
+        return LY_EINVAL;
+    }
+    if (sibling->next && lysc_is_key(sibling->next->schema)) {
+        LOGERR(LYD_CTX(sibling), LY_EINVAL, "Cannot insert before keys.");
         return LY_EINVAL;
     }
 
