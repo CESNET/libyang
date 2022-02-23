@@ -432,6 +432,159 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct
     }
 }
 
+/**
+ * @brief Check list node parsed into an opaque node for the reason.
+ *
+ * @param[in] node Opaque node.
+ * @param[in] snode Schema node of @p opaq.
+ * @return LY_SUCCESS if the node is valid;
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *snode)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_set key_set = {0};
+    const struct lysc_node *key = NULL;
+    const struct lyd_node *child;
+    const struct lyd_node_opaq *opaq_k;
+    uint32_t i;
+
+    assert(!node->schema);
+
+    /* get all keys into a set */
+    while ((key = lys_getnext(key, snode, NULL, 0)) && (snode->flags & LYS_KEY)) {
+        LY_CHECK_GOTO(ret = ly_set_add(&key_set, (void *)snode, 1, NULL), cleanup);
+    }
+
+    LY_LIST_FOR(lyd_child(node), child) {
+        if (child->schema) {
+            LOGERR(LYD_CTX(node), LY_EINVAL, "Unexpected node %s \"%s\".", lys_nodetype2str(child->schema->nodetype),
+                    LYD_NAME(child));
+            ret = LY_EINVAL;
+            goto cleanup;
+        }
+
+        opaq_k = (struct lyd_node_opaq *)child;
+
+        /* find the key schema node */
+        for (i = 0; i < key_set.count; ++i) {
+            key = key_set.snodes[i];
+            if (!strcmp(key->name, opaq_k->name.name)) {
+                break;
+            }
+        }
+        if (i == key_set.count) {
+            /* some other node, skip */
+            continue;
+        }
+
+        /* key found */
+        ly_set_rm_index(&key_set, i, NULL);
+
+        /* check value */
+        ret = lys_value_validate(LYD_CTX(node), key, opaq_k->value, strlen(opaq_k->value), opaq_k->format,
+                opaq_k->val_prefix_data);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    if (key_set.count) {
+        /* missing keys */
+        LOGVAL(LYD_CTX(node), LY_VCODE_NOKEY, key_set.snodes[0]->name);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+cleanup:
+    ly_set_erase(&key_set, NULL);
+    return ret;
+}
+
+LIBYANG_API_DEF LY_ERR
+lyd_parse_opaq_error(const struct lyd_node *node)
+{
+    const struct ly_ctx *ctx;
+    const struct lyd_node_opaq *opaq;
+    const struct lyd_node *parent;
+    const struct lys_module *mod;
+    const struct lysc_node *snode;
+
+    LY_CHECK_ARG_RET(LYD_CTX(node), node, !node->schema, !lyd_parent(node) || lyd_parent(node)->schema, LY_EINVAL);
+
+    ctx = LYD_CTX(node);
+    opaq = (struct lyd_node_opaq *)node;
+    parent = lyd_parent(node);
+
+    /* is always filled by parsers */
+    LY_CHECK_ARG_RET(ctx, opaq->name.module_ns, LY_EINVAL);
+
+    /* module */
+    switch (opaq->format) {
+    case LY_VALUE_XML:
+        if (!parent || strcmp(opaq->name.module_ns, parent->schema->module->ns)) {
+            mod = ly_ctx_get_module_implemented_ns(ctx, opaq->name.module_ns);
+            if (!mod) {
+                LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module with namespace \"%s\" in the context.",
+                        opaq->name.module_ns);
+                return LY_EVALID;
+            }
+        } else {
+            /* inherit */
+            mod = parent->schema->module;
+        }
+        break;
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+        if (!parent || strcmp(opaq->name.module_name, parent->schema->module->name)) {
+            mod = ly_ctx_get_module_implemented(ctx, opaq->name.module_name);
+            if (!mod) {
+                LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module named \"%s\" in the context.", opaq->name.module_name);
+                return LY_EVALID;
+            }
+        } else {
+            /* inherit */
+            mod = parent->schema->module;
+        }
+        break;
+    default:
+        LOGERR(ctx, LY_EINVAL, "Unsupported value format.");
+        return LY_EINVAL;
+    }
+
+    /* schema */
+    snode = lys_find_child(parent ? parent->schema : NULL, mod, opaq->name.name, 0, 0, 0);
+    if (!snode) {
+        if (parent) {
+            LOGVAL(ctx, LYVE_REFERENCE, "Node \"%s\" not found as a child of \"%s\" node.", opaq->name.name,
+                    LYD_NAME(parent));
+        } else {
+            LOGVAL(ctx, LYVE_REFERENCE, "Node \"%s\" not found in the \"%s\" module.", opaq->name.name, mod->name);
+        }
+        return LY_EVALID;
+    }
+
+    if (snode->nodetype & LYD_NODE_TERM) {
+        /* leaf / leaf-list */
+        LY_CHECK_RET(lys_value_validate(ctx, snode, opaq->value, strlen(opaq->value), opaq->format, opaq->val_prefix_data));
+    } else if (snode->nodetype == LYS_LIST) {
+        /* list */
+        LY_CHECK_RET(lyd_parse_opaq_list_error(node, snode));
+    } else if (snode->nodetype & LYD_NODE_INNER) {
+        /* inner node */
+        if (opaq->value) {
+            LOGVAL(ctx, LYVE_DATA, "Invalid value \"%s\" for %s \"%s\".", opaq->value,
+                    lys_nodetype2str(snode->nodetype), snode->name);
+            return LY_EVALID;
+        }
+    } else {
+        LOGERR(ctx, LY_EINVAL, "Unexpected opaque schema node %s \"%s\".", lys_nodetype2str(snode->nodetype), snode->name);
+        return LY_EINVAL;
+    }
+
+    LOGERR(ctx, LY_EINVAL, "Unexpected valid opaque node %s \"%s\".", lys_nodetype2str(snode->nodetype), snode->name);
+    return LY_EINVAL;
+}
+
 LIBYANG_API_DEF const char *
 lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
 {

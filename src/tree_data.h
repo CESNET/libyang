@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1104,6 +1104,17 @@ LIBYANG_API_DECL struct lyd_node *lyd_first_sibling(const struct lyd_node *node)
  * @return -1 on error.
  */
 LIBYANG_API_DECL int lyd_lyb_data_length(const char *data);
+
+/**
+ * @brief Check node parsed into an opaque node for the reason (error) why it could not be parsed as data node.
+ *
+ * The node is expected to be produced by a parser and must either have no parent or a data node parent (not opaque).
+ *
+ * @param[in] node Opaque node to check.
+ * @return LY_EINVAL if @p node is in some way unexpected (even valid);
+ * @return LY_ERR value of the reason.
+ */
+LIBYANG_API_DECL LY_ERR lyd_parse_opaq_error(const struct lyd_node *node);
 
 /**
  * @brief Get the (canonical) value of a lyd_value.
