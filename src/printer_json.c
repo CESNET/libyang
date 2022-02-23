@@ -586,8 +586,8 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
     case LYD_ANYDATA_JSON:
         /* print without escaping special characters */
         if (any->schema->nodetype == LYS_ANYXML) {
-            /* print as a string */
-            ly_print_(pctx->out, "\"%s\"", any->value.str);
+            /* print as a raw JSON */
+            ly_print_(pctx->out, "%s", any->value.str);
         } else if (any->value.str[0]) {
             /* print with indent */
             ly_print_(pctx->out, "%*s%s", INDENT, any->value.str);
