@@ -37,6 +37,7 @@ setup(void **state)
             "}"
             "container cp {presence \"container switch\"; leaf y {type string;} leaf z {type int8;}}"
             "anydata any {config false;}"
+            "anyxml axml;"
             "leaf-list ll1 { type uint8; }"
             "leaf foo2 { type string; default \"default-val\"; }"
             "leaf foo3 { type uint32; }"
@@ -246,7 +247,7 @@ test_anydata(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
     tree = tree->next;
-    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_SET_ENUM | LYS_CONFIG_R | LYS_YIN_ARGUMENT, 1, "any",
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
@@ -255,8 +256,97 @@ test_anydata(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
     tree = tree->next;
-    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_SET_ENUM | LYS_CONFIG_R | LYS_YIN_ARGUMENT, 1, "any",
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:any\":[null]}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
+            1, LYS_ANYDATA, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+}
+
+static void
+test_anyxml(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+
+    data = "{\"a:axml\":\"some-value in string\"}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":\"\"}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":55}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":false}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":null}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":[null,true,false]}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":[null,true,{\"name\":[25,40, false]}]}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    /* same as anydata tests */
+    data = "{\"a:axml\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    data = "{\"a:axml\":{}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+    CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_W, 1, "axml", 1, LYS_ANYXML, 0, 0, NULL, 0);
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 }
@@ -655,6 +745,7 @@ main(void)
         UTEST(test_leaf, setup),
         UTEST(test_leaflist, setup),
         UTEST(test_anydata, setup),
+        UTEST(test_anyxml, setup),
         UTEST(test_list, setup),
         UTEST(test_container, setup),
         UTEST(test_opaq, setup),
