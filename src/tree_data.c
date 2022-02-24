@@ -807,8 +807,6 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
     any->prev = &any->node;
     any->flags = LYD_NEW;
 
-    /* TODO: convert XML/JSON strings into a opaq data tree */
-
     if (use_value) {
         switch (value_type) {
         case LYD_ANYDATA_DATATREE:
@@ -817,7 +815,7 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_XML:
         case LYD_ANYDATA_JSON:
-            lydict_insert_zc(schema->module->ctx, (void *)value, &any->value.str);
+            LY_CHECK_ERR_RET(lydict_insert_zc(schema->module->ctx, (void *)value, &any->value.str), free(any), LY_EMEM);
             break;
         case LYD_ANYDATA_LYB:
             any->value.mem = (void *)value;
