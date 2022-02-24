@@ -1375,7 +1375,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, co
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value for the node. Expected type is determined by @p value_type.
- * @param[in] use_value Whether to directly take @p value and assign it to the node or make a copy.
+ * @param[in] use_value Whether to use dynamic @p value or make a copy.
  * @param[in] value_type Type of the provided value in @p value.
  * @param[in] output Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
  * taken into consideration. Otherwise, the output's data node is going to be created.
@@ -1394,7 +1394,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_mo
  * @param[in] ext Extension instance where the any node being created is defined.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value for the node. Expected type is determined by @p value_type.
- * @param[in] use_value Whether to directly take @p value and assign it to the node or make a copy.
+ * @param[in] use_value Whether to use dynamic @p value or make a copy.
  * @param[in] value_type Type of the provided value in @p value.
  * @param[out] node The created node.
  * @return LY_ERR value.

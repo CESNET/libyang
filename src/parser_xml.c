@@ -12,12 +12,15 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "in_internal.h"
@@ -491,7 +494,7 @@ static LY_ERR
 lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret = LY_SUCCESS, r;
-    const char *prefix, *name, *val;
+    const char *prefix, *name;
     size_t prefix_len, name_len;
     struct lyxml_ctx *xmlctx;
     const struct ly_ctx *ctx;
@@ -506,6 +509,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     LY_VALUE_FORMAT format;
     uint32_t getnext_opts;
     ly_bool parse_subtree;
+    char *val;
 
     assert(parent || first_p);
 
@@ -748,14 +752,15 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
 
         if (!xmlctx->ws_only) {
             /* use an arbitrary text value for anyxml */
-            lydict_insert(xmlctx->ctx, xmlctx->value, xmlctx->value_len, &val);
+            val = strndup(xmlctx->value, xmlctx->value_len);
+            LY_CHECK_ERR_GOTO(!val, LOGMEM(xmlctx->ctx); ret = LY_EMEM, error);
 
             /* parser next */
             LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
 
             /* create node */
             ret = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, &node);
-            LY_CHECK_GOTO(ret, error);
+            LY_CHECK_ERR_GOTO(ret, free(val), error);
         } else {
             /* parser next */
             LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);

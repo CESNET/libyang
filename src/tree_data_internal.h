@@ -270,7 +270,7 @@ LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_pred
  * @param[in] schema Schema node of the new data node.
  * @param[in] value Value of the any node.
  * @param[in] value_type Value type of the value.
- * @param[in] use_value Whether to directly assign (eat) the value or duplicate it.
+ * @param[in] use_value Whether to use dynamic @p value or duplicate it.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
