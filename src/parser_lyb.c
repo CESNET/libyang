@@ -1120,7 +1120,6 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     struct lyd_meta *meta = NULL;
     LYD_ANYDATA_VALUETYPE value_type;
     char *value = NULL;
-    const char *val_dict;
     uint32_t flags;
     const struct ly_ctx *ctx = lybctx->lybctx->ctx;
 
@@ -1155,25 +1154,12 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     switch (value_type) {
     case LYD_ANYDATA_LYB:
     case LYD_ANYDATA_DATATREE:
-        /* use the value directly */
-        ret = lyd_create_any(snode, value, value_type, 1, &node);
-        LY_CHECK_GOTO(ret, error);
-
-        break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
-        /* value is expected to be in the dictionary */
-        ret = lydict_insert_zc(ctx, value, &val_dict);
-        value = NULL;
+        /* use the value directly */
+        ret = lyd_create_any(snode, value, value_type, 1, &node);
         LY_CHECK_GOTO(ret, error);
-
-        /* use the value in the dictionary */
-        ret = lyd_create_any(snode, val_dict, value_type, 1, &node);
-        if (ret) {
-            lydict_remove(ctx, val_dict);
-            goto error;
-        }
         break;
     default:
         LOGINT(ctx);
