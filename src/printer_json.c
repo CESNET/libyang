@@ -531,16 +531,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
     struct lyd_node *iter;
     uint32_t prev_opts, prev_lo;
 
-    /* anyxml - printed as name/value pair;
-     * anydata - printed as an object */
-
-    if (!any->value.tree) {
-        /* no content */
-        if (any->schema->nodetype == LYS_ANYXML) {
-            ly_print_(pctx->out, "null");
-        }
-        return LY_SUCCESS;
-    }
+    assert(any->schema->nodetype & LYD_NODE_ANY);
 
     if (any->value_type == LYD_ANYDATA_LYB) {
         uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
@@ -562,48 +553,57 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
 
     switch (any->value_type) {
     case LYD_ANYDATA_DATATREE:
-        if (any->schema->nodetype == LYS_ANYXML) {
-            /* print always as a string */
-            ly_print_(pctx->out, "\"%s", DO_FORMAT ? "\n" : "");
-        }
+        /* print as an object */
+        ly_print_(pctx->out, "{%s", DO_FORMAT ? "\n" : "");
+        LEVEL_INC;
 
         /* close opening tag and print data */
         prev_opts = pctx->options;
         pctx->options &= ~LYD_PRINT_WITHSIBLINGS;
-
         LY_LIST_FOR(any->value.tree, iter) {
             ret = json_print_node(pctx, iter);
             LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
         }
-
         pctx->options = prev_opts;
 
-        if (any->schema->nodetype == LYS_ANYXML) {
-            /* terminate the string */
-            ly_print_(pctx->out, "\"");
+        /* terminate the object */
+        if (DO_FORMAT) {
+            ly_print_(pctx->out, "\n%*s}", INDENT);
+        } else {
+            ly_print_(pctx->out, "}");
         }
+        LEVEL_DEC;
         break;
     case LYD_ANYDATA_JSON:
-        /* print without escaping special characters */
-        if (any->schema->nodetype == LYS_ANYXML) {
-            /* print as a raw JSON */
-            ly_print_(pctx->out, "%s", any->value.str);
-        } else if (any->value.str[0]) {
-            /* print with indent */
-            ly_print_(pctx->out, "%*s%s", INDENT, any->value.str);
+        if (!any->value.json) {
+            /* no content */
+            if (any->schema->nodetype == LYS_ANYXML) {
+                ly_print_(pctx->out, "null");
+            } else {
+                ly_print_(pctx->out, "{}");
+            }
+        } else {
+            /* print without escaping special characters */
+            ly_print_(pctx->out, "%s", any->value.json);
         }
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
-        if (any->schema->nodetype == LYS_ANYXML) {
+        if (!any->value.str) {
+            /* no content */
+            if (any->schema->nodetype == LYS_ANYXML) {
+                ly_print_(pctx->out, "null");
+            } else {
+                ly_print_(pctx->out, "{}");
+            }
+        } else {
             /* print as a string */
             ly_print_(pctx->out, "\"%s\"", any->value.str);
-            break;
         }
-    /* fallthrough */
+        break;
     case LYD_ANYDATA_LYB:
-        /* JSON and LYB format is not supported */
-        LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
+        /* LYB format is not supported */
+        LOGWRN(pctx->ctx, "Unable to print anydata content (type %d) as JSON.", any->value_type);
         break;
     }
 
@@ -611,7 +611,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
 }
 
 /**
- * @brief Print content of a single container/list/anydata data node including its metadata.
+ * @brief Print content of a single container/list data node including its metadata.
  * The envelope specific to nodes are expected to be printed by the caller.
  *
  * @param[in] ctx JSON printer context.
@@ -631,8 +631,6 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     }
     if (node->meta || child) {
         has_content = 1;
-    } else if (node->schema && (node->schema->nodetype & LYD_NODE_ANY) && ((struct lyd_node_any *)node)->value.tree) {
-        has_content = 1;
     }
 
     if ((node->schema && (node->schema->nodetype == LYS_LIST)) ||
@@ -647,14 +645,9 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 
     json_print_attributes(pctx, node, 1);
 
-    if (!node->schema || !(node->schema->nodetype & LYS_ANYDATA)) {
-        /* print children */
-        LY_LIST_FOR(lyd_child(node), child) {
-            LY_CHECK_RET(json_print_node(pctx, child));
-        }
-    } else {
-        /* anydata */
-        json_print_any_content(pctx, (struct lyd_node_any *)node);
+    /* print children */
+    LY_LIST_FOR(lyd_child(node), child) {
+        LY_CHECK_RET(json_print_node(pctx, child));
     }
 
     LEVEL_DEC;
@@ -685,14 +678,14 @@ json_print_container(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 }
 
 /**
- * @brief Print anyxml data node including its metadata.
+ * @brief Print anydata/anyxml data node including its metadata.
  *
  * @param[in] ctx JSON printer context.
  * @param[in] node Data node to print.
  * @return LY_ERR value.
  */
 static int
-json_print_anyxml(struct jsonpr_ctx *pctx, const struct lyd_node *node)
+json_print_any(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
     LY_CHECK_RET(json_print_member(pctx, node, 0));
     LY_CHECK_RET(json_print_any_content(pctx, (struct lyd_node_any *)node));
@@ -912,7 +905,6 @@ json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         case LYS_RPC:
         case LYS_ACTION:
         case LYS_NOTIF:
-        case LYS_ANYDATA:
         case LYS_CONTAINER:
             LY_CHECK_RET(json_print_container(pctx, node));
             break;
@@ -923,8 +915,9 @@ json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         case LYS_LIST:
             LY_CHECK_RET(json_print_leaf_list(pctx, node));
             break;
+        case LYS_ANYDATA:
         case LYS_ANYXML:
-            LY_CHECK_RET(json_print_anyxml(pctx, node));
+            LY_CHECK_RET(json_print_any(pctx, node));
             break;
         default:
             LOGINT(pctx->ctx);
