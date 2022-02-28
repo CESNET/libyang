@@ -498,9 +498,6 @@ lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_VALUE_FORMAT format, void **p
     case LY_VALUE_XML:
         /* read count */
         lyb_read(&count, 1, lybctx);
-        if (!count) {
-            return LY_SUCCESS;
-        }
 
         /* read all NS elements */
         LY_CHECK_GOTO(ret = ly_set_new(&set), cleanup);
@@ -510,6 +507,10 @@ lyb_parse_prefix_data(struct lylyb_ctx *lybctx, LY_VALUE_FORMAT format, void **p
 
             /* prefix */
             LY_CHECK_GOTO(ret = lyb_read_string(&ns->prefix, sizeof(uint16_t), lybctx), cleanup);
+            if (!strlen(ns->prefix)) {
+                free(ns->prefix);
+                ns->prefix = NULL;
+            }
 
             /* namespace */
             LY_CHECK_GOTO(ret = lyb_read_string(&ns->uri, sizeof(uint16_t), lybctx), cleanup);
