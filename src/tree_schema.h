@@ -2201,7 +2201,8 @@ LIBYANG_API_DECL LY_ERR lys_identity_iffeature_value(const struct lysc_ident *id
  * @param[in,out] idx Submodule index, set to 0 on first call.
  * @return Next found feature, NULL if the last has already been returned.
  */
-LIBYANG_API_DECL struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod, uint32_t *idx);
+LIBYANG_API_DECL struct lysp_feature *lysp_feature_next(const struct lysp_feature *last, const struct lysp_module *pmod,
+        uint32_t *idx);
 
 /**
  * @brief Get pointer to the storage of the specified substatement in the given extension instance.
@@ -2273,8 +2274,8 @@ LIBYANG_API_DECL LY_ERR lys_find_expr_atoms(const struct lysc_node *ctx_node, co
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LIBYANG_API_DECL LY_ERR lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath, uint32_t options,
-        struct ly_set **set);
+LIBYANG_API_DECL LY_ERR lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *xpath,
+        uint32_t options, struct ly_set **set);
 
 /**
  * @brief Get all the schema nodes that are required for @p path to be evaluated (atoms).
@@ -2296,8 +2297,8 @@ LIBYANG_API_DECL LY_ERR lys_find_lypath_atoms(const struct ly_path *path, struct
  * @param[out] set Set of found atoms (schema nodes).
  * @return LY_ERR value on error.
  */
-LIBYANG_API_DECL LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path, ly_bool output,
-        struct ly_set **set);
+LIBYANG_API_DECL LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path,
+        ly_bool output, struct ly_set **set);
 
 /**
  * @brief Get a schema node based on the given data path (JSON format, see @ref howtoXPath).
@@ -2308,8 +2309,8 @@ LIBYANG_API_DECL LY_ERR lys_find_path_atoms(const struct ly_ctx *ctx, const stru
  * @param[in] output Search operation output instead of input.
  * @return Found schema node or NULL.
  */
-LIBYANG_API_DECL const struct lysc_node *lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *path,
-        ly_bool output);
+LIBYANG_API_DECL const struct lysc_node *lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+        const char *path, ly_bool output);
 
 /**
  * @brief Types of the different schema paths.
