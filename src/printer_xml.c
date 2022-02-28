@@ -148,6 +148,11 @@ xml_print_ns_prefix_data(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, void *p
         set = prefix_data;
         for (i = 0; i < set->count; ++i) {
             ns = set->objs[i];
+            if (!ns->prefix) {
+                /* default namespace is not for the element */
+                continue;
+            }
+
             xml_print_ns(pctx, ns->uri, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : ns->prefix, prefix_opts);
         }
         break;
