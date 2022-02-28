@@ -2410,6 +2410,8 @@ LIBYANG_API_DECL LY_ERR lys_feature_value(const struct lys_module *module, const
  * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
  *
+ * The order of iteration is schema order.
+ *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing.
  * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
@@ -2435,6 +2437,8 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext(const struct lysc_node *las
  * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
  * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
+ *
+ * The order of iteration is schema order.
  *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing.

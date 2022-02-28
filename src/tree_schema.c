@@ -239,6 +239,8 @@ lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc
  * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
  *
+ * The order of iteration is schema order.
+ *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing.
  * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
