@@ -941,6 +941,18 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
             ns_list = *prefix_data_p;
         }
 
+        /* store default namespace */
+        ns = lyxml_ns_get(prefix_data, NULL, 0);
+        if (ns) {
+            new_ns = calloc(1, sizeof *new_ns);
+            LY_CHECK_ERR_GOTO(!new_ns, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+            LY_CHECK_GOTO(ret = ly_set_add(ns_list, new_ns, 1, NULL), cleanup);
+
+            new_ns->prefix = NULL;
+            new_ns->uri = strdup(ns->uri);
+            LY_CHECK_ERR_GOTO(!new_ns->uri, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        }
+
         /* add all used prefixes */
         value_end = (char *)value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {
