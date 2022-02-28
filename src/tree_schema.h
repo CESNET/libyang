@@ -2399,50 +2399,38 @@ struct lys_module {
 LIBYANG_API_DECL LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
 
 /**
- * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
- * be from an augment.
+ * @brief Get next schema (sibling) node element in the schema order that can be instantiated in a data tree.
+ * Returned node may be from an augment.
  *
- * ::lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
- * and function starts returning i) the first \p parent's child or ii) the first top level element of the \p module.
- * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
- * \p parent and \p module parameters.
+ * ::lys_getnext() is supposed to be called sequentially. In the first call, the @p last parameter is usually NULL
+ * and function starts returning 1) the first @p parent child (if it is set) or 2) the first top level element of
+ * @p module. Consequent calls should provide the previously returned node as @p last and the same @p parent and
+ * @p module parameters.
  *
  * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
- * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
+ * data nodes in a data tree. By setting some @p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
  *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
- * @param[in] parent Parent of the subtree where the function starts processing.
- * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
- * module must be specified.
+ * @param[in] parent Parent of the subtree to iterate over. If set, @p module is ignored.
+ * @param[in] module Module of the top level elements to iterate over. If @p parent is NULL, it must be specified.
  * @param[in] options [ORed options](@ref sgetnextflags).
- * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
+ * @return Next schema tree node, NULL in case there are no more.
  */
 LIBYANG_API_DECL const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct lysc_node *parent,
         const struct lysc_module *module, uint32_t options);
 
 /**
- * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree.
+ * @brief Get next schema (sibling) node element in the schema order of an extension that can be instantiated in
+ * a data tree.
  *
- * In contrast to ::lys_getnext(), ::lys_getnext_ext() is limited by the given @p ext instance as a schema tree root.
- * If the extension does not contain any schema node, NULL is returned. If the @p parent is provided, the functionality
- * is completely the same as ::lys_getnext().
- *
- * ::lys_getnext_ext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
- * and function starts returning i) the first \p parent's child or ii) the first top level element of the given  @p ext
- * instance. Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
- * \p parent and \p ext parameters.
- *
- * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
- * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
- * all the schema nodes are iteratively returned.
+ * It is just ::lys_getnext() for extensions.
  *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
- * @param[in] parent Parent of the subtree where the function starts processing.
- * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
- * the \p parent must be NULL. anyway, at least one of @p parent and @p ext parameters must be specified.
+ * @param[in] parent Parent of the subtree to iterate over. If set, @p ext is ignored.
+ * @param[in] ext Extension instance with schema nodes to iterate over. If @p parent is NULL, it must be specified.
  * @param[in] options [ORed options](@ref sgetnextflags).
- * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
+ * @return Next schema tree node, NULL in case there are no more.
  */
 LIBYANG_API_DECL const struct lysc_node *lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent,
         const struct lysc_ext_instance *ext, uint32_t options);
