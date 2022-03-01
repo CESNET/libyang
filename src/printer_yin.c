@@ -881,7 +881,7 @@ yprp_list(struct lys_ypr_ctx *pctx, const struct lysp_node *node)
         ypr_substmt(pctx, LY_STMT_UNIQUE, u, list->uniques[u].str, list->exts);
     }
 
-    ypr_config(pctx, node->flags, node->exts, NULL);
+    ypr_config(pctx, node->flags, node->exts, &flag);
 
     if (list->flags & LYS_SET_MIN) {
         ypr_unsigned(pctx, LY_STMT_MIN_ELEMENTS, 0, list->exts, list->min);
