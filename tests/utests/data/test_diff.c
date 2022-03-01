@@ -18,47 +18,46 @@
 #include "libyang.h"
 
 #define CHECK_PARSE_LYD(INPUT, MODEL) \
-                CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, MODEL)
+        CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, LYD_PARSE_ONLY, 0, LY_SUCCESS, MODEL)
 
 #define CHECK_LYD_STRING(IN_MODEL, TEXT) \
-                CHECK_LYD_STRING_PARAM(IN_MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS)
+        CHECK_LYD_STRING_PARAM(IN_MODEL, TEXT, LYD_XML, LYD_PRINT_WITHSIBLINGS)
 
 #define CHECK_PARSE_LYD_DIFF(INPUT_1, INPUT_2, OUT_MODEL) \
-                assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, 0, &OUT_MODEL));\
-                assert_non_null(OUT_MODEL)
+        assert_int_equal(LY_SUCCESS, lyd_diff_siblings(INPUT_1, INPUT_2, 0, &OUT_MODEL));\
+        assert_non_null(OUT_MODEL)
 
-#define TEST_DIFF_3(XML_1, XML_2, XML_3, DIFF_1, DIFF_2, MERGE) \
-                { \
-    /*decladation*/\
-                    struct lyd_node *model_1;\
-                    struct lyd_node *model_2;\
-                    struct lyd_node *model_3;\
+#define TEST_DIFF_3(XML1, XML2, XML3, DIFF1, DIFF2, MERGE) \
+        { \
+            struct lyd_node *data1;\
+            struct lyd_node *data2;\
+            struct lyd_node *data3;\
     /*create*/\
-                    CHECK_PARSE_LYD(XML_1, model_1);\
-                    CHECK_PARSE_LYD(XML_2, model_2);\
-                    CHECK_PARSE_LYD(XML_3, model_3);\
+            CHECK_PARSE_LYD(XML1, data1);\
+            CHECK_PARSE_LYD(XML2, data2);\
+            CHECK_PARSE_LYD(XML3, data3);\
     /* diff1 */ \
-                    struct lyd_node *diff1;\
-                    CHECK_PARSE_LYD_DIFF(model_1, model_2, diff1); \
-                    CHECK_LYD_STRING(diff1, DIFF_1); \
-                    assert_int_equal(lyd_diff_apply_all(&model_1, diff1), LY_SUCCESS); \
-                    CHECK_LYD(model_1, model_2); \
+            struct lyd_node *diff1;\
+            CHECK_PARSE_LYD_DIFF(data1, data2, diff1); \
+            CHECK_LYD_STRING(diff1, DIFF1); \
+            assert_int_equal(lyd_diff_apply_all(&data1, diff1), LY_SUCCESS); \
+            CHECK_LYD(data1, data2); \
     /* diff2 */ \
-                    struct lyd_node *diff2;\
-                    CHECK_PARSE_LYD_DIFF(model_2, model_3, diff2); \
-                    CHECK_LYD_STRING(diff2, DIFF_2); \
-                    assert_int_equal(lyd_diff_apply_all(&model_2, diff2), LY_SUCCESS);\
-                    CHECK_LYD(model_2, model_3);\
+            struct lyd_node *diff2;\
+            CHECK_PARSE_LYD_DIFF(data2, data3, diff2); \
+            CHECK_LYD_STRING(diff2, DIFF2); \
+            assert_int_equal(lyd_diff_apply_all(&data2, diff2), LY_SUCCESS);\
+            CHECK_LYD(data2, data3);\
     /* merge */ \
-                    assert_int_equal(lyd_diff_merge_all(&diff1, diff2, 0), LY_SUCCESS);\
-                    CHECK_LYD_STRING(diff1, MERGE); \
-    /* CREAR ENV */ \
-                    lyd_free_all(model_1);\
-                    lyd_free_all(model_2);\
-                    lyd_free_all(model_3);\
-                    lyd_free_all(diff1);\
-                    lyd_free_all(diff2);\
-                }
+            assert_int_equal(lyd_diff_merge_all(&diff1, diff2, 0), LY_SUCCESS);\
+            CHECK_LYD_STRING(diff1, MERGE); \
+    /* cleanup */ \
+            lyd_free_all(data1);\
+            lyd_free_all(data2);\
+            lyd_free_all(data3);\
+            lyd_free_all(diff1);\
+            lyd_free_all(diff2);\
+        }
 
 const char *schema1 =
         "module defaults {\n"
@@ -862,6 +861,85 @@ test_userord_list(void **state)
 }
 
 static void
+test_userord_list2(void **state)
+{
+    (void) state;
+    const char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <ul>\n"
+            "    <l1>d</l1>\n"
+            "    <l2>4</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <ul>\n"
+            "    <l1>c</l1>\n"
+            "    <l2>3</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>d</l1>\n"
+            "    <l2>4</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *xml3 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <ul>\n"
+            "    <l1>a</l1>\n"
+            "    <l2>1</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>b</l1>\n"
+            "    <l2>2</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>c</l1>\n"
+            "    <l2>3</l2>\n"
+            "  </ul>\n"
+            "  <ul>\n"
+            "    <l1>d</l1>\n"
+            "    <l2>4</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+
+    const char *out_diff_1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ul yang:operation=\"create\" yang:key=\"\">\n"
+            "    <l1>c</l1>\n"
+            "    <l2>3</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *out_diff_2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ul yang:operation=\"create\" yang:key=\"\">\n"
+            "    <l1>a</l1>\n"
+            "    <l2>1</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:operation=\"create\" yang:key=\"[l1='a']\">\n"
+            "    <l1>b</l1>\n"
+            "    <l2>2</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+    const char *out_merge =
+            "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n"
+            "  <ul yang:operation=\"create\" yang:key=\"\">\n"
+            "    <l1>c</l1>\n"
+            "    <l2>3</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:key=\"\" yang:operation=\"create\">\n"
+            "    <l1>a</l1>\n"
+            "    <l2>1</l2>\n"
+            "  </ul>\n"
+            "  <ul yang:key=\"[l1='a']\" yang:operation=\"create\">\n"
+            "    <l1>b</l1>\n"
+            "    <l2>2</l2>\n"
+            "  </ul>\n"
+            "</df>\n";
+
+    TEST_DIFF_3(xml1, xml2, xml3, out_diff_1, out_diff_2, out_merge);
+}
+
+static void
 test_keyless_list(void **state)
 {
     (void) state;
@@ -1133,6 +1211,7 @@ main(void)
         UTEST(test_userord_llist2, setup),
         UTEST(test_userord_mix, setup),
         UTEST(test_userord_list, setup),
+        UTEST(test_userord_list2, setup),
         UTEST(test_keyless_list, setup),
         UTEST(test_state_llist, setup),
         UTEST(test_wd, setup),

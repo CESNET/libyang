@@ -278,7 +278,7 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
  * @param[in] first Node from the first tree, can be NULL (on create).
  * @param[in] second Node from the second tree, can be NULL (on delete).
  * @param[in] options Diff options.
- * @param[in,out] userord Sized array of userord items for keeping the current node order.
+ * @param[in] userord_item Userord item of @p first and/or @p second node.
  * @param[out] op Operation.
  * @param[out] orig_default Original default metadata.
  * @param[out] value Value metadata.
@@ -293,13 +293,12 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
  */
 static LY_ERR
 lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *second, uint16_t options,
-        struct lyd_diff_userord **userord, enum lyd_diff_op *op, const char **orig_default, char **value,
+        struct lyd_diff_userord *userord_item, enum lyd_diff_op *op, const char **orig_default, char **value,
         char **orig_value, char **key, char **orig_key, char **position, char **orig_position)
 {
     const struct lysc_node *schema;
     size_t buflen, bufused;
     uint32_t first_pos, second_pos;
-    struct lyd_diff_userord *userord_item;
 
     assert(first || second);
 
@@ -313,10 +312,6 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
 
     schema = first ? first->schema : second->schema;
     assert(lysc_is_userordered(schema));
-
-    /* get userord entry */
-    userord_item = lyd_diff_userord_get(first, schema, userord);
-    LY_CHECK_RET(!userord_item, LY_EMEM);
 
     /* find user-ordered first position */
     if (first) {
@@ -647,7 +642,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     LY_ERR ret = LY_SUCCESS;
     const struct lyd_node *iter_first, *iter_second;
     struct lyd_node *match_second, *match_first;
-    struct lyd_diff_userord *userord = NULL;
+    struct lyd_diff_userord *userord = NULL, *userord_item;
     struct lyd_dup_inst *dup_inst_first = NULL, *dup_inst_second = NULL;
     LY_ARRAY_COUNT_TYPE u;
     enum lyd_diff_op op;
@@ -671,15 +666,20 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
                 &match_second), cleanup);
 
         if (lysc_is_userordered(iter_first->schema)) {
+            /* get (create) userord entry */
+            userord_item = lyd_diff_userord_get(iter_first, iter_first->schema, &userord);
+            LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_first)); ret = LY_EMEM, cleanup);
+
             /* we are handling only user-ordered node delete now */
             if (!match_second) {
                 /* get all the attributes */
-                LY_CHECK_GOTO(ret = lyd_diff_userord_attrs(iter_first, match_second, options, &userord, &op, &orig_default,
-                        &value, &orig_value, &key, &orig_key, &position, &orig_position), cleanup);
+                LY_CHECK_GOTO(ret = lyd_diff_userord_attrs(iter_first, match_second, options, userord_item, &op,
+                        &orig_default, &value, &orig_value, &key, &orig_key, &position, &orig_position), cleanup);
 
                 /* there must be changes, it is deleted */
                 assert(op == LYD_DIFF_OP_DELETE);
-                ret = lyd_diff_add(iter_first, op, orig_default, orig_value, key, value, position, orig_key, orig_position, diff);
+                ret = lyd_diff_add(iter_first, op, orig_default, orig_value, key, value, position, orig_key,
+                        orig_position, diff);
 
                 free(orig_value);
                 free(key);
@@ -744,8 +744,12 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
                 &match_first), cleanup);
 
         if (lysc_is_userordered(iter_second->schema)) {
+            /* get userord entry */
+            userord_item = lyd_diff_userord_get(NULL, iter_second->schema, &userord);
+            LY_CHECK_ERR_GOTO(!userord_item, LOGMEM(LYD_CTX(iter_second)); ret = LY_EMEM, cleanup);
+
             /* get all the attributes */
-            ret = lyd_diff_userord_attrs(match_first, iter_second, options, &userord, &op, &orig_default,
+            ret = lyd_diff_userord_attrs(match_first, iter_second, options, userord_item, &op, &orig_default,
                     &value, &orig_value, &key, &orig_key, &position, &orig_position);
 
             /* add into diff if there are any changes */
