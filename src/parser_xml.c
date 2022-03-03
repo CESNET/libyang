@@ -676,7 +676,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         if (parent && (node->schema->flags & LYS_KEY)) {
             /* check the key order, the anchor must never be a key */
             anchor = lyd_insert_get_next_anchor(lyd_child(parent), node);
-            if (anchor && (anchor->schema->flags & LYS_KEY)) {
+            if (anchor && anchor->schema && (anchor->schema->flags & LYS_KEY)) {
                 if (lydctx->parse_opts & LYD_PARSE_STRICT) {
                     LOGVAL(ctx, LYVE_DATA, "Invalid position of the key \"%s\" in a list.", node->schema->name);
                     ret = LY_EVALID;
