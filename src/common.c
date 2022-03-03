@@ -259,7 +259,7 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
 {
     const char *cur_expr, *end, *prefix, *literal;
     char *name;
-    size_t name_len;
+    size_t name_len, new_used;
     const struct lys_module *mod = NULL, *prev_mod = NULL;
     uint32_t i, j;
     struct lyxp_expr *exp;
@@ -372,9 +372,12 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
 
             /* parse literals as subexpressions if possible, otherwise treat as a literal */
             ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-            if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
+            new_used = *out_used;
+            if (_transform_json2xml_subexp(module, literal, out, &new_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
                 strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
                 *out_used += exp->tok_len[i] - 2;
+            } else {
+                *out_used = new_used;
             }
             ly_ilo_restore(NULL, prev_ilo, NULL, 0);
 
@@ -462,7 +465,7 @@ transform_xml2json_subexp(struct ly_ctx *ctx, const char *expr, char **out, size
     char *prefix;
     uint16_t i;
     enum int_log_opts prev_ilo;
-    size_t pref_len;
+    size_t pref_len, new_used;
     const struct lys_module *mod, *prev_mod = NULL;
     const struct lyxml_ns *ns;
     struct lyxp_expr *exp;
@@ -549,9 +552,12 @@ transform_xml2json_subexp(struct ly_ctx *ctx, const char *expr, char **out, size
             /* parse literals as subexpressions if possible, otherwise treat as a literal, do not log */
             prev_ilo = log_opt;
             log_opt = ILO_IGNORE;
-            if (transform_xml2json_subexp(ctx, literal, out, out_used, out_size, xml, inst_id, use_ctx_data_clb)) {
+            new_used = *out_used;
+            if (transform_xml2json_subexp(ctx, literal, out, &new_used, out_size, xml, inst_id, use_ctx_data_clb)) {
                 strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
                 *out_used += exp->tok_len[i] - 2;
+            } else {
+                *out_used = new_used;
             }
             log_opt = prev_ilo;
 
