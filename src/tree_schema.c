@@ -1141,7 +1141,7 @@ lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
         }
 
         /* free the module */
-        lys_module_free(m);
+        lys_module_free(m, 1);
     }
 
     if (unres->implementing.count) {
@@ -1713,7 +1713,7 @@ cleanup:
         }
     }
     if (!module_created) {
-        lys_module_free(mod);
+        lys_module_free(mod, 0);
         mod = mod_dup;
     }
 

@@ -611,6 +611,74 @@ lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
     FREE_ARRAY(ctx, must->exts, lysc_ext_instance_free);
 }
 
+static void
+lysc_ident_derived_unlink(const struct lysc_ident *ident)
+{
+    LY_ARRAY_COUNT_TYPE u, v, w;
+    const struct lysp_submodule *submod;
+    const struct lysp_module *base_pmod;
+    const struct lysp_ident *identp = NULL;
+    const struct lys_module *mod;
+    const char *base_name;
+
+    /* find the parsed identity */
+    LY_ARRAY_FOR(ident->module->parsed->identities, u) {
+        if (ident->module->parsed->identities[u].name == ident->name) {
+            identp = &ident->module->parsed->identities[u];
+            base_pmod = ident->module->parsed;
+            break;
+        }
+    }
+    if (!identp) {
+        LY_ARRAY_FOR(ident->module->parsed->includes, v) {
+            submod = ident->module->parsed->includes[v].submodule;
+            LY_ARRAY_FOR(submod->identities, u) {
+                if (submod->identities[u].name == ident->name) {
+                    identp = &submod->identities[u];
+                    base_pmod = (struct lysp_module *)submod;
+                    break;
+                }
+            }
+        }
+    }
+    assert(identp);
+
+    /* remove link from all the foreign bases, it may not be there if identity compilation failed */
+    LY_ARRAY_FOR(identp->bases, u) {
+        base_name = strchr(identp->bases[u], ':');
+        if (!base_name) {
+            continue;
+        }
+
+        /* prefixed identity */
+        mod = ly_resolve_prefix(ident->module->ctx, identp->bases[u], base_name - identp->bases[u], LY_VALUE_SCHEMA,
+                (void *)base_pmod);
+        if (!mod) {
+            continue;
+        }
+        ++base_name;
+
+        /* find the compiled base */
+        LY_ARRAY_FOR(mod->identities, v) {
+            if (!strcmp(mod->identities[v].name, base_name)) {
+                /* find the derived link */
+                LY_ARRAY_FOR(mod->identities[v].derived, w) {
+                    if (mod->identities[v].derived[w] == ident) {
+                        /* remove the link */
+                        LY_ARRAY_DECREMENT(mod->identities[v].derived);
+                        if (w < LY_ARRAY_COUNT(mod->identities[v].derived)) {
+                            memmove(mod->identities[v].derived + w, mod->identities[v].derived + w + 1,
+                                    (LY_ARRAY_COUNT(mod->identities[v].derived) - w) * sizeof ident);
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
+
 void
 lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
@@ -1014,14 +1082,23 @@ lysc_module_free(struct lysc_module *module)
 }
 
 void
-lys_module_free(struct lys_module *module)
+lys_module_free(struct lys_module *module, ly_bool remove_links)
 {
+    LY_ARRAY_COUNT_TYPE u;
+
     if (!module) {
         return;
     }
+
     assert(!module->implemented);
     assert(!module->compiled);
 
+    if (remove_links) {
+        /* remove derived identity links */
+        LY_ARRAY_FOR(module->identities, u) {
+            lysc_ident_derived_unlink(&module->identities[u]);
+        }
+    }
     FREE_ARRAY(module->ctx, module->identities, lysc_ident_free);
     lysp_module_free(module->parsed);
 

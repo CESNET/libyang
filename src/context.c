@@ -1251,7 +1251,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
             lysc_module_free(mod->compiled);
             mod->compiled = NULL;
         }
-        lys_module_free(ctx->list.objs[ctx->list.count - 1]);
+        lys_module_free(ctx->list.objs[ctx->list.count - 1], 0);
     }
     free(ctx->list.objs);
 

@@ -162,7 +162,7 @@ setup(void **state)
 static int
 teardown_ctx(void **UNUSED(state))
 {
-    lys_module_free(PARSER_CUR_PMOD(YCTX)->mod);
+    lys_module_free(PARSER_CUR_PMOD(YCTX)->mod, 0);
     yin_parser_ctx_free(YCTX);
     YCTX = NULL;
 
@@ -3428,7 +3428,7 @@ mod_renew(struct lys_yin_parser_ctx *ctx)
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_module *pmod;
 
-    lys_module_free(PARSER_CUR_PMOD(ctx)->mod);
+    lys_module_free(PARSER_CUR_PMOD(ctx)->mod, 0);
     pmod = calloc(1, sizeof *pmod);
     ctx->parsed_mods->objs[0] = pmod;
     pmod->mod = calloc(1, sizeof *pmod->mod);
@@ -3558,7 +3558,7 @@ submod_renew(struct lys_yin_parser_ctx *ctx, const char *belongs_to)
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_submodule *submod;
 
-    lys_module_free(PARSER_CUR_PMOD(ctx)->mod);
+    lys_module_free(PARSER_CUR_PMOD(ctx)->mod, 0);
     submod = calloc(1, sizeof *submod);
     ctx->parsed_mods->objs[0] = submod;
     submod->mod = calloc(1, sizeof *submod->mod);
@@ -3717,7 +3717,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
     assert_null(mod->parsed->exts->child->next->child);
     assert_string_equal(mod->parsed->exts->child->next->arg, "test");
-    lys_module_free(mod);
+    lys_module_free(mod, 0);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
@@ -3755,7 +3755,7 @@ test_yin_parse_module(void **state)
             "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
-    lys_module_free(mod);
+    lys_module_free(mod, 0);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
@@ -3770,7 +3770,7 @@ test_yin_parse_module(void **state)
             "</module>\n";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
-    lys_module_free(mod);
+    lys_module_free(mod, 0);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
@@ -3783,7 +3783,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EINVAL);
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL);
-    lys_module_free(mod);
+    lys_module_free(mod, 0);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
 
@@ -3798,7 +3798,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EVALID);
     CHECK_LOG_CTX("Trailing garbage \"<module>\" after module, expected end-of-input.", "Line number 6.");
-    lys_module_free(mod);
+    lys_module_free(mod, 0);
     yin_parser_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
