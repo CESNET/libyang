@@ -1460,7 +1460,7 @@ struct lysc_when {
  * @brief YANG identity-stmt
  */
 struct lysc_ident {
-    const char *name;                /**< identity name (mandatory), including possible prefix */
+    const char *name;                /**< identity name (mandatory, no prefix) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lys_module *module;       /**< module structure */
