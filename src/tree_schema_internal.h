@@ -809,8 +809,10 @@ void lysc_module_free(struct lysc_module *module);
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
  *
  * @param[in,out] module Schema module structure to free.
+ * @param[in] remove_links Whether to remove links in other modules to structures in this module. Not needed if
+ * the whole context is being freed.
  */
-void lys_module_free(struct lys_module *module);
+void lys_module_free(struct lys_module *module, ly_bool remove_links);
 
 /**
  * @brief match yang keyword
