@@ -42,6 +42,7 @@ the whole documentation and the API.
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
 * Support for YANG extensions.
 * Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc7952)).
+* Support for YANG Schema Mount ([RFC 8528](https://tools.ietf.org/html/rfc8528)).
 * [yanglint](#yanglint) - feature-rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
