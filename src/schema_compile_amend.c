@@ -272,7 +272,7 @@ cleanup:
 static LY_ERR
 lysp_ext_children_dup(const struct ly_ctx *ctx, struct lysp_stmt **child, const struct lysp_stmt *orig_child)
 {
-    struct lysp_stmt *ch;
+    struct lysp_stmt *ch = NULL;
 
     assert(!*child);
 

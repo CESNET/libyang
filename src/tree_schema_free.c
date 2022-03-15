@@ -616,7 +616,7 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
 {
     LY_ARRAY_COUNT_TYPE u, v, w;
     const struct lysp_submodule *submod;
-    const struct lysp_module *base_pmod;
+    const struct lysp_module *base_pmod = NULL;
     const struct lysp_ident *identp = NULL;
     const struct lys_module *mod;
     const char *base_name;
