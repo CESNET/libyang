@@ -3202,6 +3202,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     struct lysp_node_list *list_p = (struct lysp_node_list *)pnode;
     struct lysc_node_list *list = (struct lysc_node_list *)node;
     struct lysp_node *child_p;
+    struct lysc_node *parent;
     struct lysc_node_leaf *key, *prev_key = NULL;
     size_t len;
     const char *keystr, *delim;
@@ -3224,9 +3225,22 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     LY_CHECK_GOTO(ret, done);
 
     /* keys */
-    if ((list->flags & LYS_CONFIG_W) && (!list_p->key || !list_p->key[0])) {
-        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Missing key in list representing configuration data.");
-        return LY_EVALID;
+    if (list->flags & LYS_CONFIG_W) {
+        parent = node;
+        if (ctx->compile_opts & LYS_COMPILE_GROUPING) {
+            /* compiling individual grouping, we can check this only if there is an explicit config set */
+            while (parent) {
+                if (parent->flags & LYS_SET_CONFIG) {
+                    break;
+                }
+                parent = parent->parent;
+            }
+        }
+
+        if (parent && (!list_p->key || !list_p->key[0])) {
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Missing key in list representing configuration data.");
+            return LY_EVALID;
+        }
     }
 
     /* find all the keys (must be direct children) */
