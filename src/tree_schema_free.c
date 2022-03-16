@@ -678,7 +678,10 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
                     if (mod->identities[v].derived[w] == ident) {
                         /* remove the link */
                         LY_ARRAY_DECREMENT(mod->identities[v].derived);
-                        if (w < LY_ARRAY_COUNT(mod->identities[v].derived)) {
+                        if (!LY_ARRAY_COUNT(mod->identities[v].derived)) {
+                            LY_ARRAY_FREE(mod->identities[v].derived);
+                            mod->identities[v].derived = NULL;
+                        } else if (w < LY_ARRAY_COUNT(mod->identities[v].derived)) {
                             memmove(mod->identities[v].derived + w, mod->identities[v].derived + w + 1,
                                     (LY_ARRAY_COUNT(mod->identities[v].derived) - w) * sizeof ident);
                         }
