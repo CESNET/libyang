@@ -618,8 +618,9 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
     const struct lysp_submodule *submod;
     const struct lysp_module *base_pmod = NULL;
     const struct lysp_ident *identp = NULL;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *iter;
     const char *base_name;
+    uint32_t i;
 
     /* find the parsed identity */
     LY_ARRAY_FOR(ident->module->parsed->identities, u) {
@@ -657,6 +658,17 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
             continue;
         }
         ++base_name;
+
+        i = 0;
+        while ((iter = ly_ctx_get_module_iter(ident->module->ctx, &i))) {
+            if (iter == mod) {
+                break;
+            }
+        }
+        if (!iter) {
+            /* target module was freed already */
+            continue;
+        }
 
         /* find the compiled base */
         LY_ARRAY_FOR(mod->identities, v) {
