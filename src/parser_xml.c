@@ -446,6 +446,11 @@ lydxml_nested_ext(struct lyd_xml_ctx *lydctx, struct lyd_node *parent)
         nested_exts = parent->schema->exts;
     }
     LY_ARRAY_FOR(nested_exts, u) {
+        if (!nested_exts[u].def->plugin->parse) {
+            /* not an extension with parsed data */
+            continue;
+        }
+
         /* prepare the input and try to parse this extension data */
         in_ext = in_start;
         ext_parse_cb = nested_exts[u].def->plugin->parse;
