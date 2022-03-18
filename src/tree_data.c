@@ -4166,8 +4166,8 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
     ly_bool is_static = 0;
     uint32_t i, depth;
     size_t bufused = 0, len;
-    const struct lyd_node *iter;
-    const struct lys_module *mod;
+    const struct lyd_node *iter, *parent;
+    const struct lys_module *mod, *prev_mod;
     LY_ERR rc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
@@ -4191,11 +4191,12 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
             /* find the right node */
             for (iter = node, i = 1; i < depth; iter = lyd_parent(iter), ++i) {}
 iter_print:
-            /* print prefix and name */
-            mod = NULL;
-            if (iter->schema && (!iter->parent || !iter->parent->schema ||
-                    (iter->schema->module != iter->parent->schema->module))) {
-                mod = iter->schema->module;
+            /* get the module */
+            mod = iter->schema ? iter->schema->module : lyd_owner_module(iter);
+            parent = lyd_parent(iter);
+            prev_mod = (parent && parent->schema) ? parent->schema->module : lyd_owner_module(parent);
+            if (prev_mod == mod) {
+                mod = NULL;
             }
 
             /* realloc string */
