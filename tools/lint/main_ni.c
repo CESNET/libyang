@@ -142,7 +142,7 @@ help(int shortout)
     printf("  -f FORMAT, --format=FORMAT\n"
             "                Convert input into FORMAT. Supported formats: \n"
             "                yang, yin, tree and info for schemas,\n"
-            "                xml, json for data.\n\n");
+            "                xml, json, and lyb for data.\n\n");
 
     printf("  -p PATH, --path=PATH\n"
             "                Search path for schema (YANG/YIN) modules. The option can be\n"
@@ -460,7 +460,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"quiet",             no_argument,       NULL, 'Q'},
         {"format",            required_argument, NULL, 'f'},
         {"path",              required_argument, NULL, 'p'},
-        {"disable-searchdir", no_argument,      NULL, 'D'},
+        {"disable-searchdir", no_argument,       NULL, 'D'},
         {"features",          required_argument, NULL, 'F'},
         {"make-implemented",  no_argument,       NULL, 'i'},
         {"schema-node",       required_argument, NULL, 'P'},
@@ -543,6 +543,9 @@ fill_context(int argc, char *argv[], struct context *c)
             } else if (!strcasecmp(optarg, "json")) {
                 c->schema_out_format = 0;
                 c->data_out_format = LYD_JSON;
+            } else if (!strcasecmp(optarg, "lyb")) {
+                c->schema_out_format = 0;
+                c->data_out_format = LYD_LYB;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
                 help(1);
