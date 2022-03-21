@@ -164,6 +164,7 @@ static LY_ERR
 schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
 {
     const struct lys_module *cur_mod;
+    const struct lysc_node *node;
     struct lyplg_ext_sm *sm_data;
 
     assert(!strcmp(p_ext->name, "yangmnt:mount-point"));
@@ -195,8 +196,14 @@ schema_mount_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ex
     }
     c_ext->data = sm_data;
 
+    /* find the owner module */
+    node = c_ext->parent;
+    while (node->parent) {
+        node = node->parent;
+    }
+
     /* reuse/init shared schema */
-    sm_data->shared = schema_mount_compile_find_shared(c_ext->module, c_ext);
+    sm_data->shared = schema_mount_compile_find_shared(node->module, c_ext);
     if (sm_data->shared) {
         ++sm_data->shared->ref_count;
     } else {
