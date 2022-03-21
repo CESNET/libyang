@@ -339,7 +339,8 @@ ypr_substmt(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_inde
 }
 
 static void
-ypr_unsigned(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, unsigned long int attr_value, ly_bool *flag)
+ypr_unsigned(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts,
+        unsigned long int attr_value, ly_bool *flag)
 {
     char *str;
 
@@ -353,7 +354,8 @@ ypr_unsigned(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_ind
 }
 
 static void
-ypr_signed(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, signed long int attr_value, ly_bool *flag)
+ypr_signed(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t substmt_index, void *exts, signed long int attr_value,
+        ly_bool *flag)
 {
     char *str;
 
@@ -575,18 +577,18 @@ yprc_identity(struct lys_ypr_ctx *pctx, const struct lysc_ident *ident)
 static void
 yprp_restr(struct lys_ypr_ctx *pctx, const struct lysp_restr *restr, enum ly_stmt stmt, ly_bool *flag)
 {
-    ly_bool inner_flag = 0;
+    ly_bool inner_flag = 0, singleline;
+    const char *text;
 
     if (!restr) {
         return;
     }
 
     ypr_open(pctx->out, flag);
-    ly_print_(pctx->out, "%*s%s \"", INDENT, ly_stmt2str(stmt));
-    ypr_encode(pctx->out,
-            (restr->arg.str[0] != LYSP_RESTR_PATTERN_NACK && restr->arg.str[0] != LYSP_RESTR_PATTERN_ACK) ?
-            restr->arg.str : &restr->arg.str[1], -1);
-    ly_print_(pctx->out, "\"");
+    text = ((restr->arg.str[0] != LYSP_RESTR_PATTERN_NACK) && (restr->arg.str[0] != LYSP_RESTR_PATTERN_ACK)) ?
+            restr->arg.str : restr->arg.str + 1;
+    singleline = strchr(text, '\n') ? 0 : 1;
+    ypr_text(pctx, ly_stmt2str(stmt), text, singleline, 0);
 
     LEVEL++;
     yprp_extension_instances(pctx, stmt, 0, restr->exts, &inner_flag, 0);
