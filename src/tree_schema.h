@@ -2317,7 +2317,9 @@ LIBYANG_API_DECL const struct lysc_node *lys_find_path(const struct ly_ctx *ctx,
  */
 typedef enum {
     LYSC_PATH_LOG,  /**< Descriptive path format used in log messages */
-    LYSC_PATH_DATA  /**< Similar to ::LYSC_PATH_LOG except that schema-only nodes (choice, case) are skipped */
+    LYSC_PATH_DATA, /**< Similar to ::LYSC_PATH_LOG except that schema-only nodes (choice, case) are skipped */
+    LYSC_PATH_DATA_PATTERN  /**< Similar to ::LYSC_PATH_DATA but there are predicates for all list keys added with
+                                 "%s" where their values should be so that they can be printed there */
 } LYSC_PATH_TYPE;
 
 /**

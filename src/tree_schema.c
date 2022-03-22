@@ -725,76 +725,93 @@ char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
         size_t buflen)
 {
-    const struct lysc_node *iter, *par;
+    const struct lysc_node *iter, *par, *key;
     char *path = NULL;
     int len = 0;
+    ly_bool skip_schema;
 
     if (buffer) {
         LY_CHECK_ARG_RET(node->module->ctx, buflen > 1, NULL);
         buffer[0] = '\0';
     }
 
-    switch (pathtype) {
-    case LYSC_PATH_LOG:
-    case LYSC_PATH_DATA:
-        for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
-            char *s, *id;
-            const char *slash;
+    if ((pathtype == LYSC_PATH_DATA) || (pathtype == LYSC_PATH_DATA_PATTERN)) {
+        /* skip schema-only nodes */
+        skip_schema = 1;
+    } else {
+        skip_schema = 0;
+    }
 
-            if ((pathtype == LYSC_PATH_DATA) && (iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT))) {
-                /* schema-only node */
-                continue;
-            }
+    for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
+        char *s;
+        const char *slash;
 
-            s = buffer ? strdup(buffer) : path;
-            id = strdup(iter->name);
-            if (parent && (iter->parent == parent)) {
-                slash = "";
-            } else {
-                slash = "/";
-            }
+        if (skip_schema && (iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT))) {
+            /* schema-only node */
+            continue;
+        }
 
-            if (pathtype == LYSC_PATH_DATA) {
-                par = lysc_data_parent(iter);
-            } else {
-                par = iter->parent;
-            }
+        if ((pathtype == LYSC_PATH_DATA_PATTERN) && (iter->nodetype == LYS_LIST)) {
+            key = NULL;
+            while ((key = lys_getnext(key, iter, NULL, 0)) && lysc_is_key(key)) {
+                s = buffer ? strdup(buffer) : path;
 
-            if (!par || (par->module != iter->module)) {
-                /* print prefix */
+                /* print key predicate */
                 if (buffer) {
-                    len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
+                    len = snprintf(buffer, buflen, "[%s='%%s']%s", key->name, s ? s : "");
                 } else {
-                    len = asprintf(&path, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
+                    len = asprintf(&path, "[%s='%%s']%s", key->name, s ? s : "");
                 }
-            } else {
-                /* prefix is the same as in parent */
-                if (buffer) {
-                    len = snprintf(buffer, buflen, "%s%s%s", slash, id, s ? s : "");
-                } else {
-                    len = asprintf(&path, "%s%s%s", slash, id, s ? s : "");
-                }
-            }
-            free(s);
-            free(id);
 
-            if (buffer && (buflen <= (size_t)len)) {
-                /* not enough space in buffer */
-                break;
+                free(s);
             }
         }
 
-        if (len < 0) {
-            free(path);
-            path = NULL;
-        } else if (len == 0) {
+        s = buffer ? strdup(buffer) : path;
+        if (parent && (iter->parent == parent)) {
+            slash = "";
+        } else {
+            slash = "/";
+        }
+
+        if (skip_schema) {
+            par = lysc_data_parent(iter);
+        } else {
+            par = iter->parent;
+        }
+
+        if (!par || (par->module != iter->module)) {
+            /* print prefix */
             if (buffer) {
-                strcpy(buffer, "/");
+                len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, iter->name, s ? s : "");
             } else {
-                path = strdup("/");
+                len = asprintf(&path, "%s%s:%s%s", slash, iter->module->name, iter->name, s ? s : "");
+            }
+        } else {
+            /* prefix is the same as in parent */
+            if (buffer) {
+                len = snprintf(buffer, buflen, "%s%s%s", slash, iter->name, s ? s : "");
+            } else {
+                len = asprintf(&path, "%s%s%s", slash, iter->name, s ? s : "");
             }
         }
-        break;
+        free(s);
+
+        if (buffer && (buflen <= (size_t)len)) {
+            /* not enough space in buffer */
+            break;
+        }
+    }
+
+    if (len < 0) {
+        free(path);
+        path = NULL;
+    } else if (len == 0) {
+        if (buffer) {
+            strcpy(buffer, "/");
+        } else {
+            path = strdup("/");
+        }
     }
 
     if (buffer) {
