@@ -449,6 +449,12 @@ static const char *string_data_024 =
 "}"
 ;
 
+static const char *json = 
+"{"
+    "\"null_leaflist_json:ll\": []"
+"}"
+;
+
 static int
 setup_f(struct state **state, const char *search_dir, const char **modules, int module_count)
 {
@@ -694,6 +700,23 @@ test_parse_string(void **state)
     assert_ptr_equal(st->dt, NULL);
 }
 
+static void
+test_parse_ll_null(void **state)
+{
+    struct state *st;
+    const char *modules[] = {"numbers"};
+    int module_count = 1;
+    const struct lys_module *mod;
+
+    /* load special schema for this test */
+    mod = lys_parse_path(st->ctx, schemafile, LYS_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->dt = lyd_parse_mem(st->ctx, json, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_equal(st->dt, NULL);
+
+}
+
 int
 main(void)
 {
@@ -702,6 +725,7 @@ main(void)
                     cmocka_unit_test_teardown(test_parse_numbers, teardown_f),
                     cmocka_unit_test_teardown(test_parse_error_numbers, teardown_f),
                     cmocka_unit_test_teardown(test_parse_string, teardown_f),
+                    cmocka_unit_test_teardown(test_parse_ll_null, teardown_f),
                     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
