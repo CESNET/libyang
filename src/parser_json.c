@@ -452,6 +452,29 @@ json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node **first_sibling,
         if (data[len++] != '[') {
             LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected begin-array)");
             return 0;
+        } else {
+            unsigned int len2 = len;
+            // Strip whitespaces
+            for (r = len2 + 1; isspace(data[r]); ++r);
+            // Check if an empty list [] was provided
+            if (data[r] == ']') {
+                leaf->value_str = lydict_insert(ctx, "", 0);
+                len2 = r + 1;
+                len2 += skip_ws(&data[len2]);
+                return len2;
+            } 
+            // Check if [null] was provided
+            else if (!strncmp(&data[r], "null", 4) {
+                // Strip whitespaces
+                for (r += 4; isspace(data[r]); ++r);
+                if (data[r] != ']') {
+                    goto inval;
+                }
+                leaf->value_str = lydict_insert(ctx, "", 0);
+                len2 = r + 1;
+                len2 += skip_ws(&data[len2]);
+                return len2;
+            }
         }
 
 repeat:
@@ -525,18 +548,6 @@ repeat:
         }
         leaf->value_str = lydict_insert(ctx, &data[len], r);
         len += r;
-    } else if (data[len] == '[') {
-        /* empty '[' WSP 'null' WSP ']' */
-        for (r = len + 1; isspace(data[r]); ++r);
-        if (strncmp(&data[r], "null", 4)) {
-            goto inval;
-        }
-        for (r += 4; isspace(data[r]); ++r);
-        if (data[r] != ']') {
-            goto inval;
-        }
-        leaf->value_str = lydict_insert(ctx, "", 0);
-        len = r + 1;
     } else {
 inval:
         /* error */
