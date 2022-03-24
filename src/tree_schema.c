@@ -762,8 +762,12 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
                 } else {
                     len = asprintf(&path, "[%s='%%s']%s", key->name, s ? s : "");
                 }
-
                 free(s);
+
+                if (buffer && (buflen <= (size_t)len)) {
+                    /* not enough space in buffer */
+                    break;
+                }
             }
         }
 
