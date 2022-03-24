@@ -452,31 +452,32 @@ json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node **first_sibling,
         if (data[len++] != '[') {
             LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected begin-array)");
             return 0;
-        } else {
-            unsigned int len2 = len;
-            // Strip whitespaces
-            for (r = len2 + 1; isspace(data[r]); ++r);
-            // Check if an empty list [] was provided
-            if (data[r] == ']') {
-                leaf->value_str = lydict_insert(ctx, "", 0);
-                len2 = r + 1;
-                len2 += skip_ws(&data[len2]);
-                return len2;
-            } 
-            // Check if [null] was provided
-            else if (!strncmp(&data[r], "null", 4) {
-                // Strip whitespaces
-                for (r += 4; isspace(data[r]); ++r);
-                if (data[r] != ']') {
-                    goto inval;
-                }
-                leaf->value_str = lydict_insert(ctx, "", 0);
-                len2 = r + 1;
-                len2 += skip_ws(&data[len2]);
-                return len2;
+        } 
+        unsigned int empty_list_len = len;
+        // Skip whitespaces
+        empty_list_len += skip_ws(&data[empty_list_len]);
+        bool is_empty_list = false;
+        // Check if an empty list [] was provided
+        if (data[empty_list_len] == ']') {
+            is_empty_list = true;
+        } 
+        // Check if [null] was provided
+        if (!strncmp(&data[empty_list_len], "null", 4)) {
+            ++empty_list_len
+            // Skip whitespaces
+            empty_list_len += skip_ws(&data[empty_list_len]);
+            if (data[empty_list_len] != ']') {
+                goto inval;
             }
+            is_empty_list = true;
         }
-
+        if is_empty_list {
+            leaf->value_str = lydict_insert(ctx, "", 0);
+            ++empty_list_len;
+            empty_list_len += skip_ws(&data[empty_list_len]);
+            return empty_list_len;
+        }
+        
 repeat:
         len += skip_ws(&data[len]);
     }
