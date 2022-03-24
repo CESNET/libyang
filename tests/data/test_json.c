@@ -704,13 +704,14 @@ static void
 test_parse_ll_null(void **state)
 {
     struct state *st;
-    const char *modules[] = {"numbers"};
+    const char *modules[] = {"null-leaf-list"};
     int module_count = 1;
-    const struct lys_module *mod;
 
-    /* load special schema for this test */
-    mod = lys_parse_path(st->ctx, schemafile, LYS_YANG);
-    assert_ptr_not_equal(mod, NULL);
+    if (setup_f(&st, TESTS_DIR "/data/files", modules, module_count)) {
+        fail();
+    }
+
+    (*state) = st;
 
     st->dt = lyd_parse_mem(st->ctx, json, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_equal(st->dt, NULL);
