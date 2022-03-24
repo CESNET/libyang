@@ -449,7 +449,13 @@ static const char *string_data_024 =
 "}"
 ;
 
-static const char *json = 
+static const char *json_null_ll = 
+"{"
+    "\"null_leaflist_json:ll\": [null]"
+"}"
+;
+
+static const char *json_empty_ll = 
 "{"
     "\"null_leaflist_json:ll\": []"
 "}"
@@ -713,9 +719,11 @@ test_parse_ll_null(void **state)
 
     (*state) = st;
 
-    st->dt = lyd_parse_mem(st->ctx, json, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    st->dt = lyd_parse_mem(st->ctx, json_null_ll, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_equal(st->dt, NULL);
 
+    st->dt = lyd_parse_mem(st->ctx, json_empty_ll, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_equal(st->dt, NULL);
 }
 
 int
