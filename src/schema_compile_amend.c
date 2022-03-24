@@ -305,14 +305,19 @@ lysp_ext_children_dup(const struct ly_ctx *ctx, struct lysp_stmt **child, const 
 static LY_ERR
 lysp_ext_dup(const struct ly_ctx *ctx, struct lysp_ext_instance *ext, const struct lysp_ext_instance *orig_ext)
 {
-    *ext = *orig_ext;
     DUP_STRING_RET(ctx, orig_ext->name, ext->name);
     DUP_STRING_RET(ctx, orig_ext->argument, ext->argument);
+    ext->format = orig_ext->format;
     ext->parsed = NULL;
+    LY_CHECK_RET(ly_dup_prefix_data(ctx, orig_ext->format, orig_ext->prefix_data, &ext->prefix_data));
 
     ext->child = NULL;
     LY_CHECK_RET(lysp_ext_children_dup(ctx, &ext->child, orig_ext->child));
 
+    ext->parent = orig_ext->parent;
+    ext->parent_stmt = orig_ext->parent_stmt;
+    ext->parent_stmt_index = orig_ext->parent_stmt_index;
+    ext->flags = orig_ext->flags;
     return LY_SUCCESS;
 }
 
