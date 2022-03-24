@@ -463,7 +463,7 @@ json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node **first_sibling,
         } 
         // Check if [null] was provided
         if (!strncmp(&data[empty_list_len], "null", 4)) {
-            ++empty_list_len;
+            empty_list_len += 4;
             // Skip whitespaces
             empty_list_len += skip_ws(&data[empty_list_len]);
             if (data[empty_list_len] != ']') {
