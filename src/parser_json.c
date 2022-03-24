@@ -456,22 +456,22 @@ json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node **first_sibling,
         unsigned int empty_list_len = len;
         // Skip whitespaces
         empty_list_len += skip_ws(&data[empty_list_len]);
-        bool is_empty_list = false;
+        unsigned int is_empty_list = 0;
         // Check if an empty list [] was provided
         if (data[empty_list_len] == ']') {
-            is_empty_list = true;
+            is_empty_list = 1;
         } 
         // Check if [null] was provided
         if (!strncmp(&data[empty_list_len], "null", 4)) {
-            ++empty_list_len
+            ++empty_list_len;
             // Skip whitespaces
             empty_list_len += skip_ws(&data[empty_list_len]);
             if (data[empty_list_len] != ']') {
                 goto inval;
             }
-            is_empty_list = true;
+            is_empty_list = 1;
         }
-        if is_empty_list {
+        if (is_empty_list != 0) {
             leaf->value_str = lydict_insert(ctx, "", 0);
             ++empty_list_len;
             empty_list_len += skip_ws(&data[empty_list_len]);
