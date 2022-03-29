@@ -36,6 +36,7 @@
 struct jsonpr_ctx {
     struct ly_out *out;         /**< output specification */
     const struct lyd_node *root;    /**< root node of the subtree being printed */
+    const struct lyd_node *parent;  /**< parent of the node being printed */
     uint16_t level;             /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
     uint32_t options;           /**< [Data printer flags](@ref dataprinterflags) */
     const struct ly_ctx *ctx;   /**< libyang context */
@@ -259,7 +260,7 @@ static LY_ERR
 json_print_member(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_bool is_attr)
 {
     PRINT_COMMA;
-    if ((LEVEL == 1) || json_nscmp(node, lyd_parent(node))) {
+    if ((LEVEL == 1) || json_nscmp(node, pctx->parent)) {
         /* print "namespace" */
         ly_print_(pctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
                 node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
@@ -529,6 +530,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *iter;
+    const struct lyd_node *prev_parent;
     uint32_t prev_opts, prev_lo;
 
     assert(any->schema->nodetype & LYD_NODE_ANY);
@@ -558,12 +560,15 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         LEVEL_INC;
 
         /* close opening tag and print data */
+        prev_parent = pctx->parent;
         prev_opts = pctx->options;
+        pctx->parent = &any->node;
         pctx->options &= ~LYD_PRINT_WITHSIBLINGS;
         LY_LIST_FOR(any->value.tree, iter) {
             ret = json_print_node(pctx, iter);
             LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
         }
+        pctx->parent = prev_parent;
         pctx->options = prev_opts;
 
         /* terminate the object */
@@ -622,6 +627,7 @@ static LY_ERR
 json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
     struct lyd_node *child;
+    const struct lyd_node *prev_parent;
     struct lyd_node_opaq *opaq = NULL;
     ly_bool has_content = 0;
 
@@ -650,9 +656,12 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     json_print_attributes(pctx, node, 1);
 
     /* print children */
+    prev_parent = pctx->parent;
+    pctx->parent = node;
     LY_LIST_FOR(lyd_child(node), child) {
         LY_CHECK_RET(json_print_node(pctx, child));
     }
+    pctx->parent = prev_parent;
 
     LEVEL_DEC;
     if (DO_FORMAT && has_content) {
@@ -842,7 +851,7 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 
     if (node->hints == LYD_HINT_DATA) {
         /* basically, we do not know anything about the node so just do our best */
-        LY_CHECK_RET(json_print_member2(pctx, lyd_parent(&node->node), node->format, &node->name, 0));
+        LY_CHECK_RET(json_print_member2(pctx, pctx->parent, node->format, &node->name, 0));
         if (node->child) {
             LY_CHECK_RET(json_print_inner(pctx, &node->node));
             LEVEL_PRINTED;
@@ -876,7 +885,7 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
     }
 
     if (first) {
-        LY_CHECK_RET(json_print_member2(pctx, lyd_parent(&node->node), node->format, &node->name, 0));
+        LY_CHECK_RET(json_print_member2(pctx, pctx->parent, node->format, &node->name, 0));
 
         if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
             LY_CHECK_RET(json_print_array_open(pctx, &node->node));
@@ -981,6 +990,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t option
     }
 
     pctx.out = out;
+    pctx.parent = NULL;
     pctx.level = 1;
     pctx.level_printed = 0;
     pctx.options = options;
