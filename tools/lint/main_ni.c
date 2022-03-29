@@ -234,7 +234,7 @@ help(int shortout)
             "                (operational datastore) referenced from the RPC/Notification.\n\n");
 
     printf("  -m, --merge   Merge input data files into a single tree and validate at\n"
-            "                once.The option has effect only for 'data' and 'config' TYPEs.\n\n");
+            "                once. The option has effect only for 'data' and 'config' TYPEs.\n\n");
 
     printf("  -y, --yang-library\n"
             "                Load and implement internal \"ietf-yang-library\" YANG module.\n"
