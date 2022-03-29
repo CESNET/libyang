@@ -520,7 +520,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
             lyd_print_all(out, merged_tree, format, options_print);
         }
 
-        for (uint32_t u = 0; u < xpaths->count; ++u) {
+        for (uint32_t u = 0; xpaths && (u < xpaths->count); ++u) {
             if (evaluate_xpath(merged_tree, (const char *)xpaths->objs[u])) {
                 goto cleanup;
             }
