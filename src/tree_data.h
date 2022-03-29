@@ -202,6 +202,8 @@ struct lyxp_var;
  * need to be provided by a callback:
  *
  * - ::ly_ctx_set_ext_data_clb()
+ *
+ * The mounted data can be parsed directly from data files or created manually using the standard functions.
  */
 
 /**
