@@ -567,12 +567,12 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         pctx->options = prev_opts;
 
         /* terminate the object */
+        LEVEL_DEC;
         if (DO_FORMAT) {
             ly_print_(pctx->out, "\n%*s}", INDENT);
         } else {
             ly_print_(pctx->out, "}");
         }
-        LEVEL_DEC;
         break;
     case LYD_ANYDATA_JSON:
         if (!any->value.json) {
@@ -622,6 +622,7 @@ static LY_ERR
 json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
     struct lyd_node *child;
+    struct lyd_node_opaq *opaq = NULL;
     ly_bool has_content = 0;
 
     LY_LIST_FOR(lyd_child(node), child) {
@@ -632,9 +633,12 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     if (node->meta || child) {
         has_content = 1;
     }
+    if (!node->schema) {
+        opaq = (struct lyd_node_opaq *)node;
+    }
 
     if ((node->schema && (node->schema->nodetype == LYS_LIST)) ||
-            (!node->schema && (((struct lyd_node_opaq *)node)->hints & LYD_NODEHINT_LIST))) {
+            (opaq && (opaq->hints != LYD_HINT_DATA) && (opaq->hints & LYD_NODEHINT_LIST))) {
         ly_print_(pctx->out, "%s%*s{%s", (is_open_array(pctx, node) && (pctx->level_printed >= pctx->level)) ?
                 (DO_FORMAT ? ",\n" : ",") : "", INDENT, (DO_FORMAT && has_content) ? "\n" : "");
     } else {
@@ -833,6 +837,34 @@ static LY_ERR
 json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 {
     ly_bool first = 1, last = 1;
+    char *ptr;
+    long num;
+
+    if (node->hints == LYD_HINT_DATA) {
+        /* basically, we do not know anything about the node so just do our best */
+        LY_CHECK_RET(json_print_member2(pctx, lyd_parent(&node->node), node->format, &node->name, 0));
+        if (node->child) {
+            LY_CHECK_RET(json_print_inner(pctx, &node->node));
+            LEVEL_PRINTED;
+        } else {
+            if (node->value) {
+                num = strtol(node->value, &ptr, 10);
+                if (!ptr[0] && (ptr != node->value) &&
+                        (((num < 0) && (num >= INT32_MIN)) || ((num >= 0) && (num <= UINT32_MAX)))) {
+                    ly_print_(pctx->out, "%s", node->value);
+                } else {
+                    ly_print_(pctx->out, "\"%s\"", node->value);
+                }
+            } else {
+                ly_print_(pctx->out, "[null]");
+            }
+            LEVEL_PRINTED;
+
+            /* attributes */
+            json_print_attributes(pctx, (const struct lyd_node *)node, 0);
+        }
+        return LY_SUCCESS;
+    }
 
     if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
         if (node->prev->next && matching_node(node->prev, &node->node)) {
