@@ -723,7 +723,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             LY_CHECK_ERR_GOTO(!val, LOGMEM(xmlctx->ctx); ret = LY_EMEM, error);
 
             /* parser next */
-            LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), error);
+            LY_CHECK_ERR_GOTO(ret = lyxml_ctx_next(xmlctx), free(val), error);
 
             /* create node */
             ret = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, &node);
