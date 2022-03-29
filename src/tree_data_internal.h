@@ -22,6 +22,7 @@
 #include <stddef.h>
 
 struct ly_path_predicate;
+struct lyd_ctx;
 struct lysc_module;
 
 #define LY_XML_SUFFIX ".xml"
@@ -128,11 +129,13 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  * @brief Set data flags for a newly parsed node.
  *
  * @param[in] node Node to use.
- * @param[in,out] node_when Set of nodes with unresolved when.
  * @param[in,out] meta Node metadata, may be removed from.
- * @param[in] parse_opts Parse options.
+ * @param[in] lydctx Data parsing context.
+ * @param[in] ext Extension instance if @p node was parsed for one.
+ * @return LY_ERR value.
  */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct lyd_meta **meta, uint32_t parse_opts);
+LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
+        struct lysc_ext_instance *ext);
 
 /**
  * @brief Get schema node of a data node. Useful especially for opaque nodes.
@@ -151,6 +154,27 @@ const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
  * the first top-level sibling.
  */
 void lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const struct lys_module *mod);
+
+/**
+ * @brief Try to get schema node for data with a parent based on an extension instance.
+ *
+ * @param[in] parent Parsed parent data node. Set if @p sparent is NULL.
+ * @param[in] sparent Schema parent node. Set if @p sparent is NULL.
+ * @param[in] prefix Element prefix, if any.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of @p prefix.
+ * @param[in] prefix_data Format-specific data.
+ * @param[in] name Element name.
+ * @param[in] name_len Length of @p name.
+ * @param[out] snode Found schema node, NULL if no suitable was found.
+ * @param[out] ext Extension instance that provided @p snode.
+ * @return LY_SUCCESS on success;
+ * @return LY_ENOT if no extension instance parsed the data;
+ * @return LY_ERR on error.
+ */
+LY_ERR ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *sparent, const char *prefix,
+        size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
+        const struct lysc_node **snode, struct lysc_ext_instance **ext);
 
 /**
  * @brief Free stored prefix data.

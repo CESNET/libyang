@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Parsing and validation helper functions for data trees
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "log.h"
 #include "lyb.h"
 #include "parser_data.h"
+#include "plugins_exts.h"
 #include "printer_data.h"
 #include "set.h"
 #include "tree.h"
@@ -400,15 +401,17 @@ lyd_parse_check_keys(struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-void
-lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct lyd_meta **meta, uint32_t parse_opts)
+LY_ERR
+lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
+        struct lysc_ext_instance *ext)
 {
     struct lyd_meta *meta2, *prev_meta = NULL;
+    struct lyd_ctx_ext_val *ext_val;
 
     if (lysc_has_when(node->schema)) {
-        if (!(parse_opts & LYD_PARSE_ONLY)) {
+        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
-            LY_CHECK_RET(ly_set_add(node_when, node, 1, NULL), );
+            LY_CHECK_RET(ly_set_add(&lydctx->node_when, node, 1, NULL));
         }
     }
 
@@ -430,6 +433,22 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *node_when, struct
 
         prev_meta = meta2;
     }
+
+    if (ext) {
+        /* parsed for an extension */
+        node->flags |= LYD_EXT;
+
+        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+            /* rememeber for validation */
+            ext_val = malloc(sizeof *ext_val);
+            LY_CHECK_ERR_RET(!ext_val, LOGMEM(LYD_CTX(node)), LY_EMEM);
+            ext_val->ext = ext;
+            ext_val->sibling = node;
+            LY_CHECK_RET(ly_set_add(&lydctx->ext_val, ext_val, 1, NULL));
+        }
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -769,6 +788,46 @@ lyd_del_move_root(struct lyd_node **root, const struct lyd_node *to_del, const s
     } else {
         *root = (*root)->next;
     }
+}
+
+LY_ERR
+ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *sparent, const char *prefix,
+        size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
+        const struct lysc_node **snode, struct lysc_ext_instance **ext)
+{
+    LY_ERR r;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_ext_instance *nested_exts = NULL;
+    lyplg_ext_data_snode_clb ext_snode_cb;
+
+    /* check if there are any nested extension instances */
+    if (parent && parent->schema) {
+        nested_exts = parent->schema->exts;
+    } else if (sparent) {
+        nested_exts = sparent->exts;
+    }
+    LY_ARRAY_FOR(nested_exts, u) {
+        ext_snode_cb = nested_exts[u].def->plugin->snode;
+        if (!ext_snode_cb) {
+            /* not an extension with nested data */
+            continue;
+        }
+
+        /* try to get the schema node */
+        r = ext_snode_cb(&nested_exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
+        if (!r) {
+            /* data successfully created, remember the ext instance */
+            *ext = &nested_exts[u];
+            return LY_SUCCESS;
+        } else if (r != LY_ENOT) {
+            /* fatal error */
+            return r;
+        }
+        /* data was not from this module, continue */
+    }
+
+    /* no extensions or none matched */
+    return LY_ENOT;
 }
 
 void

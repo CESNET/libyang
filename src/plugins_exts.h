@@ -100,7 +100,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 2
+#define LYPLG_EXT_API_VERSION 3
 
 /**
  * @brief Macro to define plugin information in external plugins
@@ -159,22 +159,26 @@ typedef LY_ERR (*lyplg_ext_schema_printer_clb)(struct lyspr_ctx *ctx, struct lys
 typedef void (*lyplg_ext_free_clb)(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
- * @brief Callback for parsing YANG instance data described by an extension instance.
+ * @brief Callback for getting a schema node for a new YANG instance data described by an extension instance.
+ * Needed only if the extension instance supports some nested standard YANG data.
  *
- * This callback is used only for nested data definition (with a standard YANG schema parent).
- * Note that the siblings parsed by this function and directly connected to @p parent must have the flag ::LYD_EXT set.
- *
- * @param[in] in Input handler with the data to parse.
- * @param[in] format Format if the data in @p in.
  * @param[in] ext Compiled extension instance.
- * @param[in,out] parent Data parent to append to.
- * @param[in] parse_opts Parse options, see @ref dataparseroptions. They will always include ::LYD_PARSE_ONLY.
+ * @param[in] parent Parsed parent data node. Set if @p sparent is NULL.
+ * @param[in] sparent Schema parent node. Set if @p parent is NULL.
+ * @param[in] prefix Element prefix, if any.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of @p prefix.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[in] name Element name.
+ * @param[in] name_len Length of @p name.
+ * @param[out] snode Schema node to use for parsing the node.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the data are not described by @p ext.
  * @return LY_ERR on error.
  */
-typedef LY_ERR (*lyplg_ext_data_parse_clb)(struct ly_in *in, LYD_FORMAT format, struct lysc_ext_instance *ext,
-        struct lyd_node *parent, uint32_t parse_opts);
+typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const struct lyd_node *parent,
+        const struct lysc_node *sparent, const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data,
+        const char *name, size_t name_len, const struct lysc_node **snode);
 
 /**
  * @brief Callback for validating parsed YANG instance data described by an extension instance.
@@ -200,7 +204,7 @@ struct lyplg_ext {
                                                  instance */
     lyplg_ext_free_clb free;                /**< free the extension-specific data created by its compilation */
 
-    lyplg_ext_data_parse_clb parse;         /**< callback to parse data instance according to the extension definition */
+    lyplg_ext_data_snode_clb snode;         /**< callback to get schema node for nested YANG data */
     lyplg_ext_data_validate_clb validate;   /**< callback to validate parsed data instances according to the extension
                                                  definition */
 };

@@ -163,7 +163,7 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .plugin.compile = &annotation_compile,
         .plugin.sprinter = &annotation_schema_printer,
         .plugin.free = annotation_free,
-        .plugin.parse = NULL,
+        .plugin.snode = NULL,
         .plugin.validate = NULL
     },
     {0}     /* terminating zeroed record */

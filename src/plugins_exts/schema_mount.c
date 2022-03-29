@@ -24,6 +24,7 @@
 #include "libyang.h"
 #include "log.h"
 #include "plugins_exts.h"
+#include "plugins_types.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 
@@ -510,62 +511,32 @@ cleanup:
 }
 
 /**
- * @brief Parse callback for schema mount.
- * Check if data if valid for schema mount and inserts it to the parent.
+ * @brief Snode callback for schema mount.
+ * Check if data are valid for schema mount and returns their schema node.
  */
 static LY_ERR
-schema_mount_parse(struct ly_in *in, LYD_FORMAT format, struct lysc_ext_instance *ext, struct lyd_node *parent,
-        uint32_t parse_opts)
+schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
+        const struct lysc_node **snode)
 {
-    LY_ERR ret = LY_SUCCESS, r;
+    LY_ERR r;
+    const struct lys_module *mod;
     const struct ly_ctx *ext_ctx;
-    struct lyd_node *subtree, *first = NULL;
-    struct ly_err_item *err;
-    uint32_t old_log_opts;
 
     /* get context based on ietf-yang-library data */
     if ((r = schema_mount_get_ctx(ext, &ext_ctx))) {
         return r;
     }
 
-    /* prepare opts */
-    old_log_opts = ly_log_options(LY_LOSTORE_LAST);
-    assert(parse_opts & LYD_PARSE_ONLY);
-    parse_opts |= LYD_PARSE_SUBTREE;
-
-    do {
-        /* parse by nested subtrees */
-        r = lyd_parse_data(ext_ctx, NULL, in, format, parse_opts, 0, &subtree);
-        if (r && (r != LY_ENOT)) {
-            /* error, maybe valid, maybe not, print as verbose */
-            err = ly_err_first(ext_ctx);
-            if (!err) {
-                lyplg_ext_log(ext, LY_LLVRB, 0, NULL, "Unknown parsing error (err code %d).", r);
-            } else {
-                lyplg_ext_log(ext, LY_LLVRB, 0, NULL, "%s (err code %d).", err->msg, err->no);
-            }
-            ret = LY_ENOT;
-            goto cleanup;
-        }
-
-        /* set the special flag and insert into siblings */
-        subtree->flags |= LYD_EXT;
-        lyd_insert_sibling(first, subtree, &first);
-    } while (r == LY_ENOT);
-
-    /* append to parent */
-    if (first && (r = lyd_insert_ext(parent, first))) {
-        lyplg_ext_log(ext, LY_LLERR, r, NULL, "Failed to append parsed data.");
-        ret = r;
-        goto cleanup;
+    /* get the module */
+    mod = lyplg_type_identity_module(ext_ctx, parent ? parent->schema : sparent, prefix, prefix_len, format, prefix_data);
+    if (!mod) {
+        return LY_ENOT;
     }
 
-cleanup:
-    ly_log_options(old_log_opts);
-    if (ret) {
-        lyd_free_siblings(first);
-    }
-    return ret;
+    /* get the top-level schema node */
+    *snode = lys_find_child(NULL, mod, name, name_len, 0, 0);
+    return *snode ? LY_SUCCESS : LY_ENOT;
 }
 
 /**
@@ -818,7 +789,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.compile = &schema_mount_compile,
         .plugin.sprinter = NULL,
         .plugin.free = &schema_mount_free,
-        .plugin.parse = &schema_mount_parse,
+        .plugin.snode = &schema_mount_snode,
         .plugin.validate = &schema_mount_validate
     },
     {0} /* terminating zeroed item */

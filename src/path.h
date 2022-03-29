@@ -58,8 +58,9 @@ struct ly_path {
     const struct lysc_node *node; /**< Schema node representing the path segment, first node has special meaning:
                                        - is a top-level node - path is absolute,
                                        - is inner node - path is relative */
-    struct ly_path_predicate *predicates;  /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
-    enum ly_path_pred_type pred_type;   /**< Predicate type (see YANG ABNF) */
+    const struct lysc_ext_instance *ext;    /**< Extension instance of @p node, if any */
+    struct ly_path_predicate *predicates;   /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
+    enum ly_path_pred_type pred_type;       /**< Predicate type (see YANG ABNF) */
 };
 
 /**
@@ -147,7 +148,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes in schema-nodeid
  * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Optional context node.
- * @param[in] ext Extension instance containing the definition of the data being created. It is used to find the top-level
+ * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
  * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
  * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in] expr Parsed path.
@@ -160,7 +161,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
         ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
@@ -168,7 +169,7 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  *
  * @param[in] ctx libyang context.
  * @param[in] ctx_node Context node.
- * @param[in] ext Extension instance containing the definition of the data being created. It is used to find the top-level
+ * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
  * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
  * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in] expr Parsed path.
@@ -180,7 +181,7 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
+        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint8_t oper, uint8_t target,
         LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**

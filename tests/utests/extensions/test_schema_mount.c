@@ -1278,6 +1278,129 @@ test_parse_config(void **state)
     lyd_free_siblings(data);
 }
 
+static void
+test_new(void **state)
+{
+    const char *xml;
+    const struct lys_module *mod;
+    struct lyd_node *data, *node;
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-interfaces</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>iana-if-type</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name>"
+            "      <revision>2013-07-15</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point>"
+            "    <module>sm</module>"
+            "    <label>root</label>"
+            "    <shared-schema/>"
+            "  </mount-point>"
+            "</schema-mounts>");
+    xml =
+            "<root xmlns=\"urn:sm\">\n"
+            "  <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "    <interface>\n"
+            "      <name>bu</name>\n"
+            "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "    </interface>\n"
+            "  </interfaces>\n"
+            "  <interfaces-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "    <interface>\n"
+            "      <name>bu</name>\n"
+            "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "      <oper-status>not-present</oper-status>\n"
+            "      <statistics>\n"
+            "        <discontinuity-time>2022-01-01T10:00:00-00:00</discontinuity-time>\n"
+            "      </statistics>\n"
+            "    </interface>\n"
+            "  </interfaces-state>\n"
+            "</root>\n";
+
+    /* create the data manually with simple new functions */
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "sm");
+    assert_non_null(mod);
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(NULL, mod, "root", 0, &data));
+
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "ietf-interfaces");
+    assert_non_null(mod);
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(data, mod, "interfaces", 0, &node));
+    assert_int_equal(LY_SUCCESS, lyd_new_list(node, NULL, "interface", 0, &node, "bu"));
+    assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "type", "iana-if-type:ethernetCsmacd", 0, NULL));
+
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(data, mod, "interfaces-state", 0, &node));
+    assert_int_equal(LY_SUCCESS, lyd_new_list(node, NULL, "interface", 0, &node, "bu"));
+    assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "type", "iana-if-type:ethernetCsmacd", 0, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "oper-status", "not-present", 0, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(node, NULL, "statistics", 0, &node));
+    assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "discontinuity-time", "2022-01-01T10:00:00-00:00", 0, NULL));
+
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
+
+    /* create the data using lyd_new_path */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX,
+            "/sm:root/ietf-interfaces:interfaces/interface[name='bu']/type", "iana-if-type:ethernetCsmacd", 0, &data));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(data, NULL,
+            "/sm:root/ietf-interfaces:interfaces-state/interface[name='bu']/type", "iana-if-type:ethernetCsmacd", 0, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(data, NULL,
+            "/sm:root/ietf-interfaces:interfaces-state/interface[name='bu']/oper-status", "not-present", 0, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(data, NULL,
+            "/sm:root/ietf-interfaces:interfaces-state/interface[name='bu']/statistics/discontinuity-time",
+            "2022-01-01T10:00:00-00:00", 0, NULL));
+
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+    lyd_free_siblings(data);
+}
+
 int
 main(void)
 {
@@ -1288,6 +1411,7 @@ main(void)
         UTEST(test_parse_shared, setup),
         UTEST(test_parse_shared_parent_ref, setup),
         UTEST(test_parse_config, setup),
+        UTEST(test_new, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -234,7 +234,7 @@ test_schema_invalid(void **state)
 }
 
 static void
-test_data(void **state)
+test_parse(void **state)
 {
     struct lys_module *mod;
     struct lysc_ext_instance *e;
@@ -266,7 +266,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         UTEST(test_schema, setup),
         UTEST(test_schema_invalid, setup),
-        UTEST(test_data, setup),
+        UTEST(test_parse, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

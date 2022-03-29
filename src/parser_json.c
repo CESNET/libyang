@@ -183,80 +183,6 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
 }
 
 /**
- * @brief Try to parse data with a parent based on an extension instance.
- *
- * @param[in] lydctx JSON data parser context.
- * @param[in,out] parent Parent node where the children are inserted.
- * @return LY_SUCCESS on success;
- * @return LY_ENOT if no extension instance parsed the data;
- * @return LY_ERR on error.
- */
-static LY_ERR
-lydjson_nested_ext(struct lyd_json_ctx *lydctx, struct lyd_node *parent)
-{
-    LY_ERR r;
-    struct ly_in in_bck, in_start, in_ext;
-    LY_ARRAY_COUNT_TYPE u;
-    struct lysc_ext_instance *nested_exts = NULL;
-    lyplg_ext_data_parse_clb ext_parse_cb;
-    struct lyd_ctx_ext_val *ext_val;
-    uint32_t quot_count;
-
-    /* backup current input */
-    in_bck = *lydctx->jsonctx->in;
-
-    /* go back in the input for extension parsing */
-    in_start = *lydctx->jsonctx->in;
-    assert(lyjson_ctx_status(lydctx->jsonctx, 0) == LYJSON_OBJECT);
-    quot_count = 0;
-    do {
-        --in_start.current;
-        if ((in_start.current[0] == '\"') && (in_start.current[-1] != '\\')) {
-            ++quot_count;
-        }
-        if (in_start.current == in_start.start) {
-            /* invalid JSON */
-            return LY_ENOT;
-        }
-    } while (quot_count < 2);
-
-    /* check if there are any nested extension instances */
-    if (parent && parent->schema) {
-        nested_exts = parent->schema->exts;
-    }
-    LY_ARRAY_FOR(nested_exts, u) {
-        /* prepare the input and try to parse this extension data */
-        in_ext = in_start;
-        ext_parse_cb = nested_exts[u].def->plugin->parse;
-        r = ext_parse_cb(&in_ext, LYD_JSON, &nested_exts[u], parent, lydctx->parse_opts | LYD_PARSE_ONLY);
-        if (!r) {
-            /* data successfully parsed, remember for validation */
-            if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-                ext_val = malloc(sizeof *ext_val);
-                LY_CHECK_ERR_RET(!ext_val, LOGMEM(lydctx->jsonctx->ctx), LY_EMEM);
-                ext_val->ext = &nested_exts[u];
-                ext_val->sibling = lyd_child_no_keys(parent);
-                LY_CHECK_RET(ly_set_add(&lydctx->ext_val, ext_val, 1, NULL));
-            }
-
-            /* adjust the jsonctx accordingly */
-            *lydctx->jsonctx->in = in_ext;
-            LYJSON_STATUS_PUSH_RET(lydctx->jsonctx, LYJSON_OBJECT_CLOSED);
-            LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, NULL));
-            return LY_SUCCESS;
-        } else if (r != LY_ENOT) {
-            /* fatal error */
-            return r;
-        }
-        /* data was not from this module, continue */
-    }
-
-    /* no extensions or none matched, restore input */
-    *lydctx->jsonctx->in = in_bck;
-    return LY_ENOT;
-}
-
-/**
  * @brief Skip the currently open JSON object/array
  * @param[in] jsonctx JSON context with the input data to skip.
  * @return LY_ERR value.
@@ -303,27 +229,28 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
  * @param[in] name Requested node's name.
  * @param[in] name_len Length of the @p name.
  * @param[in] parent Parent of the node being processed, can be NULL in case of top-level.
- * @param[out] snode_p Found schema node corresponding to the input parameters. If NULL, parse as an opaque node.
+ * @param[out] snode Found schema node corresponding to the input parameters. If NULL, parse as an opaque node.
+ * @param[out] ext Extension instance that provided @p snode, if any.
  * @return LY_SUCCES on success.
  * @return LY_ENOT if the whole object was parsed (skipped or as an extension).
  * @return LY_ERR on error.
  */
 static LY_ERR
 lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *prefix, size_t prefix_len, const char *name,
-        size_t name_len, struct lyd_node *parent, const struct lysc_node **snode_p)
+        size_t name_len, struct lyd_node *parent, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lys_module *mod = NULL;
     uint32_t getnext_opts = lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
-    /* init return value */
-    *snode_p = NULL;
+    *snode = NULL;
+    *ext = NULL;
 
     LOG_LOCSET(NULL, parent, NULL, NULL);
 
-    /* get the element module */
+    /* get the element module, prefer parent context because of extensions */
     if (prefix_len) {
-        mod = ly_ctx_get_module_implemented2(lydctx->jsonctx->ctx, prefix, prefix_len);
+        mod = ly_ctx_get_module_implemented2(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, prefix, prefix_len);
     } else if (parent) {
         if (parent->schema) {
             mod = parent->schema->module;
@@ -336,13 +263,9 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     }
     if (!mod) {
         /* check for extension data */
-        r = lydjson_nested_ext(lydctx, parent);
-        if (!r) {
-            /* successfully parsed */
-            ret = LY_ENOT;
-            goto cleanup;
-        } else if (r != LY_ENOT) {
-            /* error */
+        r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, snode, ext);
+        if (r != LY_ENOT) {
+            /* success or error */
             ret = r;
             goto cleanup;
         }
@@ -366,19 +289,15 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     /* get the schema node */
     if (mod && (!parent || parent->schema)) {
         if (!parent && lydctx->ext) {
-            *snode_p = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
+            *snode = lysc_ext_find_node(lydctx->ext, mod, name, name_len, 0, getnext_opts);
         } else {
-            *snode_p = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
+            *snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
         }
-        if (!*snode_p) {
+        if (!*snode) {
             /* check for extension data */
-            r = lydjson_nested_ext(lydctx, parent);
-            if (!r) {
-                /* successfully parsed */
-                ret = LY_ENOT;
-                goto cleanup;
-            } else if (r != LY_ENOT) {
-                /* error */
+            r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, snode, ext);
+            if (r != LY_ENOT) {
+                /* success or error */
                 ret = r;
                 goto cleanup;
             }
@@ -413,7 +332,7 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
             }
         } else {
             /* check that schema node is valid and can be used */
-            ret = lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode_p);
+            ret = lyd_parser_check_schema((struct lyd_ctx *)lydctx, *snode);
         }
     }
 
@@ -634,6 +553,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *node, *attr, *next, *meta_iter;
+    struct lysc_ext_instance *ext;
     uint64_t instance = 0;
     const char *prev = NULL;
     uint32_t log_location_items = 0;
@@ -704,8 +624,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 lydjson_parse_name(meta_container->name.name, strlen(meta_container->name.name), &name, &name_len,
                         &prefix, &prefix_len, &is_attr);
                 assert(is_attr);
-                ret = lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, lyd_parent(*first_p), &snode);
-                assert(ret == LY_SUCCESS);
+                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, lyd_parent(*first_p), &snode, &ext);
 
                 if (snode != node->schema) {
                     continue;
@@ -742,10 +661,10 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                         goto cleanup;
                     }
                 }
-                /* add/correct flags */
-                lyd_parse_set_data_flags(node, &lydctx->node_when, &node->meta, lydctx->parse_opts);
 
-                /* done */
+                /* add/correct flags */
+                ret = lyd_parse_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, ext);
+                LY_CHECK_GOTO(ret, cleanup);
                 break;
             }
         }
@@ -929,7 +848,8 @@ next_entry:
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add/correct flags */
-            lyd_parse_set_data_flags(node, &lydctx->node_when, &meta, lydctx->parse_opts);
+            ret = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         } else {
             /* create attribute */
             const char *module_name;
@@ -982,13 +902,19 @@ cleanup:
  * @param[in,out] first_p Pointer to the first sibling node in case of top-level.
  * @param[in,out] node_p pointer to the new node to insert, after the insert is done, pointer is set to NULL.
  * @param[in] last If set, always insert at the end.
+ * @param[in] ext Extension instance of @p node_p, if any.
  */
 static void
-lydjson_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last)
+lydjson_maintain_children(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node_p, ly_bool last,
+        struct lysc_ext_instance *ext)
 {
     if (*node_p) {
         /* insert, keep first pointer correct */
-        lyd_insert_node(parent, first_p, *node_p, last);
+        if (ext) {
+            lyd_insert_ext(parent, *node_p);
+        } else {
+            lyd_insert_node(parent, first_p, *node_p, last);
+        }
         if (first_p) {
             if (parent) {
                 *first_p = lyd_child(parent);
@@ -1116,7 +1042,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
 
         /* continue with the next instance */
         assert(node_p);
-        lydjson_maintain_children(parent, first_p, node_p, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
+        lydjson_maintain_children(parent, first_p, node_p, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, NULL);
         LY_CHECK_RET(lydjson_create_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status_inner_p, node_p));
     }
 
@@ -1250,6 +1176,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
  * @param[in] lydctx JSON data parser context. When the function returns, the context is in the same state
  * as before calling, despite it is necessary to process input data for checking.
  * @param[in] snode Schema node corresponding to the member currently being processed in the context.
+ * @param[in] ext Extension instance of @p snode, if any.
  * @param[in,out] status JSON parser status, is updated.
  * @param[out] node Parsed data (or opaque) node.
  * @return LY_SUCCESS if a node was successfully parsed,
@@ -1257,8 +1184,8 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
  * @return LY_ERR on other errors.
  */
 static LY_ERR
-lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, enum LYJSON_PARSER_STATUS *status,
-        struct lyd_node **node)
+lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, struct lysc_ext_instance *ext,
+        enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR r;
     uint32_t prev_parse_opts, prev_int_opts;
@@ -1294,7 +1221,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, en
          * process data as opaq nodes */
         prev_parse_opts = lydctx->parse_opts;
         lydctx->parse_opts &= ~LYD_PARSE_STRICT;
-        lydctx->parse_opts |= LYD_PARSE_OPAQ;
+        lydctx->parse_opts |= LYD_PARSE_OPAQ | (ext ? LYD_PARSE_ONLY : 0);
         prev_int_opts = lydctx->int_opts;
         lydctx->int_opts |= LYD_INTOPT_ANY | LYD_INTOPT_WITH_SIBLINGS;
 
@@ -1382,6 +1309,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, en
  * @param[in] parent Data parent of the subtree, must be set if @p first is not.
  * @param[in,out] first_p Pointer to the variable holding the first top-level sibling, must be set if @p parent is not.
  * @param[in] snode Schema node corresponding to the member currently being processed in the context.
+ * @param[in] ext Extension instance of @p snode, if any.
  * @param[in] name Parsed JSON node name.
  * @param[in] name_len Lenght of @p name.
  * @param[in] prefix Parsed JSON node prefix.
@@ -1394,11 +1322,12 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, en
  */
 static LY_ERR
 lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
-        const struct lysc_node *snode, const char *name, size_t name_len, const char *prefix, size_t prefix_len,
-        enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
+        const struct lysc_node *snode, struct lysc_ext_instance *ext, const char *name, size_t name_len,
+        const char *prefix, size_t prefix_len, enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR ret;
     uint32_t type_hints = 0;
+    uint32_t prev_parse_opts;
 
     ret = lydjson_data_check_opaq(lydctx, snode, &type_hints);
     if (ret == LY_SUCCESS) {
@@ -1429,12 +1358,21 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
 
             LOG_LOCSET(snode, *node, NULL, NULL);
 
+            prev_parse_opts = lydctx->parse_opts;
+            if (ext) {
+                /* only parse these extension data and validate afterwards */
+                lydctx->parse_opts |= LYD_PARSE_ONLY;
+            }
+
             /* process children */
             while ((*status != LYJSON_OBJECT_CLOSED) && (*status != LYJSON_OBJECT_EMPTY)) {
                 ret = lydjson_subtree_r(lydctx, *node, lyd_node_child_p(*node), NULL);
                 LY_CHECK_ERR_RET(ret, LOG_LOCBACK(1, 1, 0, 0), ret);
                 *status = lyjson_ctx_status(lydctx->jsonctx, 0);
             }
+
+            /* restore options */
+            lydctx->parse_opts = prev_parse_opts;
 
             /* finish linking metadata */
             ret = lydjson_metadata_finish(lydctx, lyd_node_child_p(*node));
@@ -1460,11 +1398,11 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
             LOG_LOCBACK(1, 1, 0, 0);
         } else {
             /* create any node */
-            LY_CHECK_RET(lydjson_parse_any(lydctx, snode, status, node));
+            LY_CHECK_RET(lydjson_parse_any(lydctx, snode, ext, status, node));
         }
 
         /* add/correct flags */
-        lyd_parse_set_data_flags(*node, &lydctx->node_when, &(*node)->meta, lydctx->parse_opts);
+        lyd_parse_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
     } else if (ret == LY_ENOT) {
         /* parse it again as an opaq node */
         ret = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status, status, first_p, node);
@@ -1498,6 +1436,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     size_t name_len, prefix_len = 0;
     ly_bool is_meta = 0, parse_subtree;
     const struct lysc_node *snode = NULL;
+    struct lysc_ext_instance *ext;
     struct lyd_node *node = NULL, *attr_node = NULL;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
     char *value = NULL;
@@ -1515,7 +1454,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 
     if (!is_meta || name_len || prefix_len) {
         /* get the schema node */
-        r = lydjson_get_snode(lydctx, is_meta, prefix, prefix_len, name, name_len, parent, &snode);
+        r = lydjson_get_snode(lydctx, is_meta, prefix, prefix_len, name, name_len, parent, &snode, &ext);
         if (r == LY_ENOT) {
             /* data parsed */
             goto cleanup;
@@ -1582,15 +1521,14 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
 
             /* process all the values/objects */
             do {
-                lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
-
-                ret = lydjson_parse_instance(lydctx, parent, first_p, snode, name, name_len, prefix, prefix_len,
+                ret = lydjson_parse_instance(lydctx, parent, first_p, snode, ext, name, name_len, prefix, prefix_len,
                         &status, &node);
                 if (ret == LY_ENOT) {
                     goto representation_error;
                 } else if (ret) {
                     goto cleanup;
                 }
+                lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
 
                 /* move after the item(s) */
                 LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, &status), cleanup);
@@ -1615,7 +1553,8 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
             }
 
             /* process the value/object */
-            ret = lydjson_parse_instance(lydctx, parent, first_p, snode, name, name_len, prefix, prefix_len, &status, &node);
+            ret = lydjson_parse_instance(lydctx, parent, first_p, snode, ext, name, name_len, prefix, prefix_len,
+                    &status, &node);
             if (ret == LY_ENOT) {
                 goto representation_error;
             } else if (ret) {
@@ -1631,7 +1570,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
     /* finally connect the parsed node */
-    lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
+    lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
 
     /* rememeber a successfully parsed node */
     if (parsed) {

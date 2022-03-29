@@ -54,7 +54,7 @@ LYPLG_EXTENSIONS = {
         .plugin.compile = &hint_compile,
         .plugin.sprinter = NULL,
         .plugin.free = NULL,
-        .plugin.parse = NULL,
+        .plugin.snode = NULL,
         .plugin.validate = NULL
     },
     {0} /* terminating zeroed item */

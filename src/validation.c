@@ -279,7 +279,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct 
             LY_CHECK_RET(ret);
 
             /* remove this item from the set */
-            ly_set_rm_index(node_types, i, free);
+            ly_set_rm_index(ext_val, i, free);
         } while (i);
     }
 
