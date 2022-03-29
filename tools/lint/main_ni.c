@@ -880,9 +880,9 @@ main_ni(int argc, char *argv[])
 
         /* do the data validation despite the schema was printed */
         if (c.data_inputs.size) {
-            if (process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out,
-                    c.data_parse_options, c.data_validate_options, c.data_print_options,
-                    &c.data_operational, &c.data_inputs, NULL)) {
+            ret = process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out, c.data_parse_options,
+                    c.data_validate_options, c.data_print_options, &c.data_operational, &c.data_inputs, NULL);
+            if (ret) {
                 goto cleanup;
             }
         }
