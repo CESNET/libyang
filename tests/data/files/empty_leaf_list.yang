@@ -1,0 +1,6 @@
+module empty_leaflist_json {
+  prefix "empty_leaflist_json";
+  namespace "urn:test:empty_leaflist_json";
+
+  leaf-list ll {type string;}
+}

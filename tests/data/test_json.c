@@ -451,7 +451,7 @@ static const char *string_data_024 =
 
 static const char *json_empty_ll = 
 "{"
-  "\"null-leaf-list:ll\":[]"
+  "\"empty_leaf_list:ll\":[]"
 "}";
 
 static int
@@ -703,7 +703,7 @@ static void
 test_parse_ll_empty(void **state)
 {
     struct state *st;
-    const char *modules[] = {"null-leaf-list"};
+    const char *modules[] = {"empty_leaf_list"};
     int module_count = 1;
 
     if (setup_f(&st, TESTS_DIR "/data/files", modules, module_count)) {

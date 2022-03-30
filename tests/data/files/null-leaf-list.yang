@@ -1,6 +1,0 @@
-module null_leaflist_json {
-  prefix "null_leaflist_json";
-  namespace "urn:test:null_leaflist_json";
-
-  leaf-list ll {type string;}
-}
