@@ -172,6 +172,11 @@ test_leaflist(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
+    /* accept empty */
+    data = "{\"a:ll1\":[]}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_null(tree);
+
     /* simple metadata */
     data = "{\"a:ll1\":[10,11],\"@a:ll1\":[null,{\"a:hint\":2}]}";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
@@ -368,9 +373,13 @@ test_list(void **state)
     LY_LIST_FOR(list->child, iter) {
         assert_int_not_equal(0, iter->hash);
     }
-
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
+
+    /* accept empty */
+    data = "{\"a:l1\":[]}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_null(tree);
 
     /* missing keys */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,

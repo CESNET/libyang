@@ -1513,6 +1513,10 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
                 expected = "name/array of objects";
             }
 
+            if (status == LYJSON_ARRAY_EMPTY) {
+                /* no instances, skip */
+                break;
+            }
             LY_CHECK_GOTO(status != LYJSON_ARRAY, representation_error);
 
             /* move into array */
@@ -1573,7 +1577,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     lydjson_maintain_children(parent, first_p, &node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0, ext);
 
     /* rememeber a successfully parsed node */
-    if (parsed) {
+    if (parsed && node) {
         ly_set_add(parsed, node, 1, NULL);
     }
 

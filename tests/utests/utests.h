@@ -140,11 +140,6 @@ struct utest_context {
                 fail_msg("%s != 0x%d", #RET, _r); \
             } \
         } \
-        if (RET == LY_SUCCESS) { \
-            assert_non_null(OUT_NODE); \
-        } else { \
-            assert_null(OUT_NODE); \
-        } \
     }
 
 /**
