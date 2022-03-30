@@ -451,7 +451,7 @@ static const char *string_data_024 =
 
 static const char *json_empty_ll = 
 "{"
-  "\"empty_leaf_list:ll\":[]"
+  "\"empty_leaflist_json:ll\":[]"
 "}";
 
 static int
@@ -703,7 +703,7 @@ static void
 test_parse_ll_empty(void **state)
 {
     struct state *st;
-    const char *modules[] = {"empty_leaf_list"};
+    const char *modules[] = {"empty_leaflist_json"};
     int module_count = 1;
 
     if (setup_f(&st, TESTS_DIR "/data/files", modules, module_count)) {
@@ -713,7 +713,7 @@ test_parse_ll_empty(void **state)
     (*state) = st;
 
     st->dt = lyd_parse_mem(st->ctx, json_empty_ll, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
-    assert_ptr_equal(st->dt, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
 }
 
 int
