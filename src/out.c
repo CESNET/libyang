@@ -39,8 +39,8 @@
 #define REALLOC_CHUNK(NEW_SIZE) \
     NEW_SIZE + (1024 - (NEW_SIZE % 1024))
 
-ly_bool
-ly_should_print(const struct lyd_node *node, uint32_t options)
+LIBYANG_API_DEF ly_bool
+lyd_node_should_print(const struct lyd_node *node, uint32_t options)
 {
     const struct lyd_node *elem;
 
@@ -63,7 +63,7 @@ ly_should_print(const struct lyd_node *node, uint32_t options)
 
         /* avoid empty default containers */
         LYD_TREE_DFS_BEGIN(node, elem) {
-            if ((elem != node) && ly_should_print(elem, options)) {
+            if ((elem != node) && lyd_node_should_print(elem, options)) {
                 return 1;
             }
             assert(elem->flags & LYD_DEFAULT);

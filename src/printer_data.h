@@ -176,7 +176,18 @@ LIBYANG_API_DECL LY_ERR lyd_print_path(const char *path, const struct lyd_node *
  * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_print_clb(ly_write_clb writeclb, void *user_data, const struct lyd_node *root, LYD_FORMAT format, uint32_t options);
+LIBYANG_API_DECL LY_ERR lyd_print_clb(ly_write_clb writeclb, void *user_data, const struct lyd_node *root,
+        LYD_FORMAT format, uint32_t options);
+
+/**
+ * @brief Check whether the node should be printed based on the printing options.
+ *
+ * @param[in] node Node to check.
+ * @param[in] options [Data printer flags](@ref dataprinterflags).
+ * @return 0 if not,
+ * @return non-0 if should be printed.
+ */
+LIBYANG_API_DECL ly_bool lyd_node_should_print(const struct lyd_node *node, uint32_t options);
 
 #ifdef __cplusplus
 }

@@ -632,7 +632,7 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
     ly_bool has_content = 0;
 
     LY_LIST_FOR(lyd_child(node), child) {
-        if (ly_should_print(child, pctx->options)) {
+        if (lyd_node_should_print(child, pctx->options)) {
             break;
         }
     }
@@ -932,7 +932,7 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 static LY_ERR
 json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
-    if (!ly_should_print(node, pctx->options)) {
+    if (!lyd_node_should_print(node, pctx->options)) {
         if (json_print_array_is_last_inst(pctx, node)) {
             json_print_array_close(pctx);
         }

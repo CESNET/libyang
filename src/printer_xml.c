@@ -349,7 +349,7 @@ xml_print_inner(struct xmlpr_ctx *pctx, const struct lyd_node_inner *node)
     xml_print_node_open(pctx, &node->node);
 
     LY_LIST_FOR(node->child, child) {
-        if (ly_should_print(child, pctx->options)) {
+        if (lyd_node_should_print(child, pctx->options)) {
             break;
         }
     }
@@ -511,7 +511,7 @@ xml_print_node(struct xmlpr_ctx *pctx, const struct lyd_node *node)
     LY_ERR ret = LY_SUCCESS;
     uint32_t ns_count;
 
-    if (!ly_should_print(node, pctx->options)) {
+    if (!lyd_node_should_print(node, pctx->options)) {
         /* do not print at all */
         return LY_SUCCESS;
     }

@@ -57,15 +57,6 @@ struct ly_out {
 };
 
 /**
- * @brief Check whether the node should even be printed.
- *
- * @param[in] node Node to check.
- * @param[in] options Printer options.
- * @return false (no, it should not be printed) or true (yes, it is supposed to be printed)
- */
-ly_bool ly_should_print(const struct lyd_node *node, uint32_t options);
-
-/**
  * @brief Generic printer of the given format string into the specified output.
  *
  * Does not reset printed bytes. Adds to printed bytes.
