@@ -451,9 +451,8 @@ static const char *string_data_024 =
 
 static const char *json_empty_ll = 
 "{"
-    "\"null_leaflist_json:ll\": []"
-"}"
-;
+  "\"null-leaf-list:ll\":[]"
+"}";
 
 static int
 setup_f(struct state **state, const char *search_dir, const char **modules, int module_count)
@@ -701,7 +700,7 @@ test_parse_string(void **state)
 }
 
 static void
-test_parse_ll_null(void **state)
+test_parse_ll_empty(void **state)
 {
     struct state *st;
     const char *modules[] = {"null-leaf-list"};
@@ -725,7 +724,7 @@ main(void)
                     cmocka_unit_test_teardown(test_parse_numbers, teardown_f),
                     cmocka_unit_test_teardown(test_parse_error_numbers, teardown_f),
                     cmocka_unit_test_teardown(test_parse_string, teardown_f),
-                    cmocka_unit_test_teardown(test_parse_ll_null, teardown_f),
+                    cmocka_unit_test_teardown(test_parse_ll_empty, teardown_f),
                     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
