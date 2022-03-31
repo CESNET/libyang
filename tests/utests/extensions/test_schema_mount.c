@@ -462,6 +462,7 @@ static void
 test_parse_inline(void **state)
 {
     const char *xml, *json;
+    char *lyb;
     struct lyd_node *data;
 
     /* valid */
@@ -649,6 +650,12 @@ test_parse_inline(void **state)
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, 0));
+    lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    free(lyb);
     lyd_free_siblings(data);
 }
 
@@ -656,6 +663,7 @@ static void
 test_parse_shared(void **state)
 {
     const char *xml, *json;
+    char *lyb;
     struct lyd_node *data;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
@@ -1011,6 +1019,12 @@ test_parse_shared(void **state)
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, json, LYD_JSON, LYD_PRINT_WITHSIBLINGS);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&lyb, data, LYD_LYB, LYD_PRINT_WITHSIBLINGS));
+    lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    free(lyb);
     lyd_free_siblings(data);
 }
 

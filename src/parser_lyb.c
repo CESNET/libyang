@@ -30,6 +30,7 @@
 #include "log.h"
 #include "parser_data.h"
 #include "parser_internal.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -331,67 +332,86 @@ lyb_read_start_siblings(struct lylyb_ctx *lybctx)
 }
 
 /**
- * @brief Parse YANG model info.
+ * @brief Read YANG model info.
  *
  * @param[in] lybctx LYB context.
- * @param[in] parse_options Flag with options for parsing.
- * @param[out] model Parsed module.
+ * @param[out] mod_name Module name, if any.
+ * @param[out] mod_rev Module revision, "" if none.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **model)
+lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[])
 {
-    LY_ERR ret = LY_SUCCESS;
-    const struct lys_module *mod = NULL;
-    char *mod_name = NULL, mod_rev[LY_REV_SIZE];
     uint16_t rev, length;
 
-    lyb_read_number(&length, 2, 2, lybctx);
+    *mod_name = NULL;
+    mod_rev[0] = '\0';
 
-    if (length) {
-        mod_name = malloc((length + 1) * sizeof *mod_name);
-        LY_CHECK_ERR_RET(!mod_name, LOGMEM(lybctx->ctx), LY_EMEM);
-        lyb_read(((uint8_t *)mod_name), length, lybctx);
-        mod_name[length] = '\0';
-    } else {
-        goto cleanup;
+    lyb_read_number(&length, 2, 2, lybctx);
+    if (!length) {
+        return LY_SUCCESS;
     }
 
-    /* revision */
+    /* module name */
+    *mod_name = malloc((length + 1) * sizeof *mod_name);
+    LY_CHECK_ERR_RET(!*mod_name, LOGMEM(lybctx->ctx), LY_EMEM);
+    lyb_read(((uint8_t *)*mod_name), length, lybctx);
+    (*mod_name)[length] = '\0';
+
+    /* module revision */
     lyb_read_number(&rev, sizeof rev, 2, lybctx);
 
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & LYB_REV_YEAR_MASK) >> LYB_REV_YEAR_SHIFT) + LYB_REV_YEAR_OFFSET,
                 (rev & LYB_REV_MONTH_MASK) >> LYB_REV_MONTH_SHIFT, rev & LYB_REV_DAY_MASK);
-        mod = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
-        if ((parse_options & LYD_PARSE_LYB_MOD_UPDATE) && !mod) {
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse YANG model info.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] parse_options Flag with options for parsing.
+ * @param[out] mod Parsed module.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct lys_module **mod)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const struct lys_module *m = NULL;
+    char *mod_name = NULL, mod_rev[LY_REV_SIZE];
+
+    /* read module info */
+    if ((ret = lyb_read_model(lybctx, &mod_name, mod_rev))) {
+        goto cleanup;
+    }
+
+    /* get the module */
+    if (mod_rev[0]) {
+        m = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
+        if ((parse_options & LYD_PARSE_LYB_MOD_UPDATE) && !m) {
             /* try to use an updated module */
-            mod = ly_ctx_get_module_implemented(lybctx->ctx, mod_name);
-            if (mod && (!mod->revision || (strcmp(mod->revision, mod_rev) < 0))) {
+            m = ly_ctx_get_module_implemented(lybctx->ctx, mod_name);
+            if (m && (!m->revision || (strcmp(m->revision, mod_rev) < 0))) {
                 /* not an implemented module in a newer revision */
-                mod = NULL;
+                m = NULL;
             }
         }
     } else {
-        mod = ly_ctx_get_module_latest(lybctx->ctx, mod_name);
+        m = ly_ctx_get_module_latest(lybctx->ctx, mod_name);
     }
-    /* TODO data_clb supported?
-    if (lybctx->ctx->data_clb) {
-        if (!*mod) {
-            *mod = lybctx->ctx->data_clb(lybctx->ctx, mod_name, NULL, 0, lybctx->ctx->data_clb_data);
-        } else if (!(*mod)->implemented) {
-            *mod = lybctx->ctx->data_clb(lybctx->ctx, mod_name, (*mod)->ns, LY_MODCLB_NOT_IMPLEMENTED, lybctx->ctx->data_clb_data);
-        }
-    }*/
 
-    if (!mod || !mod->implemented) {
+    if (!m || !m->implemented) {
         if (parse_options & LYD_PARSE_STRICT) {
-            if (!mod) {
+            if (!m) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, missing module \"%s%s%s\".",
-                        mod_name, rev ? "@" : "", rev ? mod_rev : "");
-            } else if (!mod->implemented) {
+                        mod_name, mod_rev[0] ? "@" : "", mod_rev[0] ? mod_rev : "");
+            } else if (!m->implemented) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",
-                        mod_name, rev ? "@" : "", rev ? mod_rev : "");
+                        mod_name, mod_rev[0] ? "@" : "", mod_rev[0] ? mod_rev : "");
             }
             ret = LY_EINVAL;
             goto cleanup;
@@ -399,13 +419,13 @@ lyb_parse_model(struct lylyb_ctx *lybctx, uint32_t parse_options, const struct l
 
     }
 
-    if (mod) {
+    if (m) {
         /* fill cached hashes, if not already */
-        lyb_cache_module_hash(mod);
+        lyb_cache_module_hash(m);
     }
 
 cleanup:
-    *model = mod;
+    *mod = m;
     free(mod_name);
     return ret;
 }
@@ -748,7 +768,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
             break;
         }
         /* skip schema nodes from models not present during printing */
-        if (lyb_has_schema_model(sibling, lybctx->lybctx->models) &&
+        if (((sibling->module->ctx != lybctx->lybctx->ctx) || lyb_has_schema_model(sibling, lybctx->lybctx->models)) &&
                 lyb_is_schema_hash_match((struct lysc_node *)sibling, hash, hash_count)) {
             /* match found */
             break;
@@ -773,6 +793,50 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 
     *snode = sibling;
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse schema node name of a nested extension data node.
+ *
+ * @param[in] lybctx LYB context.
+ * @param[in] parent Data parent.
+ * @param[in] mod_name Module name of the node.
+ * @param[out] snode Parsed found schema node of a nested extension.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_parse_schema_nested_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *parent, const char *mod_name,
+        const struct lysc_node **snode)
+{
+    LY_ERR rc = LY_SUCCESS, r;
+    char *name = NULL;
+    struct lysc_ext_instance *ext;
+
+    assert(parent);
+
+    /* read schema node name */
+    LY_CHECK_GOTO(rc = lyb_read_string(&name, sizeof(uint16_t), lybctx->lybctx), cleanup);
+
+    /* check for extension data */
+    r = ly_nested_ext_schema(parent, NULL, mod_name, mod_name ? strlen(mod_name) : 0, LY_VALUE_JSON, NULL, name,
+            strlen(name), snode, &ext);
+    if (r == LY_ENOT) {
+        /* failed to parse */
+        LOGERR(lybctx->lybctx->ctx, LY_EINVAL, "Failed to parse node \"%s\" as nested extension instance data.", name);
+        rc = LY_EINVAL;
+        goto cleanup;
+    } else if (r) {
+        /* error */
+        rc = r;
+        goto cleanup;
+    }
+
+    /* fill cached hashes in the module, it may be from a different context */
+    lyb_cache_module_hash((*snode)->module);
+
+cleanup:
+    free(name);
+    return rc;
 }
 
 /**
@@ -849,7 +913,11 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
         struct ly_set *parsed)
 {
     /* insert, keep first pointer correct */
-    lyd_insert_node(parent, first_p, node, lybctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
+    if (parent && (LYD_CTX(parent) != LYD_CTX(node))) {
+        lyd_insert_ext(parent, node);
+    } else {
+        lyd_insert_node(parent, first_p, node, lybctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
+    }
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
     }
@@ -1363,12 +1431,12 @@ error:
 }
 
 /**
- * @brief Parse node.
+ * @brief Parse a node.
  *
- * @param[in] out Out structure.
- * @param[in,out] printed_node Current data node to print. Sets to the last printed node.
- * @param[in,out] sibling_ht Cached hash table for these siblings, created if NULL.
  * @param[in] lybctx LYB context.
+ * @param[in] parent Data parent of the sibling, must be set if @p first_p is not.
+ * @param[in,out] first_p First top-level sibling, must be set if @p parent is not.
+ * @param[in,out] parsed Set of all successfully parsed nodes to add to.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -1378,19 +1446,33 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     LY_ERR ret;
     const struct lysc_node *snode;
     const struct lys_module *mod;
+    enum lylyb_node_type lyb_type;
+    char *mod_name = NULL, mod_rev[LY_REV_SIZE];
 
-    if (!parent || !parent->schema) {
-        /* top-level or opaque, read module name */
-        ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod);
-        LY_CHECK_RET(ret);
+    /* read node type */
+    lyb_read_number(&lyb_type, sizeof lyb_type, 1, lybctx->lybctx);
+
+    switch (lyb_type) {
+    case LYB_NODE_TOP:
+        /* top-level, read module name */
+        LY_CHECK_GOTO(ret = lyb_parse_model(lybctx->lybctx, lybctx->parse_opts, &mod), cleanup);
 
         /* read hash, find the schema node starting from mod */
-        ret = lyb_parse_schema_hash(lybctx, NULL, mod, &snode);
-    } else {
-        /* read hash, find the schema node starting from parent schema */
-        ret = lyb_parse_schema_hash(lybctx, parent->schema, NULL, &snode);
+        LY_CHECK_GOTO(ret = lyb_parse_schema_hash(lybctx, NULL, mod, &snode), cleanup);
+        break;
+    case LYB_NODE_CHILD:
+    case LYB_NODE_OPAQ:
+        /* read hash, find the schema node starting from parent schema, if any */
+        LY_CHECK_GOTO(ret = lyb_parse_schema_hash(lybctx, parent ? parent->schema : NULL, NULL, &snode), cleanup);
+        break;
+    case LYB_NODE_EXT:
+        /* ext, read module name */
+        LY_CHECK_GOTO(ret = lyb_read_model(lybctx->lybctx, &mod_name, mod_rev), cleanup);
+
+        /* read schema node name, find the nexted ext schema node */
+        LY_CHECK_GOTO(ret = lyb_parse_schema_nested_ext(lybctx, parent, mod_name, &snode), cleanup);
+        break;
     }
-    LY_CHECK_RET(ret);
 
     if (!snode) {
         ret = lyb_parse_node_opaq(lybctx, parent, first_p, parsed);
@@ -1405,8 +1487,10 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     } else {
         ret = lyb_parse_node_leaf(lybctx, parent, snode, first_p, parsed);
     }
-    LY_CHECK_RET(ret);
+    LY_CHECK_GOTO(ret, cleanup);
 
+cleanup:
+    free(mod_name);
     return ret;
 }
 
@@ -1423,18 +1507,15 @@ static LY_ERR
 lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_node **first_p,
         struct ly_set *parsed)
 {
-    LY_ERR ret;
     ly_bool top_level;
 
     top_level = !LY_ARRAY_COUNT(lybctx->lybctx->siblings);
 
     /* register a new siblings */
-    ret = lyb_read_start_siblings(lybctx->lybctx);
-    LY_CHECK_RET(ret);
+    LY_CHECK_RET(lyb_read_start_siblings(lybctx->lybctx));
 
     while (LYB_LAST_SIBLING(lybctx->lybctx).written) {
-        ret = lyb_parse_node(lybctx, parent, first_p, parsed);
-        LY_CHECK_RET(ret);
+        LY_CHECK_RET(lyb_parse_node(lybctx, parent, first_p, parsed));
 
         if (top_level && !(lybctx->int_opts & LYD_INTOPT_WITH_SIBLINGS)) {
             break;
@@ -1442,10 +1523,9 @@ lyb_parse_siblings(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct l
     }
 
     /* end the siblings */
-    ret = lyb_read_stop_siblings(lybctx->lybctx);
-    LY_CHECK_RET(ret);
+    LY_CHECK_RET(lyb_read_stop_siblings(lybctx->lybctx));
 
-    return ret;
+    return LY_SUCCESS;
 }
 
 /**

@@ -397,7 +397,7 @@ lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lylyb_ct
  *
  * @param[in] str String to write.
  * @param[in] str_len Length of @p str.
- * @param[in] len_size Size of @ str_len in bytes.
+ * @param[in] len_size Size of @p str_len in bytes.
  * @param[in] out Out structure.
  * @param[in] lybctx LYB context.
  * @return LY_ERR value.
@@ -456,20 +456,16 @@ static LY_ERR
 lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_ctx *lybctx)
 {
     uint16_t revision;
+    int r;
 
     /* model name length and model name */
-    if (mod) {
-        LY_CHECK_RET(lyb_write_string(mod->name, 0, sizeof(uint16_t), out, lybctx));
-    } else {
-        LY_CHECK_RET(lyb_write_number(0, 2, out, lybctx));
-        return LY_SUCCESS;
-    }
+    LY_CHECK_RET(lyb_write_string(mod->name, 0, sizeof(uint16_t), out, lybctx));
 
     /* model revision as XXXX XXXX XXXX XXXX (2B) (year is offset from 2000)
      *                   YYYY YYYM MMMD DDDD */
     revision = 0;
-    if (mod && mod->revision) {
-        int r = atoi(mod->revision);
+    if (mod->revision) {
+        r = atoi(mod->revision);
         r -= LYB_REV_YEAR_OFFSET;
         r <<= LYB_REV_YEAR_SHIFT;
 
@@ -486,10 +482,8 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
     }
     LY_CHECK_RET(lyb_write_number(revision, sizeof revision, out, lybctx));
 
-    if (mod) {
-        /* fill cached hashes, if not already */
-        lyb_cache_module_hash(mod);
-    }
+    /* fill cached hashes, if not already */
+    lyb_cache_module_hash(mod);
 
     return LY_SUCCESS;
 }
@@ -923,6 +917,35 @@ lyb_print_node_header(struct ly_out *out, const struct lyd_node *node, struct ly
 }
 
 /**
+ * @brief Print LYB node type.
+ *
+ * @param[in] out Out structure.
+ * @param[in] node Current data node to print.
+ * @param[in] lybctx LYB context.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyb_print_lyb_type(struct ly_out *out, const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
+{
+    enum lylyb_node_type lyb_type;
+
+    if (node->flags & LYD_EXT) {
+        assert(node->schema);
+        lyb_type = LYB_NODE_EXT;
+    } else if (!node->schema) {
+        lyb_type = LYB_NODE_OPAQ;
+    } else if (!lysc_data_parent(node->schema)) {
+        lyb_type = LYB_NODE_TOP;
+    } else {
+        lyb_type = LYB_NODE_CHILD;
+    }
+
+    LY_CHECK_RET(lyb_write_number(lyb_type, 1, out, lybctx->lybctx));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Print inner node.
  *
  * @param[in] out Out structure.
@@ -1156,15 +1179,21 @@ lyb_print_node(struct ly_out *out, const struct lyd_node **printed_node, struct 
 {
     const struct lyd_node *node = *printed_node;
 
-    /* write model info first, for all opaque and top-level nodes */
-    if (!node->schema && (!node->parent || !node->parent->schema)) {
-        LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
-    } else if (node->schema && !lysc_data_parent(node->schema)) {
+    /* write node type */
+    LY_CHECK_RET(lyb_print_lyb_type(out, node, lybctx));
+
+    /* write model info first */
+    if (node->schema && ((node->flags & LYD_EXT) || !lysc_data_parent(node->schema))) {
         LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
     }
 
-    /* write schema hash */
-    LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx->lybctx));
+    if (node->flags & LYD_EXT) {
+        /* write schema node name */
+        LY_CHECK_RET(lyb_write_string(node->schema->name, 0, sizeof(uint16_t), out, lybctx->lybctx));
+    } else {
+        /* write schema hash */
+        LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx->lybctx));
+    }
 
     if (!node->schema) {
         LY_CHECK_RET(lyb_print_node_opaq(out, (struct lyd_node_opaq *)node, lybctx));
