@@ -188,10 +188,12 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
  * @param[in] ext Compiled extension instance.
  * @param[in] sibling First sibling parsed by ::lyplg_ext_data_parse_clb.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
+ * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, struct lyd_node *sibling, uint32_t val_opts);
+typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, struct lyd_node *sibling, uint32_t val_opts,
+        struct lyd_node **diff);
 
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension

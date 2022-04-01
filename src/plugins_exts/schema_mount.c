@@ -657,12 +657,13 @@ cleanup:
  * @brief Validate callback for schema mount.
  */
 static LY_ERR
-schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, uint32_t val_opts)
+schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t old_log_opts, i;
     struct ly_err_item *err;
     struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling);
+    struct lyd_node *ext_diff = NULL, *diff_parent = NULL;
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
 
@@ -705,7 +706,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, u
     old_log_opts = ly_log_options(LY_LOSTORE_LAST);
 
     /* validate all the data */
-    ret = lyd_validate_all(&sibling, NULL, val_opts, NULL);
+    ret = lyd_validate_all(&sibling, NULL, val_opts, diff ? &ext_diff : NULL);
     ly_log_options(old_log_opts);
 
     /* restore sibling tree */
@@ -731,9 +732,41 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, u
         goto cleanup;
     }
 
+    /* create proper diff */
+    if (diff && ext_diff) {
+        /* diff nodes from an extension instance */
+        LY_LIST_FOR(ext_diff, iter) {
+            iter->flags |= LYD_EXT;
+        }
+
+        /* create the parent and insert the diff */
+        if ((ret = lyd_dup_single(lyd_parent(sibling), NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
+            goto cleanup;
+        }
+        if ((ret = lyd_insert_ext(diff_parent, ext_diff))) {
+            goto cleanup;
+        }
+        ext_diff = NULL;
+
+        /* go top-level and set the operation */
+        while (lyd_parent(diff_parent)) {
+            diff_parent = lyd_parent(diff_parent);
+        }
+        if ((ret = lyd_new_meta(LYD_CTX(diff_parent), diff_parent, NULL, "yang:operation", "none", 0, NULL))) {
+            goto cleanup;
+        }
+
+        /* finally merge into the global diff */
+        if ((ret = lyd_diff_merge_all(diff, diff_parent, LYD_DIFF_MERGE_DEFAULTS))) {
+            goto cleanup;
+        }
+    }
+
 cleanup:
     ly_set_free(ref_set, NULL);
     lyd_free_siblings(ref_first);
+    lyd_free_tree(ext_diff);
+    lyd_free_all(diff_parent);
     if (ext_data_free) {
         lyd_free_all(ext_data);
     }
