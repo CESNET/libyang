@@ -3560,6 +3560,11 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
+    if (node->flags & LYD_EXT) {
+        /* we need to use the same context */
+        trg_ctx = LYD_CTX(node);
+    }
+
     if (!node->schema) {
         dup = calloc(1, sizeof(struct lyd_node_opaq));
         ((struct lyd_node_opaq *)dup)->ctx = trg_ctx;
@@ -3591,7 +3596,7 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     if (options & LYD_DUP_WITH_FLAGS) {
         dup->flags = node->flags;
     } else {
-        dup->flags = (node->flags & LYD_DEFAULT) | LYD_NEW;
+        dup->flags = (node->flags & (LYD_DEFAULT | LYD_EXT)) | LYD_NEW;
     }
     if (trg_ctx == LYD_CTX(node)) {
         dup->schema = node->schema;
