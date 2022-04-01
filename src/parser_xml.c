@@ -744,6 +744,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
             while (xmlctx->status == LYXML_ELEMENT) {
                 ret = lydxml_subtree_r(lydctx, NULL, &anchor, NULL);
                 if (ret) {
+                    lyd_free_siblings(anchor);
                     break;
                 }
             }
