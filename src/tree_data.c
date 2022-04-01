@@ -2828,7 +2828,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
-    if (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER)) {
+    if (node->schema && (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER))) {
         LOGERR(LYD_CTX(sibling), LY_EINVAL, "Can be used only for user-ordered nodes.");
         return LY_EINVAL;
     }
@@ -2852,7 +2852,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
 
-    if (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER)) {
+    if (node->schema && (!(node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(node->schema->flags & LYS_ORDBY_USER))) {
         LOGERR(LYD_CTX(sibling), LY_EINVAL, "Can be used only for user-ordered nodes.");
         return LY_EINVAL;
     }
