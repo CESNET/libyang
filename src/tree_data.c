@@ -3601,7 +3601,13 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     if (trg_ctx == LYD_CTX(node)) {
         dup->schema = node->schema;
     } else {
-        LY_CHECK_GOTO(ret = lyd_dup_find_schema(node->schema, trg_ctx, parent, &dup->schema), error);
+        ret = lyd_dup_find_schema(node->schema, trg_ctx, parent, &dup->schema);
+        if (ret) {
+            /* has no schema but is not an opaque node */
+            free(dup);
+            dup = NULL;
+            goto error;
+        }
     }
     dup->prev = dup;
 
