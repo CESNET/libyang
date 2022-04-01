@@ -353,7 +353,7 @@ lyb_read_model(struct lylyb_ctx *lybctx, char **mod_name, char mod_rev[])
     }
 
     /* module name */
-    *mod_name = malloc((length + 1) * sizeof *mod_name);
+    *mod_name = malloc(length + 1);
     LY_CHECK_ERR_RET(!*mod_name, LOGMEM(lybctx->ctx), LY_EMEM);
     lyb_read(((uint8_t *)*mod_name), length, lybctx);
     (*mod_name)[length] = '\0';
