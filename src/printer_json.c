@@ -846,34 +846,6 @@ static LY_ERR
 json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
 {
     ly_bool first = 1, last = 1;
-    char *ptr;
-    long num;
-
-    if (node->hints == LYD_HINT_DATA) {
-        /* basically, we do not know anything about the node so just do our best */
-        LY_CHECK_RET(json_print_member2(pctx, pctx->parent, node->format, &node->name, 0));
-        if (node->child) {
-            LY_CHECK_RET(json_print_inner(pctx, &node->node));
-            LEVEL_PRINTED;
-        } else {
-            if (node->value) {
-                num = strtol(node->value, &ptr, 10);
-                if (!ptr[0] && (ptr != node->value) &&
-                        (((num < 0) && (num >= INT32_MIN)) || ((num >= 0) && (num <= UINT32_MAX)))) {
-                    ly_print_(pctx->out, "%s", node->value);
-                } else {
-                    ly_print_(pctx->out, "\"%s\"", node->value);
-                }
-            } else {
-                ly_print_(pctx->out, "[null]");
-            }
-            LEVEL_PRINTED;
-
-            /* attributes */
-            json_print_attributes(pctx, (const struct lyd_node *)node, 0);
-        }
-        return LY_SUCCESS;
-    }
 
     if (node->hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
         if (node->prev->next && matching_node(node->prev, &node->node)) {
@@ -902,10 +874,10 @@ json_print_opaq(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node)
     } else {
         if (node->hints & LYD_VALHINT_EMPTY) {
             ly_print_(pctx->out, "[null]");
-        } else if (node->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) {
+        } else if ((node->hints & (LYD_VALHINT_BOOLEAN | LYD_VALHINT_DECNUM)) && !(node->hints & LYD_VALHINT_NUM64)) {
             ly_print_(pctx->out, "%s", node->value);
         } else {
-            /* string */
+            /* string or a large number */
             ly_print_(pctx->out, "\"%s\"", node->value);
         }
         LEVEL_PRINTED;

@@ -411,6 +411,79 @@ restore:
 }
 
 /**
+ * @brief Get sensible data hints for an opaque node.
+ *
+ * @param[in] name Node name.
+ * @param[in] name_len Length of @p name.
+ * @param[in] value Node value.
+ * @param[in] value_len Length of @p value.
+ * @param[in] first Node first sibling.
+ * @param[in] ns Node module namespace.
+ * @param[out] hints Data hints to use.
+ * @param[out] anchor Anchor to insert after in case of a list.
+ */
+static void
+lydxml_get_hints_opaq(const char *name, size_t name_len, const char *value, size_t value_len, struct lyd_node *first,
+        const char *ns, uint32_t *hints, struct lyd_node **anchor)
+{
+    struct lyd_node_opaq *opaq;
+    char *ptr;
+    long num;
+
+    *hints = 0;
+    *anchor = NULL;
+
+    if (!value_len) {
+        /* no value */
+        *hints |= LYD_VALHINT_EMPTY;
+    } else if (!strncmp(value, "true", value_len) || !strncmp(value, "false", value_len)) {
+        /* boolean value */
+        *hints |= LYD_VALHINT_BOOLEAN;
+    } else {
+        num = strtol(value, &ptr, 10);
+        if ((unsigned)(ptr - value) == value_len) {
+            /* number value */
+            *hints |= LYD_VALHINT_DECNUM;
+            if ((num < INT32_MIN) || (num > UINT32_MAX)) {
+                /* large number */
+                *hints |= LYD_VALHINT_NUM64;
+            }
+        } else {
+            /* string value */
+            *hints |= LYD_VALHINT_STRING;
+        }
+    }
+
+    if (!first) {
+        return;
+    }
+
+    /* search backwards to find the last instance */
+    do {
+        first = first->prev;
+        if (first->schema) {
+            continue;
+        }
+
+        opaq = (struct lyd_node_opaq *)first;
+        assert(opaq->format == LY_VALUE_XML);
+        if (!ly_strncmp(opaq->name.name, name, name_len) && !strcmp(opaq->name.module_ns, ns)) {
+            if (opaq->value && opaq->value[0]) {
+                /* leaf-list nodes */
+                opaq->hints |= LYD_NODEHINT_LEAFLIST;
+                *hints |= LYD_NODEHINT_LEAFLIST;
+            } else {
+                /* list nodes */
+                opaq->hints |= LYD_NODEHINT_LIST;
+                *hints |= LYD_NODEHINT_LIST;
+            }
+            *anchor = first;
+            break;
+        }
+    } while (first->prev->next);
+}
+
+/**
  * @brief Get schema node for the current element.
  *
  * @param[in] lydctx XML data parser context.
@@ -537,8 +610,8 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     struct lyd_attr *attr = NULL;
     const struct lysc_node *snode;
     struct lysc_ext_instance *ext;
-    uint32_t prev_parse_opts, orig_parse_opts, prev_int_opts;
-    struct lyd_node *node = NULL, *anchor;
+    uint32_t prev_parse_opts, orig_parse_opts, prev_int_opts, hints;
+    struct lyd_node *node = NULL, *anchor, *insert_anchor = NULL;
     void *val_prefix_data = NULL;
     LY_VALUE_FORMAT format;
     ly_bool parse_subtree;
@@ -595,7 +668,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         if (xmlctx->ws_only) {
             /* ignore WS-only value */
             if (xmlctx->dynamic) {
-                free((char *) xmlctx->value);
+                free((char *)xmlctx->value);
             }
             xmlctx->dynamic = 0;
             xmlctx->value = "";
@@ -612,9 +685,13 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
         ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
         assert(ns);
 
+        /* get best-effort node hints */
+        lydxml_get_hints_opaq(name, name_len, xmlctx->value, xmlctx->value_len, parent ? lyd_child(parent) : *first_p,
+                ns->uri, &hints, &insert_anchor);
+
         /* create node */
         ret = lyd_create_opaq(ctx, name, name_len, prefix, prefix_len, ns->uri, strlen(ns->uri), xmlctx->value,
-                xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, LYD_HINT_DATA, &node);
+                xmlctx->value_len, &xmlctx->dynamic, format, val_prefix_data, hints, &node);
         LY_CHECK_GOTO(ret, error);
 
         /* parser next */
@@ -781,7 +858,9 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     }
 
     /* insert, keep first pointer correct */
-    if (ext) {
+    if (insert_anchor) {
+        lyd_insert_after(insert_anchor, node);
+    } else if (ext) {
         LY_CHECK_GOTO(ret = lyd_insert_ext(parent, node), error);
     } else {
         lyd_insert_node(parent, first_p, node, lydctx->parse_opts & LYD_PARSE_ORDERED ? 1 : 0);
