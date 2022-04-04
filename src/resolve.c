@@ -8567,6 +8567,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     LY_ERR prev_ly_errno = ly_errno;
     struct lyd_node *parent;
     struct lys_when *when;
+    int non_when_items = 0;
 
     assert(root);
     assert(unres);
@@ -8678,6 +8679,9 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                         for (parent = unres->node[j]; parent; parent = parent->parent) {
                             if (parent == unres->node[i]) {
                                 /* yes, it is */
+                                if (unres->type[i] != UNRES_WHEN) {
+                                    non_when_items++;
+                                }                                
                                 unres->type[j] = UNRES_RESOLVED;
                                 resolved++;
                                 break;
@@ -8695,10 +8699,10 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
             } /* else forward reference */
         }
         first = 0;
-    } while (progress && resolved < stmt_count);
+    } while (progress && resolved - non_when_items < stmt_count);
 
     /* do we have some unresolved when-stmt? */
-    if (stmt_count > resolved) {
+    if (stmt_count > resolved - non_when_items) {
         goto error;
     }
 
