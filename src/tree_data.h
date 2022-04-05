@@ -203,7 +203,17 @@ struct lyxp_var;
  *
  * - ::ly_ctx_set_ext_data_clb()
  *
- * The mounted data can be parsed directly from data files or created manually using the standard functions.
+ * The mounted data can be parsed directly from data files or created manually using the standard functions. However,
+ * note that the mounted data use **their own context** created as needed. For *inline* data this means that any new
+ * request for a mount-point schema node results in a new context creation because it is impossible to determine
+ * whether any existing context can be used. Also, all these contexts created for the mounted data are **never**
+ * freed automatically except when the parent context is being freed. So, to avoid redundant context creation, it is
+ * always advised to use *shared-schema* for mount-points.
+ *
+ * In case it is not possible and *inline* mount point must be defined, it is still possible to avoid creating
+ * additional contexts. When the top-level node right under a schema node with a mount-point is created, always use
+ * this node for creation of any descendants. So, when using ::lyd_new_path(), use the node as `parent` and specify
+ * relative `path`.
  */
 
 /**
