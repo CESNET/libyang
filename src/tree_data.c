@@ -2414,12 +2414,10 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 
     assert(new_node);
 
-    if (!first_sibling || !new_node->schema) {
+    if (!first_sibling || !new_node->schema || (LYD_CTX(first_sibling) != LYD_CTX(new_node))) {
         /* insert at the end, no next anchor */
         return NULL;
     }
-
-    assert(!first_sibling || (LYD_CTX(first_sibling) == LYD_CTX(new_node)));
 
     getnext_opts = 0;
     if (new_node->schema->flags & LYS_IS_OUTPUT) {
@@ -2640,7 +2638,7 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     /* get first sibling */
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
 
-    if (last) {
+    if (last || (first_sibling && (first_sibling->flags & LYD_EXT))) {
         /* no next anchor */
         anchor = NULL;
     } else {
@@ -3490,11 +3488,11 @@ finish:
  * @return LY_RRR value.
  */
 static LY_ERR
-lyd_dup_find_schema(const struct lysc_node *schema, const struct ly_ctx *trg_ctx, struct lyd_node *parent,
+lyd_dup_find_schema(const struct lysc_node *schema, const struct ly_ctx *trg_ctx, const struct lyd_node *parent,
         const struct lysc_node **trg_schema)
 {
-    const struct lysc_node *node = NULL, *sparent = NULL;
-    const struct lys_module *mod = NULL;
+    const struct lysc_node *src_parent = NULL, *trg_parent = NULL, *sp, *tp;
+    const struct lys_module *trg_mod = NULL;
     char *path;
 
     if (!schema) {
@@ -3503,32 +3501,52 @@ lyd_dup_find_schema(const struct lysc_node *schema, const struct ly_ctx *trg_ctx
         return LY_SUCCESS;
     }
 
-    if (parent && parent->schema) {
+    if (lysc_data_parent(schema) && parent && parent->schema) {
         /* start from schema parent */
-        sparent = parent->schema;
-    } else {
-        /* start from module */
-        mod = ly_ctx_get_module_implemented(trg_ctx, schema->module->name);
-        if (!mod) {
-            LOGERR(trg_ctx, LY_ENOTFOUND, "Module \"%s\" not present/implemented in the target context.",
-                    schema->module->name);
+        trg_parent = parent->schema;
+        src_parent = lysc_data_parent(schema);
+    }
+
+    do {
+        /* find the next parent */
+        sp = schema;
+        while (sp->parent != src_parent) {
+            sp = sp->parent;
+        }
+        src_parent = sp;
+
+        if (!src_parent->parent) {
+            /* find the module first */
+            trg_mod = ly_ctx_get_module_implemented(trg_ctx, src_parent->module->name);
+            if (!trg_mod) {
+                LOGERR(trg_ctx, LY_ENOTFOUND, "Module \"%s\" not present/implemented in the target context.",
+                        src_parent->module->name);
+                return LY_ENOTFOUND;
+            }
+        }
+
+        /* find the next parent */
+        assert(trg_parent || trg_mod);
+        tp = NULL;
+        while ((tp = lys_getnext(tp, trg_parent, trg_mod ? trg_mod->compiled : NULL, 0))) {
+            if (!strcmp(tp->name, src_parent->name) && !strcmp(tp->module->name, src_parent->module->name)) {
+                break;
+            }
+        }
+        if (!tp) {
+            /* schema node not found */
+            path = lysc_path(src_parent, LYSC_PATH_LOG, NULL, 0);
+            LOGERR(trg_ctx, LY_ENOTFOUND, "Schema node \"%s\" not found in the target context.", path);
+            free(path);
             return LY_ENOTFOUND;
         }
-    }
 
-    /* find the schema node */
-    while ((node = lys_getnext(node, sparent, mod ? mod->compiled : NULL, 0))) {
-        if (!strcmp(node->module->name, schema->module->name) && !strcmp(node->name, schema->name)) {
-            *trg_schema = node;
-            return LY_SUCCESS;
-        }
-    }
+        trg_parent = tp;
+    } while (schema != src_parent);
 
-    /* schema node not found */
-    path = lysc_path(schema, LYSC_PATH_LOG, NULL, 0);
-    LOGERR(trg_ctx, LY_ENOTFOUND, "Schema node \"%s\" not found in the target context.", path);
-    free(path);
-    return LY_ENOTFOUND;
+    /* success */
+    *trg_schema = trg_parent;
+    return LY_SUCCESS;
 }
 
 /**
@@ -3673,20 +3691,8 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
             }
         } else if ((dup->schema->nodetype == LYS_LIST) && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
-            child = orig->child;
-            for (const struct lysc_node *key = lysc_node_child(dup->schema);
-                    key && (key->flags & LYS_KEY);
-                    key = key->next) {
-                if (!child) {
-                    /* possibly not keys are present in filtered tree */
-                    break;
-                } else if (child->schema != key) {
-                    /* possibly not all keys are present in filtered tree,
-                     * but there can be also some non-key nodes */
-                    continue;
-                }
+            for (child = orig->child; child && lysc_is_key(child->schema); child = child->next) {
                 LY_CHECK_GOTO(ret = lyd_dup_r(child, trg_ctx, dup, 1, NULL, options, NULL), error);
-                child = child->next;
             }
         }
         lyd_hash(dup);
@@ -4358,16 +4364,28 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
 LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match)
 {
-    struct lyd_node **match_p, *iter;
+    struct lyd_node **match_p, *iter, *dup = NULL;
     struct lyd_node_inner *parent;
     ly_bool found;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
+    if (!siblings) {
+        /* no data */
+        if (match) {
+            *match = NULL;
+        }
+        return LY_ENOTFOUND;
+    }
 
-    if (!siblings || (siblings->schema && target->schema &&
-            (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
-        /* no data or schema mismatch */
+    if (LYD_CTX(siblings) != LYD_CTX(target)) {
+        /* create a duplicate in this context */
+        LY_CHECK_RET(lyd_dup_single_to_ctx(target, LYD_CTX(siblings), NULL, 0, &dup));
+        target = dup;
+    }
+
+    if ((siblings->schema && target->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
+        /* schema mismatch */
+        lyd_free_tree(dup);
         if (match) {
             *match = NULL;
         }
@@ -4413,6 +4431,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
         }
     }
 
+    lyd_free_tree(dup);
     if (!siblings) {
         if (match) {
             *match = NULL;
@@ -4529,12 +4548,25 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
 {
     LY_ERR rc;
     struct lyd_node *target = NULL;
+    const struct lyd_node *parent;
 
     LY_CHECK_ARG_RET(NULL, schema, !(schema->nodetype & (LYS_CHOICE | LYS_CASE)), LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, schema->module->ctx, LY_EINVAL);
+    if (!siblings) {
+        /* no data */
+        if (match) {
+            *match = NULL;
+        }
+        return LY_ENOTFOUND;
+    }
 
-    if (!siblings || (siblings->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(schema)))) {
-        /* no data or schema mismatch */
+    if ((LYD_CTX(siblings) != schema->module->ctx)) {
+        /* parent of ext nodes is useless */
+        parent = (siblings->flags & LYD_EXT) ? NULL : lyd_parent(siblings);
+        LY_CHECK_RET(lyd_dup_find_schema(schema, LYD_CTX(siblings), parent, &schema));
+    }
+
+    if (siblings->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(schema))) {
+        /* schema mismatch */
         if (match) {
             *match = NULL;
         }
