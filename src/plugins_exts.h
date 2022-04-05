@@ -186,7 +186,7 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
  * This callback is used only for nested data definition (with a standard YANG schema parent).
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] sibling First sibling parsed by ::lyplg_ext_data_parse_clb.
+ * @param[in] sibling First sibling with schema node returned by ::lyplg_ext_data_snode_clb.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
