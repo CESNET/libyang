@@ -83,8 +83,8 @@ struct lyd_node;
 #define LYXP_EXPR_SIZE_STEP 5
 
 /* XPath matches allocation */
-#define LYXP_SET_SIZE_START 2
-#define LYXP_SET_SIZE_STEP 2
+#define LYXP_SET_SIZE_START 4
+#define LYXP_SET_SIZE_MUL_STEP 2
 
 /* building string when casting */
 #define LYXP_STRING_CAST_SIZE_START 64

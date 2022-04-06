@@ -1216,9 +1216,9 @@ set_insert_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos,
         if (set->used == set->size) {
 
             /* set is full */
-            set->val.nodes = ly_realloc(set->val.nodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->val.nodes);
+            set->val.nodes = ly_realloc(set->val.nodes, (set->size * LYXP_SET_SIZE_MUL_STEP) * sizeof *set->val.nodes);
             LY_CHECK_ERR_RET(!set->val.nodes, LOGMEM(set->ctx), );
-            set->size += LYXP_SET_SIZE_STEP;
+            set->size *= LYXP_SET_SIZE_MUL_STEP;
         }
 
         if (idx > set->used) {
@@ -1250,13 +1250,25 @@ lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, 
 
     assert(set->type == LYXP_SET_SCNODE_SET);
 
+    if (!set->size) {
+        /* first item */
+        set->val.scnodes = malloc(LYXP_SET_SIZE_START * sizeof *set->val.scnodes);
+        LY_CHECK_ERR_RET(!set->val.scnodes, LOGMEM(set->ctx), LY_EMEM);
+        set->type = LYXP_SET_SCNODE_SET;
+        set->used = 0;
+        set->size = LYXP_SET_SIZE_START;
+        set->ctx_pos = 1;
+        set->ctx_size = 1;
+        set->ht = NULL;
+    }
+
     if (lyxp_set_scnode_contains(set, node, node_type, -1, &index)) {
         set->val.scnodes[index].in_ctx = LYXP_SET_SCNODE_ATOM_CTX;
     } else {
         if (set->used == set->size) {
-            set->val.scnodes = ly_realloc(set->val.scnodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->val.scnodes);
+            set->val.scnodes = ly_realloc(set->val.scnodes, (set->size * LYXP_SET_SIZE_MUL_STEP) * sizeof *set->val.scnodes);
             LY_CHECK_ERR_RET(!set->val.scnodes, LOGMEM(set->ctx), LY_EMEM);
-            set->size += LYXP_SET_SIZE_STEP;
+            set->size *= LYXP_SET_SIZE_MUL_STEP;
         }
 
         index = set->used;
