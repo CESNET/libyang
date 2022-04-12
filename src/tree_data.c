@@ -3779,7 +3779,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
                 goto error;
             }
 
-            if (elem1 && (elem2->schema->flags & LYS_USERORDERED)) {
+            if (elem1 && ((elem2->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && elem2->schema->flags & LYS_USERORDERED)) {
                 /* store the correct place where the node is supposed to be moved after creation */
                 /* if elem1 does not exist, all nodes were created and they will be created in
                  * correct order, so it is not needed to detect moves */
