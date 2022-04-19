@@ -2821,7 +2821,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
 LIBYANG_API_DEF LY_ERR
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
-    LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, sibling, node, sibling != node, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
@@ -2845,7 +2845,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 LIBYANG_API_DEF LY_ERR
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
-    LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, sibling, node, sibling != node, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(LYD_CTX(sibling), LYD_CTX(node), LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
