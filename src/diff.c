@@ -962,20 +962,20 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
             *first_node = anchor;
         }
     } else {
-        if ((*first_node)->schema->flags & LYS_KEY) {
-            assert(parent_node && (parent_node->schema->nodetype == LYS_LIST));
+        /* find the first instance */
+        ret = lyd_find_sibling_val(*first_node, new_node->schema, NULL, 0, &anchor);
+        LY_CHECK_RET(ret && (ret != LY_ENOTFOUND), ret);
 
-            /* find last key */
-            anchor = *first_node;
-            while (anchor->next && (anchor->next->schema->flags & LYS_KEY)) {
-                anchor = anchor->next;
+        if (anchor) {
+            /* insert before the first instance */
+            LY_CHECK_RET(lyd_insert_before(anchor, new_node));
+            if ((*first_node)->prev->next) {
+                assert(!new_node->prev->next);
+                *first_node = new_node;
             }
-            /* insert after the last key */
-            LY_CHECK_RET(lyd_insert_after(anchor, new_node));
         } else {
-            /* insert at the beginning */
-            LY_CHECK_RET(lyd_insert_before(*first_node, new_node));
-            *first_node = new_node;
+            /* insert anywhere */
+            LY_CHECK_RET(lyd_insert_sibling(*first_node, new_node, first_node));
         }
     }
 
