@@ -3,11 +3,13 @@ Version: {{ version }}
 Release: {{ release }}%{?dist}
 Summary: YANG data modeling language library
 Url: https://github.com/CESNET/libyang
-Source: libyang-%{version}.tar.gz
+Source: %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 License: BSD
 
 BuildRequires:  cmake
+BuildRequires:  doxygen
 BuildRequires:  gcc
+BuildRequires:  cmake(cmocka) >= 1.0.1
 BuildRequires:  make
 BuildRequires:  pkgconfig(libpcre2-8) >= 10.21
 
@@ -15,6 +17,10 @@ BuildRequires:  pkgconfig(libpcre2-8) >= 10.21
 Summary:    Development files for libyang
 Requires:   %{name}%{?_isa} = %{version}-%{release}
 Requires:   pcre2-devel
+
+%package devel-doc
+Summary:    Documentation of libyang API
+Requires:   %{name}%{?_isa} = %{version}-%{release}
 
 %package tools
 Summary:        YANG validator tools
@@ -25,6 +31,9 @@ Conflicts:      %{name} < 1.0.225-3
 %description devel
 Headers of libyang library.
 
+%description devel-doc
+Documentation of libyang API.
+
 %description tools
 YANG validator tools.
 
@@ -34,21 +43,27 @@ written (and providing API) in C.
 
 %prep
 %autosetup -p1
-mkdir build
 
 %build
-cd build
-cmake \
-    -DCMAKE_INSTALL_PREFIX:PATH=%{_prefix} \
-    -DCMAKE_BUILD_TYPE:String="Release" \
-    -DCMAKE_C_FLAGS="${RPM_OPT_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="${RPM_OPT_FLAGS}" \
-    ..
-make
+%cmake -DCMAKE_BUILD_TYPE=RELWITHDEBINFO
+%cmake_build
+
+%if "x%{?suse_version}" == "x"
+cd redhat-linux-build
+%endif
+make doc
+
+%check
+%if "x%{?suse_version}" == "x"
+cd redhat-linux-build
+%endif
+ctest --output-on-failure -V %{?_smp_mflags}
 
 %install
-cd build
-make DESTDIR=%{buildroot} install
+%cmake_install
+
+mkdir -m0755 -p %{buildroot}/%{_docdir}/libyang
+cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
 
 %files
 %license LICENSE
@@ -67,6 +82,9 @@ make DESTDIR=%{buildroot} install
 %{_includedir}/libyang/*.h
 %dir %{_includedir}/libyang/
 
+%files devel-doc
+%{_docdir}/libyang
+
 %changelog
-* Fri Aug 06 2021 Jakub Ružička <jakub.ruzicka@nic.cz> - {{ version }}-{{ release }}
+* {{ now }} Jakub Ružička <jakub.ruzicka@nic.cz> - {{ version }}-{{ release }}
 - upstream package
