@@ -447,8 +447,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
         struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree = NULL, *merged_tree = NULL;
-    struct lyd_node *operational = NULL;
+    struct lyd_node *tree = NULL, *merged_tree = NULL, *operational = NULL;
 
     /* additional operational datastore */
     if (operational_f && operational_f->in) {
@@ -528,9 +527,8 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
     }
 
 cleanup:
-    /* cleanup */
-    lyd_free_all(merged_tree);
     lyd_free_all(tree);
-
+    lyd_free_all(merged_tree);
+    lyd_free_all(operational);
     return ret;
 }
