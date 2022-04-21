@@ -452,7 +452,7 @@ LIBYANG_API_DECL void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly
  * @p value_len is always correct. All store functions have to free a dynamically allocated @p value in all
  * cases (even on error).
  *
- * @param[in] ctx libyang Context
+ * @param[in] ctx libyang context
  * @param[in] type Type of the value being stored.
  * @param[in] value Value to be stored.
  * @param[in] value_len Length (number of bytes) of the given @p value.
@@ -461,14 +461,14 @@ LIBYANG_API_DECL void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
  * @param[in] ctx_node Schema context node of @p value, may be NULL for metadata.
- * @param[out] storage Storage for the value in the type's specific encoding. Except for _canonical, all the members
+ * @param[out] storage Storage for the value in the type's specific encoding. Except for _canonical_, all the members
  * should be filled by the plugin (if it fills them at all).
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  * error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
  * @return LY_EINCOMPLETE in case the ::lyplg_type_validate_clb should be called to finish value validation in data,
- * @return LY_ERR value on error.
+ * @return LY_ERR value on error, @p storage must not have any pointers to dynamic memory.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
         const void *value, size_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
@@ -481,7 +481,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
  * in case the ::lyplg_type_store_clb callback returned ::LY_EINCOMPLETE for the value to be valid. However, this
  * callback can be called even in other cases (such as separate/repeated validation).
  *
- * @param[in] ctx libyang Context
+ * @param[in] ctx libyang context
  * @param[in] type Original type of the value (not necessarily the stored one) being validated.
  * @param[in] ctx_node The value data context node for validation.
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
