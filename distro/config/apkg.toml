@@ -3,8 +3,8 @@ name = "libyang"
 make_archive_script = "distro/scripts/make-archive.sh"
 
 [upstream]
-archive_url = "https://github.com/CESNET/libyang/archive/v{{ version }}.tar.gz"
+archive_url = "https://github.com/CESNET/libyang/archive/v{{ version }}/libyang-{{ version }}.tar.gz"
 version_script = "distro/scripts/upstream-version.sh"
 
 [apkg]
-compat = 1
+compat = 2
