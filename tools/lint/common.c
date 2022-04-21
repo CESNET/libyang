@@ -443,15 +443,15 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
 
 LY_ERR
 process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
-        uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
-        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths)
+        uint32_t options_parse, uint32_t options_validate, uint32_t options_print, struct cmdline_file *operational_f,
+        struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree = NULL, *merged_tree = NULL, *operational = NULL;
+    struct lyd_node *tree = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
 
     /* additional operational datastore */
     if (operational_f && operational_f->in) {
-        ret = lyd_parse_data(ctx, NULL, operational_f->in, operational_f->format, LYD_PARSE_ONLY, 0, &operational);
+        ret = lyd_parse_data(ctx, NULL, operational_f->in, operational_f->format, LYD_PARSE_ONLY, 0, &oper_tree);
         if (ret) {
             YLMSG_E("Failed to parse operational datastore file \"%s\".\n", operational_f->path);
             goto cleanup;
@@ -468,6 +468,28 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
         case LYD_TYPE_REPLY_YANG:
         case LYD_TYPE_NOTIF_YANG:
             ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &tree, NULL);
+            break;
+        case LYD_TYPE_RPC_NETCONF:
+        case LYD_TYPE_NOTIF_NETCONF:
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &envp, &tree);
+            break;
+        case LYD_TYPE_REPLY_NETCONF:
+            /* parse source RPC operation */
+            assert(rpc_f && rpc_f->in);
+            ret = lyd_parse_op(ctx, NULL, rpc_f->in, rpc_f->format, LYD_TYPE_RPC_NETCONF, &envp, &tree);
+            if (ret) {
+                YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".\n", rpc_f->path);
+                goto cleanup;
+            }
+
+            /* free input */
+            lyd_free_siblings(lyd_child(tree));
+
+            /* we do not care */
+            lyd_free_all(envp);
+            envp = NULL;
+
+            ret = lyd_parse_op(ctx, tree, input_f->in, input_f->format, data_type, &envp, NULL);
             break;
         default:
             YLMSG_E("Internal error (%s:%d).\n", __FILE__, __LINE__);
@@ -492,18 +514,40 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
             }
             tree = NULL;
         } else if (format) {
-            lyd_print_all(out, tree, format, options_print);
-        } else if (operational) {
+            /* print */
+            switch (data_type) {
+            case LYD_TYPE_DATA_YANG:
+                lyd_print_all(out, tree, format, options_print);
+                break;
+            case LYD_TYPE_RPC_YANG:
+            case LYD_TYPE_REPLY_YANG:
+            case LYD_TYPE_NOTIF_YANG:
+            case LYD_TYPE_RPC_NETCONF:
+            case LYD_TYPE_NOTIF_NETCONF:
+                lyd_print_tree(out, tree, format, options_print);
+                break;
+            case LYD_TYPE_REPLY_NETCONF:
+                /* just the output */
+                lyd_print_tree(out, lyd_child(tree), format, options_print);
+                break;
+            default:
+                assert(0);
+            }
+        } else if (oper_tree) {
             /* additional validation of the RPC/Action/reply/Notification with the operational datastore */
-            ret = lyd_validate_op(tree, operational, data_type, NULL);
+            ret = lyd_validate_op(tree, oper_tree, data_type, NULL);
             if (ret) {
                 YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".\n",
                         input_f->path, operational_f->path);
                 goto cleanup;
             }
         }
+
+        /* next iter */
         lyd_free_all(tree);
         tree = NULL;
+        lyd_free_all(envp);
+        envp = NULL;
     }
 
     if (merge) {
@@ -528,7 +572,8 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
 
 cleanup:
     lyd_free_all(tree);
+    lyd_free_all(envp);
     lyd_free_all(merged_tree);
-    lyd_free_all(operational);
+    lyd_free_all(oper_tree);
     return ret;
 }

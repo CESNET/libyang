@@ -90,6 +90,9 @@ struct context {
 
     /* storage for --operational */
     struct cmdline_file data_operational;
+
+    /* storage for --reply-rpc */
+    struct cmdline_file reply_rpc;
 };
 
 static void
@@ -120,11 +123,19 @@ static void
 help(int shortout)
 {
 
-    printf("Usage:\n"
-            "    yanglint [Options] [-f { yang | yin | info}] <schema>...\n"
-            "        Validates the YANG module in <schema>, and all its dependencies.\n\n"
-            "    yanglint [Options] [-f { xml | json }] <schema>... <file> ...\n"
-            "        Validates the YANG modeled data in <file> according to the <schema>.\n\n"
+    printf("Example usage:\n"
+            "    yanglint [-f { yang | yin | info}] <schema>...\n"
+            "        Validates the YANG module <schema>(s) and all its dependencies, optionally printing\n"
+            "        them in the specified format.\n\n"
+            "    yanglint [-f { xml | json }] <schema>... <file>...\n"
+            "        Validates the YANG modeled data <file>(s) according to the <schema>(s) optionally\n"
+            "        printing them in the specified format.\n\n"
+            "    yanglint -t (nc-)rpc/notif [-O <operational-file>] <schema>... <file>\n"
+            "        Validates the YANG/NETCONF RPC/notification <file> according to the <schema>(s) using\n"
+            "        <operational-file> with possible references to the operational datastore data.\n\n"
+            "    yanglint -t nc-reply -R <rpc-file> [-O <operational-file>] <schema>... <file>\n"
+            "        Validates the NETCONF rpc-reply <file> of RPC <rpc-file> according to the <schema>(s)\n"
+            "        using <operational-file> with possible references to the operational datastore data.\n\n"
             "    yanglint\n"
             "        Starts interactive mode with more features.\n\n");
 
@@ -193,17 +204,23 @@ help(int shortout)
             "                Specify data tree type in the input data file(s):\n"
             "        data          - Complete datastore with status data (default type).\n"
             "        config        - Configuration datastore (without status data).\n"
-            "        get           - Result of the NETCONF <get> operation.\n"
-            "        getconfig     - Result of the NETCONF <get-config> operation.\n"
-            "        edit          - Content of the NETCONF <edit-config> operation.\n"
-            "        rpc           - Content of the NETCONF <rpc> message, defined as YANG's\n"
-            "                        RPC/Action input statement.\n"
-            "        reply         - Reply to the RPC/Action. Note that the reply data are\n"
-            "                        expected inside a container representing the original\n"
-            "                        RPC/Action. This is necessary to identify appropriate\n"
-            "                        data definitions in the schema module.\n"
-            "        notif         - Notification instance (content of the <notification>\n"
-            "                        element without <eventTime>).\n\n");
+            "        get           - Data returned by the NETCONF <get> operation.\n"
+            "        getconfig     - Data returned by the NETCONF <get-config> operation.\n"
+            "        edit          - Config content of the NETCONF <edit-config> operation.\n"
+            "        rpc           - Invocation of a YANG RPC/action, defined as input.\n"
+            "        nc-rpc        - Similar to 'rpc' but expect and check also the NETCONF\n"
+            "                        envelopes <rpc> or <action>.\n"
+            "        reply         - Reply to a YANG RPC/action, defined as output. Note that\n"
+            "                        the reply data are expected inside a container representing\n"
+            "                        the original RPC/action invocation.\n"
+            "        nc-reply      - Similar to 'reply' but expect and check also the NETCONF\n"
+            "                        envelope <rpc-reply> with output data nodes as direct\n"
+            "                        descendants. The original RPC/action invocation is expected\n"
+            "                        in a separate parameter '-R' and is parsed as 'nc-rpc'.\n"
+            "        notif         - Notification instance of a YANG notification.\n"
+            "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
+            "                        envelope <notification> with element <eventTime> and its\n"
+            "                        sibling as the actual notification.\n\n");
 
     printf("  -d MODE, --default=MODE\n"
             "                Print data with default values, according to the MODE\n"
@@ -232,6 +249,10 @@ help(int shortout)
             "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
             "                the :running configuration datastore and state data\n"
             "                (operational datastore) referenced from the RPC/Notification.\n\n");
+
+    printf("  -R FILE, --reply-rpc=FILE\n"
+            "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
+            "                is supposed to contain the source 'nc-rpc' operation of the reply.\n\n");
 
     printf("  -m, --merge   Merge input data files into a single tree and validate at\n"
             "                once. The option has effect only for 'data' and 'config' TYPEs.\n\n");
@@ -332,9 +353,14 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
         }
     }
 
-    /* process the operational content if any */
+    /* process the operational and/or reply RPC content if any */
     if (c->data_operational.path) {
         if (get_input(c->data_operational.path, NULL, &c->data_operational.format, &c->data_operational.in)) {
+            return -1;
+        }
+    }
+    if (c->reply_rpc.path) {
+        if (get_input(c->reply_rpc.path, NULL, &c->reply_rpc.format, &c->reply_rpc.in)) {
             return -1;
         }
     }
@@ -474,6 +500,7 @@ fill_context(int argc, char *argv[], struct context *c)
         {"tree-line-length",  required_argument, NULL, 'L'},
         {"output",            required_argument, NULL, 'o'},
         {"operational",       required_argument, NULL, 'O'},
+        {"reply-rpc",         required_argument, NULL, 'R'},
         {"merge",             no_argument,       NULL, 'm'},
         {"yang-library",      no_argument,       NULL, 'y'},
         {"yang-library-file", required_argument, NULL, 'Y'},
@@ -490,9 +517,9 @@ fill_context(int argc, char *argv[], struct context *c)
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:myY:G:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:G:", options, &opt_index)) != -1) {
 #else
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:myY:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:", options, &opt_index)) != -1) {
 #endif
         switch (opt) {
         case 'h': /* --help */
@@ -635,12 +662,18 @@ fill_context(int argc, char *argv[], struct context *c)
                 c->data_parse_options |= LYD_PARSE_ONLY | LYD_PARSE_NO_STATE;
             } else if (!strcasecmp(optarg, "edit")) {
                 c->data_parse_options |= LYD_PARSE_ONLY;
-            } else if (!strcasecmp(optarg, "rpc") || !strcasecmp(optarg, "action")) {
+            } else if (!strcasecmp(optarg, "rpc")) {
                 c->data_type = LYD_TYPE_RPC_YANG;
-            } else if (!strcasecmp(optarg, "reply") || !strcasecmp(optarg, "rpcreply")) {
+            } else if (!strcasecmp(optarg, "nc-rpc")) {
+                c->data_type = LYD_TYPE_RPC_NETCONF;
+            } else if (!strcasecmp(optarg, "reply")) {
                 c->data_type = LYD_TYPE_REPLY_YANG;
-            } else if (!strcasecmp(optarg, "notif") || !strcasecmp(optarg, "notification")) {
+            } else if (!strcasecmp(optarg, "nc-reply")) {
+                c->data_type = LYD_TYPE_REPLY_NETCONF;
+            } else if (!strcasecmp(optarg, "notif")) {
                 c->data_type = LYD_TYPE_NOTIF_YANG;
+            } else if (!strcasecmp(optarg, "nc-notif")) {
+                c->data_type = LYD_TYPE_NOTIF_NETCONF;
             } else if (!strcasecmp(optarg, "data")) {
                 /* default option */
             } else {
@@ -694,6 +727,14 @@ fill_context(int argc, char *argv[], struct context *c)
                 return -1;
             }
             c->data_operational.path = optarg;
+            break;
+
+        case 'R': /* --reply-rpc */
+            if (c->reply_rpc.path) {
+                YLMSG_E("The PRC of the reply (-R) cannot be set multiple times.\n");
+                return -1;
+            }
+            c->reply_rpc.path = optarg;
             break;
 
         case 'm': /* --merge */
@@ -762,8 +803,16 @@ fill_context(int argc, char *argv[], struct context *c)
     }
 
     if (c->data_operational.path && !c->data_type) {
-        YLMSG_E("Operational datastore takes effect only with RPCs/Actions/Replies/Notifications input data types.\n");
+        YLMSG_E("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.\n");
         c->data_operational.path = NULL;
+    }
+
+    if (c->reply_rpc.path && (c->data_type != LYD_TYPE_REPLY_NETCONF)) {
+        YLMSG_E("Source RPC is needed only for NETCONF Reply input data type.\n");
+        c->data_operational.path = NULL;
+    } else if (!c->reply_rpc.path && (c->data_type == LYD_TYPE_REPLY_NETCONF)) {
+        YLMSG_E("Missing source RPC (-R) for NETCONF Reply input data type.\n");
+        return -1;
     }
 
     if ((c->schema_out_format != LYS_OUT_TREE) && c->line_length) {
@@ -881,7 +930,7 @@ main_ni(int argc, char *argv[])
         /* do the data validation despite the schema was printed */
         if (c.data_inputs.size) {
             ret = process_data(c.ctx, c.data_type, c.data_merge, c.data_out_format, c.out, c.data_parse_options,
-                    c.data_validate_options, c.data_print_options, &c.data_operational, &c.data_inputs, NULL);
+                    c.data_validate_options, c.data_print_options, &c.data_operational, &c.reply_rpc, &c.data_inputs, NULL);
             if (ret) {
                 goto cleanup;
             }

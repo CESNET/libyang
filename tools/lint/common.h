@@ -187,13 +187,14 @@ int print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
  * @param[in] options_print Printer options.
  * @param[in] operational_f Optional operational datastore file information for the case of an extended validation of
  * operation(s).
+ * @param[in] rpc_f Source RPC operation file information for parsing NETCONF rpc-reply.
  * @param[in] inputs Set of file informations of input data files.
  * @param[in] xpath The set of XPaths to be evaluated on the processed data tree, basic information about the resulting set
  * is printed. Alternative to data printing.
- * return LY_ERR value.
+ * @return LY_ERR value.
  */
 LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FORMAT format, struct ly_out *out,
-        uint32_t options_parse, uint32_t options_validate, uint32_t options_print,
-        struct cmdline_file *operational_f, struct ly_set *inputs, struct ly_set *xpaths);
+        uint32_t options_parse, uint32_t options_validate, uint32_t options_print, struct cmdline_file *operational_f,
+        struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths);
 
 #endif /* COMMON_H_ */

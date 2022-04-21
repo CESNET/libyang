@@ -316,9 +316,8 @@ cmd_data(struct ly_ctx **ctx, const char *cmdline)
     }
 
     /* parse, validate and print data */
-    if (process_data(*ctx, data_type, data_merge, outformat, out,
-            options_parse, options_validate, options_print,
-            operational, &inputs, &xpaths)) {
+    if (process_data(*ctx, data_type, data_merge, outformat, out, options_parse, options_validate, options_print,
+            operational, NULL, &inputs, &xpaths)) {
         goto cleanup;
     }
 
