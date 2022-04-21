@@ -1587,7 +1587,7 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     struct lysc_type *type;
     struct lyd_node_term *t;
     struct lyd_node *parent;
-    struct lyd_value val = {0};
+    struct lyd_value val;
     ly_bool dflt_change, val_change;
 
     assert(term && term->schema && (term->schema->nodetype & LYD_NODE_TERM));
@@ -1606,9 +1606,10 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
         /* values differ, switch them */
         type->plugin->free(LYD_CTX(term), &t->value);
         t->value = val;
-        memset(&val, 0, sizeof val);
         val_change = 1;
     } else {
+        /* same values, free the new stored one */
+        type->plugin->free(LYD_CTX(term), &val);
         val_change = 0;
     }
 
@@ -1654,9 +1655,6 @@ _lyd_change_term(struct lyd_node *term, const void *value, size_t value_len, LY_
     } /* else value changed, LY_SUCCESS */
 
 cleanup:
-    if (val.realtype) {
-        type->plugin->free(LYD_CTX(term), &val);
-    }
     return ret;
 }
 
