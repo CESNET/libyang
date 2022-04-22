@@ -432,7 +432,8 @@ LIBYANG_API_DECL LY_ERR lyd_validate_module(struct lyd_node **tree, const struct
         struct lyd_node **diff);
 
 /**
- * @brief Validate an RPC/action request, reply, or notification.
+ * @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)
+ * is validate, any parents are ignored.
  *
  * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
  * its parents, only the operation subtree is actually validated.

@@ -533,12 +533,34 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
             default:
                 assert(0);
             }
-        } else if (oper_tree) {
-            /* additional validation of the RPC/Action/reply/Notification with the operational datastore */
-            ret = lyd_validate_op(tree, oper_tree, data_type, NULL);
+        } else {
+            /* validation of the RPC/Action/reply/Notification with the operational datastore, if any */
+            switch (data_type) {
+            case LYD_TYPE_DATA_YANG:
+                /* already validated */
+                break;
+            case LYD_TYPE_RPC_YANG:
+            case LYD_TYPE_RPC_NETCONF:
+                ret = lyd_validate_op(tree, oper_tree, LYD_TYPE_RPC_YANG, NULL);
+                break;
+            case LYD_TYPE_REPLY_YANG:
+            case LYD_TYPE_REPLY_NETCONF:
+                ret = lyd_validate_op(tree, oper_tree, LYD_TYPE_REPLY_YANG, NULL);
+                break;
+            case LYD_TYPE_NOTIF_YANG:
+            case LYD_TYPE_NOTIF_NETCONF:
+                ret = lyd_validate_op(tree, oper_tree, LYD_TYPE_NOTIF_YANG, NULL);
+                break;
+            default:
+                assert(0);
+            }
             if (ret) {
-                YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".\n",
-                        input_f->path, operational_f->path);
+                if (operational_f->path) {
+                    YLMSG_E("Failed to validate input data file \"%s\" with operational datastore \"%s\".\n",
+                            input_f->path, operational_f->path);
+                } else {
+                    YLMSG_E("Failed to validate input data file \"%s\".\n", input_f->path);
+                }
                 goto cleanup;
             }
         }
