@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Validation
  *
- * Copyright (c) 2019 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1242,10 +1242,11 @@ lyd_validate_obsolete(const struct lyd_node *node)
  *
  * @param[in] node Node to validate.
  * @param[in] int_opts Internal parser options.
+ * @param[in] xpath_options Additional XPath options to use.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
+lyd_validate_must(const struct lyd_node *node, uint32_t int_opts, uint32_t xpath_options)
 {
     LY_ERR ret;
     struct lyxp_set xp_set;
@@ -1284,7 +1285,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
 
         /* evaluate must */
         ret = lyxp_eval(LYD_CTX(node), musts[u].cond, node->schema->module, LY_VALUE_SCHEMA_RESOLVED,
-                musts[u].prefixes, node, tree, NULL, &xp_set, LYXP_SCHEMA);
+                musts[u].prefixes, node, tree, NULL, &xp_set, LYXP_SCHEMA | xpath_options);
         if (ret == LY_EINCOMPLETE) {
             LOGINT_RET(LYD_CTX(node));
         } else if (ret) {
@@ -1318,11 +1319,12 @@ lyd_validate_must(const struct lyd_node *node, uint32_t int_opts)
  * @param[in] mod Module of the siblings, NULL for nested siblings.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @param[in] int_opts Internal parser options.
+ * @param[in] must_xp_opts Additional XPath options to use for evaluating "must".
  * @return LY_ERR value.
  */
 static LY_ERR
 lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, const struct lysc_node *sparent,
-        const struct lys_module *mod, uint32_t val_opts, uint32_t int_opts)
+        const struct lys_module *mod, uint32_t val_opts, uint32_t int_opts, uint32_t must_xp_opts)
 {
     LY_ERR r;
     const char *innode;
@@ -1374,7 +1376,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         lyd_validate_obsolete(node);
 
         /* node's musts */
-        if ((r = lyd_validate_must(node, int_opts))) {
+        if ((r = lyd_validate_must(node, int_opts, must_xp_opts))) {
             LOG_LOCBACK(1, 1, 0, 0);
             return r;
         }
@@ -1395,7 +1397,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
         }
 
         /* validate all children recursively */
-        LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, val_opts, int_opts));
+        LY_CHECK_RET(lyd_validate_final_r(lyd_child(node), node, node->schema, NULL, val_opts, int_opts, must_xp_opts));
 
         /* set default for containers */
         if (node->schema && (node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
@@ -1600,7 +1602,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_GOTO(ret, cleanup);
 
         /* perform final validation that assumes the data tree is final */
-        ret = lyd_validate_final_r(*first2, NULL, NULL, mod, val_opts, 0);
+        ret = lyd_validate_final_r(*first2, NULL, NULL, mod, val_opts, 0, 0);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -1770,16 +1772,18 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
         }
     }
 
-    /* finish incompletely validated terminal values/attributes and when conditions on the full tree */
-    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, NULL, node_when_p, 0, node_types_p,
-            meta_types_p, ext_val_p, 0, diff), cleanup);
+    /* finish incompletely validated terminal values/attributes and when conditions on the full tree,
+     * account for unresolved 'when' that may appear in the non-validated dependency data tree */
+    LY_CHECK_GOTO(rc = lyd_validate_unres((struct lyd_node **)&dep_tree, NULL, node_when_p, LYXP_IGNORE_WHEN,
+            node_types_p, meta_types_p, ext_val_p, 0, diff), cleanup);
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);
-    LY_CHECK_GOTO(rc = lyd_validate_must(op_node, int_opts), cleanup);
+    LY_CHECK_GOTO(rc = lyd_validate_must(op_node, int_opts, LYXP_IGNORE_WHEN), cleanup);
 
     /* final validation of all the descendants */
-    LY_CHECK_GOTO(rc = lyd_validate_final_r(lyd_child(op_node), op_node, op_node->schema, NULL, 0, int_opts), cleanup);
+    rc = lyd_validate_final_r(lyd_child(op_node), op_node, op_node->schema, NULL, 0, int_opts, LYXP_IGNORE_WHEN);
+    LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
     LOG_LOCBACK(0, 1, 0, 0);
