@@ -3935,10 +3935,11 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
         cont_flags |= LYS_CONFIG_W;
     }
 
+    /* use grouping status to avoid errors */
     struct lysp_node_uses fake_uses = {
         .parent = pnode,
         .nodetype = LYS_USES,
-        .flags = 0, .next = NULL,
+        .flags = grp->flags & LYS_STATUS_MASK, .next = NULL,
         .name = grp->name,
         .dsc = NULL, .ref = NULL, .when = NULL, .iffeatures = NULL, .exts = NULL,
         .refines = NULL, .augments = NULL
