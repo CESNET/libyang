@@ -979,6 +979,12 @@ lydxml_env_netconf_rpc(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint32_
 
     assert(envp && !*envp);
 
+    if (xmlctx->status != LYXML_ELEMENT) {
+        /* nothing to parse */
+        assert(xmlctx->status == LYXML_END);
+        goto cleanup;
+    }
+
     /* parse "rpc" */
     r = lydxml_envelope(xmlctx, "rpc", "urn:ietf:params:xml:ns:netconf:base:1.0", 0, envp);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
@@ -1026,6 +1032,12 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     struct lyd_node *child;
 
     assert(envp && !*envp);
+
+    if (xmlctx->status != LYXML_ELEMENT) {
+        /* nothing to parse */
+        assert(xmlctx->status == LYXML_END);
+        goto cleanup;
+    }
 
     /* parse "notification" */
     r = lydxml_envelope(xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0", 0, envp);
@@ -1452,6 +1464,12 @@ lydxml_env_netconf_reply(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     const char *parsed_elem = NULL;
 
     assert(envp && !*envp);
+
+    if (xmlctx->status != LYXML_ELEMENT) {
+        /* nothing to parse */
+        assert(xmlctx->status == LYXML_END);
+        goto cleanup;
+    }
 
     /* parse "rpc-reply" */
     r = lydxml_envelope(xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", 0, envp);
