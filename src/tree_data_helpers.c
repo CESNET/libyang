@@ -807,6 +807,11 @@ ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *spar
         nested_exts = sparent->exts;
     }
     LY_ARRAY_FOR(nested_exts, u) {
+        if (!nested_exts[u].def->plugin) {
+            /* no plugin */
+            continue;
+        }
+
         ext_snode_cb = nested_exts[u].def->plugin->snode;
         if (!ext_snode_cb) {
             /* not an extension with nested data */
