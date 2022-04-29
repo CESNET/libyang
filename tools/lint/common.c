@@ -447,7 +447,9 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
         struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
+    struct lyd_node *tree = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL, *node;
+    char *path = NULL;
+    struct ly_set *set = NULL;
 
     /* additional operational datastore */
     if (operational_f && operational_f->in) {
@@ -563,6 +565,31 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
                 }
                 goto cleanup;
             }
+
+            if ((data_type != LYD_TYPE_DATA_YANG) && oper_tree && !(tree->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+                /* find the operation */
+                LYD_TREE_DFS_BEGIN(tree, node) {
+                    if (node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+                        break;
+                    }
+                    LYD_TREE_DFS_END(tree, node);
+                }
+
+                /* check operation parent existence */
+                path = lyd_path(lyd_parent(node), LYD_PATH_STD, NULL, 0);
+                if (!path) {
+                    ret = LY_EMEM;
+                    goto cleanup;
+                }
+                if ((ret = lyd_find_xpath(oper_tree, path, &set))) {
+                    goto cleanup;
+                }
+                if (!set->count) {
+                    YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(node), path);
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
+            }
         }
 
         /* next iter */
@@ -597,5 +624,7 @@ cleanup:
     lyd_free_all(envp);
     lyd_free_all(merged_tree);
     lyd_free_all(oper_tree);
+    free(path);
+    ly_set_free(set, NULL);
     return ret;
 }

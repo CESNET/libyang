@@ -245,10 +245,11 @@ help(int shortout)
             "                Write the output to OUTFILE instead of stdout.\n\n");
 
     printf("  -O FILE, --operational=FILE\n"
-            "                Provide optional data to extend validation of the 'rpc',\n"
-            "                'reply' or 'notif' TYPEs. The FILE is supposed to contain\n"
-            "                the :running configuration datastore and state data\n"
-            "                (operational datastore) referenced from the RPC/Notification.\n\n");
+            "                Provide optional data to extend validation of the '(nc-)rpc',\n"
+            "                '(nc-)reply' or '(nc-)notif' TYPEs. The FILE is supposed to contain\n"
+            "                the operational datastore referenced from the operation.\n"
+            "                In case of a nested operation, its parent existence is also\n"
+            "                checked in these operational data.\n\n");
 
     printf("  -R FILE, --reply-rpc=FILE\n"
             "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
