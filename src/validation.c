@@ -719,8 +719,8 @@ lyd_validate_dummy_when(const struct lyd_node *first, const struct lyd_node *par
         }
         tree = lyd_first_sibling(tree);
     } else {
-        assert(!first || !first->prev->next);
-        tree = (struct lyd_node *)first;
+        /* is the first sibling from the same module, but may not be the actual first */
+        tree = lyd_first_sibling(first);
     }
 
     /* create dummy opaque node */
