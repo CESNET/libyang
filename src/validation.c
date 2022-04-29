@@ -1806,7 +1806,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
     struct lyd_node *op_node;
     uint32_t int_opts;
 
-    LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_RPC_YANG) ||
+    LY_CHECK_ARG_RET(NULL, op_tree, !dep_tree || !dep_tree->parent, (data_type == LYD_TYPE_RPC_YANG) ||
             (data_type == LYD_TYPE_NOTIF_YANG) || (data_type == LYD_TYPE_REPLY_YANG), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(LYD_CTX(op_tree), dep_tree ? LYD_CTX(dep_tree) : NULL, LY_EINVAL);
     if (diff) {
@@ -1820,16 +1820,33 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
         int_opts = LYD_INTOPT_REPLY;
     }
 
-    /* find the operation/notification */
-    LYD_TREE_DFS_BEGIN(op_tree, op_node) {
-        if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) &&
-                (op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-            break;
-        } else if ((int_opts & LYD_INTOPT_NOTIF) && (op_node->schema->nodetype == LYS_NOTIF)) {
-            break;
+    if (op_tree->schema && (op_tree->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        /* we have the operation/notification, adjust the pointers */
+        op_node = op_tree;
+        while (op_tree->parent) {
+            op_tree = lyd_parent(op_tree);
         }
-        LYD_TREE_DFS_END(op_tree, op_node);
+    } else {
+        /* find the operation/notification */
+        while (op_tree->parent) {
+            op_tree = lyd_parent(op_tree);
+        }
+        LYD_TREE_DFS_BEGIN(op_tree, op_node) {
+            if (!op_node->schema) {
+                LOGVAL(LYD_CTX(op_tree), LYVE_DATA, "Invalid opaque node \"%s\" found.", LYD_NAME(op_node));
+                return LY_EVALID;
+            }
+
+            if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) &&
+                    (op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+                break;
+            } else if ((int_opts & LYD_INTOPT_NOTIF) && (op_node->schema->nodetype == LYS_NOTIF)) {
+                break;
+            }
+            LYD_TREE_DFS_END(op_tree, op_node);
+        }
     }
+
     if (int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) {
         if (!(op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
             LOGERR(LYD_CTX(op_tree), LY_EINVAL, "No RPC/action to validate found.");
