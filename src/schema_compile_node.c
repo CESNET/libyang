@@ -1246,16 +1246,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
 #undef URANGE_LEN
 }
 
-/**
- * @brief Compile parsed pattern restriction in conjunction with the patterns from base type.
- * @param[in] ctx Compile context.
- * @param[in] patterns_p Array of parsed patterns from the current type to compile.
- * @param[in] base_patterns Compiled patterns from the type from which the current type is derived.
- * Patterns from the base type are inherited to have all the patterns that have to match at one place.
- * @param[out] patterns Pointer to the storage for the patterns of the current type.
- * @return LY_ERR LY_SUCCESS, LY_EMEM, LY_EVALID.
- */
-static LY_ERR
+LY_ERR
 lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
         struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns)
 {

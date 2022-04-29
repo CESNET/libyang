@@ -29,6 +29,8 @@
 #include "parser_data.h"
 #include "parser_internal.h"
 #include "plugins_exts.h"
+#include "plugins_internal.h"
+#include "schema_compile_node.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -1016,6 +1018,54 @@ cleanup:
 }
 
 /**
+ * @brief Validate eventTime date-and-time value.
+ *
+ * @param[in] node Opaque eventTime node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+lydxml_env_netconf_eventtime_validate(const struct lyd_node *node)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_ctx *ctx = (struct ly_ctx *)LYD_CTX(node);
+    struct lysc_ctx cctx = {.ctx = ctx};
+    const struct lys_module *mod;
+    LY_ARRAY_COUNT_TYPE u;
+    struct ly_err_item *err = NULL;
+    struct lysp_type *type_p;
+    struct lysc_pattern **patterns = NULL;
+    const char *value;
+
+    /* get date-and-time parsed type */
+    mod = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
+    LY_ARRAY_FOR(mod->parsed->typedefs, u) {
+        if (!strcmp(mod->parsed->typedefs[u].name, "date-and-time")) {
+            type_p = &mod->parsed->typedefs[u].type;
+            break;
+        }
+    }
+    assert(type_p);
+
+    /* compile patterns */
+    assert(type_p->patterns);
+    LY_CHECK_GOTO(rc = lys_compile_type_patterns(&cctx, type_p->patterns, NULL, &patterns), cleanup);
+
+    /* validate */
+    value = lyd_get_value(node);
+    rc = lyplg_type_validate_patterns(patterns, value, strlen(value), &err);
+
+cleanup:
+    FREE_ARRAY(ctx, patterns, lysc_pattern_free);
+    if (rc && err) {
+        LOGVAL_ERRITEM(ctx, err);
+        ly_err_free(err);
+        LOGVAL(ctx, LYVE_DATA, "Invalid \"eventTime\" in the notification.");
+    }
+    return rc;
+}
+
+/**
  * @brief Parse all expected non-data XML elements of a NETCONF notification message.
  *
  * @param[in] xmlctx XML parser context.
@@ -1056,7 +1106,8 @@ lydxml_env_netconf_notif(struct lyxml_ctx *xmlctx, struct lyd_node **envp, uint3
     lyd_insert_node(*envp, NULL, child, 0);
 
     /* validate value */
-    /* TODO validate child->value as yang:date-and-time */
+    r = lydxml_env_netconf_eventtime_validate(child);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     /* finish child parsing */
     if (xmlctx->status != LYXML_ELEM_CLOSE) {

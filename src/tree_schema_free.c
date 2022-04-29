@@ -715,7 +715,7 @@ lysc_range_free(struct ly_ctx *ctx, struct lysc_range *range)
     FREE_ARRAY(ctx, range->exts, lysc_ext_instance_free);
 }
 
-static void
+void
 lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
 {
     if (--(*pattern)->refcount) {

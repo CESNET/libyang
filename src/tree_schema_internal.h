@@ -694,6 +694,14 @@ LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void 
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 /**
+ * @brief Free a compiled pattern.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] pattern Pointer to the pattern to free.
+ */
+void lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern);
+
+/**
  * @brief Free a bit/enum item.
  *
  * @param[in] ctx libyang context.
