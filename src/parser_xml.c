@@ -1033,12 +1033,13 @@ lydxml_env_netconf_eventtime_validate(const struct lyd_node *node)
     const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_err_item *err = NULL;
-    struct lysp_type *type_p;
+    struct lysp_type *type_p = NULL;
     struct lysc_pattern **patterns = NULL;
     const char *value;
 
     /* get date-and-time parsed type */
     mod = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
+    assert(mod);
     LY_ARRAY_FOR(mod->parsed->typedefs, u) {
         if (!strcmp(mod->parsed->typedefs[u].name, "date-and-time")) {
             type_p = &mod->parsed->typedefs[u].type;
