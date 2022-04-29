@@ -1645,15 +1645,27 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         break;
     case LYD_TYPE_RPC_NETCONF:
         assert(!parent);
-        LY_CHECK_GOTO(rc = lydxml_env_netconf_rpc(lydctx->xmlctx, envp, &int_opts, &close_elem), cleanup);
+        rc = lydxml_env_netconf_rpc(lydctx->xmlctx, envp, &int_opts, &close_elem);
+        if (rc == LY_ENOT) {
+            LOGVAL(ctx, LYVE_DATA, "Missing NETCONF <rpc> envelope or in incorrect namespace.");
+        }
+        LY_CHECK_GOTO(rc, cleanup);
         break;
     case LYD_TYPE_NOTIF_NETCONF:
         assert(!parent);
-        LY_CHECK_GOTO(rc = lydxml_env_netconf_notif(lydctx->xmlctx, envp, &int_opts, &close_elem), cleanup);
+        rc = lydxml_env_netconf_notif(lydctx->xmlctx, envp, &int_opts, &close_elem);
+        if (rc == LY_ENOT) {
+            LOGVAL(ctx, LYVE_DATA, "Missing NETCONF <notification> envelope or in incorrect namespace.");
+        }
+        LY_CHECK_GOTO(rc, cleanup);
         break;
     case LYD_TYPE_REPLY_NETCONF:
         assert(parent);
-        LY_CHECK_GOTO(rc = lydxml_env_netconf_reply(lydctx->xmlctx, envp, &int_opts, &close_elem), cleanup);
+        rc = lydxml_env_netconf_reply(lydctx->xmlctx, envp, &int_opts, &close_elem);
+        if (rc == LY_ENOT) {
+            LOGVAL(ctx, LYVE_DATA, "Missing NETCONF <rpc-reply> envelope or in incorrect namespace.");
+        }
+        LY_CHECK_GOTO(rc, cleanup);
         break;
     }
     lydctx->int_opts = int_opts;
