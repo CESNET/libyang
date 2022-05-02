@@ -8679,6 +8679,13 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 {
     const struct lysc_node *op;
 
+    /* explicit */
+    if (options & LYXP_ACCESS_TREE_ALL) {
+        return LYXP_NODE_ROOT;
+    } else if (options & LYXP_ACCESS_TREE_CONFIG) {
+        return LYXP_NODE_ROOT_CONFIG;
+    }
+
     if (options & LYXP_SCNODE_ALL) {
         /* schema */
         for (op = ctx_scnode; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}

@@ -710,6 +710,7 @@ lyd_validate_dummy_when(const struct lyd_node *first, const struct lyd_node *par
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *tree, *dummy = NULL;
+    uint32_t xp_opts;
 
     /* find root */
     if (parent) {
@@ -737,8 +738,15 @@ lyd_validate_dummy_when(const struct lyd_node *first, const struct lyd_node *par
         }
     }
 
+    /* explicitly specified accesible tree */
+    if (snode->flags & LYS_CONFIG_W) {
+        xp_opts = LYXP_ACCESS_TREE_CONFIG;
+    } else {
+        xp_opts = LYXP_ACCESS_TREE_ALL;
+    }
+
     /* evaluate all when */
-    ret = lyd_validate_node_when(tree, dummy, snode, 0, disabled);
+    ret = lyd_validate_node_when(tree, dummy, snode, xp_opts, disabled);
     if (ret == LY_EINCOMPLETE) {
         /* all other when must be resolved by now */
         LOGINT(snode->module->ctx);

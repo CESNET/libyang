@@ -341,15 +341,17 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
         uint32_t options);
 
 /** used only internally, maps with @ref findxpathoptions */
-#define LYXP_IGNORE_WHEN    0x01    /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */
-#define LYXP_SCHEMA         0x02    /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE         0x04    /**< No special tree access modifiers. */
-#define LYXP_SCNODE_SCHEMA  LYS_FIND_XP_SCHEMA  /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE_OUTPUT  LYS_FIND_XP_OUTPUT  /**< Search RPC/action output nodes instead of input ones. */
-#define LYXP_SCNODE_ALL     0x1C    /**< mask for all the LYXP_* values */
-#define LYXP_SKIP_EXPR      0x20    /**< The rest of the expression will not be evaluated (lazy evaluation) */
-#define LYXP_SCNODE_ERROR   LYS_FIND_NO_MATCH_ERROR /**< Return error if a path segment matches no nodes, otherwise only
-                                                         warning is printed. */
+#define LYXP_IGNORE_WHEN     0x01   /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */
+#define LYXP_SCHEMA          0x02   /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE          0x04   /**< No special tree access modifiers. */
+#define LYXP_SCNODE_SCHEMA   LYS_FIND_XP_SCHEMA /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE_OUTPUT   LYS_FIND_XP_OUTPUT /**< Search RPC/action output nodes instead of input ones. */
+#define LYXP_SCNODE_ALL      0x1C   /**< mask for all the LYXP_* values */
+#define LYXP_SKIP_EXPR       0x20   /**< The rest of the expression will not be evaluated (lazy evaluation) */
+#define LYXP_SCNODE_ERROR    LYS_FIND_NO_MATCH_ERROR    /**< Return error if a path segment matches no nodes, otherwise only
+                                                             warning is printed. */
+#define LYXP_ACCESS_TREE_ALL 0x80   /**< Explicit accessible tree of all the nodes. */
+#define LYXP_ACCESS_TREE_CONFIG 0x0100  /**< Explicit accessible tree of only configuration data. */
 
 /**
  * @brief Cast XPath set to another type.
