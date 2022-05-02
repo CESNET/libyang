@@ -1354,9 +1354,9 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
 
         /* opaque data */
         if (!node->schema) {
-            LOGVAL(LYD_CTX(node), LYVE_DATA, "Invalid opaque node \"%s\" found.", ((struct lyd_node_opaq *)node)->name.name);
+            r = lyd_parse_opaq_error(node);
             LOG_LOCBACK(1, 1, 0, 0);
-            return LY_EVALID;
+            return r;
         }
 
         /* no state/input/output/op data */
@@ -1841,8 +1841,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
         }
         LYD_TREE_DFS_BEGIN(op_tree, op_node) {
             if (!op_node->schema) {
-                LOGVAL(LYD_CTX(op_tree), LYVE_DATA, "Invalid opaque node \"%s\" found.", LYD_NAME(op_node));
-                return LY_EVALID;
+                return lyd_parse_opaq_error(op_node);
             }
 
             if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) &&

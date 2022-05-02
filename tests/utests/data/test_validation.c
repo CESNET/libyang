@@ -1257,7 +1257,7 @@ test_rpc(void **state)
     assert_non_null(tree);
     /* Validate data as RPC request. */
     assert_int_equal(LY_EVALID, lyd_validate_op(tree, NULL, LYD_TYPE_RPC_YANG, NULL));
-    CHECK_LOG_CTX("Invalid opaque node \"new-password\" found.",
+    CHECK_LOG_CTX("Unsatisfied length - string \"123\" length is not allowed.",
             "Data location /val-str:modify-user-password/new-password.");
     ly_in_free(in, 0);
     lyd_free_all(tree);

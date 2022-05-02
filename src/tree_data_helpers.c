@@ -572,6 +572,10 @@ lyd_parse_opaq_error(const struct lyd_node *node)
 
     /* schema */
     snode = lys_find_child(parent ? parent->schema : NULL, mod, opaq->name.name, 0, 0, 0);
+    if (!snode && parent && parent->schema && (parent->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+        /* maybe output node */
+        snode = lys_find_child(parent ? parent->schema : NULL, mod, opaq->name.name, 0, 0, LYS_GETNEXT_OUTPUT);
+    }
     if (!snode) {
         if (parent) {
             LOGVAL(ctx, LYVE_REFERENCE, "Node \"%s\" not found as a child of \"%s\" node.", opaq->name.name,
