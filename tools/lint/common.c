@@ -447,7 +447,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
         struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node *tree = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL, *node;
+    struct lyd_node *tree = NULL, *op = NULL, *envp = NULL, *merged_tree = NULL, *oper_tree = NULL;
     char *path = NULL;
     struct ly_set *set = NULL;
 
@@ -469,29 +469,35 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
         case LYD_TYPE_RPC_YANG:
         case LYD_TYPE_REPLY_YANG:
         case LYD_TYPE_NOTIF_YANG:
-            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &tree, NULL);
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &tree, &op);
             break;
         case LYD_TYPE_RPC_NETCONF:
         case LYD_TYPE_NOTIF_NETCONF:
-            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &envp, &tree);
+            ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, data_type, &envp, &op);
+
+            /* adjust pointers */
+            for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
             break;
         case LYD_TYPE_REPLY_NETCONF:
             /* parse source RPC operation */
             assert(rpc_f && rpc_f->in);
-            ret = lyd_parse_op(ctx, NULL, rpc_f->in, rpc_f->format, LYD_TYPE_RPC_NETCONF, &envp, &tree);
+            ret = lyd_parse_op(ctx, NULL, rpc_f->in, rpc_f->format, LYD_TYPE_RPC_NETCONF, &envp, &op);
             if (ret) {
                 YLMSG_E("Failed to parse source NETCONF RPC operation file \"%s\".\n", rpc_f->path);
                 goto cleanup;
             }
 
+            /* adjust pointers */
+            for (tree = op; lyd_parent(tree); tree = lyd_parent(tree)) {}
+
             /* free input */
-            lyd_free_siblings(lyd_child(tree));
+            lyd_free_siblings(lyd_child(op));
 
             /* we do not care */
             lyd_free_all(envp);
             envp = NULL;
 
-            ret = lyd_parse_op(ctx, tree, input_f->in, input_f->format, data_type, &envp, NULL);
+            ret = lyd_parse_op(ctx, op, input_f->in, input_f->format, data_type, &envp, NULL);
             break;
         default:
             YLMSG_E("Internal error (%s:%d).\n", __FILE__, __LINE__);
@@ -566,17 +572,9 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
                 goto cleanup;
             }
 
-            if ((data_type != LYD_TYPE_DATA_YANG) && oper_tree && !(tree->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
-                /* find the operation */
-                LYD_TREE_DFS_BEGIN(tree, node) {
-                    if (node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
-                        break;
-                    }
-                    LYD_TREE_DFS_END(tree, node);
-                }
-
+            if (op && oper_tree && lyd_parent(op)) {
                 /* check operation parent existence */
-                path = lyd_path(lyd_parent(node), LYD_PATH_STD, NULL, 0);
+                path = lyd_path(lyd_parent(op), LYD_PATH_STD, NULL, 0);
                 if (!path) {
                     ret = LY_EMEM;
                     goto cleanup;
@@ -585,7 +583,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
                     goto cleanup;
                 }
                 if (!set->count) {
-                    YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(node), path);
+                    YLMSG_E("Operation \"%s\" parent \"%s\" not found in the operational data.\n", LYD_NAME(op), path);
                     ret = LY_EVALID;
                     goto cleanup;
                 }
