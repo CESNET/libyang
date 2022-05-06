@@ -972,6 +972,13 @@ ly_store_prefix_data(const struct ly_ctx *ctx, const void *value, size_t value_l
             prefixes = *prefix_data_p;
         }
 
+        /* add current module for unprefixed values */
+        LY_ARRAY_NEW_GOTO(ctx, prefixes, val_pref, ret, cleanup);
+        *prefix_data_p = prefixes;
+
+        val_pref->prefix = NULL;
+        val_pref->mod = ((const struct lysp_module *)prefix_data)->mod;
+
         /* add all used prefixes */
         value_end = (char *)value + value_len;
         for (value_iter = value; value_iter; value_iter = value_next) {

@@ -78,7 +78,7 @@ ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(prefixes, u) {
-        if (!ly_strncmp(prefixes[u].prefix, prefix, prefix_len)) {
+        if ((!prefixes[u].prefix && !prefix_len) || (prefixes[u].prefix && !ly_strncmp(prefixes[u].prefix, prefix, prefix_len))) {
             return prefixes[u].mod;
         }
     }
