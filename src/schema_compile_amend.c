@@ -1732,9 +1732,20 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Compile augment children.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] aug_p Parsed augment to compile.
+ * @param[in] child First augment child to compile.
+ * @param[in] target Target node of the augment.
+ * @param[in] aug_enabled Whether the augment is enabled or not.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on failure.
+ */
 static LY_ERR
 lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struct lysp_node *child,
-        struct lysc_node *target, ly_bool disabled_ch)
+        struct lysc_node *target, ly_bool aug_enabled)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysp_node *pnode;
@@ -1781,7 +1792,6 @@ lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug
         /* eval if-features again for the rest of this node processing */
         LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
         if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
-            disabled_ch = 1;
             ctx->compile_opts |= LYS_COMPILE_DISABLED;
         }
 
@@ -1805,8 +1815,8 @@ lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug
                 LY_CHECK_GOTO(rc, cleanup);
             }
 
-            if (disabled_ch) {
-                /* child is disabled either by its own if-features or by the augment if-features */
+            if (!aug_enabled) {
+                /* child is disabled by the augment if-features */
                 ly_set_add(&ctx->unres->disabled, node, 1, NULL);
             }
         }
@@ -1839,7 +1849,7 @@ static LY_ERR
 lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struct lysc_node *target)
 {
     LY_ERR rc = LY_SUCCESS;
-    ly_bool enabled, disabled_ch = 0;
+    ly_bool enabled;
     uint32_t opt_prev = ctx->compile_opts;
 
     /* nodetype checks */
@@ -1868,19 +1878,18 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
     /* augment if-features */
     LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, aug_p->iffeatures, &enabled), cleanup);
     if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
-        disabled_ch = 1;
         ctx->compile_opts |= LYS_COMPILE_DISABLED;
     }
 
     /* augment children */
-    LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, aug_p, aug_p->child, target, disabled_ch), cleanup);
+    LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, aug_p, aug_p->child, target, enabled), cleanup);
 
     /* augment actions */
-    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->actions, target, disabled_ch);
+    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->actions, target, enabled);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* augment notifications */
-    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->notifs, target, disabled_ch);
+    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->notifs, target, enabled);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
