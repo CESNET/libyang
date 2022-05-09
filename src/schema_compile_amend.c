@@ -1732,6 +1732,96 @@ cleanup:
     return ret;
 }
 
+static LY_ERR
+lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struct lysp_node *child,
+        struct lysc_node *target, ly_bool disabled_ch)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysp_node *pnode;
+    struct lysc_node *node;
+    struct lysc_when *when_shared = NULL;
+    ly_bool enabled, allow_mand = 0;
+    struct ly_set child_set = {0};
+    uint32_t i, opt_prev = ctx->compile_opts;
+
+    /* check for mandatory nodes
+     * - new cases augmenting some choice can have mandatory nodes
+     * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
+     */
+    if (aug_p->when || (target->nodetype == LYS_CHOICE) || (ctx->cur_mod == target->module)) {
+        allow_mand = 1;
+    }
+
+    LY_LIST_FOR(child, pnode) {
+        /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
+        if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE)) ||
+                ((pnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && !(target->nodetype & (LYS_CONTAINER | LYS_LIST))) ||
+                ((pnode->nodetype == LYS_USES) && (target->nodetype == LYS_CHOICE))) {
+            LOGVAL(ctx->ctx, LYVE_REFERENCE,
+                    "Invalid augment of %s node which is not allowed to contain %s node \"%s\".",
+                    lys_nodetype2str(target->nodetype), lys_nodetype2str(pnode->nodetype), pnode->name);
+            rc = LY_EVALID;
+            goto cleanup;
+        }
+
+        /* compile the children */
+        if (target->nodetype == LYS_CHOICE) {
+            LY_CHECK_GOTO(rc = lys_compile_node_choice_child(ctx, pnode, target, &child_set), cleanup);
+        } else if (target->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+            if (target->nodetype == LYS_INPUT) {
+                ctx->compile_opts |= LYS_COMPILE_RPC_INPUT;
+            } else {
+                ctx->compile_opts |= LYS_COMPILE_RPC_OUTPUT;
+            }
+            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
+        } else {
+            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
+        }
+
+        /* eval if-features again for the rest of this node processing */
+        LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
+        if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+            disabled_ch = 1;
+            ctx->compile_opts |= LYS_COMPILE_DISABLED;
+        }
+
+        /* since the augment node is not present in the compiled tree, we need to pass some of its
+         * statements to all its children */
+        for (i = 0; i < child_set.count; ++i) {
+            node = child_set.snodes[i];
+            if (!allow_mand && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
+                node->flags &= ~LYS_MAND_TRUE;
+                lys_compile_mandatory_parents(target, 0);
+                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
+                        "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.",
+                        node->name);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+
+            if (aug_p->when) {
+                /* pass augment's when to all the children */
+                rc = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
+                LY_CHECK_GOTO(rc, cleanup);
+            }
+
+            if (disabled_ch) {
+                /* child is disabled either by its own if-features or by the augment if-features */
+                ly_set_add(&ctx->unres->disabled, node, 1, NULL);
+            }
+        }
+
+        /* next iter */
+        ly_set_erase(&child_set, NULL);
+        ctx->compile_opts = opt_prev;
+    }
+
+cleanup:
+    ly_set_erase(&child_set, NULL);
+    ctx->compile_opts = opt_prev;
+    return rc;
+}
+
 /**
  * @brief Compile the parsed augment connecting it into its target.
  *
@@ -1748,168 +1838,54 @@ cleanup:
 static LY_ERR
 lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struct lysc_node *target)
 {
-    LY_ERR ret = LY_SUCCESS;
-    struct lysp_node *pnode;
-    struct lysc_node *node;
-    struct lysc_when *when_shared = NULL;
-    struct lysc_node_action **actions;
-    struct lysc_node_notif **notifs;
-    ly_bool allow_mandatory = 0, enabled;
-    struct ly_set child_set = {0};
-    uint32_t i, opt_prev = ctx->compile_opts;
+    LY_ERR rc = LY_SUCCESS;
+    ly_bool enabled, disabled_ch = 0;
+    uint32_t opt_prev = ctx->compile_opts;
 
+    /* nodetype checks */
     if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
         LOGVAL(ctx->ctx, LYVE_REFERENCE,
                 "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
                 aug_p->nodeid[0] == '/' ? "absolute" : "descendant", aug_p->nodeid, lys_nodetype2str(target->nodetype));
-        ret = LY_EVALID;
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+    if (aug_p->actions && !lysc_node_actions_p(target)) {
+        LOGVAL(ctx->ctx, LYVE_REFERENCE,
+                "Invalid augment of %s node which is not allowed to contain RPC/action node \"%s\".",
+                lys_nodetype2str(target->nodetype), aug_p->actions->name);
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+    if (aug_p->notifs && !lysc_node_notifs_p(target)) {
+        LOGVAL(ctx->ctx, LYVE_REFERENCE,
+                "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
+                lys_nodetype2str(target->nodetype), aug_p->notifs->name);
+        rc = LY_EVALID;
         goto cleanup;
     }
 
-    /* check for mandatory nodes
-     * - new cases augmenting some choice can have mandatory nodes
-     * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
-     */
-    if (aug_p->when || (target->nodetype == LYS_CHOICE) || (ctx->cur_mod == target->module)) {
-        allow_mandatory = 1;
+    /* augment if-features */
+    LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, aug_p->iffeatures, &enabled), cleanup);
+    if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+        disabled_ch = 1;
+        ctx->compile_opts |= LYS_COMPILE_DISABLED;
     }
 
-    LY_LIST_FOR(aug_p->child, pnode) {
-        /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
-        if (((pnode->nodetype == LYS_CASE) && (target->nodetype != LYS_CHOICE)) ||
-                ((pnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && !(target->nodetype & (LYS_CONTAINER | LYS_LIST))) ||
-                ((pnode->nodetype == LYS_USES) && (target->nodetype == LYS_CHOICE))) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid augment of %s node which is not allowed to contain %s node \"%s\".",
-                    lys_nodetype2str(target->nodetype), lys_nodetype2str(pnode->nodetype), pnode->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
+    /* augment children */
+    LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, aug_p, aug_p->child, target, disabled_ch), cleanup);
 
-        /* compile the children */
-        if (target->nodetype == LYS_CHOICE) {
-            LY_CHECK_GOTO(ret = lys_compile_node_choice_child(ctx, pnode, target, &child_set), cleanup);
-        } else if (target->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
-            if (target->nodetype == LYS_INPUT) {
-                ctx->compile_opts |= LYS_COMPILE_RPC_INPUT;
-            } else {
-                ctx->compile_opts |= LYS_COMPILE_RPC_OUTPUT;
-            }
-            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
-        } else {
-            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
-        }
+    /* augment actions */
+    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->actions, target, disabled_ch);
+    LY_CHECK_GOTO(rc, cleanup);
 
-        /* eval if-features again for the rest of this node processing */
-        LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
-        if (!enabled) {
-            ctx->compile_opts |= LYS_COMPILE_DISABLED;
-        }
-
-        /* since the augment node is not present in the compiled tree, we need to pass some of its
-         * statements to all its children */
-        for (i = 0; i < child_set.count; ++i) {
-            node = child_set.snodes[i];
-            if (!allow_mandatory && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
-                node->flags &= ~LYS_MAND_TRUE;
-                lys_compile_mandatory_parents(target, 0);
-                LOGVAL(ctx->ctx, LYVE_SEMANTICS,
-                        "Invalid augment adding mandatory node \"%s\" without making it conditional via when statement.",
-                        node->name);
-                ret = LY_EVALID;
-                goto cleanup;
-            }
-
-            if (aug_p->when) {
-                /* pass augment's when to all the children */
-                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-        }
-        ly_set_erase(&child_set, NULL);
-
-        /* restore options */
-        ctx->compile_opts = opt_prev;
-    }
-
-    actions = lysc_node_actions_p(target);
-    notifs = lysc_node_notifs_p(target);
-
-    if (aug_p->actions) {
-        if (!actions) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid augment of %s node which is not allowed to contain RPC/action node \"%s\".",
-                    lys_nodetype2str(target->nodetype), aug_p->actions->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-
-        /* compile actions into the target */
-        LY_LIST_FOR((struct lysp_node *)aug_p->actions, pnode) {
-            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
-
-            /* eval if-features again for the rest of this node processing */
-            LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
-            if (!enabled) {
-                ctx->compile_opts |= LYS_COMPILE_DISABLED;
-            }
-
-            /* since the augment node is not present in the compiled tree, we need to pass some of its
-             * statements to all its children */
-            for (i = 0; i < child_set.count; ++i) {
-                node = child_set.snodes[i];
-                if (aug_p->when) {
-                    /* pass augment's when to all the actions */
-                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
-                    LY_CHECK_GOTO(ret, cleanup);
-                }
-            }
-            ly_set_erase(&child_set, NULL);
-
-            /* restore options */
-            ctx->compile_opts = opt_prev;
-        }
-    }
-    if (aug_p->notifs) {
-        if (!notifs) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                    "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
-                    lys_nodetype2str(target->nodetype), aug_p->notifs->name);
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-
-        /* compile notifications into the target */
-        LY_LIST_FOR((struct lysp_node *)aug_p->notifs, pnode) {
-            LY_CHECK_GOTO(ret = lys_compile_node(ctx, pnode, target, 0, &child_set), cleanup);
-
-            /* eval if-features again for the rest of this node processing */
-            LY_CHECK_GOTO(ret = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
-            if (!enabled) {
-                ctx->compile_opts |= LYS_COMPILE_DISABLED;
-            }
-
-            /* since the augment node is not present in the compiled tree, we need to pass some of its
-             * statements to all its children */
-            for (i = 0; i < child_set.count; ++i) {
-                node = child_set.snodes[i];
-                if (aug_p->when) {
-                    /* pass augment's when to all the actions */
-                    ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
-                    LY_CHECK_GOTO(ret, cleanup);
-                }
-            }
-            ly_set_erase(&child_set, NULL);
-
-            /* restore options */
-            ctx->compile_opts = opt_prev;
-        }
-    }
+    /* augment notifications */
+    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->notifs, target, disabled_ch);
+    LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
-    ly_set_erase(&child_set, NULL);
     ctx->compile_opts = opt_prev;
-    return ret;
+    return rc;
 }
 
 LY_ERR

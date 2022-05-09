@@ -2835,6 +2835,13 @@ test_augment(void **state)
     CHECK_LOG(NULL, NULL);
     assert_null(mod->compiled->data);
 
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m {namespace urn:m;prefix m;yang-version 1.1;"
+            "feature f;"
+            "container root;"
+            "augment /root {if-feature f; leaf l{type string;}}}", LYS_IN_YANG, &mod));
+    assert_non_null(cont = (const struct lysc_node_container *)mod->compiled->data);
+    assert_null(cont->child);
+
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
             "augment /x/ {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"/x/\" - unexpected end of expression.", "/aa:{augment='/x/'}");
