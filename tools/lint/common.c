@@ -127,7 +127,8 @@ int
 parse_features(const char *fstring, struct ly_set *fset)
 {
     struct schema_features *rec;
-    char *p;
+    uint32_t count;
+    char *p, **fp;
 
     rec = calloc(1, sizeof *rec);
     if (!rec) {
@@ -148,10 +149,11 @@ parse_features(const char *fstring, struct ly_set *fset)
     }
     rec->mod_name = strndup(fstring, p - fstring);
 
-    /* start count on 2 to include terminating NULL byte */
-    for (int count = 2; p; ++count) {
+    count = 0;
+    while (p) {
         size_t len = 0;
         char *token = p + 1;
+
         p = strchr(token, ',');
         if (!p) {
             /* the last item, if any */
@@ -159,18 +161,27 @@ parse_features(const char *fstring, struct ly_set *fset)
         } else {
             len = p - token;
         }
+
         if (len) {
-            char **fp = realloc(rec->features, count * sizeof *rec->features);
+            fp = realloc(rec->features, (count + 1) * sizeof *rec->features);
             if (!fp) {
                 YLMSG_E("Unable to store features list information (%s).\n", strerror(errno));
                 return -1;
             }
             rec->features = fp;
-            rec->features[count - 1] = NULL; /* terminating NULL-byte */
-            fp = &rec->features[count - 2]; /* array item to set */
+            fp = &rec->features[count++]; /* array item to set */
             (*fp) = strndup(token, len);
         }
     }
+
+    /* terminating NULL */
+    fp = realloc(rec->features, (count + 1) * sizeof *rec->features);
+    if (!fp) {
+        YLMSG_E("Unable to store features list information (%s).\n", strerror(errno));
+        return -1;
+    }
+    rec->features = fp;
+    rec->features[count++] = NULL;
 
     return 0;
 }
