@@ -749,7 +749,7 @@ lysc_type2_free(struct ly_ctx *ctx, struct lysc_type **type)
 void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
-    if (LY_ATOMIC_DEC_BARRIER(type->refcount) > 1) {
+    if (!type || (LY_ATOMIC_DEC_BARRIER(type->refcount) > 1)) {
         return;
     }
 
@@ -789,6 +789,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     case LY_TYPE_LEAFREF:
         lyxp_expr_free(ctx, ((struct lysc_type_leafref *)type)->path);
         ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, ((struct lysc_type_leafref *)type)->prefixes);
+        lysc_type_free(ctx, ((struct lysc_type_leafref *)type)->realtype);
         break;
     case LY_TYPE_INST:
     case LY_TYPE_BOOL:

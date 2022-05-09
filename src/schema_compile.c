@@ -1134,9 +1134,10 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
         }
     }
 
-    /* store the target's type and check for circular chain of leafrefs */
-    lref->realtype = ((struct lysc_node_leaf *)target)->type;
-    for (type = lref->realtype; type && type->basetype == LY_TYPE_LEAFREF; type = ((struct lysc_type_leafref *)type)->realtype) {
+    /* check for circular chain of leafrefs */
+    for (type = ((struct lysc_node_leaf *)target)->type;
+            type && (type->basetype == LY_TYPE_LEAFREF);
+            type = ((struct lysc_type_leafref *)type)->realtype) {
         if (type == (struct lysc_type *)lref) {
             /* circular chain detected */
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid leafref path \"%s\" - circular chain of leafrefs detected.",
@@ -1145,6 +1146,9 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
         }
     }
 
+    /* store the type */
+    lref->realtype = ((struct lysc_node_leaf *)target)->type;
+    ++lref->realtype->refcount;
     return LY_SUCCESS;
 }
 
@@ -1414,7 +1418,10 @@ resolve_all:
             for (typeiter = lref->realtype;
                     typeiter->basetype == LY_TYPE_LEAFREF;
                     typeiter = ((struct lysc_type_leafref *)typeiter)->realtype) {}
+
+            lysc_type_free(ctx, lref->realtype);
             lref->realtype = typeiter;
+            ++lref->realtype->refcount;
         }
 
         /* If 'goto' will be used on the 'resolve_all' label, then
