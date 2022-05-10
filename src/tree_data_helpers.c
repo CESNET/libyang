@@ -536,8 +536,10 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     opaq = (struct lyd_node_opaq *)node;
     parent = lyd_parent(node);
 
-    /* is always filled by parsers */
-    LY_CHECK_ARG_RET(ctx, opaq->name.module_ns, LY_EINVAL);
+    if (!opaq->name.module_ns) {
+        LOGVAL(ctx, LYVE_REFERENCE, "Unknown module of node \"%s\".", opaq->name.name);
+        return LY_EVALID;
+    }
 
     /* module */
     switch (opaq->format) {
