@@ -275,6 +275,7 @@ lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod)
 {
     int cmp;
     struct lyd_node *first;
+    const struct lys_module *own_mod;
 
     assert(node && mod);
 
@@ -283,7 +284,8 @@ lyd_first_module_sibling(struct lyd_node **node, const struct lys_module *mod)
     }
 
     first = *node;
-    cmp = strcmp(lyd_owner_module(first)->name, mod->name);
+    own_mod = lyd_owner_module(first);
+    cmp = own_mod ? strcmp(own_mod->name, mod->name) : 1;
     if (cmp > 0) {
         /* there may be some preceding data */
         while (first->prev->next) {
