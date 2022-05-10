@@ -1523,11 +1523,6 @@ resolve_all:
 
         v = 0;
         while ((lref = lys_type_leafref_next(l->node, &v))) {
-            if (!lref->require_instance) {
-                /* the target may be disabled without consequences */
-                continue;
-            }
-
             ret = ly_path_compile_leafref(cctx.ctx, l->node, NULL, lref->path,
                     (l->node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &path);
