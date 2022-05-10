@@ -1184,8 +1184,9 @@ lyxml_ctx_backup(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup)
         xmlctx->dynamic = 0;
     }
 
-    /* backup in current pointer only */
-    backup->in = (void *)xmlctx->in->current;
+    /* backup in */
+    backup->b_current = xmlctx->in->current;
+    backup->b_line = xmlctx->in->line;
 
     /* duplicate elements */
     backup->elements.objs = malloc(xmlctx->elements.size * sizeof(struct lyxml_elem));
@@ -1220,8 +1221,9 @@ lyxml_ctx_restore(struct lyxml_ctx *xmlctx, struct lyxml_ctx *backup)
     /* free ns */
     lyxml_ns_rm_all(xmlctx);
 
-    /* restore in current pointer */
-    xmlctx->in->current = (void *)backup->in;
+    /* restore in */
+    xmlctx->in->current = backup->b_current;
+    xmlctx->in->line = backup->b_line;
     backup->in = xmlctx->in;
 
     /* restore backup */
