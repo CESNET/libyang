@@ -569,9 +569,10 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
             /* special situation when the envelopes were parsed successfully */
             if (tree) {
                 *tree = envp;
+            } else {
+                lyd_free_all(envp);
             }
-            ly_set_erase(&parsed, NULL);
-            return rc;
+            goto cleanup;
         }
         break;
     case LYD_JSON:
@@ -605,20 +606,19 @@ cleanup:
         lydctx->free(lydctx);
     }
     if (rc) {
-        if (parent) {
-            /* free all the parsed subtrees */
-            for (i = 0; i < parsed.count; ++i) {
+        /* free all the parsed nodes */
+        if (parsed.count) {
+            i = parsed.count;
+            do {
+                --i;
                 lyd_free_tree(parsed.dnodes[i]);
-            }
-        } else {
-            /* free everything (cannot occur in the current code, a safety) */
-            lyd_free_all(first);
-            if (tree) {
-                *tree = NULL;
-            }
-            if (op) {
-                *op = NULL;
-            }
+            } while (i);
+        }
+        if (tree && ((format != LYD_XML) || !envp)) {
+            *tree = NULL;
+        }
+        if (op) {
+            *op = NULL;
         }
     }
     ly_set_erase(&parsed, NULL);
