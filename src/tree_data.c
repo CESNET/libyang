@@ -558,7 +558,7 @@ lyd_parse_op_(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
         LY_CHECK_ARG_RET(ctx, format == LYD_XML, parent, parent->schema->nodetype & (LYS_RPC | LYS_ACTION), tree, !op,
                 LY_EINVAL);
     }
-    parse_opts = LYD_PARSE_ONLY | LYD_PARSE_OPAQ;
+    parse_opts = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     val_opts = 0;
 
     /* parse the data */

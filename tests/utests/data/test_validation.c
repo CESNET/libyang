@@ -1249,18 +1249,10 @@ test_rpc(void **state)
             "   <new-password>123</new-password>\n"
             "</modify-user-password>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
-    /* Success, although the validation found a violation of
-     * the restriction. An \"opaq\" node was created instead of
-     * the \"new-password\" node from schema.
-     */
-    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
-    assert_non_null(tree);
-    /* Validate data as RPC request. */
-    assert_int_equal(LY_EVALID, lyd_validate_op(tree, NULL, LYD_TYPE_RPC_YANG, NULL));
-    CHECK_LOG_CTX("Unsatisfied length - string \"123\" length is not allowed.",
-            "Data location /val-str:modify-user-password/new-password.");
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_YANG, &tree, NULL));
+    CHECK_LOG_CTX("Unsatisfied length - string \"123\" length is not allowed.", "Schema location "
+            "/val-str:modify-user-password/input/new-password, data location /val-str:modify-user-password, line number 3.");
     ly_in_free(in, 0);
-    lyd_free_all(tree);
 }
 
 static void
