@@ -1345,18 +1345,19 @@ lyd_validate_final_r(struct lyd_node *first, const struct lyd_node *parent, cons
             continue;
         }
 
-        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
-            /* all top-level data from this module checked */
-            break;
-        }
-
         LOG_LOCSET(node->schema, node, NULL, NULL);
 
         /* opaque data */
         if (!node->schema) {
             r = lyd_parse_opaq_error(node);
-            LOG_LOCBACK(1, 1, 0, 0);
+            LOG_LOCBACK(0, 1, 0, 0);
             return r;
+        }
+
+        if (!node->parent && mod && (lyd_owner_module(node) != mod)) {
+            /* all top-level data from this module checked */
+            LOG_LOCBACK(1, 1, 0, 0);
+            break;
         }
 
         /* no state/input/output/op data */
