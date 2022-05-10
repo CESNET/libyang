@@ -527,10 +527,10 @@ test_opaq(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
     lyd_free_all(tree);
 
-    /* mixing with metadata that is ignored */
+    /* invalid metadata */
     data = "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}";
-    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
-    lyd_free_all(tree);
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
+            "Unknown module of node \"@a:foo\".", "Data location /@a:foo, line number 1.");
 
     /* empty name */
     PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,

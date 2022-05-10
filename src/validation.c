@@ -658,8 +658,8 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
     LY_CHECK_RET(lyd_validate_choice_r(first, sparent, mod, diff));
 
     LY_LIST_FOR_SAFE(*first, next, node) {
-        if (mod && (lyd_owner_module(node) != mod)) {
-            /* all top-level data from this module checked */
+        if (!node->schema || (mod && (lyd_owner_module(node) != mod))) {
+            /* opaque node or all top-level data from this module checked */
             break;
         }
 
