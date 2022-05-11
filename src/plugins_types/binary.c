@@ -69,7 +69,7 @@ binary_base64_encode(const struct ly_ctx *ctx, const char *data, size_t size, ch
     }
 
     ptr = *str;
-    for (i = 0; i < size - 2; i += 3) {
+    for (i = 0; i + 2 < size; i += 3) {
         *ptr++ = b64_etable[(data[i] >> 2) & 0x3F];
         *ptr++ = b64_etable[((data[i] & 0x3) << 4) | ((int)(data[i + 1] & 0xF0) >> 4)];
         *ptr++ = b64_etable[((data[i + 1] & 0xF) << 2) | ((int)(data[i + 2] & 0xC0) >> 6)];

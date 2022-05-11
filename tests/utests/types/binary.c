@@ -161,6 +161,21 @@ test_plugin_store(void **state)
     assert_ptr_equal(value.realtype, lysc_type);
     type->free(UTEST_LYCTX, &value);
 
+    /* short value */
+    val = "YQ==";
+    dec_val = "a";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val, strlen(val),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
+    assert_ptr_equal(value.realtype, lysc_type);
+    type->free(UTEST_LYCTX, &value);
+
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, dec_val, strlen(dec_val),
+            0, LY_VALUE_LYB, NULL, 0, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, BINARY, val, dec_val, strlen(dec_val));
+    assert_ptr_equal(value.realtype, lysc_type);
+    type->free(UTEST_LYCTX, &value);
+
     /*
      * ERROR TESTS
      */
