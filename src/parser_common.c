@@ -1,9 +1,9 @@
 /**
- * @file parser_stmt.c
- * @author Radek Krejčí <rkrejci@cesnet.cz>
- * @brief Parser of the extension substatements.
+ * @file parser_common.c
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief libyang common parser functions.
  *
- * Copyright (c) 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -12,24 +12,206 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L /* strdup, strndup */
+
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE /* F_GETPATH */
+#endif
+
+#if defined (__NetBSD__) || defined (__OpenBSD__)
+/* realpath */
+#define _XOPEN_SOURCE 1
+#define _XOPEN_SOURCE_EXTENDED 1
+#endif
+
+#include "parser_internal.h"
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "common.h"
+#include "compat.h"
 #include "dict.h"
+#include "in_internal.h"
 #include "log.h"
-#include "parser_schema.h"
+#include "parser_data.h"
 #include "path.h"
-#include "schema_compile.h"
 #include "set.h"
 #include "tree.h"
-#include "tree_edit.h"
+#include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+
+void
+lyd_ctx_free(struct lyd_ctx *lydctx)
+{
+    ly_set_erase(&lydctx->node_types, NULL);
+    ly_set_erase(&lydctx->meta_types, NULL);
+    ly_set_erase(&lydctx->node_when, NULL);
+    ly_set_erase(&lydctx->ext_val, free);
+}
+
+LY_ERR
+lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op)
+{
+    const struct lyd_node *iter;
+
+    *op = NULL;
+
+    if (!parent) {
+        /* no parent, nothing to look for */
+        return LY_SUCCESS;
+    }
+
+    /* we need to find the operation node if it already exists */
+    for (iter = parent; iter; iter = lyd_parent(iter)) {
+        if (iter->schema && (iter->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+            break;
+        }
+    }
+
+    if (!iter) {
+        /* no operation found */
+        return LY_SUCCESS;
+    }
+
+    if (!(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY))) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent %s \"%s\" node when not parsing any operation.",
+                lys_nodetype2str(iter->schema->nodetype), iter->schema->name);
+        return LY_EINVAL;
+    } else if ((iter->schema->nodetype == LYS_RPC) && !(int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY))) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent RPC \"%s\" node when not parsing RPC nor rpc-reply.",
+                iter->schema->name);
+        return LY_EINVAL;
+    } else if ((iter->schema->nodetype == LYS_ACTION) && !(int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY))) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent action \"%s\" node when not parsing action nor rpc-reply.",
+                iter->schema->name);
+        return LY_EINVAL;
+    } else if ((iter->schema->nodetype == LYS_NOTIF) && !(int_opts & LYD_INTOPT_NOTIF)) {
+        LOGERR(LYD_CTX(parent), LY_EINVAL, "Invalid parent notification \"%s\" node when not parsing a notification.",
+                iter->schema->name);
+        return LY_EINVAL;
+    }
+
+    *op = (struct lyd_node *)iter;
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
+{
+    LY_ERR rc = LY_SUCCESS;
+
+    LOG_LOCSET(snode, NULL, NULL, NULL);
+
+    if (lydctx->int_opts & LYD_INTOPT_ANY) {
+        /* nothing to check, everything is allowed */
+        goto cleanup;
+    }
+
+    if ((lydctx->parse_opts & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
+        LOGVAL(lydctx->data_ctx->ctx, LY_VCODE_UNEXPNODE, "state", snode->name);
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+    if (snode->nodetype == LYS_RPC) {
+        if (lydctx->int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_REPLY)) {
+            if (lydctx->op_node) {
+                goto error_node_dup;
+            }
+        } else {
+            goto error_node_inval;
+        }
+    } else if (snode->nodetype == LYS_ACTION) {
+        if (lydctx->int_opts & (LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) {
+            if (lydctx->op_node) {
+                goto error_node_dup;
+            }
+        } else {
+            goto error_node_inval;
+        }
+    } else if (snode->nodetype == LYS_NOTIF) {
+        if (lydctx->int_opts & LYD_INTOPT_NOTIF) {
+            if (lydctx->op_node) {
+                goto error_node_dup;
+            }
+        } else {
+            goto error_node_inval;
+        }
+    }
+
+    /* success */
+    goto cleanup;
+
+error_node_dup:
+    LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+            lys_nodetype2str(snode->nodetype), snode->name, lys_nodetype2str(lydctx->op_node->schema->nodetype),
+            lydctx->op_node->schema->name);
+    rc = LY_EVALID;
+    goto cleanup;
+
+error_node_inval:
+    LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".", lys_nodetype2str(snode->nodetype),
+            snode->name);
+    rc = LY_EVALID;
+
+cleanup:
+    LOG_LOCBACK(1, 0, 0, 0);
+    return rc;
+}
+
+LY_ERR
+lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value, size_t value_len,
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node)
+{
+    ly_bool incomplete;
+
+    LY_CHECK_RET(lyd_create_term(schema, value, value_len, dynamic, format, prefix_data, hints, &incomplete, node));
+
+    if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+        LY_CHECK_RET(ly_set_add(&lydctx->node_types, *node, 1, NULL));
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
+        const char *name, size_t name_len, const void *value, size_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node)
+{
+    ly_bool incomplete;
+    struct lyd_meta *first = NULL;
+
+    if (meta && *meta) {
+        /* remember the first metadata */
+        first = *meta;
+    }
+
+    LY_CHECK_RET(lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, format, prefix_data,
+            hints, ctx_node, 0, &incomplete));
+
+    if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+        LY_CHECK_RET(ly_set_add(&lydctx->meta_types, *meta, 1, NULL));
+    }
+
+    if (first) {
+        /* always return the first metadata */
+        *meta = first;
+    }
+
+    return LY_SUCCESS;
+}
 
 static LY_ERR lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
@@ -368,7 +550,8 @@ lysp_stmt_config(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint1
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_mandatory(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
+lysp_stmt_mandatory(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags,
+        struct lysp_ext_instance **exts)
 {
     size_t arg_len;
 
@@ -677,7 +860,8 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, st
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *fracdig, struct lysp_ext_instance **exts)
+lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *fracdig,
+        struct lysp_ext_instance **exts)
 {
     char *ptr;
     size_t arg_len;
@@ -777,7 +961,8 @@ lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *s
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, const char **pat, struct lysp_ext_instance **exts)
+lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, const char **pat,
+        struct lysp_ext_instance **exts)
 {
     size_t arg_len;
     char *buf;
@@ -1237,7 +1422,8 @@ lysp_stmt_orderedby(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, ui
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_leaflist(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_leaflist(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node **siblings)
 {
     struct lysp_node_leaflist *llist;
 
@@ -1388,7 +1574,8 @@ lysp_stmt_refine(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_typedef(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_tpdf **typedefs)
+lysp_stmt_typedef(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_tpdf **typedefs)
 {
     struct lysp_tpdf *tpdf;
 
@@ -1532,7 +1719,8 @@ lysp_stmt_inout(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_action(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node_action **actions)
+lysp_stmt_action(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node_action **actions)
 {
     struct lysp_node_action *act;
 
@@ -1607,7 +1795,8 @@ lysp_stmt_action(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_notif(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node_notif **notifs)
+lysp_stmt_notif(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node_notif **notifs)
 {
     struct lysp_node_notif *notif;
 
@@ -1692,7 +1881,8 @@ lysp_stmt_notif(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node_grp **groupings)
+lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node_grp **groupings)
 {
     struct lysp_node_grp *grp;
 
@@ -1778,7 +1968,8 @@ lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, str
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_augment(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node_augment **augments)
+lysp_stmt_augment(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node_augment **augments)
 {
     struct lysp_node_augment *aug;
 
@@ -1867,7 +2058,8 @@ lysp_stmt_augment(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, stru
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node **siblings)
 {
     struct lysp_node_uses *uses;
 
@@ -1928,7 +2120,8 @@ lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node **siblings)
 {
     struct lysp_node_case *cas;
 
@@ -2006,7 +2199,8 @@ lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node **siblings)
 {
     struct lysp_node_choice *choice;
 
@@ -2094,7 +2288,8 @@ lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node **siblings)
 {
     struct lysp_node_container *cont;
 
@@ -2196,7 +2391,8 @@ lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, st
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_list(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_list(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+        struct lysp_node **siblings)
 {
     struct lysp_node_list *list;
 
@@ -2473,4 +2669,60 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **resul
 
     LOG_LOCBACK(0, 0, 1, 0);
     return ret;
+}
+
+void
+lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath)
+{
+    char path[PATH_MAX];
+
+#ifndef __APPLE__
+    char proc_path[32];
+    int len;
+#endif
+
+    LY_CHECK_ARG_RET(NULL, ctx, in, filepath, );
+    if (*filepath) {
+        /* filepath already set */
+        return;
+    }
+
+    switch (in->type) {
+    case LY_IN_FILEPATH:
+        if (realpath(in->method.fpath.filepath, path) != NULL) {
+            lydict_insert(ctx, path, 0, filepath);
+        } else {
+            lydict_insert(ctx, in->method.fpath.filepath, 0, filepath);
+        }
+
+        break;
+    case LY_IN_FD:
+#ifdef __APPLE__
+        if (fcntl(in->method.fd, F_GETPATH, path) != -1) {
+            lydict_insert(ctx, path, 0, filepath);
+        }
+#elif defined _WIN32
+        HANDLE h = _get_osfhandle(in->method.fd);
+        FILE_NAME_INFO info;
+        if (GetFileInformationByHandleEx(h, FileNameInfo, &info, sizeof info)) {
+            char *buf = calloc(info.FileNameLength + 1 /* trailing NULL */, MB_CUR_MAX);
+            len = wcstombs(buf, info.FileName, info.FileNameLength * MB_CUR_MAX);
+            lydict_insert(ctx, buf, len, filepath);
+        }
+#else
+        /* get URI if there is /proc */
+        sprintf(proc_path, "/proc/self/fd/%d", in->method.fd);
+        if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
+            lydict_insert(ctx, path, len, filepath);
+        }
+#endif
+        break;
+    case LY_IN_MEMORY:
+    case LY_IN_FILE:
+        /* nothing to do */
+        break;
+    default:
+        LOGINT(ctx);
+        break;
+    }
 }

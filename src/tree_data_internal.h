@@ -146,6 +146,19 @@ LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, s
 const struct lysc_node *lyd_node_schema(const struct lyd_node *node);
 
 /**
+ * @brief Search in the given siblings (NOT recursively) for the first schema node data instance.
+ * Uses hashes - should be used whenever possible for best performance.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] schema Target data node schema to find.
+ * @param[out] match Can be NULL, otherwise the found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node *schema, struct lyd_node **match);
+
+/**
  * @brief Check whether a node to be deleted is the root node, move it if it is.
  *
  * @param[in] root Root sibling.
@@ -285,6 +298,20 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node);
+
+/**
+ * @brief Create a list with all its keys (cannot be used for key-less list).
+ *
+ * Hash is calculated and new node flag is set.
+ *
+ * @param[in] schema Schema node of the new data node.
+ * @param[in] keys Key list predicates.
+ * @param[in] keys_len Length of @p keys.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_len, struct lyd_node **node);
 
 /**
  * @brief Create an anyxml/anydata node.

@@ -116,8 +116,9 @@ set(libsrc
     src/json.c
     src/tree_data.c
     src/tree_data_free.c
-    src/tree_data_helpers.c
+    src/tree_data_common.c
     src/tree_data_hash.c
+    src/tree_data_new.c
     src/parser_xml.c
     src/parser_json.c
     src/parser_lyb.c
@@ -132,12 +133,12 @@ set(libsrc
     src/schema_features.c
     src/tree_schema.c
     src/tree_schema_free.c
-    src/tree_schema_helpers.c
+    src/tree_schema_common.c
     src/in.c
     src/lyb.c
+    src/parser_common.c
     src/parser_yang.c
     src/parser_yin.c
-    src/parser_stmt.c
     src/printer_schema.c
     src/printer_yang.c
     src/printer_yin.c
