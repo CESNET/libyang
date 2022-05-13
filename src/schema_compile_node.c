@@ -3284,7 +3284,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
                 LOGVAL(ctx->ctx, LYVE_SEMANTICS, "List's key must not have any \"when\" statement.");
                 return LY_EVALID;
             }
-            /* TODO check key, it cannot have any if-features */
+            /* unable to check if-features but compilation would fail if disabled */
         }
 
         /* check status */
