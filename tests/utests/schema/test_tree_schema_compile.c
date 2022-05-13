@@ -2639,6 +2639,11 @@ test_refine(void **state)
     assert_string_equal("hello", leaf->dflt->realtype->plugin->print(UTEST_LYCTX, leaf->dflt, LY_VALUE_SCHEMA, NULL, &dynamic, NULL));
     assert_int_equal(0, dynamic);
 
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c;"
+            "grouping alg {leaf alg2 {type bits {"
+            "bit ftp;bit h323-q931;bit h323-ras;bit pptp;bit rtsp;bit sip-tcp;bit sip-udp;bit tftp;bit dns-udp;}}}"
+            "container conf {uses alg {refine alg2 {default \"dns-udp\";}}}}", LYS_IN_YANG, &mod));
+
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;import grp {prefix g;}"
             "uses g:grp {refine c {default hello;}}}", LYS_IN_YANG, &mod));

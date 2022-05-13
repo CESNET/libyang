@@ -58,8 +58,8 @@ lyplg_type_bits_bitmap_size(const struct lysc_type_bits *type)
 
     LY_CHECK_ARG_RET(NULL, type, type->basetype == LY_TYPE_BITS, 0);
 
-    /* minimum needed bytes to hold all the bit positions */
-    needed_bytes = (BITS_LAST_BIT_POSITION(type) / 8) + (BITS_LAST_BIT_POSITION(type) % 8 ? 1 : 0);
+    /* minimum needed bytes to hold all the bit positions (which start at 0) */
+    needed_bytes = ((BITS_LAST_BIT_POSITION(type) + 1) / 8) + ((BITS_LAST_BIT_POSITION(type) + 1) % 8 ? 1 : 0);
     LY_CHECK_ERR_RET(!needed_bytes, LOGINT(NULL), 0);
 
     if ((needed_bytes == 1) || (needed_bytes == 2)) {
