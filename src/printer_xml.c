@@ -163,7 +163,10 @@ xml_print_ns_prefix_data(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, void *p
 }
 
 /**
- * TODO
+ * @brief Print metadata of a node.
+ *
+ * @param[in] pctx XML printer context.
+ * @param[in] node Data node with metadata.
  */
 static void
 xml_print_meta(struct xmlpr_ctx *pctx, const struct lyd_node *node)
