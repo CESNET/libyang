@@ -1063,7 +1063,6 @@ lyd_node_schema(const struct lyd_node *node)
     return schema;
 }
 
-
 /**
  * @brief Comparison callback to match schema node with a schema of a data node.
  *
