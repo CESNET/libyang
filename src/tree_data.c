@@ -1289,6 +1289,9 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
             }
             return LY_SUCCESS;
         case LYS_CONTAINER:
+        case LYS_RPC:
+        case LYS_ACTION:
+        case LYS_NOTIF:
             if (options & LYD_COMPARE_DEFAULTS) {
                 if ((node1->flags & LYD_DEFAULT) != (node2->flags & LYD_DEFAULT)) {
                     return LY_ENOT;
@@ -1298,21 +1301,6 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
                 iter1 = lyd_child(node1);
                 iter2 = lyd_child(node2);
                 goto all_children_compare;
-            }
-            return LY_SUCCESS;
-        case LYS_RPC:
-        case LYS_ACTION:
-            if (options & LYD_COMPARE_FULL_RECURSION) {
-                /* TODO action/RPC
-                goto all_children_compare;
-                */
-            }
-            return LY_SUCCESS;
-        case LYS_NOTIF:
-            if (options & LYD_COMPARE_FULL_RECURSION) {
-                /* TODO Notification
-                goto all_children_compare;
-                */
             }
             return LY_SUCCESS;
         case LYS_LIST:
