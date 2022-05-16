@@ -2842,8 +2842,8 @@ test_augment(void **state)
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module m {namespace urn:m;prefix m;yang-version 1.1;"
             "feature f;"
-            "container root;"
-            "augment /root {if-feature f; leaf l{type string;}}}", LYS_IN_YANG, &mod));
+            "container root{container cont{if-feature f;}}"
+            "augment /root/cont {if-feature f; leaf l{type string;}}}", LYS_IN_YANG, &mod));
     assert_non_null(cont = (const struct lysc_node_container *)mod->compiled->data);
     assert_null(cont->child);
 
