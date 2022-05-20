@@ -398,7 +398,7 @@ json_print_attribute(struct jsonpr_ctx *pctx, const struct lyd_node_opaq *node, 
     struct lyd_attr *attr;
 
     if (wdmod) {
-        ly_print_(pctx->out, "%*s\"%s:default\":\"true\"", INDENT, wdmod->name);
+        ly_print_(pctx->out, "%*s\"%s:default\":true", INDENT, wdmod->name);
         LEVEL_PRINTED;
     }
 
@@ -433,7 +433,7 @@ json_print_metadata(struct jsonpr_ctx *pctx, const struct lyd_node *node, const 
     struct lyd_meta *meta;
 
     if (wdmod) {
-        ly_print_(pctx->out, "%*s\"%s:default\":\"true\"", INDENT, wdmod->name);
+        ly_print_(pctx->out, "%*s\"%s:default\":true", INDENT, wdmod->name);
         LEVEL_PRINTED;
     }
 
@@ -466,7 +466,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
         wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
     }
 
-    if (node->schema && node->meta) {
+    if (node->schema && (node->meta || wdmod)) {
         if (inner) {
             LY_CHECK_RET(json_print_member2(pctx, NULL, LY_VALUE_JSON, NULL, 1));
         } else {

@@ -112,11 +112,8 @@ test_leaf(void **state)
     CHECK_LYD_VALUE(leaf->value, STRING, "default-val");
     assert_true(leaf->flags & LYD_DEFAULT);
 
-    /* TODO default values
-    lyd_print_tree(out, tree, LYD_JSON, LYD_PRINT_SHRINK);
-    assert_string_equal(printed, data);
-    ly_out_reset(out);
-    */
+    /* print default values */
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL_TAG, data);
     lyd_free_all(tree);
 
     /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
