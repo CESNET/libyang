@@ -117,27 +117,6 @@ const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct
 const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
 
 /**
- * @brief Check that a list has all its keys.
- *
- * @param[in] node List to check.
- * @return LY_SUCCESS on success.
- * @return LY_ENOT on a missing key.
- */
-LY_ERR lyd_parse_check_keys(struct lyd_node *node);
-
-/**
- * @brief Set data flags for a newly parsed node.
- *
- * @param[in] node Node to use.
- * @param[in,out] meta Node metadata, may be removed from.
- * @param[in] lydctx Data parsing context.
- * @param[in] ext Extension instance if @p node was parsed for one.
- * @return LY_ERR value.
- */
-LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
-        struct lysc_ext_instance *ext);
-
-/**
  * @brief Get schema node of a data node. Useful especially for opaque nodes.
  *
  * @param[in] node Data node to use.

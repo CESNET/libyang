@@ -323,4 +323,25 @@ LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, s
         const struct lys_module *mod, const char *name, size_t name_len, const void *value, size_t value_len,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node);
 
+/**
+ * @brief Check that a list has all its keys.
+ *
+ * @param[in] node List to check.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT on a missing key.
+ */
+LY_ERR lyd_parse_check_keys(struct lyd_node *node);
+
+/**
+ * @brief Set data flags for a newly parsed node.
+ *
+ * @param[in] node Node to use.
+ * @param[in,out] meta Node metadata, may be removed from.
+ * @param[in] lydctx Data parsing context.
+ * @param[in] ext Extension instance if @p node was parsed for one.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
+        struct lysc_ext_instance *ext);
+
 #endif /* LY_PARSER_INTERNAL_H_ */

@@ -213,6 +213,77 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     return LY_SUCCESS;
 }
 
+LY_ERR
+lyd_parse_check_keys(struct lyd_node *node)
+{
+    const struct lysc_node *skey = NULL;
+    const struct lyd_node *key;
+
+    assert(node->schema->nodetype == LYS_LIST);
+
+    key = lyd_child(node);
+    while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
+        if (!key || (key->schema != skey)) {
+            LOGVAL(LYD_CTX(node), LY_VCODE_NOKEY, skey->name);
+            return LY_EVALID;
+        }
+
+        key = key->next;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
+        struct lysc_ext_instance *ext)
+{
+    struct lyd_meta *meta2, *prev_meta = NULL;
+    struct lyd_ctx_ext_val *ext_val;
+
+    if (lysc_has_when(node->schema)) {
+        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+            /* remember we need to evaluate this node's when */
+            LY_CHECK_RET(ly_set_add(&lydctx->node_when, node, 1, NULL));
+        }
+    }
+
+    LY_LIST_FOR(*meta, meta2) {
+        if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults") &&
+                meta2->value.boolean) {
+            /* node is default according to the metadata */
+            node->flags |= LYD_DEFAULT;
+
+            /* delete the metadata */
+            if (prev_meta) {
+                prev_meta->next = meta2->next;
+            } else {
+                *meta = (*meta)->next;
+            }
+            lyd_free_meta_single(meta2);
+            break;
+        }
+
+        prev_meta = meta2;
+    }
+
+    if (ext) {
+        /* parsed for an extension */
+        node->flags |= LYD_EXT;
+
+        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+            /* rememeber for validation */
+            ext_val = malloc(sizeof *ext_val);
+            LY_CHECK_ERR_RET(!ext_val, LOGMEM(LYD_CTX(node)), LY_EMEM);
+            ext_val->ext = ext;
+            ext_val->sibling = node;
+            LY_CHECK_RET(ly_set_add(&lydctx->ext_val, ext_val, 1, NULL));
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 static LY_ERR lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
 static LY_ERR lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
