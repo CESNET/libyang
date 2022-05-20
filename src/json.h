@@ -46,7 +46,7 @@ enum LYJSON_PARSER_STATUS {
     LYJSON_ROOT,           /* JSON document root, used internally */
     LYJSON_OBJECT,         /* JSON object */
     LYJSON_OBJECT_CLOSED,  /* JSON object closed */
-    LYJSON_OBJECT_EMPTY,   /* empty JSON object { }*/
+    LYJSON_OBJECT_EMPTY,   /* empty JSON object { } */
     LYJSON_ARRAY,          /* JSON array */
     LYJSON_ARRAY_CLOSED,   /* JSON array closed */
     LYJSON_ARRAY_EMPTY,    /* empty JSON array */
