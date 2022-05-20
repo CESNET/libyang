@@ -60,10 +60,8 @@ struct jsonpr_ctx {
 static LY_ERR json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node);
 
 /**
- * Compare 2 nodes, despite it is regular data node or an opaq node, and
+ * @brief Compare 2 nodes, despite it is regular data node or an opaq node, and
  * decide if they corresponds to the same schema node.
- *
- * TODO: rewrite lyd_compare_single and use it instead of this
  *
  * @return 1 - matching nodes, 0 - non-matching nodes
  */
