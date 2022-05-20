@@ -116,6 +116,14 @@ test_leaf(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL_TAG, data);
     lyd_free_all(tree);
 
+    /* skip leaf */
+    data = "{\"a:cp\":{\"x\":\"val\",\"y\":\"valy\",\"z\":5}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{\"a:cp\":{\"y\":\"valy\",\"z\":5}}");
+    lyd_free_all(tree);
+
     /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
     data = "{\"@a:foo\":{\"a:hint\":1,\"a:hint\":2,\"x:xxx\":{\"value\":\"/x:no/x:yes\"}},\"a:foo\":\"xxx\"}";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
@@ -470,6 +478,11 @@ test_container(void **state)
     assert_false(cont->flags & LYD_DEFAULT);
 
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, data);
+    lyd_free_all(tree);
+
+    /* skip container */
+    CHECK_PARSE_LYD("{\"a:unknown\":{\"a\":\"val\",\"b\":5}}", 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_WITHSIBLINGS, "{}");
     lyd_free_all(tree);
 }
 

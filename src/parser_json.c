@@ -183,7 +183,8 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
 }
 
 /**
- * @brief Skip the currently open JSON object/array
+ * @brief Skip the current JSON object/array.
+ *
  * @param[in] jsonctx JSON context with the input data to skip.
  * @return LY_ERR value.
  */
@@ -191,30 +192,29 @@ static LY_ERR
 lydjson_data_skip(struct lyjson_ctx *jsonctx)
 {
     enum LYJSON_PARSER_STATUS status, current;
-    uint32_t sublevels, prev_depth;
+    uint32_t orig_depth;
 
     status = lyjson_ctx_status(jsonctx, 0);
-    if (status == LYJSON_OBJECT) {
-        sublevels = 1;
-    } else {
-        sublevels = 0;
+    assert((status == LYJSON_OBJECT) || (status == LYJSON_ARRAY));
+    orig_depth = jsonctx->depth;
+
+    /* next */
+    LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
+
+    if ((status == LYJSON_OBJECT) && (current != LYJSON_OBJECT)) {
+        /* no nested objects */
+        LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
+        return LY_SUCCESS;
     }
 
     /* skip after the content */
-    do {
-        prev_depth = jsonctx->depth;
+    while ((jsonctx->depth > orig_depth) || (current != status + 1)) {
         LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
 
-        if ((current == LYJSON_OBJECT) && (prev_depth < jsonctx->depth)) {
-            /* lyjson_ctx_next() can return LYSJON_OBJECT in two cases, either when
-             * a new object is encountered, or when it finishes parsing a value from a
-             * previous key-value pair. In the latter case the sublevel shouldn't increase.
-             */
-            sublevels++;
-        } else if (current == LYJSON_OBJECT_CLOSED) {
-            sublevels--;
+        if (current == LYJSON_END) {
+            break;
         }
-    } while ((current != status + 1) || sublevels);
+    }
 
     return LY_SUCCESS;
 }
