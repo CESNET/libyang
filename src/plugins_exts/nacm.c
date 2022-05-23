@@ -120,7 +120,8 @@ invalid_parent:
 
     /* check for duplication */
     LY_ARRAY_FOR(parent->exts, u) {
-        if ((&parent->exts[u] != c_ext) && (parent->exts[u].def->plugin->compile == c_ext->def->plugin->compile)) {
+        if ((&parent->exts[u] != c_ext) && parent->exts[u].def->plugin &&
+                (parent->exts[u].def->plugin->compile == c_ext->def->plugin->compile)) {
             /* duplication of a NACM extension on a single node
              * We check for all NACM plugins since we want to catch even the situation that there is default-deny-all
              * AND default-deny-write */
