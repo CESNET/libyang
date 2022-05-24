@@ -47,7 +47,7 @@ struct lyd_node;
  * [2] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
  * [3] AbsoluteLocationPath ::= '/' RelativeLocationPath? | '//' RelativeLocationPath
  * [4] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
- * [5] Step ::= '@'? NodeTest Predicate* | '.' | '..'
+ * [5] Step ::= (AxisName '::' | '@')? NodeTest Predicate* | '.' | '..'
  * [6] NodeTest ::= NameTest | NodeType '(' ')'
  * [7] NameTest ::= '*' | NCName ':' '*' | QName
  * [8] NodeType ::= 'text' | 'node'
@@ -106,7 +106,7 @@ enum lyxp_token {
     LYXP_TOKEN_DDOT,          /* '..' */
     LYXP_TOKEN_AT,            /* '@' */
     LYXP_TOKEN_COMMA,         /* ',' */
-    /* LYXP_TOKEN_DCOLON,      * '::' * axes not supported */
+    LYXP_TOKEN_DCOLON,        /* '::' */
     LYXP_TOKEN_NAMETEST,      /* NameTest */
     LYXP_TOKEN_NODETYPE,      /* NodeType */
     LYXP_TOKEN_VARREF,        /* VariableReference */
@@ -119,9 +119,28 @@ enum lyxp_token {
     LYXP_TOKEN_OPER_UNI,      /* Operator '|' */
     LYXP_TOKEN_OPER_PATH,     /* Operator '/' */
     LYXP_TOKEN_OPER_RPATH,    /* Operator '//' (recursive path) */
-    /* LYXP_TOKEN_AXISNAME,    * AxisName * axes not supported */
+    LYXP_TOKEN_AXISNAME,      /* AxisName */
     LYXP_TOKEN_LITERAL,       /* Literal - with either single or double quote */
     LYXP_TOKEN_NUMBER         /* Number */
+};
+
+/**
+ * @brief XPath Axes types.
+ */
+enum lyxp_axis {
+    LYXP_AXIS_ANCESTOR,
+    LYXP_AXIS_ANCESTOR_OR_SELF,
+    LYXP_AXIS_ATTRIBUTE,
+    LYXP_AXIS_CHILD,
+    LYXP_AXIS_DESCENDANT,
+    LYXP_AXIS_DESCENDANT_OR_SELF,
+    LYXP_AXIS_FOLLOWING,
+    LYXP_AXIS_FOLLOWING_SIBLING,
+    // LYXP_AXIS_NAMESPACE,          /* not supported */
+    LYXP_AXIS_PARENT,
+    LYXP_AXIS_PRECEDING,
+    LYXP_AXIS_PRECEDING_SIBLING,
+    LYXP_AXIS_SELF
 };
 
 /**
@@ -293,12 +312,12 @@ struct lyxp_set {
 };
 
 /**
- * @brief Print an XPath token \p tok type.
+ * @brief Get string format of an XPath token.
  *
- * @param[in] tok Token to print.
+ * @param[in] tok Token to transform.
  * @return Token type string.
  */
-const char *lyxp_print_token(enum lyxp_token tok);
+const char *lyxp_token2str(enum lyxp_token tok);
 
 /**
  * @brief Evaluate an XPath expression on data. Be careful when using this function, the result can often

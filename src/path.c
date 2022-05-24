@@ -212,7 +212,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
 
         } else {
-            LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*tok_idx]), exp->expr + exp->tok_pos[*tok_idx]);
+            LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), exp->expr + exp->tok_pos[*tok_idx]);
             goto token_error;
         }
     }
@@ -939,7 +939,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
 
     /* check leftover tokens */
     if (tok_idx < expr->used) {
-        LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_print_token(expr->tokens[tok_idx]), &expr->expr[expr->tok_pos[tok_idx]]);
+        LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(expr->tokens[tok_idx]), &expr->expr[expr->tok_pos[tok_idx]]);
         ret = LY_EVALID;
         goto cleanup;
     }
