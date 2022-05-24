@@ -54,6 +54,12 @@ instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *pr
     ly_bool inherit_prefix = 0, d;
     const char *strval;
 
+    if (!path) {
+        /* special path */
+        ret = ly_strcat(&result, "/");
+        goto cleanup;
+    }
+
     switch (format) {
     case LY_VALUE_XML:
     case LY_VALUE_SCHEMA:
@@ -153,7 +159,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
     uint32_t prefix_opt = 0;
-    struct ly_path *path;
+    struct ly_path *path = NULL;
     char *canon;
 
     /* init storage */
@@ -163,6 +169,11 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
     /* check hints */
     ret = lyplg_type_check_hints(hints, value, value_len, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
+
+    if ((((char *)value)[0] == '/') && (value_len == 1)) {
+        /* special path */
+        goto store;
+    }
 
     switch (format) {
     case LY_VALUE_SCHEMA:
@@ -202,6 +213,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
         goto cleanup;
     }
 
+store:
     /* store value */
     storage->target = path;
 
