@@ -1720,8 +1720,10 @@ set_sort(struct lyxp_set *set)
         return -1;
     }
 
+#ifndef NDEBUG
     LOGDBG(LY_LDGXPATH, "SORT BEGIN");
     print_set_debug(set);
+#endif
 
     for (i = 0; i < set->used; ++i) {
         inverted = 0;
@@ -1755,8 +1757,10 @@ set_sort(struct lyxp_set *set)
         }
     }
 
+#ifndef NDEBUG
     LOGDBG(LY_LDGXPATH, "SORT END %d", ret);
     print_set_debug(set);
+#endif
 
     /* check node hashes */
     if (set->used >= LYD_HT_MIN_ITEMS) {
@@ -7338,7 +7342,7 @@ eval_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *
     uint16_t orig_exp;
     uint32_t i, orig_pos, orig_size;
     int32_t pred_in_ctx;
-    ly_bool reverse_axis;
+    ly_bool reverse_axis = 0;
     struct lyxp_set set2 = {0};
 
     /* '[' */
