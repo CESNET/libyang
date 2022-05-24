@@ -65,7 +65,7 @@ void *ly_realloc(void *ptr, size_t size);
             p__ = (char *)realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), \
                     sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
             if (!p__) { \
-                --(*((LY_ARRAY_COUNT_TYPE*)(p__) - 1)); \
+                --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
                 LOGMEM(CTX); \
                 EACTION; \
             } \
