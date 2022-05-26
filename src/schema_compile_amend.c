@@ -1620,11 +1620,12 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
     *dev_pnode = NULL;
     *not_supported = 0;
 
-    for (i = 0; i < ctx->uses_rfns.count; ++i) {
+    for (i = 0; i < ctx->uses_rfns.count; ) {
         rfn = ctx->uses_rfns.objs[i];
 
         if (!lysp_schema_nodeid_match(rfn->nodeid, rfn->nodeid_pmod, rfn->nodeid_ctx_node, parent, pnode, orig_mod)) {
             /* not our target node */
+            ++i;
             continue;
         }
 
@@ -1654,8 +1655,7 @@ lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node
         lysc_refine_free(ctx->ctx, rfn);
         ly_set_rm_index(&ctx->uses_rfns, i, NULL);
 
-        /* all the refines for one target node are in one structure, we are done */
-        break;
+        /* refines use relative paths so more may apply to a single node */
     }
 
     for (i = 0; i < ctx->devs.count; ++i) {
