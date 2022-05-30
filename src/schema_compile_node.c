@@ -3710,6 +3710,78 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
 }
 
 /**
+ * @brief Compile uses grouping children.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] uses_p Parsed uses.
+ * @param[in] uses_flags Special uses flags to use.
+ * @param[in] child First grouping child to compile.
+ * @param[in] grp_mod Grouping parsed module.
+ * @param[in] parent Uses compiled parent, may be NULL if top-level.
+ * @param[in,out] child_set Set of all compiled child nodes.
+ * @param[in] child_unres_disabled Whether the children are to be put into unres disabled set or not.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on failure.
+ */
+static LY_ERR
+lys_compile_uses_children(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, uint16_t uses_flags, struct lysp_node *child,
+        struct lysp_module *grp_mod, struct lysc_node *parent, struct ly_set *child_set, ly_bool child_unres_disabled)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysp_module *mod_old = ctx->pmod;
+    uint32_t child_i, opt_prev = ctx->compile_opts;
+    ly_bool enabled;
+    struct lysp_node *pnode;
+    struct lysc_node *node;
+    struct lysc_when *when_shared = NULL;
+
+    assert(child_set);
+
+    child_i = 0;
+    LY_LIST_FOR(child, pnode) {
+        /* compile the nodes with their parsed (grouping) module */
+        ctx->pmod = grp_mod;
+        LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, parent, uses_flags, child_set), cleanup);
+
+        /* eval if-features again for the rest of this node processing */
+        LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
+        if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+            ctx->compile_opts |= LYS_COMPILE_DISABLED;
+        }
+
+        /* restore the parsed module */
+        ctx->pmod = mod_old;
+
+        /* since the uses node is not present in the compiled tree, we need to pass some of its
+         * statements to all its children */
+        while (child_i < child_set->count) {
+            node = child_set->snodes[child_i];
+
+            if (uses_p->when) {
+                /* pass uses when to all the children */
+                rc = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), node, &when_shared);
+                LY_CHECK_GOTO(rc, cleanup);
+            }
+
+            if (child_unres_disabled) {
+                /* child is disabled by the uses if-features */
+                ly_set_add(&ctx->unres->disabled, node, 1, NULL);
+            }
+
+            /* child processed */
+            ++child_i;
+        }
+
+        /* next iter */
+        ctx->compile_opts = opt_prev;
+    }
+
+cleanup:
+    ctx->compile_opts = opt_prev;
+    return rc;
+}
+
+/**
  * @brief Special bits combination marking the uses_status value and propagated by ::lys_compile_uses() function.
  */
 #define LYS_STATUS_USES LYS_CONFIG_MASK
@@ -3723,19 +3795,18 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
  * @param[in] parent Compiled parent node where the content of the referenced grouping is supposed to be connected. It is
  * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
  * the compile context.
+ * @param[in] child_set Optional set of all the compiled children.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
 lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct ly_set *child_set)
 {
-    struct lysp_node *pnode;
-    struct lysc_node *child;
+    LY_ERR rc = LY_SUCCESS;
+    ly_bool enabled, child_unres_disabled = 0;
+    uint32_t i, grp_stack_count, opt_prev = ctx->compile_opts;
     struct lysp_node_grp *grp = NULL;
-    uint32_t i, grp_stack_count;
     uint16_t uses_flags;
-    struct lysp_module *grp_mod, *mod_old = ctx->pmod;
-    LY_ERR ret = LY_SUCCESS;
-    struct lysc_when *when_shared = NULL;
+    struct lysp_module *grp_mod;
     struct ly_set uses_child_set = {0};
 
     /* find the referenced grouping */
@@ -3751,81 +3822,57 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         return LY_EVALID;
     }
 
+    /* nodetype checks */
+    if (grp->actions && (parent && !lysc_node_actions_p(parent))) {
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid child %s \"%s\" of uses parent %s \"%s\" node.",
+                grp->actions->name, lys_nodetype2str(grp->actions->nodetype),
+                parent->name, lys_nodetype2str(parent->nodetype));
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+    if (grp->notifs && (parent && !lysc_node_notifs_p(parent))) {
+        LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid child %s \"%s\" of uses parent %s \"%s\" node.",
+                grp->notifs->name, lys_nodetype2str(grp->notifs->nodetype),
+                parent->name, lys_nodetype2str(parent->nodetype));
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
     /* check status */
-    ret = lysc_check_status(ctx, uses_p->flags, ctx->pmod, uses_p->name, grp->flags, grp_mod, grp->name);
-    LY_CHECK_GOTO(ret, cleanup);
+    rc = lysc_check_status(ctx, uses_p->flags, ctx->pmod, uses_p->name, grp->flags, grp_mod, grp->name);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* compile any augments and refines so they can be applied during the grouping nodes compilation */
-    ret = lys_precompile_uses_augments_refines(ctx, uses_p, parent);
-    LY_CHECK_GOTO(ret, cleanup);
+    rc = lys_precompile_uses_augments_refines(ctx, uses_p, parent);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* compile special uses status flags */
     uses_flags = uses_p->flags;
-    ret = lys_compile_status(ctx, &uses_flags, "<uses>", parent ? parent->flags : 0, parent ? parent->name : NULL, 0);
-    LY_CHECK_GOTO(ret, cleanup);
+    rc = lys_compile_status(ctx, &uses_flags, "<uses>", parent ? parent->flags : 0, parent ? parent->name : NULL, 0);
+    LY_CHECK_GOTO(rc, cleanup);
     uses_flags |= LYS_STATUS_USES;
 
-    /* switch context's parsed module being processed */
-    ctx->pmod = grp_mod;
-
-    /* compile data nodes */
-    LY_LIST_FOR(grp->child, pnode) {
-        ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
-        LY_CHECK_GOTO(ret, cleanup);
+    /* uses if-features */
+    LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, uses_p->iffeatures, &enabled), cleanup);
+    if (!enabled && !(ctx->compile_opts & (LYS_COMPILE_NO_DISABLED | LYS_COMPILE_DISABLED | LYS_COMPILE_GROUPING))) {
+        ctx->compile_opts |= LYS_COMPILE_DISABLED;
+        child_unres_disabled = 1;
     }
 
-    if (child_set) {
-        /* add these children to our compiled child_set as well since uses is a schema-only node */
-        LY_CHECK_GOTO(ret = ly_set_merge(child_set, &uses_child_set, 1, NULL), cleanup);
-    }
+    /* uses grouping children */
+    rc = lys_compile_uses_children(ctx, uses_p, uses_flags, grp->child, grp_mod, parent,
+            child_set ? child_set : &uses_child_set, child_unres_disabled);
+    LY_CHECK_GOTO(rc, cleanup);
 
-    /* compile actions */
-    if (grp->actions) {
-        struct lysc_node_action **actions;
-        actions = parent ? lysc_node_actions_p(parent) : &ctx->cur_mod->compiled->rpcs;
-        if (!actions) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid child %s \"%s\" of uses parent %s \"%s\" node.",
-                    grp->actions->name, lys_nodetype2str(grp->actions->nodetype),
-                    parent->name, lys_nodetype2str(parent->nodetype));
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-        LY_LIST_FOR((struct lysp_node *)grp->actions, pnode) {
-            ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    }
+    /* uses grouping RPCs/actions */
+    rc = lys_compile_uses_children(ctx, uses_p, uses_flags, (struct lysp_node *)grp->actions, grp_mod, parent,
+            child_set ? child_set : &uses_child_set, child_unres_disabled);
+    LY_CHECK_GOTO(rc, cleanup);
 
-    /* compile notifications */
-    if (grp->notifs) {
-        struct lysc_node_notif **notifs;
-        notifs = parent ? lysc_node_notifs_p(parent) : &ctx->cur_mod->compiled->notifs;
-        if (!notifs) {
-            LOGVAL(ctx->ctx, LYVE_REFERENCE, "Invalid child %s \"%s\" of uses parent %s \"%s\" node.",
-                    grp->notifs->name, lys_nodetype2str(grp->notifs->nodetype),
-                    parent->name, lys_nodetype2str(parent->nodetype));
-            ret = LY_EVALID;
-            goto cleanup;
-        }
-
-        LY_LIST_FOR((struct lysp_node *)grp->notifs, pnode) {
-            ret = lys_compile_node(ctx, pnode, parent, uses_flags, &uses_child_set);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    }
-
-    /* restore the previous context parsed module where uses is defined */
-    ctx->pmod = mod_old;
-
-    if (uses_p->when) {
-        /* pass uses's when to all the data children */
-        for (i = 0; i < uses_child_set.count; ++i) {
-            child = uses_child_set.snodes[i];
-
-            ret = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), child, &when_shared);
-            LY_CHECK_GOTO(ret, cleanup);
-        }
-    }
+    /* uses grouping notifications */
+    rc = lys_compile_uses_children(ctx, uses_p, uses_flags, (struct lysp_node *)grp->notifs, grp_mod, parent,
+            child_set ? child_set : &uses_child_set, child_unres_disabled);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* check that all augments were applied */
     for (i = 0; i < ctx->uses_augs.count; ++i) {
@@ -3836,33 +3883,33 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Augment target node \"%s\" in grouping \"%s\" was not found.",
                 ((struct lysc_augment *)ctx->uses_augs.objs[i])->nodeid->expr, grp->name);
-        ret = LY_ENOTFOUND;
+        rc = LY_ENOTFOUND;
     }
-    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* check that all refines were applied */
     for (i = 0; i < ctx->uses_rfns.count; ++i) {
         if (((struct lysc_refine *)ctx->uses_rfns.objs[i])->uses_p != uses_p) {
-            /* refine of some paretn uses, irrelevant now */
+            /* refine of some parent uses, irrelevant now */
             continue;
         }
 
         LOGVAL(ctx->ctx, LYVE_REFERENCE, "Refine(s) target node \"%s\" in grouping \"%s\" was not found.",
                 ((struct lysc_refine *)ctx->uses_rfns.objs[i])->nodeid->expr, grp->name);
-        ret = LY_ENOTFOUND;
+        rc = LY_ENOTFOUND;
     }
-    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
-    /* restore previous context's parsed module being processed */
-    ctx->pmod = mod_old;
+    /* restore previous context */
+    ctx->compile_opts = opt_prev;
 
     /* remove the grouping from the stack for circular groupings dependency check */
     ly_set_rm_index(&ctx->groupings, ctx->groupings.count - 1, NULL);
     assert(ctx->groupings.count == grp_stack_count);
 
     ly_set_erase(&uses_child_set, NULL);
-    return ret;
+    return rc;
 }
 
 static int

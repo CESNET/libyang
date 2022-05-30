@@ -2498,6 +2498,14 @@ test_uses(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module k {namespace urn:k;prefix k;import j {prefix j;}"
             "container a {uses j:grp;}}", LYS_IN_YANG, NULL));
 
+    /* if-features */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module l {namespace urn:l;prefix l;"
+            "feature f;"
+            "grouping grp {container g; leaf l{type string;}}"
+            "uses grp {if-feature f;}}",
+            LYS_IN_YANG, &mod));
+    assert_null(mod->compiled->data);
+
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Grouping \"missinggrp\" referenced by a uses statement not found.", "/aa:{uses='missinggrp'}");
