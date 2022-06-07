@@ -1856,12 +1856,12 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
     }
 
     if (int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_REPLY)) {
-        if (!(op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+        if (!op_node || !(op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
             LOGERR(LYD_CTX(op_tree), LY_EINVAL, "No RPC/action to validate found.");
             return LY_EINVAL;
         }
     } else {
-        if (op_node->schema->nodetype != LYS_NOTIF) {
+        if (!op_node || (op_node->schema->nodetype != LYS_NOTIF)) {
             LOGERR(LYD_CTX(op_tree), LY_EINVAL, "No notification to validate found.");
             return LY_EINVAL;
         }

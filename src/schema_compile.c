@@ -114,8 +114,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         LY_CHECK_GOTO(ret = lysp_ext_instance_resolve_argument(ctx->ctx, ext_p, ext_def), cleanup);
     }
 
-    DUP_STRING(ctx->ctx, ext_p->argument, ext->argument, ret);
-    LY_CHECK_RET(ret);
+    DUP_STRING_GOTO(ctx->ctx, ext_p->argument, ext->argument, ret, cleanup);
 
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
@@ -280,7 +279,7 @@ remove_nodelevel:
  */
 static LY_ERR
 lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp_module *parsed_mod,
-        struct lysp_ident *identities_p, struct lysc_ident **identities)
+        const struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ctx context = {0};
@@ -307,7 +306,7 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
         lysc_update_path(ctx_sc, NULL, identities_p[u].name);
 
         /* add new compiled identity */
-        LY_ARRAY_NEW_RET(ctx_sc->ctx, *identities, ident, LY_EMEM);
+        LY_ARRAY_NEW_GOTO(ctx_sc->ctx, *identities, ident, ret, done);
 
         DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].name, ident->name, ret, done);
         DUP_STRING_GOTO(ctx_sc->ctx, identities_p[u].dsc, ident->dsc, ret, done);
@@ -320,7 +319,12 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
         lysc_update_path(ctx_sc, NULL, NULL);
     }
     lysc_update_path(ctx_sc, NULL, NULL);
+
 done:
+    if (ret) {
+        lysc_update_path(ctx_sc, NULL, NULL);
+        lysc_update_path(ctx_sc, NULL, NULL);
+    }
     return ret;
 }
 
