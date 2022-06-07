@@ -297,7 +297,7 @@ schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_no
     if (searchdirs) {
         /* append them all into a single string */
         for (i = 0; searchdirs[i]; ++i) {
-            if ((rc = ly_strcat(&sdirs, "%s:", searchdirs[i]))) {
+            if ((rc = ly_strcat(&sdirs, "%s" PATH_SEPARATOR, searchdirs[i]))) {
                 goto cleanup;
             }
         }
