@@ -983,7 +983,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
         struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lyd_node *prev_node = NULL, *node = NULL, *target;
+    struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
     uint64_t pos;
 
     assert(path && start);
@@ -1006,8 +1006,10 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
         case LY_PATH_PREDTYPE_POSITION:
             /* we cannot use hashes and want an instance on a specific position */
             pos = 1;
-            LYD_LIST_FOR_INST(start, path[u].node, node) {
+            node = NULL;
+            LYD_LIST_FOR_INST(start, path[u].node, elem) {
                 if (pos == path[u].predicates[0].position) {
+                    node = elem;
                     break;
                 }
                 ++pos;
