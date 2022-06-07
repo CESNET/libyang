@@ -282,19 +282,29 @@ static LY_ERR
 schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_node *ext_data, ly_bool config,
         struct ly_ctx **ext_ctx)
 {
-    LY_ERR r;
+    LY_ERR rc = LY_SUCCESS;
     const char * const *searchdirs;
+    char *sdirs = NULL;
     const struct lys_module *mod;
     struct lysc_node *root, *node;
-    uint32_t idx = 0;
+    uint32_t i, idx = 0;
 
     /* get searchdirs from the current context */
     searchdirs = ly_ctx_get_searchdirs(ext->module->ctx);
 
+    if (searchdirs) {
+        /* append them all into a single string */
+        for (i = 0; searchdirs[i]; ++i) {
+            if ((rc = ly_strcat(&sdirs, "%s:", searchdirs[i]))) {
+                goto cleanup;
+            }
+        }
+    }
+
     /* create the context based on the data */
-    if ((r = ly_ctx_new_yldata(searchdirs ? searchdirs[0] : NULL, ext_data, ly_ctx_get_options(ext->module->ctx), ext_ctx))) {
-        lyplg_ext_log(ext, LY_LLERR, r, NULL, "Failed to create context for the schema-mount data.");
-        return r;
+    if ((rc = ly_ctx_new_yldata(sdirs, ext_data, ly_ctx_get_options(ext->module->ctx), ext_ctx))) {
+        lyplg_ext_log(ext, LY_LLERR, rc, NULL, "Failed to create context for the schema-mount data.");
+        goto cleanup;
     }
 
     if (!config) {
@@ -315,7 +325,9 @@ schema_mount_create_ctx(const struct lysc_ext_instance *ext, const struct lyd_no
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    free(sdirs);
+    return rc;
 }
 
 /**
