@@ -483,15 +483,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
     return match;
 }
 
-/**
- * @brief Insert node after a sibling.
- *
- * Handles inserting into NP containers and key-less lists.
- *
- * @param[in] sibling Sibling to insert after.
- * @param[in] node Node to insert.
- */
-static void
+void
 lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
 {
     struct lyd_node_inner *par;
@@ -523,15 +515,7 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
     }
 }
 
-/**
- * @brief Insert node before a sibling.
- *
- * Handles inserting into NP containers and key-less lists.
- *
- * @param[in] sibling Sibling to insert before.
- * @param[in] node Node to insert.
- */
-static void
+void
 lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 {
     struct lyd_node_inner *par;

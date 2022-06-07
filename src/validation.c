@@ -1753,7 +1753,10 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
     /* merge op_tree into dep_tree */
     lyd_val_op_merge_find(op_tree, op_node, dep_tree, &op_subtree, &tree_sibling, &tree_parent);
+    op_sibling_before = op_subtree->prev->next ? op_subtree->prev : NULL;
+    op_sibling_after = op_subtree->next;
     op_parent = lyd_parent(op_subtree);
+
     lyd_unlink_tree(op_subtree);
     lyd_insert_node(tree_parent, &tree_sibling, op_subtree, 0);
     if (!dep_tree) {
@@ -1798,9 +1801,14 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
 
 cleanup:
     LOG_LOCBACK(0, 1, 0, 0);
+
     /* restore operation tree */
     lyd_unlink_tree(op_subtree);
-    if (op_parent) {
+    if (op_sibling_before) {
+        lyd_insert_after_node(op_sibling_before, op_subtree);
+    } else if (op_sibling_after) {
+        lyd_insert_before_node(op_sibling_after, op_subtree);
+    } else if (op_parent) {
         lyd_insert_node(op_parent, NULL, op_subtree, 0);
     }
 

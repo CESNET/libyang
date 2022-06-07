@@ -364,6 +364,26 @@ LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, cons
 struct lyd_node *lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct lyd_node *new_node);
 
 /**
+ * @brief Insert node after a sibling.
+ *
+ * Handles inserting into NP containers and key-less lists.
+ *
+ * @param[in] sibling Sibling to insert after.
+ * @param[in] node Node to insert.
+ */
+void lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Insert node before a sibling.
+ *
+ * Handles inserting into NP containers and key-less lists.
+ *
+ * @param[in] sibling Sibling to insert before.
+ * @param[in] node Node to insert.
+ */
+void lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
  * @brief Insert a node into parent/siblings. Order and hashes are fully handled.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
