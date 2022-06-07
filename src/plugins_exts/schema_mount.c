@@ -20,9 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "dict.h"
 #include "libyang.h"
 #include "log.h"
+#include "parser_data.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "tree_data.h"
@@ -604,13 +606,14 @@ schema_mount_dup_parent_ref(const struct lysc_ext_instance *ext, const struct ly
         LYD_VALUE_GET(&term->value, xp_val);
         if ((ret = lyd_find_xpath4(ctx_node, ctx_node, lyxp_get_expr(xp_val->exp), xp_val->format, xp_val->prefix_data,
                 NULL, &par_set))) {
+            lyplg_ext_log(ext, LY_LLERR, ret, NULL, "Parent reference \"%s\" evaluation failed.", lyxp_get_expr(xp_val->exp));
             goto cleanup;
         }
 
         for (j = 0; j < par_set->count; ++j) {
             /* duplicate with parents in the context of the mounted data */
             if ((ret = lyd_dup_single_to_ctx(par_set->dnodes[j], trg_ctx, NULL,
-                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS, &dup))) {
+                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_EXT, &dup))) {
                 goto cleanup;
             }
 
@@ -669,12 +672,13 @@ cleanup:
  * @brief Validate callback for schema mount.
  */
 static LY_ERR
-schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, uint32_t val_opts, struct lyd_node **diff)
+schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, const struct lyd_node *dep_tree,
+        enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t old_log_opts, i;
     struct ly_err_item *err;
-    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling);
+    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling), *op_tree;
     struct lyd_node *ext_diff = NULL, *diff_parent = NULL;
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
@@ -703,6 +707,11 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, u
         goto cleanup;
     }
 
+    if (data_type != LYD_TYPE_DATA_YANG) {
+        /* remember the operation data tree, it may be moved */
+        op_tree = sibling;
+    }
+
     /* create accessible tree, remove LYD_EXT to not call this callback recursively */
     lyd_unlink_siblings(sibling);
     LY_LIST_FOR(sibling, iter) {
@@ -717,8 +726,15 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, u
     /* only store messages in the context, log as an extension */
     old_log_opts = ly_log_options(LY_LOSTORE_LAST);
 
-    /* validate all the data */
-    ret = lyd_validate_all(&sibling, NULL, val_opts, diff ? &ext_diff : NULL);
+    if (data_type == LYD_TYPE_DATA_YANG) {
+        /* validate all the data */
+        ret = lyd_validate_all(&sibling, NULL, val_opts, diff ? &ext_diff : NULL);
+    } else {
+        /* validate the operation */
+        ret = lyd_validate_op(op_tree, dep_tree, data_type, diff ? &ext_diff : NULL);
+    }
+
+    /* restore logging */
     ly_log_options(old_log_opts);
 
     /* restore sibling tree */

@@ -19,6 +19,7 @@
 
 #include "diff.h"
 #include "log.h"
+#include "parser_data.h"
 
 struct ly_ctx;
 struct ly_set;
@@ -45,6 +46,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in] mod Module of the @p tree to take into consideration when deleting @p tree and moving it.
  * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
  * the first top-level sibling.
+ * @param[in] data_type Validate data type.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] when_xp_opts Additional XPath options to use for evaluating "when".
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
@@ -54,9 +56,9 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
-        uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types, struct ly_set *ext_val,
-        uint32_t val_opts, struct lyd_node **diff);
+LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum lyd_type data_type,
+        struct ly_set *node_when, uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types,
+        struct ly_set *ext_val, uint32_t val_opts, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.

@@ -1,9 +1,10 @@
 /**
  * @file plugins_exts.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang support for YANG extensions implementation.
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@
 #define LY_PLUGINS_EXTS_H_
 
 #include "log.h"
+#include "parser_data.h"
 #include "plugins.h"
 #include "tree_data.h"
 #include "tree_edit.h"
@@ -100,7 +102,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 3
+#define LYPLG_EXT_API_VERSION 4
 
 /**
  * @brief Macro to define plugin information in external plugins
@@ -187,13 +189,16 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
  *
  * @param[in] ext Compiled extension instance.
  * @param[in] sibling First sibling with schema node returned by ::lyplg_ext_data_snode_clb.
+ * @param[in] dep_tree Tree to be used for validating references from the operation subtree, if operation.
+ * @param[in] data_type Validated data type, can be ::LYD_TYPE_DATA_YANG, ::LYD_TYPE_RPC_YANG, ::LYD_TYPE_NOTIF_YANG,
+ * or ::LYD_TYPE_REPLY_YANG.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, struct lyd_node *sibling, uint32_t val_opts,
-        struct lyd_node **diff);
+typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, struct lyd_node *sibling,
+        const struct lyd_node *dep_tree, enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff);
 
 /**
  * @brief Extension plugin implementing various aspects of a YANG extension
