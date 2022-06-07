@@ -1562,6 +1562,11 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
     if (node->flags & LYD_EXT) {
+        if (options & LYD_DUP_NO_EXT) {
+            /* no not duplicate this subtree */
+            return LY_SUCCESS;
+        }
+
         /* we need to use the same context */
         trg_ctx = LYD_CTX(node);
     }
