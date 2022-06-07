@@ -2067,8 +2067,9 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
 {
     const char *tmp, *name, *prefix;
     size_t pref_len, name_len;
-    LY_ARRAY_COUNT_TYPE v;
+    LY_ARRAY_COUNT_TYPE u, v;
     const struct lys_module *mod = NULL;
+    const struct lysp_submodule *submod;
 
     assert(ext_def);
 
@@ -2099,8 +2100,19 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
             break;
         }
     }
+    if (!*ext_def) {
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            submod = mod->parsed->includes[u].submodule;
+            LY_ARRAY_FOR(submod->extensions, v) {
+                if (!strcmp(name, submod->extensions[v].name)) {
+                    *ext_def = &submod->extensions[v];
+                    break;
+                }
+            }
+        }
+    }
 
-    if (!(*ext_def)) {
+    if (!*ext_def) {
         LOGVAL(ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
         return LY_EVALID;
     }
