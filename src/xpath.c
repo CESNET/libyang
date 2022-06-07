@@ -5623,7 +5623,7 @@ moveto_root(struct lyxp_set *set, uint32_t options)
  * @param[in] moveto_mod Expected module of the node, NULL for no prefix.
  * @param[in] options XPath options.
  * @return LY_ERR (LY_ENOT if node does not match, LY_EINCOMPLETE on unresolved when,
- * LY_EINVAL if netither node nor any children match)
+ * LY_EINVAL if neither node nor any children match)
  */
 static LY_ERR
 moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyxp_set *set,

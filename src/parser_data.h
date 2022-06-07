@@ -300,7 +300,7 @@ enum lyd_type {
     LYD_TYPE_DATA_YANG = 0, /* generic YANG instance data */
     LYD_TYPE_RPC_YANG,      /* instance of a YANG RPC/action request with only "input" data children,
                                including all parents in case of an action */
-    LYD_TYPE_NOTIF_YANG,    /* instance of a YANG notification , including all parents in case of a nested one */
+    LYD_TYPE_NOTIF_YANG,    /* instance of a YANG notification, including all parents in case of a nested one */
     LYD_TYPE_REPLY_YANG,    /* instance of a YANG RPC/action reply with only "output" data children,
                                including all parents in case of an action */
 
