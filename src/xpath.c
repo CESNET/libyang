@@ -5648,8 +5648,12 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
     }
 
     /* module check */
-    if (moveto_mod && (node->schema->module != moveto_mod)) {
-        return LY_ENOT;
+    if (moveto_mod) {
+        if (!(node->flags & LYD_EXT) && (node->schema->module != moveto_mod)) {
+            return LY_ENOT;
+        } else if ((node->flags & LYD_EXT) && strcmp(node->schema->module->name, moveto_mod->name)) {
+            return LY_ENOT;
+        }
     }
 
     /* context check */
@@ -5661,8 +5665,12 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
     }
 
     /* name check */
-    if (node_name && (node->schema->name != node_name)) {
-        return LY_ENOT;
+    if (node_name) {
+        if (!(node->flags & LYD_EXT) && (node->schema->name != node_name)) {
+            return LY_ENOT;
+        } else if ((node->flags & LYD_EXT) && strcmp(node->schema->name, node_name)) {
+            return LY_ENOT;
+        }
     }
 
     /* when check */
