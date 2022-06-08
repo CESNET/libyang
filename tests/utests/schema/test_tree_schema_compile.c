@@ -2758,7 +2758,12 @@ test_augment(void **state)
     assert_null(mod->compiled->data->next);
     assert_string_equal("ch", ch->name);
 
-    assert_non_null(c = ch->cases);
+    assert_non_null(c = (const struct lysc_node_case *)ch->cases);
+    assert_string_equal("a", c->name);
+    assert_null(c->when);
+    assert_string_equal("a", c->child->name);
+
+    assert_non_null(c = (const struct lysc_node_case *)c->next);
     assert_string_equal("b", c->name);
     assert_non_null(c->when);
     assert_string_equal("b", c->child->name);
@@ -2766,16 +2771,10 @@ test_augment(void **state)
     assert_non_null(c = (const struct lysc_node_case *)c->next);
     assert_string_equal("c", c->name);
     assert_non_null(c->when);
-    assert_string_equal("lc2", ((const struct lysc_node_case *)c)->child->name);
-    assert_non_null(lysc_node_when(((const struct lysc_node_case *)c)->child));
-    assert_string_equal("lc1", ((const struct lysc_node_case *)c)->child->next->name);
-    assert_null(lysc_node_when(((const struct lysc_node_case *)c)->child->next));
-
-    assert_non_null(c = (const struct lysc_node_case *)c->next);
-    assert_string_equal("a", c->name);
-    assert_null(c->when);
-    assert_string_equal("a", c->child->name);
-    assert_null(c->next);
+    assert_string_equal("lc1", ((const struct lysc_node_case *)c)->child->name);
+    assert_null(lysc_node_when(((const struct lysc_node_case *)c)->child));
+    assert_string_equal("lc2", ((const struct lysc_node_case *)c)->child->next->name);
+    assert_non_null(lysc_node_when(((const struct lysc_node_case *)c)->child->next));
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {namespace urn:f;prefix f;grouping g {leaf a {type string;}}"
             "container c;"
@@ -2865,11 +2864,11 @@ test_augment(void **state)
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
             "augment /c {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/bb:c/a");
+    CHECK_LOG_CTX("Duplicate identifier \"a\" of data definition/RPC/action/notification statement.", "/bb:{augment='/c'}/a");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
             "augment /c/a {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Augment's absolute-schema-nodeid \"/c/a\" refers to a leaf node which is not an allowed augment's target.", "/cc:{augment='/c/a'}");
+    CHECK_LOG_CTX("Augment target node \"/c/a\" from module \"cc\" was not found.", "/cc:{augment='/c/a'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd; container c {leaf a {type string;}}"
             "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG, &mod));
@@ -2883,9 +2882,9 @@ test_augment(void **state)
             "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid absolute-schema-nodeid value \"../top\" - \"/\" expected instead of \"..\".", "/ff:{augment='../top'}");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg; rpc func;"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg; rpc func;"
             "augment /func {leaf x {type int8;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Augment's absolute-schema-nodeid \"/func\" refers to a RPC node which is not an allowed augment's target.", "/gg:{augment='/func'}");
+    CHECK_LOG_CTX("Augment target node \"/func\" from module \"gg\" was not found.", "/gg:{augment='/func'}");
 
     assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:i;prefix i;import himp {prefix hi;}"
             "augment /hi:func/input {leaf x {type string;}}"

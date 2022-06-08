@@ -852,7 +852,7 @@ test_set_priv_parsed(void **state)
     const char *schema_a;
     const char **iter;
     const char *check[] = {
-        "cont", "contnotif", "augleaf", "contx", "grpleaf", "l1",
+        "cont", "contnotif", "contx", "grpleaf", "augleaf", "l1",
         "l1a", "l1b", "l1c", "foo1", "ll", "any", "l2",
         "l2c", "l2cx", "ch", "cas", "casx", "oper",
         "input", "inparam", "output", "outparam", "n1", NULL

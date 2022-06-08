@@ -1852,14 +1852,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
     ly_bool enabled, child_unres_disabled = 0;
     uint32_t opt_prev = ctx->compile_opts;
 
+    assert(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
+
     /* nodetype checks */
-    if (!(target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF))) {
-        LOGVAL(ctx->ctx, LYVE_REFERENCE,
-                "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
-                aug_p->nodeid[0] == '/' ? "absolute" : "descendant", aug_p->nodeid, lys_nodetype2str(target->nodetype));
-        rc = LY_EVALID;
-        goto cleanup;
-    }
     if (aug_p->actions && !lysc_node_actions_p(target)) {
         LOGVAL(ctx->ctx, LYVE_REFERENCE,
                 "Invalid augment of %s node which is not allowed to contain RPC/action node \"%s\".",

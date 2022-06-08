@@ -2563,9 +2563,6 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    /* connect any augments */
-    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), cleanup);
-
     /* nodetype-specific part */
     LY_CHECK_GOTO(ret = node_compile_spec(ctx, pnode, node), cleanup);
 
@@ -2619,6 +2616,9 @@ lys_compile_node_action_inout(struct lysc_ctx *ctx, struct lysp_node *pnode, str
     LY_LIST_FOR(inout_p->child, child_p) {
         LY_CHECK_GOTO(ret = lys_compile_node(ctx, child_p, node, 0, NULL), done);
     }
+
+    /* connect any augments */
+    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), done);
 
     ctx->compile_opts = prev_options;
 
@@ -2712,6 +2712,9 @@ lys_compile_node_notif(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lys
         LY_CHECK_GOTO(ret, done);
     }
 
+    /* connect any augments */
+    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), done);
+
 done:
     return ret;
 }
@@ -2752,6 +2755,9 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *pnode, struct
     /* add must(s) to unres */
     ret = lysc_unres_must_add(ctx, node, pnode);
     LY_CHECK_GOTO(ret, done);
+
+    /* connect any augments */
+    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), done);
 
     LY_LIST_FOR((struct lysp_node *)cont_p->actions, child_p) {
         ret = lys_compile_node(ctx, child_p, node, 0, NULL);
@@ -3344,6 +3350,9 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         lysc_update_path(ctx, NULL, NULL);
     }
 
+    /* connect any augments */
+    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), done);
+
     /* uniques */
     if (list_p->uniques) {
         LY_CHECK_RET(lys_compile_node_list_unique(ctx, list_p->uniques, list));
@@ -3512,14 +3521,18 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *pnode, struct ly
     assert(node->nodetype == LYS_CHOICE);
 
     LY_LIST_FOR(ch_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node_choice_child(ctx, child_p, node, NULL));
+        LY_CHECK_GOTO(ret = lys_compile_node_choice_child(ctx, child_p, node, NULL), done);
     }
+
+    /* connect any augments */
+    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), done);
 
     /* default branch */
     if (ch_p->dflt.str) {
-        LY_CHECK_RET(lys_compile_node_choice_dflt(ctx, &ch_p->dflt, ch));
+        LY_CHECK_GOTO(ret = lys_compile_node_choice_dflt(ctx, &ch_p->dflt, ch), done);
     }
 
+done:
     return ret;
 }
 
@@ -3569,6 +3582,7 @@ done:
 static LY_ERR
 lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *node)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p;
     struct lysp_node_case *cs_p = (struct lysp_node_case *)pnode;
 
@@ -3577,13 +3591,17 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
     } else if (pnode->nodetype == LYS_CASE) {
         /* explicit parent case */
         LY_LIST_FOR(cs_p->child, child_p) {
-            LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0, NULL));
+            LY_CHECK_GOTO(ret = lys_compile_node(ctx, child_p, node, 0, NULL), done);
         }
     } else {
         LOGINT_RET(ctx->ctx);
     }
 
-    return LY_SUCCESS;
+    /* connect any augments */
+    LY_CHECK_GOTO(ret = lys_compile_node_augments(ctx, node), done);
+
+done:
+    return ret;
 }
 
 void
