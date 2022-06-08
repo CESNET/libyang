@@ -297,6 +297,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
         struct lyd_diff_userord *userord_item, enum lyd_diff_op *op, const char **orig_default, char **value,
         char **orig_value, char **key, char **orig_key, char **position, char **orig_position)
 {
+    LY_ERR rc = LY_SUCCESS;
     const struct lysc_node *schema;
     size_t buflen, bufused;
     uint32_t first_pos, second_pos;
@@ -365,10 +366,10 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
             ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_CREATE))) {
         if (second_pos) {
             *value = strdup(lyd_get_value(userord_item->inst[second_pos - 1]));
-            LY_CHECK_ERR_RET(!*value, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*value, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         } else {
             *value = strdup("");
-            LY_CHECK_ERR_RET(!*value, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*value, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         }
     }
 
@@ -377,10 +378,10 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
             ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_DELETE))) {
         if (first_pos) {
             *orig_value = strdup(lyd_get_value(userord_item->inst[first_pos - 1]));
-            LY_CHECK_ERR_RET(!*orig_value, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*orig_value, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         } else {
             *orig_value = strdup("");
-            LY_CHECK_ERR_RET(!*orig_value, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*orig_value, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         }
     }
 
@@ -389,10 +390,10 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
             ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_CREATE))) {
         if (second_pos) {
             buflen = bufused = 0;
-            LY_CHECK_RET(lyd_path_list_predicate(userord_item->inst[second_pos - 1], key, &buflen, &bufused, 0));
+            LY_CHECK_GOTO(rc = lyd_path_list_predicate(userord_item->inst[second_pos - 1], key, &buflen, &bufused, 0), cleanup);
         } else {
             *key = strdup("");
-            LY_CHECK_ERR_RET(!*key, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*key, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         }
     }
 
@@ -401,10 +402,10 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
             ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_DELETE))) {
         if (first_pos) {
             buflen = bufused = 0;
-            LY_CHECK_RET(lyd_path_list_predicate(userord_item->inst[first_pos - 1], orig_key, &buflen, &bufused, 0));
+            LY_CHECK_GOTO(rc = lyd_path_list_predicate(userord_item->inst[first_pos - 1], orig_key, &buflen, &bufused, 0), cleanup);
         } else {
             *orig_key = strdup("");
-            LY_CHECK_ERR_RET(!*orig_key, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*orig_key, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         }
     }
 
@@ -413,11 +414,12 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
         if (second_pos) {
             if (asprintf(position, "%" PRIu32, second_pos) == -1) {
                 LOGMEM(schema->module->ctx);
-                return LY_EMEM;
+                rc = LY_EMEM;
+                goto cleanup;
             }
         } else {
             *position = strdup("");
-            LY_CHECK_ERR_RET(!*position, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*position, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         }
     }
 
@@ -426,11 +428,12 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
         if (first_pos) {
             if (asprintf(orig_position, "%" PRIu32, first_pos) == -1) {
                 LOGMEM(schema->module->ctx);
-                return LY_EMEM;
+                rc = LY_EMEM;
+                goto cleanup;
             }
         } else {
             *orig_position = strdup("");
-            LY_CHECK_ERR_RET(!*orig_position, LOGMEM(schema->module->ctx), LY_EMEM);
+            LY_CHECK_ERR_GOTO(!*orig_position, LOGMEM(schema->module->ctx); rc = LY_EMEM, cleanup);
         }
     }
 
@@ -439,7 +442,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
     if (*op == LYD_DIFF_OP_CREATE) {
         /* insert the instance */
-        LY_ARRAY_CREATE_RET(schema->module->ctx, userord_item->inst, 1, LY_EMEM);
+        LY_ARRAY_CREATE_GOTO(schema->module->ctx, userord_item->inst, 1, rc, cleanup);
         if (second_pos < LY_ARRAY_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + second_pos + 1, userord_item->inst + second_pos,
                     (LY_ARRAY_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);
@@ -462,7 +465,22 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
         userord_item->inst[second_pos] = first;
     }
 
-    return LY_SUCCESS;
+cleanup:
+    if (rc) {
+        free(*value);
+        *value = NULL;
+        free(*orig_value);
+        *orig_value = NULL;
+        free(*key);
+        *key = NULL;
+        free(*orig_key);
+        *orig_key = NULL;
+        free(*position);
+        *position = NULL;
+        free(*orig_position);
+        *orig_position = NULL;
+    }
+    return rc;
 }
 
 /**
