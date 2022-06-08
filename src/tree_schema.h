@@ -645,7 +645,7 @@ struct lysp_type {
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     const struct lysp_module *pmod;  /**< (sub)module where the type is defined (needed for deviations) */
-    struct lysc_type *compiled;      /**< pointer to the compiled type */
+    struct lysc_type *compiled;      /**< pointer to the compiled custom type, not used for built-in types */
 
     uint8_t fraction_digits;         /**< number of fraction digits - decimal64 */
     uint8_t require_instance;        /**< require-instance flag - leafref, instance */
