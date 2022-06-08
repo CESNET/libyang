@@ -2480,7 +2480,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     struct lyd_node **match_p, *first, *iter;
     struct lyd_node_inner *parent;
 
-    LY_CHECK_ARG_RET(NULL, target, lysc_is_dup_inst_list(target->schema), set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, target, set, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(siblings ? LYD_CTX(siblings) : NULL, LYD_CTX(target), LY_EINVAL);
 
     LY_CHECK_RET(ly_set_new(set));

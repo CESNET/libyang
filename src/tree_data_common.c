@@ -73,12 +73,13 @@ lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struc
 {
     struct lyd_dup_inst *dup_inst;
 
-    if (!*inst || !lysc_is_dup_inst_list((*inst)->schema)) {
-        /* no match or not dup-inst list, inst is unchanged */
+    if (!*inst) {
+        /* no match, inst is unchanged */
         return LY_SUCCESS;
     }
 
-    /* there can be more exact same instances and we must make sure we do not match a single node more times */
+    /* there can be more exact same instances (even if not allowed in invalid data) and we must make sure we do not
+     * match a single node more times */
     dup_inst = lyd_dup_inst_get(*inst, dup_inst_cache);
     LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(siblings)), LY_EMEM);
 

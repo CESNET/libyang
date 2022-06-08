@@ -2391,8 +2391,8 @@ LIBYANG_API_DECL LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, co
         const char *key_or_value, size_t val_len, struct lyd_node **match);
 
 /**
- * @brief Search the given siblings for all the exact same instances of a specific node instance. Accepts only nodes
- * that are allowed to have several exact same instances. Uses hashes to whatever extent possible.
+ * @brief Search the given siblings for all the exact same instances of a specific node instance.
+ * Uses hashes to whatever extent possible.
  *
  * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
  * @param[in] target Target node instance to find.
