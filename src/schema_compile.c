@@ -68,7 +68,7 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
 
         /* compile the extension definition */
         ext_p->compiled = calloc(1, sizeof **ext);
-        ext_p->compiled->refcount = 1;
+        ext_p->compiled->refcount = 2;
         DUP_STRING_GOTO(ctx->ctx, ext_p->name, ext_p->compiled->name, ret, done);
         DUP_STRING_GOTO(ctx->ctx, ext_p->argname, ext_p->compiled->argname, ret, done);
         ext_p->compiled->module = (struct lys_module *)ext_mod;
@@ -80,9 +80,13 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
         /* find extension definition plugin */
         ext_p->compiled->plugin = lyplg_find(LYPLG_EXTENSION, ext_p->compiled->module->name,
                 ext_p->compiled->module->revision, ext_p->compiled->name);
-    }
 
-    *ext = lysc_ext_dup(ext_p->compiled);
+        /* refcount 2 already */
+        *ext = ext_p->compiled;
+    } else {
+        /* increase refcount */
+        *ext = lysc_ext_dup(ext_p->compiled);
+    }
 
 done:
     if (ret) {
