@@ -69,6 +69,7 @@ cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
 %license LICENSE
 %{_libdir}/libyang.so.2
 %{_libdir}/libyang.so.2.*
+%dir %{_datadir}/yang/
 
 %files tools
 %{_bindir}/yanglint

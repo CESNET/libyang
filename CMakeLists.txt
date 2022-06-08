@@ -238,6 +238,7 @@ option(ENABLE_PERF_TESTS "Build performance tests" OFF)
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 option(ENABLE_INTERNAL_DOCS "Generate doxygen documentation also from internal headers" OFF)
+set(YANG_MODULE_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/yang/modules/libyang" CACHE STRING "Directory where to copy the YANG modules to")
 
 if(ENABLE_INTERNAL_DOCS)
     set(doxy_files ${doxy_files} ${internal_headers})
@@ -404,6 +405,9 @@ target_link_libraries(yang ${PCRE2_LIBRARIES})
 foreach(h IN LISTS gen_headers)
     list(APPEND g_headers ${PROJECT_BINARY_DIR}/${h})
 endforeach()
+
+# install the modules
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/models/" DESTINATION ${YANG_MODULE_DIR} FILES_MATCHING PATTERN "*.yang")
 
 # install all library files
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
