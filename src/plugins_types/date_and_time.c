@@ -119,22 +119,20 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     if (!strncmp(((char *)value + value_len) - 6, "-00:00", 6)) {
         /* unknown timezone, move the timestamp to UTC */
         tzset();
-        val->time += timezone;
+        val->time += (time_t)timezone;
         val->unknown_tz = 1;
 
-        if (daylight) {
-            /* DST may apply, adjust accordingly */
-            if (!localtime_r(&val->time, &tm)) {
-                ret = ly_err_new(err, LY_ESYS, LYVE_DATA, NULL, NULL, "localtime_r() call failed (%s).", strerror(errno));
-                goto cleanup;
-            } else if (tm.tm_isdst < 0) {
-                ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Failed to get DST information.");
-                goto cleanup;
-            }
-            if (tm.tm_isdst) {
-                /* move an hour back */
-                val->time -= 3600;
-            }
+        /* DST may apply, adjust accordingly */
+        if (!localtime_r(&val->time, &tm)) {
+            ret = ly_err_new(err, LY_ESYS, LYVE_DATA, NULL, NULL, "localtime_r() call failed (%s).", strerror(errno));
+            goto cleanup;
+        } else if (tm.tm_isdst < 0) {
+            ret = ly_err_new(err, LY_EINT, LYVE_DATA, NULL, NULL, "Failed to get DST information.");
+            goto cleanup;
+        }
+        if (tm.tm_isdst) {
+            /* move an hour back */
+            val->time -= 3600;
         }
     }
 #else
