@@ -166,7 +166,7 @@ numeric_range:
             for (i = 1; i <= min + range && isdigit(*s); i *= 10) {
                 *dest = *dest * 10 + *s++ - '0';
             }
-            if (*dest - min >= (unsigned)range) {
+            if (*dest - min >= range) {
                 return 0;
             }
             *dest -= adj;
