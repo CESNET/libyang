@@ -70,6 +70,8 @@ cp -a doc/html %{buildroot}/%{_docdir}/libyang/html
 %{_libdir}/libyang.so.2
 %{_libdir}/libyang.so.2.*
 %dir %{_datadir}/yang/
+%dir %{_datadir}/yang/modules/
+%dir %{_datadir}/yang/modules/libyang/
 
 %files tools
 %{_bindir}/yanglint
