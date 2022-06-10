@@ -1210,7 +1210,6 @@ lydxml_env_netconf_rpc_reply_error_info(struct lyxml_ctx *xmlctx, struct lyd_nod
 {
     LY_ERR r;
     struct lyd_node *child, *iter;
-    const struct lyxml_ns *ns;
     ly_bool no_dup;
 
     /* there must be some child */
@@ -1268,19 +1267,6 @@ lydxml_env_netconf_rpc_reply_error_info(struct lyxml_ctx *xmlctx, struct lyd_nod
 
         if (r == LY_ENOT) {
             assert(xmlctx->status == LYXML_ELEMENT);
-
-            /* learn namespace */
-            ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
-            if (!ns) {
-                LOGVAL(xmlctx->ctx, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", (int)xmlctx->prefix_len, xmlctx->prefix);
-                r = LY_EVALID;
-                goto error;
-            } else if (!strcmp(ns->uri, "urn:ietf:params:xml:ns:netconf:base:1.0")) {
-                LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Unexpected child element \"%.*s\" of \"error-info\".",
-                        (int)xmlctx->name_len, xmlctx->name);
-                r = LY_EVALID;
-                goto error;
-            }
 
             /* custom elements */
             r = lydxml_opaq_r(xmlctx, parent);
