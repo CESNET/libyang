@@ -265,7 +265,18 @@ realpath(const char *path, char *resolved_path)
     }
     return resolved;
 }
+#elif defined (__NetBSD__)
+char *
+realpath(const char *path, char *resolved_path)
+{
+    ssize_t nbytes;
 
+    nbytes = readlink(path, resolved_path, PATH_MAX);
+    if (nbytes == -1)
+        return NULL;
+
+    return resolved_path;
+}
 #else
 #error No realpath() implementation for this platform is available.
 #endif
