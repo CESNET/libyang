@@ -39,11 +39,7 @@
 #define timegm _mkgmtime
 /* read, write, and close are NOT being #defined here, because while there are file handle specific versions for Windows, they probably don't work for sockets. You need to look at your app and consider whether to call e.g. closesocket(). */
 
-#ifdef _WIN64
-#define ssize_t __int64
-#else
-#define ssize_t long
-#endif
+#define ssize_t SSIZE_T
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
