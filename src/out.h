@@ -16,7 +16,10 @@
 #define LY_OUT_H_
 
 #include <stdio.h>
-#include <unistd.h>
+#include <sys/types.h>
+#ifdef _MSC_VER
+#  define ssize_t SSIZE_T
+#endif
 
 #include "log.h"
 
