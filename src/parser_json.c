@@ -201,7 +201,7 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
     /* next */
     LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
 
-    if ((status == LYJSON_OBJECT) && (current != LYJSON_OBJECT)) {
+    if ((status == LYJSON_OBJECT) && (current != LYJSON_OBJECT) && (current != LYJSON_ARRAY)) {
         /* no nested objects */
         LY_CHECK_RET(lyjson_ctx_next(jsonctx, NULL));
         return LY_SUCCESS;
