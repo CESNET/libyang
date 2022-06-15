@@ -6231,7 +6231,7 @@ moveto_axis_scnode_next_dfs_forward(const struct lysc_node *iter, const struct l
     next = lysc_node_child(iter);
     if (!next) {
         /* no children, try siblings */
-        if (iter == stop) {
+        if ((iter == stop) || !lysc_data_parent(iter)) {
             /* we are done, no next element to process */
             return NULL;
         }
@@ -6241,7 +6241,7 @@ moveto_axis_scnode_next_dfs_forward(const struct lysc_node *iter, const struct l
     while (!next && iter) {
         /* parent is already processed, go to its sibling */
         iter = iter->parent;
-        if (iter == stop) {
+        if ((iter == stop) || !lysc_data_parent(iter)) {
             /* we are done, no next element to process */
             return NULL;
         }
