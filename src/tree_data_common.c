@@ -495,11 +495,14 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lysc_node *schema, con
     struct lyd_value val = {0};
     ly_bool stored = 0, log = 1;
 
-    LY_CHECK_ARG_RET(ctx, schema, value, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, schema, !value_len || value, LY_EINVAL);
 
     if (!ctx) {
         ctx = schema->module->ctx;
         log = 0;
+    }
+    if (!value_len) {
+        value = "";
     }
     type = ((struct lysc_node_leaf *)schema)->type;
 
