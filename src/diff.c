@@ -105,12 +105,67 @@ lyd_diff_str2op(const char *str)
     return 0;
 }
 
+/**
+ * @brief Create diff metadata for a nested user-ordered node with the effective operation "create".
+ *
+ * @param[in] node User-rodered node to update.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_add_create_nested_userord(struct lyd_node *node)
+{
+    LY_ERR rc = LY_SUCCESS;
+    const char *meta_name, *meta_val;
+    size_t buflen = 0, bufused = 0;
+    uint32_t pos;
+    char *dyn = NULL;
+
+    assert(lysc_is_userordered(node->schema));
+
+    /* get correct metadata name and value */
+    if (lysc_is_dup_inst_list(node->schema)) {
+        meta_name = "yang:position";
+
+        pos = lyd_list_pos(node);
+        if (asprintf(&dyn, "%" PRIu32, pos) == -1) {
+            LOGMEM(LYD_CTX(node));
+            rc = LY_EMEM;
+            goto cleanup;
+        }
+        meta_val = dyn;
+    } else if (node->schema->nodetype == LYS_LIST) {
+        meta_name = "yang:key";
+
+        if (node->prev->next && (node->prev->schema == node->schema)) {
+            LY_CHECK_GOTO(rc = lyd_path_list_predicate(node->prev, &dyn, &buflen, &bufused, 0), cleanup);
+            meta_val = dyn;
+        } else {
+            meta_val = "";
+        }
+    } else {
+        meta_name = "yang:value";
+
+        if (node->prev->next && (node->prev->schema == node->schema)) {
+            meta_val = lyd_get_value(node->prev);
+        } else {
+            meta_val = "";
+        }
+    }
+
+    /* create the metadata */
+    LY_CHECK_GOTO(rc = lyd_new_meta(NULL, node, NULL, meta_name, meta_val, 0, NULL), cleanup);
+
+cleanup:
+    free(dyn);
+    return rc;
+}
+
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
         const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
         struct lyd_node **diff)
 {
-    struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL;
+    struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL, *elem;
     const struct lyd_node *parent = NULL;
     const struct lys_module *yang_mod;
 
@@ -193,6 +248,16 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
     /* add subtree operation */
     LY_CHECK_RET(lyd_new_meta(LYD_CTX(node), dup, yang_mod, "operation", lyd_diff_op2str(op), 0, NULL));
+
+    if (op == LYD_DIFF_OP_CREATE) {
+        /* all nested user-ordered (leaf-)lists need special metadata for create op */
+        LYD_TREE_DFS_BEGIN(dup, elem) {
+            if ((elem != dup) && lysc_is_userordered(elem->schema)) {
+                LY_CHECK_RET(lyd_diff_add_create_nested_userord(elem));
+            }
+            LYD_TREE_DFS_END(dup, elem);
+        }
+    }
 
     /* orig-default */
     if (orig_default) {
