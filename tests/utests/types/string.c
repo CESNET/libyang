@@ -726,7 +726,7 @@ test_data_xml(void **state)
     /* error */
     TEST_ERROR_XML("T0", "< df");
     CHECK_LOG_CTX("Child element \"df\" inside a terminal node \"port\" found.",
-            "Schema location /T0:port, data location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", data location \"/T0:port\", line number 1.");
     TEST_ERROR_XML("T0", "&text;");
     CHECK_LOG_CTX("Entity reference \"&text;</po\" not supported, only predefined references allowed.", "Line number 1.");
     TEST_ERROR_XML("T0", "\"&#x8;\"");
@@ -744,14 +744,14 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("T1", "abcde",    STRING, "abcde");
     TEST_SUCCESS_XML("T1", "abcde&lt;", STRING, "abcde<");
     TEST_ERROR_XML("T1", "p4abc");
-    CHECK_LOG_CTX_APPTAG("invalid pattern of value", "Schema location /T1:port, line number 1.", "pattern-violation");
+    CHECK_LOG_CTX_APPTAG("invalid pattern of value", "Schema location \"/T1:port\", line number 1.", "pattern-violation");
     /* size 20 */
     TEST_SUCCESS_XML("T1", "ahojahojahojahojahoj", STRING, "ahojahojahojahojahoj");
     TEST_SUCCESS_XML("T1", "abc-de", STRING, "abc-de");
     /* ERROR LENGTH  */
     TEST_ERROR_XML("T1", "p4a&lt;");
     CHECK_LOG_CTX("Unsatisfied length - string \"p4a<\" length is not allowed.",
-            "Schema location /T1:port, line number 1.");
+            "Schema location \"/T1:port\", line number 1.");
 
     /* TEST DEFAULT VALUE */
     schema = MODULE_CREATE_YANG("T2",
@@ -795,10 +795,10 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("T_UTF8", "€€€€€",    STRING, "€€€€€");
     TEST_ERROR_XML("T_UTF8", "€€€");
     CHECK_LOG_CTX("Unsatisfied length - string \"€€€\" length is not allowed.",
-            "Schema location /T_UTF8:port, line number 1.");
+            "Schema location \"/T_UTF8:port\", line number 1.");
     TEST_ERROR_XML("T_UTF8", "€€€€€€€€");
     CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not conform to \"[€]{5,7}\".",
-            "Schema location /T_UTF8:port, line number 1.");
+            "Schema location \"/T_UTF8:port\", line number 1.");
 
     /* ANCHOR TEST ^$ is implicit */
     schema = MODULE_CREATE_YANG("T_ANCHOR", "leaf port {type string {"
@@ -807,10 +807,10 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_ERROR_XML("T_ANCHOR", "abc");
     CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not conform to \"a.*b\".",
-            "Schema location /T_ANCHOR:port, line number 1.");
+            "Schema location \"/T_ANCHOR:port\", line number 1.");
     TEST_ERROR_XML("T_ANCHOR", "cab");
     CHECK_LOG_CTX("Unsatisfied pattern - \"cab\" does not conform to \"a.*b\".",
-            "Schema location /T_ANCHOR:port, line number 1.");
+            "Schema location \"/T_ANCHOR:port\", line number 1.");
 }
 
 static void
@@ -872,14 +872,14 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("T1", "a\\nbcde",     STRING, "a\nbcde");
     TEST_ERROR_JSON("T1", "p4abc\\n");
     CHECK_LOG_CTX("Unsatisfied pattern - \"p4abc\n\" does not conform to inverted \"p4.*\\n\".",
-            "Schema location /T1:port, line number 1.");
+            "Schema location \"/T1:port\", line number 1.");
     /* size 20 */
     TEST_SUCCESS_JSON("T1", "ahojahojaho\\njahojaho", STRING, "ahojahojaho\njahojaho");
     TEST_SUCCESS_JSON("T1", "abc\\n-de", STRING, "abc\n-de");
     /* ERROR LENGTH  */
     TEST_ERROR_JSON("T1", "p4a\u042F");
     CHECK_LOG_CTX("Unsatisfied length - string \"p4aЯ\" length is not allowed.",
-            "Schema location /T1:port, line number 1.");
+            "Schema location \"/T1:port\", line number 1.");
 
     /* TEST DEFAULT VALUE */
     schema = MODULE_CREATE_YANG("T_DEFAULT2",
@@ -917,10 +917,10 @@ test_data_json(void **state)
     TEST_SUCCESS_JSON("T_UTF8", "€€€€€",    STRING, "€€€€€");
     TEST_ERROR_JSON("T_UTF8", "€€€");
     CHECK_LOG_CTX("Unsatisfied length - string \"€€€\" length is not allowed.",
-            "Schema location /T_UTF8:port, line number 1.");
+            "Schema location \"/T_UTF8:port\", line number 1.");
     TEST_ERROR_JSON("T_UTF8", "€€€€€€€€");
     CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not conform to \"[€]{5,7}\".",
-            "Schema location /T_UTF8:port, line number 1.");
+            "Schema location \"/T_UTF8:port\", line number 1.");
 
     /* ANCHOR TEST ^$ is implicit */
     schema = MODULE_CREATE_YANG("T_ANCHOR", "leaf port {type string {"
@@ -929,10 +929,10 @@ test_data_json(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_ERROR_JSON("T_ANCHOR", "abc");
     CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not conform to \"a.*b\".",
-            "Schema location /T_ANCHOR:port, line number 1.");
+            "Schema location \"/T_ANCHOR:port\", line number 1.");
     TEST_ERROR_JSON("T_ANCHOR", "cb");
     CHECK_LOG_CTX("Unsatisfied pattern - \"cb\" does not conform to \"a.*b\".",
-            "Schema location /T_ANCHOR:port, line number 1.");
+            "Schema location \"/T_ANCHOR:port\", line number 1.");
 }
 
 static void
@@ -999,7 +999,7 @@ test_diff(void **state)
             "121</port>";
     CHECK_PARSE_LYD_PARAM(diff_expected, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, model_1);
     CHECK_LOG_CTX("Unsatisfied length - string \"121\" length is not allowed.",
-            "Schema location /T_DIFF:port, line number 1.");
+            "Schema location \"/T_DIFF:port\", line number 1.");
 
     /* diff from default value */
     data_1 = "<cont xmlns=\"urn:tests:T_DIFF1\"></cont>";

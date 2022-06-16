@@ -61,7 +61,7 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("defs", "\n 1500 \t\n  ");
     CHECK_LOG_CTX("Unsatisfied range - value \"1500\" is out of the allowed range.",
-            "Schema location /defs:port, line number 3.");
+            "Schema location \"/defs:port\", line number 3.");
 }
 
 int

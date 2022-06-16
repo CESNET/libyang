@@ -225,7 +225,7 @@ test_parse_invalid(void **state)
 
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("No module with namespace \"unknown\" in the context.",
-            "Schema location /sm:root, data location /sm:root, line number 1.");
+            "Schema location \"/sm:root\", data location \"/sm:root\", line number 1.");
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     assert_string_equal(LYD_NAME(data), "root");
@@ -236,7 +236,7 @@ test_parse_invalid(void **state)
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("No module named \"unknown\" in the context.",
-            "Schema location /sm:root, data location /sm:root, line number 1.");
+            "Schema location \"/sm:root\", data location \"/sm:root\", line number 1.");
 
     /* missing required callback data */
     xml =
@@ -249,7 +249,7 @@ test_parse_invalid(void **state)
             "</root>";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Schema location /sm:root, data location /sm:root, line number 1.");
+            "Schema location \"/sm:root\", data location \"/sm:root\", line number 1.");
 
     json =
             "{"
@@ -265,7 +265,7 @@ test_parse_invalid(void **state)
             "}";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Node \"interfaces\" not found as a child of \"root\" node.",
-            "Schema location /sm:root, data location /sm:root, line number 1.");
+            "Schema location \"/sm:root\", data location \"/sm:root\", line number 1.");
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
@@ -405,25 +405,25 @@ test_parse_invalid(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location /ietf-interfaces:interfaces/interface/type.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location /ietf-interfaces:interfaces/interface/type.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
 
     /* same validation fail in separate validation */
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location /ietf-interfaces:interfaces/interface/type.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
     lyd_free_siblings(data);
 
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY, 0, LY_SUCCESS, data);
     assert_int_equal(LY_EVALID, lyd_validate_all(&data, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Mandatory node \"type\" instance does not exist.",
-            "Schema location /ietf-interfaces:interfaces/interface/type.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/type\".");
     lyd_free_siblings(data);
 
     /* success */
@@ -1122,8 +1122,8 @@ test_parse_shared_parent_ref(void **state)
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Invalid leafref value \"target-value\" - no existing target instance \"/sm:target\".",
-            "Schema location /ietf-interfaces:interfaces/interface/sm:sm-name, "
-            "data location /ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/sm:sm-name\", "
+            "data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
 
     json =
             "{\n"
@@ -1148,8 +1148,8 @@ test_parse_shared_parent_ref(void **state)
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
             "Invalid leafref value \"target-value\" - no existing target instance \"/sm:target\".",
-            "Schema location /ietf-interfaces:interfaces/interface/sm:sm-name, "
-            "data location /ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name.");
+            "Schema location \"/ietf-interfaces:interfaces/interface/sm:sm-name\", "
+            "data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
 
     /* success */
     xml =

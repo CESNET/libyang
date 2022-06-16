@@ -307,7 +307,7 @@ test_node_leaflist(void **state)
     CHECK_LOG_CTX("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.", "/aa:ll");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {yang-version 1.1;namespace urn:bb;prefix bb;leaf-list ll {type empty; default x;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location /bb:ll.");
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location \"/bb:ll\".");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;"
             "leaf-list ll {config false;type string; default one;default two;default one;}}", LYS_IN_YANG, &mod));
@@ -322,7 +322,7 @@ test_node_leaflist(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;"
             "leaf ref {type instance-identifier {require-instance true;} default \"/ee:g\";}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
-            "(Invalid instance-identifier \"/ee:g\" value - semantic error.).", "Schema location /ee:ref.");
+            "(Invalid instance-identifier \"/ee:g\" value - semantic error.).", "Schema location \"/ee:ref\".");
 }
 
 static void
@@ -420,7 +420,7 @@ test_node_list(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;feature f;"
             "list l {key x; leaf x {type string; if-feature f;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Key \"x\" is disabled.", "Schema location /cc:l/x.");
+    CHECK_LOG_CTX("Key \"x\" is disabled.", "Schema location \"/cc:l/x\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;"
             "list l {key x; leaf x {type string; config false;}}}", LYS_IN_YANG, NULL));
@@ -1403,7 +1403,8 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".", "Schema location /b:lf, line number 1.");
+    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".",
+            "Schema location \"/b:lf\", line number 1.");
     assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "a", NULL));
     assert_false(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id3</lf>";
@@ -1431,11 +1432,13 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id1"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".", "Schema location /b:lf, line number 1.");
+    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".",
+            "Schema location \"/b:lf\", line number 1.");
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:c\">ids:id3</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG("Invalid identityref \"ids:id3\" value - identity found in non-implemented module \"c\".", "Schema location /b:lf, line number 1.");
+    CHECK_LOG("Invalid identityref \"ids:id3\" value - identity found in non-implemented module \"c\".",
+            "Schema location \"/b:lf\", line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
     /* Unimplemented module expand base identity located in implemented module. */
@@ -1459,7 +1462,8 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "b", NULL, "baseid", "id1"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".", "Schema location /b:lf, line number 1.");
+    CHECK_LOG("Invalid identityref \"ids:id1\" value - identity found in non-implemented module \"a\".",
+            "Schema location \"/b:lf\", line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
     /* Transitivity of derived identity through unimplemented module. */
@@ -1641,7 +1645,8 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
     data = "<lf xmlns=\"urn:b\">id3</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid identityref \"id3\" value - identity is disabled by if-feature.", "Schema location /b:lf, line number 1.");
+    CHECK_LOG_CTX("Invalid identityref \"id3\" value - identity is disabled by if-feature.",
+            "Schema location \"/b:lf\", line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
     /* The derived identities are enabled and disabled in submodule. */
@@ -1673,7 +1678,8 @@ test_identity(void **state)
     assert_true(contains_derived_identity(UTEST_LYCTX, "a", NULL, "baseid", "id3"));
     data = "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id3</lf>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Invalid identityref \"ids:id3\" value - identity is disabled by if-feature.", "Schema location /b:lf, line number 1.");
+    CHECK_LOG_CTX("Invalid identityref \"ids:id3\" value - identity is disabled by if-feature.",
+            "Schema location \"/b:lf\", line number 1.");
     RESET_CTX(UTEST_LYCTX);
 
 #undef RESET_CTX
@@ -1854,7 +1860,7 @@ test_type_leafref(void **state)
             "leaf ref1 {type leafref {path /target;}}"
             "leaf target {if-feature 'f1'; type boolean;}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled.", "Schema location /e:ref1.");
+    CHECK_LOG_CTX("Target of leafref \"ref1\" cannot be referenced because it is disabled.", "Schema location \"/e:ref1\".");
 
     str = "module en {yang-version 1.1;namespace urn:en;prefix en;feature f1;"
             "leaf ref1 {if-feature 'f1'; type leafref {path /target;}}"
@@ -1864,7 +1870,7 @@ test_type_leafref(void **state)
     str = "module e {yang-version 1.1;namespace urn:e;prefix e;feature f1;"
             "leaf ref1 {if-feature 'f1'; type leafref {path /target;}}}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location /e:ref1.");
+    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location \"/e:ref1\".");
 
     ly_ctx_set_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module cl {namespace urn:cl;prefix cl;feature f1;"
@@ -1874,7 +1880,7 @@ test_type_leafref(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module im {namespace urn:im;prefix im;import cl {prefix cl;}"
             "leaf ref {must \"/cl:h > 0\"; type uint16;}}", LYS_IN_YANG, &mod));
     ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_REF_IMPLEMENTED);
-    CHECK_LOG_CTX("Target of leafref \"g\" cannot be referenced because it is disabled.", "Schema location /cl:g.");
+    CHECK_LOG_CTX("Target of leafref \"g\" cannot be referenced because it is disabled.", "Schema location \"/cl:g\".");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module f {namespace urn:f;prefix f;"
             "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
@@ -1953,27 +1959,28 @@ test_type_leafref(void **state)
     /* invalid paths */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"invalid\" in path.", "Schema location /aa:ref1.");
+    CHECK_LOG_CTX("Not found node \"invalid\" in path.", "Schema location \"/aa:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path ../../toohigh;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Too many parent references in path.", "Schema location /bb:ref1.");
+    CHECK_LOG_CTX("Too many parent references in path.", "Schema location \"/bb:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path /a:invalid;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"a\" found (prefix format schema stored mapping).", "Schema location /cc:ref1.");
+    CHECK_LOG_CTX("No module connected with the prefix \"a\" found (prefix format schema stored mapping).", "Schema location \"/cc:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;leaf target1 {type string;}"
             "container a {leaf target2 {type uint8;}} leaf ref1 {type leafref {"
             "path '/a[target2 = current()/../target1]/target2';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("List predicate defined for container \"a\" in path.", "Schema location /dd:ref1.");
+    CHECK_LOG_CTX("List predicate defined for container \"a\" in path.", "Schema location \"/dd:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;\n  container a {leaf target2 {type uint8;}}\n"
             "leaf ref1 {type leafref {path /a!invalid;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Parsing module \"ee\" failed.", NULL,
             "Invalid character 0x21 ('!'), perhaps \"a\" is supposed to be a function call.", "Line number 3.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path /a;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid leafref path \"/a\" - target node is container instead of leaf or leaf-list.", "Schema location /ff:ref1.");
+    CHECK_LOG_CTX("Invalid leafref path \"/a\" - target node is container instead of leaf or leaf-list.", "Schema location \"/ff:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;container a {leaf target2 {type uint8;"
             "status deprecated;}} leaf ref1 {type leafref {path /a/target2;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("A current definition \"ref1\" is not allowed to reference deprecated definition \"target2\".", "Schema location /gg:ref1.");
+    CHECK_LOG_CTX("A current definition \"ref1\" is not allowed to reference deprecated definition \"target2\".",
+            "Schema location \"/gg:ref1\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;"
             "leaf ref1 {type leafref;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Missing path substatement for leafref type.", "/hh:ref1");
@@ -1982,7 +1989,7 @@ test_type_leafref(void **state)
     CHECK_LOG_CTX("Missing path substatement for leafref type mytype.", "/ii:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module kk {namespace urn:kk;prefix kk;"
             "leaf ref {type leafref {path /target;}}leaf target {type string;config false;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not.", "Schema location /kk:ref.");
+    CHECK_LOG_CTX("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not.", "Schema location \"/kk:ref\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ll {namespace urn:ll;prefix ll;"
             "leaf ref {type leafref {path /target; require-instance true;}}leaf target {type string;}}", LYS_IN_YANG, &mod));
@@ -2012,14 +2019,15 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}"
             "leaf address {type leafref{ path \"/interface[x:name=current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).", "Schema location /pp:address.");
+    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).",
+            "Schema location \"/pp:address\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module qq {namespace urn:qq;prefix qq;"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
             "leaf ifname{type leafref{ path \"../interface/name\";}}"
             "leaf address {type leafref{ path \"/interface[id=current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"id\" in path.", "Schema location /qq:address.");
+    CHECK_LOG_CTX("Not found node \"id\" in path.", "Schema location \"/qq:address\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module rr {namespace urn:rr;prefix rr;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
@@ -2082,37 +2090,39 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).", "Schema location /yy:address.");
+    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).",
+            "Schema location \"/yy:address\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zz {namespace urn:zz;prefix zz;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{ path \"/interface[name=current()/../xxx]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"xxx\" in path.", "Schema location /zz:address.");
+    CHECK_LOG_CTX("Not found node \"xxx\" in path.", "Schema location \"/zz:address\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zza {namespace urn:zza;prefix zza;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}container c;\n"
             "leaf address {type leafref{ path \"/interface[name=current()/../c]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Leaf expected instead of container \"c\" in leafref predicate in path.", "Schema location /zza:address.");
+    CHECK_LOG_CTX("Leaf expected instead of container \"c\" in leafref predicate in path.", "Schema location \"/zza:address\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zzb {namespace urn:zzb;prefix zzb;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}container c;}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{ path \"/interface[c=current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Key expected instead of container \"c\" in path.", "Schema location /zzb:address.");
+    CHECK_LOG_CTX("Key expected instead of container \"c\" in path.", "Schema location \"/zzb:address\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zzc {namespace urn:zzc;prefix zzc;\n"
             "leaf source {type leafref {path \"../target\";}default true;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location /zzc:source.");
+    CHECK_LOG_CTX("Not found node \"target\" in path.", "Schema location \"/zzc:source\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zzd {namespace urn:zzd;prefix zzd;\n"
             "leaf source {type leafref {path \"../target\";}default true;}\n"
             "leaf target {type uint8;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid uint8 value \"true\".).", "Schema location /zzd:source.");
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid type uint8 value \"true\".).",
+            "Schema location \"/zzd:source\".");
 
     /* circular chain */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aaa {namespace urn:aaa;prefix aaa;\n"
@@ -2120,7 +2130,7 @@ test_type_leafref(void **state)
             "leaf ref2 {type leafref {path /ref3;}}\n"
             "leaf ref3 {type leafref {path /ref4;}}\n"
             "leaf ref4 {type leafref {path /ref1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid leafref path \"/ref1\" - circular chain of leafrefs detected.", "Schema location /aaa:ref4.");
+    CHECK_LOG_CTX("Invalid leafref path \"/ref1\" - circular chain of leafrefs detected.", "Schema location \"/aaa:ref4\".");
 }
 
 static void
@@ -2129,7 +2139,7 @@ test_type_empty(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "leaf l {type empty; default x;}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location /aa:l.");
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid empty value length 1.).", "Schema location \"/aa:l\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;typedef mytype {type empty; default x;}"
             "leaf l {type mytype;}}", LYS_IN_YANG, NULL));
@@ -2312,7 +2322,8 @@ test_status(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
             "container c {leaf l {status obsolete; type string;}}"
             "container d {leaf m {when \"../../c/l\"; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("A current definition \"m\" is not allowed to reference obsolete definition \"l\".", "Schema location /cc:d/m.");
+    CHECK_LOG_CTX("A current definition \"m\" is not allowed to reference obsolete definition \"l\".",
+            "Schema location \"/cc:d/m\".");
 }
 
 static void
@@ -3537,21 +3548,21 @@ test_deviation(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo1 {namespace urn:oo1;prefix oo1; leaf x {type uint16; default 300;}"
             "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
-            "(Value \"300\" is out of uint8's min/max bounds.).", "Schema location /oo1:x.");
+            "(Value \"300\" is out of type uint8 min/max bounds.).", "Schema location \"/oo1:x\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo2 {yang-version 1.1;namespace urn:oo2;prefix oo2; leaf-list x {type uint16; default 10; default 300;}"
             "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
-            "(Value \"300\" is out of uint8's min/max bounds.).", "Schema location /oo2:x.");
+            "(Value \"300\" is out of type uint8 min/max bounds.).", "Schema location \"/oo2:x\".");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo3 {namespace urn:oo3;prefix oo3; leaf x {type uint8;}"
             "deviation /x {deviate add {default 300;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
-            "(Value \"300\" is out of uint8's min/max bounds.).", "Schema location /oo3:x.");
+            "(Value \"300\" is out of type uint8 min/max bounds.).", "Schema location \"/oo3:x\".");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module pp {namespace urn:pp;prefix pp; leaf l { type leafref {path /c/x;}}"
             "container c {leaf x {type string;} leaf y {type string;}}}", LYS_IN_YANG, &mod));
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp1 {namespace urn:pp1;prefix pp1; import pp {prefix pp;}"
             "deviation /pp:c/pp:x {deviate not-supported;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Target of leafref \"l\" cannot be referenced because it is disabled.", "Schema location /pp:l.");
+    CHECK_LOG_CTX("Target of leafref \"l\" cannot be referenced because it is disabled.", "Schema location \"/pp:l\".");
 }
 
 static void
@@ -3583,7 +3594,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition cyclic dependency on the node \"cont2\".", "Schema location /a:cont/lst/val.");
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"cont2\".", "Schema location \"/a:cont/lst/val\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3611,7 +3622,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition cyclic dependency on the node \"cont2\".", "Schema location /a:cont/lst/val.");
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"cont2\".", "Schema location \"/a:cont/lst/val\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3623,7 +3634,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location /a:val.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location \"/a:val\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3639,7 +3650,7 @@ test_when(void **state)
             "    }\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location /a:val.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location \"/a:val\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3654,7 +3665,7 @@ test_when(void **state)
             "    container cont;\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location /a:cont/val.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "Schema location \"/a:cont/val\".");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
@@ -3671,7 +3682,7 @@ test_when(void **state)
             "    container cont;\n"
             "}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition is accessing its own conditional node children.", "Schema location /a:cont/aug-cont.");
+    CHECK_LOG_CTX("When condition is accessing its own conditional node children.", "Schema location \"/a:cont/aug-cont\".");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
             "module b {\n"

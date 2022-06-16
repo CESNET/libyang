@@ -60,16 +60,16 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     TEST_ERROR_XML("defs", "");
-    CHECK_LOG_CTX("Invalid empty int64 value.",
-            "Schema location /defs:port, line number 1.");
+    CHECK_LOG_CTX("Invalid type int64 empty value.",
+            "Schema location \"/defs:port\", line number 1.");
 
     TEST_ERROR_XML("defs", "   ");
-    CHECK_LOG_CTX("Invalid empty int64 value.",
-            "Schema location /defs:port, line number 1.");
+    CHECK_LOG_CTX("Invalid type int64 empty value.",
+            "Schema location \"/defs:port\", line number 1.");
 
     TEST_ERROR_XML("defs", "-10  xxx");
-    CHECK_LOG_CTX("Invalid int64 value \"-10  xxx\".",
-            "Schema location /defs:port, line number 1.");
+    CHECK_LOG_CTX("Invalid type int64 value \"-10  xxx\".",
+            "Schema location \"/defs:port\", line number 1.");
 }
 
 int

@@ -626,13 +626,13 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("T0", "twelvea");
     CHECK_LOG_CTX("Invalid bit \"twelvea\".",
-            "Schema location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", line number 1.");
     TEST_ERROR_XML("T0", "twelve t");
     CHECK_LOG_CTX("Invalid bit \"t\".",
-            "Schema location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", line number 1.");
     TEST_ERROR_XML("T0", "ELEVEN");
     CHECK_LOG_CTX("Invalid bit \"ELEVEN\".",
-            "Schema location /T0:port, line number 1.");
+            "Schema location \"/T0:port\", line number 1.");
 
     /* empty value  */
     data = "<port xmlns=\"urn:tests:T0\"/>"; \

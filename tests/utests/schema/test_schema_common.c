@@ -617,7 +617,7 @@ test_accessible_tree(void **state)
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid leafref path \"/cont/l\" - target is supposed to represent configuration data"
-            " (as the leafref does), but it does not.", "Schema location /b:cont2/l2.");
+            " (as the leafref does), but it does not.", "Schema location \"/b:cont2/l2\".");
 
     /* config -> state must */
     str = "module b {\n"
@@ -768,7 +768,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location /h:rp/input/l2.");
+    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location \"/h:rp/input/l2\".");
 
     /* rpc input -> rpc output must */
     str = "module h {\n"
@@ -811,7 +811,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Not found node \"notif\" in path.", "Schema location /i:rp/input/l2.");
+    CHECK_LOG_CTX("Not found node \"notif\" in path.", "Schema location \"/i:rp/input/l2\".");
 
     /* rpc input -> notif must */
     str = "module i {\n"
@@ -895,7 +895,7 @@ test_accessible_tree(void **state)
             "    }\n"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location /k:cont/ll/act/output/l2.");
+    CHECK_LOG_CTX("Not found node \"l\" in path.", "Schema location \"/k:cont/ll/act/output/l2\".");
 
     /* action output -> action input must */
     str = "module k {\n"
@@ -1069,7 +1069,7 @@ test_disabled_enum(void **state)
             "}}"
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Enumeration type of node \"l\" without any (or all disabled) valid values.", "Schema location /a:l.");
+    CHECK_LOG_CTX("Enumeration type of node \"l\" without any (or all disabled) valid values.", "Schema location \"/a:l\".");
 
     /* disabled default value */
     str = "module a {"
@@ -1087,5 +1087,5 @@ test_disabled_enum(void **state)
             "}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
     CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid enumeration value \"e1\".).",
-            "Schema location /a:l.");
+            "Schema location \"/a:l\".");
 }

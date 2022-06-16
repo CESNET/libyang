@@ -103,7 +103,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("",
             "defs", "", "un1", "123456789012345678901", LY_EVALID);
     CHECK_LOG_CTX("Invalid union value \"123456789012345678901\" - no matching subtype found.",
-            "Schema location /defs:un1, line number 1.");
+            "Schema location \"/defs:un1\", line number 1.");
 }
 
 static void

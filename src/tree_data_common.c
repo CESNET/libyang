@@ -765,8 +765,8 @@ lyd_parse_opaq_error(const struct lyd_node *node)
         if (!parent || strcmp(opaq->name.module_ns, parent->schema->module->ns)) {
             mod = ly_ctx_get_module_implemented_ns(ctx, opaq->name.module_ns);
             if (!mod) {
-                LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module with namespace \"%s\" in the context.",
-                        opaq->name.module_ns);
+                LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module with namespace \"%s\" of node \"%s\" in the context.",
+                        opaq->name.module_ns, opaq->name.name);
                 return LY_EVALID;
             }
         } else {
@@ -779,7 +779,8 @@ lyd_parse_opaq_error(const struct lyd_node *node)
         if (!parent || strcmp(opaq->name.module_name, parent->schema->module->name)) {
             mod = ly_ctx_get_module_implemented(ctx, opaq->name.module_name);
             if (!mod) {
-                LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module named \"%s\" in the context.", opaq->name.module_name);
+                LOGVAL(ctx, LYVE_REFERENCE, "No (implemented) module named \"%s\" of node \"%s\" in the context.",
+                        opaq->name.module_name, opaq->name.name);
                 return LY_EVALID;
             }
         } else {

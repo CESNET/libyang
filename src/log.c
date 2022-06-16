@@ -547,7 +547,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
             str = lysc_path(log_location.scnodes.objs[log_location.scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
             LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
-            rc = asprintf(path, "Schema location %s", str);
+            rc = asprintf(path, "Schema location \"%s\"", str);
             free(str);
             LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
         }
@@ -556,7 +556,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, char **path)
             str = lyd_path(log_location.dnodes.objs[log_location.dnodes.count - 1], LYD_PATH_STD, NULL, 0);
             LY_CHECK_ERR_RET(!str, LOGMEM(ctx), LY_EMEM);
 
-            rc = asprintf(path, "%s%sata location %s", prev ? prev : "", prev ? ", d" : "D", str);
+            rc = asprintf(path, "%s%sata location \"%s\"", prev ? prev : "", prev ? ", d" : "D", str);
             free(str);
             free(prev);
             LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);

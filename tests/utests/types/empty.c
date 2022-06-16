@@ -78,11 +78,11 @@ test_data_xml(void **state)
     /* invalid value */
     TEST_ERROR_XML("defs", "l1", "x");
     CHECK_LOG_CTX("Invalid empty value length 1.",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML("defs", "l1", " ");
     CHECK_LOG_CTX("Invalid empty value length 1.",
-            "Schema location /defs:l1, line number 1.");
+            "Schema location \"/defs:l1\", line number 1.");
 }
 
 static void

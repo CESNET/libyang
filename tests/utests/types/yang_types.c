@@ -130,7 +130,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00");
     CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
             "\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[\\+\\-]\\d{2}:\\d{2})\".",
-            "Schema location /a:l, line number 1.");
+            "Schema location \"/a:l\", line number 1.");
 
     /* xpath1.0 */
     TEST_SUCCESS_XML("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']", STRING, "/a:l2[.='4']");
@@ -144,12 +144,12 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l2", "/l2[. = '4']", STRING, "/l2[.='4']");
 
     TEST_ERROR_XML("a", "l2", "/a:l2[. = '4']");
-    CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location /a:l2, line number 1.");
+    CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "Schema location \"/a:l2\", line number 1.");
     TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l2",
             "/yl:yang-library/yl:datastore/yl::name");
-    CHECK_LOG_CTX("Storing value failed.", "Schema location /a:l2, line number 1.",
+    CHECK_LOG_CTX("Storing value failed.", "Schema location \"/a:l2\", line number 1.",
             "Invalid character 'y'[31] of expression '/yl:yang-library/yl:datastore/yl::name'.",
-            "Schema location /a:l2, line number 1.");
+            "Schema location \"/a:l2\", line number 1.");
 }
 
 static void

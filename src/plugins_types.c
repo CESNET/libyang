@@ -330,16 +330,18 @@ lyplg_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, c
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value_len || !value[0]) {
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty %s value.", datatype);
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid type %s empty value.", datatype);
     }
 
     switch (ly_parse_int(value, value_len, min, max, base, ret)) {
     case LY_EDENIED:
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Value is out of %s's min/max bounds.", datatype);
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Value \"%.*s\" is out of type %s min/max bounds.", (int)value_len, value, datatype);
     case LY_SUCCESS:
         return LY_SUCCESS;
     default:
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
+                "Invalid type %s value \"%.*s\".", datatype, (int)value_len, value);
     }
 }
 
@@ -355,19 +357,19 @@ lyplg_type_parse_uint(const char *datatype, int base, uint64_t max, const char *
     for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value_len || !value[0]) {
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty %s value.", datatype);
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid type %s empty value.", datatype);
     }
 
     *err = NULL;
     switch (ly_parse_uint(value, value_len, max, base, ret)) {
     case LY_EDENIED:
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
+                "Value \"%.*s\" is out of type %s min/max bounds.", (int)value_len, value, datatype);
     case LY_SUCCESS:
         return LY_SUCCESS;
     default:
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
-                "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+                "Invalid type %s value \"%.*s\".", datatype, (int)value_len, value);
     }
 }
 
