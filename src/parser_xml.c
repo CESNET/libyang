@@ -1268,9 +1268,11 @@ lydxml_env_netconf_rpc_reply_error_info(struct lyxml_ctx *xmlctx, struct lyd_nod
         if (r == LY_ENOT) {
             assert(xmlctx->status == LYXML_ELEMENT);
 
-            /* custom elements */
-            r = lydxml_opaq_r(xmlctx, parent);
-            LY_CHECK_GOTO(r, error);
+            /* custom elements, parse all the siblings */
+            while (xmlctx->status == LYXML_ELEMENT) {
+                LY_CHECK_GOTO(r = lydxml_opaq_r(xmlctx, parent), error);
+                LY_CHECK_GOTO(r = lyxml_ctx_next(xmlctx), error);
+            }
             continue;
         }
 
