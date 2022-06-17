@@ -39,24 +39,8 @@
  * | string length | yes | `char *` | string JSON format of the XPath expression |
  */
 
-/**
- * @brief Print xpath1.0 token in the specific format.
- *
- * @param[in] token Token to transform.
- * @param[in] tok_len Lenghth of @p token.
- * @param[in] is_nametest Whether the token is a nametest, it then always requires a prefix in XML @p get_format.
- * @param[in,out] context_mod Current context module, may be updated.
- * @param[in] resolve_ctx Context to use for resolving prefixes.
- * @param[in] resolve_format Format of the resolved prefixes.
- * @param[in] resolve_prefix_data Resolved prefixes prefix data.
- * @param[in] get_format Format of the output prefixes.
- * @param[in] get_prefix_data Format-specific prefix data for the output.
- * @param[out] token_p Printed token.
- * @param[out] err Error structure on error.
- * @return LY_ERR value.
- */
-static LY_ERR
-xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct lys_module **context_mod,
+LIBYANG_API_DEF LY_ERR
+lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct lys_module **context_mod,
         const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data,
         LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p, struct ly_err_item **err)
 {
@@ -180,7 +164,7 @@ xpath10_print_subexpr_r(uint16_t *cur_idx, enum lyxp_token end_tok, const struct
         if ((cur_tok == LYXP_TOKEN_NAMETEST) || (cur_tok == LYXP_TOKEN_LITERAL)) {
             /* tokens that may include prefixes, get them in the target format */
             is_nt = (cur_tok == LYXP_TOKEN_NAMETEST) ? 1 : 0;
-            LY_CHECK_RET(xpath10_print_token(cur_exp_ptr, xp_val->exp->tok_len[*cur_idx], is_nt, &context_mod,
+            LY_CHECK_RET(lyplg_type_xpath10_print_token(cur_exp_ptr, xp_val->exp->tok_len[*cur_idx], is_nt, &context_mod,
                     xp_val->ctx, xp_val->format, xp_val->prefix_data, format, prefix_data, &str_tok, err));
 
             /* append the converted token */

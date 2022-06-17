@@ -91,6 +91,7 @@ set(type_plugins
     src/plugins_types/enumeration.c
     src/plugins_types/identityref.c
     src/plugins_types/instanceid.c
+    src/plugins_types/instanceid_keys.c
     src/plugins_types/integer.c
     src/plugins_types/leafref.c
     src/plugins_types/string.c

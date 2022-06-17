@@ -2,7 +2,7 @@
 
 LIST_BASE="List of the loaded models:
     i ietf-yang-metadata@2016-08-05
-    I yang@2021-04-07
+    I yang@2022-06-16
     i ietf-inet-types@2013-07-15
     i ietf-yang-types@2013-07-15
     I ietf-yang-schema-mount@2019-01-14"
@@ -15,7 +15,7 @@ testListEmptyContext() {
 testListAllImplemented() {
   LIST_BASE_ALLIMPLEMENTED="List of the loaded models:
     I ietf-yang-metadata@2016-08-05
-    I yang@2021-04-07
+    I yang@2022-06-16
     I ietf-inet-types@2013-07-15
     I ietf-yang-types@2013-07-15
     I ietf-yang-schema-mount@2019-01-14"

@@ -337,6 +337,27 @@ LIBYANG_API_DECL size_t lyplg_type_bits_bitmap_size(const struct lysc_type_bits 
 LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, size_t size, uint32_t bit_position);
 
 /**
+ * @brief Print xpath1.0 token in the specific format.
+ *
+ * @param[in] token Token to transform.
+ * @param[in] tok_len Lenghth of @p token.
+ * @param[in] is_nametest Whether the token is a nametest, it then always requires a prefix in XML @p get_format.
+ * @param[in,out] context_mod Current context module, may be updated.
+ * @param[in] resolve_ctx Context to use for resolving prefixes.
+ * @param[in] resolve_format Format of the resolved prefixes.
+ * @param[in] resolve_prefix_data Resolved prefixes prefix data.
+ * @param[in] get_format Format of the output prefixes.
+ * @param[in] get_prefix_data Format-specific prefix data for the output.
+ * @param[out] token_p Printed token.
+ * @param[out] err Error structure on error.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DEF LY_ERR lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest,
+        const struct lys_module **context_mod, const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format,
+        const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p,
+        struct ly_err_item **err);
+
+/**
  * @brief Get format-specific prefix for a module.
  *
  * Use only in implementations of ::lyplg_type_print_clb which provide all the necessary parameters for this function.

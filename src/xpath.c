@@ -3196,20 +3196,22 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp
         LY_CHECK_ERR_GOTO(!dup->tok_len, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         memcpy(dup->tok_len, exp->tok_len, exp->used * sizeof *dup->tok_len);
 
-        dup->repeat = malloc(exp->used * sizeof *dup->repeat);
-        LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        for (i = 0; i < exp->used; ++i) {
-            if (!exp->repeat[i]) {
-                dup->repeat[i] = NULL;
-            } else {
-                for (j = 0; exp->repeat[i][j]; ++j) {}
-                /* the ending 0 as well */
-                ++j;
+        if (exp->repeat) {
+            dup->repeat = malloc(exp->used * sizeof *dup->repeat);
+            LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+            for (i = 0; i < exp->used; ++i) {
+                if (!exp->repeat[i]) {
+                    dup->repeat[i] = NULL;
+                } else {
+                    for (j = 0; exp->repeat[i][j]; ++j) {}
+                    /* the ending 0 as well */
+                    ++j;
 
-                dup->repeat[i] = malloc(j * sizeof **dup->repeat);
-                LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
-                dup->repeat[i][j - 1] = 0;
+                    dup->repeat[i] = malloc(j * sizeof **dup->repeat);
+                    LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                    memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
+                    dup->repeat[i][j - 1] = 0;
+                }
             }
         }
     }

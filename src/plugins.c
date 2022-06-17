@@ -52,6 +52,11 @@ extern const struct lyplg_type_record plugins_string[];
 extern const struct lyplg_type_record plugins_union[];
 
 /*
+ * yang
+ */
+extern const struct lyplg_type_record plugins_instanceid_keys[];
+
+/*
  * ietf-inet-types
  */
 extern const struct lyplg_type_record plugins_ipv4_address[];
@@ -439,6 +444,9 @@ lyplg_init(void)
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_leafref), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_string), error);
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_union), error);
+
+    /* yang */
+    LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_instanceid_keys), error);
 
     /* ietf-inet-types */
     LY_CHECK_GOTO(ret = plugins_insert(LYPLG_TYPE, plugins_ipv4_address), error);

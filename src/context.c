@@ -53,7 +53,7 @@
 #include "../models/ietf-yang-metadata@2016-08-05.h"
 #include "../models/ietf-yang-schema-mount@2019-01-14.h"
 #include "../models/ietf-yang-types@2013-07-15.h"
-#include "../models/yang@2021-04-07.h"
+#include "../models/yang@2022-06-16.h"
 #define IETF_YANG_LIB_REV "2019-01-04"
 
 static struct internal_modules_s {
@@ -64,7 +64,7 @@ static struct internal_modules_s {
     LYS_INFORMAT format;
 } internal_modules[] = {
     {"ietf-yang-metadata", "2016-08-05", (const char *)ietf_yang_metadata_2016_08_05_yang, 0, LYS_IN_YANG},
-    {"yang", "2021-04-07", (const char *)yang_2021_04_07_yang, 1, LYS_IN_YANG},
+    {"yang", "2022-06-16", (const char *)yang_2022_06_16_yang, 1, LYS_IN_YANG},
     {"ietf-inet-types", "2013-07-15", (const char *)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
     {"ietf-yang-types", "2013-07-15", (const char *)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
     {"ietf-yang-schema-mount", "2019-01-14", (const char *)ietf_yang_schema_mount_2019_01_14_yang, 1, LYS_IN_YANG},

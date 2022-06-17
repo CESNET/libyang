@@ -861,7 +861,7 @@ test_axes(void **state)
             "  <b>b2</b>\n"
             "</l1>"
             "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n"
-            "  <a yang:operation=\"none\" yang:key=\"no-key\">a3</a>\n"
+            "  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n"
             "  <b>b3</b>\n"
             "  <c yang:value=\"no-val\">c3</c>\n"
             "</l1>"
