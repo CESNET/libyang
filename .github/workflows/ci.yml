@@ -157,7 +157,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "Windows 2022 MSVC 16"
+          - name: "Windows 2022 MSVC 16 LF"
+            os: windows-2022
+            triplet: x64-windows
+            build_type: Release
+            generators: "Visual Studio 17 2022"
+            autocrlf: input
+            eol: lf
+
+          - name: "Windows 2022 MSVC 16 no autoCRLF"
             os: windows-2022
             triplet: x64-windows
             build_type: Release
@@ -165,9 +173,14 @@ jobs:
 
     steps:
       - name: Unix line endings in git
+        if: matrix.autocrlf
         run: |
-          git config --global core.autocrlf input
-          git config --global core.eol lf
+          git config --global core.autocrlf ${{ matrix.autocrlf }}
+
+      - name: Unix line endings in git
+        if: matrix.eol
+        run: |
+          git config --global core.eol ${{ matrix.eol }}
 
       - uses: actions/checkout@v2
 
