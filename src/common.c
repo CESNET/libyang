@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -26,6 +27,8 @@
 #include <string.h>
 #ifndef _WIN32
 #include <sys/mman.h>
+#else
+#include <io.h>
 #endif
 #include <sys/stat.h>
 #include <unistd.h>
@@ -418,6 +421,13 @@ ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr)
     assert(length);
     assert(addr);
     assert(fd >= 0);
+
+#if _WIN32
+    if (_setmode(fd, _O_BINARY) == -1) {
+        LOGERR(ctx, LY_ESYS, "Failed to switch the file descriptor to binary mode.", strerror(errno));
+        return LY_ESYS;
+    }
+#endif
 
     if (fstat(fd, &sb) == -1) {
         LOGERR(ctx, LY_ESYS, "Failed to stat the file descriptor (%s) for the mmap().", strerror(errno));
