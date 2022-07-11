@@ -448,10 +448,18 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
     if (*status_p == LYJSON_ARRAY) {
         /* only [null] */
         LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, status_p));
-        LY_CHECK_RET(*status_p != LYJSON_NULL, LY_EINVAL);
+        if (*status_p != LYJSON_NULL) {
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Expected JSON name/[null], but input data contains name/%s.",
+                    lyjson_token2str(*status_p));
+            return LY_EINVAL;
+        }
 
         LY_CHECK_RET(lyjson_ctx_next(lydctx->jsonctx, NULL));
-        LY_CHECK_RET(lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_ARRAY_CLOSED, LY_EINVAL);
+        if (lyjson_ctx_status(lydctx->jsonctx, 0) != LYJSON_ARRAY_CLOSED) {
+            LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Expected array end, but input data contains %s.",
+                    lyjson_token2str(*status_p));
+            return LY_EINVAL;
+        }
 
         *type_hint_p = LYD_VALHINT_EMPTY;
     } else if (*status_p == LYJSON_STRING) {
@@ -463,6 +471,7 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
     } else if (*status_p == LYJSON_NULL) {
         *type_hint_p = 0;
     } else {
+        LOGVAL(lydctx->jsonctx->ctx, LYVE_SYNTAX_JSON, "Unexpected input data %s.", lyjson_token2str(*status_p));
         return LY_EINVAL;
     }
 
