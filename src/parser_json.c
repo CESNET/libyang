@@ -1424,6 +1424,9 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         } else if (snode->nodetype == LYS_LEAFLIST) {
             ((struct lyd_node_opaq *)*node)->hints |= LYD_NODEHINT_LEAFLIST;
         }
+    } else {
+        /* error */
+        return ret;
     }
 
     return LY_SUCCESS;
