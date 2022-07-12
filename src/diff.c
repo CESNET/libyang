@@ -1825,8 +1825,13 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     } else {
 add_diff:
         /* add new diff node with all descendants */
-        LY_CHECK_RET(lyd_dup_single(src_diff, (struct lyd_node_inner *)diff_parent, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS,
-                &diff_node));
+        if ((src_diff->flags & LYD_EXT) && diff_parent) {
+            LY_CHECK_RET(lyd_dup_single_to_ctx(src_diff, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
+                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &diff_node));
+        } else {
+            LY_CHECK_RET(lyd_dup_single(src_diff, (struct lyd_node_inner *)diff_parent,
+                    LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS, &diff_node));
+        }
 
         /* insert node into diff if not already */
         if (!diff_parent) {
