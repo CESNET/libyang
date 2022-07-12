@@ -2092,6 +2092,10 @@ preparenext:
         /* try to find loaded user type plugins */
         plugin = lyplg_find(LYPLG_TYPE, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
                 tctx->tpdf->name);
+        if (!plugin && base) {
+            /* use the base type implementation if available */
+            plugin = base->plugin;
+        }
         if (!plugin) {
             /* use the internal built-in type implementation */
             plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
