@@ -599,8 +599,8 @@ test_accessible_tree(void **state)
 
     /* config -> state leafref */
     str = "module b {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:b;\n"
+            "    prefix b;\n"
             "    container cont {\n"
             "        config false;\n"
             "        leaf l {\n"
@@ -621,8 +621,8 @@ test_accessible_tree(void **state)
 
     /* config -> state must */
     str = "module b {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:b;\n"
+            "    prefix b;\n"
             "    container cont {\n"
             "        config false;\n"
             "        leaf l {\n"
@@ -642,8 +642,8 @@ test_accessible_tree(void **state)
 
     /* state -> config */
     str = "module c {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:c;\n"
+            "    prefix c;\n"
             "    container cont {\n"
             "        leaf l {\n"
             "            type empty;\n"
@@ -664,8 +664,8 @@ test_accessible_tree(void **state)
 
     /* notif -> state */
     str = "module d {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:d;\n"
+            "    prefix d;\n"
             "    container cont {\n"
             "        config false;\n"
             "        leaf l {\n"
@@ -686,8 +686,8 @@ test_accessible_tree(void **state)
 
     /* notif -> notif */
     str = "module e {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:e;\n"
+            "    prefix e;\n"
             "    notification notif {\n"
             "        leaf l {\n"
             "            type empty;\n"
@@ -705,8 +705,8 @@ test_accessible_tree(void **state)
 
     /* rpc input -> state */
     str = "module f {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:f;\n"
+            "    prefix f;\n"
             "    container cont {\n"
             "        config false;\n"
             "        leaf l {\n"
@@ -729,8 +729,8 @@ test_accessible_tree(void **state)
 
     /* rpc input -> rpc input */
     str = "module g {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:g;\n"
+            "    prefix g;\n"
             "    rpc rp {\n"
             "        input {\n"
             "            leaf l {\n"
@@ -750,8 +750,8 @@ test_accessible_tree(void **state)
 
     /* rpc input -> rpc output leafref */
     str = "module h {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:h;\n"
+            "    prefix h;\n"
             "    rpc rp {\n"
             "        input {\n"
             "            leaf l2 {\n"
@@ -772,8 +772,8 @@ test_accessible_tree(void **state)
 
     /* rpc input -> rpc output must */
     str = "module h {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:h;\n"
+            "    prefix h;\n"
             "    rpc rp {\n"
             "        input {\n"
             "            leaf l2 {\n"
@@ -793,8 +793,8 @@ test_accessible_tree(void **state)
 
     /* rpc input -> notif leafref */
     str = "module i {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:i;\n"
+            "    prefix i;\n"
             "    rpc rp {\n"
             "        input {\n"
             "            leaf l2 {\n"
@@ -815,8 +815,8 @@ test_accessible_tree(void **state)
 
     /* rpc input -> notif must */
     str = "module i {\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:i;\n"
+            "    prefix i;\n"
             "    rpc rp {\n"
             "        input {\n"
             "            leaf l2 {\n"
@@ -838,8 +838,8 @@ test_accessible_tree(void **state)
     /* action output -> state */
     str = "module j {\n"
             "    yang-version 1.1;\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:j;\n"
+            "    prefix j;\n"
             "    container cont {\n"
             "        list ll {\n"
             "            key k;\n"
@@ -869,8 +869,8 @@ test_accessible_tree(void **state)
     /* action output -> action input leafref */
     str = "module k {\n"
             "    yang-version 1.1;\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:k;\n"
+            "    prefix k;\n"
             "    container cont {\n"
             "        list ll {\n"
             "            key k;\n"
@@ -900,8 +900,8 @@ test_accessible_tree(void **state)
     /* action output -> action input must */
     str = "module k {\n"
             "    yang-version 1.1;\n"
-            "    namespace urn:a;\n"
-            "    prefix a;\n"
+            "    namespace urn:k;\n"
+            "    prefix k;\n"
             "    container cont {\n"
             "        list ll {\n"
             "            key k;\n"

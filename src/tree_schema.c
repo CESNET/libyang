@@ -1646,6 +1646,15 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         goto cleanup;
     }
 
+    /* check whether there is not a namespace collision */
+    mod_dup = ly_ctx_get_module_latest_ns(ctx, mod->ns);
+    if (mod_dup && (mod_dup->revision == mod->revision)) {
+        LOGERR(ctx, LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\".",
+                mod_dup->name, mod->name, mod->ns);
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
+
     switch (in->type) {
     case LY_IN_FILEPATH:
         /* check that name and revision match filename */

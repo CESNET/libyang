@@ -609,15 +609,15 @@ test_module(void **state)
     CHECK_LOG_CTX("Missing mandatory keyword \"namespace\" as a child of \"module\".", "Line number 1.");
 
     mod = mod_renew(YCTX);
-    in.current = " name {namespace urn:x;}";
+    in.current = " name {namespace urn:name;}";
     assert_int_equal(LY_EVALID, parse_module(YCTX, mod));
-    assert_string_equal("urn:x", mod->mod->ns);
+    assert_string_equal("urn:name", mod->mod->ns);
     CHECK_LOG_CTX("Missing mandatory keyword \"prefix\" as a child of \"module\".", "Line number 1.");
     mod = mod_renew(YCTX);
 
-    in.current = " name {namespace urn:x;prefix \"x\";}";
+    in.current = " name {namespace urn:name;prefix \"n\";}";
     assert_int_equal(LY_SUCCESS, parse_module(YCTX, mod));
-    assert_string_equal("x", mod->mod->prefix);
+    assert_string_equal("n", mod->mod->prefix);
     mod = mod_renew(YCTX);
 
 #define SCHEMA_BEGINNING " name {yang-version 1.1;namespace urn:x;prefix \"x\";"
@@ -703,7 +703,7 @@ test_module(void **state)
     mod = mod_renew(YCTX);
     LOG_LOCBACK(0, 0, 0, 1);
 
-    in.current = "module name10 {yang-version 1.1;namespace urn:x;prefix \"x\";import zzz {prefix y;}import zzz {prefix z;}}";
+    in.current = "module name10 {yang-version 1.1;namespace urn:name10;prefix \"n10\";import zzz {prefix y;}import zzz {prefix z;}}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_SUCCESS);
     CHECK_LOG_CTX("Single revision of the module \"zzz\" imported twice.", NULL);
 

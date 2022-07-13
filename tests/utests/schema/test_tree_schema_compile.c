@@ -1287,10 +1287,10 @@ test_type_dec64(void **state)
             "typedef mytype2 {type mytype {fraction-digits 3;}}leaf l {type mytype2;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid fraction-digits substatement for type \"mytype2\" not directly derived from decimal64 built-in type.", "/de:l");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:c;prefix c;typedef mytype {type decimal64 {"
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {"
             "fraction-digits 18;range '-10 .. 0';}}leaf l {type mytype;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid range restriction - invalid value \"-10000000000000000000\".", "/ee:l");
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:c;prefix c;typedef mytype {type decimal64 {"
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {"
             "fraction-digits 18;range '0 .. 10';}}leaf l {type mytype;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid range restriction - invalid value \"10000000000000000000\".", "/ee:l");
 }
@@ -2428,7 +2428,7 @@ test_uses(void **state)
     assert_null(leaf->when[0]->context);
 
     UTEST_LOG_CLEAN;
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:ii;prefix ii;"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module c {namespace urn:c;prefix c;"
             "grouping grp {leaf l {type string;}leaf k {type string; status obsolete;}}"
             "uses grp {status deprecated;}}", LYS_IN_YANG, &mod));
     assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
@@ -2897,7 +2897,7 @@ test_augment(void **state)
             "augment /func {leaf x {type int8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Augment target node \"/func\" from module \"gg\" was not found.", "/gg:{augment='/func'}");
 
-    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:i;prefix i;import himp {prefix hi;}"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh;import himp {prefix hi;}"
             "augment /hi:func/input {leaf x {type string;}}"
             "augment /hi:func/output {leaf y {type string;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Augment target node \"/hi:func/input\" from module \"hh\" was not found.", "/hh:{augment='/hi:func/input'}");
