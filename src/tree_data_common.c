@@ -90,8 +90,10 @@ lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struc
     }
 
     if (dup_inst->used == dup_inst->inst_set->count) {
-        /* we have used all the instances */
-        *inst = NULL;
+        if (lysc_is_dup_inst_list((*inst)->schema)) {
+            /* we have used all the instances */
+            *inst = NULL;
+        } /* else just keep using the last (ideally only) instance */
     } else {
         assert(dup_inst->used < dup_inst->inst_set->count);
 
