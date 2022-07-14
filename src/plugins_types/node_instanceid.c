@@ -36,7 +36,7 @@
  */
 
 /**
- * @brief Convert compiled path (instance-identifier) into string.
+ * @brief Convert compiled path (node-instance-identifier) or NULL ("/") into string.
  *
  * @param[in] path Compiled path.
  * @param[in] format Value format.
@@ -45,7 +45,7 @@
  * @return LY_ERR value.
  */
 static LY_ERR
-instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *prefix_data, char **str)
+node_instanceid_path2str(const struct ly_path *path, LY_VALUE_FORMAT format, void *prefix_data, char **str)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -229,7 +229,7 @@ store:
         }
     } else {
         /* JSON format with prefix is the canonical one */
-        ret = instanceid_path2str(path, LY_VALUE_JSON, NULL, &canon);
+        ret = node_instanceid_path2str(path, LY_VALUE_JSON, NULL, &canon);
         LY_CHECK_GOTO(ret, cleanup);
 
         ret = lydict_insert_zc(ctx, canon, &storage->_canonical);
@@ -244,6 +244,36 @@ cleanup:
 
     if (ret) {
         lyplg_type_free_instanceid(ctx, storage);
+    }
+    return ret;
+}
+
+/**
+ * @brief Implementation of ::lyplg_type_print_clb for the node-instance-identifier ietf-netconf-acm type.
+ */
+static const void *
+lyplg_type_print_node_instanceid(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, size_t *value_len)
+{
+    char *ret;
+
+    if ((format == LY_VALUE_CANON) || (format == LY_VALUE_JSON) || (format == LY_VALUE_LYB)) {
+        if (dynamic) {
+            *dynamic = 0;
+        }
+        if (value_len) {
+            *value_len = strlen(value->_canonical);
+        }
+        return value->_canonical;
+    }
+
+    /* print the value in the specific format */
+    if (node_instanceid_path2str(value->target, format, prefix_data, &ret)) {
+        return NULL;
+    }
+    *dynamic = 1;
+    if (value_len) {
+        *value_len = strlen(ret);
     }
     return ret;
 }
@@ -266,7 +296,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_instanceid,
         .plugin.sort = NULL,
-        .plugin.print = lyplg_type_print_instanceid,
+        .plugin.print = lyplg_type_print_node_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
         .plugin.lyb_data_len = -1,
@@ -281,7 +311,7 @@ const struct lyplg_type_record plugins_node_instanceid[] = {
         .plugin.validate = NULL,
         .plugin.compare = lyplg_type_compare_instanceid,
         .plugin.sort = NULL,
-        .plugin.print = lyplg_type_print_instanceid,
+        .plugin.print = lyplg_type_print_node_instanceid,
         .plugin.duplicate = lyplg_type_dup_instanceid,
         .plugin.free = lyplg_type_free_instanceid,
         .plugin.lyb_data_len = -1,
