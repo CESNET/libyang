@@ -900,9 +900,11 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_node *node, struc
                 struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
 
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
-                ret = lysc_check_status(ctx, whens[u]->flags, node->module, node->name, schema->flags, schema->module,
-                        schema->name);
-                LY_CHECK_GOTO(ret, cleanup);
+                if (lysc_check_status(NULL, whens[u]->flags, node->module, node->name, schema->flags, schema->module,
+                        schema->name)) {
+                    LOGWRN(ctx->ctx, "When condition \"%s\" may be referencing %s node \"%s\".", whens[u]->cond->expr,
+                            (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
+                }
 
                 /* check dummy node children/value accessing */
                 if (lysc_data_parent(schema) == node) {
@@ -975,7 +977,7 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
         ret = lyxp_atomize(ctx->ctx, musts[u].cond, node->module, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes, node,
                 &tmp_set, opts);
         if (ret) {
-            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
+            LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid must condition \"%s\".", musts[u].cond->expr);
             goto cleanup;
         }
 
@@ -984,6 +986,8 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
         for (i = 0; i < tmp_set.used; ++i) {
             /* skip roots'n'stuff */
             if (tmp_set.val.scnodes[i].type == LYXP_NODE_ELEM) {
+                struct lysc_node *schema = tmp_set.val.scnodes[i].scnode;
+
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
                 if (local_mods[u]->mod == node->module) {
                     /* use flags of the context node since the definition is local */
@@ -992,9 +996,12 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
                     /* definition is foreign (deviation, refine), always current */
                     flg = LYS_STATUS_CURR;
                 }
-                ret = lysc_check_status(ctx, flg, local_mods[u]->mod, node->name, tmp_set.val.scnodes[i].scnode->flags,
-                        tmp_set.val.scnodes[i].scnode->module, tmp_set.val.scnodes[i].scnode->name);
-                LY_CHECK_GOTO(ret, cleanup);
+                if (lysc_check_status(NULL, flg, local_mods[u]->mod, node->name, schema->flags, schema->module,
+                        schema->name)) {
+                    LOGWRN(ctx->ctx, "Must condition \"%s\" may be referencing %s node \"%s\".", musts[u].cond->expr,
+                            (schema->flags == LYS_STATUS_OBSLT) ? "obsolete" : "deprecated", schema->name);
+                    break;
+                }
             }
         }
 

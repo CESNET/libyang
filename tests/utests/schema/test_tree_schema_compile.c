@@ -2319,11 +2319,11 @@ test_status(void **state)
             "container c {status obsolete; leaf l {status deprecated; type string;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"c\".", "/cc:c/l");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
+    /* just a warning */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
             "container c {leaf l {status obsolete; type string;}}"
             "container d {leaf m {when \"../../c/l\"; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("A current definition \"m\" is not allowed to reference obsolete definition \"l\".",
-            "Schema location \"/cc:d/m\".");
+    CHECK_LOG_CTX("When condition \"../../c/l\" may be referencing deprecated node \"l\".", NULL);
 }
 
 static void
