@@ -47,6 +47,8 @@ static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, e
         struct lyxp_set *set, uint32_t options);
 static LY_ERR moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_set *set,
         const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod);
+static LY_ERR moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_type,
+        const struct lyd_node *node, enum lyxp_node_type node_type, enum lyxp_axis axis, struct lyxp_set *set);
 static LY_ERR moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname,
         enum lyxp_axis axis, uint32_t options);
 static LY_ERR moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname,
@@ -396,148 +398,151 @@ cast_string_realloc(const struct ly_ctx *ctx, uint16_t needed, char **str, uint1
 /**
  * @brief Cast nodes recursively to one string @p str.
  *
- * @param[in] node Node to cast.
- * @param[in] fake_cont Whether to put the data into a "fake" container.
- * @param[in] root_type Type of the XPath root.
+ * @param[in] node Node to cast, NULL if root.
+ * @param[in] set XPath set.
  * @param[in] indent Current indent.
  * @param[in,out] str Resulting string.
  * @param[in,out] used Used bytes in @p str.
  * @param[in,out] size Allocated bytes in @p str.
- * @return LY_ERR
+ * @return LY_ERR value.
  */
 static LY_ERR
-cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type root_type, uint16_t indent,
-        char **str, uint16_t *used, uint16_t *size)
+cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint16_t indent, char **str, uint16_t *used,
+        uint16_t *size)
 {
     char *buf, *line, *ptr = NULL;
     const char *value_str;
     const struct lyd_node *child;
+    enum lyxp_node_type child_type;
     struct lyd_node *tree;
     struct lyd_node_any *any;
     LY_ERR rc;
 
-    if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
+    if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && node && (node->schema->flags & LYS_CONFIG_R)) {
         return LY_SUCCESS;
     }
 
-    if (fake_cont) {
-        rc = cast_string_realloc(LYD_CTX(node), 1, str, used, size);
-        LY_CHECK_RET(rc);
+    if (!node) {
+        /* fake container */
+        LY_CHECK_RET(cast_string_realloc(set->ctx, 1, str, used, size));
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
         ++indent;
-    }
 
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_RPC:
-    case LYS_NOTIF:
-        rc = cast_string_realloc(LYD_CTX(node), 1, str, used, size);
-        LY_CHECK_RET(rc);
-        strcpy(*str + (*used - 1), "\n");
-        ++(*used);
-
-        for (child = lyd_child(node); child; child = child->next) {
-            rc = cast_string_recursive(child, 0, root_type, indent + 1, str, used, size);
-            LY_CHECK_RET(rc);
+        /* print all the top-level nodes */
+        child = NULL;
+        child_type = 0;
+        while (!moveto_axis_node_next(&child, &child_type, NULL, set->root_type, LYXP_AXIS_CHILD, set)) {
+            LY_CHECK_RET(cast_string_recursive(child, set, indent, str, used, size));
         }
 
-        break;
-
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
-        value_str = lyd_get_value(node);
-
-        /* print indent */
-        LY_CHECK_RET(cast_string_realloc(LYD_CTX(node), indent * 2 + strlen(value_str) + 1, str, used, size));
-        memset(*str + (*used - 1), ' ', indent * 2);
-        *used += indent * 2;
-
-        /* print value */
-        if (*used == 1) {
-            sprintf(*str + (*used - 1), "%s", value_str);
-            *used += strlen(value_str);
-        } else {
-            sprintf(*str + (*used - 1), "%s\n", value_str);
-            *used += strlen(value_str) + 1;
-        }
-
-        break;
-
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        any = (struct lyd_node_any *)node;
-        if (!(void *)any->value.tree) {
-            /* no content */
-            buf = strdup("");
-            LY_CHECK_ERR_RET(!buf, LOGMEM(LYD_CTX(node)), LY_EMEM);
-        } else {
-            struct ly_out *out;
-
-            if (any->value_type == LYD_ANYDATA_LYB) {
-                /* try to parse it into a data tree */
-                if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB,
-                        LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
-                    /* successfully parsed */
-                    free(any->value.mem);
-                    any->value.tree = tree;
-                    any->value_type = LYD_ANYDATA_DATATREE;
-                }
-                /* error is covered by the following switch where LYD_ANYDATA_LYB causes failure */
-            }
-
-            switch (any->value_type) {
-            case LYD_ANYDATA_STRING:
-            case LYD_ANYDATA_XML:
-            case LYD_ANYDATA_JSON:
-                buf = strdup(any->value.json);
-                LY_CHECK_ERR_RET(!buf, LOGMEM(LYD_CTX(node)), LY_EMEM);
-                break;
-            case LYD_ANYDATA_DATATREE:
-                LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
-                rc = lyd_print_all(out, any->value.tree, LYD_XML, 0);
-                ly_out_free(out, NULL, 0);
-                LY_CHECK_RET(rc < 0, -rc);
-                break;
-            case LYD_ANYDATA_LYB:
-                LOGERR(LYD_CTX(node), LY_EINVAL, "Cannot convert LYB anydata into string.");
-                return LY_EINVAL;
-            }
-        }
-
-        line = strtok_r(buf, "\n", &ptr);
-        do {
-            rc = cast_string_realloc(LYD_CTX(node), indent * 2 + strlen(line) + 1, str, used, size);
-            if (rc != LY_SUCCESS) {
-                free(buf);
-                return rc;
-            }
-            memset(*str + (*used - 1), ' ', indent * 2);
-            *used += indent * 2;
-
-            strcpy(*str + (*used - 1), line);
-            *used += strlen(line);
-
-            strcpy(*str + (*used - 1), "\n");
-            *used += 1;
-        } while ((line = strtok_r(NULL, "\n", &ptr)));
-
-        free(buf);
-        break;
-
-    default:
-        LOGINT_RET(LYD_CTX(node));
-    }
-
-    if (fake_cont) {
-        rc = cast_string_realloc(LYD_CTX(node), 1, str, used, size);
-        LY_CHECK_RET(rc);
+        /* end fake container */
+        LY_CHECK_RET(cast_string_realloc(set->ctx, 1, str, used, size));
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
         --indent;
+    } else {
+        switch (node->schema->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_LIST:
+        case LYS_RPC:
+        case LYS_NOTIF:
+            LY_CHECK_RET(cast_string_realloc(set->ctx, 1, str, used, size));
+            strcpy(*str + (*used - 1), "\n");
+            ++(*used);
+
+            for (child = lyd_child(node); child; child = child->next) {
+                LY_CHECK_RET(cast_string_recursive(child, set, indent + 1, str, used, size));
+            }
+
+            break;
+
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+            value_str = lyd_get_value(node);
+
+            /* print indent */
+            LY_CHECK_RET(cast_string_realloc(set->ctx, indent * 2 + strlen(value_str) + 1, str, used, size));
+            memset(*str + (*used - 1), ' ', indent * 2);
+            *used += indent * 2;
+
+            /* print value */
+            if (*used == 1) {
+                sprintf(*str + (*used - 1), "%s", value_str);
+                *used += strlen(value_str);
+            } else {
+                sprintf(*str + (*used - 1), "%s\n", value_str);
+                *used += strlen(value_str) + 1;
+            }
+
+            break;
+
+        case LYS_ANYXML:
+        case LYS_ANYDATA:
+            any = (struct lyd_node_any *)node;
+            if (!(void *)any->value.tree) {
+                /* no content */
+                buf = strdup("");
+                LY_CHECK_ERR_RET(!buf, LOGMEM(set->ctx), LY_EMEM);
+            } else {
+                struct ly_out *out;
+
+                if (any->value_type == LYD_ANYDATA_LYB) {
+                    /* try to parse it into a data tree */
+                    if (lyd_parse_data_mem((struct ly_ctx *)set->ctx, any->value.mem, LYD_LYB,
+                            LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
+                        /* successfully parsed */
+                        free(any->value.mem);
+                        any->value.tree = tree;
+                        any->value_type = LYD_ANYDATA_DATATREE;
+                    }
+                    /* error is covered by the following switch where LYD_ANYDATA_LYB causes failure */
+                }
+
+                switch (any->value_type) {
+                case LYD_ANYDATA_STRING:
+                case LYD_ANYDATA_XML:
+                case LYD_ANYDATA_JSON:
+                    buf = strdup(any->value.json);
+                    LY_CHECK_ERR_RET(!buf, LOGMEM(set->ctx), LY_EMEM);
+                    break;
+                case LYD_ANYDATA_DATATREE:
+                    LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
+                    rc = lyd_print_all(out, any->value.tree, LYD_XML, 0);
+                    ly_out_free(out, NULL, 0);
+                    LY_CHECK_RET(rc < 0, -rc);
+                    break;
+                case LYD_ANYDATA_LYB:
+                    LOGERR(set->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
+                    return LY_EINVAL;
+                }
+            }
+
+            line = strtok_r(buf, "\n", &ptr);
+            do {
+                rc = cast_string_realloc(set->ctx, indent * 2 + strlen(line) + 1, str, used, size);
+                if (rc != LY_SUCCESS) {
+                    free(buf);
+                    return rc;
+                }
+                memset(*str + (*used - 1), ' ', indent * 2);
+                *used += indent * 2;
+
+                strcpy(*str + (*used - 1), line);
+                *used += strlen(line);
+
+                strcpy(*str + (*used - 1), "\n");
+                *used += 1;
+            } while ((line = strtok_r(NULL, "\n", &ptr)));
+
+            free(buf);
+            break;
+
+        default:
+            LOGINT_RET(set->ctx);
+        }
     }
 
     return LY_SUCCESS;
@@ -546,25 +551,24 @@ cast_string_recursive(const struct lyd_node *node, ly_bool fake_cont, enum lyxp_
 /**
  * @brief Cast an element into a string.
  *
- * @param[in] node Node to cast.
- * @param[in] fake_cont Whether to put the data into a "fake" container.
- * @param[in] root_type Type of the XPath root.
+ * @param[in] node Node to cast, NULL if root.
+ * @param[in] set XPath set.
  * @param[out] str Element cast to dynamically-allocated string.
  * @return LY_ERR
  */
 static LY_ERR
-cast_string_elem(struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type root_type, char **str)
+cast_string_elem(const struct lyd_node *node, struct lyxp_set *set, char **str)
 {
     uint16_t used, size;
     LY_ERR rc;
 
     *str = malloc(LYXP_STRING_CAST_SIZE_START * sizeof(char));
-    LY_CHECK_ERR_RET(!*str, LOGMEM(LYD_CTX(node)), LY_EMEM);
+    LY_CHECK_ERR_RET(!*str, LOGMEM(set->ctx), LY_EMEM);
     (*str)[0] = '\0';
     used = 1;
     size = LYXP_STRING_CAST_SIZE_START;
 
-    rc = cast_string_recursive(node, fake_cont, root_type, 0, str, &used, &size);
+    rc = cast_string_recursive(node, set, 0, str, &used, &size);
     if (rc != LY_SUCCESS) {
         free(*str);
         return rc;
@@ -572,7 +576,7 @@ cast_string_elem(struct lyd_node *node, ly_bool fake_cont, enum lyxp_node_type r
 
     if (size > used) {
         *str = ly_realloc(*str, used * sizeof(char));
-        LY_CHECK_ERR_RET(!*str, LOGMEM(LYD_CTX(node)), LY_EMEM);
+        LY_CHECK_ERR_RET(!*str, LOGMEM(set->ctx), LY_EMEM);
     }
     return LY_SUCCESS;
 }
@@ -602,10 +606,9 @@ cast_node_set_to_string(struct lyxp_set *set, char **str)
         LOGINT_RET(set->ctx);
     case LYXP_NODE_ROOT:
     case LYXP_NODE_ROOT_CONFIG:
-        return cast_string_elem(set->val.nodes[0].node, 1, set->root_type, str);
     case LYXP_NODE_ELEM:
     case LYXP_NODE_TEXT:
-        return cast_string_elem(set->val.nodes[0].node, 0, set->root_type, str);
+        return cast_string_elem(set->val.nodes[0].node, set, str);
     case LYXP_NODE_META:
         *str = strdup(lyd_get_meta_value(set->val.meta[0].meta));
         if (!*str) {
