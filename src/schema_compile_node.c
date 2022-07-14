@@ -3755,7 +3755,7 @@ lys_compile_uses_children(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, u
 
     assert(child_set);
 
-    child_i = 0;
+    child_i = child_set->count;
     LY_LIST_FOR(child, pnode) {
         /* compile the nodes with their parsed (grouping) module */
         ctx->pmod = grp_mod;
