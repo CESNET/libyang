@@ -1217,8 +1217,8 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* submodule was not received from the callback or there is no callback set */
-                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx,
-                        PARSER_CUR_PMOD(pctx)->mod->name, 1, new_mods, (void **)&submod);
+                lys_parse_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, pctx->main_ctx,
+                        PARSER_CUR_PMOD(pctx->main_ctx)->mod->name, 1, new_mods, (void **)&submod);
 
                 /* update inc pointer - parsing another (YANG 1.0) submodule can cause injecting
                  * submodule's include into main module, where it is missing */
