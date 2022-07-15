@@ -1129,6 +1129,7 @@ lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char
         /* need more space */
         if (end - start < URANGE_LEN) {
             perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (URANGE_LEN - (end - start)) + 1);
+            *regex = perl_regex;
             LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
         }
 
@@ -1163,12 +1164,11 @@ lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char
         }
     }
 
-    /* at least warn about other XML Schema vs. Perl character block differences */
+    /* at least inform about other XML Schema vs. Perl character block differences */
     if (strstr(perl_regex, "\\d") || strstr(perl_regex, "\\w")) {
-        LOGWRN(ctx, "Character blocks \"\\d\" and \"\\w\" accept only ASCII characters.");
+        LOGVRB("Character blocks \"\\d\" and \"\\w\" accept only ASCII characters.");
     }
 
-    *regex = perl_regex;
     return LY_SUCCESS;
 }
 
