@@ -1010,16 +1010,17 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_code **code)
+/**
+ * @brief Transform characters block in an XML Schema pattern into Perl character ranges.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] pattern Original pattern.
+ * @param[in,out] regex Pattern to modify.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char *pattern, char **regex)
 {
-    size_t idx, idx2, start, end, size, brack;
-    char *perl_regex, *ptr;
-    int err_code, compile_opts;
-    const char *orig_ptr;
-    PCRE2_SIZE err_offset;
-    pcre2_code *code_local;
-
 #define URANGE_LEN 19
     char *ublock2urange[][2] = {
         {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
@@ -1109,6 +1110,79 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
         {NULL, NULL}
     };
 
+    size_t idx, idx2, start, end;
+    char *perl_regex, *ptr;
+
+    perl_regex = *regex;
+
+    /* substitute Unicode Character Blocks with exact Character Ranges */
+    while ((ptr = strstr(perl_regex, "\\p{Is"))) {
+        start = ptr - perl_regex;
+
+        ptr = strchr(ptr, '}');
+        if (!ptr) {
+            LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + start + 2, "unterminated character property");
+            return LY_EVALID;
+        }
+        end = (ptr - perl_regex) + 1;
+
+        /* need more space */
+        if (end - start < URANGE_LEN) {
+            perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (URANGE_LEN - (end - start)) + 1);
+            LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
+        }
+
+        /* find our range */
+        for (idx = 0; ublock2urange[idx][0]; ++idx) {
+            if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
+                    ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
+                break;
+            }
+        }
+        if (!ublock2urange[idx][0]) {
+            LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + start + 5, "unknown block name");
+            return LY_EVALID;
+        }
+
+        /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
+        for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
+            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
+                ++idx;
+            }
+            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
+                --idx;
+            }
+        }
+        if (idx) {
+            /* skip brackets */
+            memmove(perl_regex + start + (URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
+            memcpy(perl_regex + start, ublock2urange[idx][1] + 1, URANGE_LEN - 2);
+        } else {
+            memmove(perl_regex + start + URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
+            memcpy(perl_regex + start, ublock2urange[idx][1], URANGE_LEN);
+        }
+    }
+
+    /* at least warn about other XML Schema vs. Perl character block differences */
+    if (strstr(perl_regex, "\\d") || strstr(perl_regex, "\\w")) {
+        LOGWRN(ctx, "Character blocks \"\\d\" and \"\\w\" accept only ASCII characters.");
+    }
+
+    *regex = perl_regex;
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_code **code)
+{
+    size_t idx, size, brack;
+    char *perl_regex;
+    int err_code, compile_opts;
+    const char *orig_ptr;
+    PCRE2_SIZE err_offset;
+    pcre2_code *code_local;
+    LY_ERR r;
+
     /* adjust the expression to a Perl equivalent
      * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs */
 
@@ -1173,54 +1247,10 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
 #endif
     perl_regex[idx] = '\0';
 
-    /* substitute Unicode Character Blocks with exact Character Ranges */
-    while ((ptr = strstr(perl_regex, "\\p{Is"))) {
-        start = ptr - perl_regex;
-
-        ptr = strchr(ptr, '}');
-        if (!ptr) {
-            LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + start + 2, "unterminated character property");
-            free(perl_regex);
-            return LY_EVALID;
-        }
-        end = (ptr - perl_regex) + 1;
-
-        /* need more space */
-        if (end - start < URANGE_LEN) {
-            perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (URANGE_LEN - (end - start)) + 1);
-            LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx); free(perl_regex), LY_EMEM);
-        }
-
-        /* find our range */
-        for (idx = 0; ublock2urange[idx][0]; ++idx) {
-            if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
-                    ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
-                break;
-            }
-        }
-        if (!ublock2urange[idx][0]) {
-            LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + start + 5, "unknown block name");
-            free(perl_regex);
-            return LY_EVALID;
-        }
-
-        /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
-        for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
-            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                ++idx;
-            }
-            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                --idx;
-            }
-        }
-        if (idx) {
-            /* skip brackets */
-            memmove(perl_regex + start + (URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[idx][1] + 1, URANGE_LEN - 2);
-        } else {
-            memmove(perl_regex + start + URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[idx][1], URANGE_LEN);
-        }
+    /* transform character blocks */
+    if ((r = lys_compile_pattern_chblocks_xmlschema2perl(ctx, pattern, &perl_regex))) {
+        free(perl_regex);
+        return r;
     }
 
     /* must return 0, already checked during parsing */
