@@ -78,10 +78,10 @@ jobs:
             make-target: ""
           }
           - {
-            name: "ASAN and UBSAN",
-            os: "ubuntu-18.04",
+            name: "ASAN and UBSAN, clang 14",
+            os: "ubuntu-22.04",
             build-type: "Debug",
-            cc: "clang",
+            cc: "clang-14",
             options: "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -DENABLE_TESTS=ON -DENABLE_VALGRIND_TESTS=OFF",
             packager: "sudo apt-get",
             packages: "libcmocka-dev",
