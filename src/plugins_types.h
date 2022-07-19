@@ -33,6 +33,7 @@ struct ly_ctx;
 struct ly_path;
 struct lyd_node;
 struct lyd_value;
+struct lyd_value_xpath10;
 struct lys_module;
 struct lys_glob_unres;
 struct lysc_ident;
@@ -445,6 +446,19 @@ LIBYANG_API_DECL LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const ch
  * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
  */
 LIBYANG_API_DECL void lyplg_type_lypath_free(const struct ly_ctx *ctx, struct ly_path *path);
+
+/**
+ * @brief Print xpath1.0 value in the specific format.
+ *
+ * @param[in] xp_val xpath1.0 value structure.
+ * @param[in] format Format to print in.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[out] str_value Printed value.
+ * @param[out] err Error structure on error.
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format,
+        void *prefix_data, char **str_value, struct ly_err_item **err);
 
 /**
  * @defgroup plugintypestoreopts Plugins: Type store callback options.

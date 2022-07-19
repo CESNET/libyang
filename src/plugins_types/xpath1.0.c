@@ -216,18 +216,8 @@ error_mem:
     return ly_err_new(err, LY_EMEM, LYVE_DATA, NULL, NULL, "No memory.");
 }
 
-/**
- * @brief Print xpath1.0 value in the specific format.
- *
- * @param[in] xp_val xpath1.0 value structure.
- * @param[in] format Format to print in.
- * @param[in] prefix_data Format-specific prefix data.
- * @param[out] str_value Printed value.
- * @param[out] err Error structure on error.
- * @return LY_ERR value.
- */
-static LY_ERR
-xpath10_print_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data,
+LIBYANG_API_DEF LY_ERR
+lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_FORMAT format, void *prefix_data,
         char **str_value, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -311,7 +301,7 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     case LY_VALUE_SCHEMA_RESOLVED:
     case LY_VALUE_XML:
         /* JSON format with prefix is the canonical one */
-        ret = xpath10_print_value(val, LY_VALUE_JSON, NULL, &canon, err);
+        ret = lyplg_type_print_xpath10_value(val, LY_VALUE_JSON, NULL, &canon, err);
         LY_CHECK_GOTO(ret, cleanup);
 
         ret = lydict_insert_zc(ctx, canon, &storage->_canonical);
@@ -439,7 +429,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
     }
 
     /* print in the specific format */
-    if (xpath10_print_value(val, format, prefix_data, &ret, &err)) {
+    if (lyplg_type_print_xpath10_value(val, format, prefix_data, &ret, &err)) {
         if (err) {
             LOGVAL_ERRITEM(ctx, err);
             ly_err_free(err);
