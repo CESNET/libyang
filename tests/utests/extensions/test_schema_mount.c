@@ -1199,6 +1199,7 @@ static void
 test_parse_config(void **state)
 {
     const char *xml;
+    char *lyb;
     struct lyd_node *data;
     const struct lyd_node *node;
 
@@ -1275,6 +1276,24 @@ test_parse_config(void **state)
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    node = lyd_child(data);
+    assert_string_equal(LYD_NAME(node), "interfaces");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child(node);
+    assert_string_equal(LYD_NAME(node), "interface");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child(node);
+    assert_string_equal(LYD_NAME(node), "name");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+    node = node->next;
+    assert_string_equal(LYD_NAME(node), "type");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+
+    lyd_print_mem(&lyb, data, LYD_LYB, 0);
+    lyd_free_siblings(data);
+    CHECK_PARSE_LYD_PARAM(lyb, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    free(lyb);
 
     node = lyd_child(data);
     assert_string_equal(LYD_NAME(node), "interfaces");
