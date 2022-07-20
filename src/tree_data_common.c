@@ -1074,8 +1074,12 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
 
         /* search manually without hashes */
         for ( ; siblings; siblings = siblings->next) {
+            /* schema match is enough */
             if (siblings->schema == schema) {
-                /* schema match is enough */
+                break;
+            }
+            if ((LYD_CTX(siblings) != schema->module->ctx) && !strcmp(siblings->schema->name, schema->name) &&
+                    !strcmp(siblings->schema->module->name, schema->module->name)) {
                 break;
             }
         }
