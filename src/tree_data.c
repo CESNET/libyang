@@ -1767,7 +1767,7 @@ lyd_dup(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_no
     struct lyd_node *top = NULL;          /* the most higher created node */
     struct lyd_node_inner *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
 
-    assert(node && trg_ctx && (!parent || (LYD_CTX(parent) == trg_ctx)));
+    assert(node && trg_ctx);
 
     if (options & LYD_DUP_WITH_PARENTS) {
         LY_CHECK_GOTO(rc = lyd_dup_get_local_parent(node, trg_ctx, parent, options & (LYD_DUP_WITH_FLAGS | LYD_DUP_NO_META),
@@ -1813,14 +1813,40 @@ error:
     return rc;
 }
 
+/**
+ * @brief Check the context of node and parent when duplicating nodes.
+ *
+ * @param[in] node Node to duplicate.
+ * @param[in] parent Parent of the duplicated node(s).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_dup_ctx_check(const struct lyd_node *node, const struct lyd_node_inner *parent)
+{
+    const struct lyd_node *iter;
+
+    if (!node || !parent) {
+        return LY_SUCCESS;
+    }
+
+    if ((LYD_CTX(node) != LYD_CTX(parent))) {
+        /* try to find top-level ext data parent */
+        for (iter = node; iter && !(iter->flags & LYD_EXT); iter = lyd_parent(iter)) {}
+
+        if (!iter || !lyd_parent(iter) || (LYD_CTX(lyd_parent(iter)) != LYD_CTX(parent))) {
+            LOGERR(NULL, LY_EINVAL, "Different contexts used in node duplication.");
+            return LY_EINVAL;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    if (node && parent && (LYD_CTX(node) != LYD_CTX(parent))) {
-        LOGERR(NULL, LY_EINVAL, "Different contexts used in node duplication.");
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyd_dup_ctx_check(node, parent));
 
     return lyd_dup(node, LYD_CTX(node), parent, options, 1, dup);
 }
@@ -1838,10 +1864,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    if (node && parent && (LYD_CTX(node) != LYD_CTX(parent))) {
-        LOGERR(NULL, LY_EINVAL, "Different contexts used in node duplication.");
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyd_dup_ctx_check(node, parent));
 
     return lyd_dup(node, LYD_CTX(node), parent, options, 0, dup);
 }
