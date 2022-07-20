@@ -1702,12 +1702,19 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
         uint32_t options, struct lyd_node **dup_parent, struct lyd_node_inner **local_parent)
 {
     const struct lyd_node_inner *orig_parent, *iter;
-    ly_bool repeat = 1;
+    ly_bool repeat = 1, ext_parent = 0;
 
     *dup_parent = NULL;
     *local_parent = NULL;
 
+    if (node->flags & LYD_EXT) {
+        ext_parent = 1;
+    }
     for (orig_parent = node->parent; repeat && orig_parent; orig_parent = orig_parent->parent) {
+        if (ext_parent) {
+            /* use the standard context */
+            trg_ctx = LYD_CTX(orig_parent);
+        }
         if (parent && (parent->schema == orig_parent->schema)) {
             /* stop creating parents, connect what we have into the provided parent */
             iter = parent;
@@ -1735,6 +1742,9 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx *trg_c
             (*dup_parent)->parent = (struct lyd_node_inner *)iter;
         }
         *dup_parent = (struct lyd_node *)iter;
+        if (orig_parent->flags & LYD_EXT) {
+            ext_parent = 1;
+        }
     }
 
     if (repeat && parent) {
