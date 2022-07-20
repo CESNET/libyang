@@ -16,6 +16,7 @@
 
 #include "plugins_types.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -849,6 +850,8 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_ident *der)
 {
     LY_ARRAY_COUNT_TYPE u;
+
+    assert(base->module->ctx == der->module->ctx);
 
     LY_ARRAY_FOR(base->derived, u) {
         if (der == base->derived[u]) {
