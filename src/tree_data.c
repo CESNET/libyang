@@ -1882,17 +1882,21 @@ LIBYANG_API_DEF LY_ERR
 lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct lyd_meta **dup)
 {
     LY_ERR ret = LY_SUCCESS;
+    const struct ly_ctx *ctx;
     struct lyd_meta *mt, *last;
 
     LY_CHECK_ARG_RET(NULL, meta, node, LY_EINVAL);
+
+    /* log to node context but value must always use the annotation context */
+    ctx = meta->annotation->module->ctx;
 
     /* create a copy */
     mt = calloc(1, sizeof *mt);
     LY_CHECK_ERR_RET(!mt, LOGMEM(LYD_CTX(node)), LY_EMEM);
     mt->annotation = meta->annotation;
-    ret = meta->value.realtype->plugin->duplicate(LYD_CTX(node), &meta->value, &mt->value);
+    ret = meta->value.realtype->plugin->duplicate(ctx, &meta->value, &mt->value);
     LY_CHECK_ERR_GOTO(ret, LOGERR(LYD_CTX(node), LY_EINT, "Value duplication failed."), finish);
-    LY_CHECK_GOTO(ret = lydict_insert(LYD_CTX(node), meta->name, 0, &mt->name), finish);
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, meta->name, 0, &mt->name), finish);
 
     /* insert as the last attribute */
     mt->parent = node;

@@ -749,7 +749,7 @@ lyd_new_meta(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lys
     LY_CHECK_ARG_RET(ctx, ctx || parent, name, module || strchr(name, ':'), parent || meta, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(ctx, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
     if (!ctx) {
-        ctx = LYD_CTX(parent);
+        ctx = module ? module->ctx : LYD_CTX(parent);
     }
 
     if (parent && !parent->schema) {
