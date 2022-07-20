@@ -759,7 +759,6 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_n
     struct lyd_node *iter;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    LY_CHECK_CTX_EQUAL_RET(sibling ? LYD_CTX(sibling) : NULL, LYD_CTX(node), LY_EINVAL);
 
     if (sibling) {
         LY_CHECK_RET(lyd_insert_check_schema(NULL, sibling->schema, node->schema));
