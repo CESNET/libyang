@@ -225,12 +225,14 @@ lyplg_type_print_xpath10_value(const struct lyd_value_xpath10 *xp_val, LY_VALUE_
     uint32_t str_len = 0;
 
     *str_value = NULL;
+    *err = NULL;
 
     /* recursively print the expression */
     ret = xpath10_print_subexpr_r(&expr_idx, 0, NULL, xp_val, format, prefix_data, str_value, &str_len, err);
 
     if (ret) {
         free(*str_value);
+        *str_value = NULL;
     }
     return ret;
 }
