@@ -314,6 +314,24 @@ test_schema_yang(void **state)
     CHECK_LYSP_NODE_LEAF(lysp_leaf, NULL, 0, 0x0, 0, "port", 0, 0, NULL, 0, 0, NULL, NULL);
     CHECK_LYSP_TYPE(&(lysp_leaf->type), 0, 0, 0, 0, 0, 0x0, 0, 0, "my_type", 0, 0, 1, 0, 0, 0);
 
+    /* TEST pattern backslash
+     * The '[' character is escaped, thus character group is broken.
+     */
+
+    schema = MODULE_CREATE_YANG("TPATTERN_BC_ERR_1", "leaf port {type string {"
+            "pattern '\\[a]b';" /* pattern '\[a]b'; */
+            "}}");
+    UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Regular expression \"\\[a]b\" is not valid (\"]b\": character group doesn't begin with '[').",
+            "/TPATTERN_BC_ERR_1:port");
+
+    schema = MODULE_CREATE_YANG("TPATTERN_BC_ERR_2", "leaf port {type string {"
+            "pattern \"\\\\[a]b\";" /* pattern "\\[a]b"; */
+            "}}");
+    UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
+    CHECK_LOG_CTX("Regular expression \"\\[a]b\" is not valid (\"]b\": character group doesn't begin with '[').",
+            "/TPATTERN_BC_ERR_2:port");
+
     /* PATTERN AND LENGTH */
     schema = MODULE_CREATE_YANG("TPL_0",
             "typedef my_type {"
@@ -1138,6 +1156,30 @@ test_plugin_store(void **state)
             0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err);
     assert_int_equal(LY_EINVAL, ly_ret);
     ly_err_free(err);
+
+    /* TEST pattern backslash */
+
+    schema = MODULE_CREATE_YANG("TPATTERN_BC_1", "leaf port {type string {"
+            "pattern '\\\\[a]b';"  /* pattern '\\[a]b'; */
+            "}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    val_text = "\\ab";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, STRING, "\\ab");
+    type->free(UTEST_LYCTX, &value);
+
+    schema = MODULE_CREATE_YANG("TPATTERN_BC_2", "leaf port {type string {"
+            "pattern \"\\\\\\\\[a]b\";" /* pattern "\\\\[a]b"; */
+            "}}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+    lysc_type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    val_text = "\\ab";
+    assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text),
+            0, LY_VALUE_XML, NULL, LYD_VALHINT_STRING, NULL, &value, NULL, &err));
+    CHECK_LYD_VALUE(value, STRING, "\\ab");
+    type->free(UTEST_LYCTX, &value);
 
     /* ERROR TESTS */
 
