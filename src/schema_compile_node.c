@@ -1176,6 +1176,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
     const char *orig_ptr;
     PCRE2_SIZE err_offset;
     pcre2_code *code_local;
+    ly_bool escaped;
     LY_ERR r;
 
     /* adjust the expression to a Perl equivalent
@@ -1197,6 +1198,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
     /* we need to replace all "$" and "^" (that are not in "[]") with "\$" and "\^" */
     brack = 0;
     idx = 0;
+    escaped = 0;
     orig_ptr = pattern;
     while (orig_ptr[0]) {
         switch (orig_ptr[0]) {
@@ -1213,16 +1215,30 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
                 ++idx;
             }
             break;
+        case '\\':
+            /*  escape character found or backslash is escaped */
+            escaped = !escaped;
+            /* copy backslash and continue with the next character */
+            perl_regex[idx] = orig_ptr[0];
+            ++idx;
+            ++orig_ptr;
+            continue;
         case '[':
-            /* must not be escaped */
-            if ((orig_ptr == pattern) || (orig_ptr[-1] != '\\')) {
+            if (!escaped) {
                 ++brack;
             }
             break;
         case ']':
-            if ((orig_ptr == pattern) || (orig_ptr[-1] != '\\')) {
-                /* pattern was checked and compiled already */
-                assert(brack);
+            if (!brack && !escaped) {
+                /* If ']' does not terminate a character class expression, then pcre2_compile() implicitly escapes the
+                 * ']' character. But this seems to be against the regular expressions rules declared in
+                 * "XML schema: Datatypes" and therefore an error is returned. So for example if pattern is '\[a]' then
+                 * pcre2 match characters '[a]' literally but in YANG such pattern is not allowed.
+                 */
+                LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, orig_ptr, "character group doesn't begin with '['");
+                free(perl_regex);
+                return LY_EVALID;
+            } else if (!escaped) {
                 --brack;
             }
             break;
@@ -1235,6 +1251,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
 
         ++idx;
         ++orig_ptr;
+        escaped = 0;
     }
 #ifndef PCRE2_ENDANCHORED
     /* anchor match to end of subject */
