@@ -1348,6 +1348,11 @@ test_new(void **state)
             "      <revision>2014-05-08</revision>"
             "      <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>"
             "    </module>"
+            "    <module>"
+            "      <name>ietf-ip</name>"
+            "      <revision>2014-06-16</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-ip</namespace>"
+            "    </module>"
             "    <import-only-module>"
             "      <name>ietf-yang-types</name>"
             "      <revision>2013-07-15</revision>"
@@ -1384,6 +1389,9 @@ test_new(void **state)
             "    <interface>\n"
             "      <name>bu</name>\n"
             "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "      <ipv4 xmlns=\"urn:ietf:params:xml:ns:yang:ietf-ip\">\n"
+            "        <enabled>false</enabled>\n"
+            "      </ipv4>\n"
             "    </interface>\n"
             "  </interfaces>\n"
             "  <interfaces-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
@@ -1408,7 +1416,13 @@ test_new(void **state)
     assert_int_equal(LY_SUCCESS, lyd_new_inner(data, mod, "interfaces", 0, &node));
     assert_int_equal(LY_SUCCESS, lyd_new_list(node, NULL, "interface", 0, &node, "bu"));
     assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "type", "iana-if-type:ethernetCsmacd", 0, NULL));
+    mod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-ip");
+    assert_non_null(mod);
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(node, mod, "ipv4", 0, &node));
+    assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "enabled", "false", 0, NULL));
 
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "ietf-interfaces");
+    assert_non_null(mod);
     assert_int_equal(LY_SUCCESS, lyd_new_inner(data, mod, "interfaces-state", 0, &node));
     assert_int_equal(LY_SUCCESS, lyd_new_list(node, NULL, "interface", 0, &node, "bu"));
     assert_int_equal(LY_SUCCESS, lyd_new_term(node, NULL, "type", "iana-if-type:ethernetCsmacd", 0, NULL));
@@ -1422,6 +1436,8 @@ test_new(void **state)
     /* create the data using lyd_new_path */
     assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX,
             "/sm:root/ietf-interfaces:interfaces/interface[name='bu']/type", "iana-if-type:ethernetCsmacd", 0, &data));
+    assert_int_equal(LY_SUCCESS, lyd_new_path(data, NULL,
+            "/sm:root/ietf-interfaces:interfaces/interface[name='bu']/ietf-ip:ipv4/enabled", "false", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_new_path(data, NULL,
             "/sm:root/ietf-interfaces:interfaces-state/interface[name='bu']/type", "iana-if-type:ethernetCsmacd", 0, NULL));
     assert_int_equal(LY_SUCCESS, lyd_new_path(data, NULL,

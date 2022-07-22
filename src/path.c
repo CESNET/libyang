@@ -431,7 +431,7 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     if (pref) {
         LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
-        mod = ly_resolve_prefix(ctx, pref, len, format, prefix_data);
+        mod = ly_resolve_prefix(prev_ctx_node ? prev_ctx_node->module->ctx : ctx, pref, len, format, prefix_data);
         if ((!mod || !mod->implemented) && prev_ctx_node) {
             /* check for nested ext data */
             ret = ly_nested_ext_schema(NULL, prev_ctx_node, pref, len, format, prefix_data, name, name_len, snode, &e);
