@@ -518,10 +518,11 @@ fill_context(int argc, char *argv[], struct context *c)
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:G:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:G:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:p:DF:iP:qs:net:d:lL:o:O:R:myY:", options, &opt_index)) != -1)
 #endif
+    {
         switch (opt) {
         case 'h': /* --help */
             help(0);
