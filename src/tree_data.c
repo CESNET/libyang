@@ -5392,15 +5392,71 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
     return ret;
 }
 
+static int
+lyd_unlink_leafrefs(struct lyd_node *subtree1, struct lyd_node *subtree2)
+{
+    struct lyd_node_leaf_list *leaf;
+    struct lys_node_leaf *sleaf;
+    struct lyd_node *root1, *next1, *elem1, *node;
+
+    if (!subtree1 || !subtree2) {
+        /* no leafref targets to fix */
+        return EXIT_SUCCESS;
+    }
+
+    LY_TREE_FOR(subtree1, root1) {
+        LY_TREE_DFS_BEGIN(root1, next1, elem1) {
+            if ((elem1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
+                    (((struct lyd_node_leaf_list *)elem1)->value_type == LY_TYPE_LEAFREF)) {
+                /* leafref with the target link, find the first top-level node of the target subtree */
+                leaf = (struct lyd_node_leaf_list *)elem1;
+                node = leaf->value.leafref;
+                while (node->parent) {
+                    node = node->parent;
+                }
+                while (node->prev->next) {
+                    node = node->prev;
+                }
+
+                assert((node == subtree1) || (node == subtree2));
+                if (node == subtree2) {
+                    /* link to the rest of the tree, unresolve */
+                    sleaf = (struct lys_node_leaf *)leaf->schema;
+                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+            LY_TREE_DFS_END(root1, next1, elem1);
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int
 lyd_unlink_internal(struct lyd_node *node, int permanent)
 {
-    struct lyd_node *iter;
-    (void)permanent;
+    struct lyd_node *iter, *top_first = NULL;
 
     if (!node) {
         LOGARG;
         return EXIT_FAILURE;
+    }
+
+    if (permanent == 1) {
+        /* get first top-level node of the other tree */
+        if (node->parent) {
+            for (top_first = node->parent; top_first->parent; top_first = top_first->parent) {}
+        } else {
+            top_first = node;
+        }
+        while (top_first->prev->next) {
+            top_first = top_first->prev;
+        }
+        if (top_first == node) {
+            top_first = top_first->next;
+        }
     }
 
     /* unlink from siblings */
@@ -5442,6 +5498,16 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
 
     node->next = NULL;
     node->prev = node;
+
+    if (permanent == 1) {
+        /* remove leafref links to the unlinked tree and vice versa */
+        if (lyd_unlink_leafrefs(top_first, node)) {
+            return EXIT_FAILURE;
+        }
+        if (lyd_unlink_leafrefs(node, top_first)) {
+            return EXIT_FAILURE;
+        }
+    }
 
     return EXIT_SUCCESS;
 }
