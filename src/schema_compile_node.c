@@ -1164,11 +1164,6 @@ lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char
         }
     }
 
-    /* at least inform about other XML Schema vs. Perl character block differences */
-    if (strstr(perl_regex, "\\d") || strstr(perl_regex, "\\w")) {
-        LOGVRB("Character blocks \"\\d\" and \"\\w\" accept only ASCII characters.");
-    }
-
     return LY_SUCCESS;
 }
 
@@ -1188,7 +1183,7 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, pcre2_co
 
     /* allocate space for the transformed pattern */
     size = strlen(pattern) + 1;
-    compile_opts = PCRE2_UTF | PCRE2_ANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE;
+    compile_opts = PCRE2_UTF | PCRE2_UCP | PCRE2_ANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE;
 #ifdef PCRE2_ENDANCHORED
     compile_opts |= PCRE2_ENDANCHORED;
 #else
