@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG XPath evaluation functions header
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -287,13 +287,14 @@ struct lyxp_set {
     } val;                              /**< Evaluated object (value). */
 
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
-    uint32_t used;          /**< Number of nodes in the set. */
-    uint32_t size;          /**< Allocated size for the set. */
-    struct hash_table *ht;  /**< Hash table for quick determination of whether a node is in the set. */
+    uint32_t used;              /**< Number of nodes in the set. */
+    uint32_t size;              /**< Allocated size for the set. */
+    struct hash_table *ht;      /**< Hash table for quick determination of whether a node is in the set. */
 
     /* XPath context information, this is valid only for type LYXP_SET_NODE_SET */
-    uint32_t ctx_pos;       /**< Position of the current examined node in the set. */
-    uint32_t ctx_size;      /**< Position of the last node at the time the node was examined. */
+    uint32_t ctx_pos;           /**< Position of the current examined node in the set. */
+    uint32_t ctx_size;          /**< Position of the last node at the time the node was examined. */
+    ly_bool non_child_axis;     /**< Whether any node change was performed on a non-child axis. */
 
     /* general context */
     struct ly_ctx *ctx;                     /**< General context for logging. */

@@ -844,6 +844,7 @@ set_init(struct lyxp_set *new, const struct lyxp_set *set)
 {
     memset(new, 0, sizeof *new);
     if (set) {
+        new->non_child_axis = set->non_child_axis;
         new->ctx = set->ctx;
         new->cur_node = set->cur_node;
         new->root_type = set->root_type;
@@ -5613,6 +5614,7 @@ moveto_root(struct lyxp_set *set, uint32_t options)
         set->type = LYXP_SET_NODE_SET;
         set->used = 0;
         set_insert_node(set, NULL, 0, set->root_type, 0);
+        set->non_child_axis = 0;
     }
 
     return LY_SUCCESS;
@@ -6026,6 +6028,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const cha
             case LYXP_AXIS_PARENT:
             case LYXP_AXIS_PRECEDING:
             case LYXP_AXIS_PRECEDING_SIBLING:
+                result.non_child_axis = 1;
                 if (set_dup_node_check(&result, iter, iter_type, -1)) {
                     continue;
                 }
@@ -6050,8 +6053,12 @@ moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const cha
     *set = result;
     result.type = LYXP_SET_NUMBER;
 
-    /* sort the final set */
-    set_sort(set);
+    /* sort the final set if the document order could have been broken */
+    if (set->non_child_axis) {
+        set_sort(set);
+    } else {
+        assert(!set_sort(set));
+    }
 
 cleanup:
     lyxp_set_free_content(&result);
@@ -6756,6 +6763,7 @@ skip_children:
     ret_set.ctx_size = set->ctx_size;
     lyxp_set_free_content(set);
     memcpy(set, &ret_set, sizeof *set);
+    assert(!set_sort(set));
 
     return LY_SUCCESS;
 }
