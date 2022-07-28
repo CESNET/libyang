@@ -5064,7 +5064,8 @@ xpath_string_length(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
 static LY_ERR
 xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uint32_t options)
 {
-    int32_t start, len;
+    int64_t start;
+    int32_t len;
     uint16_t str_start, str_len, pos;
     struct lysc_node_leaf *sleaf;
     LY_ERR rc = LY_SUCCESS;
