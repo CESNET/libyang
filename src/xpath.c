@@ -53,6 +53,7 @@ static LY_ERR moveto_node(struct lyxp_set *set, const struct lys_module *moveto_
         enum lyxp_axis axis, uint32_t options);
 static LY_ERR moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname,
         enum lyxp_axis axis, uint32_t options);
+static LY_ERR moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op);
 
 /* Functions are divided into the following basic classes:
  *
@@ -1604,14 +1605,15 @@ set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2)
 /**
  * @brief Set cast for comparisons.
  *
- * @param[in] trg Target set to cast source into.
+ * @param[in,out] trg Target set to cast source into.
  * @param[in] src Source set.
  * @param[in] type Target set type.
  * @param[in] src_idx Source set node index.
- * @return LY_ERR
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
  */
 static LY_ERR
-set_comp_cast(struct lyxp_set *trg, struct lyxp_set *src, enum lyxp_set_type type, uint32_t src_idx)
+set_comp_cast(struct lyxp_set *trg, const struct lyxp_set *src, enum lyxp_set_type type, uint32_t src_idx)
 {
     assert(src->type == LYXP_SET_NODE_SET);
 
@@ -1627,22 +1629,21 @@ set_comp_cast(struct lyxp_set *trg, struct lyxp_set *src, enum lyxp_set_type typ
 /**
  * @brief Set content canonization for comparisons.
  *
- * @param[in] trg Target set to put the canononized source into.
- * @param[in] src Source set.
+ * @param[in,out] set Set to canonize.
  * @param[in] xp_node Source XPath node/meta to use for canonization.
- * @return LY_ERR
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value on error.
  */
 static LY_ERR
-set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct lyxp_set_node *xp_node)
+set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
 {
     const struct lysc_type *type = NULL;
     struct lyd_value val;
     struct ly_err_item *err = NULL;
-    char *str, *ptr;
     LY_ERR rc;
 
     /* is there anything to canonize even? */
-    if ((src->type == LYXP_SET_NUMBER) || (src->type == LYXP_SET_STRING)) {
+    if (set->type == LYXP_SET_STRING) {
         /* do we have a type to use for canonization? */
         if ((xp_node->type == LYXP_NODE_ELEM) && (xp_node->node->schema->nodetype & LYD_NODE_TERM)) {
             type = ((struct lyd_node_term *)xp_node->node)->value.realtype;
@@ -1651,45 +1652,39 @@ set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct
         }
     }
     if (!type) {
-        goto fill;
+        /* no canonization needed/possible */
+        return LY_SUCCESS;
     }
 
-    if (src->type == LYXP_SET_NUMBER) {
-        /* canonize number */
-        if (asprintf(&str, "%Lf", src->val.num) == -1) {
-            LOGMEM(src->ctx);
-            return LY_EMEM;
-        }
-    } else {
-        /* canonize string */
-        str = strdup(src->val.str);
+    /* check for built-in types without required canonization */
+    if ((type->basetype == LY_TYPE_STRING) && (type->plugin->store == lyplg_type_store_string)) {
+        /* string */
+        return LY_SUCCESS;
+    }
+    if ((type->basetype == LY_TYPE_BOOL) && (type->plugin->store == lyplg_type_store_boolean)) {
+        /* boolean */
+        return LY_SUCCESS;
+    }
+    if ((type->basetype == LY_TYPE_ENUM) && (type->plugin->store == lyplg_type_store_enum)) {
+        /* enumeration */
+        return LY_SUCCESS;
     }
 
-    /* ignore errors, the value may not satisfy schema constraints */
-    rc = type->plugin->store(src->ctx, type, str, strlen(str), LYPLG_TYPE_STORE_DYNAMIC, src->format, src->prefix_data,
+    /* print canonized string, ignore errors, the value may not satisfy schema constraints */
+    rc = type->plugin->store(set->ctx, type, set->val.str, strlen(set->val.str), 0, set->format, set->prefix_data,
             LYD_HINT_DATA, xp_node->node->schema, &val, NULL, &err);
     ly_err_free(err);
     if (rc) {
-        /* invalid value */
-        /* function store automaticaly dealloc value when fail */
-        goto fill;
+        /* invalid value, function store automaticaly dealloc value when fail */
+        return LY_SUCCESS;
     }
 
-    /* use the canonized value */
-    set_init(trg, src);
-    trg->type = src->type;
-    if (src->type == LYXP_SET_NUMBER) {
-        trg->val.num = strtold(type->plugin->print(src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL), &ptr);
-        LY_CHECK_ERR_RET(ptr[0], LOGINT(src->ctx), LY_EINT);
-    } else {
-        trg->val.str = strdup(type->plugin->print(src->ctx, &val, LY_VALUE_CANON, NULL, NULL, NULL));
-    }
-    type->plugin->free(src->ctx, &val);
-    return LY_SUCCESS;
+    /* use the canonized string value */
+    free(set->val.str);
+    set->val.str = strdup(lyd_value_get_canonical(set->ctx, &val));
+    type->plugin->free(set->ctx, &val);
+    LY_CHECK_ERR_RET(!set->val.str, LOGMEM(set->ctx), LY_EMEM);
 
-fill:
-    /* no canonization needed/possible */
-    set_fill_set(trg, src);
     return LY_SUCCESS;
 }
 
@@ -7095,17 +7090,67 @@ moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
 }
 
 /**
- * @brief Move context @p set to the result of a comparison. Handles '=', '!=', '<=', '<', '>=', or '>'.
+ * @brief Move context @p set1 single item to the result of a comparison.
+ *
+ * @param[in] set1 First set with the item to compare.
+ * @param[in] idx1 Index of the item in @p set1.
+ * @param[in] set2 Second set.
+ * @param[in] op Comparison operator to process.
+ * @param[in] switch_operands Whether to switch sets as operands; whether it is `set1 op set2` or `set2 op set1`.
+ * @param[out] result Result of the comparison.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+moveto_op_comp_item(const struct lyxp_set *set1, uint32_t idx1, struct lyxp_set *set2, const char *op,
+        ly_bool switch_operands, ly_bool *result)
+{
+    struct lyxp_set tmp1 = {0};
+    LY_ERR rc = LY_SUCCESS;
+
+    assert(set1->type == LYXP_SET_NODE_SET);
+
+    /* cast set1 */
+    switch (set2->type) {
+    case LYXP_SET_NUMBER:
+        rc = set_comp_cast(&tmp1, set1, LYXP_SET_NUMBER, idx1);
+        break;
+    case LYXP_SET_BOOLEAN:
+        rc = set_comp_cast(&tmp1, set1, LYXP_SET_BOOLEAN, idx1);
+        break;
+    default:
+        rc = set_comp_cast(&tmp1, set1, LYXP_SET_STRING, idx1);
+        break;
+    }
+    LY_CHECK_GOTO(rc, cleanup);
+
+    /* canonize set2 */
+    LY_CHECK_GOTO(rc = set_comp_canonize(set2, &set1->val.nodes[idx1]), cleanup);
+
+    /* compare recursively and store the result */
+    if (switch_operands) {
+        LY_CHECK_GOTO(rc = moveto_op_comp(set2, &tmp1, op), cleanup);
+        *result = set2->val.bln;
+    } else {
+        LY_CHECK_GOTO(rc = moveto_op_comp(&tmp1, set2, op), cleanup);
+        *result = tmp1.val.bln;
+    }
+
+cleanup:
+    lyxp_set_free_content(&tmp1);
+    return rc;
+}
+
+/**
+ * @brief Move context @p set1 to the result of a comparison. Handles '=', '!=', '<=', '<', '>=', or '>'.
  *        Result is LYXP_SET_BOOLEAN. Indirectly context position aware.
  *
  * @param[in,out] set1 Set to use for the result.
  * @param[in] set2 Set acting as the second operand for @p op.
  * @param[in] op Comparison operator to process.
- * @param[in] options XPath options.
  * @return LY_ERR
  */
 static LY_ERR
-moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, uint32_t options)
+moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
 {
     /*
      * NODE SET + NODE SET = NODE SET + STRING /(1 NODE SET) 2 STRING
@@ -7138,79 +7183,37 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, uin
      * NUMBER + BOOLEAN = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
      * STRING + BOOLEAN = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
      */
-    struct lyxp_set iter1, iter2;
-    int result;
-    int64_t i;
+    ly_bool result;
+    uint32_t i;
     LY_ERR rc;
-
-    memset(&iter1, 0, sizeof iter1);
-    memset(&iter2, 0, sizeof iter2);
 
     /* iterative evaluation with node-sets */
     if ((set1->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_NODE_SET)) {
         if (set1->type == LYXP_SET_NODE_SET) {
             for (i = 0; i < set1->used; ++i) {
-                /* cast set1 */
-                switch (set2->type) {
-                case LYXP_SET_NUMBER:
-                    rc = set_comp_cast(&iter1, set1, LYXP_SET_NUMBER, i);
-                    break;
-                case LYXP_SET_BOOLEAN:
-                    rc = set_comp_cast(&iter1, set1, LYXP_SET_BOOLEAN, i);
-                    break;
-                default:
-                    rc = set_comp_cast(&iter1, set1, LYXP_SET_STRING, i);
-                    break;
-                }
-                LY_CHECK_RET(rc);
-
-                /* canonize set2 */
-                LY_CHECK_ERR_RET(rc = set_comp_canonize(&iter2, set2, &set1->val.nodes[i]), lyxp_set_free_content(&iter1), rc);
-
-                /* compare recursively */
-                rc = moveto_op_comp(&iter1, &iter2, op, options);
-                lyxp_set_free_content(&iter2);
-                LY_CHECK_ERR_RET(rc, lyxp_set_free_content(&iter1), rc);
+                /* evaluate for the single item */
+                LY_CHECK_RET(moveto_op_comp_item(set1, i, set2, op, 0, &result));
 
                 /* lazy evaluation until true */
-                if (iter1.val.bln) {
+                if (result) {
                     set_fill_boolean(set1, 1);
                     return LY_SUCCESS;
                 }
             }
         } else {
             for (i = 0; i < set2->used; ++i) {
-                /* set set2 */
-                switch (set1->type) {
-                case LYXP_SET_NUMBER:
-                    rc = set_comp_cast(&iter2, set2, LYXP_SET_NUMBER, i);
-                    break;
-                case LYXP_SET_BOOLEAN:
-                    rc = set_comp_cast(&iter2, set2, LYXP_SET_BOOLEAN, i);
-                    break;
-                default:
-                    rc = set_comp_cast(&iter2, set2, LYXP_SET_STRING, i);
-                    break;
-                }
-                LY_CHECK_RET(rc);
-
-                /* canonize set1 */
-                LY_CHECK_ERR_RET(rc = set_comp_canonize(&iter1, set1, &set2->val.nodes[i]), lyxp_set_free_content(&iter2), rc);
-
-                /* compare recursively */
-                rc = moveto_op_comp(&iter1, &iter2, op, options);
-                lyxp_set_free_content(&iter2);
-                LY_CHECK_ERR_RET(rc, lyxp_set_free_content(&iter1), rc);
+                /* evaluate for the single item */
+                LY_CHECK_RET(moveto_op_comp_item(set2, i, set1, op, 1, &result));
 
                 /* lazy evaluation until true */
-                if (iter1.val.bln) {
+                if (result) {
                     set_fill_boolean(set1, 1);
                     return LY_SUCCESS;
                 }
             }
         }
 
-        /* false for all nodes */
+        /* false for all the nodes */
         set_fill_boolean(set1, 0);
         return LY_SUCCESS;
     }
@@ -8977,7 +8980,7 @@ eval_relational_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t re
             lyxp_set_scnode_merge(set, &set2);
             set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
-            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], options);
+            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]]);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
@@ -9046,7 +9049,7 @@ eval_equality_expr(const struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t repe
             lyxp_set_scnode_merge(set, &set2);
             set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
-            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], options);
+            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]]);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
