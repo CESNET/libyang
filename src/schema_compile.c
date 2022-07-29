@@ -728,7 +728,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             LY_ARRAY_FOR(when_list, u) {
                 when = when_list[u];
                 ret = lyxp_atomize(set->ctx, when->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, when->prefixes,
-                        when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
+                        when->context, when->context, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
                     LOGVAL(set->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
                     LOG_LOCBACK(1, 0, 0, 0);
@@ -885,7 +885,7 @@ lys_compile_unres_when(struct lysc_ctx *ctx, const struct lysc_node *node, struc
 
         /* check "when" */
         ret = lyxp_atomize(ctx->ctx, whens[u]->cond, node->module, LY_VALUE_SCHEMA_RESOLVED, whens[u]->prefixes,
-                whens[u]->context, &tmp_set, opts);
+                whens[u]->context, whens[u]->context, &tmp_set, opts);
         if (ret) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid when condition \"%s\".", whens[u]->cond->expr);
             goto cleanup;
@@ -975,7 +975,7 @@ lys_compile_unres_must(struct lysc_ctx *ctx, const struct lysc_node *node, const
 
         /* check "must" */
         ret = lyxp_atomize(ctx->ctx, musts[u].cond, node->module, LY_VALUE_SCHEMA_RESOLVED, musts[u].prefixes, node,
-                &tmp_set, opts);
+                node, &tmp_set, opts);
         if (ret) {
             LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Invalid must condition \"%s\".", musts[u].cond->expr);
             goto cleanup;

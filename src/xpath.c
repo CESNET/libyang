@@ -9353,8 +9353,8 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 
 LY_ERR
 lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
+        const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
 {
     uint16_t tok_idx = 0;
     const struct lysc_node *snode;
@@ -9389,8 +9389,8 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
     set_insert_node(set, (struct lyd_node *)ctx_node, 0, ctx_node ? LYXP_NODE_ELEM : set->root_type, 0);
 
     set->ctx = (struct ly_ctx *)ctx;
-    set->cur_node = ctx_node;
-    for (set->context_op = ctx_node ? ctx_node->schema : NULL;
+    set->cur_node = cur_node;
+    for (set->context_op = cur_node ? cur_node->schema : NULL;
             set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
             set->context_op = set->context_op->parent) {}
     set->tree = tree;
@@ -9641,8 +9641,8 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target)
 
 LY_ERR
 lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
-        uint32_t options)
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *cur_scnode,
+        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR ret;
     uint16_t tok_idx = 0;
@@ -9661,8 +9661,8 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     set->val.scnodes[0].in_ctx = LYXP_SET_SCNODE_START;
 
     set->ctx = (struct ly_ctx *)ctx;
-    set->cur_scnode = ctx_scnode;
-    for (set->context_op = ctx_scnode;
+    set->cur_scnode = cur_scnode;
+    for (set->context_op = cur_scnode;
             set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
             set->context_op = set->context_op->parent) {}
     set->cur_mod = cur_mod;

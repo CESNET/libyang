@@ -2617,7 +2617,8 @@ lyd_find_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(tree), exp, NULL, format, prefix_data, ctx_node, tree, vars, &xp_set, LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(LYD_CTX(tree), exp, NULL, format, prefix_data, ctx_node, ctx_node, tree, vars, &xp_set,
+            LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -2688,7 +2689,8 @@ lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, vars, &xp_set, LYXP_IGNORE_WHEN);
+    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, ctx_node, vars, &xp_set,
+            LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into boolean */

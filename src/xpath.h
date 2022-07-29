@@ -329,7 +329,10 @@ const char *lyxp_token2str(enum lyxp_token tok);
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] format Format of the XPath expression (more specifically, of any used prefixes).
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
- * @param[in] ctx_node Current (context) data node, NULL in case of the root node.
+ * @param[in] cur_node Current data node, NULL in case of the root node. Equal to @p ctx_node unless a
+ * subexpression is being evaluated.
+ * @param[in] ctx_node Starting context data node, NULL in case of the root node. Equal to @p cur_node unless a
+ * subexpression is being evaluated.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node). Can be any node of the tree, it is adjusted.
  * @param[in] vars [Sized array](@ref sizedarrays) of XPath variables.
@@ -340,8 +343,8 @@ const char *lyxp_token2str(enum lyxp_token tok);
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
 LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *ctx_node, const struct lyd_node *tree,
-        const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options);
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
+        const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
@@ -351,14 +354,17 @@ LY_ERR lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const st
  * @param[in] cur_mod Current module for the expression (where it was "instantiated").
  * @param[in] format Format of the XPath expression (more specifically, of any used prefixes).
  * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
- * @param[in] ctx_scnode Current (context) schema node, NULL in case of the root node.
+ * @param[in] cur_scnode Current schema node, NULL in case of the root node. Equal to @p ctx_scnode unless a
+ * subexpression is being atomized.
+ * @param[in] ctx_scnode Starting context schema node, NULL in case of the root node. Equal to @p cur_scnode unless a
+ * subexpression is being atomized.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as ::lyxp_eval()).
  */
 LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
-        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_scnode, struct lyxp_set *set,
-        uint32_t options);
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *cur_scnode,
+        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);
 
 /** used only internally, maps with @ref findxpathoptions */
 #define LYXP_IGNORE_WHEN     0x01   /**< Ignore unevaluated when in data nodes and do not return ::LY_EINCOMPLETE. */

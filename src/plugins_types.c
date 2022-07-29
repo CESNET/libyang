@@ -878,7 +878,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     /* find all target data instances */
     ret = lyxp_eval(LYD_CTX(node), lref->path, node->schema->module, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
-            node, tree, NULL, &set, LYXP_IGNORE_WHEN);
+            node, node, tree, NULL, &set, LYXP_IGNORE_WHEN);
     if (ret) {
         if (ly_errcode(LYD_CTX(node)) == ret) {
             xp_err_msg = ly_errmsg(LYD_CTX(node));
