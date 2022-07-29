@@ -109,8 +109,31 @@ test_predicate(void **state)
 
     data =
             "<foo2 xmlns=\"urn:tests:a\">50</foo2>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a1</a>"
+            "  <b>b1</b>"
+            "  <c>c1</c>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a2</a>"
+            "  <b>b2</b>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a3</a>"
+            "  <b>b3</b>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a4</a>"
+            "  <b>b4</b>"
+            "  <c>c4</c>"
+            "</l1>"
+            "<l1 xmlns=\"urn:tests:a\">"
+            "  <a>a5</a>"
+            "  <b>b5</b>"
+            "  <c>c5</c>"
+            "</l1>"
             "<c xmlns=\"urn:tests:a\">"
-            "  <x>val</x>"
+            "  <x>key2</x>"
             "  <ll>"
             "    <a>key1</a>"
             "    <ll>"
@@ -137,6 +160,17 @@ test_predicate(void **state)
             "      <b>val22</b>"
             "    </ll>"
             "  </ll>"
+            "  <ll>"
+            "    <a>key3</a>"
+            "    <ll>"
+            "      <a>key31</a>"
+            "      <b>val31</b>"
+            "    </ll>"
+            "    <ll>"
+            "      <a>key32</a>"
+            "      <b>val32</b>"
+            "    </ll>"
+            "  </ll>"
             "</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
@@ -150,6 +184,20 @@ test_predicate(void **state)
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/c/child::ll[2]/preceding::ll[3]", &set));
     assert_int_equal(1, set->count);
     assert_string_equal("key11", lyd_get_value(lyd_child(set->dnodes[0])));
+    ly_set_free(set, NULL);
+
+    /* special predicate evaluated using hashes */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:l1[a=concat('a', '1')][b=substring('ab1',2)]", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[a=../x]", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    /* cannot use hashes */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[a=substring(ll/a,1,4)]", &set));
+    assert_int_equal(3, set->count);
     ly_set_free(set, NULL);
 
     lyd_free_all(tree);

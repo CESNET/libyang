@@ -7563,109 +7563,257 @@ eval_literal(const struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *se
 }
 
 /**
+ * @brief Check that a nametest in a predicate matches a key node.
+ *
+ * @param[in] nametest Nametest to check.
+ * @param[in] len Length of @p nametest.
+ * @param[in] ctx_scnode Found schema node as the context for the predicate.
+ * @param[in] set Context set.
+ * @param[in] key Expected key node.
+ * @return LY_SUCCESS on success,
+ * @return LY_ENOT if a predicate could not be compiled.
+ * @return LY_ERR on any error.
+ */
+static LY_ERR
+eval_name_test_try_compile_predicate_key(const char *nametest, uint32_t len, const struct lysc_node *ctx_scnode,
+        const struct lyxp_set *set, const struct lysc_node *key)
+{
+    const struct lys_module *mod;
+
+    /* prefix (module) */
+    LY_CHECK_RET(moveto_resolve_model(&nametest, &len, set, ctx_scnode, &mod));
+    if (mod != key->module) {
+        return LY_ENOT;
+    }
+
+    /* node name */
+    if (ly_strncmp(key->name, nametest, len)) {
+        return LY_ENOT;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Append a simple predicate for the node.
+ *
+ * @param[in] exp Full parsed XPath expression.
+ * @param[in] tok_idx Predicate start index in @p exp.
+ * @param[in] end_tok_idx Predicate end index in @p exp.
+ * @param[in] ctx_scnode Found schema node as the context for the predicate.
+ * @param[in] set Context set.
+ * @param[in] pred_node Node with the value referenced in the predicate.
+ * @param[in,out] pred Predicate to append to.
+ * @param[in,out] pred_len Length of @p pred, is updated.
+ * @return LY_SUCCESS on success,
+ * @return LY_ENOT if a predicate could not be compiled.
+ * @return LY_ERR on any error.
+ */
+static LY_ERR
+eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint16_t tok_idx, uint16_t end_tok_idx,
+        const struct lysc_node *ctx_scnode, const struct lyxp_set *set, const struct lysc_node *pred_node, char **pred,
+        uint32_t *pred_len)
+{
+    LY_ERR rc = LY_SUCCESS;
+    uint32_t i;
+    const struct lyd_node *siblings;
+    struct lyd_node *ctx_node;
+    struct lyxp_expr *val_exp = NULL;
+    struct lyxp_set set2 = {0};
+    char quot;
+
+    /* duplicate the value expression */
+    LY_CHECK_GOTO(rc = lyxp_expr_dup(set->ctx, exp, tok_idx, end_tok_idx, &val_exp), cleanup);
+
+    /* get its atoms */
+    LY_CHECK_GOTO(rc = lyxp_atomize(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data,
+            set->cur_node ? set->cur_node->schema : NULL, ctx_scnode, &set2, LYXP_SCNODE), cleanup);
+
+    /* check whether we can compile a single predicate (evaluation result value is always the same) */
+    for (i = 0; i < set2.used; ++i) {
+        if ((set2.val.scnodes[i].type != LYXP_NODE_ELEM) || (set2.val.scnodes[i].in_ctx < LYXP_SET_SCNODE_ATOM_NODE)) {
+            /* skip root and context node */
+            continue;
+        }
+
+        /* 1) context node descendants are traversed - value dependents on the specific context node instance */
+        if (set2.val.scnodes[i].scnode->parent == ctx_scnode) {
+            rc = LY_ENOT;
+            goto cleanup;
+        }
+
+        /* 2) multi-instance nodes (list or leaf-list) are traversed - all the instances need to be considered */
+        if (set2.val.scnodes[i].scnode->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+            rc = LY_ENOT;
+            goto cleanup;
+        }
+
+    }
+
+    /* get any data instance of the context node, we checked it makes no difference */
+    siblings = set->val.nodes[0].node ? lyd_child(set->val.nodes[0].node) : set->tree;
+    LY_CHECK_GOTO(rc = lyd_find_sibling_schema(siblings, ctx_scnode, &ctx_node), cleanup);
+
+    /* evaluate the value subexpression with the root context node */
+    lyxp_set_free_content(&set2);
+    LY_CHECK_GOTO(rc = lyxp_eval(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data, set->cur_node,
+            ctx_node, set->tree, NULL, &set2, 0), cleanup);
+
+    /* cast it into a string */
+    LY_CHECK_GOTO(rc = lyxp_set_cast(&set2, LYXP_SET_STRING), cleanup);
+
+    /* append the JSON predicate */
+    *pred = ly_realloc(*pred, *pred_len + 1 + strlen(pred_node->name) + 2 + strlen(set2.val.str) + 3);
+    LY_CHECK_ERR_GOTO(!*pred, LOGMEM(set->ctx); rc = LY_EMEM, cleanup);
+    quot = strchr(set2.val.str, '\'') ? '\"' : '\'';
+    *pred_len += sprintf(*pred + *pred_len, "[%s=%c%s%c]", pred_node->name, quot, set2.val.str, quot);
+
+cleanup:
+    lyxp_expr_free(set->ctx, val_exp);
+    lyxp_set_free_content(&set2);
+    return rc;
+}
+
+/**
  * @brief Try to compile list or leaf-list predicate in the known format to be used for hash-based instance search.
  *
  * @param[in] exp Full parsed XPath expression.
  * @param[in,out] tok_idx Index in @p exp at the beginning of the predicate, is updated on success.
- * @param[in] ctx_node Found schema node as the context for the predicate.
- * @param[in] cur_mod Current module for the expression.
- * @param[in] cur_node Current (original context) node.
- * @param[in] format Format of any prefixes in key names/values.
- * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
+ * @param[in] ctx_scnode Found schema node as the context for the predicate.
+ * @param[in] set Context set.
  * @param[out] predicates Parsed predicates.
  * @param[out] pred_type Type of @p predicates.
  * @return LY_SUCCESS on success,
+ * @return LY_ENOT if a predicate could not be compiled.
  * @return LY_ERR on any error.
  */
 static LY_ERR
-eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok_idx, const struct lysc_node *ctx_node,
-        const struct lys_module *cur_mod, const struct lysc_node *cur_node, LY_VALUE_FORMAT format, void *prefix_data,
-        struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
+eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok_idx, const struct lysc_node *ctx_scnode,
+        const struct lyxp_set *set, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
-    LY_ERR ret = LY_SUCCESS;
-    uint16_t key_count, e_idx, pred_idx = 0;
+    LY_ERR rc = LY_SUCCESS;
+    uint16_t e_idx, val_start_idx, pred_idx = 0;
     const struct lysc_node *key;
-    size_t pred_len;
-    uint32_t prev_lo;
+    uint32_t prev_lo, pred_len = 0;
+    char *pred = NULL;
     struct lyxp_expr *exp2 = NULL;
 
-    assert(ctx_node->nodetype & (LYS_LIST | LYS_LEAFLIST));
+    assert(ctx_scnode->nodetype & (LYS_LIST | LYS_LEAFLIST));
 
-    if (ctx_node->nodetype == LYS_LIST) {
+    /* turn logging off */
+    prev_lo = ly_log_options(0);
+
+    if (ctx_scnode->nodetype == LYS_LIST) {
+        /* check for predicates "[key1=...][key2=...]..." */
+
         /* get key count */
-        if (ctx_node->flags & LYS_KEYLESS) {
-            return LY_EINVAL;
+        if (ctx_scnode->flags & LYS_KEYLESS) {
+            rc = LY_ENOT;
+            goto cleanup;
         }
-        for (key_count = 0, key = lysc_node_child(ctx_node); key && (key->flags & LYS_KEY); key = key->next, ++key_count) {}
-        assert(key_count);
 
         /* learn where the predicates end */
         e_idx = *tok_idx;
-        while (key_count) {
+        for (key = lysc_node_child(ctx_scnode); key && (key->flags & LYS_KEY); key = key->next) {
             /* '[' */
             if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK1)) {
-                return LY_EINVAL;
+                rc = LY_ENOT;
+                goto cleanup;
             }
             ++e_idx;
 
             if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_NAMETEST)) {
-                /* definitely not a key */
-                return LY_EINVAL;
+                /* not a key */
+                rc = LY_ENOT;
+                goto cleanup;
             }
+
+            /* check key */
+            LY_CHECK_GOTO(rc = eval_name_test_try_compile_predicate_key(exp->expr + exp->tok_pos[e_idx],
+                    exp->tok_len[e_idx], ctx_scnode, set, key), cleanup);
+
+            ++e_idx;
+
+            if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_OPER_EQUAL)) {
+                /* not '=' */
+                rc = LY_ENOT;
+                goto cleanup;
+            }
+            ++e_idx;
+
+            /* value start */
+            val_start_idx = e_idx;
 
             /* ']' */
             while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
                 ++e_idx;
             }
-            ++e_idx;
 
-            /* another presumably key predicate parsed */
-            --key_count;
+            /* try to evaluate the value */
+            LY_CHECK_GOTO(rc = eval_name_test_try_compile_predicate_append(exp, val_start_idx, e_idx - 1, ctx_scnode,
+                    set, key, &pred, &pred_len), cleanup);
+
+            ++e_idx;
         }
     } else {
+        /* check for predicate "[.=...]" */
+
         /* learn just where this single predicate ends */
         e_idx = *tok_idx;
 
         /* '[' */
         if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK1)) {
-            return LY_EINVAL;
+            rc = LY_ENOT;
+            goto cleanup;
         }
         ++e_idx;
 
         if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_DOT)) {
-            /* definitely not the value */
-            return LY_EINVAL;
+            /* not the node value */
+            rc = LY_ENOT;
+            goto cleanup;
         }
+        ++e_idx;
+
+        if (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_OPER_EQUAL)) {
+            /* not '=' */
+            rc = LY_ENOT;
+            goto cleanup;
+        }
+        ++e_idx;
+
+        /* value start */
+        val_start_idx = e_idx;
 
         /* ']' */
         while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
             ++e_idx;
         }
+
+        /* try to evaluate the value */
+        LY_CHECK_GOTO(rc = eval_name_test_try_compile_predicate_append(exp, val_start_idx, e_idx - 1, ctx_scnode, set,
+                ctx_scnode, &pred, &pred_len), cleanup);
+
         ++e_idx;
     }
 
-    /* get the joined length of all the keys predicates/of the single leaf-list predicate */
-    pred_len = (exp->tok_pos[e_idx - 1] + exp->tok_len[e_idx - 1]) - exp->tok_pos[*tok_idx];
-
-    /* turn logging off */
-    prev_lo = ly_log_options(0);
-
     /* parse the predicate(s) */
-    LY_CHECK_GOTO(ret = ly_path_parse_predicate(ctx_node->module->ctx, ctx_node, exp->expr + exp->tok_pos[*tok_idx],
-            pred_len, LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp2), cleanup);
+    LY_CHECK_GOTO(rc = ly_path_parse_predicate(set->ctx, ctx_scnode, pred, pred_len, LY_PATH_PREFIX_OPTIONAL,
+            LY_PATH_PRED_SIMPLE, &exp2), cleanup);
 
     /* compile */
-    ret = ly_path_compile_predicate(ctx_node->module->ctx, cur_node, cur_mod, ctx_node, exp2, &pred_idx, format,
-            prefix_data, predicates, pred_type);
-    LY_CHECK_GOTO(ret, cleanup);
+    rc = ly_path_compile_predicate(set->ctx, set->cur_node ? set->cur_node->schema : NULL, set->cur_mod, ctx_scnode, exp2,
+            &pred_idx, LY_VALUE_JSON, NULL, predicates, pred_type);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* success, the predicate must include all the needed information for hash-based search */
     *tok_idx = e_idx;
 
 cleanup:
     ly_log_options(prev_lo);
-    lyxp_expr_free(ctx_node->module->ctx, exp2);
-    return ret;
+    lyxp_expr_free(set->ctx, exp2);
+    free(pred);
+    return rc;
 }
 
 /**
@@ -7867,8 +8015,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, en
 
         if (scnode && (scnode->nodetype & (LYS_LIST | LYS_LEAFLIST))) {
             /* try to create the predicates */
-            if (eval_name_test_try_compile_predicates(exp, tok_idx, scnode, set->cur_mod, set->cur_node ?
-                    set->cur_node->schema : NULL, set->format, set->prefix_data, &predicates, &pred_type)) {
+            if (eval_name_test_try_compile_predicates(exp, tok_idx, scnode, set, &predicates, &pred_type)) {
                 /* hashes cannot be used */
                 scnode = NULL;
             }
