@@ -7822,7 +7822,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, en
 {
     LY_ERR rc = LY_SUCCESS, r;
     const char *ncname, *ncname_dict = NULL;
-    uint16_t ncname_len;
+    uint32_t i, ncname_len;
     const struct lys_module *moveto_mod = NULL;
     const struct lysc_node *scnode = NULL;
     struct ly_path_predicate *predicates = NULL;
@@ -7857,7 +7857,7 @@ eval_name_test_with_predicate(const struct lyxp_expr *exp, uint16_t *tok_idx, en
     if (((set->format == LY_VALUE_JSON) || moveto_mod) && (axis == LYXP_AXIS_CHILD) && !all_desc &&
             (set->type == LYXP_SET_NODE_SET)) {
         /* find the matching schema node in some parent in the context */
-        for (uint32_t i = 0; i < set->used; ++i) {
+        for (i = 0; i < set->used; ++i) {
             if (eval_name_test_with_predicate_get_scnode(set->ctx, set->val.nodes[i].node, ncname, ncname_len,
                     moveto_mod, set->root_type, set->format, &scnode)) {
                 /* check failed */
@@ -7897,8 +7897,8 @@ moveto:
         }
     } else {
         if (!(options & LYXP_SKIP_EXPR) && (options & LYXP_SCNODE_ALL)) {
-            int64_t i;
             const struct lyxp_set_scnode *scparent = NULL;
+            ly_bool found = 0;
 
             /* remember parent if there is only one, to print in the warning */
             for (i = 0; i < set->used; ++i) {
@@ -7927,12 +7927,15 @@ moveto:
             }
             LY_CHECK_GOTO(rc, cleanup);
 
-            for (i = set->used - 1; i > -1; --i) {
+            i = set->used;
+            do {
+                --i;
                 if (set->val.scnodes[i].in_ctx > LYXP_SET_SCNODE_ATOM_NODE) {
+                    found = 1;
                     break;
                 }
-            }
-            if (i == -1) {
+            } while (i);
+            if (!found) {
                 /* generate message */
                 eval_name_test_scnode_no_match_msg(set, scparent, ncname, ncname_len, exp->expr, options);
 
