@@ -45,7 +45,7 @@
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *tok_idx, uint16_t depth);
 static LY_ERR eval_expr_select(const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type etype,
         struct lyxp_set *set, uint32_t options);
-static LY_ERR moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_set *set,
+static LY_ERR moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
         const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod);
 static LY_ERR moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_type,
         const struct lyd_node *node, enum lyxp_node_type node_type, enum lyxp_axis axis, struct lyxp_set *set);
@@ -4041,7 +4041,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 static LY_ERR
 xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, ly_bool self_match, const char *func)
 {
-    uint32_t i;
+    uint32_t i, id_len;
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
@@ -4049,7 +4049,6 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     struct lyd_value *val;
     const struct lys_module *mod;
     const char *id_name;
-    uint16_t id_len;
     struct lysc_ident *id;
     LY_ERR rc = LY_SUCCESS;
     ly_bool found;
@@ -5565,7 +5564,7 @@ xpath_pi_text(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
  * @return LY_ERR
  */
 static LY_ERR
-moveto_resolve_model(const char **qname, uint16_t *qname_len, const struct lyxp_set *set,
+moveto_resolve_model(const char **qname, uint32_t *qname_len, const struct lyxp_set *set,
         const struct lysc_node *ctx_scnode, const struct lys_module **moveto_mod)
 {
     const struct lys_module *mod = NULL;
