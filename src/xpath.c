@@ -8548,15 +8548,15 @@ eval_variable_reference(const struct lyxp_expr *exp, uint16_t *tok_idx, struct l
     struct lyxp_var *var;
     const struct lyxp_var *vars;
     struct lyxp_expr *tokens = NULL;
-    uint16_t token_index;
+    uint16_t token_index, name_len;
 
     vars = set->vars;
 
     /* find out the name and value of the variable */
     name = &exp->expr[exp->tok_pos[*tok_idx]];
-    ret = lyxp_vars_find((struct lyxp_var *)vars, name, exp->tok_len[*tok_idx], &var);
-    LY_CHECK_ERR_RET(ret, LOGERR(set->ctx, ret,
-            "XPath variable \"%s\" not defined.", name), ret);
+    name_len = exp->tok_len[*tok_idx];
+    ret = lyxp_vars_find((struct lyxp_var *)vars, name, name_len, &var);
+    LY_CHECK_ERR_RET(ret, LOGERR(set->ctx, ret, "XPath variable \"%.*s\" not defined.", (int)name_len, name), ret);
 
     /* parse value */
     ret = lyxp_expr_parse(set->ctx, var->value, 0, 1, &tokens);
