@@ -406,7 +406,7 @@ lysp_type_dup(const struct ly_ctx *ctx, struct lysp_type *type, const struct lys
     DUP_ARRAY(ctx, orig_type->patterns, type->patterns, lysp_restr_dup);
     DUP_ARRAY(ctx, orig_type->enums, type->enums, lysp_type_enum_dup);
     DUP_ARRAY(ctx, orig_type->bits, type->bits, lysp_type_enum_dup);
-    LY_CHECK_GOTO(ret = lyxp_expr_dup(ctx, orig_type->path, &type->path), done);
+    LY_CHECK_GOTO(ret = lyxp_expr_dup(ctx, orig_type->path, 0, 0, &type->path), done);
     DUP_ARRAY(ctx, orig_type->bases, type->bases, lysp_string_dup);
     DUP_ARRAY(ctx, orig_type->types, type->types, lysp_type_dup);
     DUP_ARRAY(ctx, orig_type->exts, type->exts, lysp_ext_dup);

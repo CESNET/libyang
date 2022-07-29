@@ -1575,7 +1575,7 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
                     lref = (struct lysc_type_leafref *)utypes[u + additional];
 
                     lref->basetype = LY_TYPE_LEAFREF;
-                    ret = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, &lref->path);
+                    ret = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)un_aux->types[v])->path, 0, 0, &lref->path);
                     LY_CHECK_GOTO(ret, error);
                     lref->refcount = 1;
                     lref->require_instance = ((struct lysc_type_leafref *)un_aux->types[v])->require_instance;
@@ -1828,11 +1828,11 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
         if (type_p->path) {
             LY_VALUE_FORMAT format;
 
-            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, type_p->path, &lref->path));
+            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, type_p->path, 0, 0, &lref->path));
             LY_CHECK_RET(lyplg_type_prefix_data_new(ctx->ctx, type_p->path->expr, strlen(type_p->path->expr),
                     LY_VALUE_SCHEMA, type_p->pmod, &format, (void **)&lref->prefixes));
         } else if (base) {
-            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, &lref->path));
+            LY_CHECK_RET(lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, 0, 0, &lref->path));
             LY_CHECK_RET(lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
                     ((struct lysc_type_leafref *)base)->prefixes, (void **)&lref->prefixes));
         } else if (tpdfname) {

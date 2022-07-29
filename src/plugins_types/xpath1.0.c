@@ -464,7 +464,7 @@ lyplg_type_dup_xpath10(const struct ly_ctx *ctx, const struct lyd_value *origina
     dup_val->ctx = ctx;
 
     LYD_VALUE_GET(original, orig_val);
-    ret = lyxp_expr_dup(ctx, orig_val->exp, &dup_val->exp);
+    ret = lyxp_expr_dup(ctx, orig_val->exp, 0, 0, &dup_val->exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     ret = lyplg_type_prefix_data_dup(ctx, orig_val->format, orig_val->prefix_data, &dup_val->prefix_data);

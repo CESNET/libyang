@@ -446,12 +446,17 @@ LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t ex
 /**
  * @brief Duplicate parsed XPath expression.
  *
+ * If @p start_idx and @p end_idx are both 0, the whole expression is duplicated.
+ *
  * @param[in] ctx Context with a dictionary.
  * @param[in] exp Parsed expression.
+ * @param[in] start_idx Starting @p exp index to duplicate.
+ * @param[in] end_idx Last @p exp index to duplicate.
  * @param[out] dup Duplicated structure.
  * @return LY_ERR value.
  */
-LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp_expr **dup);
+LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t start_idx, uint16_t end_idx,
+        struct lyxp_expr **dup);
 
 /**
  * @brief Look at the next token and check its kind.

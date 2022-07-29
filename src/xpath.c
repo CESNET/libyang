@@ -3169,55 +3169,84 @@ error:
 }
 
 LY_ERR
-lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, struct lyxp_expr **dup_p)
+lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t start_idx, uint16_t end_idx,
+        struct lyxp_expr **dup_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *dup = NULL;
-    uint32_t i, j;
+    uint16_t used = 0, i, j, k, expr_len;
+    const char *expr_start;
+
+    assert((!start_idx && !end_idx) || ((start_idx < exp->used) && (end_idx < exp->used) && (start_idx <= end_idx)));
 
     if (!exp) {
         goto cleanup;
     }
 
+    if (!start_idx && !end_idx) {
+        end_idx = exp->used - 1;
+    }
+
+    expr_start = exp->expr + exp->tok_pos[start_idx];
+    expr_len = (exp->tok_pos[end_idx] + exp->tok_len[end_idx]) - exp->tok_pos[start_idx];
+
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_GOTO(!dup, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 
     if (exp->used) {
-        dup->tokens = malloc(exp->used * sizeof *dup->tokens);
+        used = (end_idx - start_idx) + 1;
+
+        dup->tokens = malloc(used * sizeof *dup->tokens);
         LY_CHECK_ERR_GOTO(!dup->tokens, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        memcpy(dup->tokens, exp->tokens, exp->used * sizeof *dup->tokens);
+        memcpy(dup->tokens, exp->tokens + start_idx, used * sizeof *dup->tokens);
 
-        dup->tok_pos = malloc(exp->used * sizeof *dup->tok_pos);
+        dup->tok_pos = malloc(used * sizeof *dup->tok_pos);
         LY_CHECK_ERR_GOTO(!dup->tok_pos, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        memcpy(dup->tok_pos, exp->tok_pos, exp->used * sizeof *dup->tok_pos);
+        memcpy(dup->tok_pos, exp->tok_pos + start_idx, used * sizeof *dup->tok_pos);
 
-        dup->tok_len = malloc(exp->used * sizeof *dup->tok_len);
+        if (start_idx) {
+            /* fix the indices in the expression */
+            for (i = 0; i < used; ++i) {
+                dup->tok_pos[i] -= expr_start - exp->expr;
+            }
+        }
+
+        dup->tok_len = malloc(used * sizeof *dup->tok_len);
         LY_CHECK_ERR_GOTO(!dup->tok_len, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        memcpy(dup->tok_len, exp->tok_len, exp->used * sizeof *dup->tok_len);
+        memcpy(dup->tok_len, exp->tok_len + start_idx, used * sizeof *dup->tok_len);
 
         if (exp->repeat) {
-            dup->repeat = malloc(exp->used * sizeof *dup->repeat);
+            dup->repeat = malloc(used * sizeof *dup->repeat);
             LY_CHECK_ERR_GOTO(!dup->repeat, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-            for (i = 0; i < exp->used; ++i) {
+            for (i = start_idx; i <= end_idx; ++i) {
                 if (!exp->repeat[i]) {
-                    dup->repeat[i] = NULL;
+                    dup->repeat[i - start_idx] = NULL;
                 } else {
                     for (j = 0; exp->repeat[i][j]; ++j) {}
                     /* the ending 0 as well */
                     ++j;
 
-                    dup->repeat[i] = malloc(j * sizeof **dup->repeat);
-                    LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx); ret = LY_EMEM, cleanup);
-                    memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
-                    dup->repeat[i][j - 1] = 0;
+                    dup->repeat[i - start_idx] = malloc(j * sizeof **dup->repeat);
+                    LY_CHECK_ERR_GOTO(!dup->repeat[i - start_idx], LOGMEM(ctx); ret = LY_EMEM, cleanup);
+                    memcpy(dup->repeat[i - start_idx], exp->repeat[i], j * sizeof **dup->repeat);
+                    dup->repeat[i - start_idx][j - 1] = 0;
+
+                    if (start_idx) {
+                        /* fix the indices in the tokens */
+                        for (k = 0; k < j; ++k) {
+                            dup->repeat[i - start_idx][k] -= start_idx;
+                        }
+                    }
                 }
             }
         }
     }
 
-    dup->used = exp->used;
-    dup->size = exp->used;
-    LY_CHECK_GOTO(ret = lydict_insert(ctx, exp->expr, 0, &dup->expr), cleanup);
+    dup->used = used;
+    dup->size = used;
+
+    /* copy only subexpression */
+    LY_CHECK_GOTO(ret = lydict_insert(ctx, expr_start, expr_len, &dup->expr), cleanup);
 
 cleanup:
     if (ret) {
