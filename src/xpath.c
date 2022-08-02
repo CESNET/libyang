@@ -7773,6 +7773,11 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok
 
             /* ']' */
             while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
+                if (!lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_OPER_LOG)) {
+                    /* higher priority than '=' */
+                    rc = LY_ENOT;
+                    goto cleanup;
+                }
                 ++e_idx;
             }
 
@@ -7814,6 +7819,11 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint16_t *tok
 
         /* ']' */
         while (lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_BRACK2)) {
+            if (!lyxp_check_token(NULL, exp, e_idx, LYXP_TOKEN_OPER_LOG)) {
+                /* higher priority than '=' */
+                rc = LY_ENOT;
+                goto cleanup;
+            }
             ++e_idx;
         }
 
