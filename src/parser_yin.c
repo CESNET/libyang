@@ -355,6 +355,7 @@ subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_nod
         /* DEST */
         if (IS_NODE_ELEM((*result)[i].type)) {
             struct tree_node_meta *node_meta = NULL;
+
             node_meta = calloc(1, sizeof *node_meta);
             LY_CHECK_GOTO(!node_meta, mem_err);
             node_meta->parent = parent;
@@ -362,6 +363,7 @@ subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_nod
             (*result)[i].dest = node_meta;
         } else if ((*result)[i].type == LY_STMT_IMPORT) {
             struct import_meta *imp_meta = NULL;
+
             imp_meta = calloc(1, sizeof *imp_meta);
             LY_CHECK_GOTO(!imp_meta, mem_err);
             imp_meta->prefix = va_arg(ap, const char *);
@@ -369,6 +371,7 @@ subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_nod
             (*result)[i].dest = imp_meta;
         } else if ((*result)[i].type == LY_STMT_INCLUDE) {
             struct include_meta *inc_meta = NULL;
+
             inc_meta = calloc(1, sizeof *inc_meta);
             LY_CHECK_GOTO(!inc_meta, mem_err);
             inc_meta->name = va_arg(ap, const char *);
@@ -376,6 +379,7 @@ subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_nod
             (*result)[i].dest = inc_meta;
         } else if (((*result)[i].type == LY_STMT_INPUT) || ((*result)[i].type == LY_STMT_OUTPUT)) {
             struct inout_meta *inout_meta = NULL;
+
             inout_meta = calloc(1, sizeof *inout_meta);
             LY_CHECK_GOTO(!inout_meta, mem_err);
             inout_meta->parent = parent;
@@ -1250,6 +1254,7 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
     /* type as child of another type */
     if (parent == LY_STMT_TYPE) {
         struct lysp_type *nested_type = NULL;
+
         LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, type->types, nested_type, LY_EMEM);
         type->flags |= LYS_SET_TYPE;
         type = nested_type;
@@ -2691,6 +2696,7 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
         struct yin_subelement subelems[] = {
             {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
         };
+
         ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_DEVIATE, NULL, &d->exts);
 
     } else if (dev_mod == LYS_DEV_ADD) {
@@ -2710,6 +2716,7 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
             {LY_STMT_UNITS, &d_add->units, YIN_SUBELEM_UNIQUE},
             {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
         };
+
         ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_DEVIATE, NULL, &d_add->exts);
 
     } else if (dev_mod == LYS_DEV_REPLACE) {
@@ -2728,6 +2735,7 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
             {LY_STMT_UNITS, &d_rpl->units, YIN_SUBELEM_UNIQUE},
             {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
         };
+
         ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems),  LY_STMT_DEVIATE, NULL, &d_rpl->exts);
 
     } else {
@@ -2741,6 +2749,7 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
             {LY_STMT_UNITS, &d_del->units, YIN_SUBELEM_UNIQUE},
             {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
         };
+
         ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_DEVIATE, NULL, &d_del->exts);
     }
     LY_CHECK_GOTO(ret, cleanup);

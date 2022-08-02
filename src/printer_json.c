@@ -79,6 +79,7 @@ matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
         /* compare node names */
         struct lyd_node_opaq *onode1 = (struct lyd_node_opaq *)node1;
         struct lyd_node_opaq *onode2 = (struct lyd_node_opaq *)node2;
+
         if ((onode1->name.name != onode2->name.name) || (onode1->name.prefix != onode2->name.prefix)) {
             return 0;
         }
@@ -197,6 +198,7 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
     } else {
         const char *pref1 = node_prefix(node1);
         const char *pref2 = node_prefix(node2);
+
         if ((pref1 && pref2) && (pref1 == pref2)) {
             return 0;
         } else {
@@ -224,6 +226,7 @@ json_print_string(struct ly_out *out, const char *text)
     ly_write_(out, "\"", 1);
     for (i = n = 0; text[i]; i++) {
         const unsigned char ascii = text[i];
+
         if (ascii < 0x20) {
             /* control character */
             ly_print_(out, "\\u%.4X", ascii);

@@ -136,6 +136,7 @@ struct ly_out_clb_arg {
  */
 struct trt_cf_print {
     const struct trt_tree_ctx *ctx;                             /**< Context of libyang tree. */
+
     void (*pf)(const struct trt_tree_ctx *, struct ly_out *);   /**< Pointing to function which printing list's keys or features. */
 };
 
@@ -690,6 +691,7 @@ struct trt_tree_ctx {
     const struct lysp_module *pmod;                 /**< Parsed YANG schema tree. */
     const struct lysc_module *cmod;                 /**< Compiled YANG schema tree. */
     const struct lysp_node *pn;                     /**< Actual pointer to parsed node. */
+
     union {
         const struct lysp_node *tpn;                /**< Pointer to actual top-node. */
         const struct lysp_ext_instance *tpn_ext;    /**< Actual top-node is extension. Item trt_tree_ctx.section
@@ -799,6 +801,7 @@ trg_word_is_present(const char *src, const char *word, char delim)
              * OR end of word was match somewhere before delim
              */
             char delim_or_end = (hit + strlen(word))[0];
+
             if ((delim_or_end == '\0') || (delim_or_end == delim)) {
                 return 1;
             }
@@ -1463,6 +1466,7 @@ trt_print_keyword_stmt_str(struct trt_keyword_stmt ks, size_t mll, struct ly_out
         uint32_t ind;
         /* skip slash */
         const char *tmp = sub_ptr[0] == '/' ? sub_ptr + 1 : sub_ptr;
+
         /* get position of the end of substr */
         tmp = strchr(tmp, '/');
         /* set correct size if this is a last substring */
@@ -2662,6 +2666,7 @@ trop_node_charptr(uint16_t flags, trt_get_charptr_func f, const struct lysp_node
 {
     if (pn->nodetype & flags) {
         const char *ret = f(pn);
+
         return trg_charptr_has_data(ret) ? ret : NULL;
     } else {
         return NULL;
@@ -3417,6 +3422,7 @@ trb_parent_is_last_sibling(struct trt_fp_all fp, struct trt_tree_ctx *tc)
 {
     if (fp.modify.parent(tc)) {
         ly_bool ret = fp.read.if_sibling_exists(tc);
+
         fp.modify.next_child(TRP_EMPTY_PARENT_CACHE, tc);
         return !ret;
     } else {
@@ -3448,6 +3454,7 @@ trb_maxlen_node_name(struct trt_parent_cache ca, struct trt_printer_ctx *pc, str
             !trp_node_is_empty(node);
             node = pc->fp.modify.next_sibling(ca, tc)) {
         int32_t maxlen = trb_strlen_of_name_and_mark(node.name);
+
         ret = abs(maxlen) > abs(ret) ? maxlen : ret;
     }
     pc->fp.modify.first_sibling(tc);
@@ -3581,6 +3588,7 @@ trb_print_nodes(struct trt_wrapper wr, struct trt_parent_cache ca, struct trt_pr
     do {
         struct trt_parent_cache new_ca;
         struct trt_node node;
+
         node = pc->fp.read.node(ca, tc);
 
         if (!trb_need_implicit_node_case(tc)) {

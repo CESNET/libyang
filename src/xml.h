@@ -82,6 +82,7 @@ struct lyxml_ctx {
 
     enum LYXML_PARSER_STATUS status; /* status providing information about the last parsed object, following attributes
                                         are filled based on it */
+
     union {
         const char *prefix; /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr prefix */
         const char *value;  /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value */

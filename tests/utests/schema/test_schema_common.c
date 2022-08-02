@@ -942,6 +942,7 @@ test_includes(void **state)
             {"sub_a_two", "submodule sub_a_two { belongs-to main_a { prefix ma; } }"},
             {NULL, NULL}
         };
+
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_a", NULL, NULL);
         assert_non_null(mod);
@@ -957,6 +958,7 @@ test_includes(void **state)
             {"sub_b_two", "submodule sub_b_two { yang-version 1.1; belongs-to main_b { prefix mb; } }"},
             {NULL, NULL}
         };
+
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_b", NULL, NULL);
         assert_null(mod);
@@ -979,6 +981,7 @@ test_includes(void **state)
             {"sub_c_two", "submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_one;}"},
             {NULL, NULL}
         };
+
         ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
         mod = ly_ctx_load_module(UTEST_LYCTX, "main_c", NULL, NULL);
         assert_non_null(mod);

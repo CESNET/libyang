@@ -139,12 +139,14 @@ binary_base64_decode(const char *value, size_t value_len, void **data, size_t *s
 
     for (uint32_t i = 0, j = 0; i < octet_count; i += 4) {
         int n = b64_dtable[ptr[i]] << 18 | b64_dtable[ptr[i + 1]] << 12 | b64_dtable[ptr[i + 2]] << 6 | b64_dtable[ptr[i + 3]];
+
         str[j++] = n >> 16;
         str[j++] = n >> 8 & 0xFF;
         str[j++] = n & 0xFF;
     }
     if (pad_chars) {
         int n = b64_dtable[ptr[octet_count]] << 18 | b64_dtable[ptr[octet_count + 1]] << 12;
+
         str[*size - pad_chars] = n >> 16;
 
         if (pad_chars == 2) {
@@ -205,6 +207,7 @@ binary_base64_validate(const char *value, size_t value_len, const struct lysc_ty
     /* length restriction of the binary value */
     if (type->length) {
         const uint32_t octet_count = ((idx + pad) / 4) * 3 - pad;
+
         LY_CHECK_RET(lyplg_type_validate_range(LY_TYPE_BINARY, type->length, octet_count, value, value_len, err));
     }
 

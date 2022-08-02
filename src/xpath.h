@@ -253,6 +253,7 @@ struct lyxp_var {
  */
 struct lyxp_set {
     enum lyxp_set_type type;             /**< Type of the object (value). */
+
     union {
         struct lyxp_set_node {
             struct lyd_node *node;       /**< Data node. */
@@ -299,6 +300,7 @@ struct lyxp_set {
 
     /* general context */
     struct ly_ctx *ctx;                     /**< General context for logging. */
+
     union {
         const struct lyd_node *cur_node;    /**< Current (original context) node. */
         const struct lysc_node *cur_scnode; /**< Current (original context) compiled node. */

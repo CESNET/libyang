@@ -138,6 +138,7 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
     do {
         const struct lysc_when *when;
         struct lysc_when **when_list = lysc_node_when(schema);
+
         LY_ARRAY_FOR(when_list, u) {
             when = when_list[u];
 
@@ -286,6 +287,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
     if (node_when) {
         /* evaluate all when conditions */
         uint32_t prev_count;
+
         do {
             prev_count = node_when->count;
             LY_CHECK_RET(lyd_validate_unres_when(tree, mod, node_when, when_xp_opts, node_types, diff));

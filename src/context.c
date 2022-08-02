@@ -614,12 +614,14 @@ lysc_node_clear_all_priv(struct lys_module *mod)
      */
     if (mod->parsed) {
         struct lysp_ext_instance *exts_p;
+
         exts_p = mod->parsed->exts;
         LY_ARRAY_FOR(exts_p, u) {
             if (exts_p[u].parsed) {
                 /* lys_compile_extension_instance() was called */
                 struct lysc_ext_substmt *substmts;
                 struct lysc_node *root;
+
                 /* set NULL for all ::lysc_node.priv pointers in extensions */
                 substmts = mod->compiled->exts[u].substmts;
                 LY_ARRAY_FOR(substmts, v) {

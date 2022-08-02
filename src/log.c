@@ -286,6 +286,7 @@ ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, co
 
     if (path) {
         char *s = strdup(path);
+
         LY_CHECK_ERR_RET(!s, LOGMEM(NULL), );
         ly_set_add(&log_location.paths, s, 1, NULL);
     } else if (reset) {

@@ -20,8 +20,6 @@
 #include "schema_compile.h"
 #include "tests_config.h"
 #include "tree_schema_internal.h"
-#include "utests.h"
-
 #ifdef _WIN32
 static void
 slashes_to_backslashes(char *path)

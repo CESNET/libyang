@@ -114,6 +114,7 @@ xml_print_ns_opaq(struct xmlpr_ctx *pctx, LY_VALUE_FORMAT format, const struct l
     case LY_VALUE_JSON:
         if (name->module_name) {
             const struct lys_module *mod = ly_ctx_get_module_latest(pctx->ctx, name->module_name);
+
             if (mod) {
                 return xml_print_ns(pctx, mod->ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : name->prefix, prefix_opts);
             }
@@ -318,6 +319,7 @@ xml_print_term(struct xmlpr_ctx *pctx, const struct lyd_node_term *node)
     /* print namespaces connected with the values's prefixes */
     for (uint32_t u = 0; u < ns_list.count; ++u) {
         const struct lys_module *mod = (const struct lys_module *)ns_list.objs[u];
+
         ly_print_(pctx->out, " xmlns:%s=\"%s\"", mod->prefix, mod->ns);
     }
     ly_set_erase(&ns_list, NULL);

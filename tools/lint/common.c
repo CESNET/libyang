@@ -111,6 +111,7 @@ get_features(struct ly_set *fset, const char *module, const char ***features)
     /* get features list for this module */
     for (uint32_t u = 0; u < fset->count; ++u) {
         struct schema_features *sf = (struct schema_features *)fset->objs[u];
+
         if (!strcmp(module, sf->mod_name)) {
             /* matched module - explicitly set features */
             *features = (const char **)sf->features;
@@ -396,6 +397,7 @@ print_list(struct ly_out *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
         /* submodules print */
         if (mod->parsed && mod->parsed->includes) {
             uint64_t u = 0;
+
             ly_print(out, " (");
             LY_ARRAY_FOR(mod->parsed->includes, u) {
                 ly_print(out, "%s%s", !u ? "" : ",", mod->parsed->includes[u].name);
@@ -434,6 +436,7 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
     } else {
         for (uint32_t u = 0; u < set->count; ++u) {
             struct lyd_node *node = (struct lyd_node *)set->objs[u];
+
             printf("  %s \"%s\"", lys_nodetype2str(node->schema->nodetype), node->schema->name);
             if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
                 printf(" (value: \"%s\")\n", lyd_get_value(node));
@@ -473,6 +476,7 @@ process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, LYD_FOR
 
     for (uint32_t u = 0; u < inputs->count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)inputs->objs[u];
+
         switch (data_type) {
         case LYD_TYPE_DATA_YANG:
             ret = lyd_parse_data(ctx, NULL, input_f->in, input_f->format, options_parse, options_validate, &tree);

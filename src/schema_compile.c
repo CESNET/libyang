@@ -565,12 +565,14 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                 case LY_STMT_USES:
                     if (!ext_p->parsed) {
                         struct lysp_ext_instance *unconst_ext_p;
+
                         r = lysp_stmt_parse(ctx, stmt, &parsed, NULL);
                         LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
                         unconst_ext_p = (struct lysp_ext_instance *)ext_p;
                         unconst_ext_p->parsed = parsed;
                     } else {
                         struct lysp_node *node, *last_node = NULL;
+
                         /* get last parsed node */
                         LY_LIST_FOR(ext_p->parsed, node) {
                             last_node = node;
@@ -601,6 +603,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                     } else {
                         /* sized array */
                         const char ***strings_array = (const char ***)ext->substmts[u].storage;
+
                         LY_ARRAY_NEW_GOTO(ctx->ctx, *strings_array, str_p, ret, cleanup);
                     }
                     r = lydict_insert(ctx->ctx, stmt->arg, 0, str_p);
@@ -641,6 +644,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                     } else {
                         /* sized array */
                         struct lysc_type ***types = (struct lysc_type ***)ext->substmts[u].storage, **type = NULL;
+
                         LY_ARRAY_NEW_GOTO(ctx->ctx, *types, type, ret, cleanup);
                         compiled = (void *)type;
                     }
@@ -740,6 +744,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                     if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                         /* try to find this node in our set */
                         uint32_t idx;
+
                         if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) &&
                                 (set->val.scnodes[idx].in_ctx == LYXP_SET_SCNODE_START_USED)) {
                             LOGVAL(set->ctx, LYVE_SEMANTICS, "When condition cyclic dependency on the node \"%s\".",
@@ -1464,6 +1469,7 @@ resolve_all:
     while (ds_unres->musts.count) {
         i = ds_unres->musts.count - 1;
         struct lysc_unres_must *m = ds_unres->musts.objs[i];
+
         cctx.cur_mod = m->node->module;
         cctx.pmod = m->node->module->parsed;
 
@@ -1495,6 +1501,7 @@ resolve_all:
     while (ds_unres->dflts.count) {
         i = ds_unres->dflts.count - 1;
         struct lysc_unres_dflt *r = ds_unres->dflts.objs[i];
+
         cctx.cur_mod = r->leaf->module;
         cctx.pmod = r->leaf->module->parsed;
 

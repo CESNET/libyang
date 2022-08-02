@@ -1010,6 +1010,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, ly_bool unlink)
     if (node->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
         /* inouts are part of actions and cannot be unlinked/freed separately, we can only free all the children */
         struct lysc_node_action_inout *inout = (struct lysc_node_action_inout *)node;
+
         LY_LIST_FOR_SAFE(inout->child, next, iter) {
             lysc_node_free_(ctx, iter);
         }
@@ -1173,6 +1174,7 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
             if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
                 /* single item */
                 const char *str = *((const char **)substmts[u].storage);
+
                 if (!str) {
                     break;
                 }
@@ -1180,6 +1182,7 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
             } else {
                 /* multiple items */
                 const char **strs = *((const char ***)substmts[u].storage);
+
                 if (!strs) {
                     break;
                 }
@@ -1188,6 +1191,7 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
             break;
         case LY_STMT_IF_FEATURE: {
             struct lysc_iffeature *iff = *((struct lysc_iffeature **)substmts[u].storage);
+
             if (!iff) {
                 break;
             }
@@ -1200,23 +1204,25 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
                 FREE_ARRAY(ctx, iff, lysc_iffeature_free);
             }
             break;
-        case LY_STMT_TYPE:
-            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                /* single item */
-                struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
-                if (!type) {
-                    break;
+            case LY_STMT_TYPE:
+                if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                    /* single item */
+                    struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
+
+                    if (!type) {
+                        break;
+                    }
+                    lysc_type_free(ctx, type);
+                } else {
+                    /* multiple items */
+                    struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
+
+                    if (!types) {
+                        break;
+                    }
+                    FREE_ARRAY(ctx, types, lysc_type2_free);
                 }
-                lysc_type_free(ctx, type);
-            } else {
-                /* multiple items */
-                struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
-                if (!types) {
-                    break;
-                }
-                FREE_ARRAY(ctx, types, lysc_type2_free);
-            }
-            break;
+                break;
         }
 
         /* TODO other statements */

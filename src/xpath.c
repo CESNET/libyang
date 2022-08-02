@@ -887,6 +887,7 @@ set_copy(struct lyxp_set *set)
             if ((set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_ATOM_CTX) ||
                     (set->val.scnodes[i].in_ctx == LYXP_SET_SCNODE_START)) {
                 uint32_t idx;
+
                 LY_CHECK_ERR_RET(set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type,
                         set->val.scnodes[i].axis, &idx), lyxp_set_free(ret), NULL);
                 /* coverity seems to think scnodes can be NULL */
@@ -4563,6 +4564,7 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, uin
 
     if (mod && name) {
         int rc = asprintf(&str, "%s:%s", ly_get_prefix(mod, set->format, set->prefix_data), name);
+
         LY_CHECK_ERR_RET(rc == -1, LOGMEM(set->ctx), LY_EMEM);
         set_fill_string(set, str, strlen(str));
         free(str);

@@ -84,8 +84,7 @@ typedef uint8_t ly_bool;
  * @typedef LY_LOG_LEVEL
  * @brief Verbosity levels of the libyang logger.
  */
-typedef enum
-{
+typedef enum {
     LY_LLERR = 0, /**< Print only error messages. */
     LY_LLWRN = 1, /**< Print error and warning messages, default value. */
     LY_LLVRB = 2, /**< Besides errors and warnings, print some other verbose messages. */

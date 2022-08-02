@@ -307,6 +307,7 @@ get_features_not_applied(const struct ly_set *fset)
 {
     for (uint32_t u = 0; u < fset->count; ++u) {
         struct schema_features *sf = fset->objs[u];
+
         if (!sf->applied) {
             return sf;
         }
@@ -903,6 +904,7 @@ main_ni(int argc, char *argv[])
                 }
             } else if (c.submodule) {
                 const struct lysp_submodule *submod = ly_ctx_get_submodule_latest(c.ctx, c.submodule);
+
                 if (!submod) {
                     YLMSG_E("Unable to find submodule %s.\n", c.submodule);
                     goto cleanup;

@@ -48,6 +48,7 @@ struct stmt_info_s {
     const char *name;      /**< name of the statement */
     const char *arg;       /**< name of YIN's attribute to present the statement */
     uint8_t flags;         /**< various flags to clarify printing of the statement */
+
 #define STMT_FLAG_YIN 0x1 /**< has YIN element */
 #define STMT_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
 };

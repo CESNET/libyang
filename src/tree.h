@@ -199,8 +199,7 @@ extern "C" {
 /**
  * @brief YANG built-in types
  */
-typedef enum
-{
+typedef enum {
     LY_TYPE_UNKNOWN = 0, /**< Unknown type */
     LY_TYPE_BINARY, /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
     LY_TYPE_UINT8, /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */

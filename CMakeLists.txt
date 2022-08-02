@@ -314,7 +314,7 @@ endif()
 
 if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
     # enable before adding tests to let them detect that format checking is available - one of the tests is format checking
-    source_format_enable()
+    source_format_enable(0.75)
 endif()
 
 # generate files

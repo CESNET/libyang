@@ -39,6 +39,7 @@ strptime(const char * restrict s, const char * restrict f, struct tm * restrict 
         }
         if (isdigit(*f)) {
             char *new_f;
+
             w = strtoul(f, &new_f, 10);
             f = new_f;
         } else {

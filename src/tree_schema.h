@@ -980,6 +980,7 @@ struct lysp_node {
 struct lysp_node_container {
     union {
         struct lysp_node node;        /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_CONTAINER */
@@ -1007,6 +1008,7 @@ struct lysp_node_container {
 struct lysp_node_leaf {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_LEAF */
@@ -1031,6 +1033,7 @@ struct lysp_node_leaf {
 struct lysp_node_leaflist {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_LEAFLIST */
@@ -1058,6 +1061,7 @@ struct lysp_node_leaflist {
 struct lysp_node_list {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_LIST */
@@ -1088,6 +1092,7 @@ struct lysp_node_list {
 struct lysp_node_choice {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_CHOICE */
@@ -1110,6 +1115,7 @@ struct lysp_node_choice {
 struct lysp_node_case {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_CASE */
@@ -1131,6 +1137,7 @@ struct lysp_node_case {
 struct lysp_node_anydata {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_ANYXML or LYS_ANYDATA */
@@ -1152,6 +1159,7 @@ struct lysp_node_anydata {
 struct lysp_node_uses {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_USES */
@@ -1177,6 +1185,7 @@ struct lysp_node_uses {
 struct lysp_node_action_inout {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_INPUT or LYS_OUTPUT */
@@ -1203,6 +1212,7 @@ struct lysp_node_action_inout {
 struct lysp_node_action {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_RPC or LYS_ACTION */
@@ -1230,6 +1240,7 @@ struct lysp_node_action {
 struct lysp_node_notif {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent; /**< parent node (NULL if this is a top-level node) */
             uint16_t nodetype;       /**< LYS_NOTIF */
@@ -1256,6 +1267,7 @@ struct lysp_node_notif {
 struct lysp_node_grp {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent;/**< parent node (NULL if this is a top-level grouping) */
             uint16_t nodetype;       /**< LYS_GROUPING */
@@ -1283,6 +1295,7 @@ struct lysp_node_grp {
 struct lysp_node_augment {
     union {
         struct lysp_node node;       /**< implicit cast for the members compatible with ::lysp_node */
+
         struct {
             struct lysp_node *parent;/**< parent node (NULL if this is a top-level augment) */
             uint16_t nodetype;       /**< LYS_AUGMENT */
@@ -1569,6 +1582,7 @@ struct lysc_type_bitenum_item {
     const char *dsc;             /**< description */
     const char *ref;             /**< reference */
     struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
     union {
         int32_t value;           /**< integer value associated with the enumeration */
         uint32_t position;       /**< non-negative integer value associated with the bit */
@@ -1668,6 +1682,7 @@ struct lysc_node {
 struct lysc_node_action_inout {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_INPUT or LYS_OUTPUT */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1691,6 +1706,7 @@ struct lysc_node_action_inout {
 struct lysc_node_action {
     union {
         struct lysc_node node;               /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_RPC or LYS_ACTION */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1721,6 +1737,7 @@ struct lysc_node_action {
 struct lysc_node_notif {
     union {
         struct lysc_node node;                       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_NOTIF */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1750,6 +1767,7 @@ struct lysc_node_notif {
 struct lysc_node_container {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_CONTAINER */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1779,6 +1797,7 @@ struct lysc_node_container {
 struct lysc_node_case {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_CASE */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1806,6 +1825,7 @@ struct lysc_node_case {
 struct lysc_node_choice {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_CHOICE */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1835,6 +1855,7 @@ struct lysc_node_choice {
 struct lysc_node_leaf {
     union {
         struct lysc_node node;               /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_LEAF */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1865,6 +1886,7 @@ struct lysc_node_leaf {
 struct lysc_node_leaflist {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_LEAFLIST */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1900,6 +1922,7 @@ struct lysc_node_leaflist {
 struct lysc_node_list {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_LIST */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */
@@ -1933,6 +1956,7 @@ struct lysc_node_list {
 struct lysc_node_anydata {
     union {
         struct lysc_node node;       /**< implicit cast for the members compatible with ::lysc_node */
+
         struct {
             uint16_t nodetype;       /**< LYS_ANYXML or LYS_ANYDATA */
             uint16_t flags;          /**< [schema node flags](@ref snodeflags) */

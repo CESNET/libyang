@@ -341,6 +341,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, struct lysp_qname *qname, struct
                 !strncmp(&c[i], "and", op_len = ly_strlen_const("and")) ||
                 !strncmp(&c[i], "or", op_len = ly_strlen_const("or"))) {
             uint64_t spaces;
+
             for (spaces = 0; c[i + op_len + spaces] && isspace(c[i + op_len + spaces]); spaces++) {}
             if (c[i + op_len + spaces] == '\0') {
                 LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unexpected end of expression.", qname->str);

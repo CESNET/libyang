@@ -434,6 +434,7 @@ decimal:
     if (len + trailing_zeros < value_len) {
         /* consume trailing whitespaces to check that there is nothing after it */
         uint64_t u;
+
         for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u) {}
         if (u != value_len) {
             return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
@@ -531,6 +532,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             /* unsigned */
             if ((uint64_t)value < range->parts[u].min_u64) {
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
+
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
@@ -543,6 +545,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             } else if (u == LY_ARRAY_COUNT(range->parts) - 1) {
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
+
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
@@ -554,6 +557,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             /* signed */
             if (value < range->parts[u].min_64) {
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
+
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {
@@ -565,6 +569,7 @@ lyplg_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64
             } else if (u == LY_ARRAY_COUNT(range->parts) - 1) {
                 /* we have the last range part, so the value is out of bounds */
                 char *eapptag = range->eapptag ? strdup(range->eapptag) : NULL;
+
                 if (range->emsg) {
                     return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", range->emsg);
                 } else {

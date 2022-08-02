@@ -85,6 +85,7 @@ cmd_feature(struct ly_ctx **ctx, const char *cmdline)
 
     for (i = 0; i < argc - optind; i++) {
         const struct lys_module *mod = ly_ctx_get_module_latest(*ctx, argv[optind + i]);
+
         if (!mod) {
             YLMSG_E("Module \"%s\" not found.\n", argv[optind + i]);
             goto cleanup;

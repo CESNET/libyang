@@ -41,6 +41,7 @@ enum ly_path_pred_type {
 struct ly_path_predicate {
     union {
         uint64_t position; /**< position value for the position-predicate */
+
         struct {
             const struct lysc_node *key; /**< key node of the predicate, NULL in
                                             case of a leaf-list predicate */

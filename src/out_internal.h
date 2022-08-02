@@ -24,9 +24,11 @@ struct lyd_node;
  */
 struct ly_out {
     LY_OUT_TYPE type;     /**< type of the output to select the output method */
+
     union {
         int fd;          /**< file descriptor for LY_OUT_FD type */
         FILE *f;         /**< file structure for LY_OUT_FILE, LY_OUT_FDSTREAM and LY_OUT_FILEPATH types */
+
         struct {
             FILE *f;          /**< file stream from the original file descriptor, variable is mapped to the LY_OUT_FILE's f */
             int fd;           /**< original file descriptor, which was not used directly because of missing vdprintf() */

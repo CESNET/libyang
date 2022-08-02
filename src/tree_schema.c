@@ -1738,6 +1738,7 @@ cleanup:
             /* there are cases when path is not available for parsing error, so this additional
              * message tries to add information about the module where the error occurred */
             struct ly_err_item *e = ly_err_last(ctx);
+
             if (e && (!e->path || !strncmp(e->path, "Line ", ly_strlen_const("Line ")))) {
                 LOGERR(ctx, ret, "Parsing module \"%s\" failed.", mod->name);
             }

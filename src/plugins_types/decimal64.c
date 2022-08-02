@@ -52,6 +52,7 @@ decimal64_num2str(int64_t num, struct lysc_type_dec *type, char **str)
 
     if (num) {
         int count = sprintf(ret, "%" PRId64 " ", num);
+
         if (((num > 0) && ((count - 1) <= type->fraction_digits)) || ((count - 2) <= type->fraction_digits)) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according

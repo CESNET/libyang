@@ -242,6 +242,7 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
 
     if (node_path) {
         const struct lysc_node *node;
+
         node = lys_find_path(*ctx, NULL, node_path, 0);
         if (!node) {
             node = lys_find_path(*ctx, NULL, node_path, 1);

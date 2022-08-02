@@ -590,6 +590,7 @@ repeat:
         break;
     case LY_OUT_FD: {
         ssize_t r;
+
         r = write(out->method.fd, buf, len);
         if (r < 0) {
             ret = LY_ESYS;
@@ -608,6 +609,7 @@ repeat:
         break;
     case LY_OUT_CALLBACK: {
         ssize_t r;
+
         r = out->method.clb.func(out->method.clb.arg, buf, len);
         if (r < 0) {
             ret = LY_ESYS;

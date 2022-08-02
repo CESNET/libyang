@@ -17,8 +17,6 @@
 #include "context.h"
 #include "in_internal.h"
 #include "json.h"
-#include "utests.h"
-
 static void
 test_general(void **state)
 {

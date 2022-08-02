@@ -737,6 +737,7 @@ struct lyd_meta {
 struct ly_opaq_name {
     const char *name;             /**< node name, without prefix if any was defined */
     const char *prefix;           /**< identifier used in the qualified name as the prefix, can be NULL */
+
     union {
         const char *module_ns;    /**< format ::LY_VALUE_XML - XML namespace of the node element */
         const char *module_name;  /**< format ::LY_VALUE_JSON - (inherited) name of the module of the element */
@@ -818,6 +819,7 @@ struct lyd_node {
 struct lyd_node_inner {
     union {
         struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+
         struct {
             uint32_t hash;                  /**< hash of this particular node (module name + schema name + key string
                                                  values if list or hashes of all nodes of subtree in case of keyless
@@ -839,6 +841,7 @@ struct lyd_node_inner {
 
     struct lyd_node *child;          /**< pointer to the first child node. */
     struct hash_table *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
+
 #define LYD_HT_MIN_ITEMS 4           /**< minimal number of children to create ::lyd_node_inner.children_ht hash table. */
 };
 
@@ -848,6 +851,7 @@ struct lyd_node_inner {
 struct lyd_node_term {
     union {
         struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+
         struct {
             uint32_t hash;                  /**< hash of this particular node (module name + schema name + key string
                                                  values if list or hashes of all nodes of subtree in case of keyless
@@ -888,6 +892,7 @@ union lyd_any_value {
 struct lyd_node_any {
     union {
         struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+
         struct {
             uint32_t hash;                  /**< hash of this particular node (module name + schema name + key string
                                                  values if list or hashes of all nodes of subtree in case of keyless
@@ -982,6 +987,7 @@ struct lyd_node_any {
 struct lyd_node_opaq {
     union {
         struct lyd_node node;               /**< implicit cast for the members compatible with ::lyd_node */
+
         struct {
             uint32_t hash;                  /**< always 0 */
             uint32_t flags;                 /**< always 0 */
@@ -1156,6 +1162,7 @@ lyd_get_value(const struct lyd_node *node)
         return ((const struct lyd_node_opaq *)node)->value;
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         const struct lyd_value *value = &((const struct lyd_node_term *)node)->value;
+
         return value->_canonical ? value->_canonical : lyd_value_get_canonical(LYD_CTX(node), value);
     }
 
@@ -1173,6 +1180,7 @@ lyd_get_meta_value(const struct lyd_meta *meta)
 {
     if (meta) {
         const struct lyd_value *value = &meta->value;
+
         return value->_canonical ? value->_canonical : lyd_value_get_canonical(meta->annotation->module->ctx, value);
     }
 

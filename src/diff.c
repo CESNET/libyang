@@ -1206,6 +1206,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
             LY_CHECK_ERR_RET(ret && (ret != LY_EEXIST), LOGERR_UNEXPVAL(ctx, match, "data"), LY_EINVAL);
         } else {
             struct lyd_node_any *any = (struct lyd_node_any *)diff_node;
+
             LY_CHECK_RET(lyd_any_copy_value(match, &any->value, any->value_type));
         }
 
@@ -1936,6 +1937,7 @@ lyd_diff_reverse_value(struct lyd_node *node, const struct lys_module *mod)
         LY_CHECK_GOTO(ret = lyd_change_term(node, val1), cleanup);
     } else {
         union lyd_any_value anyval = {.str = val1};
+
         LY_CHECK_GOTO(ret = lyd_any_copy_value(node, &anyval, LYD_ANYDATA_STRING), cleanup);
     }
     node->flags = flags;

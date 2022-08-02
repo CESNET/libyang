@@ -53,6 +53,7 @@ struct lyd_ctx {
     uint32_t val_opts;             /**< various @ref datavalidationoptions. */
     uint32_t int_opts;             /**< internal parser options */
     uint32_t path_len;             /**< used bytes in the path buffer */
+
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
     struct ly_set node_when;       /**< set of nodes with "when" conditions */
@@ -120,6 +121,7 @@ struct lyd_json_ctx {
  */
 struct lyd_lyb_ctx {
     const struct lysc_ext_instance *ext;
+
     union {
         struct {
             uint32_t parse_opts;

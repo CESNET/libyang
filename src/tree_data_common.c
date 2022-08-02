@@ -241,6 +241,7 @@ lyd_child_no_keys(const struct lyd_node *node)
     children = lyd_node_child_p((struct lyd_node *)node);
     if (children) {
         struct lyd_node *child = *children;
+
         while (child && child->schema && (child->schema->flags & LYS_KEY)) {
             child = child->next;
         }
@@ -957,6 +958,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_LYB:
         if (value->mem) {
             int len = lyd_lyb_data_length(value->mem);
+
             LY_CHECK_RET(len == -1, LY_EINVAL);
             t->value.mem = malloc(len);
             LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_CTX(trg)), LY_EMEM);

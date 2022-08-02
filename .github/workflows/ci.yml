@@ -120,7 +120,7 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}
         run: |
-          git clone --branch uncrustify-0.71.0 https://github.com/uncrustify/uncrustify
+          git clone --branch uncrustify-0.75.1 https://github.com/uncrustify/uncrustify
           cd uncrustify
           mkdir build
           cd build

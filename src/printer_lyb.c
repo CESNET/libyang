@@ -93,6 +93,7 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HA
     lyht_set_cb(ht, lyb_ptr_equal_cb);
     do {
         int64_t j;
+
         for (j = (int64_t)compare_col_id; j > -1; --j) {
             if (lyb_get_hash(sibling, j) != lyb_get_hash(*col_node, j)) {
                 /* one non-colliding hash */
@@ -145,6 +146,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
             int64_t j;
+
             for (j = (int64_t)i - 1; j > -1; --j) {
                 if (lyb_hash_sequence_check(ht, sibling, (LYB_HASH)j, i)) {
                     break;

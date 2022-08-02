@@ -1187,6 +1187,7 @@ search_clb:
             if (ctx->imp_clb) {
                 const char *submodule_data = NULL;
                 LYS_INFORMAT format = LYS_IN_UNKNOWN;
+
                 void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
                 struct lysp_load_module_check_data check_data = {0};
                 struct ly_in *in;

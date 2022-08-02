@@ -26,9 +26,11 @@ struct ly_in {
     const char *func_start; /**< Input data position when the last parser function was executed */
     const char *start;      /**< Input data start */
     size_t length;          /**< mmap() length (if used) */
+
     union {
         int fd;             /**< file descriptor for LY_IN_FD type */
         FILE *f;            /**< file structure for LY_IN_FILE and LY_IN_FILEPATH types */
+
         struct {
             int fd;         /**< file descriptor for LY_IN_FILEPATH */
             char *filepath; /**< stored original filepath */

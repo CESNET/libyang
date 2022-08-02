@@ -298,6 +298,7 @@ plugins_load(void *dlhandler, const char *pathname, enum LYPLG type)
         /* ... get types plugins information ... */
         if (!(plugins = dlsym(dlhandler, plugins_load_info[type].plugins_var))) {
             char *errstr = dlerror();
+
             LOGERR(NULL, LY_EINVAL, "Processing user %s plugin \"%s\" failed, missing %s plugins information (%s).",
                     plugins_load_info[type].id, pathname, plugins_load_info[type].id, errstr);
             return LY_EINVAL;
