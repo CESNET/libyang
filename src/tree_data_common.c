@@ -1040,7 +1040,14 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     uint32_t hash;
     lyht_value_equal_cb ht_cb;
 
-    assert(siblings && schema);
+    assert(schema);
+    if (!siblings) {
+        /* no data */
+        if (match) {
+            *match = NULL;
+        }
+        return LY_ENOTFOUND;
+    }
 
     parent = siblings->parent;
     if (parent && parent->schema && parent->children_ht) {
