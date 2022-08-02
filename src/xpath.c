@@ -7633,6 +7633,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint16_
     uint32_t i;
     const struct lyd_node *siblings;
     struct lyd_node *ctx_node;
+    const struct lysc_node *sparent, *cur_scnode;
     struct lyxp_expr *val_exp = NULL;
     struct lyxp_set set2 = {0};
     char quot;
@@ -7641,8 +7642,9 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint16_
     LY_CHECK_GOTO(rc = lyxp_expr_dup(set->ctx, exp, tok_idx, end_tok_idx, &val_exp), cleanup);
 
     /* get its atoms */
-    LY_CHECK_GOTO(rc = lyxp_atomize(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data,
-            set->cur_node ? set->cur_node->schema : NULL, ctx_scnode, &set2, LYXP_SCNODE), cleanup);
+    cur_scnode = set->cur_node ? set->cur_node->schema : NULL;
+    LY_CHECK_GOTO(rc = lyxp_atomize(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data, cur_scnode,
+            ctx_scnode, &set2, LYXP_SCNODE), cleanup);
 
     /* check whether we can compile a single predicate (evaluation result value is always the same) */
     for (i = 0; i < set2.used; ++i) {
@@ -7651,18 +7653,28 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint16_
             continue;
         }
 
-        /* 1) context node descendants are traversed - value dependents on the specific context node instance */
-        if (set2.val.scnodes[i].scnode->parent == ctx_scnode) {
+        /* 1) context node descendants are traversed - do best-effort detection of the value dependency on the
+         * context node instance */
+        if ((set2.val.scnodes[i].axis == LYXP_AXIS_CHILD) && (set2.val.scnodes[i].scnode->parent == ctx_scnode)) {
+            /* 1.1) context node child was accessed on the child axis, certain dependency */
             rc = LY_ENOT;
             goto cleanup;
         }
+        if ((set2.val.scnodes[i].axis == LYXP_AXIS_DESCENDANT) || (set2.val.scnodes[i].axis == LYXP_AXIS_DESCENDANT_OR_SELF)) {
+            for (sparent = set2.val.scnodes[i].scnode->parent; sparent && (sparent != ctx_scnode); sparent = sparent->parent) {}
+            if (sparent) {
+                /* 1.2) context node descendant was accessed on the descendant axis, probable dependency */
+                rc = LY_ENOT;
+                goto cleanup;
+            }
+        }
 
-        /* 2) multi-instance nodes (list or leaf-list) are traversed - all the instances need to be considered */
-        if (set2.val.scnodes[i].scnode->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* 2) multi-instance nodes (list or leaf-list) are traversed - all the instances need to be considered,
+         * but the current node can be safely ignored, it is always the same data instance */
+        if ((set2.val.scnodes[i].scnode->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (cur_scnode != set2.val.scnodes[i].scnode)) {
             rc = LY_ENOT;
             goto cleanup;
         }
-
     }
 
     /* get any data instance of the context node, we checked it makes no difference */
