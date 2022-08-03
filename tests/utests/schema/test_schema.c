@@ -60,6 +60,7 @@ void test_feature(void **state);
 void test_extension_argument(void **state);
 void test_extension_argument_element(void **state);
 void test_extension_compile(void **state);
+void test_ext_recursive(void **state);
 
 int
 main(void)
@@ -86,6 +87,7 @@ main(void)
         UTEST(test_extension_argument),
         UTEST(test_extension_argument_element),
         UTEST(test_extension_compile),
+        UTEST(test_ext_recursive),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -350,3 +350,112 @@ cleanup:
         fail();
     }
 }
+
+void
+test_ext_recursive(void **state)
+{
+    const char *mod_base_yang, *mod_imp_yang, *mod_base_yin, *mod_imp_yin;
+
+    mod_imp_yang = "module b {\n"
+            "  namespace \"urn:b\";\n"
+            "  prefix b;\n\n"
+            "  extension use-in {\n"
+            "    argument name {\n"
+            "      b:arg-type {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "    b:use-in \"extension\";\n"
+            "    b:occurence \"*\";\n"
+            "  }\n"
+            "\n"
+            "  extension substatement {\n"
+            "    argument name {\n"
+            "      b:arg-type {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "    b:use-in \"extension\";\n"
+            "    b:occurence \"*\";\n"
+            "    b:substatement \"b:occurence\";\n"
+            "  }\n"
+            "\n"
+            "  extension arg-type {\n"
+            "    b:use-in \"argument\";\n"
+            "    b:substatement \"type\" {\n"
+            "      b:occurence \"1\";\n"
+            "    }\n"
+            "    b:substatement \"default\";\n"
+            "  }\n"
+            "\n"
+            "  extension occurence {\n"
+            "    argument value {\n"
+            "      b:arg-type {\n"
+            "        type enumeration {\n"
+            "          enum \"?\";\n"
+            "          enum \"*\";\n"
+            "          enum \"+\";\n"
+            "          enum \"1\";\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "    b:use-in \"extension\";\n"
+            "  }\n"
+            "}\n";
+
+    mod_imp_yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<module name=\"b\"\n"
+            "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+            "        xmlns:b=\"urn:b\"\n"
+            "        xmlns:a=\"urn:a\">\n"
+            "  <namespace uri=\"urn:b\"/>\n"
+            "  <prefix value=\"b\"/>\n"
+            "  <import module=\"a\">\n"
+            "    <prefix value=\"a\"/>\n"
+            "  </import>\n\n"
+            "  <a:e name=\"xxx\"/>\n"
+            "</module>\n";
+
+    mod_base_yang = "module a {\n"
+            "  namespace \"urn:a\";\n"
+            "  prefix a;\n\n"
+            "  import b {\n"
+            "    prefix b;\n"
+            "  }\n"
+            "\n"
+            "  extension abstract {\n"
+            "    b:use-in \"identity\";\n"
+            "  }\n"
+            "\n"
+            "  identity mount-id;\n"
+            "\n"
+            "  identity yang-lib-id {\n"
+            "    base mount-id;\n"
+            "    a:abstract;\n"
+            "  }\n"
+            "}\n";
+
+    mod_base_yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<module name=\"a\"\n"
+            "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+            "        xmlns:a=\"urn:a\">\n"
+            "  <namespace uri=\"urn:a\"/>\n"
+            "  <prefix value=\"a\"/>\n\n"
+            "  <extension name=\"e\">\n"
+            "    <argument name=\"name\"/>\n"
+            "  </extension>\n\n"
+            "  <a:e name=\"aaa\"/>\n"
+            "</module>\n";
+
+    /* from YANG */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_imp_yang);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mod_base_yang, LYS_IN_YANG, NULL));
+
+    /* context reset */
+    ly_ctx_destroy(UTEST_LYCTX);
+    ly_ctx_new(NULL, 0, &UTEST_LYCTX);
+
+    /* from YIN */
+    ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, (void *)mod_imp_yin);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, mod_base_yin, LYS_IN_YIN, NULL));
+}
