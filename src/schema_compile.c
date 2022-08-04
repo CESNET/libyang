@@ -1900,15 +1900,18 @@ cleanup:
 LY_ERR
 lys_compile_identities(struct lys_module *mod)
 {
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_ctx ctx = {0};
     struct lysp_submodule *submod;
     LY_ARRAY_COUNT_TYPE u;
 
     /* pre-compile identities of the module and any submodules */
-    LY_CHECK_RET(lys_identity_precompile(NULL, mod->ctx, mod->parsed, mod->parsed->identities, &mod->identities));
+    rc = lys_identity_precompile(NULL, mod->ctx, mod->parsed, mod->parsed->identities, &mod->identities);
+    LY_CHECK_GOTO(rc, cleanup);
     LY_ARRAY_FOR(mod->parsed->includes, u) {
         submod = mod->parsed->includes[u].submodule;
-        LY_CHECK_RET(lys_identity_precompile(NULL, mod->ctx, (struct lysp_module *)submod, submod->identities, &mod->identities));
+        rc = lys_identity_precompile(NULL, mod->ctx, (struct lysp_module *)submod, submod->identities, &mod->identities);
+        LY_CHECK_GOTO(rc, cleanup);
     }
 
     /* prepare context */
@@ -1919,7 +1922,8 @@ lys_compile_identities(struct lys_module *mod)
     ctx.path[0] = '/';
 
     if (mod->parsed->identities) {
-        LY_CHECK_RET(lys_compile_identities_derived(&ctx, mod->parsed->identities, &mod->identities));
+        rc = lys_compile_identities_derived(&ctx, mod->parsed->identities, &mod->identities);
+        LY_CHECK_GOTO(rc, cleanup);
     }
     lysc_update_path(&ctx, NULL, "{submodule}");
     LY_ARRAY_FOR(mod->parsed->includes, u) {
@@ -1927,13 +1931,20 @@ lys_compile_identities(struct lys_module *mod)
         if (submod->identities) {
             ctx.pmod = (struct lysp_module *)submod;
             lysc_update_path(&ctx, NULL, submod->name);
-            LY_CHECK_RET(lys_compile_identities_derived(&ctx, submod->identities, &mod->identities));
+            rc = lys_compile_identities_derived(&ctx, submod->identities, &mod->identities);
             lysc_update_path(&ctx, NULL, NULL);
+        }
+
+        if (rc) {
+            break;
         }
     }
     lysc_update_path(&ctx, NULL, NULL);
 
-    return LY_SUCCESS;
+cleanup:
+    /* always needed when using lysc_update_path() */
+    LOG_LOCBACK(0, 0, 1, 0);
+    return rc;
 }
 
 /**
