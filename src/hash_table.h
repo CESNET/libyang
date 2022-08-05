@@ -253,4 +253,12 @@ LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
  */
 LY_ERR lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, lyht_value_equal_cb resize_val_equal);
 
+/**
+ * @brief Get suitable size of a hash table for a fixed number of items.
+ *
+ * @param[in] item_count Number of stored items.
+ * @return Hash table size.
+ */
+uint32_t lyht_get_fixed_size(uint32_t item_count);
+
 #endif /* LY_HASH_TABLE_H_ */

@@ -835,3 +835,27 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
 {
     return lyht_remove_with_resize_cb(ht, val_p, hash, NULL);
 }
+
+uint32_t
+lyht_get_fixed_size(uint32_t item_count)
+{
+    uint32_t i, size = 0;
+
+    /* detect number of upper zero bits in the items' counter value ... */
+    for (i = (sizeof item_count * CHAR_BIT) - 1; i > 0; i--) {
+        size = item_count << i;
+        size = size >> i;
+        if (size == item_count) {
+            break;
+        }
+    }
+    assert(i);
+
+    /* ... and then we convert it to the position of the highest non-zero bit ... */
+    i = (sizeof item_count * CHAR_BIT) - i;
+
+    /* ... and by using it to shift 1 to the left we get the closest sufficient hash table size */
+    size = 1 << i;
+
+    return size;
+}

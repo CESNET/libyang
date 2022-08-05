@@ -1034,7 +1034,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     struct ly_set *set;
     LY_ARRAY_COUNT_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
-    uint32_t hash, i, size = 0;
+    uint32_t hash, i;
     size_t key_len;
     ly_bool dyn;
     const void *hash_key;
@@ -1063,27 +1063,13 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
         }
     } else if (set->count > 2) {
         /* use hashes for comparison */
-        /* first, allocate the table, the size depends on number of items in the set,
-         * the following code detects number of upper zero bits in the items' counter value ... */
-        for (i = (sizeof set->count * CHAR_BIT) - 1; i > 0; i--) {
-            size = set->count << i;
-            size = size >> i;
-            if (size == set->count) {
-                break;
-            }
-        }
-        LY_CHECK_ERR_GOTO(!i, LOGINT(ctx); ret = LY_EINT, cleanup);
-        /* ... and then we convert it to the position of the highest non-zero bit ... */
-        i = (sizeof set->count * CHAR_BIT) - i;
-        /* ... and by using it to shift 1 to the left we get the closest sufficient hash table size */
-        size = 1 << i;
-
         uniqtables = malloc(LY_ARRAY_COUNT(uniques) * sizeof *uniqtables);
         LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
         x = LY_ARRAY_COUNT(uniques);
         for (v = 0; v < x; v++) {
             cb_data = (void *)(uintptr_t)(v + 1L);
-            uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, cb_data, 0);
+            uniqtables[v] = lyht_new(lyht_get_fixed_size(set->count), sizeof(struct lyd_node *),
+                    lyd_val_uniq_list_equal, cb_data, 0);
             LY_CHECK_ERR_GOTO(!uniqtables[v], LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
 
