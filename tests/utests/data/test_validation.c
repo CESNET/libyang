@@ -122,6 +122,48 @@ test_mandatory_when(void **state)
 }
 
 static void
+test_type_incomplete_when(void **state)
+{
+    struct lys_module *mod;
+    struct lyd_node *tree;
+    const char *schema =
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    container cont {\n"
+            "        when \"../c = 'val_c'\";\n"
+            "        leaf a {\n"
+            "            type leafref {\n"
+            "                path \"/a:c\";\n"
+            "            }\n"
+            "        }\n"
+            "        leaf b {\n"
+            "            type string;\n"
+            "        }\n"
+            "    }\n"
+            "    leaf c {\n"
+            "        type string;\n"
+            "    }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, &mod);
+
+    LYD_TREE_CREATE("<cont xmlns=\"urn:tests:a\"><a>val_c</a><b>val</b></cont><c xmlns=\"urn:tests:a\">val_c</c>", tree);
+
+    /* make the when false */
+    assert_int_equal(LY_SUCCESS, lyd_change_term(tree->next, "wrong-val"));
+
+    /* autodelete when with a leafref */
+    assert_int_equal(LY_SUCCESS, lyd_validate_module(&tree, mod, 0, NULL));
+    assert_string_equal(LYD_NAME(tree), "c");
+    assert_null(tree->next);
+
+    lyd_free_all(tree);
+}
+
+static void
 test_mandatory(void **state)
 {
     struct lyd_node *tree;
@@ -1400,6 +1442,7 @@ main(void)
         UTEST(test_when),
         UTEST(test_mandatory),
         UTEST(test_mandatory_when),
+        UTEST(test_type_incomplete_when),
         UTEST(test_minmax),
         UTEST(test_unique),
         UTEST(test_unique_nested),
