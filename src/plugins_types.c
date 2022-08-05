@@ -920,8 +920,8 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
 
         /* generate the string path evaluated using hashes */
         quot = strchr(target_val, '\'') ? '\"' : '\'';
-        if (asprintf(&str_path, "%.*s[%s=%c%s%c]", len, path->expr, path->expr + path->tok_pos[path->used - 1],
-                quot, target_val, quot) == -1) {
+        if (asprintf(&str_path, "%.*s[%s=%c%s%c]/%s", len, path->expr, path->expr + path->tok_pos[path->used - 1],
+                quot, target_val, quot, path->expr + path->tok_pos[path->used - 1]) == -1) {
             LOGMEM(ctx_node->module->ctx);
             rc = LY_EMEM;
             goto cleanup;
