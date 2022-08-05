@@ -1121,7 +1121,7 @@ test_parse_shared_parent_ref(void **state)
             "<target xmlns=\"urn:sm\">wrong-target-value</target>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
-            "Invalid leafref value \"target-value\" - no existing target instance \"/sm:target\".",
+            "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
             "Schema location \"/ietf-interfaces:interfaces/interface/sm:sm-name\", "
             "data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\".");
 
@@ -1147,7 +1147,7 @@ test_parse_shared_parent_ref(void **state)
             "}\n";
     CHECK_PARSE_LYD_PARAM(json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Extension plugin \"libyang 2 - Schema Mount, version 1\": "
-            "Invalid leafref value \"target-value\" - no existing target instance \"/sm:target\".",
+            "Invalid leafref value \"target-value\" - no target instance \"/sm:target\" with the same value.",
             "Schema location \"/ietf-interfaces:interfaces/interface/sm:sm-name\", "
             "data location \"/ietf-interfaces:interfaces/interface[name='bu']/sm:sm-name\", line number 18.");
 

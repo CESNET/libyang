@@ -869,74 +869,154 @@ lyplg_type_identity_isderived(const struct lysc_ident *base, const struct lysc_i
     return LY_ENOTFOUND;
 }
 
+/**
+ * @brief Try to generate a path to the leafref target with its value to enable the use of hash-based search.
+ *
+ * @param[in] path Leafref path.
+ * @param[in] ctx_node Leafref context node.
+ * @param[in] format Format of @p path.
+ * @param[in] prefix_data Prefix data of @p path.
+ * @param[in] target_val Leafref target value.
+ * @param[out] target_path Generated path with the target value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT if no matching target exists.
+ * @return LY_ERR on error.
+ */
+static LY_ERR
+lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const struct lysc_node *ctx_node,
+        LY_VALUE_FORMAT format, void *prefix_data, const char *target_val, struct lyxp_expr **target_path)
+{
+    LY_ERR rc = LY_SUCCESS;
+    uint8_t oper;
+    struct ly_path *p = NULL;
+    char *str_path = NULL, quot;
+    int len;
+    ly_bool list_key = 0;
+
+    *target_path = NULL;
+
+    /* compile, has already been so it must succeed */
+    oper = (ctx_node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
+    if (ly_path_compile_leafref(ctx_node->module->ctx, ctx_node, NULL, path, oper, LY_PATH_TARGET_MANY, format,
+            prefix_data, &p)) {
+        /* the target was found before but is disabled so it was removed */
+        return LY_ENOT;
+    }
+
+    /* check whether we can search for a list instance with a specific key value */
+    if (lysc_is_key(p[LY_ARRAY_COUNT(p) - 1].node)) {
+        if ((LY_ARRAY_COUNT(p) >= 2) && (p[LY_ARRAY_COUNT(p) - 2].node->nodetype == LYS_LIST)) {
+            if ((path->tokens[path->used - 1] == LYXP_TOKEN_NAMETEST) &&
+                    (path->tokens[path->used - 2] == LYXP_TOKEN_OPER_PATH) &&
+                    (path->tokens[path->used - 3] == LYXP_TOKEN_NAMETEST)) {
+                list_key = 1;
+            } /* else again, should be possible but does not make sense */
+        } /* else allowed despite not making sense */
+    }
+
+    if (list_key) {
+        /* get the length of the orig expression without the last "/" and the key node */
+        len = path->tok_pos[path->used - 3] + path->tok_len[path->used - 3];
+
+        /* generate the string path evaluated using hashes */
+        quot = strchr(target_val, '\'') ? '\"' : '\'';
+        if (asprintf(&str_path, "%.*s[%s=%c%s%c]", len, path->expr, path->expr + path->tok_pos[path->used - 1],
+                quot, target_val, quot) == -1) {
+            LOGMEM(ctx_node->module->ctx);
+            rc = LY_EMEM;
+            goto cleanup;
+        }
+
+    } else {
+        /* leaf will not be found using hashes, but generate the path just to unify it */
+        assert(p[LY_ARRAY_COUNT(p) - 1].node->nodetype & LYD_NODE_TERM);
+
+        /* generate the string path evaluated using hashes */
+        quot = strchr(target_val, '\'') ? '\"' : '\'';
+        if (asprintf(&str_path, "%s[.=%c%s%c]", path->expr, quot, target_val, quot) == -1) {
+            LOGMEM(ctx_node->module->ctx);
+            rc = LY_EMEM;
+            goto cleanup;
+        }
+    }
+
+    /* parse into an expression */
+    LY_CHECK_GOTO(lyxp_expr_parse(ctx_node->module->ctx, str_path, 0, 1, target_path), cleanup);
+
+cleanup:
+    ly_path_free(ctx_node->module->ctx, p);
+    free(str_path);
+    return rc;
+}
+
 LIBYANG_API_DEF LY_ERR
 lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
         const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
 {
-    LY_ERR ret;
+    LY_ERR rc = LY_SUCCESS;
+    struct lyxp_expr *target_path = NULL;
     struct lyxp_set set = {0};
     const char *val_str, *xp_err_msg;
-    uint32_t i;
-    int rc;
+    int r;
 
     LY_CHECK_ARG_RET(NULL, lref, node, value, errmsg, LY_EINVAL);
 
-    /* find all target data instances */
-    ret = lyxp_eval(LYD_CTX(node), lref->path, node->schema->module, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
+    if (target) {
+        *target = NULL;
+    }
+
+    /* get the canonical value */
+    val_str = lyd_value_get_canonical(LYD_CTX(node), value);
+
+    /* get the path with the value */
+    r = lyplg_type_resolve_leafref_get_target_path(lref->path, node->schema, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
+            val_str, &target_path);
+    if (r == LY_ENOT) {
+        goto cleanup;
+    } else if (r) {
+        rc = r;
+        goto cleanup;
+    }
+
+    /* find the target data instance */
+    rc = lyxp_eval(LYD_CTX(node), target_path, node->schema->module, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes,
             node, node, tree, NULL, &set, LYXP_IGNORE_WHEN);
-    if (ret) {
-        if (ly_errcode(LYD_CTX(node)) == ret) {
+    if (rc) {
+        if (ly_errcode(LYD_CTX(node)) == rc) {
             xp_err_msg = ly_errmsg(LYD_CTX(node));
         } else {
             xp_err_msg = NULL;
         }
 
-        val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
         if (xp_err_msg) {
-            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error (%s).", val_str, xp_err_msg);
+            r = asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error (%s).", val_str, xp_err_msg);
         } else {
-            rc = asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str);
+            r = asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str);
         }
-        if (rc == -1) {
+        if (r == -1) {
             *errmsg = NULL;
-            ret = LY_EMEM;
+            rc = LY_EMEM;
         }
-        goto error;
+        goto cleanup;
     }
 
-    /* check whether any matches */
-    for (i = 0; i < set.used; ++i) {
-        if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
-            continue;
-        }
-
-        if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
-            break;
-        }
-    }
-    if (i == set.used) {
-        ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(LYD_CTX(node), value, LY_VALUE_CANON, NULL, NULL, NULL);
-        if (set.used) {
-            rc = asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr);
-        } else {
-            rc = asprintf(errmsg, LY_ERRMSG_NOLREF_INST, val_str, lref->path->expr);
-        }
-        if (rc == -1) {
+    /* check the result */
+    if (!set.used) {
+        rc = LY_ENOTFOUND;
+        if (asprintf(errmsg, LY_ERRMSG_NOLREF_VAL, val_str, lref->path->expr) == -1) {
             *errmsg = NULL;
-            ret = LY_EMEM;
+            rc = LY_EMEM;
         }
-        goto error;
+        goto cleanup;
     }
+    assert(set.used == 1);
 
     if (target) {
-        *target = set.val.nodes[i].node;
+        *target = set.val.nodes[0].node;
     }
 
+cleanup:
+    lyxp_expr_free(LYD_CTX(node), target_path);
     lyxp_set_free_content(&set);
-    return LY_SUCCESS;
-
-error:
-    lyxp_set_free_content(&set);
-    return ret;
+    return rc;
 }

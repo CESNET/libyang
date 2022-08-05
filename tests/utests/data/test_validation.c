@@ -1185,7 +1185,7 @@ test_action(void **state)
 
     /* missing leafref */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_TYPE_RPC_YANG, NULL));
-    CHECK_LOG_CTX("Invalid leafref value \"target\" - no existing target instance \"/lf3\".",
+    CHECK_LOG_CTX("Invalid leafref value \"target\" - no target instance \"/lf3\" with the same value.",
             "Schema location \"/j:cont/l1/act/input/lf2\", data location \"/j:cont/l1[k='val1']/act/lf2\".");
     ly_in_free(in, 0);
 
@@ -1278,7 +1278,7 @@ test_reply(void **state)
 
     /* missing leafref */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_TYPE_REPLY_YANG, NULL));
-    CHECK_LOG_CTX("Invalid leafref value \"target\" - no existing target instance \"/lf4\".",
+    CHECK_LOG_CTX("Invalid leafref value \"target\" - no target instance \"/lf4\" with the same value.",
             "Schema location \"/j:cont/l1/act/output/lf2\", data location \"/j:cont/l1[k='val1']/act/lf2\".");
 
     CHECK_PARSE_LYD_PARAM("<cont xmlns=\"urn:tests:j\">\n"

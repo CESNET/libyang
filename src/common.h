@@ -306,7 +306,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 /* RFC 7950 section 15 error messages used in type plugin validation callbacks */
 #define LY_ERRMSG_NOLREF_VAL /* LYVE_DATA */ "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value."
-#define LY_ERRMSG_NOLREF_INST /* LYVE_DATA */ "Invalid leafref value \"%s\" - no existing target instance \"%s\"."
 #define LY_ERRMSG_NOINST /* LYVE_DATA */ "Invalid instance-identifier \"%s\" value - required instance not found."
 
 /******************************************************************************
