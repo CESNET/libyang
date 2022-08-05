@@ -860,7 +860,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
 
     /* remember original context node */
     cur_node = ctx_node;
-    LOG_LOCINIT(cur_node, NULL, NULL, NULL);
+    LOG_LOCSET(cur_node, NULL, NULL, NULL);
 
     if (oper == LY_PATH_OPER_OUTPUT) {
         getnext_opts = LYS_GETNEXT_OUTPUT;

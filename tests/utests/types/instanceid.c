@@ -137,7 +137,7 @@ test_data_xml(void **state)
             "<list xmlns=\"urn:tests:defs\"><id>b</id><value>x</value></list>",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/xdf:list[2]/xdf:value", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[2]/xdf:value\" value - semantic error.",
-            "Schema location \"/defs:l1\".");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/t:cont/t:1l", LY_EVALID);
@@ -152,7 +152,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l1", "/xdf:cont/xdf:invalid/xdf:path", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:cont/xdf:invalid/xdf:path\" value - semantic error.",
-            "Schema location \"/defs:l1\".");
+            "Schema location \"/defs:l1\", line number 1.");
 
     /* non-existing instances, instance-identifier is here in JSON format because it is already in internal
      * representation without canonical prefixes */
@@ -196,7 +196,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont[1]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/m:cont[1]\" value - semantic error.",
-            "Schema location \"/defs:l1\".");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "[1]", LY_EVALID);
@@ -211,32 +211,32 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"><l2/></cont>",
             "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2[m:l2='1']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/m:cont/m:l2[m:l2='1']\" value - semantic error.",
-            "Schema location \"/defs:l1\".");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist><llist xmlns=\"urn:tests:defs\">2</llist>",
             "defs", "xmlns:t=\"urn:tests:defs\"", "t:l1", "/t:llist[4]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[4]\" value - semantic error.",
-            "Schema location \"/defs:l1\".");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[6]", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[6]\" value - semantic error.",
-            "Schema location \"/defs:l2\".");
+            "Schema location \"/defs:l2\", line number 1.");
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>1</id><value>x</value></list>",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list[xdf:value='x']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[xdf:value='x']\" value - semantic error.",
-            "Schema location \"/defs:l2\".");
+            "Schema location \"/defs:l2\", line number 1.");
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list[.='x']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list[.='x']\" value - semantic error.",
-            "Schema location \"/defs:l2\".");
+            "Schema location \"/defs:l2\", line number 1.");
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist>",
             "defs", "xmlns:t=\"urn:tests:defs\"", "t:l1", "/t:llist[.='x']", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[.='x']\" value - semantic error.",
-            "Schema location \"/defs:l1\".");
+            "Schema location \"/defs:l1\", line number 1.");
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[1][2]", LY_EVALID);
@@ -256,7 +256,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/xdf:list2[xdf:id='1']/xdf:value", LY_EVALID);
     CHECK_LOG_CTX("Invalid instance-identifier \"/xdf:list2[xdf:id='1']/xdf:value\" value - semantic error.",
-            "Schema location \"/defs:l2\".");
+            "Schema location \"/defs:l2\", line number 1.");
 }
 
 static void
