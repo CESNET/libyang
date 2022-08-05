@@ -190,7 +190,7 @@ static LY_ERR
 lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, struct ly_set *node_when,
         uint32_t xpath_options, struct ly_set *node_types, struct lyd_node **diff)
 {
-    LY_ERR ret;
+    LY_ERR rc, r;
     uint32_t i, idx;
     const struct lysc_when *disabled;
     struct lyd_node *node = NULL, *elem;
@@ -206,8 +206,8 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
         LOG_LOCSET(node->schema, node, NULL, NULL);
 
         /* evaluate all when expressions that affect this node's existence */
-        ret = lyd_validate_node_when(*tree, node, node->schema, xpath_options, &disabled);
-        if (!ret) {
+        r = lyd_validate_node_when(*tree, node, node->schema, xpath_options, &disabled);
+        if (!r) {
             if (disabled) {
                 /* when false */
                 if (node->flags & LYD_WHEN_TRUE) {
@@ -215,15 +215,17 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                     lyd_del_move_root(tree, node, mod);
                     if (diff) {
                         /* add into diff */
-                        ret = lyd_val_diff_add(node, LYD_DIFF_OP_DELETE, diff);
-                        LY_CHECK_GOTO(ret, error);
+                        LY_CHECK_GOTO(rc = lyd_val_diff_add(node, LYD_DIFF_OP_DELETE, diff), error);
                     }
 
                     /* remove from node types set, if present */
-                    if (node_types) {
+                    if (node_types && node_types->count) {
                         LYD_TREE_DFS_BEGIN(node, elem) {
-                            if (ly_set_contains(node_types, elem, &idx)) {
-                                LY_CHECK_GOTO(ret = ly_set_rm_index(node_types, idx, NULL), error);
+                            /* only term nodes with a validation callback can be in node_types */
+                            if ((elem->schema->nodetype & LYD_NODE_TERM) &&
+                                    ((struct lysc_node_leaf *)elem->schema)->type->plugin->validate &&
+                                    ly_set_contains(node_types, elem, &idx)) {
+                                LY_CHECK_GOTO(rc = ly_set_rm_index(node_types, idx, NULL), error);
                             }
                             LYD_TREE_DFS_END(node, elem);
                         }
@@ -234,7 +236,7 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
                 } else {
                     /* invalid data */
                     LOGVAL(LYD_CTX(node), LY_VCODE_NOWHEN, disabled->cond->expr);
-                    ret = LY_EVALID;
+                    rc = LY_EVALID;
                     goto error;
                 }
             } else {
@@ -244,8 +246,9 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
 
             /* remove this node from the set keeping the order, its when was resolved */
             ly_set_rm_index_ordered(node_when, i, NULL);
-        } else if (ret != LY_EINCOMPLETE) {
+        } else if (r != LY_EINCOMPLETE) {
             /* error */
+            rc = r;
             goto error;
         }
 
@@ -256,7 +259,7 @@ lyd_validate_unres_when(struct lyd_node **tree, const struct lys_module *mod, st
 
 error:
     LOG_LOCBACK(1, 1, 0, 0);
-    return ret;
+    return rc;
 }
 
 LY_ERR
