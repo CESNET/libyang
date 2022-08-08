@@ -179,12 +179,12 @@ enum lyxp_node_type {
  */
 struct lyxp_expr {
     enum lyxp_token *tokens; /**< Array of tokens. */
-    uint16_t *tok_pos;       /**< Array of the token offsets in expr. */
-    uint16_t *tok_len;       /**< Array of token lengths in expr. */
+    uint32_t *tok_pos;       /**< Array of the token offsets in expr. */
+    uint32_t *tok_len;       /**< Array of token lengths in expr. */
     enum lyxp_expr_type **repeat; /**< Array of expression types that this token begins and is repeated ended with 0,
                                        more in the comment after this declaration. */
-    uint16_t used;           /**< Used array items. */
-    uint16_t size;           /**< Allocated array items. */
+    uint32_t used;           /**< Used array items. */
+    uint32_t size;           /**< Allocated array items. */
 
     const char *expr;        /**< The original XPath expression. */
 };
@@ -451,7 +451,7 @@ LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t ex
  * @param[out] dup Duplicated structure.
  * @return LY_ERR value.
  */
-LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t start_idx, uint16_t end_idx,
+LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t start_idx, uint32_t end_idx,
         struct lyxp_expr **dup);
 
 /**
@@ -465,7 +465,7 @@ LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint
  * @return LY_ENOT on non-matching token,
  * @return LY_SUCCESS on success.
  */
-LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t tok_idx, enum lyxp_token want_tok);
+LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t tok_idx, enum lyxp_token want_tok);
 
 /**
  * @brief Look at the next token and skip it if it matches the expected one.
@@ -478,7 +478,7 @@ LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, u
  * @return LY_ENOT on non-matching token,
  * @return LY_SUCCESS on success.
  */
-LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_token want_tok);
+LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx, enum lyxp_token want_tok);
 
 /**
  * @brief Look at the next token and skip it if it matches either of the 2 expected ones.
@@ -492,7 +492,7 @@ LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, ui
  * @return LY_ENOT on non-matching token,
  * @return LY_SUCCESS on success.
  */
-LY_ERR lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx,
+LY_ERR lyxp_next_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx,
         enum lyxp_token want_tok1, enum lyxp_token want_tok2);
 
 /**

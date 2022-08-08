@@ -171,7 +171,7 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *expr = NULL;
-    uint16_t exp_idx = 0;
+    uint32_t exp_idx = 0;
     enum ly_path_pred_type pred_type = 0;
     struct ly_path_predicate *predicates = NULL;
 

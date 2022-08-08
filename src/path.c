@@ -46,7 +46,7 @@
  */
 static LY_ERR
 ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lyxp_expr *exp,
-        uint16_t *tok_idx, uint8_t prefix, uint8_t pred)
+        uint32_t *tok_idx, uint8_t prefix, uint8_t pred)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_set *set = NULL;
@@ -234,7 +234,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
-    uint16_t tok_idx, cur_len;
+    uint32_t tok_idx, cur_len;
     const char *cur_node, *prev_prefix = NULL, *ptr;
 
     assert((begin == LY_PATH_BEGIN_ABSOLUTE) || (begin == LY_PATH_BEGIN_EITHER));
@@ -341,7 +341,7 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
-    uint16_t tok_idx;
+    uint32_t tok_idx;
 
     assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
@@ -393,7 +393,7 @@ error:
  */
 static LY_ERR
 ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx, LY_VALUE_FORMAT format,
+        const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint32_t tok_idx, LY_VALUE_FORMAT format,
         void *prefix_data, const struct lysc_ext_instance *top_ext, uint32_t getnext_opts, const struct lysc_node **snode,
         struct lysc_ext_instance **ext)
 {
@@ -508,7 +508,7 @@ error:
 
 LY_ERR
 ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx, LY_VALUE_FORMAT format,
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
         void *prefix_data, struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -696,7 +696,7 @@ cleanup:
  */
 static LY_ERR
 ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct lysc_node *cur_node,
-        const struct lyxp_expr *expr, uint16_t *tok_idx, LY_VALUE_FORMAT format, void *prefix_data)
+        const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format, void *prefix_data)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lysc_node *key, *node, *node2;
@@ -838,11 +838,10 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, con
         ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint16_t tok_idx = 0;
+    uint32_t tok_idx = 0, getnext_opts;
     const struct lysc_node *node2, *cur_node, *op;
     struct ly_path *p = NULL;
     struct lysc_ext_instance *ext = NULL;
-    uint32_t getnext_opts;
 
     assert(ctx);
     assert(!lref || ctx_node);
