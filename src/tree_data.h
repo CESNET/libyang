@@ -2447,9 +2447,9 @@ LIBYANG_API_DECL void lyxp_vars_free(struct lyxp_var *vars);
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
- * If a list instance is being selected with all its key values specified (but not necessarily ordered)
- * in the form `list[key1='val1'][key2='val2'][key3='val3']` or a leaf-list instance in the form
- * `leaf-list[.='val']`, these instances are found using hashes with constant (*O(1)*) complexity
+ * If a list instance is being selected with all its key values specified and ordered
+ * in the form `list[key1=...][key2=...][key3=...]` or a leaf-list instance in the form
+ * `leaf-list[.=...]`, these instances are found using hashes with constant (*O(1)*) complexity
  * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
  *
  * @param[in] ctx_node XPath context node.
