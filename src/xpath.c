@@ -381,16 +381,16 @@ print_set_debug(struct lyxp_set *set)
  * @return LY_ERR
  */
 static LY_ERR
-cast_string_realloc(const struct ly_ctx *ctx, uint16_t needed, char **str, uint16_t *used, uint16_t *size)
+cast_string_realloc(const struct ly_ctx *ctx, uint32_t needed, char **str, uint16_t *used, uint16_t *size)
 {
-    if (*size - *used < needed) {
+    if (*size - (unsigned)*used < needed) {
         do {
             if ((UINT16_MAX - *size) < LYXP_STRING_CAST_SIZE_STEP) {
                 LOGERR(ctx, LY_EINVAL, "XPath string length limit (%u) reached.", UINT16_MAX);
                 return LY_EINVAL;
             }
             *size += LYXP_STRING_CAST_SIZE_STEP;
-        } while (*size - *used < needed);
+        } while (*size - (unsigned)*used < needed);
         *str = ly_realloc(*str, *size * sizeof(char));
         LY_CHECK_ERR_RET(!(*str), LOGMEM(ctx), LY_EMEM);
     }
