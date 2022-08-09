@@ -2676,7 +2676,8 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, ly_bool *result)
+lyd_eval_xpath3(const struct lyd_node *ctx_node, const struct lys_module *cur_mod, const char *xpath,
+        LY_VALUE_FORMAT format, void *prefix_data, const struct lyxp_var *vars, ly_bool *result)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set = {0};
@@ -2689,7 +2690,7 @@ lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
-    ret = lyxp_eval(LYD_CTX(ctx_node), exp, NULL, LY_VALUE_JSON, NULL, ctx_node, ctx_node, ctx_node, vars, &xp_set,
+    ret = lyxp_eval(LYD_CTX(ctx_node), exp, cur_mod, format, prefix_data, ctx_node, ctx_node, ctx_node, vars, &xp_set,
             LYXP_IGNORE_WHEN);
     LY_CHECK_GOTO(ret, cleanup);
 
@@ -2707,9 +2708,15 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
+lyd_eval_xpath2(const struct lyd_node *ctx_node, const char *xpath, const struct lyxp_var *vars, ly_bool *result)
+{
+    return lyd_eval_xpath3(ctx_node, NULL, xpath, LY_VALUE_JSON, NULL, vars, result);
+}
+
+LIBYANG_API_DEF LY_ERR
 lyd_eval_xpath(const struct lyd_node *ctx_node, const char *xpath, ly_bool *result)
 {
-    return lyd_eval_xpath2(ctx_node, xpath, NULL, result);
+    return lyd_eval_xpath3(ctx_node, NULL, xpath, LY_VALUE_JSON, NULL, NULL, result);
 }
 
 LIBYANG_API_DEF LY_ERR
