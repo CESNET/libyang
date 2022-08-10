@@ -13,8 +13,6 @@ List of the loaded models:\r
     i ietf-inet-types@2013-07-15\r
     i ietf-yang-types@2013-07-15\r
     I ietf-yang-schema-mount@2019-01-14\r
-    I ietf-datastores@2018-02-14\r
-    I ietf-yang-library@2019-01-04\r
 > " { }
 	timeout { exit 1 }
 }
