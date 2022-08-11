@@ -56,6 +56,7 @@ function(add_yanglint_test)
 
     add_test(NAME ${TEST_NAME} COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/${ADDTEST_SCRIPT})
     set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "YANGLINT=${PROJECT_BINARY_DIR}/yanglint")
+    set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "YANG_MODULES_DIR=${PROJECT_SOURCE_DIR}/tests/modules/yang")
 endfunction(add_yanglint_test)
 
 if(ENABLE_TESTS)
@@ -65,6 +66,7 @@ if(ENABLE_TESTS)
         message(WARNING "'shunit2' not found! The yanglint(1) non-interactive tests will not be available.")
     else()
         add_yanglint_test(NAME ni_list SCRIPT shunit2/list.sh)
+        add_yanglint_test(NAME ni_feature SCRIPT shunit2/feature.sh)
     endif()
 
     # tests of interactive mode using expect
@@ -73,5 +75,6 @@ if(ENABLE_TESTS)
         message(WARNING "'expect' not found! The yanglint(1) interactive tests will not be available.")
     elseif(YANGLINT_INTERACTIVE)
         add_yanglint_test(NAME in_list SCRIPT expect/list.exp)
+        add_yanglint_test(NAME in_feature SCRIPT expect/feature.exp)
     endif()
 endif()
