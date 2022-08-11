@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/usr/bin/env bash
 
 LIST_BASE="List of the loaded models:
     i ietf-yang-metadata@2016-08-05

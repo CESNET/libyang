@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+
+set timeout 1
+
+spawn $env(YANGLINT)
+expect -exact "> "
+send -- "feature -a\r"
+expect {
+    "feature -a\r
+yang:\r
+\t(none)\r
+ietf-yang-schema-mount:\r
+\t(none)\r
+> " { }
+    timeout { exit 1 }
+}
+send -- "exit\r"
+expect eof

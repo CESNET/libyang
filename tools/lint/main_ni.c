@@ -69,6 +69,7 @@ struct context {
 
     /* value of --format in case of schema format */
     LYS_OUTFORMAT schema_out_format;
+    ly_bool feature_param_format;
 
     /*
      * data
@@ -152,7 +153,7 @@ help(int shortout)
 
     printf("  -f FORMAT, --format=FORMAT\n"
             "                Convert input into FORMAT. Supported formats: \n"
-            "                yang, yin, tree and info for schemas,\n"
+            "                yang, yin, tree, info and feature-param for schemas,\n"
             "                xml, json, and lyb for data.\n\n");
 
     printf("  -p PATH, --path=PATH\n"
@@ -421,7 +422,7 @@ fill_context_inputs(int argc, char *argv[], struct context *c)
             free(module);
             module = NULL;
 
-            if (c->schema_out_format) {
+            if (c->schema_out_format || c->feature_param_format) {
                 /* module will be printed */
                 if (ly_set_add(&c->schema_modules, (void *)mod, 1, NULL)) {
                     YLMSG_E("Storing parsed schema module (%s) for print failed.\n", argv[optind + i]);
@@ -576,6 +577,8 @@ fill_context(int argc, char *argv[], struct context *c)
             } else if (!strcasecmp(optarg, "lyb")) {
                 c->schema_out_format = 0;
                 c->data_out_format = LYD_LYB;
+            } else if (!strcasecmp(optarg, "feature-param")) {
+                c->feature_param_format = 1;
             } else {
                 YLMSG_E("Unknown output format %s\n", optarg);
                 help(1);
@@ -877,6 +880,9 @@ main_ni(int argc, char *argv[])
 {
     int ret = EXIT_SUCCESS, r;
     struct context c = {0};
+    char *features_output = NULL;
+    struct ly_set set = {0};
+    uint32_t u;
 
     /* set callback for printing libyang messages */
     ly_set_log_clb(libyang_verbclb, 1);
@@ -895,7 +901,20 @@ main_ni(int argc, char *argv[])
         /* print the list of schemas */
         print_list(c.out, c.ctx, c.data_out_format);
     } else {
-        if (c.schema_out_format) {
+        if (c.feature_param_format) {
+            for (u = 0; u < c.schema_modules.count; u++) {
+                if (collect_features(c.schema_modules.objs[u], &set)) {
+                    YLMSG_E("Unable to read features from a module.\n");
+                    goto cleanup;
+                }
+                if (generate_features_output(c.schema_modules.objs[u], &set, &features_output)) {
+                    YLMSG_E("Unable to generate feature command output.\n");
+                    goto cleanup;
+                }
+                ly_set_erase(&set, NULL);
+            }
+            ly_print(c.out, "%s\n", features_output);
+        } else if (c.schema_out_format) {
             if (c.schema_node) {
                 ret = lys_print_node(c.out, c.schema_node, c.schema_out_format, 0, c.schema_print_options);
                 if (ret) {
@@ -916,7 +935,7 @@ main_ni(int argc, char *argv[])
                     goto cleanup;
                 }
             } else {
-                for (uint32_t u = 0; u < c.schema_modules.count; ++u) {
+                for (u = 0; u < c.schema_modules.count; ++u) {
                     ret = lys_print_module(c.out, (struct lys_module *)c.schema_modules.objs[u], c.schema_out_format,
                             c.line_length, c.schema_print_options);
                     /* for YANG Tree Diagrams printing it's more readable to print a blank line between modules. */
@@ -944,6 +963,8 @@ main_ni(int argc, char *argv[])
 cleanup:
     /* cleanup */
     erase_context(&c);
+    free(features_output);
+    ly_set_erase(&set, NULL);
 
     return ret;
 }

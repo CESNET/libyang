@@ -39,6 +39,7 @@ cmd_add_help(void)
             "                  explicitly specified).\n"
             "  -F FEATURES, --features=FEATURES\n"
             "                  Features to support, default all in all implemented modules.\n"
+            "                  Specify separately for each module.\n"
             "                  <modname>:[<feature>,]*\n"
             "  -i, --make-implemented\n"
             "                  Make the imported modules \"referenced\" from any loaded\n"

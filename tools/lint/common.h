@@ -88,6 +88,48 @@ void get_features(struct ly_set *fset, const char *module, const char ***feature
 int parse_features(const char *fstring, struct ly_set *fset);
 
 /**
+ * @brief Collect all features of a module.
+ *
+ * @param[in] mod Module to be searched for features.
+ * @param[out] set Set in which the features will be stored.
+ * @return 0 on success.
+ * @return 1 on error.
+ */
+int collect_features(const struct lys_module *mod, struct ly_set *set);
+
+/**
+ * @brief Print all features of a single module.
+ *
+ * @param[in] out The output handler for printing.
+ * @param[in] mod Module which contains the features.
+ * @param[in] set Set which holds the features.
+ */
+void print_features(struct ly_out *out, const struct lys_module *mod, const struct ly_set *set);
+
+/**
+ * @brief Generate a string, which will contain features paramater.
+ *
+ * @param[in] mod Module, for which the string will be generated.
+ * @param[in] set Set containing the features.
+ * @param[out] features_param String which will contain the output.
+ * @return 0 on success.
+ * @return 1 on error.
+ */
+int generate_features_output(const struct lys_module *mod, const struct ly_set *set, char **features_param);
+
+/**
+ * @brief Print all features of all implemented modules.
+ *
+ * @param[in] out The output handler for printing.
+ * @param[in] ctx Libyang context.
+ * @param[in] generate_features Flag expressing whether to generate features parameter.
+ * @param[out] features_param String, which will contain the output if the above flag is set.
+ * @return 0 on success.
+ * @return 1 on error.
+ */
+int print_all_features(struct ly_out *out, const struct ly_ctx *ctx, ly_bool generate_features, char **features_param);
+
+/**
  * @brief Parse path of a schema module file into the directory and module name.
  *
  * @param[in] path Schema module file path to be parsed.
