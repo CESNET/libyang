@@ -1345,7 +1345,7 @@ all_children_compare:
             case LYD_ANYDATA_LYB:
                 len1 = lyd_lyb_data_length(any1->value.mem);
                 len2 = lyd_lyb_data_length(any2->value.mem);
-                if ((len1 != len2) || memcmp(any1->value.mem, any2->value.mem, len1)) {
+                if ((len1 == -1) || (len2 == -1) || (len1 != len2) || memcmp(any1->value.mem, any2->value.mem, len1)) {
                     return LY_ENOT;
                 }
                 return LY_SUCCESS;
