@@ -1184,7 +1184,7 @@ lyd_compare_single_(const struct lyd_node *node1, const struct lyd_node *node2,
     struct lyd_node_term *term1, *term2;
     struct lyd_node_any *any1, *any2;
     struct lyd_node_opaq *opaq1, *opaq2;
-    size_t len1, len2;
+    int len1, len2;
 
     if (!node1 || !node2) {
         if (node1 == node2) {
