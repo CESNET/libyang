@@ -66,8 +66,8 @@ jobs:
             make-target: ""
           }
           - {
-            name: "Release, macOS 10.15, clang",
-            os: "macos-10.15",
+            name: "Release, macOS 11, clang",
+            os: "macos-11",
             build-type: "Release",
             cc: "clang",
             options: "-DENABLE_TESTS=ON",
