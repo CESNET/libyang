@@ -85,6 +85,10 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, c
         goto error;
     }
     memcpy(&tm_, &tm, sizeof tm);
+
+    /* DST may move the hour back resulting in a different day */
+    tm_.tm_hour = 1;
+
     mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
     if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
         /* checking days is enough, since other errors
