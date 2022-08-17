@@ -70,9 +70,9 @@ jobs:
             os: "macos-11",
             build-type: "Release",
             cc: "clang",
-            options: "-DENABLE_TESTS=ON",
+            options: "-DENABLE_TESTS=ON -DPATH_EXPECT=",
             packager: "brew",
-            packages: "cmocka expect shunit2",
+            packages: "cmocka shunit2",
             snaps: "",
             make-prepend: "",
             make-target: ""
