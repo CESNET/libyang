@@ -3,7 +3,7 @@
 set timeout 1
 
 spawn $env(YANGLINT)
-expect -exact "> "
+expect "> "
 send -- "list\r"
 expect {
 	"list\r
