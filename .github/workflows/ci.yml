@@ -72,7 +72,7 @@ jobs:
             cc: "clang",
             options: "-DENABLE_TESTS=ON",
             packager: "brew",
-            packages: "cmocka shunit2",
+            packages: "cmocka expect shunit2",
             snaps: "",
             make-prepend: "",
             make-target: ""
