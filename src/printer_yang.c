@@ -2215,9 +2215,9 @@ yang_print_parsed_module(struct ly_out *out, const struct lysp_module *modp, uin
     struct lys_ypr_ctx pctx_ = {
         .out = out,
         .level = 0,
+        .options = options,
         .module = module,
-        .schema = LYS_YPR_PARSED,
-        .options = options
+        .schema = LYS_YPR_PARSED
     }, *pctx = &pctx_;
 
     ly_print_(pctx->out, "%*smodule %s {\n", INDENT, module->name);
@@ -2280,8 +2280,11 @@ yang_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lys_ypr_ctx pctx_ = {
-        .out = out, .level = 0, .module = submodp->mod, .schema = LYS_YPR_PARSED,
-        .options = options
+        .out = out,
+        .level = 0,
+        .options = options,
+        .module = submodp->mod,
+        .schema = LYS_YPR_PARSED
     }, *pctx = &pctx_;
 
     ly_print_(pctx->out, "%*ssubmodule %s {\n", INDENT, submodp->name);
@@ -2331,7 +2334,13 @@ yang_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
 LY_ERR
 yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint32_t options)
 {
-    struct lys_ypr_ctx pctx_ = {.out = out, .level = 0, .module = node->module, .options = options}, *pctx = &pctx_;
+    struct lys_ypr_ctx pctx_ = {
+        .out = out,
+        .level = 0,
+        .options = options,
+        .module = node->module,
+        .schema = LYS_YPR_COMPILED
+    }, *pctx = &pctx_;
 
     yprc_node(pctx, node);
 
@@ -2344,7 +2353,13 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_module *modc = module->compiled;
-    struct lys_ypr_ctx pctx_ = {.out = out, .level = 0, .module = module, .options = options}, *pctx = &pctx_;
+    struct lys_ypr_ctx pctx_ = {
+        .out = out,
+        .level = 0,
+        .options = options,
+        .module = module,
+        .schema = LYS_YPR_COMPILED
+    }, *pctx = &pctx_;
 
     ly_print_(pctx->out, "%*smodule %s {\n", INDENT, module->name);
     LEVEL++;
