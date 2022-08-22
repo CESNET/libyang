@@ -55,9 +55,12 @@ get_yanglint_dir(void)
             /* directory does not exist */
             YLMSG_W("Configuration directory \"%s\" does not exist, creating it.\n", yl_dir);
             if (mkdir(yl_dir, 00700)) {
-                YLMSG_E("Configuration directory \"%s\" cannot be created (%s).\n", yl_dir, strerror(errno));
-                free(yl_dir);
-                return NULL;
+                if (errno != EEXIST) {
+                    /* parallel execution, yay */
+                    YLMSG_E("Configuration directory \"%s\" cannot be created (%s).\n", yl_dir, strerror(errno));
+                    free(yl_dir);
+                    return NULL;
+                }
             }
         } else {
             YLMSG_E("Configuration directory \"%s\" exists but cannot be accessed (%s).\n", yl_dir, strerror(errno));
