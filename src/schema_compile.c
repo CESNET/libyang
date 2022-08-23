@@ -506,7 +506,7 @@ lys_compile_extension_instance_storage(enum ly_stmt stmt, struct lysc_ext_substm
     return NULL;
 }
 
-LY_ERR
+LIBYANG_API_DEF LY_ERR
 lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
 {
     LY_ERR ret = LY_SUCCESS, r;
