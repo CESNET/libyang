@@ -141,7 +141,7 @@ cleanup:
     return ret;
 }
 
-struct lysc_ext *
+LIBYANG_API_DEF struct lysc_ext *
 lysc_ext_dup(struct lysc_ext *orig)
 {
     ++orig->refcount;
@@ -207,7 +207,7 @@ lysc_unres_dflt_free(const struct ly_ctx *ctx, struct lysc_unres_dflt *r)
     free(r);
 }
 
-void
+LIBYANG_API_DEF void
 lysc_update_path(struct lysc_ctx *ctx, struct lys_module *parent_module, const char *name)
 {
     int len;

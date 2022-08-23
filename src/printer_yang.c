@@ -2454,7 +2454,7 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_
     return LY_SUCCESS;
 }
 
-void
+LIBYANG_API_DEF void
 lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_ext_instance *ext, ly_bool *flag)
 {
     struct lys_ypr_ctx *pctx = (struct lys_ypr_ctx *)ctx_generic;
