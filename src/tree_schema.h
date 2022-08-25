@@ -430,17 +430,11 @@ enum ly_stmt {
 
 /**
  * @brief Stringify statement identifier.
+ *
  * @param[in] stmt The statement identifier to stringify.
  * @return Constant string representation of the given @p stmt.
  */
 LIBYANG_API_DECL const char *ly_stmt2str(enum ly_stmt stmt);
-
-/**
- * @brief Convert nodetype to statement identifier
- * @param[in] nodetype Nodetype to convert.
- * @return Statement identifier representing the given @p nodetype.
- */
-LIBYANG_API_DECL enum ly_stmt lys_nodetype2stmt(uint16_t nodetype);
 
 /**
  * @brief Possible cardinalities of the YANG statements.
@@ -453,6 +447,22 @@ enum ly_stmt_cardinality {
     LY_STMT_CARD_SOME,   /* 1..n */
     LY_STMT_CARD_ANY     /* 0..n */
 };
+
+/**
+ * @brief Stringify statement cardinality.
+ *
+ * @param[in] card The cardinality to stringify.
+ * @return Constant string representation of the given @p card.
+ */
+LIBYANG_API_DECL const char *ly_cardinality2str(enum ly_stmt_cardinality card);
+
+/**
+ * @brief Convert nodetype to statement identifier
+ *
+ * @param[in] nodetype Nodetype to convert.
+ * @return Statement identifier representing the given @p nodetype.
+ */
+LIBYANG_API_DECL enum ly_stmt lys_nodetype2stmt(uint16_t nodetype);
 
 /**
  * @brief YANG import-stmt

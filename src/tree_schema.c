@@ -137,6 +137,23 @@ ly_stmt2str(enum ly_stmt stmt)
     }
 }
 
+LIBYANG_API_DEF const char *
+ly_cardinality2str(enum ly_stmt_cardinality card)
+{
+    switch (card) {
+    case LY_STMT_CARD_OPT:
+        return "0..1";
+    case LY_STMT_CARD_MAND:
+        return "1";
+    case LY_STMT_CARD_SOME:
+        return "1..n";
+    case LY_STMT_CARD_ANY:
+        return "0..n";
+    }
+
+    return NULL;
+}
+
 const char * const ly_devmod_list[] = {
     [LYS_DEV_NOT_SUPPORTED] = "not-supported",
     [LYS_DEV_ADD] = "add",

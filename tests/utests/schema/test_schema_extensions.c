@@ -17,6 +17,7 @@
 
 #include "context.h"
 #include "log.h"
+#include "plugins_exts.h"
 #include "tree_schema.h"
 
 void
@@ -285,4 +286,67 @@ test_extension_argument_element(void **state)
     CHECK_LOG_CTX("Extension instance \"a:e\" expects argument element \"name\" as its first XML child, but \"value\" element found.",
             "/x:{extension='a:e'}");
 
+}
+
+void
+test_extension_compile(void **state)
+{
+    struct lys_module *mod;
+    struct lysc_ctx cctx = {0};
+    struct lysp_ext_instance ext_p = {0};
+    struct lysp_stmt child = {0};
+    struct lysc_ext_instance ext_c = {0};
+    struct lysc_ext_substmt *substmt;
+    LY_ERR rc = LY_SUCCESS;
+
+    /* current module, whatever */
+    mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "yang");
+    assert_true(mod);
+
+    /* compile context */
+    cctx.ctx = UTEST_LYCTX;
+    cctx.cur_mod = mod;
+    cctx.pmod = mod->parsed;
+    cctx.path_len = 1;
+    cctx.path[0] = '/';
+
+    /* parsed ext instance */
+    lydict_insert(UTEST_LYCTX, "pref:my-ext", 0, &ext_p.name);
+    ext_p.format = LY_VALUE_JSON;
+    ext_p.parent_stmt = LY_STMT_MODULE;
+
+    /* compiled ext instance */
+    ext_c.parent_stmt = ext_p.parent_stmt;
+    // ext_c.parent =
+    LY_ARRAY_NEW_GOTO(UTEST_LYCTX, ext_c.substmts, substmt, rc, cleanup);
+
+    /*
+     * error-message
+     */
+    ext_p.child = &child;
+    lydict_insert(UTEST_LYCTX, "error-message", 0, &child.stmt);
+    lydict_insert(UTEST_LYCTX, "my error", 0, &child.arg);
+    child.format = LY_VALUE_JSON;
+    child.kw = LY_STMT_ERROR_MESSAGE;
+
+    substmt->stmt = LY_STMT_ERROR_MESSAGE;
+    substmt->cardinality = LY_STMT_CARD_OPT;
+    substmt->storage = &ext_c.data;
+
+    /* compile */
+    assert_int_equal(LY_SUCCESS, lys_compile_extension_instance(&cctx, &ext_p, &ext_c));
+
+    /* check */
+    assert_string_equal(ext_c.data, "my error");
+
+cleanup:
+    lydict_remove(UTEST_LYCTX, ext_p.name);
+    lydict_remove(UTEST_LYCTX, child.stmt);
+    lydict_remove(UTEST_LYCTX, child.arg);
+    LY_ARRAY_FREE(ext_c.substmts);
+
+    lydict_remove(UTEST_LYCTX, ext_c.data);
+    if (rc) {
+        fail();
+    }
 }

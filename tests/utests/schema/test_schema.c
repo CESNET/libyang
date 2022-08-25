@@ -59,6 +59,7 @@ void test_feature(void **state);
 /* test_schema_extensions.c */
 void test_extension_argument(void **state);
 void test_extension_argument_element(void **state);
+void test_extension_compile(void **state);
 
 int
 main(void)
@@ -84,6 +85,7 @@ main(void)
         /** test_schema_extensions.c */
         UTEST(test_extension_argument),
         UTEST(test_extension_argument_element),
+        UTEST(test_extension_compile),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
