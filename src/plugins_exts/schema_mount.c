@@ -904,6 +904,43 @@ schema_mount_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     free(sm_data);
 }
 
+LIBYANG_API_DEF LY_ERR
+lyplg_ext_schema_mount_create_context(const struct lysc_ext_instance *ext, struct ly_ctx **ctx)
+{
+    struct lyd_node *ext_data;
+    ly_bool ext_data_free;
+    ly_bool config;
+    ly_bool shared;
+    LY_ERR res;
+
+    if (!ext->module->ctx->ext_clb) {
+        return LY_EINVAL;
+    }
+
+    if (strcmp(ext->def->module->name, "ietf-yang-schema-mount") ||
+            strcmp(ext->def->name, "mount-point")) {
+        return LY_EINVAL;
+    }
+
+    /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
+    if ((res = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+        return res;
+    }
+
+    /* learn about this mount point */
+    if ((res = schema_mount_get_smount(ext, ext_data, &config, &shared))) {
+        goto out;
+    }
+
+    res = schema_mount_create_ctx(ext, ext_data, config, ctx);
+
+out:
+    if (ext_data_free) {
+        lyd_free_all(ext_data);
+    }
+    return res;
+}
+
 /**
  * @brief Plugin descriptions for the Yang Schema Mount extension.
  *
