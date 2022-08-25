@@ -989,7 +989,12 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
     (*node)->meta = *meta;
     *meta = NULL;
 
+    /* insert into parent */
     lyb_insert_node(lybctx, parent, *node, first_p, parsed);
+
+    /* store for ext instance node validation, if needed */
+    (void)lyd_validate_node_ext(*node, &lybctx->ext_node);
+
     *node = NULL;
 }
 

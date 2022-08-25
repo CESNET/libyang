@@ -1413,7 +1413,10 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         }
 
         /* add/correct flags */
-        lyd_parse_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
+        LY_CHECK_RET(lyd_parse_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext));
+
+        /* store for ext instance node validation, if needed */
+        LY_CHECK_RET(lyd_validate_node_ext(*node, &lydctx->ext_node));
     } else if (ret == LY_ENOT) {
         /* parse it again as an opaq node */
         ret = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status, status, first_p, node);

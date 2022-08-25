@@ -841,9 +841,12 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     }
     assert(node);
 
-    /* add/correct flags */
     if (snode) {
+        /* add/correct flags */
         LY_CHECK_GOTO(ret = lyd_parse_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext), error);
+
+        /* store for ext instance node validation, if needed */
+        LY_CHECK_GOTO(ret = lyd_validate_node_ext(node, &lydctx->ext_node), error);
     }
 
     /* parser next */

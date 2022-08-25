@@ -102,7 +102,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 4
+#define LYPLG_EXT_API_VERSION 5
 
 /**
  * @brief Macro to define plugin information in external plugins
@@ -161,6 +161,19 @@ typedef LY_ERR (*lyplg_ext_schema_printer_clb)(struct lyspr_ctx *ctx, struct lys
 typedef void (*lyplg_ext_free_clb)(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
+ * @brief Callback called for all data nodes connected to the extension instance.
+ *
+ * Can be used for additional data node validation. Is called only after the whole data tree is created and standard
+ * validation succeeds.
+ *
+ * @param[in] ext Compiled extension instance.
+ * @param[in] node Data node to process.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+typedef LY_ERR (*lyplg_ext_data_node_clb)(struct lysc_ext_instance *ext, struct lyd_node *node);
+
+/**
  * @brief Callback for getting a schema node for a new YANG instance data described by an extension instance.
  * Needed only if the extension instance supports some nested standard YANG data.
  *
@@ -211,6 +224,8 @@ struct lyplg_ext {
                                                  instance */
     lyplg_ext_free_clb free;                /**< free the extension-specific data created by its compilation */
 
+    lyplg_ext_data_node_clb node;           /**< callback to validate most relevant data instance for the extension
+                                                 instance */
     lyplg_ext_data_snode_clb snode;         /**< callback to get schema node for nested YANG data */
     lyplg_ext_data_validate_clb validate;   /**< callback to validate parsed data instances according to the extension
                                                  definition */

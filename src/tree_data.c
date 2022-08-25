@@ -143,7 +143,7 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     if (!(parse_opts & LYD_PARSE_ONLY)) {
         /* validate data */
         rc = lyd_validate(first_p, NULL, ctx, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
-                &lydctx->ext_val, NULL);
+                &lydctx->ext_node, &lydctx->ext_val, NULL);
         LY_CHECK_GOTO(rc, cleanup);
     }
 

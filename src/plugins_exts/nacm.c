@@ -161,6 +161,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.compile = &nacm_compile,
         .plugin.sprinter = NULL,
         .plugin.free = NULL,
+        .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL
     }, {
@@ -172,6 +173,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.compile = &nacm_compile,
         .plugin.sprinter = NULL,
         .plugin.free = NULL,
+        .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL
     }, {
@@ -183,6 +185,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.compile = &nacm_compile,
         .plugin.sprinter = NULL,
         .plugin.free = NULL,
+        .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL
     }, {
@@ -194,6 +197,7 @@ const struct lyplg_ext_record plugins_nacm[] = {
         .plugin.compile = &nacm_compile,
         .plugin.sprinter = NULL,
         .plugin.free = NULL,
+        .plugin.node = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL
     },

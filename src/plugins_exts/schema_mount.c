@@ -850,6 +850,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.compile = &schema_mount_compile,
         .plugin.sprinter = NULL,
         .plugin.free = &schema_mount_free,
+        .plugin.node = NULL,
         .plugin.snode = &schema_mount_snode,
         .plugin.validate = &schema_mount_validate
     },
