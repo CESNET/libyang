@@ -285,8 +285,8 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
             }
             return LY_SUCCESS;
         } else if (xmlctx->in->current[0] != '<') {
-            LOGVAL(ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(xmlctx->in->current),
-                    xmlctx->in->current, "element tag start ('<')");
+            LOGVAL(ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(xmlctx->in->current), xmlctx->in->current,
+                    "element tag start ('<')");
             return LY_EVALID;
         }
         move_input(xmlctx, 1);
@@ -302,7 +302,7 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
                 endtag_len = ly_strlen_const("-->");
             } else if (!strncmp(xmlctx->in->current, "DOCTYPE", ly_strlen_const("DOCTYPE"))) {
                 /* Document type declaration - not supported */
-                LOGVAL(ctx,  LY_VCODE_NSUPP, "Document Type Declaration");
+                LOGVAL(ctx, LY_VCODE_NSUPP, "Document Type Declaration");
                 return LY_EVALID;
             } else {
                 LOGVAL(ctx, LYVE_SYNTAX, "Unknown XML section \"%.20s\".", &xmlctx->in->current[-2]);
