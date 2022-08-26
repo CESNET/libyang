@@ -296,7 +296,7 @@ lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum ly
             struct lyd_ctx_ext_node *ext_n = ext_node->objs[i];
 
             /* validate the node */
-            ret = ext_n->ext->def->plugin->node(ext_n->ext, ext_n->node);
+            ret = ext_n->ext->def->plugin->node(ext_n->ext, ext_n->node, val_opts);
             LY_CHECK_RET(ret);
 
             /* remove this item from the set */
