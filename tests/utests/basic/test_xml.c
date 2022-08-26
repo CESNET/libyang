@@ -429,6 +429,7 @@ test_text(void **state)
     ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
+    LOG_LOCBACK(0, 0, 0, 4);
 
     /* valid strings */
     str = "<a>€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;</a>";
@@ -527,6 +528,7 @@ test_text(void **state)
     ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
+    LOG_LOCBACK(0, 0, 0, 9);
 }
 
 static void
