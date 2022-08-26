@@ -156,11 +156,44 @@ lyxml_parse_identifier(struct lyxml_ctx *xmlctx, const char **start, const char 
 LY_ERR
 lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR rc = LY_SUCCESS;
     struct lyxml_ns *ns;
+    uint32_t i;
+
+    /* check for duplicates */
+    if (xmlctx->ns.count) {
+        i = xmlctx->ns.count;
+        do {
+            --i;
+            ns = xmlctx->ns.objs[i];
+            if (ns->depth < xmlctx->elements.count) {
+                /* only namespaces of parents, no need to check further */
+                break;
+            } else if (prefix && ns->prefix && !ly_strncmp(ns->prefix, prefix, prefix_len)) {
+                if (!strcmp(ns->uri, uri)) {
+                    /* exact same prefix and namespace, ignore */
+                    goto cleanup;
+                }
+
+                LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Duplicate XML NS prefix \"%s\" used for namespaces \"%s\" and \"%s\".",
+                        ns->prefix, ns->uri, uri);
+                rc = LY_EVALID;
+                goto cleanup;
+            } else if (!prefix && !ns->prefix) {
+                if (!strcmp(ns->uri, uri)) {
+                    /* exact same default namespace, ignore */
+                    goto cleanup;
+                }
+
+                LOGVAL(xmlctx->ctx, LYVE_SYNTAX, "Duplicate default XML namespaces \"%s\" and \"%s\".", ns->uri, uri);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+        } while (i);
+    }
 
     ns = malloc(sizeof *ns);
-    LY_CHECK_ERR_RET(!ns, LOGMEM(xmlctx->ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!ns, LOGMEM(xmlctx->ctx); rc = LY_EMEM, cleanup);
 
     /* we need to connect the depth of the element where the namespace is defined with the
      * namespace record to be able to maintain (remove) the record when the parser leaves
@@ -170,15 +203,20 @@ lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, ch
     ns->uri = uri;
     if (prefix) {
         ns->prefix = strndup(prefix, prefix_len);
-        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(xmlctx->ctx); free(ns->uri); free(ns), LY_EMEM);
+        LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(xmlctx->ctx); free(ns); rc = LY_EMEM, cleanup);
     } else {
         ns->prefix = NULL;
     }
 
-    ret = ly_set_add(&xmlctx->ns, ns, 1, NULL);
-    LY_CHECK_ERR_RET(ret, free(ns->prefix); free(ns->uri); free(ns), ret);
+    rc = ly_set_add(&xmlctx->ns, ns, 1, NULL);
+    LY_CHECK_ERR_GOTO(rc, free(ns->prefix); free(ns), cleanup);
 
-    return LY_SUCCESS;
+    /* successfully stored */
+    uri = NULL;
+
+cleanup:
+    free(uri);
+    return rc;
 }
 
 void

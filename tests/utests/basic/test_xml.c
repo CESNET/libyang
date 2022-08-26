@@ -68,6 +68,20 @@ test_element(void **state)
     CHECK_LOG_CTX("Unknown XML section \"<!NONSENSE/>\".", "Line number 1.");
     ly_in_free(in, 0);
 
+    /* namespace ambiguity */
+    str = "<element xmlns=\"urn1\" xmlns=\"urn2\"/>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(UTEST_LYCTX, in, &xmlctx));
+    CHECK_LOG_CTX("Duplicate default XML namespaces \"urn1\" and \"urn2\".", "Line number 1.");
+    ly_in_free(in, 0);
+
+    /* prefix duplicate */
+    str = "<element xmlns:a=\"urn1\" xmlns:a=\"urn2\"/>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(UTEST_LYCTX, in, &xmlctx));
+    CHECK_LOG_CTX("Duplicate XML NS prefix \"a\" used for namespaces \"urn1\" and \"urn2\".", "Line number 1.");
+    ly_in_free(in, 0);
+
     /* unqualified element */
     str = "  <  element/>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
