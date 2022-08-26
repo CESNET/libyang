@@ -1513,6 +1513,7 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_node)
  * @param[in,out] node_when Set for nodes with when conditions.
  * @param[in,out] node_types Set for unres node types.
  * @param[in,out] meta_types Set for unres metadata types.
+ * @param[in,out] ext_node Set with nodes with extensions to validate.
  * @param[in,out] ext_val Set for parsed extension data to validate.
  * @param[in] impl_opts Implicit options, see @ref implicitoptions.
  * @param[in,out] diff Validation diff.
@@ -1520,7 +1521,8 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_node)
  */
 static LY_ERR
 lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_set *node_types,
-        struct ly_set *meta_types, struct ly_set *ext_val, uint32_t impl_opts, struct lyd_node **diff)
+        struct ly_set *meta_types, struct ly_set *ext_node, struct ly_set *ext_val, uint32_t impl_opts,
+        struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
     struct lyd_node *node;
@@ -1558,6 +1560,9 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *node_when, struct ly_
             /* when evaluation */
             LY_CHECK_RET(ly_set_add(node_when, (void *)node, 1, NULL));
         }
+
+        /* store for ext instance node validation, if needed */
+        LY_CHECK_RET(lyd_validate_node_ext(node, ext_node));
 
 next_node:
         LYD_TREE_DFS_END(root, node);
@@ -1633,7 +1638,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
                     break;
                 }
 
-                ret = lyd_validate_subtree(iter, node_when_p, node_types_p, meta_types_p, ext_val_p,
+                ret = lyd_validate_subtree(iter, node_when_p, node_types_p, meta_types_p, ext_node_p, ext_val_p,
                         (val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, diff);
                 LY_CHECK_GOTO(ret, cleanup);
             }
@@ -1811,14 +1816,14 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
         if (validate_subtree) {
             /* skip validating the operation itself, go to children directly */
             LY_LIST_FOR(lyd_child(op_node), child) {
-                rc = lyd_validate_subtree(child, node_when_p, node_types_p, meta_types_p, ext_val_p, 0, diff);
+                rc = lyd_validate_subtree(child, node_when_p, node_types_p, meta_types_p, ext_node_p, ext_val_p, 0, diff);
                 LY_CHECK_GOTO(rc, cleanup);
             }
         }
     } else {
         if (validate_subtree) {
             /* prevalidate whole operation subtree */
-            rc = lyd_validate_subtree(op_node, node_when_p, node_types_p, meta_types_p, ext_val_p, 0, diff);
+            rc = lyd_validate_subtree(op_node, node_when_p, node_types_p, meta_types_p, ext_node_p, ext_val_p, 0, diff);
             LY_CHECK_GOTO(rc, cleanup);
         }
     }
