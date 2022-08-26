@@ -1079,7 +1079,7 @@ lyb_validate_node_inner(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snod
         /* add any missing default children */
         impl_opts = (lybctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0;
         ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lybctx->node_when, &lybctx->node_types,
-                impl_opts, NULL);
+                &lybctx->ext_node, impl_opts, NULL);
         LY_CHECK_RET(ret);
     }
 

@@ -779,7 +779,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
 
             /* add any missing default children */
             ret = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
-                    (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
+                    &lydctx->ext_node, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, error);
         }
 
