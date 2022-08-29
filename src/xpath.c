@@ -55,7 +55,7 @@ static LY_ERR moveto_node(struct lyxp_set *set, const struct lys_module *moveto_
         enum lyxp_axis axis, uint32_t options);
 static LY_ERR moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname,
         enum lyxp_axis axis, uint32_t options);
-static LY_ERR moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op);
+static LY_ERR moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, ly_bool *result);
 
 /* Functions are divided into the following basic classes:
  *
@@ -7173,11 +7173,9 @@ moveto_op_comp_item(const struct lyxp_set *set1, uint32_t idx1, struct lyxp_set 
 
     /* compare recursively and store the result */
     if (switch_operands) {
-        LY_CHECK_GOTO(rc = moveto_op_comp(set2, &tmp1, op), cleanup);
-        *result = set2->val.bln;
+        LY_CHECK_GOTO(rc = moveto_op_comp(set2, &tmp1, op, result), cleanup);
     } else {
-        LY_CHECK_GOTO(rc = moveto_op_comp(&tmp1, set2, op), cleanup);
-        *result = tmp1.val.bln;
+        LY_CHECK_GOTO(rc = moveto_op_comp(&tmp1, set2, op, result), cleanup);
     }
 
 cleanup:
@@ -7189,13 +7187,14 @@ cleanup:
  * @brief Move context @p set1 to the result of a comparison. Handles '=', '!=', '<=', '<', '>=', or '>'.
  *        Result is LYXP_SET_BOOLEAN. Indirectly context position aware.
  *
- * @param[in,out] set1 Set to use for the result.
+ * @param[in] set1 Set acting as the first operand for @p op.
  * @param[in] set2 Set acting as the second operand for @p op.
  * @param[in] op Comparison operator to process.
+ * @param[out] result Result of the comparison.
  * @return LY_ERR
  */
 static LY_ERR
-moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
+moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, ly_bool *result)
 {
     /*
      * NODE SET + NODE SET = NODE SET + STRING /(1 NODE SET) 2 STRING
@@ -7228,7 +7227,6 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
      * NUMBER + BOOLEAN = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
      * STRING + BOOLEAN = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
      */
-    ly_bool result;
     uint32_t i;
     LY_ERR rc;
 
@@ -7237,29 +7235,27 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
         if (set1->type == LYXP_SET_NODE_SET) {
             for (i = 0; i < set1->used; ++i) {
                 /* evaluate for the single item */
-                LY_CHECK_RET(moveto_op_comp_item(set1, i, set2, op, 0, &result));
+                LY_CHECK_RET(moveto_op_comp_item(set1, i, set2, op, 0, result));
 
                 /* lazy evaluation until true */
-                if (result) {
-                    set_fill_boolean(set1, 1);
+                if (*result) {
                     return LY_SUCCESS;
                 }
             }
         } else {
             for (i = 0; i < set2->used; ++i) {
                 /* evaluate for the single item */
-                LY_CHECK_RET(moveto_op_comp_item(set2, i, set1, op, 1, &result));
+                LY_CHECK_RET(moveto_op_comp_item(set2, i, set1, op, 1, result));
 
                 /* lazy evaluation until true */
-                if (result) {
-                    set_fill_boolean(set1, 1);
+                if (*result) {
                     return LY_SUCCESS;
                 }
             }
         }
 
         /* false for all the nodes */
-        set_fill_boolean(set1, 0);
+        *result = 0;
         return LY_SUCCESS;
     }
 
@@ -7286,44 +7282,37 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op)
     /* compute result */
     if (op[0] == '=') {
         if (set1->type == LYXP_SET_BOOLEAN) {
-            result = (set1->val.bln == set2->val.bln);
+            *result = (set1->val.bln == set2->val.bln);
         } else if (set1->type == LYXP_SET_NUMBER) {
-            result = (set1->val.num == set2->val.num);
+            *result = (set1->val.num == set2->val.num);
         } else {
             assert(set1->type == LYXP_SET_STRING);
-            result = strcmp(set1->val.str, set2->val.str) ? 0 : 1;
+            *result = strcmp(set1->val.str, set2->val.str) ? 0 : 1;
         }
     } else if (op[0] == '!') {
         if (set1->type == LYXP_SET_BOOLEAN) {
-            result = (set1->val.bln != set2->val.bln);
+            *result = (set1->val.bln != set2->val.bln);
         } else if (set1->type == LYXP_SET_NUMBER) {
-            result = (set1->val.num != set2->val.num);
+            *result = (set1->val.num != set2->val.num);
         } else {
             assert(set1->type == LYXP_SET_STRING);
-            result = strcmp(set1->val.str, set2->val.str) ? 1 : 0;
+            *result = strcmp(set1->val.str, set2->val.str) ? 1 : 0;
         }
     } else {
         assert(set1->type == LYXP_SET_NUMBER);
         if (op[0] == '<') {
             if (op[1] == '=') {
-                result = (set1->val.num <= set2->val.num);
+                *result = (set1->val.num <= set2->val.num);
             } else {
-                result = (set1->val.num < set2->val.num);
+                *result = (set1->val.num < set2->val.num);
             }
         } else {
             if (op[1] == '=') {
-                result = (set1->val.num >= set2->val.num);
+                *result = (set1->val.num >= set2->val.num);
             } else {
-                result = (set1->val.num > set2->val.num);
+                *result = (set1->val.num > set2->val.num);
             }
         }
-    }
-
-    /* assign result */
-    if (result) {
-        set_fill_boolean(set1, 1);
-    } else {
-        set_fill_boolean(set1, 0);
     }
 
     return LY_SUCCESS;
@@ -9192,8 +9181,10 @@ eval_relational_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t re
             lyxp_set_scnode_merge(set, &set2);
             set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
-            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]]);
+            ly_bool result;
+            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], &result);
             LY_CHECK_GOTO(rc, cleanup);
+            set_fill_boolean(set, result);
         }
     }
 
@@ -9260,8 +9251,10 @@ eval_equality_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repe
             lyxp_set_scnode_merge(set, &set2);
             set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
         } else {
-            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]]);
+            ly_bool result;
+            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], &result);
             LY_CHECK_GOTO(rc, cleanup);
+            set_fill_boolean(set, result);
         }
     }
 
