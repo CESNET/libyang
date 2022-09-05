@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang hash table
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
  */
 uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
 
-/*
+/**
  * @brief Compute hash from a string.
  */
 uint32_t dict_hash(const char *key, size_t len);
@@ -131,7 +131,7 @@ void lydict_clean(struct dict_table *dict);
  * @param[in] size Starting size of the hash table (capacity of values), must be power of 2.
  * @param[in] val_size Size in bytes of value (the stored hashed item).
  * @param[in] val_equal Callback for checking value equivalence.
- * @param[in] cb_data User data always passed to \p val_equal.
+ * @param[in] cb_data User data always passed to @p val_equal.
  * @param[in] resize Whether to resize the table on too few/too many records taken.
  * @return Empty hash table, NULL on error.
  */
@@ -159,7 +159,7 @@ void *lyht_set_cb_data(struct hash_table *ht, void *new_cb_data);
  * @brief Make a duplicate of an existing hash table.
  *
  * @param[in] orig Original hash table to duplicate.
- * @return Duplicated hash table \p orig, NULL on error.
+ * @return Duplicated hash table @p orig, NULL on error.
  */
 struct hash_table *lyht_dup(const struct hash_table *orig);
 
@@ -186,7 +186,7 @@ LY_ERR lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match
  * @brief Find another equal value in the hash table.
  *
  * @param[in] ht Hash table to search in.
- * @param[in] val_p Pointer to the previously found value in \p ht.
+ * @param[in] val_p Pointer to the previously found value in @p ht.
  * @param[in] hash Hash of the previously found value.
  * @param[out] match_p Pointer to the matching value, optional.
  * @return LY_SUCCESS if value was found,
@@ -199,7 +199,7 @@ LY_ERR lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **
  *
  * @param[in] ht Hash table to insert into.
  * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
- * are pointers, \p val_p must be a pointer to a pointer.
+ * are pointers, @p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
  * @param[out] match_p Pointer to the stored value, optional
  * @return LY_SUCCESS on success,
@@ -215,7 +215,7 @@ LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  *
  * @param[in] ht Hash table to insert into.
  * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
- * are pointers, \p val_p must be a pointer to a pointer.
+ * are pointers, @p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
  * @param[in] resize_val_equal Val equal callback to use for resizing.
  * @param[out] match_p Pointer to the stored value, optional
@@ -231,7 +231,7 @@ LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t h
  *
  * @param[in] ht Hash table to remove from.
  * @param[in] val_p Pointer to value to be removed. Be careful, if the values stored in the hash table
- * are pointers, \p val_p must be a pointer to a pointer.
+ * are pointers, @p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
  * @return LY_SUCCESS on success,
  * @return LY_ENOTFOUND if value was not found.
@@ -245,7 +245,7 @@ LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
  *
  * @param[in] ht Hash table to remove from.
  * @param[in] val_p Pointer to value to be removed. Be careful, if the values stored in the hash table
- * are pointers, \p val_p must be a pointer to a pointer.
+ * are pointers, @p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
  * @param[in] resize_val_equal Val equal callback to use for resizing.
  * @return LY_SUCCESS on success,
