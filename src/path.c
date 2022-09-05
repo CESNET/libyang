@@ -211,7 +211,11 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* '[' */
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
 
+        } else if (lyxp_check_token(ctx, exp, *tok_idx, 0)) {
+            /* unexpected EOF */
+            goto token_error;
         } else {
+            /* invalid token */
             LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), exp->expr + exp->tok_pos[*tok_idx]);
             goto token_error;
         }
