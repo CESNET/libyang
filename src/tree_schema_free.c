@@ -1168,7 +1168,14 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
         case LY_STMT_STATUS:
             /* nothing to do */
             break;
+        case LY_STMT_CONTACT:
         case LY_STMT_DESCRIPTION:
+        case LY_STMT_ERROR_APP_TAG:
+        case LY_STMT_ERROR_MESSAGE:
+        case LY_STMT_KEY:
+        case LY_STMT_NAMESPACE:
+        case LY_STMT_ORGANIZATION:
+        case LY_STMT_PRESENCE:
         case LY_STMT_REFERENCE:
         case LY_STMT_UNITS:
             if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
