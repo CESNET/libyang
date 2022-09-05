@@ -1204,26 +1204,26 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
                 FREE_ARRAY(ctx, iff, lysc_iffeature_free);
             }
             break;
-            case LY_STMT_TYPE:
-                if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                    /* single item */
-                    struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
-
-                    if (!type) {
-                        break;
-                    }
-                    lysc_type_free(ctx, type);
-                } else {
-                    /* multiple items */
-                    struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
-
-                    if (!types) {
-                        break;
-                    }
-                    FREE_ARRAY(ctx, types, lysc_type2_free);
-                }
-                break;
         }
+        case LY_STMT_TYPE:
+            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                /* single item */
+                struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
+
+                if (!type) {
+                    break;
+                }
+                lysc_type_free(ctx, type);
+            } else {
+                /* multiple items */
+                struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
+
+                if (!types) {
+                    break;
+                }
+                FREE_ARRAY(ctx, types, lysc_type2_free);
+            }
+            break;
 
         /* TODO other statements */
         default:
