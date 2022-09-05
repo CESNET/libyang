@@ -209,7 +209,13 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
 
     /* skip after the content */
     while ((jsonctx->depth > orig_depth) || (current != status + 1)) {
-        LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
+        if (current == LYJSON_ARRAY) {
+            /* skip the array separately */
+            LY_CHECK_RET(lydjson_data_skip(jsonctx));
+            current = lyjson_ctx_status(jsonctx, 0);
+        } else {
+            LY_CHECK_RET(lyjson_ctx_next(jsonctx, &current));
+        }
 
         if (current == LYJSON_END) {
             break;
