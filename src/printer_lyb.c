@@ -107,7 +107,8 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HA
         }
 
         /* get next node inserted with last hash col ID ht_col_id */
-    } while (!lyht_find_next(ht, col_node, lyb_get_hash(*col_node, ht_col_id), (void **)&col_node));
+    } while (!lyht_find_next_with_collision_cb(ht, col_node, lyb_get_hash(*col_node, ht_col_id), lyb_hash_equal_cb,
+            (void **)&col_node));
 
     lyht_set_cb(ht, lyb_hash_equal_cb);
     return LY_SUCCESS;

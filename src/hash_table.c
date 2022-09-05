@@ -622,26 +622,39 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 }
 
 LY_ERR
-lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+lyht_find_next_with_collision_cb(struct hash_table *ht, void *val_p, uint32_t hash,
+        lyht_value_equal_cb collision_val_equal, void **match_p)
 {
     struct ht_rec *rec, *crec;
     uint32_t i, c;
     LY_ERR r;
 
-    /* found the record of the previously found value */
+    /* find the record of the previously found value */
     if (lyht_find_rec(ht, val_p, hash, 1, &crec, &i, &rec)) {
         /* not found, cannot happen */
         LOGINT_RET(NULL);
     }
 
-    /* go through collisions and find next one after the previous one */
+    /* go through collisions and find the next one after the previous one */
     c = crec->hits;
     for (++i; i < c; ++i) {
         r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
         (void)r;
 
-        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+        if (rec->hash != hash) {
+            continue;
+        }
+
+        if (collision_val_equal) {
+            if (collision_val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+                /* even the value matches */
+                if (match_p) {
+                    *match_p = rec->val;
+                }
+                return LY_SUCCESS;
+            }
+        } else if (ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
             /* even the value matches */
             if (match_p) {
                 *match_p = rec->val;
@@ -652,6 +665,12 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 
     /* the last equal value was already returned */
     return LY_ENOTFOUND;
+}
+
+LY_ERR
+lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+{
+    return lyht_find_next_with_collision_cb(ht, val_p, hash, NULL, match_p);
 }
 
 LY_ERR

@@ -195,6 +195,21 @@ LY_ERR lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match
 LY_ERR lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
+ * @brief Find another equal value in the hash table. Same functionality as ::lyht_find_next()
+ * but allows to specify a collision val equal callback to be used for checking for matching colliding values.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] val_p Pointer to the previously found value in @p ht.
+ * @param[in] hash Hash of the previously found value.
+ * @param[in] collision_val_equal Val equal callback to use for checking collisions.
+ * @param[out] match_p Pointer to the matching value, optional.
+ * @return LY_SUCCESS if value was found,
+ * @return LY_ENOTFOUND if not found.
+ */
+LY_ERR lyht_find_next_with_collision_cb(struct hash_table *ht, void *val_p, uint32_t hash,
+        lyht_value_equal_cb collision_val_equal, void **match_p);
+
+/**
  * @brief Insert a value into a hash table.
  *
  * @param[in] ht Hash table to insert into.
