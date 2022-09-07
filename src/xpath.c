@@ -9254,7 +9254,7 @@ eval_equality_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, uint32_t repe
         } else {
             ly_bool result;
 
-	    rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], &result);
+            rc = moveto_op_comp(set, &set2, &exp->expr[exp->tok_pos[this_op]], &result);
             LY_CHECK_GOTO(rc, cleanup);
             set_fill_boolean(set, result);
         }
