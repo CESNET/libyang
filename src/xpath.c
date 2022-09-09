@@ -3189,7 +3189,7 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t st
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *dup = NULL;
-    uint32_t used = 0, i, j, k, expr_len;
+    uint32_t used = 0, i, j, expr_len;
     const char *expr_start;
 
     assert((!start_idx && !end_idx) || ((start_idx < exp->used) && (end_idx < exp->used) && (start_idx <= end_idx)));
@@ -3244,14 +3244,6 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t st
                     dup->repeat[i - start_idx] = malloc(j * sizeof **dup->repeat);
                     LY_CHECK_ERR_GOTO(!dup->repeat[i - start_idx], LOGMEM(ctx); ret = LY_EMEM, cleanup);
                     memcpy(dup->repeat[i - start_idx], exp->repeat[i], j * sizeof **dup->repeat);
-                    dup->repeat[i - start_idx][j - 1] = 0;
-
-                    if (start_idx) {
-                        /* fix the indices in the tokens */
-                        for (k = 0; k < j; ++k) {
-                            dup->repeat[i - start_idx][k] -= start_idx;
-                        }
-                    }
                 }
             }
         }
