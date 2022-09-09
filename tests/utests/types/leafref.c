@@ -64,8 +64,8 @@
 static void
 test_data_xml(void **state)
 {
-    const char *schema, *schema2, *data2;
-    struct lyd_node *tree2;
+    const char *schema, *schema2, *schema3, *data;
+    struct lyd_node *tree;
 
     /* xml test */
     schema = MODULE_CREATE_YANG("defs", "leaf lref {type leafref {path /leaflisttarget; require-instance true;}}"
@@ -97,21 +97,35 @@ test_data_xml(void **state)
             "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>",
             "defs", "xmlns:a=\"urn:tests:defs\"", "a:lref2", "y", STRING, "y");
 
-    data2 = "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>"
+    data = "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>y</lr1></l></c>";
-    CHECK_PARSE_LYD_PARAM(data2, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree2);
-    CHECK_LYD_NODE_TERM((struct lyd_node_term *)lyd_child(lyd_child(tree2->next->next)->next)->next->next,
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_NODE_TERM((struct lyd_node_term *)lyd_child(lyd_child(tree->next->next)->next)->next->next,
             0, 0, 0, 1, 1, STRING, "y");
-    lyd_free_all(tree2);
+    lyd_free_all(tree);
 
-    data2 = "<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list>"
+    data = "<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list>"
             "<list xmlns=\"urn:tests:defs\"><id>y</id><targets>c</targets><targets>d</targets></list>"
             "<c xmlns=\"urn:tests:leafrefs\"><x><x>y</x></x>"
             "<l><id>x</id><value>x</value><lr3>c</lr3></l></c>";
-    CHECK_PARSE_LYD_PARAM(data2, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree2);
-    CHECK_LYD_NODE_TERM((struct lyd_node_term *)lyd_child(lyd_child(tree2->next->next->next)->next)->next->next,
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_NODE_TERM((struct lyd_node_term *)lyd_child(lyd_child(tree->next->next->next)->next)->next->next,
             0, 0, 0, 1, 1, STRING, "c");
-    lyd_free_all(tree2);
+    lyd_free_all(tree);
+
+    schema3 = MODULE_CREATE_YANG("simple", "leaf l1 {type leafref {path \"../target\";}}"
+            "leaf target {type string;}");
+    UTEST_ADD_MODULE(schema3, LYS_IN_YANG, NULL, NULL);
+
+    data = "<l1 xmlns=\"urn:tests:simple\">&quot;*&quot;&#39;</l1>"
+            "<target xmlns=\"urn:tests:simple\">&quot;*&quot;&#39;</target>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    data = "<l1 xmlns=\"urn:tests:simple\">&quot;*&#39;&quot;</l1>"
+            "<target xmlns=\"urn:tests:simple\">&quot;*&#39;&quot;</target>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
 
     /* invalid value */
     TEST_ERROR_XML2("<leaflisttarget xmlns=\"urn:tests:defs\">x</leaflisttarget>",
@@ -158,6 +172,32 @@ test_data_xml(void **state)
 }
 
 static void
+test_data_json(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree;
+
+    /* json test */
+    schema = MODULE_CREATE_YANG("simple", "leaf l1 {type leafref {path \"../target\";}}"
+            "leaf target {type string;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "{"
+            "  \"simple:l1\":\"\\\"*\\\"'\","
+            "  \"simple:target\":\"\\\"*\\\"'\""
+            "}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    data = "{"
+            "  \"simple:l1\":\"\\\"*'\\\"\","
+            "  \"simple:target\":\"\\\"*'\\\"\""
+            "}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+}
+
+static void
 test_plugin_lyb(void **state)
 {
     const char *schema;
@@ -174,6 +214,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
+        UTEST(test_data_json),
         UTEST(test_plugin_lyb),
     };
 
