@@ -238,7 +238,7 @@ print_features(struct ly_out *out, const struct lys_module *mod, const struct ly
 
     /* no features */
     if (!set->count) {
-        ly_print(out, "\t(none)\n");
+        ly_print(out, "\t(none)\n\n");
         return;
     }
 
