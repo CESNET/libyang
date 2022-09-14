@@ -414,7 +414,10 @@ static char completeLine(struct linenoiseState *ls) {
 
         /* Learn the number of hints that fit a line */
         hint_line_count = 0;
-        while (1) {
+        do {
+            /* Still fits, always at least one hint */
+            ++hint_line_count;
+
             char_count = 0;
             if (hint_line_count) {
                 char_count += hint_line_count * (hint_len + 2);
@@ -422,19 +425,7 @@ static char completeLine(struct linenoiseState *ls) {
             char_count += hint_len;
 
             /* Too much */
-            if (char_count > w.ws_col) {
-                break;
-            }
-
-            /* Still fits */
-            ++hint_line_count;
-        }
-
-        /* No hint fits, too bad */
-        if (!hint_line_count) {
-            freeCompletions(&lc);
-            return c;
-        }
+        } while (char_count <= w.ws_col);
 
         while (c == 9) {
             /* Second tab */
