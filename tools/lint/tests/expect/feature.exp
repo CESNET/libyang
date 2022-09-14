@@ -9,8 +9,10 @@ expect {
     "feature -a\r
 yang:\r
 \t(none)\r
+\r
 ietf-yang-schema-mount:\r
 \t(none)\r
+\r
 > " { }
     timeout { exit 1 }
 }
