@@ -76,38 +76,6 @@ get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
 }
 
 /**
- * @brief Check if the last command line argument is an option.
- *
- * @param[in] hint User input.
- * @return 1 if it is an option, 0 otherwise.
- */
-static int
-last_is_opt(const char *hint)
-{
-    const char *ptr;
-
-    /* last is option */
-    if (hint[0] == '-') {
-        return 1;
-    }
-
-    do {
-        --hint;
-    } while (hint[0] == ' ');
-
-    /* last is option argument */
-    ptr = strrchr(hint, ' ');
-    if (ptr) {
-        ++ptr;
-        if (ptr[0] == '-') {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-/**
  * @brief Provides completion for module names.
  *
  * @param[in] hint User input.
@@ -310,29 +278,101 @@ cleanup:
     free(module_name);
 }
 
+/**
+ * @brief Get the string before the hint, which autocompletion is for.
+ *
+ * @param[in] buf Complete user input.
+ * @param[in] hint Hint part of the user input.
+ * @return Pointer to the last string.
+ */
+static const char *
+get_last_str(const char *buf, const char *hint)
+{
+    const char *ptr;
+
+    if (buf == hint) {
+        return buf;
+    }
+
+    ptr = hint - 1;
+    while (ptr[0] == ' ') {
+        --ptr;
+        if (buf == ptr) {
+            return buf;
+        }
+    }
+
+    while (ptr[-1] != ' ') {
+        --ptr;
+        if (buf == ptr) {
+            return buf;
+        }
+    }
+
+    return ptr;
+}
+
 /* callback */
 void
 complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
 {
+    struct autocomplete {
+        const char *cmd;    /**< command */
+        const char *opt;    /**< optional option */
+        int last_opt;       /**< whether to autocomplete even if an option is last in the hint */
+
+        void (*ln_cb)(const char *, const char *, linenoiseCompletions *);  /**< linenoise callback to call */
+        void (*yl_cb)(const char *, char ***, unsigned int *);              /**< yanglint callback to call */
+    } ac[] = {
+        {"add", NULL, 1, linenoisePathCompletion, NULL},
+        {"searchpath", NULL, 0, linenoisePathCompletion, NULL},
+        {"data", NULL, 0, linenoisePathCompletion, NULL},
+        {"print", NULL, 0, NULL, get_model_completion},
+        {"feature", NULL, 0, NULL, get_model_completion},
+        {"print", "-P", 1, NULL, get_schema_completion},
+    };
+    size_t cmd_len;
+    const char *last;
     char **matches = NULL;
     unsigned int match_count = 0, i;
 
-    if (!strncmp(buf, "add ", 4)) {
-        linenoisePathCompletion(buf, hint, lc);
-    } else if ((!strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5) ||
-            !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7) ||
-            !strncmp(buf, "xpath ", 6) || !strncmp(buf, "clear ", 6)) && !last_is_opt(hint)) {
-        linenoisePathCompletion(buf, hint, lc);
-    } else if ((!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) && !last_is_opt(hint)) {
-        if (!strncmp(buf, "print -f info -P ", 17)) {
-            get_schema_completion(hint, &matches, &match_count);
-        } else {
-            get_model_completion(hint, &matches, &match_count);
-        }
-    } else if (!strchr(buf, ' ') && hint[0]) {
+    if (buf == hint) {
+        /* command autocomplete */
         get_cmd_completion(hint, &matches, &match_count);
+
+    } else {
+        for (i = 0; i < (sizeof ac / sizeof *ac); ++i) {
+            cmd_len = strlen(ac[i].cmd);
+            if (strncmp(buf, ac[i].cmd, cmd_len) || (buf[cmd_len] != ' ')) {
+                /* not this command */
+                continue;
+            }
+
+            last = get_last_str(buf, hint);
+            if (ac[i].opt && strncmp(ac[i].opt, last, strlen(ac[i].opt))) {
+                /* autocompletion for (another) option */
+                continue;
+            }
+            if (!ac[i].last_opt && (last[0] == '-')) {
+                /* autocompletion for the command, not an option */
+                continue;
+            }
+            if ((last != buf) && (last[0] != '-')) {
+                /* autocompleted */
+                return;
+            }
+
+            /* callback */
+            if (ac[i].ln_cb) {
+                ac[i].ln_cb(buf, hint, lc);
+            } else {
+                ac[i].yl_cb(hint, &matches, &match_count);
+            }
+            break;
+        }
     }
 
+    /* transform matches into autocompletion, if needed */
     for (i = 0; i < match_count; ++i) {
         linenoiseAddCompletion(lc, matches[i]);
         free(matches[i]);
