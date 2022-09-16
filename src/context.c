@@ -45,6 +45,7 @@
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
+#include "tree_schema_free.h"
 #include "tree_schema_internal.h"
 
 #include "../models/ietf-datastores@2018-02-14.h"
@@ -1237,7 +1238,7 @@ error:
 LIBYANG_API_DEF void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
-    struct lys_module *mod;
+    struct lysf_ctx fctx = {.ctx = ctx};
 
     if (!ctx) {
         return;
@@ -1245,17 +1246,20 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* models list */
     for ( ; ctx->list.count; ctx->list.count--) {
-        mod = ctx->list.objs[ctx->list.count - 1];
+        fctx.mod = ctx->list.objs[ctx->list.count - 1];
 
         /* remove the module */
-        if (mod->implemented) {
-            mod->implemented = 0;
-            lysc_module_free(mod->compiled);
-            mod->compiled = NULL;
+        if (fctx.mod->implemented) {
+            fctx.mod->implemented = 0;
+            lysc_module_free(&fctx, fctx.mod->compiled);
+            fctx.mod->compiled = NULL;
         }
-        lys_module_free(ctx->list.objs[ctx->list.count - 1], 0);
+        lys_module_free(&fctx, fctx.mod, 0);
     }
     free(ctx->list.objs);
+
+    /* free extensions */
+    lysf_ctx_erase(&fctx);
 
     /* search paths list */
     ly_set_erase(&ctx->search_paths, free);

@@ -1034,13 +1034,15 @@ lydxml_env_netconf_eventtime_validate(const struct lyd_node *node)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx *ctx = (struct ly_ctx *)LYD_CTX(node);
-    struct lysc_ctx cctx = {.ctx = ctx};
+    struct lysc_ctx cctx;
     const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u;
     struct ly_err_item *err = NULL;
     struct lysp_type *type_p = NULL;
     struct lysc_pattern **patterns = NULL;
     const char *value;
+
+    LYSC_CTX_INIT_CTX(cctx, ctx);
 
     /* get date-and-time parsed type */
     mod = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
@@ -1062,7 +1064,7 @@ lydxml_env_netconf_eventtime_validate(const struct lyd_node *node)
     rc = lyplg_type_validate_patterns(patterns, value, strlen(value), &err);
 
 cleanup:
-    FREE_ARRAY(ctx, patterns, lysc_pattern_free);
+    FREE_ARRAY(&cctx.free_ctx, patterns, lysc_pattern_free);
     if (rc && err) {
         LOGVAL_ERRITEM(ctx, err);
         ly_err_free(err);

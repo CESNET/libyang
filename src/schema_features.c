@@ -506,6 +506,7 @@ lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_iffeature iff;
+    struct lysf_ctx fctx = {.ctx = (struct ly_ctx *)ctx};
 
     /* enabled by default */
     *enabled = 1;
@@ -520,7 +521,7 @@ lys_eval_iffeatures(const struct ly_ctx *ctx, struct lysp_qname *iffeatures, ly_
         LY_CHECK_RET(lys_compile_iffeature(ctx, &iffeatures[u], &iff));
 
         ret = lysc_iffeature_value(&iff);
-        lysc_iffeature_free((struct ly_ctx *)ctx, &iff);
+        lysc_iffeature_free(&fctx, &iff);
         if (ret == LY_ENOT) {
             *enabled = 0;
             break;

@@ -1,9 +1,10 @@
 /**
  * @file parser_yin.c
  * @author David Sedlák <xsedla1d@stud.fit.vutbr.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YIN parser.
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -2770,7 +2771,6 @@ cleanup:
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] deviations Deviations to add to.
- *
  * @return LY_ERR values.
  */
 static LY_ERR
@@ -2778,6 +2778,7 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_deviation *dev = NULL;
+    struct lysf_ctx fctx = {.ctx = PARSER_CTX(ctx)};
 
     /* create new deviation */
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *deviations, dev, LY_EMEM);
@@ -2797,7 +2798,7 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
 
 cleanup:
     if (ret) {
-        lysp_deviation_free(PARSER_CTX(ctx), dev);
+        lysp_deviation_free(&fctx, dev);
         LY_ARRAY_DECREMENT_FREE(*deviations);
     }
     return ret;
@@ -2809,7 +2810,6 @@ cleanup:
  * @param[in] ctx YIN parser context used for logging.
  * @param[in] kw Keyword that is child of module or submodule.
  * @param[out] group Group of keyword.
- *
  * @return LY_SUCCESS on success LY_EINT if kw can't be mapped to kw_group, should not happen if called correctly.
  */
 static LY_ERR
@@ -2877,7 +2877,6 @@ kw2kw_group(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum yang_module_st
  * @param[in] next_kw Next keyword.
  * @param[in] parrent Identification of parrent element, can be se to to LY_STMT_MODULE of LY_STMT_SUBMODULE,
  *            because relative order is required only in module and submodule sub-elements, used for logging.
- *
  * @return LY_SUCCESS on success and LY_EVALID if relative order is invalid.
  */
 static LY_ERR
@@ -2908,7 +2907,6 @@ yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum l
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] elem_type Type of element that is currently being parsed.
  * @param[out] arg Value to write to.
- *
  * @return LY_ERR values.
  */
 static LY_ERR
@@ -3062,7 +3060,6 @@ yin_parse_extension_instance_arg(struct lys_yin_parser_ctx *ctx, enum ly_stmt el
  * @param[in,out] ctx Yin parser context for XML context, logging, and to store current state.
  * @param[in] parent Identification of parent element.
  * @param[out] element Where the element structure should be stored.
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -3183,7 +3180,6 @@ cleanup:
  * @param[in] subelem The statement this extension instance is a subelement of.
  * @param[in] subelem_index Index of the keyword instance this extension instance is a subelement of
  * @param[in,out] exts Extension instance to add to.
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -3291,7 +3287,6 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subele
  * @param[in] current_element Type of current element.
  * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if set to NULL.
  * @param[in,out] exts Extension instance to add to. Can be set to null if element cannot have extension as subelements.
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -3595,7 +3590,6 @@ cleanup:
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[out] mod Parsed module structure.
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -3661,7 +3655,6 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] mod_attrs Attributes of submodule element.
  * @param[out] submod Parsed submodule structure.
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -3727,6 +3720,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     enum ly_stmt kw = LY_STMT_NONE;
     LY_ERR ret = LY_SUCCESS;
     struct lysp_submodule *mod_p = NULL;
+    struct lysf_ctx fctx = {.ctx = ctx};
 
     assert(yin_ctx && ctx && main_ctx && in && submod);
 
@@ -3781,7 +3775,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
 cleanup:
     if (ret) {
-        lysp_module_free((struct lysp_module *)mod_p);
+        lysp_module_free(&fctx, (struct lysp_module *)mod_p);
         yin_parser_ctx_free(*yin_ctx);
         *yin_ctx = NULL;
     }
@@ -3794,6 +3788,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     LY_ERR ret = LY_SUCCESS;
     enum ly_stmt kw = LY_STMT_NONE;
     struct lysp_module *mod_p = NULL;
+    struct lysf_ctx fctx = {.ctx = mod->ctx};
 
     /* create context */
     *yin_ctx = calloc(1, sizeof **yin_ctx);
@@ -3843,7 +3838,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
 
 cleanup:
     if (ret != LY_SUCCESS) {
-        lysp_module_free(mod_p);
+        lysp_module_free(&fctx, mod_p);
         yin_parser_ctx_free(*yin_ctx);
         *yin_ctx = NULL;
     }

@@ -1595,7 +1595,7 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
             --additional;
 
             /* free the replaced union subtype */
-            lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
+            lysc_type_free(&ctx->free_ctx, (struct lysc_type *)un_aux);
             un_aux = NULL;
         } else {
             LY_ARRAY_INCREMENT(utypes);
@@ -1607,7 +1607,7 @@ lys_compile_type_union(struct lysc_ctx *ctx, struct lysp_type *ptypes, struct ly
 
 error:
     if (un_aux) {
-        lysc_type_free(ctx->ctx, (struct lysc_type *)un_aux);
+        lysc_type_free(&ctx->free_ctx, (struct lysc_type *)un_aux);
     }
     *utypes_p = utypes;
     return ret;
@@ -2002,7 +2002,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
         if (tctx->tpdf->type.compiled && (tctx->tpdf->type.compiled->refcount == 1)) {
             /* context recompilation - everything was freed previously (the only reference is from the parsed type itself)
              * and we need now recompile the type again in the updated context. */
-            lysc_type_free(ctx->ctx, tctx->tpdf->type.compiled);
+            lysc_type_free(&ctx->free_ctx, tctx->tpdf->type.compiled);
             ((struct lysp_tpdf *)tctx->tpdf)->type.compiled = NULL;
         }
 
@@ -2627,13 +2627,14 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     goto cleanup;
 
 error:
-    lysc_node_free(ctx->ctx, node, 0);
+    lysc_node_free(&ctx->free_ctx, node, 0);
+
 cleanup:
     if (ret && dev_pnode) {
         LOGVAL(ctx->ctx, LYVE_OTHER, "Compilation of a deviated and/or refined node failed.");
     }
     ctx->compile_opts = prev_opts;
-    lysp_dev_node_free(ctx->ctx, dev_pnode);
+    lysp_dev_node_free(ctx, dev_pnode);
     return ret;
 }
 
@@ -3340,13 +3341,12 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         }
 
         /* check status */
-        LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name,
-                key->flags, key->module, key->name));
+        LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name, key->flags, key->module, key->name));
 
         /* ignore default values of the key */
         if (key->dflt) {
             key->dflt->realtype->plugin->free(ctx->ctx, key->dflt);
-            lysc_type_free(ctx->ctx, (struct lysc_type *)key->dflt->realtype);
+            lysc_type_free(&ctx->free_ctx, (struct lysc_type *)key->dflt->realtype);
             free(key->dflt);
             key->dflt = NULL;
         }
@@ -3540,7 +3540,7 @@ lys_compile_node_choice_child(struct lysc_ctx *ctx, struct lysp_node *child_p, s
 revert_sh_case:
         /* free the parsed shorthand case and correct pointers back */
         cs_p->child = NULL;
-        lysp_node_free(ctx->ctx, (struct lysp_node *)cs_p);
+        lysp_node_free(&ctx->free_ctx, (struct lysp_node *)cs_p);
         child_p->next = child_p_next;
     }
 
@@ -4080,7 +4080,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
     ctx->path[1] = '\0';
 
     /* cleanup */
-    lysc_node_container_free(ctx->ctx, &fake_container);
+    lysc_node_container_free(&ctx->free_ctx, &fake_container);
 
     return ret;
 }

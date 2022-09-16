@@ -1429,7 +1429,7 @@ struct lysc_ext {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyplg_ext *plugin;        /**< Plugin implementing the specific extension */
     struct lys_module *module;       /**< module structure */
-    uint32_t refcount;               /**< reference counter since extension definition is shared among all its instances */
+    uint32_t refcount;               /**< unused, always 1 */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
 };
 

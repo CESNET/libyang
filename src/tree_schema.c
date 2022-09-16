@@ -43,6 +43,7 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_edit.h"
+#include "tree_schema_free.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
@@ -1146,42 +1147,45 @@ void
 lys_unres_glob_revert(struct ly_ctx *ctx, struct lys_glob_unres *unres)
 {
     uint32_t i, j, idx, prev_lo;
+    struct lysf_ctx fctx = {.ctx = ctx};
     struct ly_set *dep_set;
-    struct lys_module *m;
     LY_ERR ret;
 
     for (i = 0; i < unres->implementing.count; ++i) {
-        m = unres->implementing.objs[i];
-        assert(m->implemented);
+        fctx.mod = unres->implementing.objs[i];
+        assert(fctx.mod->implemented);
 
         /* make the module correctly non-implemented again */
-        m->implemented = 0;
-        lys_precompile_augments_deviations_revert(ctx, m);
-        lysc_module_free(m->compiled);
-        m->compiled = NULL;
+        fctx.mod->implemented = 0;
+        lys_precompile_augments_deviations_revert(ctx, fctx.mod);
+        lysc_module_free(&fctx, fctx.mod->compiled);
+        fctx.mod->compiled = NULL;
 
         /* should not be made implemented */
-        m->to_compile = 0;
+        fctx.mod->to_compile = 0;
     }
 
     for (i = 0; i < unres->creating.count; ++i) {
-        m = unres->creating.objs[i];
+        fctx.mod = unres->creating.objs[i];
 
         /* remove the module from the context */
-        ly_set_rm(&ctx->list, m, NULL);
+        ly_set_rm(&ctx->list, fctx.mod, NULL);
 
         /* remove it also from dep sets */
         for (j = 0; j < unres->dep_sets.count; ++j) {
             dep_set = unres->dep_sets.objs[j];
-            if (ly_set_contains(dep_set, m, &idx)) {
+            if (ly_set_contains(dep_set, fctx.mod, &idx)) {
                 ly_set_rm_index(dep_set, idx, NULL);
                 break;
             }
         }
 
         /* free the module */
-        lys_module_free(m, 1);
+        lys_module_free(&fctx, fctx.mod, 1);
     }
+
+    /* remove the extensions as well */
+    lysf_ctx_erase(&fctx);
 
     if (unres->implementing.count) {
         /* recompile previous context because some implemented modules are no longer implemented,
@@ -1290,6 +1294,7 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx;
+    struct lysf_ctx fctx = {.ctx = ctx};
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
@@ -1361,7 +1366,7 @@ error:
     } else {
         LOGERR(ctx, ret, "Parsing submodule \"%s\" failed.", submod->name);
     }
-    lysp_module_free((struct lysp_module *)submod);
+    lysp_module_free(&fctx, (struct lysp_module *)submod);
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
@@ -1593,6 +1598,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;
+    struct lysf_ctx fctx = {.ctx = ctx};
     char *filename, *rev, *dot;
     size_t len;
     ly_bool module_created = 0;
@@ -1762,7 +1768,10 @@ cleanup:
         }
     }
     if (!module_created) {
-        lys_module_free(mod, 0);
+        fctx.mod = mod;
+        lys_module_free(&fctx, mod, 0);
+        lysf_ctx_erase(&fctx);
+
         mod = mod_dup;
     }
 

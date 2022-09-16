@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation.
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
+#include "tree_schema_free.h"
 
 struct lyxp_expr;
 
@@ -52,10 +53,39 @@ struct lysc_ctx {
     struct lys_depset_unres *unres; /**< dependency set unres sets */
     uint32_t path_len;          /**< number of path bytes used */
     uint32_t compile_opts;      /**< various @ref scflags. */
+    struct lysf_ctx free_ctx;   /**< freeing context for errors/recompilation */
 
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];/**< Path identifying the schema node currently being processed */
 };
+
+/**
+ * @brief Initalize local compilation context using libyang context.
+ *
+ * @param[out] CCTX Compile context.
+ * @param[in] CTX libyang context.
+ */
+#define LYSC_CTX_INIT_CTX(CCTX, CTX) \
+    memset(&(CCTX), 0, sizeof (CCTX)); \
+    (CCTX).ctx = (CTX); \
+    (CCTX).path_len = 1; \
+    (CCTX).path[0] = '/'; \
+    (CCTX).free_ctx.ctx = (CTX)
+
+/**
+ * @brief Initalize local compilation context using a parsed module.
+ *
+ * @param[out] CCTX Compile context.
+ * @param[in] PMOD Parsed module.
+ */
+#define LYSC_CTX_INIT_PMOD(CCTX, PMOD) \
+    memset(&(CCTX), 0, sizeof (CCTX)); \
+    (CCTX).ctx = (PMOD)->mod->ctx; \
+    (CCTX).cur_mod = (PMOD)->mod; \
+    (CCTX).pmod = (PMOD); \
+    (CCTX).path_len = 1; \
+    (CCTX).path[0] = '/'; \
+    (CCTX).free_ctx.ctx = (PMOD)->mod->ctx
 
 /**
  * @brief Structure for unresolved items that may depend on any implemented module data in the dependency set

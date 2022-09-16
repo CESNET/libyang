@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG parser
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@
 #include "tree.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
+#include "tree_schema_free.h"
 #include "tree_schema_internal.h"
 
 struct lys_glob_unres;
@@ -1635,6 +1636,7 @@ parse_when(struct lys_yang_parser_ctx *ctx, struct lysp_when **when_p)
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_when *when;
+    struct lysf_ctx fctx = {.ctx = PARSER_CTX(ctx)};
 
     if (*when_p) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "when");
@@ -1669,7 +1671,7 @@ parse_when(struct lys_yang_parser_ctx *ctx, struct lysp_when **when_p)
 
 cleanup:
     if (ret) {
-        lysp_when_free(PARSER_CTX(ctx), when);
+        lysp_when_free(&fctx, when);
         free(when);
     } else {
         *when_p = when;
@@ -3809,6 +3811,7 @@ parse_deviate(struct lys_yang_parser_ctx *ctx, struct lysp_deviate **deviates)
     char *buf = NULL, *word;
     size_t word_len, dev_mod;
     enum ly_stmt kw;
+    struct lysf_ctx fctx = {.ctx = PARSER_CTX(ctx)};
     struct lysp_deviate *d = NULL;
     struct lysp_deviate_add *d_add = NULL;
     struct lysp_deviate_rpl *d_rpl = NULL;
@@ -4013,7 +4016,7 @@ parse_deviate(struct lys_yang_parser_ctx *ctx, struct lysp_deviate **deviates)
 cleanup:
     free(buf);
     if (ret) {
-        lysp_deviate_free(PARSER_CTX(ctx), d);
+        lysp_deviate_free(&fctx, d);
         free(d);
     } else {
         /* insert into siblings */
@@ -4038,6 +4041,7 @@ parse_deviation(struct lys_yang_parser_ctx *ctx, struct lysp_deviation **deviati
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_deviation *dev;
+    struct lysf_ctx fctx = {.ctx = PARSER_CTX(ctx)};
 
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *deviations, dev, LY_EMEM);
 
@@ -4078,7 +4082,7 @@ checks:
 
 cleanup:
     if (ret) {
-        lysp_deviation_free(PARSER_CTX(ctx), dev);
+        lysp_deviation_free(&fctx, dev);
         LY_ARRAY_DECREMENT_FREE(*deviations);
     }
     return ret;
@@ -4653,6 +4657,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_submodule *mod_p = NULL;
+    struct lysf_ctx fctx = {.ctx = ly_ctx};
 
     assert(context && ly_ctx && main_ctx && in && submod);
 
@@ -4711,7 +4716,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
 cleanup:
     LOG_LOCBACK(0, 0, 0, 1);
     if (ret) {
-        lysp_module_free((struct lysp_module *)mod_p);
+        lysp_module_free(&fctx, (struct lysp_module *)mod_p);
         yang_parser_ctx_free(*context);
         *context = NULL;
     }
@@ -4727,6 +4732,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_module *mod_p = NULL;
+    struct lysf_ctx fctx = {.ctx = mod->ctx};
 
     /* create context */
     *context = calloc(1, sizeof **context);
@@ -4779,7 +4785,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
 cleanup:
     LOG_LOCBACK(0, 0, 0, 1);
     if (ret) {
-        lysp_module_free(mod_p);
+        lysp_module_free(&fctx, mod_p);
         yang_parser_ctx_free(*context);
         *context = NULL;
     }

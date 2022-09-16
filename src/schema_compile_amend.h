@@ -115,7 +115,7 @@ void lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn);
  * @param[in] ctx libyang context.
  * @param[in] dev_pnode Parsed node to free.
  */
-void lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode);
+void lysp_dev_node_free(struct lysc_ctx *cctx, struct lysp_node *dev_pnode);
 
 /**
  * @brief Compile and apply any precompiled deviations and refines targeting a node.

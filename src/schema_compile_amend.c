@@ -1099,7 +1099,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
     LY_ARRAY_COUNT_TYPE u, v;
     struct lysp_qname **uniques, **dflts;
 
-#define DEV_DEL_ARRAY(DEV_ARRAY, ORIG_ARRAY, DEV_MEMBER, ORIG_MEMBER, FREE_FUNC, PROPERTY) \
+#define DEV_DEL_ARRAY(DEV_ARRAY, ORIG_ARRAY, DEV_MEMBER, ORIG_MEMBER, FREE_FUNC, FREE_CTX, PROPERTY) \
     LY_ARRAY_FOR(d->DEV_ARRAY, u) { \
         int found = 0; \
         LY_ARRAY_FOR(ORIG_ARRAY, v) { \
@@ -1116,7 +1116,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             goto cleanup; \
         } \
         LY_ARRAY_DECREMENT(ORIG_ARRAY); \
-        FREE_FUNC(ctx->ctx, &(ORIG_ARRAY)[v]); \
+        FREE_FUNC(FREE_CTX, &(ORIG_ARRAY)[v]); \
         if (v < LY_ARRAY_COUNT(ORIG_ARRAY)) { \
             memmove(&(ORIG_ARRAY)[v], &(ORIG_ARRAY)[v + 1], (LY_ARRAY_COUNT(ORIG_ARRAY) - v) * sizeof *(ORIG_ARRAY)); \
         } \
@@ -1161,7 +1161,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             AMEND_WRONG_NODETYPE("deviation", "delete", "must");
         }
 
-        DEV_DEL_ARRAY(musts, *musts, .arg.str, .arg.str, lysp_restr_free, "must");
+        DEV_DEL_ARRAY(musts, *musts, .arg.str, .arg.str, lysp_restr_free, &ctx->free_ctx, "must");
     }
 
     /* *unique-stmt */
@@ -1174,7 +1174,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
         }
 
         uniques = &((struct lysp_node_list *)target)->uniques;
-        DEV_DEL_ARRAY(uniques, *uniques, .str, .str, lysp_qname_free, "unique");
+        DEV_DEL_ARRAY(uniques, *uniques, .str, .str, lysp_qname_free, ctx->ctx, "unique");
     }
 
     /* *default-stmt */
@@ -1189,7 +1189,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
             break;
         case LYS_LEAFLIST:
             dflts = &((struct lysp_node_leaflist *)target)->dflts;
-            DEV_DEL_ARRAY(dflts, *dflts, .str, .str, lysp_qname_free, "default");
+            DEV_DEL_ARRAY(dflts, *dflts, .str, .str, lysp_qname_free, ctx->ctx, "default");
             break;
         case LYS_CHOICE:
             AMEND_CHECK_CARDINALITY(d->dflts, 1, "deviation", "default");
@@ -1238,7 +1238,7 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
             AMEND_WRONG_NODETYPE("deviation", "replace", "type");
         }
 
-        lysp_type_free(ctx->ctx, &((struct lysp_node_leaf *)target)->type);
+        lysp_type_free(&ctx->free_ctx, &((struct lysp_node_leaf *)target)->type);
         lysp_type_dup(ctx->ctx, &((struct lysp_node_leaf *)target)->type, d->type);
     }
 
@@ -1551,7 +1551,7 @@ lysc_refine_free(const struct ly_ctx *ctx, struct lysc_refine *rfn)
 }
 
 void
-lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
+lysp_dev_node_free(struct lysc_ctx *cctx, struct lysp_node *dev_pnode)
 {
     if (!dev_pnode) {
         return;
@@ -1591,15 +1591,15 @@ lysp_dev_node_free(const struct ly_ctx *ctx, struct lysp_node *dev_pnode)
     case LYS_INPUT:
     case LYS_OUTPUT:
         ((struct lysp_node_action_inout *)dev_pnode)->child = NULL;
-        lysp_node_free((struct ly_ctx *)ctx, dev_pnode);
+        lysp_node_free(&cctx->free_ctx, dev_pnode);
         free(dev_pnode);
         return;
     default:
-        LOGINT(ctx);
+        LOGINT(cctx->ctx);
         return;
     }
 
-    lysp_node_free((struct ly_ctx *)ctx, dev_pnode);
+    lysp_node_free(&cctx->free_ctx, dev_pnode);
 }
 
 LY_ERR
@@ -1725,7 +1725,7 @@ cleanup:
     ctx->cur_mod = orig_mod;
     ctx->pmod = orig_pmod;
     if (ret) {
-        lysp_dev_node_free(ctx->ctx, *dev_pnode);
+        lysp_dev_node_free(ctx, *dev_pnode);
         *dev_pnode = NULL;
         *not_supported = 0;
     }
@@ -2212,7 +2212,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
 {
     LY_ERR ret = LY_SUCCESS, r;
     LY_ARRAY_COUNT_TYPE u, v;
-    struct lysc_ctx ctx = {0};
+    struct lysc_ctx ctx;
     struct lysp_module *mod_p;
     struct lys_module *m;
     struct lysp_submodule *submod;
@@ -2222,13 +2222,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
     struct ly_set mod_set = {0}, set = {0};
 
     mod_p = mod->parsed;
-
-    /* prepare context */
-    ctx.ctx = mod->ctx;
-    ctx.cur_mod = mod;
-    ctx.pmod = mod_p;
-    ctx.path_len = 1;
-    ctx.path[0] = '/';
+    LYSC_CTX_INIT_PMOD(ctx, mod_p);
 
     LY_LIST_FOR(mod_p->augments, aug) {
         /* get target module */
