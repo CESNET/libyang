@@ -195,6 +195,7 @@ If you are using `cmake` in you project, it is also possible to use the provided
 There are no bindings for other languages directly in this project but they are
 available separately.
 
+* [Python](https://github.com/CESNET/libyang-python/)
 * [C++](https://github.com/CESNET/libyang-cpp/)
 * [Rust](https://github.com/rwestphal/yang2-rs/)
 
