@@ -1195,7 +1195,7 @@ yprp_deviation(struct lys_ypr_ctx *pctx, const struct lysp_deviation *deviation)
         ly_print_(pctx->out, "%*s<deviate value=\"", INDENT);
         if (elem->mod == LYS_DEV_NOT_SUPPORTED) {
             if (elem->exts) {
-                ly_print_(pctx->out, "not-supported\"/>\n");
+                ly_print_(pctx->out, "not-supported\">\n");
                 LEVEL++;
 
                 yprp_extension_instances(pctx, LY_STMT_DEVIATE, 0, elem->exts, NULL);
@@ -1352,11 +1352,9 @@ yin_print_parsed_body(struct lys_ypr_ctx *pctx, const struct lysp_module *modp)
     struct lysp_node_augment *aug;
 
     LY_ARRAY_FOR(modp->extensions, u) {
-        ly_print_(pctx->out, "\n");
         yprp_extension(pctx, &modp->extensions[u]);
     }
     if (modp->exts) {
-        ly_print_(pctx->out, "\n");
         yprp_extension_instances(pctx, LY_STMT_MODULE, 0, modp->exts, NULL);
     }
 

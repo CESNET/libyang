@@ -30,7 +30,7 @@
 #include "xml.h"
 #include "xpath.h"
 
-void lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp);
+static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp);
 static void lysc_node_free_(struct ly_ctx *ctx, struct lysc_node *node);
 
 static void
@@ -49,7 +49,7 @@ lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
     free(stmt);
 }
 
-void
+static void
 lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
@@ -67,7 +67,7 @@ lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
     }
 }
 
-void
+static void
 lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
 {
     /* imported module is freed directly from the context's list */
@@ -102,19 +102,19 @@ lysp_include_free_(struct ly_ctx *ctx, struct lysp_include *include, ly_bool mai
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
 }
 
-void
+static void
 lysp_include_free_submodule(struct ly_ctx *ctx, struct lysp_include *include)
 {
     lysp_include_free_(ctx, include, 0);
 }
 
-void
+static void
 lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
     lysp_include_free_(ctx, include, 1);
 }
 
-void
+static void
 lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
 {
     lydict_remove(ctx, rev->dsc);
@@ -122,7 +122,7 @@ lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
     FREE_ARRAY(ctx, rev->exts, lysp_ext_instance_free);
 }
 
-void
+static void
 lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
 {
     lydict_remove(ctx, ext->name);
@@ -135,7 +135,7 @@ lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
     }
 }
 
-void
+static void
 lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
 {
     lydict_remove(ctx, feat->name);
@@ -147,7 +147,7 @@ lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
 }
 
-void
+static void
 lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident)
 {
     lydict_remove(ctx, ident->name);
@@ -179,8 +179,6 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
 
-void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
-
 void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
@@ -199,7 +197,7 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
     }
 }
 
-void
+static void
 lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
     lydict_remove(ctx, tpdf->name);
@@ -213,7 +211,7 @@ lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 
 }
 
-void
+static void
 lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp)
 {
     struct lysp_node *node, *next;
@@ -242,7 +240,7 @@ lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when)
     FREE_ARRAY(ctx, when->exts, lysp_ext_instance_free);
 }
 
-void
+static void
 lysp_augment_free(struct ly_ctx *ctx, struct lysp_node_augment *augment)
 {
     struct lysp_node *node, *next;
@@ -271,6 +269,10 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
 {
     struct lysp_deviate_add *add = (struct lysp_deviate_add *)d;
     struct lysp_deviate_rpl *rpl = (struct lysp_deviate_rpl *)d;
+
+    if (!d) {
+        return;
+    }
 
     FREE_ARRAY(ctx, d->exts, lysp_ext_instance_free);
     switch (d->mod) {
@@ -310,7 +312,7 @@ lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
     FREE_ARRAY(ctx, dev->exts, lysp_ext_instance_free);
 }
 
-void
+static void
 lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
 {
     lydict_remove(ctx, ref->nodeid);
@@ -599,7 +601,7 @@ lysc_when_free(struct ly_ctx *ctx, struct lysc_when **w)
     free(*w);
 }
 
-void
+static void
 lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
 {
     lyxp_expr_free(ctx, must->cond);
@@ -694,7 +696,7 @@ lysc_ident_derived_unlink(const struct lysc_ident *ident)
     }
 }
 
-void
+static void
 lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
     lydict_remove(ctx, ident->name);
@@ -803,7 +805,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     free(type);
 }
 
-void
+static void
 lysc_node_action_inout_free(struct ly_ctx *ctx, struct lysc_node_action_inout *inout)
 {
     struct lysc_node *child, *child_next;
@@ -814,7 +816,7 @@ lysc_node_action_inout_free(struct ly_ctx *ctx, struct lysc_node_action_inout *i
     }
 }
 
-void
+static void
 lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action)
 {
     FREE_ARRAY(ctx, action->when, lysc_when_free);
@@ -826,7 +828,7 @@ lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action)
     }
 }
 
-void
+static void
 lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif)
 {
     struct lysc_node *child, *child_next;

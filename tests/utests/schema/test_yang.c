@@ -1,9 +1,10 @@
-/*
- * @file test_parser_yang.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
- * @brief unit tests for functions from parser_yang.c
+/**
+ * @file test_yang.c
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief unit tests for YANG module parser and printer
  *
- * Copyright (c) 2018-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -25,15 +26,7 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
-/* originally static functions from tree_schema_free.c and parser_yang.c */
-void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
-void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
-void lysp_grp_free(struct ly_ctx *ctx, struct lysp_node_grp *grp);
-void lysp_augment_free(struct ly_ctx *ctx, struct lysp_node_augment *augment);
-void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
-void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
-void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
-
+/* originally static functions from parser_yang.c and parser_yin.c */
 LY_ERR buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
 LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p,
         size_t *word_len, char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix);
@@ -464,17 +457,6 @@ test_stmts(void **state)
     assert_ptr_equal(p, word);
 }
 
-#define TEST_MINMAX_SUCCESS(INPUT_TEXT, CTX, TYPE, VALUE)\
-    in.current = INPUT_TEXT;\
-    if(TYPE == LYS_SET_MIN){\
-       assert_int_equal(LY_SUCCESS, parse_minelements(CTX, &value, &flags, &ext));\
-    }\
-    if(TYPE == LYS_SET_MAX){\
-       assert_int_equal(LY_SUCCESS, parse_maxelements(CTX, &value, &flags, &ext));\
-    }\
-    assert_int_equal(TYPE, flags);\
-    assert_int_equal(VALUE, value)
-
 static void
 test_minmax(void **state)
 {
@@ -500,15 +482,6 @@ test_minmax(void **state)
     CHECK_LOG_CTX("Value \"4294967296\" is out of \"min-elements\" bounds.", "Line number 1.");
 
     flags = value = 0;
-    TEST_MINMAX_SUCCESS(" 1; ...", YCTX, LYS_SET_MIN, 1);
-
-    flags = value = 0;
-    TEST_MINMAX_SUCCESS(" 1 {m:ext;} ...", YCTX, LYS_SET_MIN, 1);
-    assert_non_null(ext);
-    FREE_ARRAY(PARSER_CUR_PMOD(YCTX)->mod->ctx, ext, lysp_ext_instance_free);
-    ext = NULL;
-
-    flags = value = 0;
     in.current = " 1 {config true;} ...";
     assert_int_equal(LY_EVALID, parse_minelements(YCTX, &value, &flags, &ext));
     CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"min-elements\".", "Line number 1.");
@@ -529,21 +502,213 @@ test_minmax(void **state)
     CHECK_LOG_CTX("Value \"4294967296\" is out of \"max-elements\" bounds.", "Line number 1.");
 
     flags = value = 0;
-    TEST_MINMAX_SUCCESS(" 1; ...", YCTX, LYS_SET_MAX, 1);
-
-    flags = value = 0;
-    TEST_MINMAX_SUCCESS(" unbounded; ...", YCTX, LYS_SET_MAX, 0);
-
-    flags = value = 0;
-    TEST_MINMAX_SUCCESS(" 1 {m:ext;} ...", YCTX, LYS_SET_MAX, 1);
-    assert_non_null(ext);
-    FREE_ARRAY(PARSER_CUR_PMOD(YCTX)->mod->ctx, ext, lysp_ext_instance_free);
-    ext = NULL;
-
-    flags = value = 0;
     in.current = " 1 {config true;} ...";
     assert_int_equal(LY_EVALID, parse_maxelements(YCTX, &value, &flags, &ext));
     CHECK_LOG_CTX("Invalid keyword \"config\" as a child of \"max-elements\".", "Line number 1.");
+}
+
+static void
+test_valid_module(void **state)
+{
+    struct lys_module *mod;
+    char *printed;
+    const char *links_yang =
+            "module links {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:module2\";\n"
+            "  prefix mod2;\n"
+            "\n"
+            "  identity just-another-identity;\n"
+            "\n"
+            "  leaf one-leaf {\n"
+            "    type string;\n"
+            "  }\n"
+            "\n"
+            "  list list-for-augment {\n"
+            "    key keyleaf;\n"
+            "\n"
+            "    leaf keyleaf {\n"
+            "      type string;\n"
+            "    }\n"
+            "\n"
+            "    leaf just-leaf {\n"
+            "      type int32;\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  leaf rleaf {\n"
+            "    type string;\n"
+            "  }\n"
+            "\n"
+            "  leaf-list llist {\n"
+            "    type string;\n"
+            "    min-elements 0;\n"
+            "    max-elements 100;\n"
+            "    ordered-by user;\n"
+            "  }\n"
+            "\n"
+            "  grouping rgroup {\n"
+            "    leaf rg1 {\n"
+            "      type string;\n"
+            "    }\n"
+            "\n"
+            "    leaf rg2 {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *statements_yang =
+            "module statements {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:module\";\n"
+            "  prefix mod;\n"
+            "\n"
+            "  import links {\n"
+            "    prefix mod2;\n"
+            "  }\n"
+            "\n"
+            "  extension ext;\n"
+            "\n"
+            "  identity random-identity {\n"
+            "    base mod2:just-another-identity;\n"
+            "    base another-identity;\n"
+            "  }\n"
+            "\n"
+            "  identity another-identity {\n"
+            "    base mod2:just-another-identity;\n"
+            "  }\n"
+            "\n"
+            "  typedef percent {\n"
+            "    type uint8 {\n"
+            "      range \"0 .. 100\";\n"
+            "    }\n"
+            "    units \"percent\";\n"
+            "  }\n"
+            "\n"
+            "  list list1 {\n"
+            "    key \"a\";\n"
+            "    leaf a {\n"
+            "      type string;\n"
+            "    }\n"
+            "    leaf x {\n"
+            "      type string;\n"
+            "    }\n"
+            "    leaf y {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  container ice-cream-shop {\n"
+            "    container employees {\n"
+            "      when \"/list1/x\";\n"
+            "      list employee {\n"
+            "        key \"id\";\n"
+            "        unique \"name\";\n"
+            "        config true;\n"
+            "        min-elements 0 {\n"
+            "          mod:ext;\n"
+            "        }\n"
+            "        max-elements unbounded;\n"
+            "        leaf id {\n"
+            "          type uint64;\n"
+            "          mandatory true;\n"
+            "        }\n"
+            "        leaf name {\n"
+            "          type string;\n"
+            "        }\n"
+            "        leaf age {\n"
+            "          type uint32;\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  container random {\n"
+            "    grouping group {\n"
+            "      leaf g1 {\n"
+            "        type percent;\n"
+            "        mandatory false;\n"
+            "      }\n"
+            "      leaf g2 {\n"
+            "        type string;\n"
+            "      }\n"
+            "    }\n"
+            "    choice switch {\n"
+            "      case a {\n"
+            "        leaf aleaf {\n"
+            "          type string;\n"
+            "          default \"aaa\";\n"
+            "        }\n"
+            "      }\n"
+            "      case c {\n"
+            "        leaf cleaf {\n"
+            "          type string;\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "    anyxml xml-data;\n"
+            "    anydata any-data;\n"
+            "    leaf-list leaflist {\n"
+            "      type string;\n"
+            "      min-elements 0;\n"
+            "      max-elements 20;\n"
+            "    }\n"
+            "    uses group;\n"
+            "    uses mod2:rgroup;\n"
+            "    leaf lref {\n"
+            "      type leafref {\n"
+            "        path \"/mod2:one-leaf\";\n"
+            "      }\n"
+            "    }\n"
+            "    leaf iref {\n"
+            "      type identityref {\n"
+            "        base mod2:just-another-identity;\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  augment \"/random\" {\n"
+            "    leaf aug-leaf {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  notification notif;\n"
+            "\n"
+            "  deviation \"/mod:ice-cream-shop/mod:employees/mod:employee/mod:age\" {\n"
+            "    deviate not-supported {\n"
+            "      mod:ext;\n"
+            "    }\n"
+            "  }\n"
+            "  deviation \"/mod:list1\" {\n"
+            "    deviate add {\n"
+            "      mod:ext;\n"
+            "      must \"1\";\n"
+            "      must \"2\";\n"
+            "      unique \"x\";\n"
+            "      unique \"y\";\n"
+            "      config true;\n"
+            "      min-elements 1;\n"
+            "      max-elements 2;\n"
+            "    }\n"
+            "  }\n"
+            "  deviation \"/mod:ice-cream-shop/mod:employees/mod:employee\" {\n"
+            "    deviate delete {\n"
+            "      unique \"name\";\n"
+            "    }\n"
+            "  }\n"
+            "  deviation \"/mod:random/mod:leaflist\" {\n"
+            "    deviate replace {\n"
+            "      type uint32;\n"
+            "      min-elements 10;\n"
+            "      max-elements 15;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(links_yang, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(statements_yang, LYS_IN_YANG, NULL, &mod);
+    lys_print_mem(&printed, mod, LYS_OUT_YANG, 0);
+    assert_string_equal(printed, statements_yang);
+    free(printed);
 }
 
 static struct lysp_module *
@@ -859,43 +1024,19 @@ test_deviation(void **state)
     struct lysp_deviation *d = NULL;
 
     /* invalid cardinality */
-#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    TEST_DUP_GENERIC(" test {deviate not-supported;", MEMBER, VALUE1, VALUE2, parse_deviation, \
-                     &d, "1", FREE_ARRAY(PARSER_CUR_PMOD(YCTX)->mod->ctx, d, lysp_deviation_free); d = NULL)
-
-    TEST_DUP("description", "a", "b");
-    TEST_DUP("reference", "a", "b");
-
-    /* full content */
-    in.current = " test {deviate not-supported;description text;reference \'another text\';prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_deviation(YCTX, &d));
-    assert_non_null(d);
-    assert_string_equal(" ...", in.current);
-    FREE_ARRAY(PARSER_CUR_PMOD(YCTX)->mod->ctx, d, lysp_deviation_free);
-    d = NULL;
+    TEST_DUP_GENERIC(" test {deviate not-supported;", "description", "a", "b", parse_deviation, &d, "1", );
+    TEST_DUP_GENERIC(" test {deviate not-supported;", "reference", "a", "b", parse_deviation, &d, "1", );
 
     /* missing mandatory substatement */
     in.current = " test {description text;}";
     assert_int_equal(LY_EVALID, parse_deviation(YCTX, &d));
     CHECK_LOG_CTX("Missing mandatory keyword \"deviate\" as a child of \"deviation\".", "Line number 1.");
-    FREE_ARRAY(PARSER_CUR_PMOD(YCTX)->mod->ctx, d, lysp_deviation_free);
-    d = NULL;
 
     /* invalid substatement */
     in.current = " test {deviate not-supported; status obsolete;}";
     assert_int_equal(LY_EVALID, parse_deviation(YCTX, &d));
     CHECK_LOG_CTX("Invalid keyword \"status\" as a child of \"deviation\".", "Line number 1.");
-    FREE_ARRAY(PARSER_CUR_PMOD(YCTX)->mod->ctx, d, lysp_deviation_free);
-    d = NULL;
-#undef TEST_DUP
 }
-
-#define TEST_DEVIATE_SUCCESS(INPUT_TEXT, REMAIN_TEXT)\
-                    in.current = INPUT_TEXT;\
-                    assert_int_equal(LY_SUCCESS, parse_deviate(YCTX, &d));\
-                    assert_non_null(d);\
-                    assert_string_equal(REMAIN_TEXT, in.current);\
-                    lysp_deviate_free(PARSER_CUR_PMOD(YCTX)->mod->ctx, d); free(d); d = NULL
 
 static void
 test_deviate(void **state)
@@ -903,36 +1044,17 @@ test_deviate(void **state)
     struct lysp_deviate *d = NULL;
 
     /* invalid cardinality */
-#define TEST_DUP(TYPE, MEMBER, VALUE1, VALUE2) \
-    TEST_DUP_GENERIC(TYPE" {", MEMBER, VALUE1, VALUE2, parse_deviate, \
-                     &d, "1", lysp_deviate_free(PARSER_CUR_PMOD(YCTX)->mod->ctx, d); free(d); d = NULL)
-
-    TEST_DUP("add", "config", "true", "false");
-#if 0
-    /*test on int8 now is in file tests/utest/types/int8.c */
-    TEST_DUP("replace", "default", "int8", "uint8");
-#endif
-    TEST_DUP("add", "mandatory", "true", "false");
-    TEST_DUP("add", "max-elements", "1", "2");
-    TEST_DUP("add", "min-elements", "1", "2");
-#if 0
-    /*test on int8 now is in file tests/utest/types/int8.c*/
-    TEST_DUP("replace", "type", "int8", "uint8");
-#endif
-    TEST_DUP("add", "units", "kilometers", "miles");
-
-    /* full contents */
-    TEST_DEVIATE_SUCCESS(" not-supported {prefix:ext;} ...", " ...");
-    TEST_DEVIATE_SUCCESS(" add {units meters; must 1; must 2; unique x; unique y; default a; default b; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...", " ...");
-    TEST_DEVIATE_SUCCESS(" delete {units meters; must 1; must 2; unique x; unique y; default a; default b; prefix:ext;} ...", " ...");
-    TEST_DEVIATE_SUCCESS(" replace {type string; units meters; default a; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...", " ...");
+    TEST_DUP_GENERIC("add {", "config", "true", "false", parse_deviate, &d, "1", );
+    TEST_DUP_GENERIC("add {", "mandatory", "true", "false", parse_deviate, &d, "1", );
+    TEST_DUP_GENERIC("add {", "max-elements", "1", "2", parse_deviate, &d, "1", );
+    TEST_DUP_GENERIC("add {", "min-elements", "1", "2", parse_deviate, &d, "1", );
+    TEST_DUP_GENERIC("add {", "units", "kilometers", "miles", parse_deviate, &d, "1", );
 
     /* invalid substatements */
 #define TEST_NOT_SUP(DEV, STMT, VALUE) \
     in.current = " "DEV" {"STMT" "VALUE";}..."; \
     assert_int_equal(LY_EVALID, parse_deviate(YCTX, &d)); \
-    CHECK_LOG_CTX("Deviate \""DEV"\" does not support keyword \""STMT"\".", "Line number 1.");\
-    lysp_deviate_free(PARSER_CUR_PMOD(YCTX)->mod->ctx, d); free(d); d = NULL
+    CHECK_LOG_CTX("Deviate \""DEV"\" does not support keyword \""STMT"\".", "Line number 1.");
 
     TEST_NOT_SUP("not-supported", "units", "meters");
     TEST_NOT_SUP("not-supported", "must", "1");
@@ -957,7 +1079,6 @@ test_deviate(void **state)
     CHECK_LOG_CTX("Invalid value \"nonsence\" of \"deviate\".", "Line number 1.");\
     assert_null(d);
 #undef TEST_NOT_SUP
-#undef TEST_DUP
 }
 
 static void
@@ -1557,34 +1678,15 @@ test_when(void **state)
 
     PARSER_CUR_PMOD(YCTX)->version = 2; /* simulate YANG 1.1 */
 
-    /* invalid cardinality */
-#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_when(YCTX, &w)); \
-    CHECK_LOG_CTX("Duplicate keyword \""MEMBER"\".", "Line number 1."); \
-    FREE_MEMBER(PARSER_CUR_PMOD(YCTX)->mod->ctx, w, lysp_when_free); w = NULL;
+    in.current = "l { description text1;description text2;} ...";
+    assert_int_equal(LY_EVALID, parse_when(YCTX, &w));
+    assert_null(w);
+    CHECK_LOG_CTX("Duplicate keyword \"description\".", "Line number 1.");
 
-    TEST_DUP("description", "text1", "text2");
-    TEST_DUP("reference", "1", "2");
-#undef TEST_DUP
-
-    /* full content */
-    in.current = "expression {description test;reference test;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_when(YCTX, &w));
-    assert_non_null(w);
-    assert_string_equal("expression", w->cond);
-    assert_string_equal("test", w->dsc);
-    assert_string_equal("test", w->ref);
-    assert_non_null(w->exts);
-    FREE_MEMBER(PARSER_CUR_PMOD(YCTX)->mod->ctx, w, lysp_when_free); w = NULL;
-
-    /* empty condition */
-    in.current = "\"\";";
-    assert_int_equal(LY_SUCCESS, parse_when(YCTX, &w));
-    CHECK_LOG_CTX("Empty argument of when statement does not make sense.", NULL);
-    assert_non_null(w);
-    assert_string_equal("", w->cond);
-    FREE_MEMBER(PARSER_CUR_PMOD(YCTX)->mod->ctx, w, lysp_when_free); w = NULL;
+    in.current = "l { reference 1;reference 2;} ...";
+    assert_int_equal(LY_EVALID, parse_when(YCTX, &w));
+    assert_null(w);
+    CHECK_LOG_CTX("Duplicate keyword \"reference\".", "Line number 1.");
 }
 
 static void
@@ -1612,6 +1714,7 @@ main(void)
         UTEST(test_arg, setup, teardown),
         UTEST(test_stmts, setup, teardown),
         UTEST(test_minmax, setup, teardown),
+        UTEST(test_valid_module, setup, teardown),
         UTEST(test_module, setup, teardown),
         UTEST(test_deviation, setup, teardown),
         UTEST(test_deviate, setup, teardown),

@@ -349,6 +349,8 @@ LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmo
  */
 void lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr);
 
+void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
+
 /**
  * @brief Free a parsed qualified name.
  *
@@ -356,14 +358,6 @@ void lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr);
  * @param[in] qname Qualified name to free.
  */
 void lysp_qname_free(struct ly_ctx *ctx, struct lysp_qname *qname);
-
-/**
- * @brief Free a parsed node.
- *
- * @param[in] ctx libyang context.
- * @param[in] node Node to free.
- */
-void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 /**
  * @brief Get address of a node's actions list if any.
@@ -669,13 +663,6 @@ void lysp_module_free(struct lysp_module *module);
 void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 
 /**
- * @brief Free the parsed extension instance structure.
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in] ext Parsed extension instance structure to free. Note that the instance itself is not freed.
- */
-void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
-
-/**
  * @brief Parse generic statement structure into a specific parsed-schema structure.
  *
  * @param[in] ctx The compilation context of the @p stmt being processed
@@ -685,6 +672,10 @@ void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
  * @return LY_ERR value.
  */
 LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **result, struct lysp_ext_instance **exts);
+
+void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
+
+void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
 
 /**
  * @brief Free a parsed node.
@@ -726,49 +717,6 @@ void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 void lysc_iffeature_free(struct ly_ctx *ctx, struct lysc_iffeature *iff);
-
-/**
- * @brief Free the compiled identity structure.
- *
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] ident Compiled identity structure to be cleaned.
- * Since the structure is typically part of the sized array, the structure itself is not freed.
- */
-void lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident);
-
-/**
- * @brief Free the compiled must structure.
- *
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] must Compiled must structure to be cleaned.
- * Since the structure is typically part of the sized array, the structure itself is not freed.
- */
-void lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must);
-
-/**
- * @brief Free the data inside compiled input/output structure.
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] inout Compiled inout structure to be cleaned.
- * Since the structure is part of the RPC/action structure, it is not freed itself.
- */
-void lysc_node_action_inout_free(struct ly_ctx *ctx, struct lysc_node_action_inout *inout);
-
-/**
- * @brief Free the data inside compiled RPC/action structure.
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] action Compiled action structure to be cleaned.
- * Since the structure is typically part of the sized array, the structure itself is not freed.
- */
-void lysc_node_action_free(struct ly_ctx *ctx, struct lysc_node_action *action);
-
-/**
- * @brief Free the items inside the compiled Notification structure.
- *
- * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in,out] notif Compiled Notification structure to be cleaned.
- * Since the structure is typically part of the sized array, the structure itself is not freed.
- */
-void lysc_node_notif_free(struct ly_ctx *ctx, struct lysc_node_notif *notif);
 
 /**
  * @brief Free the compiled extension definition and NULL the provided pointer.

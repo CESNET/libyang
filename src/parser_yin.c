@@ -2776,14 +2776,15 @@ cleanup:
 static LY_ERR
 yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **deviations)
 {
-    struct lysp_deviation *dev;
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_deviation *dev = NULL;
 
     /* create new deviation */
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *deviations, dev, LY_EMEM);
 
     /* parse argument */
-    LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
-    LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_TARGET_NODE, &dev->nodeid, Y_STR_ARG, LY_STMT_DEVIATION));
+    LY_CHECK_GOTO(ret = lyxml_ctx_next(ctx->xmlctx), cleanup);
+    LY_CHECK_GOTO(ret = yin_parse_attribute(ctx, YIN_ARG_TARGET_NODE, &dev->nodeid, Y_STR_ARG, LY_STMT_DEVIATION), cleanup);
     CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(dev->nodeid), "deviation");
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &dev->dsc, YIN_SUBELEM_UNIQUE},
@@ -2792,7 +2793,14 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
     };
 
-    return yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_DEVIATION, NULL, &dev->exts);
+    LY_CHECK_GOTO(ret = yin_parse_content(ctx, subelems, ly_sizeofarray(subelems), LY_STMT_DEVIATION, NULL, &dev->exts), cleanup);
+
+cleanup:
+    if (ret) {
+        lysp_deviation_free(PARSER_CTX(ctx), dev);
+        LY_ARRAY_DECREMENT_FREE(*deviations);
+    }
+    return ret;
 }
 
 /**
