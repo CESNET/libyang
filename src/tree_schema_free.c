@@ -647,8 +647,8 @@ lysc_extension_free(struct lysf_ctx *ctx, struct lysc_ext **ext)
         return;
     }
 
-    /* remember this extension to be freed */
-    ly_set_add(&ctx->ext_set, *ext, 0, NULL);
+    /* remember this extension to be freed, nothing to do on error */
+    (void)ly_set_add(&ctx->ext_set, *ext, 0, NULL);
 
     /* recursive exts free */
     FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
