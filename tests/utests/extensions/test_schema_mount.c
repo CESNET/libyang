@@ -34,6 +34,7 @@ setup(void **state)
             "    yangmnt:mount-point \"mnt-root\";"
             "  }"
             "}"
+            "container root4 {config false; yangmnt:mount-point \"root\";}"
             "leaf target{type string;}"
             "augment /if:interfaces/if:interface {"
             "  leaf sm-name {type leafref {path \"/sm:target\";}}"
@@ -1296,6 +1297,95 @@ test_parse_config(void **state)
     free(lyb);
 
     node = lyd_child(data);
+    assert_string_equal(LYD_NAME(node), "interfaces");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child(node);
+    assert_string_equal(LYD_NAME(node), "interface");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+    node = lyd_child(node);
+    assert_string_equal(LYD_NAME(node), "name");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+    node = node->next;
+    assert_string_equal(LYD_NAME(node), "type");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+
+    lyd_free_siblings(data);
+
+    /* the same effect but use a config false mount point instead of the separate metadata node */
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-interfaces</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-interfaces</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>iana-if-type</name>"
+            "      <revision>2014-05-08</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:iana-if-type</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name>"
+            "      <revision>2013-07-15</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point>"
+            "    <module>sm</module>"
+            "    <label>root</label>"
+            "    <inline/>"
+            "  </mount-point>"
+            "</schema-mounts>");
+    xml =
+            "<root4 xmlns=\"urn:sm\">\n"
+            "  <interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n"
+            "    <interface>\n"
+            "      <name>bu</name>\n"
+            "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
+            "      <enabled>true</enabled>\n"
+            "    </interface>\n"
+            "  </interfaces>\n"
+            "</root4>\n";
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    CHECK_LYD_STRING_PARAM(data, xml, LYD_XML, LYD_PRINT_WITHSIBLINGS);
+
+    node = lyd_child(data->next->next->next);
     assert_string_equal(LYD_NAME(node), "interfaces");
     assert_true(node->schema->flags & LYS_CONFIG_R);
     node = lyd_child(node);

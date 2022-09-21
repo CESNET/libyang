@@ -252,10 +252,13 @@ schema_mount_get_smount(const struct lysc_ext_instance *ext, const struct lyd_no
     }
 
     /* check config */
+    *config = 1;
     if (!lyd_find_path(mpoint, "config", 0, &node) && !strcmp(lyd_get_value(node), "false")) {
         *config = 0;
-    } else {
-        *config = 1;
+    }
+    assert((ext->parent_stmt == LY_STMT_CONTAINER) || (ext->parent_stmt == LY_STMT_LIST));
+    if (((struct lysc_node *)ext->parent)->flags & LYS_CONFIG_R) {
+        *config = 0;
     }
 
     /* check schema-ref */
