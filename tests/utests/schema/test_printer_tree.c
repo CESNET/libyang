@@ -1841,6 +1841,54 @@ yang_data(void **state)
     TEST_LOCAL_TEARDOWN;
 }
 
+static void
+mount_point(void **state)
+{
+    TEST_LOCAL_SETUP;
+
+    orig =
+        "module a29 {\n"
+        "  yang-version 1.1;\n"
+        "  namespace \"x:y\";\n"
+        "  prefix x;\n"
+        "  import ietf-yang-schema-mount {\n"
+             "prefix yangmnt;\n"
+        "  }\n"
+        "  list my-list {\n"
+        "    key name;\n"
+        "    leaf name {\n"
+        "      type string;\n"
+        "    }\n"
+        "    yangmnt:mount-point \"mnt-root\";\n"
+        "  }\n"
+        "  container my-cont {\n"
+        "    yangmnt:mount-point \"mnt-root\";\n"
+        "  }\n"
+        "}\n";
+
+    expect =
+        "module: a29\n"
+        "  +--mp my-list* [name]\n"
+        "  |  +--rw name    string\n"
+        "  +--mp my-cont\n";
+
+    UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+
+    ly_out_reset(UTEST_OUT);
+
+    /* using lysc tree */
+    ly_ctx_set_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+    TEST_LOCAL_PRINT(mod, 72);
+    assert_int_equal(strlen(expect), ly_out_printed(UTEST_OUT));
+    assert_string_equal(printed, expect);
+    ly_ctx_unset_options(UTEST_LYCTX, LY_CTX_SET_PRIV_PARSED);
+
+    TEST_LOCAL_TEARDOWN;
+}
+
 int
 main(void)
 {
@@ -1873,6 +1921,7 @@ main(void)
         UTEST(print_compiled_node),
         UTEST(print_parsed_submodule),
         UTEST(yang_data),
+        UTEST(mount_point),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
