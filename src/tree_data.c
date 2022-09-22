@@ -1336,6 +1336,11 @@ all_children_compare:
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_XML:
             case LYD_ANYDATA_JSON:
+                if ((!any1->value.str && any2->value.str) || (any1->value.str && !any2->value.str)) {
+                    return LY_ENOT;
+                } else if (!any1->value.str && !any2->value.str) {
+                    return LY_SUCCESS;
+                }
                 len1 = strlen(any1->value.str);
                 len2 = strlen(any2->value.str);
                 if ((len1 != len2) || strcmp(any1->value.str, any2->value.str)) {
