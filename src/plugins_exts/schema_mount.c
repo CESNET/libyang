@@ -553,6 +553,27 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     return *snode ? LY_SUCCESS : LY_ENOT;
 }
 
+static LY_ERR
+schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, const struct lyd_node *ext_data,
+        struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *path = NULL;
+
+    /* get all parent references of this mount point */
+    if (asprintf(&path, "/ietf-yang-schema-mount:schema-mounts/mount-point[module='%s'][label='%s']"
+            "/shared-schema/parent-reference", ext->module->name, ext->argument) == -1) {
+        EXT_LOGERR_MEM_GOTO(ext, ret, cleanup);
+    }
+    if ((ret = lyd_find_xpath(ext_data, path, set))) {
+        goto cleanup;
+    }
+
+cleanup:
+    free(path);
+    return ret;
+}
+
 /**
  * @brief Duplicate all accessible parent references for a shared-schema mount point.
  *
@@ -584,12 +605,7 @@ schema_mount_dup_parent_ref(const struct lysc_ext_instance *ext, const struct ly
         goto cleanup;
     }
 
-    /* get all parent references of this mount point */
-    if (asprintf(&path, "/ietf-yang-schema-mount:schema-mounts/mount-point[module='%s'][label='%s']"
-            "/shared-schema/parent-reference", ext->module->name, ext->argument) == -1) {
-        EXT_LOGERR_MEM_GOTO(ext, ret, cleanup);
-    }
-    if ((ret = lyd_find_xpath(ext_data, path, &set))) {
+    if ((ret = schema_mount_get_parent_ref(ext, ext_data, &set))) {
         goto cleanup;
     }
 
@@ -666,6 +682,61 @@ cleanup:
         *ref_set = NULL;
     }
     return ret;
+}
+
+LY_ERR
+lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, struct ly_set **refs)
+{
+    LY_ERR res;
+    struct ly_set *pref_set = NULL;
+    struct ly_set *snode_set;
+    struct ly_set *results_set = NULL;
+    struct lyd_node *ext_data;
+    ly_bool ext_data_free;
+
+    /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
+    if ((res = lyplg_ext_get_data(ext->module->ctx, ext, (void **)&ext_data, &ext_data_free))) {
+        return res;
+    }
+
+    LY_CHECK_GOTO(res = schema_mount_get_parent_ref(ext, ext_data, &pref_set), out);
+    if (pref_set->count == 0) {
+        goto out;
+    }
+
+    LY_CHECK_GOTO(res = ly_set_new(&results_set), out);
+
+    for (uint32_t i = 0; i < pref_set->count; ++i) {
+        struct lyd_node_term *term;
+        struct lyd_value_xpath10 *xp_val;
+        char *value;
+        struct ly_err_item *err;
+
+        term = (struct lyd_node_term *)pref_set->dnodes[i];
+        LYD_VALUE_GET(&term->value, xp_val);
+        LY_CHECK_GOTO(res = lyplg_type_print_xpath10_value(xp_val, LY_VALUE_JSON, NULL, &value, &err), out);
+        LY_CHECK_ERR_GOTO(res = lys_find_xpath(ext->module->ctx, NULL, value, 0, &snode_set), free(value), out);
+        free(value);
+        for (uint32_t sn = 0; sn < snode_set->count; sn++) {
+            struct lysc_node *snode = snode_set->snodes[sn];
+
+            if ((res = ly_set_add(results_set, snode, 0, NULL))) {
+                ly_set_free(snode_set, NULL);
+                ly_set_free(results_set, NULL);
+                goto out;
+            }
+        }
+        ly_set_free(snode_set, NULL);
+    }
+
+    *refs = results_set;
+
+out:
+    if (ext_data_free) {
+        lyd_free_all(ext_data);
+    }
+    ly_set_free(pref_set, NULL);
+    return res;
 }
 
 /**

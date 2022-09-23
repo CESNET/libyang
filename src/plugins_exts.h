@@ -265,6 +265,15 @@ LIBYANG_API_DECL LY_ERR lyd_insert_ext(struct lyd_node *parent, struct lyd_node 
 LIBYANG_API_DECL void lyplg_ext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path,
         const char *format, ...);
 
+/**
+ * @brief Expand parent-reference xpath expressions
+ *
+ * @param ext[in] context allocated for extension
+ * @param refs[out] set of lysc nodes matching parent-refernce xpaths
+ * @return LY_ERR value.
+ */
+LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, struct ly_set **refs);
+
 /** @} pluginsExtensions */
 
 #ifdef __cplusplus
