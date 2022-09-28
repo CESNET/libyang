@@ -348,7 +348,7 @@ schema_mount_get_ctx_shared(struct lysc_ext_instance *ext, const struct lyd_node
     struct lyplg_ext_sm *sm_data = ext->data;
     LY_ERR ret = LY_SUCCESS, r;
     struct lyd_node *node = NULL;
-    struct ly_ctx *new_ctx;
+    struct ly_ctx *new_ctx = NULL;
     uint32_t i;
     const char *content_id = NULL;
     void *mem;
@@ -439,7 +439,7 @@ schema_mount_get_ctx_inline(struct lysc_ext_instance *ext, const struct lyd_node
 {
     struct lyplg_ext_sm *sm_data = ext->data;
     LY_ERR r;
-    struct ly_ctx *new_ctx;
+    struct ly_ctx *new_ctx = NULL;
     uint32_t i;
     void *mem;
 
@@ -535,7 +535,7 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
 {
     LY_ERR r;
     const struct lys_module *mod;
-    const struct ly_ctx *ext_ctx;
+    const struct ly_ctx *ext_ctx = NULL;
 
     /* get context based on ietf-yang-library data */
     if ((r = schema_mount_get_ctx(ext, &ext_ctx))) {

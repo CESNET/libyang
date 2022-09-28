@@ -744,6 +744,7 @@ test_ylmem(void **state)
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-yang-library", "2019-01-04"));
     assert_null(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"));
     ly_ctx_destroy(ctx_test);
+    ctx_test = NULL;
 
     /* test loading module, should also import other module */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf, LYD_XML, 0, &ctx_test));
@@ -753,6 +754,7 @@ test_ylmem(void **state)
     assert_int_equal(0, ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14")->implemented);
     assert_int_equal(LY_ENOT, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
     ly_ctx_destroy(ctx_test);
+    ctx_test = NULL;
 
     /* test loading module with feature if they are present */
     assert_int_equal(LY_SUCCESS, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", with_netconf_features, LYD_XML, 0, &ctx_test));
@@ -760,6 +762,7 @@ test_ylmem(void **state)
     assert_non_null(ly_ctx_get_module(ctx_test, "ietf-netconf-acm", "2018-02-14"));
     assert_int_equal(LY_SUCCESS, lys_feature_value(ly_ctx_get_module(ctx_test, "ietf-netconf", "2011-06-01"), "url"));
     ly_ctx_destroy(ctx_test);
+    ctx_test = NULL;
 
     /* test with not matching revision */
     assert_int_equal(LY_EINVAL, ly_ctx_new_ylmem(TESTS_SRC "/modules/yang/", garbage_revision, LYD_XML, 0, &ctx_test));
