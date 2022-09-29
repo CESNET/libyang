@@ -47,9 +47,9 @@ struct lyd_value_instance_identifier_keys {
 };
 
 /**
- * @brief Print xpath1.0 value in the specific format.
+ * @brief Print instance-id-keys value in the specific format.
  *
- * @param[in] xp_val xpath1.0 value structure.
+ * @param[in] val instance-id-keys value structure.
  * @param[in] format Format to print in.
  * @param[in] prefix_data Format-specific prefix data.
  * @param[out] str_value Printed value.
