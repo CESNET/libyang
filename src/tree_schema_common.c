@@ -1011,9 +1011,13 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
     if (first || (prefix && ((*prefix) == 1))) {
         if (!is_yangidentstartchar(c)) {
             if ((c < UCHAR_MAX) && isprint(c)) {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c' (0x%04x).", (char)c, c);
+                if (ctx) {
+                    LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c' (0x%04x).", (char)c, c);
+                }
             } else {
-                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character 0x%04x.", c);
+                if (ctx) {
+                    LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character 0x%04x.", c);
+                }
             }
             return LY_EVALID;
         }
@@ -1027,7 +1031,9 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
     } else if ((c == ':') && prefix && ((*prefix) == 0)) {
         (*prefix) = 1;
     } else if (!is_yangidentchar(c)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c' (0x%04x).", (char)c, c);
+        if (ctx) {
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c' (0x%04x).", (char)c, c);
+        }
         return LY_EVALID;
     }
 

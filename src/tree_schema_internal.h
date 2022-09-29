@@ -201,7 +201,7 @@ LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c);
 /**
  * @brief Check that \p c is valid UTF8 code point for YANG identifier.
  *
- * @param[in] ctx parser context for logging.
+ * @param[in] ctx parser context for logging. If NULL, does not log.
  * @param[in] c UTF8 code point of a character to check.
  * @param[in] first Flag to check the first character of an identifier, which is more restricted.
  * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:

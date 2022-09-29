@@ -14,7 +14,6 @@
 #include "path.h"
 
 #include <assert.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -90,7 +89,8 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* check whether it was not already specified */
                 for (i = 0; i < set->count; ++i) {
                     /* all the keys must be from the same module so this comparison should be fine */
-                    if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
+                    if (!strncmp(set->objs[i], name, name_len) &&
+                            lysp_check_identifierchar(NULL, ((char *)set->objs[i])[name_len], 0, NULL)) {
                         LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", (int)name_len, name);
                         goto token_error;
                     }
@@ -161,7 +161,8 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* check whether it was not already specified */
                 for (i = 0; i < set->count; ++i) {
                     /* all the keys must be from the same module so this comparison should be fine */
-                    if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
+                    if (!strncmp(set->objs[i], name, name_len) &&
+                            lysp_check_identifierchar(NULL, ((char *)set->objs[i])[name_len], 0, NULL)) {
                         LOGVAL(ctx, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", (int)name_len, name);
                         goto token_error;
                     }
