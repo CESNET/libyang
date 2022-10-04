@@ -77,12 +77,14 @@ struct lysc_ctx {
  *
  * @param[out] CCTX Compile context.
  * @param[in] PMOD Parsed module.
+ * @param[in] EXT Ancestor extension instance.
  */
-#define LYSC_CTX_INIT_PMOD(CCTX, PMOD) \
+#define LYSC_CTX_INIT_PMOD(CCTX, PMOD, EXT) \
     memset(&(CCTX), 0, sizeof (CCTX)); \
     (CCTX).ctx = (PMOD)->mod->ctx; \
     (CCTX).cur_mod = (PMOD)->mod; \
     (CCTX).pmod = (PMOD); \
+    (CCTX).ext = (EXT); \
     (CCTX).path_len = 1; \
     (CCTX).path[0] = '/'; \
     (CCTX).free_ctx.ctx = (PMOD)->mod->ctx
@@ -119,16 +121,18 @@ struct lys_glob_unres {
  * @brief Structure for storing schema nodes with must expressions and local module for each of them.
  */
 struct lysc_unres_must {
-    struct lysc_node *node;     /**< node with the must expression(s) */
+    struct lysc_node *node;                 /**< node with the must expression(s) */
     const struct lysp_module **local_mods;  /**< sized array of local modules for must(s) */
+    struct lysc_ext_instance *ext;          /**< ancestor extension instance of the must(s) */
 };
 
 /**
  * @brief Structure for storing leafref node and its local module.
  */
 struct lysc_unres_leafref {
-    struct lysc_node *node;     /**< leaf/leaf-list node with leafref type */
+    struct lysc_node *node;                 /**< leaf/leaf-list node with leafref type */
     const struct lysp_module *local_mod;    /**< local module of the leafref type */
+    struct lysc_ext_instance *ext;          /**< ancestor extension instance of the leafref */
 };
 
 /**
@@ -239,6 +243,15 @@ LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, st
  */
 LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module *base_pmod, const char **bases_p,
         struct lysc_ident *ident, struct lysc_ident ***bases);
+
+/**
+ * @brief Get compiled ext instance storage for a specific statement.
+ *
+ * @param[in] ext Compiled ext instance.
+ * @param[in] stmt Stored statement.
+ * @return Compiled ext instance substatement storage, NULL if substaement not supported or not stored.
+ */
+const void *lys_compile_ext_instance_get_storage(const struct lysc_ext_instance *ext, enum ly_stmt stmt);
 
 /**
  * @brief Perform a complet compilation of identites in a module and all its submodules.

@@ -151,6 +151,7 @@ set(libsrc
     src/plugins_exts/nacm.c
     src/plugins_exts/yangdata.c
     src/plugins_exts/schema_mount.c
+    src/plugins_exts/structure.c
     src/xml.c
     src/xpath.c
     src/validation.c

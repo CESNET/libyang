@@ -45,6 +45,16 @@ LY_ERR lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t
         struct lysc_when **when_c);
 
 /**
+ * @brief Compile information from the must statement
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] must_p The parsed must statement structure.
+ * @param[in,out] must Prepared (empty) compiled must structure to fill.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_must *must);
+
+/**
  * @brief Checks pattern syntax.
  *
  * @param[in] ctx Context.
@@ -56,6 +66,7 @@ LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *pattern, p
 
 /**
  * @brief Compile parsed pattern restriction in conjunction with the patterns from base type.
+ *
  * @param[in] ctx Compile context.
  * @param[in] patterns_p Array of parsed patterns from the current type to compile.
  * @param[in] base_patterns Compiled patterns from the type from which the current type is derived.
@@ -128,12 +139,11 @@ LY_ERR lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struc
  * @param[in] parent Compiled parent node where the current node is supposed to be connected. It is
  * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
  * the compile context.
- * @param[in] uses_status If the node is being placed instead of uses, here we have the uses's status value (as node's flags).
- * Zero means no uses, non-zero value with no status bit set mean the default status.
+ * @param[in] inherited_status Explicitly inherited status (from uses/extension instance), if any.
  * @param[in,out] child_set Optional set to add all the compiled nodes into (can be more in case of uses).
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, uint16_t uses_status,
-        struct ly_set *child_set);
+LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent,
+        const uint16_t *inherited_status, struct ly_set *child_set);
 
 #endif /* LY_SCHEMA_COMPILE_NODE_H_ */

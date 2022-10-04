@@ -2536,7 +2536,7 @@ test_uses(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<uses>\".",
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<schema-only-node>\".",
             "/ee:{uses='grp'}/ee:l");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
@@ -2706,7 +2706,7 @@ test_refine(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ii {namespace urn:ii;prefix ii;grouping grp {leaf l {type string; status deprecated;}}"
             "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<uses>\".",
+    CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with the \"obsolete\" status of parent \"<schema-only-node>\".",
             "/ii:{uses='grp'}/ii:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module jj {namespace urn:jj;prefix jj;import grp {prefix g;}"

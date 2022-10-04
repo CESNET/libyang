@@ -95,6 +95,9 @@ lysc_unres_must_add(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_no
         LY_ARRAY_INCREMENT(m->local_mods);
     }
 
+    /* store ext */
+    m->ext = ctx->ext;
+
     LY_CHECK_ERR_GOTO(ly_set_add(&ctx->unres->musts, m, 1, NULL), ret = LY_EMEM, error);
 
     return LY_SUCCESS;
@@ -144,6 +147,7 @@ lysc_unres_leafref_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const 
 
         l->node = &leaf->node;
         l->local_mod = local_mod;
+        l->ext = ctx->ext;
 
         LY_CHECK_ERR_RET(ly_set_add(leafrefs_set, l, 1, NULL), free(l); LOGMEM(ctx->ctx), LY_EMEM);
     }
@@ -462,14 +466,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t parent
     return LY_SUCCESS;
 }
 
-/**
- * @brief Compile information from the must statement
- * @param[in] ctx Compile context.
- * @param[in] must_p The parsed must statement structure.
- * @param[in,out] must Prepared (empty) compiled must structure to fill.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_must *must)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1972,9 +1969,9 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_t
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
-    for (ret = lysp_type_find(type_p->name, context_pnode, type_p->pmod, &basetype, &tctx->tpdf, &tctx->node);
+    for (ret = lysp_type_find(type_p->name, context_pnode, type_p->pmod, ctx->ext, &basetype, &tctx->tpdf, &tctx->node);
             ret == LY_SUCCESS;
-            ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->tpdf->type.pmod,
+            ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->tpdf->type.pmod, ctx->ext,
                     &basetype, &tctx->tpdf, &tctx->node)) {
         if (basetype) {
             break;
@@ -2515,20 +2512,22 @@ lys_compile_config(struct lysc_ctx *ctx, struct lysc_node *node)
  *
  * @param[in] ctx Compile context.
  * @param[in] node Compiled node where the flags will be set.
- * @param[in] uses_status If the node is being placed instead of uses, here we have the uses's status value (as node's flags).
- * Zero means no uses, non-zero value with no status bit set mean the default status.
+ * @param[in] inherited_status Explicitly inherited status (from uses/extension instance), if any.
  */
 static LY_ERR
-lys_compile_node_flags(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t uses_status)
+lys_compile_node_flags(struct lysc_ctx *ctx, struct lysc_node *node, const uint16_t *inherited_status)
 {
+    uint16_t parent_flags;
+    const char *parent_name;
+
     /* inherit config flags */
     LY_CHECK_RET(lys_compile_config(ctx, node));
 
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
-    LY_CHECK_RET(lys_compile_status(ctx, &node->flags, node->name, uses_status ? uses_status :
-            (node->parent ? node->parent->flags : 0), uses_status ? "<uses>" : (node->parent ? node->parent->name : NULL),
-            !uses_status));
+    parent_flags = inherited_status ? *inherited_status : (node->parent ? node->parent->flags : 0);
+    parent_name = inherited_status ? "<schema-only-node>" : (node->parent ? node->parent->name : NULL);
+    LY_CHECK_RET(lys_compile_status(ctx, &node->flags, node->name, parent_flags, parent_name, inherited_status ? 1 : 0));
 
     /* other flags */
     if ((ctx->compile_opts & LYS_IS_INPUT) && (node->nodetype != LYS_INPUT)) {
@@ -2542,8 +2541,8 @@ lys_compile_node_flags(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t us
     return LY_SUCCESS;
 }
 
-LY_ERR
-lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, uint16_t uses_status,
+static LY_ERR
+lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, const uint16_t *inherited_status,
         LY_ERR (*node_compile_spec)(struct lysc_ctx *, struct lysp_node *, struct lysc_node *),
         struct lysc_node *node, struct ly_set *child_set)
 {
@@ -2583,7 +2582,7 @@ lys_compile_node_(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_nod
     }
 
     /* config, status and other flags */
-    ret = lys_compile_node_flags(ctx, node, uses_status);
+    ret = lys_compile_node_flags(ctx, node, inherited_status);
     LY_CHECK_GOTO(ret, error);
 
     /* list ordering */
@@ -3584,6 +3583,7 @@ done:
 
 /**
  * @brief Compile parsed anydata or anyxml node information.
+ *
  * @param[in] ctx Compile context
  * @param[in] pnode Parsed anydata or anyxml node.
  * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
@@ -3676,19 +3676,18 @@ lys_compile_mandatory_parents(struct lysc_node *parent, ly_bool add)
 
 /**
  * @brief Get the grouping with the specified name from given groupings sized array.
- * @param[in] grps Linked list of groupings.
+ *
+ * @param[in] node Linked list of nodes with groupings.
  * @param[in] name Name of the grouping to find,
  * @return NULL when there is no grouping with the specified name
  * @return Pointer to the grouping of the specified @p name.
  */
 static struct lysp_node_grp *
-match_grouping(struct lysp_node_grp *grps, const char *name)
+match_grouping(const struct lysp_node_grp *node, const char *name)
 {
-    struct lysp_node_grp *grp;
-
-    LY_LIST_FOR(grps, grp) {
-        if (!strcmp(grp->name, name)) {
-            return grp;
+    LY_LIST_FOR(node, node) {
+        if ((node->nodetype == LYS_GROUPING) && !strcmp(node->name, name)) {
+            return (struct lysp_node_grp *)node;
         }
     }
 
@@ -3710,6 +3709,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
 {
     struct lysp_node *pnode;
     struct lysp_node_grp *grp;
+    struct lysp_node_grp * const *ext_grp;
     LY_ARRAY_COUNT_TYPE u;
     const char *id, *name, *prefix, *local_pref;
     size_t prefix_len, name_len;
@@ -3727,9 +3727,17 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
         /* current module, search local groupings first */
         pmod = ctx->pmod->mod->parsed; /* make sure that we will start in main_module, not submodule */
         for (pnode = uses_p->parent; !found && pnode; pnode = pnode->parent) {
-            if ((grp = match_grouping((struct lysp_node_grp *)lysp_node_groupings(pnode), name))) {
+            if ((grp = match_grouping(lysp_node_groupings(pnode), name))) {
                 found = ctx->pmod;
                 break;
+            }
+        }
+
+        /* if in an extension, search possible groupings in it */
+        if (ctx->ext) {
+            ext_grp = lys_compile_ext_instance_get_storage(ctx->ext, LY_STMT_GROUPING);
+            if (ext_grp && (grp = match_grouping(*ext_grp, name))) {
+                found = ctx->pmod;
             }
         }
     } else {
@@ -3778,7 +3786,7 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
  *
  * @param[in] ctx Compile context.
  * @param[in] uses_p Parsed uses.
- * @param[in] uses_flags Special uses flags to use.
+ * @param[in] parent_status Parent status flags to inherit.
  * @param[in] child First grouping child to compile.
  * @param[in] grp_mod Grouping parsed module.
  * @param[in] parent Uses compiled parent, may be NULL if top-level.
@@ -3788,8 +3796,9 @@ lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses
  * @return LY_EVALID on failure.
  */
 static LY_ERR
-lys_compile_uses_children(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, uint16_t uses_flags, struct lysp_node *child,
-        struct lysp_module *grp_mod, struct lysc_node *parent, struct ly_set *child_set, ly_bool child_unres_disabled)
+lys_compile_uses_children(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, uint16_t parent_status,
+        struct lysp_node *child, struct lysp_module *grp_mod, struct lysc_node *parent, struct ly_set *child_set,
+        ly_bool child_unres_disabled)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysp_module *mod_old = ctx->pmod;
@@ -3805,7 +3814,7 @@ lys_compile_uses_children(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, u
     LY_LIST_FOR(child, pnode) {
         /* compile the nodes with their parsed (grouping) module */
         ctx->pmod = grp_mod;
-        LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, parent, uses_flags, child_set), cleanup);
+        LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, parent, &parent_status, child_set), cleanup);
 
         /* eval if-features again for the rest of this node processing */
         LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, pnode->iffeatures, &enabled), cleanup);
@@ -3823,7 +3832,7 @@ lys_compile_uses_children(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, u
 
             if (uses_p->when) {
                 /* pass uses when to all the children */
-                rc = lys_compile_when(ctx, uses_p->when, uses_flags, parent, lysc_data_node(parent), node, &when_shared);
+                rc = lys_compile_when(ctx, uses_p->when, parent_status, parent, lysc_data_node(parent), node, &when_shared);
                 LY_CHECK_GOTO(rc, cleanup);
             }
 
@@ -3846,11 +3855,6 @@ cleanup:
 }
 
 /**
- * @brief Special bits combination marking the uses_status value and propagated by ::lys_compile_uses() function.
- */
-#define LYS_STATUS_USES LYS_CONFIG_MASK
-
-/**
  * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
  * If present, also apply uses's modificators.
  *
@@ -3859,17 +3863,20 @@ cleanup:
  * @param[in] parent Compiled parent node where the content of the referenced grouping is supposed to be connected. It is
  * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
  * the compile context.
+ * @param[in] inherited_status Explicitly inherited status (from uses/extension instance), if any.
  * @param[in] child_set Optional set of all the compiled children.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct ly_set *child_set)
+lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent,
+        const uint16_t *inherited_status, struct ly_set *child_set)
 {
     LY_ERR rc = LY_SUCCESS;
     ly_bool enabled, child_unres_disabled = 0;
     uint32_t i, grp_stack_count, opt_prev = ctx->compile_opts;
     struct lysp_node_grp *grp = NULL;
-    uint16_t uses_flags;
+    uint16_t uses_flags, parent_flags;
+    const char *parent_name;
     struct lysp_module *grp_mod;
     struct ly_set uses_child_set = {0};
 
@@ -3912,9 +3919,10 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
     /* compile special uses status flags */
     uses_flags = uses_p->flags;
-    rc = lys_compile_status(ctx, &uses_flags, "<uses>", parent ? parent->flags : 0, parent ? parent->name : NULL, 0);
+    parent_flags = inherited_status ? *inherited_status : (parent ? parent->flags : 0);
+    parent_name = inherited_status ? "<schema-only-node>" : (parent ? parent->name : NULL);
+    rc = lys_compile_status(ctx, &uses_flags, "<uses>", parent_flags, parent_name, inherited_status ? 1 : 0);
     LY_CHECK_GOTO(rc, cleanup);
-    uses_flags |= LYS_STATUS_USES;
 
     /* uses if-features */
     LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, uses_p->iffeatures, &enabled), cleanup);
@@ -4072,7 +4080,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
 
     lysc_update_path(ctx, NULL, "{grouping}");
     lysc_update_path(ctx, NULL, grp->name);
-    ret = lys_compile_uses(ctx, &fake_uses, &fake_container.node, NULL);
+    ret = lys_compile_uses(ctx, &fake_uses, &fake_container.node, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
 
@@ -4086,7 +4094,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysp_
 }
 
 LY_ERR
-lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, uint16_t uses_status,
+lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node *parent, const uint16_t *inherited_status,
         struct ly_set *child_set)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4156,7 +4164,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
         ctx->compile_opts |= LYS_COMPILE_NOTIFICATION;
         break;
     case LYS_USES:
-        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)pnode, parent, child_set);
+        ret = lys_compile_uses(ctx, (struct lysp_node_uses *)pnode, parent, inherited_status, child_set);
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
         return ret;
@@ -4166,7 +4174,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc_node
     }
     LY_CHECK_ERR_RET(!node, LOGMEM(ctx->ctx), LY_EMEM);
 
-    ret = lys_compile_node_(ctx, pnode, parent, uses_status, node_compile_spec, node, child_set);
+    ret = lys_compile_node_(ctx, pnode, parent, inherited_status, node_compile_spec, node, child_set);
 
     ctx->compile_opts = prev_opts;
     lysc_update_path(ctx, NULL, NULL);

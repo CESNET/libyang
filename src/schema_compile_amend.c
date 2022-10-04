@@ -2222,7 +2222,7 @@ lys_precompile_augments_deviations(struct lys_module *mod, struct lys_glob_unres
     struct ly_set mod_set = {0}, set = {0};
 
     mod_p = mod->parsed;
-    LYSC_CTX_INIT_PMOD(ctx, mod_p);
+    LYSC_CTX_INIT_PMOD(ctx, mod_p, NULL);
 
     LY_LIST_FOR(mod_p->augments, aug) {
         /* get target module */

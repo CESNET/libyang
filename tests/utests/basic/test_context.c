@@ -440,7 +440,7 @@ test_get_models(void **state)
     unsigned int index = 0;
     const char *names[] = {
         "ietf-yang-metadata", "yang", "ietf-inet-types", "ietf-yang-types", "ietf-yang-schema-mount",
-        "ietf-datastores", "ietf-yang-library", "a", "a", "a"
+        "ietf-yang-structure-ext", "ietf-datastores", "ietf-yang-library", "a", "a", "a"
     };
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str0, &in0));
@@ -508,7 +508,7 @@ test_get_models(void **state)
     while ((mod = (struct lys_module *)ly_ctx_get_module_iter(UTEST_LYCTX, &index))) {
         assert_string_equal(names[index - 1], mod->name);
     }
-    assert_int_equal(10, index);
+    assert_int_equal(11, index);
 
     /* cleanup */
     ly_in_free(in0, 0);

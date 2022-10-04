@@ -53,6 +53,7 @@
 #include "../models/ietf-yang-library@2019-01-04.h"
 #include "../models/ietf-yang-metadata@2016-08-05.h"
 #include "../models/ietf-yang-schema-mount@2019-01-14.h"
+#include "../models/ietf-yang-structure-ext@2020-06-17.h"
 #include "../models/ietf-yang-types@2013-07-15.h"
 #include "../models/yang@2022-06-16.h"
 #define IETF_YANG_LIB_REV "2019-01-04"
@@ -69,6 +70,7 @@ static struct internal_modules_s {
     {"ietf-inet-types", "2013-07-15", (const char *)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
     {"ietf-yang-types", "2013-07-15", (const char *)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
     {"ietf-yang-schema-mount", "2019-01-14", (const char *)ietf_yang_schema_mount_2019_01_14_yang, 1, LYS_IN_YANG},
+    {"ietf-yang-structure-ext", "2020-06-17", (const char *)ietf_yang_structure_ext_2020_06_17_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
     {"ietf-datastores", "2018-02-14", (const char *)ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
     {"ietf-yang-library", IETF_YANG_LIB_REV, (const char *)ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}

@@ -1,9 +1,10 @@
 /**
  * @file tree_schema.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG schema trees.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -274,10 +275,11 @@ struct lyxp_expr;
  * This macro matches a subset of schema nodes that maps to common ::lysc_node or ::lysp_node structures. To match all
  * such nodes, use ::LY_STMT_IS_NODE()
  *
- * This macro matches anydata, anyxml, augment, case, choice, container, grouping, leaf, leaf-list, list and uses. Note
- * that the list of statements that can appear in parsed or compiled schema trees differs (e.g. no uses in compiled tree).
+ * This macro matches anydata, anyxml, case, choice, container, leaf, leaf-list, and list.
  */
-#define LY_STMT_IS_DATA_NODE(STMT) (((STMT) >= LY_STMT_ANYDATA) && ((STMT) <= LY_STMT_LIST))
+#define LY_STMT_IS_DATA_NODE(STMT) (((STMT) == LY_STMT_ANYDATA) || ((STMT) == LY_STMT_ANYXML) || \
+        ((STMT) == LY_STMT_CASE) || ((STMT) == LY_STMT_CHOICE) || ((STMT) == LY_STMT_CONTAINER) || \
+        ((STMT) == LY_STMT_LEAF) || ((STMT) == LY_STMT_LEAF_LIST) || ((STMT) == LY_STMT_LIST))
 
 /**
  * @brief Generic test for any schema node that maps to common ::lysc_node or ::lysp_node structures.
@@ -302,16 +304,12 @@ enum ly_stmt {
                                      data definition nodes as it is done in generic structures of libyang. */
     LY_STMT_INPUT,
     LY_STMT_OUTPUT,
-
-/* LY_STMT_IS_OP */
     LY_STMT_ACTION,             /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node_action *`.
                                      The RPCs/Actions and Notifications are expected in a separated lists than the rest of
                                      data definition nodes as it is done in generic structures of libyang. */
     LY_STMT_RPC,                /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node_action *`.
                                      The RPCs/Actions and Notifications are expected in a separated lists than the rest of
                                      data definition nodes as it is done in generic structures of libyang. */
-
-/* LY_STMT_IS_DATA_NODE */
     LY_STMT_ANYDATA,            /**< in ::lysc_ext_substmt.storage stored as a pointer to linked list of `struct lysc_node *`.
                                      Note that due to ::lysc_node compatibility the anydata is expected to be actually
                                      mixed in the linked list with other ::lysc_node based nodes. The RPCs/Actions and
@@ -352,7 +350,6 @@ enum ly_stmt {
                                      of libyang. */
     LY_STMT_USES,
 
-/* rest */
     LY_STMT_ARGUMENT,
     LY_STMT_BASE,
     LY_STMT_BELONGS_TO,
@@ -537,7 +534,7 @@ struct lysp_ext_instance {
     const char *argument;                   /**< optional value of the extension's argument */
     LY_VALUE_FORMAT format;                 /**< prefix format of the extension name/argument (::LY_VALUE_XML is YIN format) */
     struct lysp_node *parsed;               /**< Simply parsed (unresolved) YANG schema tree serving as a cache.
-                                                 Only lys_compile_extension_instance() can set this. */
+                                                 Only ::lys_compile_extension_instance() can set this. */
     void *prefix_data;                      /**< Format-specific data for prefix resolution
                                                  (see ly_resolve_prefix()) */
 
