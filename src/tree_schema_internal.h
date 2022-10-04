@@ -237,6 +237,21 @@ LY_ERR lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports
 LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, const char *stmt);
 
 /**
+ * @brief Find type specified type definition.
+ *
+ * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
+ * @param[in] start_node Context node where the type is being instantiated to be able to search typedefs in parents.
+ * @param[in] start_module Module where the type is being instantiated for search for typedefs.
+ * @param[in] ext Extension where the type is being instantiated, if any.
+ * @param[out] type Built-in type identifier of the id. If #LY_TYPE_UNKNOWN, tpdf is expected to contain found YANG schema typedef statement.
+ * @param[out] tpdf Found type definition.
+ * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
+        const struct lysc_ext_instance *ext, LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node);
+
+/**
  * @brief Check names of typedefs in the parsed module to detect collisions.
  *
  * @param[in] ctx Parser context for logging and to maintain tpdfs_nodes
@@ -277,19 +292,6 @@ LY_ERR lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module 
  * @param[in] revs Sized-array of the revisions in a printable schema tree.
  */
 void lysp_sort_revisions(struct lysp_revision *revs);
-
-/**
- * @brief Find type specified type definition.
- *
- * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
- * @param[in] start_node Context node where the type is being instantiated to be able to search typedefs in parents.
- * @param[in] start_module Module where the type is being instantiated for search for typedefs.
- * @param[out] type Built-in type identifier of the id. If #LY_TYPE_UNKNOWN, tpdf is expected to contain found YANG schema typedef statement.
- * @param[out] tpdf Found type definition.
- * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
- */
-LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
-        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node);
 
 /**
  * @brief Validate enum name.
@@ -495,16 +497,8 @@ LY_ERR lysp_ext_instance_resolve_argument(struct ly_ctx *ctx, struct lysp_ext_in
 LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, enum ly_stmt substmt);
 
 /**
- * @brief Get the covering schema module structure for the given parsed module structure.
- *
- * @param[in] ctx libyang context to search.
- * @param[in] mod Parsed schema structure.
- * @return Corresponding lys_module structure for the given parsed schema structure.
- */
-struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod);
-
-/**
  * @brief Stringify YANG built-in type.
+ *
  * @param[in] basetype Built-in type ID to stringify.
  * @return Constant string with the name of the built-in type.
  */

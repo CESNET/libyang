@@ -1,9 +1,10 @@
 /**
  * @file plugins_types.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in types plugins and interface for user types plugins.
  *
- * Copyright (c) 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.

@@ -247,6 +247,10 @@ lysp_type_enum_free(struct lysf_ctx *ctx, struct lysp_type_enum *item)
 void
 lysp_type_free(struct lysf_ctx *ctx, struct lysp_type *type)
 {
+    if (!type) {
+        return;
+    }
+
     lydict_remove(ctx->ctx, type->name);
     FREE_MEMBER(ctx, type->range, lysp_restr_free);
     FREE_MEMBER(ctx, type->length, lysp_restr_free);
@@ -703,6 +707,10 @@ lysc_when_free(struct lysf_ctx *ctx, struct lysc_when **w)
 static void
 lysc_must_free(struct lysf_ctx *ctx, struct lysc_must *must)
 {
+    if (!must) {
+        return;
+    }
+
     lyxp_expr_free(ctx->ctx, must->cond);
     ly_free_prefix_data(LY_VALUE_SCHEMA_RESOLVED, must->prefixes);
     lydict_remove(ctx->ctx, must->emsg);
@@ -1366,15 +1374,24 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
         case LY_STMT_LEAF_LIST:
         case LY_STMT_LIST:
         case LY_STMT_NOTIFICATION:
-        case LY_STMT_RPC:
-        case LY_STMT_USES: {
+        case LY_STMT_RPC: {
             struct lysc_node *child, *child_next;
 
             LY_LIST_FOR_SAFE(*((struct lysc_node **)substmts[u].storage), child_next, child) {
                 lysc_node_free_(&fctx, child);
             }
+            *((struct lysc_node **)substmts[u].storage) = NULL;
             break;
         }
+        case LY_STMT_GROUPING: {
+            struct lysp_node_grp *grp, *grp_next;
+
+            LY_LIST_FOR_SAFE(*((struct lysp_node_grp **)substmts[u].storage), grp_next, grp) {
+                lysp_node_free(&fctx, &grp->node);
+            }
+            break;
+        }
+        case LY_STMT_USES:
         case LY_STMT_CONFIG:
         case LY_STMT_STATUS:
             /* nothing to do */
@@ -1393,18 +1410,26 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
                 /* single item */
                 const char *str = *((const char **)substmts[u].storage);
 
-                if (!str) {
-                    break;
-                }
                 lydict_remove(ctx, str);
             } else {
                 /* multiple items */
                 const char **strs = *((const char ***)substmts[u].storage);
 
-                if (!strs) {
-                    break;
-                }
                 FREE_STRINGS(ctx, strs);
+            }
+            break;
+        case LY_STMT_MUST:
+            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                /* single item */
+                struct lysc_must *must = *((struct lysc_must **)substmts[u].storage);
+
+                lysc_must_free(&fctx, must);
+                free(must);
+            } else {
+                /* multiple items */
+                struct lysc_must *musts = *((struct lysc_must **)substmts[u].storage);
+
+                FREE_ARRAY(&fctx, musts, lysc_must_free);
             }
             break;
         case LY_STMT_IF_FEATURE: {
@@ -1421,6 +1446,16 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
                 /* multiple items */
                 FREE_ARRAY(&fctx, iff, lysc_iffeature_free);
             }
+            break;
+        }
+        case LY_STMT_TYPEDEF: {
+            struct lysp_tpdf *tpdf = *((struct lysp_tpdf **)substmts[u].storage);
+
+            if (!tpdf) {
+                break;
+            }
+            /* always an array */
+            FREE_ARRAY(&fctx, tpdf, lysp_tpdf_free);
             break;
         }
         case LY_STMT_TYPE:

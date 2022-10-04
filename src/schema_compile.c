@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation.
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -285,7 +285,7 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lysp
 
     if (!ctx_sc) {
         if (parsed_mod) {
-            LYSC_CTX_INIT_PMOD(cctx, parsed_mod);
+            LYSC_CTX_INIT_PMOD(cctx, parsed_mod, NULL);
         } else {
             LYSC_CTX_INIT_CTX(cctx, ctx);
         }
@@ -486,24 +486,227 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     return LY_SUCCESS;
 }
 
-static void *
-lys_compile_extension_instance_storage(enum ly_stmt stmt, struct lysc_ext_substmt *substmts)
+const void *
+lys_compile_ext_instance_get_storage(const struct lysc_ext_instance *ext, enum ly_stmt stmt)
 {
-    for (LY_ARRAY_COUNT_TYPE u = 0; substmts[u].stmt; ++u) {
-        if (substmts[u].stmt == stmt) {
-            return substmts[u].storage;
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(ext->substmts, u) {
+        if (ext->substmts[u].stmt == stmt) {
+            return ext->substmts[u].storage;
         }
     }
     return NULL;
 }
 
+/**
+ * @brief Store (parse/compile) an instance extension statement.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] ext_p Parsed ext instance.
+ * @param[in] ext Compiled ext instance.
+ * @param[in] substmt Compled ext instance substatement info.
+ * @param[in] stmt Parsed statement to process.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext,
+        struct lysc_ext_substmt *substmt, struct lysp_stmt *stmt)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysf_ctx fctx = {.ctx = ctx->ctx};
+    struct lysp_restr *restrs = NULL;
+    struct lysp_qname *qname = NULL;
+    struct lysp_type *ptype = NULL;
+
+    if (!substmt->storage) {
+        /* nothing to store (parse/compile) */
+        goto cleanup;
+    }
+
+    switch (stmt->kw) {
+    case LY_STMT_ACTION:
+    case LY_STMT_ANYDATA:
+    case LY_STMT_ANYXML:
+    case LY_STMT_CONTAINER:
+    case LY_STMT_CHOICE:
+    case LY_STMT_LEAF:
+    case LY_STMT_LEAF_LIST:
+    case LY_STMT_LIST:
+    case LY_STMT_NOTIFICATION:
+    case LY_STMT_RPC:
+    case LY_STMT_USES: {
+        struct lysp_node **pnodes_p, *pnode = NULL;
+        const uint16_t *flags = lys_compile_ext_instance_get_storage(ext, LY_STMT_STATUS);
+
+        /* parse the node */
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&pnode, NULL), cleanup);
+
+        /* store it together with all the parsed schema nodes */
+        pnodes_p = &((struct lysp_ext_instance *)ext_p)->parsed;
+        while (*pnodes_p) {
+            pnodes_p = &(*pnodes_p)->next;
+        }
+        *pnodes_p = pnode;
+
+        /* compile, ctx->ext substatement storage is used as the document root */
+        LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, NULL, flags, NULL), cleanup);
+        break;
+    }
+    case LY_STMT_GROUPING: {
+        struct lysp_node_grp **groupings_p, *grp = NULL;
+
+        /* parse the grouping */
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&grp, NULL), cleanup);
+
+        /* store it with all the other groupings */
+        groupings_p = substmt->storage;
+        while (*groupings_p) {
+            groupings_p = &(*groupings_p)->next;
+        }
+        *groupings_p = grp;
+        break;
+    }
+    case LY_STMT_CONTACT:
+    case LY_STMT_DESCRIPTION:
+    case LY_STMT_ERROR_APP_TAG:
+    case LY_STMT_ERROR_MESSAGE:
+    case LY_STMT_KEY:
+    case LY_STMT_NAMESPACE:
+    case LY_STMT_ORGANIZATION:
+    case LY_STMT_PRESENCE:
+    case LY_STMT_REFERENCE:
+    case LY_STMT_UNITS: {
+        const char ***strs_p, **str_p;
+
+        if (substmt->cardinality < LY_STMT_CARD_SOME) {
+            /* single item */
+            str_p = substmt->storage;
+            if (*str_p) {
+                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+        } else {
+            /* sized array */
+            strs_p = substmt->storage;
+            LY_ARRAY_NEW_GOTO(ctx->ctx, *strs_p, str_p, rc, cleanup);
+        }
+
+        /* called instead of lysp_stmt_parse() to skip validation and not parse nested ext instances */
+        LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, stmt->arg, 0, str_p), cleanup);
+        break;
+    }
+    case LY_STMT_MUST: {
+        struct lysc_must **musts_p, **must_p, *must;
+
+        /* parse */
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&restrs, NULL), cleanup);
+
+        if (substmt->cardinality < LY_STMT_CARD_SOME) {
+            /* single item */
+            must_p = substmt->storage;
+            if (*must_p) {
+                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+            *must_p = calloc(1, sizeof **must_p);
+            must = *must_p;
+        } else {
+            /* sized array */
+            musts_p = substmt->storage;
+            LY_ARRAY_NEW_GOTO(ctx->ctx, *musts_p, must, rc, cleanup);
+        }
+
+        /* compile */
+        LY_CHECK_GOTO(rc = lys_compile_must(ctx, restrs, must), cleanup);
+        break;
+    }
+    case LY_STMT_IF_FEATURE: {
+        ly_bool enabled;
+
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&qname, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lys_eval_iffeatures(ctx->ctx, qname, &enabled), cleanup);
+        if (!enabled) {
+            /* it is disabled, remove the whole extension instance */
+            return LY_ENOT;
+        }
+        break;
+    }
+    case LY_STMT_STATUS:
+        if (substmt->cardinality > LY_STMT_CARD_MAND) {
+            /* only cardinality 0..1 and 1 */
+            goto not_supported;
+        }
+        /* result needs to be a pointer to pointer */
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &substmt->storage, NULL), cleanup);
+        break;
+
+    case LY_STMT_TYPEDEF:
+        if (substmt->cardinality < LY_STMT_CARD_SOME) {
+            /* single item */
+            if (*(struct lysp_tpdf **)substmt->storage) {
+                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+        } /* else sized array */
+
+        /* parse */
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, substmt->storage, NULL), cleanup);
+        break;
+
+    case LY_STMT_TYPE: {
+        struct lysc_type ***types_p, **type_p;
+        const uint16_t *flags = lys_compile_ext_instance_get_storage(ext, LY_STMT_STATUS);
+        const char **units = (void *)lys_compile_ext_instance_get_storage(ext, LY_STMT_UNITS);
+
+        if (substmt->cardinality < LY_STMT_CARD_SOME) {
+            /* single item */
+            type_p = substmt->storage;
+            if (*type_p) {
+                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+                rc = LY_EVALID;
+                goto cleanup;
+            }
+        } else {
+            /* sized array of pointers */
+            types_p = substmt->storage;
+            LY_ARRAY_NEW_GOTO(ctx->ctx, *types_p, type_p, rc, cleanup);
+        }
+
+        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&ptype, NULL), cleanup);
+        LY_CHECK_GOTO(rc = lys_compile_type(ctx, NULL, flags ? *flags : 0, ext_p->name, ptype, type_p,
+                (units && !*units) ? units : NULL, NULL), cleanup);
+        break;
+    }
+    /* TODO support other substatements (parse stmt to lysp and then compile lysp to lysc),
+        * also note that in many statements their extensions are not taken into account  */
+    default:
+not_supported:
+        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" in cardinality %s is not supported as an extension "
+                "(found in \"%s%s%s\") substatement.", stmt->stmt, ly_cardinality2str(substmt->cardinality),
+                ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
+        rc = LY_EVALID;
+        goto cleanup;
+    }
+
+cleanup:
+    FREE_ARRAY(&fctx, restrs, lysp_restr_free);
+    FREE_ARRAY(ctx->ctx, qname, lysp_qname_free);
+    lysp_type_free(&ctx->free_ctx, ptype);
+    free(ptype);
+    return rc;
+}
+
 LIBYANG_API_DEF LY_ERR
 lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
 {
-    LY_ERR rc = LY_SUCCESS, r;
+    LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
-    void *parsed = NULL, **compiled = NULL;
+    uint64_t stmt_counter;
 
     /* check for invalid substatements */
     for (stmt = ext_p->child; stmt; stmt = stmt->next) {
@@ -532,141 +735,21 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
      * the order is important for some of the statements depending on others (e.g. type needs status and units) */
 
     LY_ARRAY_FOR(ext->substmts, u) {
-        uint64_t stmt_counter = 0;
+        stmt_counter = 0;
 
         for (stmt = ext_p->child; stmt; stmt = stmt->next) {
             if (ext->substmts[u].stmt != stmt->kw) {
                 continue;
             }
 
-            parsed = NULL;
             stmt_counter++;
-            if (ext->substmts[u].storage) {
-                switch (stmt->kw) {
-                case LY_STMT_ACTION:
-                case LY_STMT_ANYDATA:
-                case LY_STMT_ANYXML:
-                case LY_STMT_CONTAINER:
-                case LY_STMT_CHOICE:
-                case LY_STMT_LEAF:
-                case LY_STMT_LEAF_LIST:
-                case LY_STMT_LIST:
-                case LY_STMT_NOTIFICATION:
-                case LY_STMT_RPC:
-                case LY_STMT_USES:
-                    if (!ext_p->parsed) {
-                        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &parsed, NULL), cleanup);
-                        ((struct lysp_ext_instance *)ext_p)->parsed = parsed;
-                    } else {
-                        struct lysp_node *node, *last_node = NULL;
-
-                        /* get last parsed node */
-                        LY_LIST_FOR(ext_p->parsed, node) {
-                            last_node = node;
-                        }
-                        /* create and link sibling */
-                        LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &parsed, NULL), cleanup);
-                        last_node->next = parsed;
-                    }
-
-                    /* set storage as an alternative document root in the compile context */
-                    LY_CHECK_GOTO(rc = lys_compile_node(ctx, parsed, NULL, 0, NULL), cleanup);
-                    break;
-                case LY_STMT_CONTACT:
-                case LY_STMT_DESCRIPTION:
-                case LY_STMT_ERROR_APP_TAG:
-                case LY_STMT_ERROR_MESSAGE:
-                case LY_STMT_KEY:
-                case LY_STMT_NAMESPACE:
-                case LY_STMT_ORGANIZATION:
-                case LY_STMT_PRESENCE:
-                case LY_STMT_REFERENCE:
-                case LY_STMT_UNITS: {
-                    const char **str_p;
-
-                    if (ext->substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                        /* single item */
-                        if (*((const char **)ext->substmts[u].storage)) {
-                            LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-                            rc = LY_EVALID;
-                            goto cleanup;
-                        }
-                        str_p = (const char **)ext->substmts[u].storage;
-                    } else {
-                        /* sized array */
-                        const char ***strings_array = (const char ***)ext->substmts[u].storage;
-
-                        LY_ARRAY_NEW_GOTO(ctx->ctx, *strings_array, str_p, rc, cleanup);
-                    }
-
-                    /* called instead of lysp_stmt_parse() to skip validation and not parse nested ext instances */
-                    LY_CHECK_GOTO(rc = lydict_insert(ctx->ctx, stmt->arg, 0, str_p), cleanup);
-                    break;
-                }
-                case LY_STMT_IF_FEATURE: {
-                    ly_bool enabled;
-
-                    LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &parsed, NULL), cleanup);
-
-                    r = lys_eval_iffeatures(ctx->ctx, parsed, &enabled);
-                    FREE_ARRAY(ctx->ctx, (struct lysp_qname *)parsed, lysp_qname_free);
-                    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-                    if (!enabled) {
-                        /* it is disabled, remove the whole extension instance */
-                        return LY_ENOT;
-                    }
-                    break;
-                }
-                case LY_STMT_STATUS:
-                    if (ext->substmts[u].cardinality > LY_STMT_CARD_MAND) {
-                        /* only cardinality 0..1 and 1 */
-                        goto not_supported;
-                    }
-                    /* result needs to be a pointer to pointer */
-                    LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &ext->substmts[u].storage, NULL), cleanup);
-                    break;
-                case LY_STMT_TYPE: {
-                    uint16_t *flags = lys_compile_extension_instance_storage(LY_STMT_STATUS, ext->substmts);
-                    const char **units = lys_compile_extension_instance_storage(LY_STMT_UNITS, ext->substmts);
-
-                    if (ext->substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                        /* single item */
-                        if (*(struct lysc_type **)ext->substmts[u].storage) {
-                            LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-                            rc = LY_EVALID;
-                            goto cleanup;
-                        }
-                        compiled = ext->substmts[u].storage;
-                    } else {
-                        /* sized array */
-                        struct lysc_type ***types = (struct lysc_type ***)ext->substmts[u].storage, **type = NULL;
-
-                        LY_ARRAY_NEW_GOTO(ctx->ctx, *types, type, rc, cleanup);
-                        compiled = (void *)type;
-                    }
-
-                    LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &parsed, NULL), cleanup);
-                    r = lys_compile_type(ctx, NULL, flags ? *flags : 0, ext_p->name, parsed, (struct lysc_type **)compiled,
-                            (units && !*units) ? units : NULL, NULL);
-                    lysp_type_free(&ctx->free_ctx, parsed);
-                    free(parsed);
-                    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-                    break;
-                }
-                /* TODO support other substatements (parse stmt to lysp and then compile lysp to lysc),
-                 * also note that in many statements their extensions are not taken into account  */
-                default:
-not_supported:
-                    LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" in cardinality %s is not supported as an extension "
-                            "(found in \"%s%s%s\") substatement.", stmt->stmt, ly_cardinality2str(ext->substmts[u].cardinality),
-                            ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
-                    rc = LY_EVALID;
-                    goto cleanup;
-                }
+            if ((rc = lys_compile_ext_instance_stmt(ctx, ext_p, ext, &ext->substmts[u], stmt))) {
+                goto cleanup;
             }
         }
 
-        if (((ext->substmts[u].cardinality == LY_STMT_CARD_MAND) || (ext->substmts[u].cardinality == LY_STMT_CARD_SOME)) && !stmt_counter) {
+        if (((ext->substmts[u].cardinality == LY_STMT_CARD_MAND) || (ext->substmts[u].cardinality == LY_STMT_CARD_SOME)) &&
+                !stmt_counter) {
             LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s%s%s\".",
                     ly_stmt2str(ext->substmts[u].stmt), ext_p->name, ext_p->argument ? " " : "",
                     ext_p->argument ? ext_p->argument : "");
@@ -1112,7 +1195,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     LY_CHECK_RET(lys_compile_expr_implement(ctx->ctx, lref->path, LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, 1, unres, NULL));
 
     /* try to find the target, current module is that of the context node (RFC 7950 6.4.1 second bullet) */
-    LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, NULL, lref->path,
+    LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, ctx->ext, lref->path,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
             LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p));
 
@@ -1393,7 +1476,7 @@ resolve_all:
         /* remember index, it can change before we get to free this item */
         i = ds_unres->disabled_leafrefs.count - 1;
         l = ds_unres->disabled_leafrefs.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed, l->ext);
 
         LOG_LOCSET(l->node, NULL, NULL, NULL);
         v = 0;
@@ -1408,7 +1491,7 @@ resolve_all:
 
     for (i = processed_leafrefs; i < ds_unres->leafrefs.count; ++i) {
         l = ds_unres->leafrefs.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed, l->ext);
 
         LOG_LOCSET(l->node, NULL, NULL, NULL);
         v = 0;
@@ -1443,7 +1526,7 @@ resolve_all:
     while (ds_unres->whens.count) {
         i = ds_unres->whens.count - 1;
         node = ds_unres->whens.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
 
         LOG_LOCSET(node, NULL, NULL, NULL);
         ret = lys_compile_unres_when(&cctx, node, unres);
@@ -1457,7 +1540,7 @@ resolve_all:
     while (ds_unres->musts.count) {
         i = ds_unres->musts.count - 1;
         m = ds_unres->musts.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, m->node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, m->node->module->parsed, m->ext);
 
         LOG_LOCSET(m->node, NULL, NULL, NULL);
         ret = lys_compile_unres_must(&cctx, m->node, m->local_mods, unres);
@@ -1472,7 +1555,7 @@ resolve_all:
     while (ds_unres->disabled_bitenums.count) {
         i = ds_unres->disabled_bitenums.count - 1;
         node = ds_unres->disabled_bitenums.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
 
         LOG_LOCSET(node, NULL, NULL, NULL);
         ret = lys_compile_unres_disabled_bitenum(&cctx, (struct lysc_node_leaf *)node);
@@ -1486,7 +1569,7 @@ resolve_all:
     while (ds_unres->dflts.count) {
         i = ds_unres->dflts.count - 1;
         r = ds_unres->dflts.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, r->leaf->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, r->leaf->module->parsed, NULL);
 
         LOG_LOCSET(&r->leaf->node, NULL, NULL, NULL);
         if (r->leaf->nodetype == LYS_LEAF) {
@@ -1517,7 +1600,7 @@ resolve_all:
             ret = LY_EVALID;
             goto cleanup;
         }
-        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, node->module->parsed, NULL);
 
         lysc_node_free(&cctx.free_ctx, node, 1);
     }
@@ -1525,11 +1608,11 @@ resolve_all:
     /* also check if the leafref target has not been disabled */
     for (i = 0; i < ds_unres->leafrefs.count; ++i) {
         l = ds_unres->leafrefs.objs[i];
-        LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed);
+        LYSC_CTX_INIT_PMOD(cctx, l->node->module->parsed, l->ext);
 
         v = 0;
         while ((lref = lys_type_leafref_next(l->node, &v))) {
-            ret = ly_path_compile_leafref(cctx.ctx, l->node, NULL, lref->path,
+            ret = ly_path_compile_leafref(cctx.ctx, l->node, cctx.ext, lref->path,
                     (l->node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &path);
             ly_path_free(l->node->module->ctx, path);
@@ -1778,7 +1861,7 @@ lys_compile(struct lys_module *mod, struct lys_depset_unres *unres)
     assert(mod->implemented && mod->to_compile);
 
     sp = mod->parsed;
-    LYSC_CTX_INIT_PMOD(ctx, sp);
+    LYSC_CTX_INIT_PMOD(ctx, sp, NULL);
     ctx.unres = unres;
 
     ++mod->ctx->change_count;
@@ -1899,7 +1982,7 @@ lys_compile_identities(struct lys_module *mod)
     }
 
     /* prepare context */
-    LYSC_CTX_INIT_PMOD(ctx, mod->parsed);
+    LYSC_CTX_INIT_PMOD(ctx, mod->parsed, NULL);
 
     if (mod->parsed->identities) {
         rc = lys_compile_identities_derived(&ctx, mod->parsed->identities, &mod->identities);

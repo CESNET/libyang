@@ -1,6 +1,7 @@
 /**
  * @file printer_yang.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG printer
  *
  * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
@@ -2459,20 +2460,49 @@ lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_e
 {
     struct lys_ypr_ctx *pctx = (struct lys_ypr_ctx *)ctx_generic;
     LY_ARRAY_COUNT_TYPE u, v;
+    ly_bool data_printed = 0;
 
     LY_ARRAY_FOR(ext->substmts, u) {
         switch (ext->substmts[u].stmt) {
+        case LY_STMT_ACTION:
+        case LY_STMT_CONTAINER:
         case LY_STMT_CHOICE:
-        case LY_STMT_CONTAINER: {
+        case LY_STMT_LEAF:
+        case LY_STMT_LEAF_LIST:
+        case LY_STMT_LIST:
+        case LY_STMT_NOTIFICATION:
+        case LY_STMT_RPC:
+        case LY_STMT_ANYXML:
+        case LY_STMT_ANYDATA: {
             const struct lysc_node *node;
+
+            if (data_printed) {
+                break;
+            }
 
             LY_LIST_FOR(*(const struct lysc_node **)ext->substmts[u].storage, node) {
                 ypr_open(pctx->out, flag);
-                yprc_node(pctx, node);
+                if ((ext->substmts[u].stmt == LY_STMT_ACTION) || (ext->substmts[u].stmt == LY_STMT_RPC)) {
+                    yprc_action(pctx, (struct lysc_node_action *)node);
+                } else if (ext->substmts[u].stmt == LY_STMT_NOTIFICATION) {
+                    yprc_notification(pctx, (struct lysc_node_notif *)node);
+                } else {
+                    yprc_node(pctx, node);
+                }
             }
+
+            /* all data nodes are stored in a linked list so all were printed */
+            data_printed = 1;
             break;
         }
+        case LY_STMT_CONTACT:
         case LY_STMT_DESCRIPTION:
+        case LY_STMT_ERROR_APP_TAG:
+        case LY_STMT_ERROR_MESSAGE:
+        case LY_STMT_KEY:
+        case LY_STMT_NAMESPACE:
+        case LY_STMT_ORGANIZATION:
+        case LY_STMT_PRESENCE:
         case LY_STMT_REFERENCE:
         case LY_STMT_UNITS:
             if (ext->substmts[u].cardinality < LY_STMT_CARD_SOME) {
@@ -2489,7 +2519,18 @@ lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_e
                 }
             }
             break;
+        case LY_STMT_MUST: {
+            const struct lysc_must *musts = *(struct lysc_must **)ext->substmts[u].storage;
+
+            LY_ARRAY_FOR(musts, v) {
+                yprc_must(pctx, &musts[v], flag);
+            }
+            break;
+        }
         case LY_STMT_IF_FEATURE:
+        case LY_STMT_USES:
+        case LY_STMT_GROUPING:
+        case LY_STMT_TYPEDEF:
             /* nothing to do */
             break;
         case LY_STMT_STATUS:

@@ -12,7 +12,7 @@ spawn $yanglint
 
 expect_output "> "
 
-expect_command "list" 1 "List of the loaded models:\r\n *i ietf-yang-metadata@2016-08-05\r\n *I yang@2022-06-16\r\n *i ietf-inet-types@2013-07-15\r\n *i ietf-yang-types@2013-07-15\r\n *I ietf-yang-schema-mount@2019-01-14\r\n> "
+expect_command "list" 1 "List of the loaded models:\r\n *i ietf-yang-metadata@2016-08-05\r\n *I yang@2022-06-16\r\n *i ietf-inet-types@2013-07-15\r\n *i ietf-yang-types@2013-07-15\r\n *I ietf-yang-schema-mount@2019-01-14\r\n *i ietf-yang-structure-ext@2020-06-17\r\n> "
 
 send -- "exit\r"
 

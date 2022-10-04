@@ -125,39 +125,36 @@ lysp_sort_revisions(struct lysp_revision *revs)
     }
 }
 
-static const struct lysp_tpdf *
-lysp_type_match(const char *name, struct lysp_node *node)
+LY_ERR
+lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len)
 {
-    const struct lysp_tpdf *typedefs;
-    LY_ARRAY_COUNT_TYPE u;
-
-    typedefs = lysp_node_typedefs(node);
-    LY_ARRAY_FOR(typedefs, u) {
-        if (!strcmp(name, typedefs[u].name)) {
-            /* match */
-            return &typedefs[u];
+    if (!name_len) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
+        return LY_EVALID;
+    } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
+                (int)name_len, name);
+        return LY_EVALID;
+    } else {
+        for (size_t u = 0; u < name_len; ++u) {
+            if (iscntrl(name[u])) {
+                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
+                        (int)name_len, name, u + 1);
+                break;
+            }
         }
     }
 
-    return NULL;
+    return LY_SUCCESS;
 }
 
-static const struct lysp_node_grp *
-lysp_grouping_match(const char *name, struct lysp_node *node)
-{
-    const struct lysp_node_grp *groupings, *grp_iter;
-
-    groupings = lysp_node_groupings(node);
-    LY_LIST_FOR(groupings, grp_iter) {
-        if (!strcmp(name, grp_iter->name)) {
-            /* match */
-            return grp_iter;
-        }
-    }
-
-    return NULL;
-}
-
+/**
+ * @brief Learn built-in type from its name.
+ *
+ * @param[in] name Type name.
+ * @param[in] len Length of @p name.
+ * @return Built-in data type, ::LY_TYPE_UNKNOWN if none matches.
+ */
 static LY_DATA_TYPE
 lysp_type_str2builtin(const char *name, size_t len)
 {
@@ -232,12 +229,34 @@ lysp_type_str2builtin(const char *name, size_t len)
     return LY_TYPE_UNKNOWN;
 }
 
+/**
+ * @brief Find a typedef in a sized array.
+ *
+ * @param[in] name Typedef name.
+ * @param[in] typedefs Sized array of typedefs.
+ * @return Found typedef, NULL if none.
+ */
+static const struct lysp_tpdf *
+lysp_typedef_match(const char *name, const struct lysp_tpdf *typedefs)
+{
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(typedefs, u) {
+        if (!strcmp(name, typedefs[u].name)) {
+            /* match */
+            return &typedefs[u];
+        }
+    }
+    return NULL;
+}
+
 LY_ERR
 lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_module *start_module,
-        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node)
+        const struct lysc_ext_instance *ext, LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node)
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
+    const struct lysp_tpdf **ext_typedefs;
     const struct lys_module *mod;
     const struct lysp_module *local_module;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -267,16 +286,25 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     }
     LY_CHECK_RET(!local_module, LY_ENOTFOUND);
 
-    if (start_node && (local_module == start_module)) {
-        /* search typedefs in parent's nodes */
-        *node = start_node;
-        while (*node) {
-            *tpdf = lysp_type_match(name, *node);
-            if (*tpdf) {
+    if (local_module == start_module) {
+        if (start_node) {
+            /* search typedefs in parent's nodes */
+            for (*node = start_node; *node; *node = (*node)->parent) {
+                *tpdf = lysp_typedef_match(name, lysp_node_typedefs(*node));
+                if (*tpdf) {
+                    /* match */
+                    return LY_SUCCESS;
+                }
+            }
+        }
+
+        if (ext) {
+            /* search typedefs directly in the extension */
+            ext_typedefs = (void *)lys_compile_ext_instance_get_storage(ext, LY_STMT_TYPEDEF);
+            if (ext_typedefs && (*tpdf = lysp_typedef_match(name, *ext_typedefs))) {
                 /* match */
                 return LY_SUCCESS;
             }
-            *node = (*node)->parent;
         }
     }
 
@@ -307,29 +335,6 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
     }
 
     return LY_ENOTFOUND;
-}
-
-LY_ERR
-lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len)
-{
-    if (!name_len) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
-        return LY_EVALID;
-    } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
-                (int)name_len, name);
-        return LY_EVALID;
-    } else {
-        for (size_t u = 0; u < name_len; ++u) {
-            if (iscntrl(name[u])) {
-                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
-                        (int)name_len, name, u + 1);
-                break;
-            }
-        }
-    }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -415,7 +420,7 @@ lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const
         }
         /* search typedefs in parent's nodes */
         for (parent = node->parent; parent; parent = parent->parent) {
-            if (lysp_type_match(name, parent)) {
+            if (lysp_typedef_match(name, lysp_node_typedefs(parent))) {
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
                         "Duplicate identifier \"%s\" of typedef statement - name collision with another scoped type.", name);
                 return LY_EVALID;
@@ -489,6 +494,22 @@ lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 cleanup:
     lyht_free(ids_global);
     return ret;
+}
+
+static const struct lysp_node_grp *
+lysp_grouping_match(const char *name, struct lysp_node *node)
+{
+    const struct lysp_node_grp *groupings, *grp_iter;
+
+    groupings = lysp_node_groupings(node);
+    LY_LIST_FOR(groupings, grp_iter) {
+        if (!strcmp(name, grp_iter->name)) {
+            /* match */
+            return grp_iter;
+        }
+    }
+
+    return NULL;
 }
 
 /**
@@ -1836,17 +1857,6 @@ lysc_node_when(const struct lysc_node *node)
     } else {
         return NULL;
     }
-}
-
-struct lys_module *
-lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
-{
-    for (uint32_t u = 0; u < ctx->list.count; ++u) {
-        if (((struct lys_module *)ctx->list.objs[u])->parsed == mod) {
-            return (struct lys_module *)ctx->list.objs[u];
-        }
-    }
-    return NULL;
 }
 
 enum ly_stmt
