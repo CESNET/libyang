@@ -22,7 +22,10 @@ test_schema(void **state)
     struct lys_module *mod;
     struct lysc_ext_instance *e;
     char *printed = NULL;
-    const char *data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix self;"
+    const char *data, *info;
+
+    /* valid data */
+    data = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct {"
             "  must \"/n2/l\";"
@@ -37,9 +40,29 @@ test_schema(void **state)
             "  uses my-grp;"
             "  uses my-grp2 {status obsolete;}"
             "}}";
-    const char *info = "module a {\n"
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
+    assert_non_null(e = mod->compiled->exts);
+    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+
+    /* valid augment data */
+    data = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "import a {prefix a;}"
+            "sx:augment-structure \"/a:struct/a:n1\" {"
+            "  status obsolete;"
+            "  reference none;"
+            "  leaf aug-leaf {type string;}"
+            "}}";
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
+    assert_non_null(e = mod->compiled->exts);
+    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+
+    /* yang compiled print */
+    info = "module a {\n"
             "  namespace \"urn:tests:extensions:structure:a\";\n"
-            "  prefix self;\n"
+            "  prefix a;\n"
             "\n"
             "  ietf-yang-structure-ext:structure \"struct\" {\n"
             "    must \"/n2/l\";\n"
@@ -68,6 +91,10 @@ test_schema(void **state)
             "        }\n"
             "        status deprecated;\n"
             "      }\n"
+            "      leaf aug-leaf {\n"
+            "        type string;\n"
+            "        status obsolete;\n"
+            "      }\n"
             "    }\n"
             "    leaf gl {\n"
             "      type string;\n"
@@ -80,21 +107,34 @@ test_schema(void **state)
             "  }\n"
             "}\n";
 
-    /* valid data */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, data, LYS_IN_YANG, &mod));
-    assert_non_null(e = mod->compiled->exts);
-    assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
+    assert_non_null(mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "a"));
+    assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
+    assert_string_equal(printed, info);
+    free(printed);
+
+    info = "module b {\n"
+            "  namespace \"urn:tests:extensions:structure:b\";\n"
+            "  prefix b;\n"
+            "\n"
+            "  ietf-yang-structure-ext:augment-structure \"/a:struct/a:n1\" {\n"
+            "    status obsolete;\n"
+            "    reference\n"
+            "      \"none\";\n"
+            "  }\n"
+            "}\n";
+
+    assert_non_null(mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "b"));
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
     free(printed);
 
     /* no substatements */
-    data = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix self;"
+    data = "module c {yang-version 1.1; namespace urn:tests:extensions:structure:c; prefix c;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct;}";
-    info = "module b {\n"
-            "  namespace \"urn:tests:extensions:structure:b\";\n"
-            "  prefix self;\n"
+    info = "module c {\n"
+            "  namespace \"urn:tests:extensions:structure:c\";\n"
+            "  prefix c;\n"
             "\n"
             "  ietf-yang-structure-ext:structure \"struct\";\n"
             "}\n";

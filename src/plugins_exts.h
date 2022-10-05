@@ -102,7 +102,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 5
+#define LYPLG_EXT_API_VERSION 6
 
 /**
  * @brief Macro to define plugin information in external plugins
