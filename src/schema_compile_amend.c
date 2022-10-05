@@ -38,8 +38,48 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-static const struct lys_module *lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest,
-        size_t nametest_len, const struct lysp_module *mod, const char **name, size_t *name_len);
+/**
+ * @brief Get module of a single nodeid node name test.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] nametest Nametest with an optional prefix.
+ * @param[in] nametest_len Length of @p nametest.
+ * @param[in] mod Both current and prefix module for resolving prefixes and to return in case of no prefix.
+ * @param[out] name Optional pointer to the name test without the prefix.
+ * @param[out] name_len Length of @p name.
+ * @return Resolved module.
+ */
+static const struct lys_module *
+lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_t nametest_len,
+        const struct lysp_module *mod, const char **name, size_t *name_len)
+{
+    const struct lys_module *target_mod;
+    const char *ptr;
+
+    ptr = ly_strnchr(nametest, ':', nametest_len);
+    if (ptr) {
+        target_mod = ly_resolve_prefix(ctx, nametest, ptr - nametest, LY_VALUE_SCHEMA, (void *)mod);
+        if (!target_mod) {
+            LOGVAL(ctx, LYVE_REFERENCE,
+                    "Invalid absolute-schema-nodeid nametest \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
+                    (int)nametest_len, nametest, (int)(ptr - nametest), nametest, LYSP_MODULE_NAME(mod));
+            return NULL;
+        }
+
+        if (name) {
+            *name = ptr + 1;
+            *name_len = nametest_len - ((ptr - nametest) + 1);
+        }
+    } else {
+        target_mod = mod->mod;
+        if (name) {
+            *name = nametest;
+            *name_len = nametest_len;
+        }
+    }
+
+    return target_mod;
+}
 
 /**
  * @brief Check the syntax of a node-id and collect all the referenced modules.
@@ -1375,49 +1415,6 @@ cleanup:
 }
 
 /**
- * @brief Get module of a single nodeid node name test.
- *
- * @param[in] ctx libyang context.
- * @param[in] nametest Nametest with an optional prefix.
- * @param[in] nametest_len Length of @p nametest.
- * @param[in] mod Both current and prefix module for resolving prefixes and to return in case of no prefix.
- * @param[out] name Optional pointer to the name test without the prefix.
- * @param[out] name_len Length of @p name.
- * @return Resolved module.
- */
-static const struct lys_module *
-lys_schema_node_get_module(const struct ly_ctx *ctx, const char *nametest, size_t nametest_len,
-        const struct lysp_module *mod, const char **name, size_t *name_len)
-{
-    const struct lys_module *target_mod;
-    const char *ptr;
-
-    ptr = ly_strnchr(nametest, ':', nametest_len);
-    if (ptr) {
-        target_mod = ly_resolve_prefix(ctx, nametest, ptr - nametest, LY_VALUE_SCHEMA, (void *)mod);
-        if (!target_mod) {
-            LOGVAL(ctx, LYVE_REFERENCE,
-                    "Invalid absolute-schema-nodeid nametest \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
-                    (int)nametest_len, nametest, (int)(ptr - nametest), nametest, LYSP_MODULE_NAME(mod));
-            return NULL;
-        }
-
-        if (name) {
-            *name = ptr + 1;
-            *name_len = nametest_len - ((ptr - nametest) + 1);
-        }
-    } else {
-        target_mod = mod->mod;
-        if (name) {
-            *name = nametest;
-            *name_len = nametest_len;
-        }
-    }
-
-    return target_mod;
-}
-
-/**
  * @brief Check whether a compiled node matches a single schema nodeid name test.
  *
  * @param[in,out] node Compiled node to consider. On a match it is moved to its parent.
@@ -1732,19 +1729,8 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Compile augment children.
- *
- * @param[in] ctx Compile context.
- * @param[in] aug_p Parsed augment to compile.
- * @param[in] child First augment child to compile.
- * @param[in] target Target node of the augment.
- * @param[in] child_unres_disabled Whether the children are to be put into unres disabled set or not.
- * @return LY_SUCCESS on success.
- * @return LY_EVALID on failure.
- */
-static LY_ERR
-lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struct lysp_node *child,
+LY_ERR
+lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_when *aug_when, uint16_t aug_flags, struct lysp_node *child,
         struct lysc_node *target, ly_bool child_unres_disabled)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -1759,7 +1745,7 @@ lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug
      * - new cases augmenting some choice can have mandatory nodes
      * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
      */
-    if (aug_p->when || (target->nodetype == LYS_CHOICE) || (ctx->cur_mod == target->module)) {
+    if (aug_when || (target->nodetype == LYS_CHOICE) || (ctx->cur_mod == target->module)) {
         allow_mand = 1;
     }
 
@@ -1809,9 +1795,9 @@ lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_node_augment *aug
                 goto cleanup;
             }
 
-            if (aug_p->when) {
+            if (aug_when) {
                 /* pass augment's when to all the children */
-                rc = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, lysc_data_node(target), node, &when_shared);
+                rc = lys_compile_when(ctx, aug_when, aug_flags, target, lysc_data_node(target), node, &when_shared);
                 LY_CHECK_GOTO(rc, cleanup);
             }
 
@@ -1878,14 +1864,17 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p, struc
     }
 
     /* augment children */
-    LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, aug_p, aug_p->child, target, child_unres_disabled), cleanup);
+    rc = lys_compile_augment_children(ctx, aug_p->when, aug_p->flags, aug_p->child, target, child_unres_disabled);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* augment actions */
-    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->actions, target, child_unres_disabled);
+    rc = lys_compile_augment_children(ctx, aug_p->when, aug_p->flags, (struct lysp_node *)aug_p->actions, target,
+            child_unres_disabled);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* augment notifications */
-    rc = lys_compile_augment_children(ctx, aug_p, (struct lysp_node *)aug_p->notifs, target, child_unres_disabled);
+    rc = lys_compile_augment_children(ctx, aug_p->when, aug_p->flags, (struct lysp_node *)aug_p->notifs, target,
+            child_unres_disabled);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
@@ -2378,4 +2367,74 @@ lys_precompile_augments_deviations_revert(struct ly_ctx *ctx, const struct lys_m
             }
         }
     }
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_compile_extension_instance_find_augment_target(struct lysc_ctx *ctx, const char *path,
+        struct lysc_ext_instance **aug_ext, struct lysc_node **aug_target)
+{
+    LY_ERR rc;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lys_module *target_mod;
+    struct lysc_ext_instance *target_ext = NULL, *prev_ext;
+    const struct lysc_node *target;
+    const char *id, *id2, *name;
+    size_t name_len;
+    uint16_t flag;
+
+    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, path, aug_target, LY_EINVAL);
+
+    /* skip first slash */
+    id = path;
+    if (id[0] != '/') {
+        LOGVAL(ctx->ctx, LYVE_SYNTAX, "Invalid absolute-schema-nodeid \"%s\".", path);
+        return LY_EVALID;
+    }
+    ++id;
+
+    /* find the next slash */
+    id2 = strchr(id, '/');
+    if (!id2) {
+        LOGVAL(ctx->ctx, LYVE_SYNTAX, "Invalid absolute-schema-nodeid \"%s\".", path);
+        return LY_EVALID;
+    }
+
+    /* find the target module */
+    target_mod = (struct lys_module *)lys_schema_node_get_module(ctx->ctx, id, id2 - id, ctx->pmod, &name, &name_len);
+    if (!target_mod) {
+        return LY_ENOTFOUND;
+    } else if (!target_mod->implemented) {
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Augment target extension instance \"%*.s\" in a non-implemented module \"%s\".",
+                (int)name_len, name, target_mod->name);
+        return LY_ENOTFOUND;
+    }
+
+    /* find the extension instance */
+    LY_ARRAY_FOR(target_mod->compiled->exts, u) {
+        if (!ly_strncmp(target_mod->compiled->exts[u].argument, name, name_len)) {
+            target_ext = &target_mod->compiled->exts[u];
+            break;
+        }
+    }
+    if (!target_ext) {
+        LOGVAL(ctx->ctx, LYVE_SEMANTICS, "Augment target extension instance \"%*.s\" not found in module \"%s\".",
+                (int)name_len, name, target_mod->name);
+        return LY_ENOTFOUND;
+    }
+
+    /* find the augment target with the correct compile context */
+    prev_ext = ctx->ext;
+    ctx->ext = target_ext;
+    rc = lysc_resolve_schema_nodeid(ctx, id2, strlen(id2), NULL, LY_VALUE_SCHEMA, ctx->pmod, 0, &target, &flag);
+    ctx->ext = prev_ext;
+    LY_CHECK_RET(rc);
+
+    /* add this module into the target module augmented_by, if not there */
+    lys_array_add_mod_ref(ctx, ctx->cur_mod, &target_mod->augmented_by);
+
+    if (aug_ext) {
+        *aug_ext = target_ext;
+    }
+    *aug_target = (struct lysc_node *)target;
+    return LY_SUCCESS;
 }

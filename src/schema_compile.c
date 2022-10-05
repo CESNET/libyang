@@ -507,11 +507,12 @@ lys_compile_ext_instance_get_storage(const struct lysc_ext_instance *ext, enum l
  * @param[in] ext Compiled ext instance.
  * @param[in] substmt Compled ext instance substatement info.
  * @param[in] stmt Parsed statement to process.
+ * @param[in,out] aug_target Optional augment target where to append all schema data nodes.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext,
-        struct lysc_ext_substmt *substmt, struct lysp_stmt *stmt)
+        struct lysc_ext_substmt *substmt, struct lysp_stmt *stmt, struct lysc_node *aug_target)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysf_ctx fctx = {.ctx = ctx->ctx};
@@ -549,8 +550,16 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instan
         }
         *pnodes_p = pnode;
 
-        /* compile, ctx->ext substatement storage is used as the document root */
-        LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, NULL, flags, NULL), cleanup);
+        if (aug_target) {
+            /* augment nodes */
+            ((struct lysp_ext_instance *)ext_p)->flags |= LYS_EXT_PARSED_AUGMENT;
+
+            /* compile augmented nodes */
+            LY_CHECK_GOTO(rc = lys_compile_augment_children(ctx, NULL, 0, pnode, aug_target, 0), cleanup);
+        } else {
+            /* compile nodes, ctx->ext substatement storage is used as the document root */
+            LY_CHECK_GOTO(rc = lys_compile_node(ctx, pnode, NULL, flags, NULL), cleanup);
+        }
         break;
     }
     case LY_STMT_GROUPING: {
@@ -700,8 +709,9 @@ cleanup:
     return rc;
 }
 
-LIBYANG_API_DEF LY_ERR
-lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
+static LY_ERR
+lys_compile_extension_instance_(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext,
+        struct lysc_node *aug_target)
 {
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
@@ -743,7 +753,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
             }
 
             stmt_counter++;
-            if ((rc = lys_compile_ext_instance_stmt(ctx, ext_p, ext, &ext->substmts[u], stmt))) {
+            if ((rc = lys_compile_ext_instance_stmt(ctx, ext_p, ext, &ext->substmts[u], stmt, aug_target))) {
                 goto cleanup;
             }
         }
@@ -761,6 +771,23 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
 cleanup:
     ctx->ext = NULL;
     return rc;
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
+{
+    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, ext_p, ext, LY_EINVAL);
+
+    return lys_compile_extension_instance_(ctx, ext_p, ext, NULL);
+}
+
+LIBYANG_API_DEF LY_ERR
+lys_compile_extension_instance_augment(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext_p,
+        struct lysc_ext_instance *ext, struct lysc_node *aug_target)
+{
+    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, ctx, ext_p, ext, aug_target, LY_EINVAL);
+
+    return lys_compile_extension_instance_(ctx, ext_p, ext, aug_target);
 }
 
 /**

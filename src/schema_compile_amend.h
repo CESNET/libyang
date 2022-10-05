@@ -1,9 +1,10 @@
 /**
  * @file schema_compile_amend.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Header for schema compilation of augments, deviations, and refines.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,6 +16,8 @@
 #ifndef LY_SCHEMA_COMPILE_AMEND_H_
 #define LY_SCHEMA_COMPILE_AMEND_H_
 
+#include <stddef.h>
+
 #include "log.h"
 
 struct ly_ctx;
@@ -23,6 +26,7 @@ struct lysp_node;
 struct lysc_node;
 struct lysc_ctx;
 struct lysp_node_uses;
+struct lysp_when;
 struct lys_glob_unres;
 struct lys_module;
 
@@ -129,6 +133,21 @@ void lysp_dev_node_free(struct lysc_ctx *cctx, struct lysp_node *dev_pnode);
  */
 LY_ERR lys_compile_node_deviations_refines(struct lysc_ctx *ctx, const struct lysp_node *pnode,
         const struct lysc_node *parent, struct lysp_node **dev_pnode, ly_bool *not_supported);
+
+/**
+ * @brief Compile augment children.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] aug_when Parsed augment when to inherit.
+ * @param[in] aug_flags Parsed augment flags.
+ * @param[in] child First augment child to compile.
+ * @param[in] target Target node of the augment.
+ * @param[in] child_unres_disabled Whether the children are to be put into unres disabled set or not.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on failure.
+ */
+LY_ERR lys_compile_augment_children(struct lysc_ctx *ctx, struct lysp_when *aug_when, uint16_t aug_flags,
+        struct lysp_node *child, struct lysc_node *target, ly_bool child_unres_disabled);
 
 /**
  * @brief Compile and apply any precompiled top-level or uses augments targeting a node.

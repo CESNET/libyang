@@ -1,9 +1,10 @@
 /**
  * @file schema_compile_node.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation of common nodes.
  *
- * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -2985,25 +2986,7 @@ done:
     return ret;
 }
 
-/**
- * @brief Find the node according to the given descendant/absolute schema nodeid.
- * Used in unique, refine and augment statements.
- *
- * @param[in] ctx Compile context
- * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
- * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
- * @param[in] ctx_node Context node for a relative nodeid.
- * @param[in] format Format of any prefixes.
- * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
- * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
- * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
- * The value can be even an ORed value to allow multiple nodetypes.
- * @param[out] target Found target node if any.
- * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
- * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
- * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
- */
-static LY_ERR
+LY_ERR
 lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *ctx_node,
         LY_VALUE_FORMAT format, void *prefix_data, uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag)
 {
@@ -3096,6 +3079,9 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 /* only input or output is valid */
                 ctx_node = NULL;
             }
+        } else if (ctx->ext && !ctx_node) {
+            /* top-level extension nodes */
+            ctx_node = lysc_ext_find_node(ctx->ext, mod, name, name_len, 0, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
         } else {
             ctx_node = lys_find_child(ctx_node, mod, name, name_len, 0,
                     getnext_extra_flag | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);

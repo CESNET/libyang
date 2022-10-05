@@ -95,6 +95,27 @@ LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_pnode, u
         struct lysp_qname **dflt);
 
 /**
+ * @brief Find the node according to the given descendant/absolute schema nodeid.
+ * Used in unique, refine and augment statements.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
+ * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
+ * @param[in] ctx_node Context node for a relative nodeid.
+ * @param[in] format Format of any prefixes.
+ * @param[in] prefix_data Format-specific prefix data (see ::ly_resolve_prefix).
+ * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
+ * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
+ * The value can be even an ORed value to allow multiple nodetypes.
+ * @param[out] target Found target node if any.
+ * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
+ * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
+ * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
+ */
+LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *ctx_node,
+        LY_VALUE_FORMAT format, void *prefix_data, uint16_t nodetype, const struct lysc_node **target, uint16_t *result_flag);
+
+/**
  * @brief Compile choice children.
  *
  * @param[in] ctx Compile context
