@@ -31,6 +31,7 @@
 #include "parser_data.h"
 #include "parser_internal.h"
 #include "plugins_exts.h"
+#include "plugins_exts/metadata.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"

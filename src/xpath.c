@@ -32,6 +32,7 @@
 #include "out.h"
 #include "parser_data.h"
 #include "path.h"
+#include "plugins_exts/metadata.h"
 #include "plugins_types.h"
 #include "printer_data.h"
 #include "schema_compile_node.h"

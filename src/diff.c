@@ -27,6 +27,7 @@
 #include "context.h"
 #include "log.h"
 #include "plugins_exts.h"
+#include "plugins_exts/metadata.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"

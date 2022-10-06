@@ -45,6 +45,7 @@
 #include "log.h"
 #include "parser_data.h"
 #include "path.h"
+#include "plugins_exts/metadata.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"

@@ -170,6 +170,7 @@ set(headers
     src/plugins_exts.h
     src/plugins_exts_compile.h
     src/plugins_exts_print.h
+    src/plugins_exts/metadata.h
     src/plugins_types.h
     src/printer_data.h
     src/printer_schema.h

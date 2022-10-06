@@ -27,6 +27,7 @@
 #include "log.h"
 #include "out.h"
 #include "out_internal.h"
+#include "plugins_exts/metadata.h"
 #include "printer_data.h"
 #include "printer_internal.h"
 #include "set.h"
