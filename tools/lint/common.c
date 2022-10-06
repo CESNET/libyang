@@ -781,3 +781,89 @@ cleanup:
     ly_set_free(set, NULL);
     return ret;
 }
+
+const struct lysc_node *
+find_schema_path(const struct ly_ctx *ctx, const char *schema_path)
+{
+    const char *end, *module_name_end;
+    char *module_name = NULL;
+    const struct lysc_node *node = NULL, *parent_node = NULL, *parent_node_tmp;
+    const struct lys_module *module;
+    size_t node_name_len;
+    ly_bool found_exact_match = 0;
+
+    /* iterate over each '/' in the path */
+    while (schema_path) {
+        /* example: schema_path = /listen/endpoint
+         * end == NULL for endpoint, end exists for listen */
+        end = strchr(schema_path + 1, '/');
+        if (end) {
+            node_name_len = end - schema_path - 1;
+        } else {
+            node_name_len = strlen(schema_path + 1);
+        }
+
+        /* ex: schema_path = /ietf-interfaces:interfaces/interface/ietf-ip:ipv4 */
+        module_name_end = strchr(schema_path, ':');
+        if (module_name_end) {
+            if (!end || (module_name_end < end)) {
+                /* only get module's name, if it is in the current scope */
+                free(module_name);
+                module_name = strndup(schema_path + 1, module_name_end - schema_path - 1);
+                if (!module_name) {
+                    YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                    parent_node = NULL;
+                    goto cleanup;
+                }
+                schema_path = module_name_end;
+            }
+
+            if (module_name_end < end) {
+                /* recalculate the length of the node's name, because the module prefix mustn't be compared later */
+                if (end) {
+                    node_name_len = end - module_name_end - 1;
+                } else {
+                    node_name_len = strlen(module_name_end + 1);
+                }
+            }
+        }
+
+        module = ly_ctx_get_module_implemented(ctx, module_name);
+        if (!module) {
+            /* unknown module name */
+            parent_node = NULL;
+            goto cleanup;
+        }
+
+        /* iterate over the node's siblings / module's top level containers */
+        while ((node = lys_getnext(node, parent_node, module->compiled, LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHCHOICE))) {
+            if (end && !strncmp(node->name, schema_path + 1, node_name_len) && (node->name[node_name_len] == '\0')) {
+                /* check if the whole node's name matches and it's not just a common prefix */
+                parent_node = node;
+                break;
+            } else if (!strncmp(node->name, schema_path + 1, node_name_len)) {
+                /* do the same here, however if there is no exact match, use the last node with the same prefix */
+                if (strlen(node->name) == node_name_len) {
+                    parent_node = node;
+                    found_exact_match = 1;
+                    break;
+                } else {
+                    parent_node_tmp = node;
+                }
+            }
+        }
+
+        if (!end && !found_exact_match) {
+            /* no exact match */
+            parent_node = parent_node_tmp;
+        }
+        found_exact_match = 0;
+
+        /* next iter */
+        schema_path = strchr(schema_path + 1, '/');
+    }
+
+cleanup:
+    free(module_name);
+    return parent_node;
+}

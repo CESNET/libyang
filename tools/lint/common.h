@@ -239,4 +239,13 @@ LY_ERR process_data(struct ly_ctx *ctx, enum lyd_type data_type, uint8_t merge, 
         uint32_t options_parse, uint32_t options_validate, uint32_t options_print, struct cmdline_file *operational_f,
         struct cmdline_file *rpc_f, struct ly_set *inputs, struct ly_set *xpaths);
 
+/**
+ * @brief Get the node specified by the path.
+ *
+ * @param[in] ctx libyang context with schema.
+ * @param[in] schema_path Path to the wanted node.
+ * @return Pointer to the schema node specified by the path on success, NULL otherwise.
+ */
+const struct lysc_node * find_schema_path(const struct ly_ctx *ctx, const char *schema_path);
+
 #endif /* COMMON_H_ */
