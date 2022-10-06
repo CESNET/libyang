@@ -41,7 +41,7 @@
 #include "tree_schema_internal.h"
 
 LY_ERR
-lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
+lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
     struct lysp_import *i;
 
@@ -59,7 +59,7 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
 }
 
 LY_ERR
-lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, const char *stmt)
+lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const char *stmt)
 {
     struct tm tm, tm_;
     char *r;
@@ -126,7 +126,7 @@ lysp_sort_revisions(struct lysp_revision *revs)
 }
 
 LY_ERR
-lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len)
+lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len)
 {
     if (!name_len) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
@@ -352,7 +352,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, const struct lysp_m
  * @return LY_ERR, but LY_EEXIST is mapped to LY_EVALID.
  */
 static LY_ERR
-lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
+lysp_check_dup_ht_insert(struct lysp_ctx *ctx, struct hash_table *ht,
         const char *name, const char *statement, const char *err_detail)
 {
     LY_ERR ret;
@@ -383,7 +383,7 @@ lysp_check_dup_ht_insert(struct lys_parser_ctx *ctx, struct hash_table *ht,
  * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_dup_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
+lysp_check_dup_typedef(struct lysp_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
         struct hash_table *tpdfs_global)
 {
     struct lysp_node *parent;
@@ -463,7 +463,7 @@ lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
-lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     const struct lysp_tpdf *typedefs;
@@ -523,7 +523,7 @@ lysp_grouping_match(const char *name, struct lysp_node *node)
  * @return LY_EVALID in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_dup_grouping(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
+lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const struct lysp_node_grp *grp,
         struct hash_table *grps_global)
 {
     struct lysp_node *parent;
@@ -578,7 +578,7 @@ lysp_check_dup_grouping(struct lys_parser_ctx *ctx, struct lysp_node *node, cons
 }
 
 LY_ERR
-lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     const struct lysp_node_grp *groupings, *grp_iter;
@@ -619,7 +619,7 @@ ly_ptrequal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_
 }
 
 LY_ERR
-lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
@@ -651,7 +651,7 @@ cleanup:
 }
 
 LY_ERR
-lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct hash_table *ht;
@@ -782,7 +782,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
  * @return LY_ERR on error.
  */
 static LY_ERR
-lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lys_parser_ctx *main_ctx,
+lys_parse_localfile(struct ly_ctx *ctx, const char *name, const char *revision, struct lysp_ctx *main_ctx,
         const char *main_name, ly_bool required, struct ly_set *new_mods, void **result)
 {
     struct ly_in *in;
@@ -1017,7 +1017,7 @@ lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision, struc
 }
 
 LY_ERR
-lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
+lysp_check_stringchar(struct lysp_ctx *ctx, uint32_t c)
 {
     if (!is_yangutf8char(c)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, c);
@@ -1027,7 +1027,7 @@ lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
 }
 
 LY_ERR
-lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix)
+lysp_check_identifierchar(struct lysp_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix)
 {
     if (first || (prefix && ((*prefix) == 1))) {
         if (!is_yangidentstartchar(c)) {
@@ -1072,7 +1072,7 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first,
  * @return LY_EVALID - YANG rule violation
  */
 static LY_ERR
-lysp_main_pmod_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+lysp_main_pmod_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
     LY_ARRAY_COUNT_TYPE i;
     struct lysp_module *main_pmod = PARSER_CUR_PMOD(pctx)->mod->parsed;
@@ -1115,7 +1115,7 @@ lysp_main_pmod_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *i
  * @return LY_EVALID - YANG rule violation
  */
 static LY_ERR
-lysp_parsed_mods_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+lysp_parsed_mods_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
     uint32_t i;
     struct lysp_submodule *submod;
@@ -1156,7 +1156,7 @@ lysp_parsed_mods_get_submodule(struct lys_parser_ctx *pctx, struct lysp_include 
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
+lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
 {
     LY_ARRAY_COUNT_TYPE i;
     struct lysp_include *inc_new, *inc_tofill = NULL;
@@ -1188,7 +1188,7 @@ lysp_inject_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 }
 
 LY_ERR
-lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
+lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct ly_ctx *ctx = PARSER_CTX(pctx);

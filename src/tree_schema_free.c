@@ -1488,10 +1488,10 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
 }
 
 void
-yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx)
+lysp_yang_ctx_free(struct lysp_yang_ctx *ctx)
 {
     if (ctx) {
-        if (ctx->main_ctx == (struct lys_parser_ctx *)ctx) {
+        if (ctx->main_ctx == (struct lysp_ctx *)ctx) {
             ly_set_erase(&ctx->tpdfs_nodes, NULL);
             ly_set_erase(&ctx->grps_nodes, NULL);
         }
@@ -1506,10 +1506,10 @@ yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx)
 }
 
 void
-yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx)
+lysp_yin_ctx_free(struct lysp_yin_ctx *ctx)
 {
     if (ctx) {
-        if (ctx->main_ctx == (struct lys_parser_ctx *)ctx) {
+        if (ctx->main_ctx == (struct lysp_ctx *)ctx) {
             ly_set_erase(&ctx->tpdfs_nodes, NULL);
             ly_set_erase(&ctx->grps_nodes, NULL);
         }

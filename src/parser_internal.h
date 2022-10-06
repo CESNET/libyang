@@ -20,9 +20,9 @@
 
 struct lyd_ctx;
 struct ly_in;
-struct lys_yang_parser_ctx;
-struct lys_yin_parser_ctx;
-struct lys_parser_ctx;
+struct lysp_yang_ctx;
+struct lysp_yin_ctx;
+struct lysp_ctx;
 
 /**
  * @brief Callback for ::lyd_ctx to free the structure
@@ -178,7 +178,7 @@ void lyd_ctx_free(struct lyd_ctx *ctx);
  * @param[out] submod Pointer to the parsed submodule structure.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
+LY_ERR yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, struct lysp_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod);
 
 /**
@@ -189,7 +189,7 @@ LY_ERR yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx 
  * module structure, will be filled in.
  * @return LY_ERR values.
  */
-LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod);
+LY_ERR yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_module *mod);
 
 /**
  * @brief Parse module from YIN data.
@@ -200,7 +200,7 @@ LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in,
  * module structure, will be filled in.
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod);
+LY_ERR yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod);
 
 /**
  * @brief Parse submodule from YIN data.
@@ -212,7 +212,7 @@ LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, s
  * @param[in,out] submod Submodule structure where the parsed information, will be filled in.
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
+LY_ERR yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct lysp_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod);
 
 /**

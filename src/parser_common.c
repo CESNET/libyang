@@ -285,21 +285,21 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct l
     return LY_SUCCESS;
 }
 
-static LY_ERR lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+static LY_ERR lysp_stmt_container(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
-static LY_ERR lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+static LY_ERR lysp_stmt_choice(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
-static LY_ERR lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+static LY_ERR lysp_stmt_case(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
-static LY_ERR lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+static LY_ERR lysp_stmt_uses(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
-static LY_ERR lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+static LY_ERR lysp_stmt_grouping(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node_grp **groupings);
-static LY_ERR lysp_stmt_list(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+static LY_ERR lysp_stmt_list(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings);
 
 static LY_ERR
-lysp_stmt_validate_value(struct lys_parser_ctx *ctx, enum yang_arg val_type, const char *val)
+lysp_stmt_validate_value(struct lysp_ctx *ctx, enum yang_arg val_type, const char *val)
 {
     uint8_t prefix = 0;
     ly_bool first = 1;
@@ -340,7 +340,7 @@ lysp_stmt_validate_value(struct lys_parser_ctx *ctx, enum yang_arg val_type, con
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt insubstmt,
+lysp_stmt_ext(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt insubstmt,
         LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;
@@ -376,7 +376,7 @@ lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum ly_
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint32_t substmt_index,
+lysp_stmt_text_field(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint32_t substmt_index,
         const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     if (*value) {
@@ -412,7 +412,7 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, u
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
+lysp_stmt_qnames(struct lysp_ctx *ctx, const struct lysp_stmt *stmt,
         struct lysp_qname **qnames, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     struct lysp_qname *item;
@@ -449,7 +449,7 @@ lysp_stmt_qnames(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
+lysp_stmt_text_fields(struct lysp_ctx *ctx, const struct lysp_stmt *stmt,
         const char ***texts, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     const char **item;
@@ -484,7 +484,7 @@ lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_status(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
+lysp_stmt_status(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     size_t arg_len;
 
@@ -529,7 +529,7 @@ lysp_stmt_status(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint1
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_when(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_when **when_p)
+lysp_stmt_when(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_when **when_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_when *when;
@@ -577,7 +577,7 @@ lysp_stmt_when(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_config(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
+lysp_stmt_config(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     size_t arg_len;
 
@@ -622,7 +622,7 @@ lysp_stmt_config(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint1
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_mandatory(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags,
+lysp_stmt_mandatory(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
     size_t arg_len;
@@ -667,7 +667,7 @@ lysp_stmt_mandatory(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, ui
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_restr *restr)
+lysp_stmt_restr(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_restr *restr)
 {
     LY_CHECK_RET(lysp_stmt_validate_value(ctx, Y_STR_ARG, stmt->arg));
     LY_CHECK_RET(lydict_insert(PARSER_CTX(ctx), stmt->arg, 0, &restr->arg.str));
@@ -708,7 +708,7 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_restrs(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_restr **restrs)
+lysp_stmt_restrs(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_restr **restrs)
 {
     struct lysp_restr *restr;
 
@@ -726,7 +726,7 @@ lysp_stmt_restrs(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_any(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_any(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
 {
     struct lysp_node_anydata *any;
 
@@ -792,7 +792,7 @@ lysp_stmt_any(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct l
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_enum_value_pos(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, int64_t *value, uint16_t *flags,
+lysp_stmt_type_enum_value_pos(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, int64_t *value, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
     size_t arg_len;
@@ -870,7 +870,7 @@ error:
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_type_enum **enums)
+lysp_stmt_type_enum(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_type_enum **enums)
 {
     struct lysp_type_enum *enm;
 
@@ -932,7 +932,7 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, st
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *fracdig,
+lysp_stmt_type_fracdigits(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *fracdig,
         struct lysp_ext_instance **exts)
 {
     char *ptr;
@@ -989,7 +989,7 @@ lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *st
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *reqinst, uint16_t *flags,
+lysp_stmt_type_reqinstance(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *reqinst, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
     size_t arg_len;
@@ -1033,7 +1033,7 @@ lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *s
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, const char **pat,
+lysp_stmt_type_pattern_modifier(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, const char **pat,
         struct lysp_ext_instance **exts)
 {
     size_t arg_len;
@@ -1084,7 +1084,7 @@ lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_st
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_restr **patterns)
+lysp_stmt_type_pattern(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_restr **patterns)
 {
     char *buf;
     size_t arg_len;
@@ -1142,7 +1142,7 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_type *type)
+lysp_stmt_type(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_type *type)
 {
     struct lysp_type *nest_type;
     const char *str_path = NULL;
@@ -1240,7 +1240,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_leaf(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
+lysp_stmt_leaf(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent, struct lysp_node **siblings)
 {
     struct lysp_node_leaf *leaf;
 
@@ -1321,7 +1321,7 @@ lysp_stmt_leaf(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_maxelements(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
+lysp_stmt_maxelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt,
         uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     size_t arg_len;
@@ -1388,7 +1388,7 @@ lysp_stmt_maxelements(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_minelements(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
+lysp_stmt_minelements(struct lysp_ctx *ctx, const struct lysp_stmt *stmt,
         uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     size_t arg_len;
@@ -1448,7 +1448,7 @@ lysp_stmt_minelements(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_orderedby(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
+lysp_stmt_orderedby(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     size_t arg_len;
 
@@ -1494,7 +1494,7 @@ lysp_stmt_orderedby(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, ui
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_leaflist(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_leaflist(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings)
 {
     struct lysp_node_leaflist *llist;
@@ -1580,7 +1580,7 @@ lysp_stmt_leaflist(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, str
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_refine(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_refine **refines)
+lysp_stmt_refine(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_refine **refines)
 {
     struct lysp_refine *rf;
 
@@ -1646,7 +1646,7 @@ lysp_stmt_refine(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_typedef(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_typedef(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_tpdf **typedefs)
 {
     struct lysp_tpdf *tpdf;
@@ -1713,7 +1713,7 @@ lysp_stmt_typedef(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, stru
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_inout(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_inout(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node_action_inout *inout_p)
 {
     if (inout_p->nodetype) {
@@ -1791,7 +1791,7 @@ lysp_stmt_inout(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_action(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_action(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node_action **actions)
 {
     struct lysp_node_action *act;
@@ -1867,7 +1867,7 @@ lysp_stmt_action(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_notif(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_notif(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node_notif **notifs)
 {
     struct lysp_node_notif *notif;
@@ -1953,7 +1953,7 @@ lysp_stmt_notif(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_grouping(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node_grp **groupings)
 {
     struct lysp_node_grp *grp;
@@ -2040,7 +2040,7 @@ lysp_stmt_grouping(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, str
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_augment(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_augment(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node_augment **augments)
 {
     struct lysp_node_augment *aug;
@@ -2130,7 +2130,7 @@ lysp_stmt_augment(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, stru
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_uses(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings)
 {
     struct lysp_node_uses *uses;
@@ -2192,7 +2192,7 @@ lysp_stmt_uses(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_case(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings)
 {
     struct lysp_node_case *cas;
@@ -2271,7 +2271,7 @@ lysp_stmt_case(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_choice(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings)
 {
     struct lysp_node_choice *choice;
@@ -2360,7 +2360,7 @@ lysp_stmt_choice(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struc
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_container(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings)
 {
     struct lysp_node_container *cont;
@@ -2463,7 +2463,7 @@ lysp_stmt_container(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, st
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_list(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
+lysp_stmt_list(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_node *parent,
         struct lysp_node **siblings)
 {
     struct lysp_node_list *list;
@@ -2573,7 +2573,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, void **resul
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t flags;
-    struct lys_parser_ctx pctx = {0};
+    struct lysp_ctx pctx = {0};
     struct ly_set pmods = {0};
     void *objs;
 

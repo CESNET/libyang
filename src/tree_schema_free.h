@@ -18,8 +18,8 @@
 #include "set.h"
 #include "tree_schema.h"
 
-struct lys_yang_parser_ctx;
-struct lys_yin_parser_ctx;
+struct lysp_yang_ctx;
+struct lysp_yin_ctx;
 
 struct lysf_ctx {
     struct ly_ctx *ctx;
@@ -209,13 +209,13 @@ void lysf_ctx_erase(struct lysf_ctx *ctx);
  *
  * @param[in] ctx Context to free.
  */
-void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
+void lysp_yang_ctx_free(struct lysp_yang_ctx *ctx);
 
 /**
  * @brief Free yin parser context
  *
  * @param[in] ctx Context to free.
  */
-void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
+void lysp_yin_ctx_free(struct lysp_yin_ctx *ctx);
 
 #endif /* LY_TREE_SCHEMA_FREE_H_ */

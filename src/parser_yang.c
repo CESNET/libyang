@@ -106,12 +106,12 @@ struct lys_glob_unres;
         __loop_end = 1; \
     }
 
-LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
+LY_ERR parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
 
 /**
  * @brief Add another character to dynamic buffer, a low-level function.
@@ -164,7 +164,7 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  * @return LY_ERR values.
  */
 LY_ERR
-buf_store_char(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, size_t *word_len,
+buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size_t *word_len,
         char **word_b, size_t *buf_len, ly_bool need_buf, uint8_t *prefix)
 {
     uint32_t c;
@@ -188,14 +188,14 @@ buf_store_char(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p
     /* check character validity */
     switch (arg) {
     case Y_IDENTIF_ARG:
-        LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, !(*word_len), NULL));
+        LY_CHECK_RET(lysp_check_identifierchar((struct lysp_ctx *)ctx, c, !(*word_len), NULL));
         break;
     case Y_PREF_IDENTIF_ARG:
-        LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, !(*word_len), prefix));
+        LY_CHECK_RET(lysp_check_identifierchar((struct lysp_ctx *)ctx, c, !(*word_len), prefix));
         break;
     case Y_STR_ARG:
     case Y_MAYBE_STR_ARG:
-        LY_CHECK_RET(lysp_check_stringchar((struct lys_parser_ctx *)ctx, c));
+        LY_CHECK_RET(lysp_check_stringchar((struct lysp_ctx *)ctx, c));
         break;
     }
 
@@ -246,7 +246,7 @@ buf_store_char(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p
  * @return LY_ERR values.
  */
 LY_ERR
-skip_comment(struct lys_yang_parser_ctx *ctx, uint8_t comment)
+skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 {
     /* internal statuses: */
 #define COMMENT_NO        0 /* comment ended */
@@ -319,7 +319,7 @@ skip_comment(struct lys_yang_parser_ctx *ctx, uint8_t comment)
  * @return LY_ERR values.
  */
 static LY_ERR
-read_qstring(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p, char **word_b,
+read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char **word_b,
         size_t *word_len, size_t *buf_len)
 {
     /* string parsing status: */
@@ -572,7 +572,7 @@ string_end:
  * @return LY_ERR values.
  */
 LY_ERR
-get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p,
+get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p,
         char **word_b, size_t *word_len)
 {
     LY_ERR ret;
@@ -711,7 +711,7 @@ error:
  * @return LY_ERR values.
  */
 LY_ERR
-get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len)
+get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len)
 {
     uint8_t prefix;
     const char *word_start;
@@ -833,7 +833,7 @@ extension:
                     LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[-len]), LY_EVALID);
             ++ctx->indent;
             /* check character validity */
-            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c,
+            LY_CHECK_RET(lysp_check_identifierchar((struct lysp_ctx *)ctx, c,
                     ctx->in->current - len == word_start ? 1 : 0, &prefix));
         }
         if (!ctx->in->current[0]) {
@@ -871,7 +871,7 @@ success:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_ext_substmt(struct lys_yang_parser_ctx *ctx, enum ly_stmt kw, char *word, size_t word_len,
+parse_ext_substmt(struct lysp_yang_ctx *ctx, enum ly_stmt kw, char *word, size_t word_len,
         struct lysp_stmt **child)
 {
     char *buf;
@@ -925,7 +925,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_ext(struct lys_yang_parser_ctx *ctx, const char *ext_name, size_t ext_name_len, enum ly_stmt insubstmt,
+parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, enum ly_stmt insubstmt,
         LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -980,7 +980,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_text_field(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, uint32_t substmt_index,
+parse_text_field(struct lysp_yang_ctx *ctx, enum ly_stmt substmt, uint32_t substmt_index,
         const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1025,7 +1025,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_yangversion(struct lys_yang_parser_ctx *ctx, uint8_t *version, struct lysp_ext_instance **exts)
+parse_yangversion(struct lysp_yang_ctx *ctx, uint8_t *version, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1077,7 +1077,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_belongsto(struct lys_yang_parser_ctx *ctx, const char **prefix, struct lysp_ext_instance **exts)
+parse_belongsto(struct lysp_yang_ctx *ctx, const char **prefix, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1134,7 +1134,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_revisiondate(struct lys_yang_parser_ctx *ctx, char *rev, struct lysp_ext_instance **exts)
+parse_revisiondate(struct lysp_yang_ctx *ctx, char *rev, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1150,7 +1150,7 @@ parse_revisiondate(struct lys_yang_parser_ctx *ctx, char *rev, struct lysp_ext_i
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
     /* check value */
-    if (lysp_check_date((struct lys_parser_ctx *)ctx, word, word_len, "revision-date")) {
+    if (lysp_check_date((struct lysp_ctx *)ctx, word, word_len, "revision-date")) {
         free(buf);
         return LY_EVALID;
     }
@@ -1185,7 +1185,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_include(struct lys_yang_parser_ctx *ctx, const char *module_name, struct lysp_include **includes)
+parse_include(struct lysp_yang_ctx *ctx, const char *module_name, struct lysp_include **includes)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1244,7 +1244,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_import(struct lys_yang_parser_ctx *ctx, const char *module_prefix, struct lysp_import **imports)
+parse_import(struct lysp_yang_ctx *ctx, const char *module_prefix, struct lysp_import **imports)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1262,7 +1262,7 @@ parse_import(struct lys_yang_parser_ctx *ctx, const char *module_prefix, struct 
         switch (kw) {
         case LY_STMT_PREFIX:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_PREFIX, 0, &imp->prefix, Y_IDENTIF_ARG, &imp->exts));
-            LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
+            LY_CHECK_RET(lysp_check_prefix((struct lysp_ctx *)ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
             break;
         case LY_STMT_DESCRIPTION:
             PARSER_CHECK_STMTVER2_RET(ctx, "description", "import");
@@ -1301,7 +1301,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_revision(struct lys_yang_parser_ctx *ctx, struct lysp_revision **revs)
+parse_revision(struct lysp_yang_ctx *ctx, struct lysp_revision **revs)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1315,7 +1315,7 @@ parse_revision(struct lys_yang_parser_ctx *ctx, struct lysp_revision **revs)
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
     /* check value */
-    if (lysp_check_date((struct lys_parser_ctx *)ctx, word, word_len, "revision")) {
+    if (lysp_check_date((struct lysp_ctx *)ctx, word, word_len, "revision")) {
         free(buf);
         return LY_EVALID;
     }
@@ -1357,7 +1357,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_text_fields(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, const char ***texts, enum yang_arg arg,
+parse_text_fields(struct lysp_yang_ctx *ctx, enum ly_stmt substmt, const char ***texts, enum yang_arg arg,
         struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1401,7 +1401,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_qnames(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, struct lysp_qname **qnames,
+parse_qnames(struct lysp_yang_ctx *ctx, enum ly_stmt substmt, struct lysp_qname **qnames,
         enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1444,7 +1444,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_config(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_config(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1496,7 +1496,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_mandatory(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_mandatory(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1548,7 +1548,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_restr(struct lys_yang_parser_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr *restr)
+parse_restr(struct lysp_yang_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr *restr)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1599,7 +1599,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_restrs(struct lys_yang_parser_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr **restrs)
+parse_restrs(struct lysp_yang_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr **restrs)
 {
     struct lysp_restr *restr;
 
@@ -1617,7 +1617,7 @@ parse_restrs(struct lys_yang_parser_ctx *ctx, enum ly_stmt restr_kw, struct lysp
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_status(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_status(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1670,7 +1670,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_when(struct lys_yang_parser_ctx *ctx, struct lysp_when **when_p)
+parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1731,7 +1731,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_any(struct lys_yang_parser_ctx *ctx, enum ly_stmt any_kw, struct lysp_node *parent, struct lysp_node **siblings)
+parse_any(struct lysp_yang_ctx *ctx, enum ly_stmt any_kw, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1802,7 +1802,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, int64_t *value, uint16_t *flags,
+parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, int64_t *value, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1890,7 +1890,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_type_enum(struct lys_yang_parser_ctx *ctx, enum ly_stmt enum_kw, struct lysp_type_enum **enums)
+parse_type_enum(struct lysp_yang_ctx *ctx, enum ly_stmt enum_kw, struct lysp_type_enum **enums)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1903,7 +1903,7 @@ parse_type_enum(struct lys_yang_parser_ctx *ctx, enum ly_stmt enum_kw, struct ly
     /* get value */
     LY_CHECK_RET(get_argument(ctx, enum_kw == LY_STMT_ENUM ? Y_STR_ARG : Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     if (enum_kw == LY_STMT_ENUM) {
-        ret = lysp_check_enum_name((struct lys_parser_ctx *)ctx, (const char *)word, word_len);
+        ret = lysp_check_enum_name((struct lysp_ctx *)ctx, (const char *)word, word_len);
         LY_CHECK_ERR_RET(ret, free(buf), ret);
     } /* else nothing specific for YANG_BIT */
 
@@ -1959,7 +1959,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, uint8_t *fracdig, struct lysp_ext_instance **exts)
+parse_type_fracdigits(struct lysp_yang_ctx *ctx, uint8_t *fracdig, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
@@ -2025,7 +2025,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_type_reqinstance(struct lys_yang_parser_ctx *ctx, uint8_t *reqinst, uint16_t *flags,
+parse_type_reqinstance(struct lysp_yang_ctx *ctx, uint8_t *reqinst, uint16_t *flags,
         struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2078,7 +2078,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, const char **pat, struct lysp_ext_instance **exts)
+parse_type_pattern_modifier(struct lysp_yang_ctx *ctx, const char **pat, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
@@ -2137,7 +2137,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct lysp_restr **patterns)
+parse_type_pattern(struct lysp_yang_ctx *ctx, struct lysp_restr **patterns)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2207,7 +2207,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_type(struct lys_yang_parser_ctx *ctx, struct lysp_type *type)
+parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2324,7 +2324,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_leaf(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_leaf(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2409,7 +2409,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
@@ -2483,7 +2483,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
@@ -2549,7 +2549,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_orderedby(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_orderedby(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
@@ -2601,7 +2601,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_leaflist(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_leaflist(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2690,7 +2690,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_refine(struct lys_yang_parser_ctx *ctx, struct lysp_refine **refines)
+parse_refine(struct lysp_yang_ctx *ctx, struct lysp_refine **refines)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2761,7 +2761,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_typedef(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_tpdf **typedefs)
+parse_typedef(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_tpdf **typedefs)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2833,7 +2833,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_node *parent,
+parse_inout(struct lysp_yang_ctx *ctx, enum ly_stmt inout_kw, struct lysp_node *parent,
         struct lysp_node_action_inout *inout_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2917,7 +2917,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions)
+parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2996,7 +2996,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs)
+parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3085,7 +3085,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings)
+parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3181,7 +3181,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments)
+parse_augment(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3275,7 +3275,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3340,7 +3340,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3423,7 +3423,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3518,7 +3518,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = 0;
     char *buf, *word;
@@ -3625,7 +3625,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
+parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3745,7 +3745,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_yinelement(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_yinelement(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3799,7 +3799,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_argument(struct lys_yang_parser_ctx *ctx, const char **argument, uint16_t *flags, struct lysp_ext_instance **exts)
+parse_argument(struct lysp_yang_ctx *ctx, const char **argument, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3843,7 +3843,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_extension(struct lys_yang_parser_ctx *ctx, struct lysp_ext **extensions)
+parse_extension(struct lysp_yang_ctx *ctx, struct lysp_ext **extensions)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -3894,7 +3894,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_deviate(struct lys_yang_parser_ctx *ctx, struct lysp_deviate **deviates)
+parse_deviate(struct lysp_yang_ctx *ctx, struct lysp_deviate **deviates)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
@@ -4124,7 +4124,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_deviation(struct lys_yang_parser_ctx *ctx, struct lysp_deviation **deviations)
+parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -4186,7 +4186,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_feature(struct lys_yang_parser_ctx *ctx, struct lysp_feature **features)
+parse_feature(struct lysp_yang_ctx *ctx, struct lysp_feature **features)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -4237,7 +4237,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_identity(struct lys_yang_parser_ctx *ctx, struct lysp_ident **identities)
+parse_identity(struct lysp_yang_ctx *ctx, struct lysp_ident **identities)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -4296,7 +4296,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod)
+parse_module(struct lysp_yang_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = 0;
     char *buf, *word;
@@ -4505,7 +4505,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
+parse_submodule(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = 0;
     char *buf, *word;
@@ -4711,7 +4711,7 @@ cleanup:
  * @return LY_EVALID on invalid comment.
  */
 static LY_ERR
-skip_redundant_chars(struct lys_yang_parser_ctx *ctx)
+skip_redundant_chars(struct lysp_yang_ctx *ctx)
 {
     /* read some trailing spaces, new lines, or comments */
     while (ctx->in->current[0]) {
@@ -4738,7 +4738,7 @@ skip_redundant_chars(struct lys_yang_parser_ctx *ctx)
 }
 
 LY_ERR
-yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
+yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, struct lysp_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -4806,7 +4806,7 @@ cleanup:
     LOG_LOCBACK(0, 0, 0, 1);
     if (ret) {
         lysp_module_free(&fctx, (struct lysp_module *)mod_p);
-        yang_parser_ctx_free(*context);
+        lysp_yang_ctx_free(*context);
         *context = NULL;
     }
 
@@ -4814,7 +4814,7 @@ cleanup:
 }
 
 LY_ERR
-yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct lys_module *mod)
+yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
@@ -4829,7 +4829,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     (*context)->format = LYS_IN_YANG;
     LY_CHECK_ERR_RET(ly_set_new(&(*context)->parsed_mods), free(*context); LOGMEM(mod->ctx), LY_EMEM);
     (*context)->in = in;
-    (*context)->main_ctx = (struct lys_parser_ctx *)(*context);
+    (*context)->main_ctx = (struct lysp_ctx *)(*context);
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
@@ -4875,7 +4875,7 @@ cleanup:
     LOG_LOCBACK(0, 0, 0, 1);
     if (ret) {
         lysp_module_free(&fctx, mod_p);
-        yang_parser_ctx_free(*context);
+        lysp_yang_ctx_free(*context);
         *context = NULL;
     }
 
