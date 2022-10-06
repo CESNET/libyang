@@ -105,6 +105,7 @@ teardown(void **state)
     LOG_LOCBACK(0, 0, 0, 1);
 
     ly_set_free(YCTX->parsed_mods, NULL);
+    ly_set_erase(&YCTX->ext_inst, NULL);
     free(YCTX);
     YCTX = NULL;
 

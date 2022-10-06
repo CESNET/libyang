@@ -2130,7 +2130,7 @@ preparenext:
         }
 
         /* try to find loaded user type plugins */
-        plugin = lyplg_find(LYPLG_TYPE, tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
+        plugin = lyplg_type_plugin_find(tctx->tpdf->type.pmod->mod->name, tctx->tpdf->type.pmod->mod->revision,
                 tctx->tpdf->name);
         if (!plugin && base) {
             /* use the base type implementation if available */
@@ -2138,7 +2138,7 @@ preparenext:
         }
         if (!plugin) {
             /* use the internal built-in type implementation */
-            plugin = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
+            plugin = lyplg_type_plugin_find("", NULL, ly_data_type2str[basetype]);
         }
         assert(plugin);
 
@@ -2184,7 +2184,7 @@ preparenext:
     if (type_p->flags || !base || (basetype == LY_TYPE_LEAFREF)) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
-        (*type)->plugin = base ? base->plugin : lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[basetype]);
+        (*type)->plugin = base ? base->plugin : lyplg_type_plugin_find("", NULL, ly_data_type2str[basetype]);
         LY_ATOMIC_INC_BARRIER((*type)->refcount);
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, type_p, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);

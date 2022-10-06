@@ -147,8 +147,8 @@ plugins_iter(enum LYPLG type, uint32_t *index)
     return plugins->objs[*index - 1];
 }
 
-void *
-lyplg_find(enum LYPLG type, const char *module, const char *revision, const char *name)
+static void *
+lyplg_record_find(enum LYPLG type, const char *module, const char *revision, const char *name)
 {
     uint32_t i = 0;
     struct lyplg_record *item;
@@ -164,11 +164,26 @@ lyplg_find(enum LYPLG type, const char *module, const char *revision, const char
                 continue;
             }
 
-            return &item->plugin;
+            return item;
         }
     }
 
     return NULL;
+}
+
+struct lyplg_type *
+lyplg_type_plugin_find(const char *module, const char *revision, const char *name)
+{
+    struct lyplg_record *record;
+
+    record = lyplg_record_find(LYPLG_TYPE, module, revision, name);
+    return record ? &((struct lyplg_type_record *)record)->plugin : NULL;
+}
+
+struct lyplg_ext_record *
+lyplg_ext_record_find(const char *module, const char *revision, const char *name)
+{
+    return lyplg_record_find(LYPLG_EXTENSION, module, revision, name);
 }
 
 /**

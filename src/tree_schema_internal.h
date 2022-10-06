@@ -149,6 +149,7 @@ struct lys_parser_ctx {
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -164,6 +165,7 @@ struct lys_yang_parser_ctx {
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
@@ -182,6 +184,7 @@ struct lys_yin_parser_ctx {
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
                                           submodule, use ::lys_parser_ctx.main_ctx instead. */
+    struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
     struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,

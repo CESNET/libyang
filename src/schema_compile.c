@@ -52,7 +52,8 @@
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
  */
 static LY_ERR
-lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, struct lysp_ext *ext_p, struct lysc_ext **ext)
+lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, struct lysp_ext *ext_p,
+        const struct lyplg_ext_record *record, struct lysc_ext **ext)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -74,8 +75,7 @@ lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, st
         lysc_update_path(ctx, NULL, NULL);
 
         /* find extension definition plugin */
-        (*ext)->plugin = lyplg_find(LYPLG_EXTENSION, (*ext)->module->name,
-                (*ext)->module->revision, (*ext)->name);
+        (*ext)->plugin = record ? (struct lyplg_ext *)&record->plugin : NULL;
     }
 
     *ext = ext_p->compiled;
@@ -104,7 +104,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     lysc_update_path(ctx, NULL, ext_p->name);
 
     LY_CHECK_GOTO(ret = lysp_ext_find_definition(ctx->ctx, ext_p, &ext_mod, &ext_def), cleanup);
-    LY_CHECK_GOTO(ret = lys_compile_extension(ctx, ext_mod, ext_def, &ext->def), cleanup);
+    LY_CHECK_GOTO(ret = lys_compile_extension(ctx, ext_mod, ext_def, ext_p->record, &ext->def), cleanup);
 
     if (ext_def->argname) {
         LY_CHECK_GOTO(ret = lysp_ext_instance_resolve_argument(ctx->ctx, ext_p, ext_def), cleanup);

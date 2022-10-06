@@ -1415,7 +1415,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     char *alloc;
@@ -1549,7 +1549,7 @@ test_plugin_compare(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1634,7 +1634,7 @@ test_plugin_print(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -1674,7 +1674,7 @@ test_plugin_dup(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value values[10];
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_INT8]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_INT8]);
     struct lysc_type *lysc_type[2];
     const char *schema;
     LY_ERR ly_ret;
