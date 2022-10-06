@@ -1260,7 +1260,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
+lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     struct lysp_import *imp;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -1300,7 +1300,7 @@ lysp_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmo
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_resolve_ext_instance_records(struct lys_parser_ctx *pctx)
+lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
 {
     struct lysp_ext_instance *exts, *ext;
     const struct lys_module *mod;
@@ -1333,15 +1333,15 @@ lysp_resolve_ext_instance_records(struct lys_parser_ctx *pctx)
 }
 
 LY_ERR
-lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lysp_ctx *main_ctx,
         LY_ERR (*custom_check)(const struct ly_ctx *, struct lysp_module *, struct lysp_submodule *, void *),
         void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule)
 {
     LY_ERR ret;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct lys_yang_parser_ctx *yangctx = NULL;
-    struct lys_yin_parser_ctx *yinctx = NULL;
-    struct lys_parser_ctx *pctx;
+    struct lysp_yang_ctx *yangctx = NULL;
+    struct lysp_yin_ctx *yinctx = NULL;
+    struct lysp_ctx *pctx;
     struct lysf_ctx fctx = {.ctx = ctx};
 
     LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
@@ -1349,11 +1349,11 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     switch (format) {
     case LYS_IN_YIN:
         ret = yin_parse_submodule(&yinctx, ctx, main_ctx, in, &submod);
-        pctx = (struct lys_parser_ctx *)yinctx;
+        pctx = (struct lysp_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
         ret = yang_parse_submodule(&yangctx, ctx, main_ctx, in, &submod);
-        pctx = (struct lys_parser_ctx *)yangctx;
+        pctx = (struct lysp_ctx *)yangctx;
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
@@ -1404,9 +1404,9 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), error);
 
     if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
+        lysp_yang_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yinctx);
+        lysp_yin_ctx_free(yinctx);
     }
     *submodule = submod;
     return LY_SUCCESS;
@@ -1419,9 +1419,9 @@ error:
     }
     lysp_module_free(&fctx, (struct lysp_module *)submod);
     if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
+        lysp_yang_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yinctx);
+        lysp_yin_ctx_free(yinctx);
     }
     return ret;
 }
@@ -1646,9 +1646,9 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 {
     struct lys_module *mod = NULL, *latest, *mod_dup = NULL;
     LY_ERR ret;
-    struct lys_yang_parser_ctx *yangctx = NULL;
-    struct lys_yin_parser_ctx *yinctx = NULL;
-    struct lys_parser_ctx *pctx = NULL;
+    struct lysp_yang_ctx *yangctx = NULL;
+    struct lysp_yin_ctx *yinctx = NULL;
+    struct lysp_ctx *pctx = NULL;
     struct lysf_ctx fctx = {.ctx = ctx};
     char *filename, *rev, *dot;
     size_t len;
@@ -1668,11 +1668,11 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     switch (format) {
     case LYS_IN_YIN:
         ret = yin_parse_module(&yinctx, in, mod);
-        pctx = (struct lys_parser_ctx *)yinctx;
+        pctx = (struct lysp_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
         ret = yang_parse_module(&yangctx, in, mod);
-        pctx = (struct lys_parser_ctx *)yangctx;
+        pctx = (struct lysp_ctx *)yangctx;
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
@@ -1828,9 +1828,9 @@ cleanup:
     }
 
     if (format == LYS_IN_YANG) {
-        yang_parser_ctx_free(yangctx);
+        lysp_yang_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yinctx);
+        lysp_yin_ctx_free(yinctx);
     }
 
     if (!ret && module) {

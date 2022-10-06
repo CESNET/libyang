@@ -91,16 +91,16 @@ struct minmax_dev_meta {
 
 /* prototypes of static functions */
 enum yin_argument yin_match_argument_name(const char *name, size_t len);
-LY_ERR yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
         enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
-LY_ERR yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type);
-enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
+LY_ERR yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type);
+enum ly_stmt yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len,
         const char *prefix, size_t prefix_len, enum ly_stmt parrent);
-LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subelem, LY_ARRAY_COUNT_TYPE subelem_index,
+LY_ERR yin_parse_extension_instance(struct lysp_yin_ctx *ctx, enum ly_stmt subelem, LY_ARRAY_COUNT_TYPE subelem_index,
         struct lysp_ext_instance **exts);
-LY_ERR yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);
-LY_ERR yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod);
-LY_ERR yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod);
+LY_ERR yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);
+LY_ERR yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod);
+LY_ERR yin_parse_submod(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod);
 
 /* wrapping element used for mocking has nothing to do with real module structure */
 #define ELEMENT_WRAPPER_START "<status xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
@@ -109,7 +109,7 @@ LY_ERR yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *s
 #define TEST_1_CHECK_LYSP_EXT_INSTANCE(NODE, INSUBSTMT)\
     CHECK_LYSP_EXT_INSTANCE((NODE), NULL, 1, INSUBSTMT, 0, "myext:c-define", LY_VALUE_XML)
 
-struct lys_yin_parser_ctx *YCTX;
+struct lysp_yin_ctx *YCTX;
 struct lysf_ctx fctx;
 
 static int
@@ -151,7 +151,7 @@ static int
 teardown_ctx(void **UNUSED(state))
 {
     lys_module_free(&fctx, PARSER_CUR_PMOD(YCTX)->mod, 0);
-    yin_parser_ctx_free(YCTX);
+    lysp_yin_ctx_free(YCTX);
     YCTX = NULL;
 
     return 0;
@@ -1249,7 +1249,7 @@ test_element_helper(void **state, const char *data, void *dest, const char **tex
         {LY_STMT_ARG_VALUE, dest, 0}
     };
 
-    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
     ly_in_new_memory(data, &UTEST_IN);
     lyxml_ctx_new(UTEST_LYCTX, UTEST_IN, &YCTX->xmlctx);
     prefix = YCTX->xmlctx->prefix;
@@ -3032,7 +3032,7 @@ test_deviation_elem(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct lys_yin_parser_ctx *ctx)
+mod_renew(struct lysp_yin_ctx *ctx)
 {
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_module *pmod;
@@ -3164,7 +3164,7 @@ test_module_elem(void **state)
 }
 
 static struct lysp_submodule *
-submod_renew(struct lys_yin_parser_ctx *ctx, const char *belongs_to)
+submod_renew(struct lysp_yin_ctx *ctx, const char *belongs_to)
 {
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_submodule *submod;
@@ -3300,7 +3300,7 @@ test_yin_parse_module(void **state)
 {
     const char *data;
     struct lys_module *mod;
-    struct lys_yin_parser_ctx *yin_ctx = NULL;
+    struct lysp_yin_ctx *yin_ctx = NULL;
     struct ly_in *in = NULL;
 
     mod = calloc(1, sizeof *mod);
@@ -3331,7 +3331,7 @@ test_yin_parse_module(void **state)
     assert_null(mod->parsed->exts->child->next->child);
     assert_string_equal(mod->parsed->exts->child->next->arg, "test");
     lys_module_free(&fctx, mod, 0);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
     yin_ctx = NULL;
@@ -3369,7 +3369,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
     lys_module_free(&fctx, mod, 0);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
     yin_ctx = NULL;
@@ -3384,7 +3384,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_SUCCESS);
     lys_module_free(&fctx, mod, 0);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
     yin_ctx = NULL;
@@ -3397,7 +3397,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EINVAL);
     CHECK_LOG_CTX("Input data contains submodule which cannot be parsed directly without its main module.", NULL);
     lys_module_free(&fctx, mod, 0);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
 
     mod = calloc(1, sizeof *mod);
@@ -3412,7 +3412,7 @@ test_yin_parse_module(void **state)
     assert_int_equal(yin_parse_module(&yin_ctx, in, mod), LY_EVALID);
     CHECK_LOG_CTX("Trailing garbage \"<module>\" after module, expected end-of-input.", "Line number 6.");
     lys_module_free(&fctx, mod, 0);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     mod = NULL;
     yin_ctx = NULL;
@@ -3422,7 +3422,7 @@ static void
 test_yin_parse_submodule(void **state)
 {
     const char *data;
-    struct lys_yin_parser_ctx *yin_ctx = NULL;
+    struct lysp_yin_ctx *yin_ctx = NULL;
     struct lysp_submodule *submod = NULL;
     struct ly_in *in;
 
@@ -3453,9 +3453,9 @@ test_yin_parse_submodule(void **state)
             "    </augment>\n"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lys_parser_ctx *)YCTX, in, &submod), LY_SUCCESS);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_SUCCESS);
     lysp_module_free(&fctx, (struct lysp_module *)submod);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
     submod = NULL;
@@ -3468,9 +3468,9 @@ test_yin_parse_submodule(void **state)
             "    </belongs-to>\n"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lys_parser_ctx *)YCTX, in, &submod), LY_SUCCESS);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_SUCCESS);
     lysp_module_free(&fctx, (struct lysp_module *)submod);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
     submod = NULL;
@@ -3479,10 +3479,10 @@ test_yin_parse_submodule(void **state)
             "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</module>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lys_parser_ctx *)YCTX, in, &submod), LY_EINVAL);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EINVAL);
     CHECK_LOG_CTX("Input data contains module in situation when a submodule is expected.", NULL);
     lysp_module_free(&fctx, (struct lysp_module *)submod);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
     submod = NULL;
@@ -3501,10 +3501,10 @@ test_yin_parse_submodule(void **state)
             "    </belongs-to>\n"
             "</submodule>";
     assert_int_equal(ly_in_new_memory(data, &in), LY_SUCCESS);
-    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lys_parser_ctx *)YCTX, in, &submod), LY_EVALID);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, UTEST_LYCTX, (struct lysp_ctx *)YCTX, in, &submod), LY_EVALID);
     CHECK_LOG_CTX("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input.", "Line number 8.");
     lysp_module_free(&fctx, (struct lysp_module *)submod);
-    yin_parser_ctx_free(yin_ctx);
+    lysp_yin_ctx_free(yin_ctx);
     ly_in_free(in, 0);
     yin_ctx = NULL;
     submod = NULL;

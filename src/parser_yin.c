@@ -157,7 +157,7 @@ struct minmax_dev_meta {
     struct lysp_ext_instance **exts;    /**< extension instances to add to. */
 };
 
-LY_ERR yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+LY_ERR yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
         enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
 
 /**
@@ -173,7 +173,7 @@ LY_ERR yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *
  * @return yang_keyword values.
  */
 enum ly_stmt
-yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
+yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len,
         const char *prefix, size_t prefix_len, enum ly_stmt parent)
 {
     const char *start = NULL;
@@ -341,7 +341,7 @@ subelems_deallocator(size_t count, struct yin_subelement *subelems)
  * @return LY_SUCCESS on success LY_EMEM on memmory allocation failure.
  */
 static LY_ERR
-subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_node *parent,
+subelems_allocator(struct lysp_yin_ctx *ctx, size_t count, struct lysp_node *parent,
         struct yin_subelement **result, ...)
 {
     va_list ap;
@@ -412,7 +412,7 @@ mem_err:
  * @return LY_ERR values.
  */
 LY_ERR
-yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
+yin_validate_value(struct lysp_yin_ctx *ctx, enum yang_arg val_type)
 {
     uint8_t prefix = 0;
     uint32_t c;
@@ -424,18 +424,18 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
     val = ctx->xmlctx->value;
     while (already_read < ctx->xmlctx->value_len) {
         LY_CHECK_ERR_RET(ly_getutf8((const char **)&val, &c, &utf8_char_len),
-                LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
+                LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
 
         switch (val_type) {
         case Y_IDENTIF_ARG:
-            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, already_read ? 0 : 1, NULL));
+            LY_CHECK_RET(lysp_check_identifierchar((struct lysp_ctx *)ctx, c, already_read ? 0 : 1, NULL));
             break;
         case Y_PREF_IDENTIF_ARG:
-            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, already_read ? 0 : 1, &prefix));
+            LY_CHECK_RET(lysp_check_identifierchar((struct lysp_ctx *)ctx, c, already_read ? 0 : 1, &prefix));
             break;
         case Y_STR_ARG:
         case Y_MAYBE_STR_ARG:
-            LY_CHECK_RET(lysp_check_stringchar((struct lys_parser_ctx *)ctx, c));
+            LY_CHECK_RET(lysp_check_stringchar((struct lysp_ctx *)ctx, c));
             break;
         }
 
@@ -466,7 +466,7 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_attribute(struct lys_yin_parser_ctx *ctx, enum yin_argument arg_type, const char **arg_val, enum yang_arg val_type,
+yin_parse_attribute(struct lysp_yin_ctx *ctx, enum yin_argument arg_type, const char **arg_val, enum yang_arg val_type,
         enum ly_stmt current_element)
 {
     enum yin_argument arg = YIN_ARG_UNKNOWN;
@@ -481,7 +481,7 @@ yin_parse_attribute(struct lys_yin_parser_ctx *ctx, enum yin_argument arg_type, 
                 /* skip it */
                 LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
             } else if (arg == arg_type) {
-                LY_CHECK_ERR_RET(found, LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_DUP_ATTR,
+                LY_CHECK_ERR_RET(found, LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_DUP_ATTR,
                         yin_attr2str(arg), ly_stmt2str(current_element)), LY_EVALID);
                 found = true;
 
@@ -491,7 +491,7 @@ yin_parse_attribute(struct lys_yin_parser_ctx *ctx, enum yin_argument arg_type, 
                 INSERT_STRING_RET(ctx->xmlctx->ctx, ctx->xmlctx->value, ctx->xmlctx->value_len, ctx->xmlctx->dynamic, *arg_val);
                 LY_CHECK_RET(!(*arg_val), LY_EMEM);
             } else {
-                LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_ATTR, ctx->xmlctx->name_len,
+                LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_ATTR, ctx->xmlctx->name_len,
                         ctx->xmlctx->name, ly_stmt2str(current_element));
                 return LY_EVALID;
             }
@@ -506,7 +506,7 @@ yin_parse_attribute(struct lys_yin_parser_ctx *ctx, enum yin_argument arg_type, 
 
     /* anything else than Y_MAYBE_STR_ARG is mandatory */
     if ((val_type != Y_MAYBE_STR_ARG) && !found) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Missing mandatory attribute %s of %s element.",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LYVE_SYNTAX_YIN, "Missing mandatory attribute %s of %s element.",
                 yin_attr2str(arg_type), ly_stmt2str(current_element));
         return LY_EVALID;
     }
@@ -545,13 +545,13 @@ get_record(enum ly_stmt type, LY_ARRAY_COUNT_TYPE array_size, struct yin_subelem
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_check_subelem_mandatory_constraint(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
+yin_check_subelem_mandatory_constraint(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info,
         signed char subelem_info_size, enum ly_stmt current_element)
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
         /* if there is element that is mandatory and isn't parsed log error and return LY_EVALID */
         if ((subelem_info[i].flags & YIN_SUBELEM_MANDATORY) && !(subelem_info[i].flags & YIN_SUBELEM_PARSED)) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_MAND_SUBELEM,
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_MAND_SUBELEM,
                     ly_stmt2str(subelem_info[i].type), ly_stmt2str(current_element));
             return LY_EVALID;
         }
@@ -572,13 +572,13 @@ yin_check_subelem_mandatory_constraint(struct lys_yin_parser_ctx *ctx, struct yi
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_check_subelem_first_constraint(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
+yin_check_subelem_first_constraint(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info,
         signed char subelem_info_size, enum ly_stmt current_element,
         struct yin_subelement *exp_first)
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
         if (subelem_info[i].flags & YIN_SUBELEM_PARSED) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_FIRT_SUBELEM,
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_FIRT_SUBELEM,
                     ly_stmt2str(exp_first->type), ly_stmt2str(current_element));
             return LY_EVALID;
         }
@@ -600,7 +600,7 @@ yin_check_subelem_first_constraint(struct lys_yin_parser_ctx *ctx, struct yin_su
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_simple_element(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const char **value,
+yin_parse_simple_element(struct lysp_yin_ctx *ctx, enum ly_stmt kw, const char **value,
         enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -621,7 +621,7 @@ yin_parse_simple_element(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const 
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_path(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp_type *type)
+yin_parse_path(struct lysp_yin_ctx *ctx, enum ly_stmt kw, struct lysp_type *type)
 {
     LY_ERR ret;
     const char *str_path;
@@ -644,7 +644,7 @@ yin_parse_path(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp_type
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_parse_pattern(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     const char *real_value = NULL;
     char *saved_value = NULL;
@@ -690,7 +690,7 @@ yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_parse_fracdigits(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     const char *temp_val = NULL;
     char *ptr;
@@ -700,7 +700,7 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_FRACTION_DIGITS));
 
     if ((temp_val[0] == '\0') || (temp_val[0] == '0') || !isdigit(temp_val[0])) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
@@ -708,12 +708,12 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     errno = 0;
     num = strtoull(temp_val, &ptr, LY_BASE_DEC);
     if (*ptr != '\0') {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
     if ((errno == ERANGE) || (num > LY_TYPE_DEC64_FD_MAX)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "fraction-digits");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
@@ -740,7 +740,7 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_enum(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_parse_enum(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     struct lysp_type_enum *en;
 
@@ -748,9 +748,9 @@ yin_parse_enum(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     type->flags |= LYS_SET_ENUM;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_STR_ARG, LY_STMT_ENUM));
-    LY_CHECK_RET(lysp_check_enum_name((struct lys_parser_ctx *)ctx, en->name, strlen(en->name)));
-    CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(en->name), "enum");
-    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, "enum", en->name);
+    LY_CHECK_RET(lysp_check_enum_name((struct lysp_ctx *)ctx, en->name, strlen(en->name)));
+    CHECK_NONEMPTY((struct lysp_ctx *)ctx, strlen(en->name), "enum");
+    CHECK_UNIQUENESS((struct lysp_ctx *)ctx, type->enums, name, "enum", en->name);
 
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
@@ -777,7 +777,7 @@ yin_parse_enum(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_bit(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_parse_bit(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     struct lysp_type_enum *en;
 
@@ -785,7 +785,7 @@ yin_parse_bit(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     type->flags |= LYS_SET_BIT;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, LY_STMT_BIT));
-    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->bits, name, "bit", en->name);
+    CHECK_UNIQUENESS((struct lysp_ctx *)ctx, type->bits, name, "bit", en->name);
 
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
@@ -817,7 +817,7 @@ yin_parse_bit(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_simple_elements(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const char ***values, enum yin_argument arg_type,
+yin_parse_simple_elements(struct lysp_yin_ctx *ctx, enum ly_stmt kw, const char ***values, enum yin_argument arg_type,
         enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     const char **value;
@@ -848,7 +848,7 @@ yin_parse_simple_elements(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_simple_elem(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
+yin_parse_simple_elem(struct lysp_yin_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
         enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     if (subinfo->flags & YIN_SUBELEM_UNIQUE) {
@@ -872,7 +872,7 @@ yin_parse_simple_elem(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yi
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_base(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, void *dest, struct lysp_ext_instance **exts)
+yin_parse_base(struct lysp_yin_ctx *ctx, enum ly_stmt parent, void *dest, struct lysp_ext_instance **exts)
 {
     struct lysp_type *type = NULL;
 
@@ -900,7 +900,7 @@ yin_parse_base(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, void *dest, 
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_pasrse_reqinstance(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_pasrse_reqinstance(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[] = {
@@ -913,7 +913,7 @@ yin_pasrse_reqinstance(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     if (strcmp(temp_val, "true") == 0) {
         type->require_instance = 1;
     } else if (strcmp(temp_val, "false") != 0) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "require-instance", "true", "false");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -938,7 +938,7 @@ yin_pasrse_reqinstance(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_modifier(struct lys_yin_parser_ctx *ctx, const char **pat, struct lysp_ext_instance **exts)
+yin_parse_modifier(struct lysp_yin_ctx *ctx, const char **pat, struct lysp_ext_instance **exts)
 {
     assert(**pat == 0x06);
     const char *temp_val;
@@ -950,7 +950,7 @@ yin_parse_modifier(struct lys_yin_parser_ctx *ctx, const char **pat, struct lysp
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_MODIFIER));
     if (strcmp(temp_val, "invert-match") != 0) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS1, temp_val, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS1, temp_val, "value",
                 "modifier", "invert-match");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -980,7 +980,7 @@ yin_parse_modifier(struct lys_yin_parser_ctx *ctx, const char **pat, struct lysp
  * @param[in] restr Value to write to.
  */
 static LY_ERR
-yin_parse_restriction(struct lys_yin_parser_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr *restr)
+yin_parse_restriction(struct lysp_yin_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr *restr)
 {
     assert(restr_kw == LY_STMT_MUST || restr_kw == LY_STMT_LENGTH || restr_kw == LY_STMT_RANGE);
     struct yin_subelement subelems[] = {
@@ -1014,7 +1014,7 @@ yin_parse_restriction(struct lys_yin_parser_ctx *ctx, enum ly_stmt restr_kw, str
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_range(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_parse_range(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     type->range = calloc(1, sizeof *type->range);
     LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
@@ -1033,7 +1033,7 @@ yin_parse_range(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_length(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
+yin_parse_length(struct lysp_yin_ctx *ctx, struct lysp_type *type)
 {
     type->length = calloc(1, sizeof *type->length);
     LY_CHECK_ERR_RET(!type->length, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
@@ -1052,7 +1052,7 @@ yin_parse_length(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_must(struct lys_yin_parser_ctx *ctx, struct lysp_restr **restrs)
+yin_parse_must(struct lysp_yin_ctx *ctx, struct lysp_restr **restrs)
 {
     struct lysp_restr *restr;
 
@@ -1071,7 +1071,7 @@ yin_parse_must(struct lys_yin_parser_ctx *ctx, struct lysp_restr **restrs)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_qname(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
+yin_parse_qname(struct lysp_yin_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
         struct lysp_ext_instance **exts)
 {
     struct lysp_qname *qname, **qnames;
@@ -1116,7 +1116,7 @@ yin_parse_qname(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_sube
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp_type_enum *enm)
+yin_parse_value_pos(struct lysp_yin_ctx *ctx, enum ly_stmt kw, struct lysp_type_enum *enm)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_val = NULL;
@@ -1134,7 +1134,7 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     LY_CHECK_GOTO(ret = yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, kw), cleanup);
     if (!temp_val || (temp_val[0] == '\0') || (temp_val[0] == '+') ||
             ((temp_val[0] == '0') && (temp_val[1] != '\0')) || ((kw == LY_STMT_POSITION) && !strcmp(temp_val, "-0"))) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1144,26 +1144,26 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     if (kw == LY_STMT_VALUE) {
         num = strtoll(temp_val, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
             ret = LY_EVALID;
             goto cleanup;
         }
     } else {
         unum = strtoull(temp_val, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
             ret = LY_EVALID;
             goto cleanup;
         }
     }
     /* check if whole argument value was converted */
     if (*ptr != '\0') {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
     if (errno == ERANGE) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", ly_stmt2str(kw));
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1199,7 +1199,7 @@ cleanup:
  * @return LY_ERR values
  */
 static LY_ERR
-yin_parse_belongs_to(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod, struct lysp_ext_instance **exts)
+yin_parse_belongs_to(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod, struct lysp_ext_instance **exts)
 {
     const char *belongsto;
     struct yin_subelement subelems[] = {
@@ -1234,7 +1234,7 @@ yin_parse_belongs_to(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *subm
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_meta(struct lys_yin_parser_ctx *ctx, enum ly_stmt elem_type, const char **value, struct lysp_ext_instance **exts)
+yin_parse_meta(struct lysp_yin_ctx *ctx, enum ly_stmt elem_type, const char **value, struct lysp_ext_instance **exts)
 {
     assert(elem_type == LY_STMT_ORGANIZATION || elem_type == LY_STMT_CONTACT || elem_type == LY_STMT_DESCRIPTION || elem_type == LY_STMT_REFERENCE);
 
@@ -1263,7 +1263,7 @@ yin_parse_meta(struct lys_yin_parser_ctx *ctx, enum ly_stmt elem_type, const cha
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_err_msg(struct lys_yin_parser_ctx *ctx, const char **value, struct lysp_ext_instance **exts)
+yin_parse_err_msg(struct lysp_yin_ctx *ctx, const char **value, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[] = {
         {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
@@ -1289,7 +1289,7 @@ yin_parse_err_msg(struct lys_yin_parser_ctx *ctx, const char **value, struct lys
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_subelement *subinfo)
+yin_parse_type(struct lysp_yin_ctx *ctx, enum ly_stmt parent, struct yin_subelement *subinfo)
 {
     struct lysp_type *type = NULL;
 
@@ -1347,7 +1347,7 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_maxelements(struct lysp_yin_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_val = NULL;
@@ -1361,7 +1361,7 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
     LY_CHECK_GOTO(ret = lyxml_ctx_next(ctx->xmlctx), cleanup);
     LY_CHECK_GOTO(ret = yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_MAX_ELEMENTS), cleanup);
     if (!temp_val || (temp_val[0] == '\0') || (temp_val[0] == '0') || ((temp_val[0] != 'u') && !isdigit(temp_val[0]))) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -1370,12 +1370,12 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
         errno = 0;
         num = strtoull(temp_val, &ptr, LY_BASE_DEC);
         if (*ptr != '\0') {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "max-elements");
             ret = LY_EVALID;
             goto cleanup;
         }
         if ((errno == ERANGE) || (num > UINT32_MAX)) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", "max-elements");
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", "max-elements");
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -1400,7 +1400,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_minelements(struct lysp_yin_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val = NULL;
     char *ptr;
@@ -1414,7 +1414,7 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_MIN_ELEMENTS));
 
     if (!temp_val || (temp_val[0] == '\0') || ((temp_val[0] == '0') && (temp_val[1] != '\0'))) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
@@ -1422,12 +1422,12 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
     errno = 0;
     num = strtoull(temp_val, &ptr, LY_BASE_DEC);
     if (ptr[0] != 0) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "min-elements");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
     if ((errno == ERANGE) || (num > UINT32_MAX)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", "min-elements");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_OOB_YIN, temp_val, "value", "min-elements");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
     }
@@ -1449,7 +1449,7 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_minmax(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, enum ly_stmt current, void *dest)
+yin_parse_minmax(struct lysp_yin_ctx *ctx, enum ly_stmt parent, enum ly_stmt current, void *dest)
 {
     assert(current == LY_STMT_MAX_ELEMENTS || current == LY_STMT_MIN_ELEMENTS);
     assert(parent == LY_STMT_LEAF_LIST || parent == LY_STMT_REFINE || parent == LY_STMT_LIST || parent == LY_STMT_DEVIATE);
@@ -1494,7 +1494,7 @@ yin_parse_minmax(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, enum ly_st
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_orderedby(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_orderedby(struct lysp_yin_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val;
     struct yin_subelement subelems[] = {
@@ -1508,7 +1508,7 @@ yin_parse_orderedby(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
     } else if (strcmp(temp_val, "user") == 0) {
         *flags |= LYS_ORDBY_USER;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "ordered-by", "system", "user");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -1530,7 +1530,7 @@ yin_parse_orderedby(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_any(struct lys_yin_parser_ctx *ctx, enum ly_stmt any_kw, struct tree_node_meta *node_meta)
+yin_parse_any(struct lysp_yin_ctx *ctx, enum ly_stmt any_kw, struct tree_node_meta *node_meta)
 {
     struct lysp_node_anydata *any;
 
@@ -1572,7 +1572,7 @@ yin_parse_any(struct lys_yin_parser_ctx *ctx, enum ly_stmt any_kw, struct tree_n
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_leaf(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_leaf(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_leaf *leaf;
 
@@ -1618,7 +1618,7 @@ yin_parse_leaf(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_leaflist(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_leaflist(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_leaflist *llist;
 
@@ -1656,11 +1656,11 @@ yin_parse_leaflist(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_m
 
     /* check invalid combination of subelements */
     if ((llist->min) && (llist->dflts)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INCHILDSTMSCOMB_YIN, "min-elements", "default", "leaf-list");
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INCHILDSTMSCOMB_YIN, "min-elements", "default", "leaf-list");
         return LY_EVALID;
     }
     if (llist->max && (llist->min > llist->max)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_MINMAX, llist->min, llist->max);
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_MINMAX, llist->min, llist->max);
         return LY_EVALID;
     }
 
@@ -1676,7 +1676,7 @@ yin_parse_leaflist(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_m
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_typedef(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *typedef_meta)
+yin_parse_typedef(struct lysp_yin_ctx *ctx, struct tree_node_meta *typedef_meta)
 {
     struct lysp_tpdf *tpdf;
     struct lysp_tpdf **tpdfs = (struct lysp_tpdf **)typedef_meta->nodes;
@@ -1721,7 +1721,7 @@ yin_parse_typedef(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *typedef
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_refine(struct lys_yin_parser_ctx *ctx, struct lysp_refine **refines)
+yin_parse_refine(struct lysp_yin_ctx *ctx, struct lysp_refine **refines)
 {
     struct lysp_refine *rf;
 
@@ -1765,7 +1765,7 @@ yin_parse_refine(struct lys_yin_parser_ctx *ctx, struct lysp_refine **refines)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_uses(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_uses(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_uses *uses;
 
@@ -1808,7 +1808,7 @@ yin_parse_uses(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_revision(struct lys_yin_parser_ctx *ctx, struct lysp_revision **revs)
+yin_parse_revision(struct lysp_yin_ctx *ctx, struct lysp_revision **revs)
 {
     struct lysp_revision *rev;
     const char *temp_date = NULL;
@@ -1820,7 +1820,7 @@ yin_parse_revision(struct lys_yin_parser_ctx *ctx, struct lysp_revision **revs)
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_date, Y_STR_ARG, LY_STMT_REVISION));
     /* check value */
-    if (lysp_check_date((struct lys_parser_ctx *)ctx, temp_date, strlen(temp_date), "revision")) {
+    if (lysp_check_date((struct lysp_ctx *)ctx, temp_date, strlen(temp_date), "revision")) {
         lydict_remove(ctx->xmlctx->ctx, temp_date);
         return LY_EVALID;
     }
@@ -1851,7 +1851,7 @@ yin_parse_revision(struct lys_yin_parser_ctx *ctx, struct lysp_revision **revs)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_include(struct lys_yin_parser_ctx *ctx, struct include_meta *inc_meta)
+yin_parse_include(struct lysp_yin_ctx *ctx, struct include_meta *inc_meta)
 {
     struct lysp_include *inc;
 
@@ -1865,7 +1865,7 @@ yin_parse_include(struct lys_yin_parser_ctx *ctx, struct include_meta *inc_meta)
     /* submodules share the namespace with the module names, so there must not be
      * a module of the same name in the context, no need for revision matching */
     if (!strcmp(inc_meta->name, inc->name) || ly_ctx_get_module_latest(ctx->xmlctx->ctx, inc->name)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_NAME2_COL, "module", "submodule", inc->name);
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_NAME2_COL, "module", "submodule", inc->name);
         return LY_EVALID;
     }
 
@@ -1895,7 +1895,7 @@ yin_parse_include(struct lys_yin_parser_ctx *ctx, struct include_meta *inc_meta)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_revision_date(struct lys_yin_parser_ctx *ctx, char *rev, struct lysp_ext_instance **exts)
+yin_parse_revision_date(struct lysp_yin_ctx *ctx, char *rev, struct lysp_ext_instance **exts)
 {
     const char *temp_rev;
     struct yin_subelement subelems[] = {
@@ -1904,7 +1904,7 @@ yin_parse_revision_date(struct lys_yin_parser_ctx *ctx, char *rev, struct lysp_e
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_rev, Y_STR_ARG, LY_STMT_REVISION_DATE));
-    LY_CHECK_ERR_RET(lysp_check_date((struct lys_parser_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
+    LY_CHECK_ERR_RET(lysp_check_date((struct lysp_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
             lydict_remove(ctx->xmlctx->ctx, temp_rev), LY_EVALID);
 
     strcpy(rev, temp_rev);
@@ -1925,7 +1925,7 @@ yin_parse_revision_date(struct lys_yin_parser_ctx *ctx, char *rev, struct lysp_e
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_config(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_config(struct lysp_yin_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[] = {
@@ -1939,7 +1939,7 @@ yin_parse_config(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
     } else if (strcmp(temp_val, "false") == 0) {
         *flags |= LYS_CONFIG_R;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value", "config",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value", "config",
                 "true", "false");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -1961,7 +1961,7 @@ yin_parse_config(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_yangversion(struct lys_yin_parser_ctx *ctx, uint8_t *version, struct lysp_ext_instance **exts)
+yin_parse_yangversion(struct lysp_yin_ctx *ctx, uint8_t *version, struct lysp_ext_instance **exts)
 {
     const char *temp_version = NULL;
     struct yin_subelement subelems[] = {
@@ -1975,7 +1975,7 @@ yin_parse_yangversion(struct lys_yin_parser_ctx *ctx, uint8_t *version, struct l
     } else if (strcmp(temp_version, "1.1") == 0) {
         *version = LYS_VERSION_1_1;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_version, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_version, "value",
                 "yang-version", "1", "1.1");
         lydict_remove(ctx->xmlctx->ctx, temp_version);
         return LY_EVALID;
@@ -1996,7 +1996,7 @@ yin_parse_yangversion(struct lys_yin_parser_ctx *ctx, uint8_t *version, struct l
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_import(struct lys_yin_parser_ctx *ctx, struct import_meta *imp_meta)
+yin_parse_import(struct lysp_yin_ctx *ctx, struct import_meta *imp_meta)
 {
     struct lysp_import *imp;
 
@@ -2020,7 +2020,7 @@ yin_parse_import(struct lys_yin_parser_ctx *ctx, struct import_meta *imp_meta)
     LY_CHECK_RET(ly_set_add(&ctx->ext_inst, imp->exts, 1, NULL));
 
     /* check prefix validity */
-    LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)ctx, *imp_meta->imports, imp_meta->prefix, &imp->prefix), LY_EVALID);
+    LY_CHECK_RET(lysp_check_prefix((struct lysp_ctx *)ctx, *imp_meta->imports, imp_meta->prefix, &imp->prefix), LY_EVALID);
 
     return LY_SUCCESS;
 }
@@ -2035,7 +2035,7 @@ yin_parse_import(struct lys_yin_parser_ctx *ctx, struct import_meta *imp_meta)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_mandatory(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_mandatory(struct lysp_yin_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[] = {
@@ -2049,7 +2049,7 @@ yin_parse_mandatory(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
     } else if (strcmp(temp_val, "false") == 0) {
         *flags |= LYS_MAND_FALSE;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "mandatory", "true", "false");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -2071,7 +2071,7 @@ yin_parse_mandatory(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_status(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_status(struct lysp_yin_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *value = NULL;
     struct yin_subelement subelems[] = {
@@ -2087,7 +2087,7 @@ yin_parse_status(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
     } else if (strcmp(value, "obsolete") == 0) {
         *flags |= LYS_STATUS_OBSLT;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS3, value, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS3, value, "value",
                 "status", "current", "deprecated", "obsolete");
         lydict_remove(ctx->xmlctx->ctx, value);
         return LY_EVALID;
@@ -2106,7 +2106,7 @@ yin_parse_status(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
  * @param[out] when_p When pointer to parse to.
  */
 static LY_ERR
-yin_parse_when(struct lys_yin_parser_ctx *ctx, struct lysp_when **when_p)
+yin_parse_when(struct lysp_yin_ctx *ctx, struct lysp_when **when_p)
 {
     struct lysp_when *when;
     LY_ERR ret = LY_SUCCESS;
@@ -2146,7 +2146,7 @@ yin_parse_when(struct lys_yin_parser_ctx *ctx, struct lysp_when **when_p)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_yin_element(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_yin_element(struct lysp_yin_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[] = {
@@ -2160,7 +2160,7 @@ yin_parse_yin_element(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct ly
     } else if (strcmp(temp_val, "false") == 0) {
         *flags |= LYS_YINELEM_FALSE;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
                 "yin-element", "true", "false");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -2182,7 +2182,7 @@ yin_parse_yin_element(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct ly
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_argument(struct lys_yin_parser_ctx *ctx, struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts)
+yin_parse_argument(struct lysp_yin_ctx *ctx, struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[] = {
         {LY_STMT_YIN_ELEMENT, arg_meta->flags, YIN_SUBELEM_UNIQUE},
@@ -2206,7 +2206,7 @@ yin_parse_argument(struct lys_yin_parser_ctx *ctx, struct yin_argument_meta *arg
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_extension(struct lys_yin_parser_ctx *ctx, struct lysp_ext **extensions)
+yin_parse_extension(struct lysp_yin_ctx *ctx, struct lysp_ext **extensions)
 {
     struct lysp_ext *ex;
 
@@ -2240,7 +2240,7 @@ yin_parse_extension(struct lys_yin_parser_ctx *ctx, struct lysp_ext **extensions
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_feature(struct lys_yin_parser_ctx *ctx, struct lysp_feature **features)
+yin_parse_feature(struct lysp_yin_ctx *ctx, struct lysp_feature **features)
 {
     struct lysp_feature *feat;
 
@@ -2277,7 +2277,7 @@ yin_parse_feature(struct lys_yin_parser_ctx *ctx, struct lysp_feature **features
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_identity(struct lys_yin_parser_ctx *ctx, struct lysp_ident **identities)
+yin_parse_identity(struct lysp_yin_ctx *ctx, struct lysp_ident **identities)
 {
     struct lysp_ident *ident;
 
@@ -2315,7 +2315,7 @@ yin_parse_identity(struct lys_yin_parser_ctx *ctx, struct lysp_ident **identitie
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_list(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_list(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_list *list;
     LY_ERR ret = LY_SUCCESS;
@@ -2365,7 +2365,7 @@ yin_parse_list(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
     LY_CHECK_RET(ly_set_add(&ctx->ext_inst, list->exts, 1, NULL));
 
     if (list->max && (list->min > list->max)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_MINMAX, list->min, list->max);
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_MINMAX, list->min, list->max);
         return LY_EVALID;
     }
 
@@ -2381,7 +2381,7 @@ yin_parse_list(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_notification(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *notif_meta)
+yin_parse_notification(struct lysp_yin_ctx *ctx, struct tree_node_meta *notif_meta)
 {
     struct lysp_node_notif *notif;
     struct lysp_node_notif **notifs = (struct lysp_node_notif **)notif_meta->nodes;
@@ -2436,7 +2436,7 @@ yin_parse_notification(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *no
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_meta)
+yin_parse_grouping(struct lysp_yin_ctx *ctx, struct tree_node_meta *gr_meta)
 {
     struct lysp_node_grp *grp;
     struct lysp_node_grp **grps = (struct lysp_node_grp **)gr_meta->nodes;
@@ -2495,7 +2495,7 @@ yin_parse_grouping(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *gr_met
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_container(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_container(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_container *cont;
     LY_ERR ret = LY_SUCCESS;
@@ -2553,7 +2553,7 @@ yin_parse_container(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_case(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_case(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     struct lysp_node_case *cas;
     LY_ERR ret = LY_SUCCESS;
@@ -2604,7 +2604,7 @@ yin_parse_case(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_choice(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
+yin_parse_choice(struct lysp_yin_ctx *ctx, struct tree_node_meta *node_meta)
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
@@ -2660,7 +2660,7 @@ yin_parse_choice(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_met
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct inout_meta *inout_meta)
+yin_parse_inout(struct lysp_yin_ctx *ctx, enum ly_stmt inout_kw, struct inout_meta *inout_meta)
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
@@ -2697,7 +2697,7 @@ yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct in
     LY_CHECK_RET(ly_set_add(&ctx->ext_inst, inout_meta->inout_p->exts, 1, NULL));
 
     if (!inout_meta->inout_p->child) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
         return LY_EVALID;
     }
 
@@ -2713,7 +2713,7 @@ yin_parse_inout(struct lys_yin_parser_ctx *ctx, enum ly_stmt inout_kw, struct in
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta)
+yin_parse_action(struct lysp_yin_ctx *ctx, struct tree_node_meta *act_meta)
 {
     struct lysp_node_action *act, **acts = (struct lysp_node_action **)act_meta->nodes;
     LY_ERR ret = LY_SUCCESS;
@@ -2769,7 +2769,7 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_augment(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *aug_meta)
+yin_parse_augment(struct lysp_yin_ctx *ctx, struct tree_node_meta *aug_meta)
 {
     struct lysp_node_augment *aug;
     struct lysp_node_augment **augs = (struct lysp_node_augment **)aug_meta->nodes;
@@ -2785,7 +2785,7 @@ yin_parse_augment(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *aug_met
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_TARGET_NODE, &aug->nodeid, Y_STR_ARG, LY_STMT_AUGMENT));
-    CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(aug->nodeid), "augment");
+    CHECK_NONEMPTY((struct lysp_ctx *)ctx, strlen(aug->nodeid), "augment");
 
     /* parser augment content */
     LY_CHECK_RET(subelems_allocator(ctx, subelems_size = 17, (struct lysp_node *)aug, &subelems,
@@ -2825,7 +2825,7 @@ yin_parse_augment(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *aug_met
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates)
+yin_parse_deviate(struct lysp_yin_ctx *ctx, struct lysp_deviate **deviates)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t dev_mod;
@@ -2848,7 +2848,7 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
     } else if (strcmp(temp_val, "delete") == 0) {
         dev_mod = LYS_DEV_DELETE;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS4, temp_val, "value", "deviate",
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS4, temp_val, "value", "deviate",
                 "not-supported", "add", "replace", "delete");
         lydict_remove(ctx->xmlctx->ctx, temp_val);
         return LY_EVALID;
@@ -2941,7 +2941,7 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **deviations)
+yin_parse_deviation(struct lysp_yin_ctx *ctx, struct lysp_deviation **deviations)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_deviation *dev = NULL;
@@ -2953,7 +2953,7 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
     /* parse argument */
     LY_CHECK_GOTO(ret = lyxml_ctx_next(ctx->xmlctx), cleanup);
     LY_CHECK_GOTO(ret = yin_parse_attribute(ctx, YIN_ARG_TARGET_NODE, &dev->nodeid, Y_STR_ARG, LY_STMT_DEVIATION), cleanup);
-    CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(dev->nodeid), "deviation");
+    CHECK_NONEMPTY((struct lysp_ctx *)ctx, strlen(dev->nodeid), "deviation");
     struct yin_subelement subelems[] = {
         {LY_STMT_DESCRIPTION, &dev->dsc, YIN_SUBELEM_UNIQUE},
         {LY_STMT_DEVIATE, &dev->deviates, YIN_SUBELEM_MANDATORY},
@@ -2983,7 +2983,7 @@ cleanup:
  * @return LY_SUCCESS on success LY_EINT if kw can't be mapped to kw_group, should not happen if called correctly.
  */
 static LY_ERR
-kw2kw_group(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum yang_module_stmt *group)
+kw2kw_group(struct lysp_yin_ctx *ctx, enum ly_stmt kw, enum yang_module_stmt *group)
 {
     switch (kw) {
     /* module header */
@@ -3050,7 +3050,7 @@ kw2kw_group(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum yang_module_st
  * @return LY_SUCCESS on success and LY_EVALID if relative order is invalid.
  */
 static LY_ERR
-yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum ly_stmt next_kw, enum ly_stmt parrent)
+yin_check_relative_order(struct lysp_yin_ctx *ctx, enum ly_stmt kw, enum ly_stmt next_kw, enum ly_stmt parrent)
 {
     assert(parrent == LY_STMT_MODULE || parrent == LY_STMT_SUBMODULE);
     enum yang_module_stmt gr, next_gr;
@@ -3064,7 +3064,7 @@ yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum l
     LY_CHECK_RET(kw2kw_group(ctx, next_kw, &next_gr));
 
     if (gr > next_gr) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INORDER_YIN, ly_stmt2str(parrent), ly_stmt2str(next_kw), ly_stmt2str(kw));
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INORDER_YIN, ly_stmt2str(parrent), ly_stmt2str(next_kw), ly_stmt2str(kw));
         return LY_EVALID;
     }
 
@@ -3080,7 +3080,7 @@ yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum l
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_extension_instance_arg(struct lys_yin_parser_ctx *ctx, enum ly_stmt elem_type, const char **arg)
+yin_parse_extension_instance_arg(struct lysp_yin_ctx *ctx, enum ly_stmt elem_type, const char **arg)
 {
     enum ly_stmt child;
 
@@ -3183,7 +3183,7 @@ yin_parse_extension_instance_arg(struct lys_yin_parser_ctx *ctx, enum ly_stmt el
             LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
         }
         if (((ctx->xmlctx->status == LYXML_ELEM_CONTENT) && !ctx->xmlctx->ws_only) || (ctx->xmlctx->status != LYXML_ELEMENT)) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_FIRT_SUBELEM,
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_FIRT_SUBELEM,
                     elem_type == LY_STMT_ERROR_MESSAGE ? "value" : "text", ly_stmt2str(elem_type));
             return LY_EVALID;
         }
@@ -3192,7 +3192,7 @@ yin_parse_extension_instance_arg(struct lys_yin_parser_ctx *ctx, enum ly_stmt el
         child = yin_match_keyword(ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, ctx->xmlctx->prefix, ctx->xmlctx->prefix_len, elem_type);
         if (((elem_type == LY_STMT_ERROR_MESSAGE) && (child != LY_STMT_ARG_VALUE)) ||
                 ((elem_type != LY_STMT_ERROR_MESSAGE) && (child != LY_STMT_ARG_TEXT))) {
-            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
+            LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
                     ly_stmt2str(elem_type));
             return LY_EVALID;
         }
@@ -3233,7 +3233,7 @@ yin_parse_extension_instance_arg(struct lys_yin_parser_ctx *ctx, enum ly_stmt el
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element)
+yin_parse_element_generic(struct lysp_yin_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysp_stmt *last = NULL, *new = NULL;
@@ -3268,7 +3268,7 @@ yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, s
     last = (*element)->child;
     if ((*element)->kw == LY_STMT_NONE) {
         /* unrecognized element */
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
                 ly_stmt2str(parent));
         ret = LY_EVALID;
         goto cleanup;
@@ -3353,7 +3353,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subelem, LY_ARRAY_COUNT_TYPE subelem_index,
+yin_parse_extension_instance(struct lysp_yin_ctx *ctx, enum ly_stmt subelem, LY_ARRAY_COUNT_TYPE subelem_index,
         struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;
@@ -3460,7 +3460,7 @@ yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, enum ly_stmt subele
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+yin_parse_content(struct lysp_yin_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
         enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3492,9 +3492,9 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             subelem = get_record(kw, subelem_info_size, subelem_info);
             if (!subelem) {
                 if ((current_element == LY_STMT_DEVIATE) && isdevsub(kw)) {
-                    LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INDEV_YIN, ly_stmt2str(kw));
+                    LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INDEV_YIN, ly_stmt2str(kw));
                 } else {
-                    LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len,
+                    LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len,
                             ctx->xmlctx->name, ly_stmt2str(current_element));
                 }
                 ret = LY_EVALID;
@@ -3510,7 +3510,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             /* flag check */
             if ((subelem->flags & YIN_SUBELEM_UNIQUE) && (subelem->flags & YIN_SUBELEM_PARSED)) {
                 /* subelement uniquenes */
-                LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_SUBELEM_REDEF, ly_stmt2str(kw), ly_stmt2str(current_element));
+                LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_SUBELEM_REDEF, ly_stmt2str(kw), ly_stmt2str(current_element));
                 return LY_EVALID;
             }
             if (subelem->flags & YIN_SUBELEM_FIRST) {
@@ -3521,7 +3521,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             if (subelem->flags & YIN_SUBELEM_VER2) {
                 /* subelement is supported only in version 1.1 or higher */
                 if (PARSER_CUR_PMOD(ctx)->version < LYS_VERSION_1_1) {
-                    LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INSUBELEM2, ly_stmt2str(kw), ly_stmt2str(current_element));
+                    LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_INSUBELEM2, ly_stmt2str(kw), ly_stmt2str(current_element));
                     ret = LY_EVALID;
                     goto cleanup;
                 }
@@ -3763,7 +3763,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
+yin_parse_mod(struct lysp_yin_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
@@ -3815,7 +3815,7 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
      * a submodule of the same name in the context, no need for revision matching */
     dup = ly_ctx_get_submodule_latest(ctx->xmlctx->ctx, mod->mod->name);
     if (dup) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_NAME2_COL, "module", "submodule", mod->mod->name);
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_NAME2_COL, "module", "submodule", mod->mod->name);
         return LY_EVALID;
     }
 
@@ -3831,7 +3831,7 @@ yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod)
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
+yin_parse_submod(struct lysp_yin_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
@@ -3882,7 +3882,7 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
      * a submodule of the same name in the context, no need for revision matching */
     dup = ly_ctx_get_submodule_latest(ctx->xmlctx->ctx, submod->name);
     if (dup && strcmp(dup->mod->name, submod->mod->name)) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_NAME_COL, "submodules", dup->name);
+        LOGVAL_PARSER((struct lysp_ctx *)ctx, LY_VCODE_NAME_COL, "submodules", dup->name);
         return LY_EVALID;
     }
 
@@ -3890,7 +3890,7 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
 }
 
 LY_ERR
-yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
+yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct lysp_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod)
 {
     enum ly_stmt kw = LY_STMT_NONE;
@@ -3924,7 +3924,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != LY_STMT_SUBMODULE) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_MOD_SUBOMD, ly_stmt2str(kw));
+        LOGVAL_PARSER((struct lysp_ctx *)*yin_ctx, LY_VCODE_MOD_SUBOMD, ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -3940,7 +3940,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
         ly_in_skip(in, 1);
     }
     if (in->current[0]) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_TRAILING_SUBMOD, 15, in->current,
+        LOGVAL_PARSER((struct lysp_ctx *)*yin_ctx, LY_VCODE_TRAILING_SUBMOD, 15, in->current,
                 strlen(in->current) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
@@ -3952,14 +3952,14 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 cleanup:
     if (ret) {
         lysp_module_free(&fctx, (struct lysp_module *)mod_p);
-        yin_parser_ctx_free(*yin_ctx);
+        lysp_yin_ctx_free(*yin_ctx);
         *yin_ctx = NULL;
     }
     return ret;
 }
 
 LY_ERR
-yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod)
+yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum ly_stmt kw = LY_STMT_NONE;
@@ -3972,7 +3972,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     (*yin_ctx)->format = LYS_IN_YIN;
     LY_CHECK_ERR_RET(ly_set_new(&(*yin_ctx)->parsed_mods), free(*yin_ctx); LOGMEM(mod->ctx), LY_EMEM);
     LY_CHECK_RET(lyxml_ctx_new(mod->ctx, in, &(*yin_ctx)->xmlctx));
-    (*yin_ctx)->main_ctx = (struct lys_parser_ctx *)(*yin_ctx);
+    (*yin_ctx)->main_ctx = (struct lysp_ctx *)(*yin_ctx);
 
     mod_p = calloc(1, sizeof *mod_p);
     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
@@ -3987,7 +3987,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != LY_STMT_MODULE) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_MOD_SUBOMD, ly_stmt2str(kw));
+        LOGVAL_PARSER((struct lysp_ctx *)*yin_ctx, LY_VCODE_MOD_SUBOMD, ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -4004,7 +4004,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
         ly_in_skip(in, 1);
     }
     if (in->current[0]) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_TRAILING_MOD, 15, in->current,
+        LOGVAL_PARSER((struct lysp_ctx *)*yin_ctx, LY_VCODE_TRAILING_MOD, 15, in->current,
                 strlen(in->current) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
@@ -4015,7 +4015,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
 cleanup:
     if (ret != LY_SUCCESS) {
         lysp_module_free(&fctx, mod_p);
-        yin_parser_ctx_free(*yin_ctx);
+        lysp_yin_ctx_free(*yin_ctx);
         *yin_ctx = NULL;
     }
     return ret;

@@ -143,15 +143,15 @@ enum yang_arg {
 #define PARSER_CTX(CTX) (PARSER_CUR_PMOD(CTX)->mod->ctx)
 #define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX) ? PARSER_CTX(CTX) : NULL, __VA_ARGS__)
 
-struct lys_parser_ctx {
+struct lysp_ctx {
     LYS_INFORMAT format;             /**< parser format */
     struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+                                          submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+                                          submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
-    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+    struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
                                           otherwise it points to the beginning of this structure. */
 };
@@ -159,15 +159,15 @@ struct lys_parser_ctx {
 /**
  * @brief Internal context for yang schema parser.
  */
-struct lys_yang_parser_ctx {
+struct lysp_yang_ctx {
     LYS_INFORMAT format;             /**< parser format */
     struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+                                          submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+                                          submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
-    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+    struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
                                           otherwise it points to the beginning of this structure. */
     struct ly_in *in;                /**< input handler for the parser */
@@ -178,15 +178,15 @@ struct lys_yang_parser_ctx {
 /**
  * @brief Internal context for yin schema parser.
  */
-struct lys_yin_parser_ctx {
+struct lysp_yin_ctx {
     LYS_INFORMAT format;             /**< parser format */
     struct ly_set tpdfs_nodes;       /**< Set of nodes that contain typedef(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+                                          submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set grps_nodes;        /**< Set of nodes that contain grouping(s). Invalid in case of
-                                          submodule, use ::lys_parser_ctx.main_ctx instead. */
+                                          submodule, use ::lysp_ctx.main_ctx instead. */
     struct ly_set ext_inst;          /**< parsed extension instances to finish parsing */
     struct ly_set *parsed_mods;      /**< (sub)modules being parsed, the last one is the current */
-    struct lys_parser_ctx *main_ctx; /**< This pointer must not be NULL. If this context deals with the submodule,
+    struct lysp_ctx *main_ctx;       /**< This pointer must not be NULL. If this context deals with the submodule,
                                           then should be set to the context of the module to which it belongs,
                                           otherwise it points to the beginning of this structure. */
     struct lyxml_ctx *xmlctx;        /**< context for xml parser */
@@ -199,7 +199,7 @@ struct lys_yin_parser_ctx {
  * @param[in] c UTF8 code point of a character to check.
  * @return LY_ERR values.
  */
-LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c);
+LY_ERR lysp_check_stringchar(struct lysp_ctx *ctx, uint32_t c);
 
 /**
  * @brief Check that \p c is valid UTF8 code point for YANG identifier.
@@ -215,7 +215,7 @@ LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c);
  * If the identifier cannot be prefixed, NULL is expected.
  * @return LY_ERR values.
  */
-LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix);
+LY_ERR lysp_check_identifierchar(struct lysp_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix);
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.
@@ -226,7 +226,7 @@ LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool
  * @param[in] value Newly added prefix value (including its location to distinguish collision with itself).
  * @return LY_EEXIST when prefix is already used in the module, LY_SUCCESS otherwise
  */
-LY_ERR lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value);
+LY_ERR lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value);
 
 /**
  * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
@@ -237,7 +237,7 @@ LY_ERR lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports
  * @param[in] stmt Statement name for error message.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, size_t date_len, const char *stmt);
+LY_ERR lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const char *stmt);
 
 /**
  * @brief Find type specified type definition.
@@ -261,7 +261,7 @@ LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, const struct
  * @param[in] mod Module where the type is being defined.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR lysp_check_dup_typedefs(struct lysp_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Check names of groupings in the parsed module to detect collisions.
@@ -270,7 +270,7 @@ LY_ERR lysp_check_dup_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *m
  * @param[in] mod Module where the type is being defined.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR lysp_check_dup_groupings(struct lysp_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Check names of features in the parsed module and submodules to detect collisions.
@@ -279,7 +279,7 @@ LY_ERR lysp_check_dup_groupings(struct lys_parser_ctx *ctx, struct lysp_module *
  * @param[in] mod Module where the type is being defined.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Check names of identities in the parsed module and submodules to detect collisions.
@@ -288,7 +288,7 @@ LY_ERR lysp_check_dup_features(struct lys_parser_ctx *ctx, struct lysp_module *m
  * @param[in] mod Module where the type is being defined.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_dup_identities(struct lys_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Just move the newest revision into the first position, does not sort the rest
@@ -305,7 +305,7 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  *
  * @return LY_ERR values
  */
-LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len);
+LY_ERR lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len);
 
 /**
  * @brief Find source data for a specific module, parse it, and add into the context.
@@ -332,7 +332,7 @@ LY_ERR lys_parse_load(struct ly_ctx *ctx, const char *name, const char *revision
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodules(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods);
+LY_ERR lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods);
 
 /**
  * @brief Get address of a node's actions list if any.
@@ -578,7 +578,7 @@ LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, l
  * @param[out] submodule Parsed submodule.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+LY_ERR lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lysp_ctx *main_ctx,
         lys_custom_check custom_check, void *check_data, struct ly_set *new_mods, struct lysp_submodule **submodule);
 
 /**

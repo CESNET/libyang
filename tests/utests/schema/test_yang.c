@@ -28,35 +28,35 @@
 
 /* originally static functions from parser_yang.c and parser_yin.c */
 LY_ERR buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
-LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, enum yang_arg arg, char **word_p,
+LY_ERR buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p,
         size_t *word_len, char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix);
-LY_ERR get_keyword(struct lys_yang_parser_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len);
-LY_ERR get_argument(struct lys_yang_parser_ctx *ctx, enum yang_arg arg,
+LY_ERR get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len);
+LY_ERR get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg,
         uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
-LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, uint8_t comment);
+LY_ERR skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment);
 
-LY_ERR parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions);
-LY_ERR parse_any(struct lys_yang_parser_ctx *ctx, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments);
-LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_deviate(struct lys_yang_parser_ctx *ctx, struct lysp_deviate **deviates);
-LY_ERR parse_deviation(struct lys_yang_parser_ctx *ctx, struct lysp_deviation **deviations);
-LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
-LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_leaf(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_leaflist(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
-LY_ERR parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
-LY_ERR parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod);
-LY_ERR parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs);
-LY_ERR parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod);
-LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_when(struct lys_yang_parser_ctx *ctx, struct lysp_when **when_p);
-LY_ERR parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_action **actions);
+LY_ERR parse_any(struct lysp_yang_ctx *ctx, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_augment(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_augment **augments);
+LY_ERR parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_deviate(struct lysp_yang_ctx *ctx, struct lysp_deviate **deviates);
+LY_ERR parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations);
+LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
+LY_ERR parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaf(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaflist(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_module(struct lysp_yang_ctx *ctx, struct lysp_module *mod);
+LY_ERR parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_notif **notifs);
+LY_ERR parse_submodule(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod);
+LY_ERR parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p);
+LY_ERR parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
 
-struct lys_yang_parser_ctx *YCTX;
+struct lysp_yang_ctx *YCTX;
 struct lysf_ctx fctx;
 
 struct ly_in in = {0};
@@ -172,21 +172,21 @@ test_helpers(void **state)
     prefix = 0;
 
     /* checking identifiers */
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, ':', 0, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, NULL));
     CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, '#', 1, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, '#', 1, NULL));
     CHECK_LOG_CTX("Invalid identifier first character '#' (0x0023).", "Line number 1.");
 
-    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, 'a', 1, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, 'a', 1, &prefix));
     assert_int_equal(0, prefix);
-    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, ':', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, 'b', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lysp_ctx *)YCTX, 'b', 0, &prefix));
     assert_int_equal(2, prefix);
     /* second colon is invalid */
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)YCTX, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lysp_ctx *)YCTX, ':', 0, &prefix));
     CHECK_LOG_CTX("Invalid identifier character ':' (0x003a).", "Line number 1.");
 }
 
@@ -719,7 +719,7 @@ test_valid_module(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct lys_yang_parser_ctx *ctx)
+mod_renew(struct lysp_yang_ctx *ctx)
 {
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_module *pmod;
@@ -738,7 +738,7 @@ mod_renew(struct lys_yang_parser_ctx *ctx)
 }
 
 static struct lysp_submodule *
-submod_renew(struct lys_yang_parser_ctx *ctx)
+submod_renew(struct lysp_yang_ctx *ctx)
 {
     struct ly_ctx *ly_ctx = PARSER_CUR_PMOD(ctx)->mod->ctx;
     struct lysp_submodule *submod;
@@ -773,7 +773,7 @@ test_module(void **state)
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
-    struct lys_yang_parser_ctx *ctx_p;
+    struct lysp_yang_ctx *ctx_p;
 
     mod = mod_renew(YCTX);
 
@@ -946,7 +946,7 @@ test_module(void **state)
     m->ctx = PARSER_CUR_PMOD(YCTX)->mod->ctx;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after module, expected end-of-input.", "Line number 1.");
-    yang_parser_ctx_free(ctx_p);
+    lysp_yang_ctx_free(ctx_p);
     lys_module_free(&fctx, m, 0);
 
     in.current = "prefix " SCHEMA_BEGINNING "}";
@@ -954,7 +954,7 @@ test_module(void **state)
     m->ctx = PARSER_CUR_PMOD(YCTX)->mod->ctx;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
-    yang_parser_ctx_free(ctx_p);
+    lysp_yang_ctx_free(ctx_p);
     lys_module_free(&fctx, m, 0);
 
     in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
@@ -962,7 +962,7 @@ test_module(void **state)
     m->ctx = PARSER_CUR_PMOD(YCTX)->mod->ctx;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     CHECK_LOG_CTX("Invalid keyword \"position\" as a child of \"enum\".", "Line number 1.");
-    yang_parser_ctx_free(ctx_p);
+    lysp_yang_ctx_free(ctx_p);
     lys_module_free(&fctx, m, 0);
 
     /* extensions */
@@ -1012,14 +1012,14 @@ test_module(void **state)
     submod = submod_renew(YCTX);
 
     in.current = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, PARSER_CUR_PMOD(YCTX)->mod->ctx, (struct lys_parser_ctx *)YCTX, YCTX->in, &submod));
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, PARSER_CUR_PMOD(YCTX)->mod->ctx, (struct lysp_ctx *)YCTX, YCTX->in, &submod));
     CHECK_LOG_CTX("Trailing garbage \"module q {names...\" after submodule, expected end-of-input.", "Line number 1.");
-    yang_parser_ctx_free(ctx_p);
+    lysp_yang_ctx_free(ctx_p);
 
     in.current = "prefix " SCHEMA_BEGINNING "}";
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, PARSER_CUR_PMOD(YCTX)->mod->ctx, (struct lys_parser_ctx *)YCTX, YCTX->in, &submod));
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, PARSER_CUR_PMOD(YCTX)->mod->ctx, (struct lysp_ctx *)YCTX, YCTX->in, &submod));
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", "Line number 1.");
-    yang_parser_ctx_free(ctx_p);
+    lysp_yang_ctx_free(ctx_p);
     submod = submod_renew(YCTX);
 
 #undef TEST_GENERIC
@@ -1097,7 +1097,7 @@ test_container(void **state)
     struct lysp_node_container *c = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 2; /* simulate YANG 1.1 */
-    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1274,7 +1274,7 @@ test_list(void **state)
     struct lysp_node_list *l = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 2; /* simulate YANG 1.1 */
-    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1447,7 +1447,7 @@ test_grouping(void **state)
     struct lysp_node_grp *grp = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 2; /* simulate YANG 1.1 */
-    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1499,7 +1499,7 @@ test_action(void **state)
     struct lysp_node_container *c = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 2; /* simulate YANG 1.1 */
-    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1569,7 +1569,7 @@ test_notification(void **state)
     struct lysp_node_container *c = NULL;
 
     PARSER_CUR_PMOD(YCTX)->version = 2; /* simulate YANG 1.1 */
-    YCTX->main_ctx = (struct lys_parser_ctx *)YCTX;
+    YCTX->main_ctx = (struct lysp_ctx *)YCTX;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
