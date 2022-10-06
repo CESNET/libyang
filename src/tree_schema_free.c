@@ -1405,47 +1405,28 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
         case LY_STMT_ORGANIZATION:
         case LY_STMT_PRESENCE:
         case LY_STMT_REFERENCE:
-        case LY_STMT_UNITS:
-            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                /* single item */
-                const char *str = *((const char **)substmts[u].storage);
+        case LY_STMT_UNITS: {
+            /* single item */
+            const char *str = *((const char **)substmts[u].storage);
 
-                lydict_remove(ctx, str);
-            } else {
-                /* multiple items */
-                const char **strs = *((const char ***)substmts[u].storage);
-
-                FREE_STRINGS(ctx, strs);
-            }
+            lydict_remove(ctx, str);
             break;
-        case LY_STMT_MUST:
-            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                /* single item */
-                struct lysc_must *must = *((struct lysc_must **)substmts[u].storage);
+        }
+        case LY_STMT_MUST: {
+            /* multiple items */
+            struct lysc_must *musts = *((struct lysc_must **)substmts[u].storage);
 
-                lysc_must_free(&fctx, must);
-                free(must);
-            } else {
-                /* multiple items */
-                struct lysc_must *musts = *((struct lysc_must **)substmts[u].storage);
-
-                FREE_ARRAY(&fctx, musts, lysc_must_free);
-            }
+            FREE_ARRAY(&fctx, musts, lysc_must_free);
             break;
+        }
         case LY_STMT_IF_FEATURE: {
             struct lysc_iffeature *iff = *((struct lysc_iffeature **)substmts[u].storage);
 
             if (!iff) {
                 break;
             }
-            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                /* single item */
-                lysc_iffeature_free(&fctx, iff);
-                free(iff);
-            } else {
-                /* multiple items */
-                FREE_ARRAY(&fctx, iff, lysc_iffeature_free);
-            }
+            /* multiple items */
+            FREE_ARRAY(&fctx, iff, lysc_iffeature_free);
             break;
         }
         case LY_STMT_TYPEDEF: {
@@ -1458,26 +1439,16 @@ lyplg_ext_instance_substatements_free(struct ly_ctx *ctx, struct lysc_ext_substm
             FREE_ARRAY(&fctx, tpdf, lysp_tpdf_free);
             break;
         }
-        case LY_STMT_TYPE:
-            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                /* single item */
-                struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
+        case LY_STMT_TYPE: {
+            /* single item */
+            struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
 
-                if (!type) {
-                    break;
-                }
-                lysc_type_free(&fctx, type);
-            } else {
-                /* multiple items */
-                struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
-
-                if (!types) {
-                    break;
-                }
-                FREE_ARRAY(&fctx, types, lysc_type2_free);
+            if (!type) {
+                break;
             }
+            lysc_type_free(&fctx, type);
             break;
-
+        }
         /* TODO other statements */
         default:
             LOGINT(ctx);

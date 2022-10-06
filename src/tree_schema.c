@@ -139,22 +139,6 @@ ly_stmt2str(enum ly_stmt stmt)
     }
 }
 
-LIBYANG_API_DEF const char *
-ly_cardinality2str(enum ly_stmt_cardinality card)
-{
-    switch (card) {
-    case LY_STMT_CARD_OPT:
-        return "0..1";
-    case LY_STMT_CARD_MAND:
-        return "1";
-    case LY_STMT_CARD_SOME:
-        return "1..n";
-    case LY_STMT_CARD_ANY:
-        return "0..n";
-    }
-
-    return NULL;
-}
 
 const char * const ly_devmod_list[] = {
     [LYS_DEV_NOT_SUPPORTED] = "not-supported",
@@ -288,7 +272,7 @@ next:
         } else {
             /* top level data */
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_CONTAINER /* matches all nodes */, (void **)&data_p, NULL);
+                lysc_ext_substmt(ext, LY_STMT_CONTAINER /* matches all nodes */, (void **)&data_p);
                 next = last = data_p ? *data_p : NULL;
             } else {
                 next = last = module->data;
@@ -321,7 +305,7 @@ repeat:
         } else if (!action_flag) {
             action_flag = 1;
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_RPC /* matches also actions */, (void **)&data_p, NULL);
+                lysc_ext_substmt(ext, LY_STMT_RPC /* matches also actions */, (void **)&data_p);
                 next = data_p ? *data_p : NULL;
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_actions(parent);
@@ -331,7 +315,7 @@ repeat:
         } else if (!notif_flag) {
             notif_flag = 1;
             if (ext) {
-                lysc_ext_substmt(ext, LY_STMT_NOTIFICATION, (void **)&data_p, NULL);
+                lysc_ext_substmt(ext, LY_STMT_NOTIFICATION, (void **)&data_p);
                 next = data_p ? *data_p : NULL;
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_notifs(parent);

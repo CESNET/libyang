@@ -2505,18 +2505,9 @@ lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_e
         case LY_STMT_PRESENCE:
         case LY_STMT_REFERENCE:
         case LY_STMT_UNITS:
-            if (ext->substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                if (*(const char **)ext->substmts[u].storage) {
-                    ypr_open(pctx->out, flag);
-                    ypr_substmt(pctx, ext->substmts[u].stmt, 0, *(const char **)ext->substmts[u].storage, ext->exts);
-                }
-            } else {
-                const char **strings = *(const char ***)ext->substmts[u].storage;
-
-                LY_ARRAY_FOR(strings, v) {
-                    ypr_open(pctx->out, flag);
-                    ypr_substmt(pctx, ext->substmts[u].stmt, v, strings[v], ext->exts);
-                }
+            if (*(const char **)ext->substmts[u].storage) {
+                ypr_open(pctx->out, flag);
+                ypr_substmt(pctx, ext->substmts[u].stmt, 0, *(const char **)ext->substmts[u].storage, ext->exts);
             }
             break;
         case LY_STMT_MUST: {
@@ -2537,18 +2528,9 @@ lysc_print_extension_instance(struct lyspr_ctx *ctx_generic, const struct lysc_e
             ypr_status(pctx, *(uint16_t *)ext->substmts[u].storage, ext->exts, flag);
             break;
         case LY_STMT_TYPE:
-            if (ext->substmts[u].cardinality < LY_STMT_CARD_SOME) {
-                if (*(const struct lysc_type **)ext->substmts[u].storage) {
-                    ypr_open(pctx->out, flag);
-                    yprc_type(pctx, *(const struct lysc_type **)ext->substmts[u].storage);
-                }
-            } else {
-                const struct lysc_type **types = *(const struct lysc_type ***)ext->substmts[u].storage;
-
-                LY_ARRAY_FOR(types, v) {
-                    ypr_open(pctx->out, flag);
-                    yprc_type(pctx, types[v]);
-                }
+            if (*(const struct lysc_type **)ext->substmts[u].storage) {
+                ypr_open(pctx->out, flag);
+                yprc_type(pctx, *(const struct lysc_type **)ext->substmts[u].storage);
             }
             break;
         /* TODO support other substatements */
