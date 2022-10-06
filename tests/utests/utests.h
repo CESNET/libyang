@@ -2,9 +2,10 @@
  * @file   utests.h
  * @author Radek Iša <isa@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief  this file contains macros for simplification test writing
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include <string.h>
 
 #include "libyang.h"
+#include "plugins_exts/metadata.h"
 #include "plugins_internal.h"
 #include "plugins_types.h"
 #include "tests_config.h"

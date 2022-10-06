@@ -156,7 +156,7 @@ test_schema(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, &mod));
-    lys_print_mem(&str, mod, LYS_YIN, 0);
+    lys_print_mem(&str, mod, LYS_OUT_YIN, 0);
     assert_string_equal(str, schema);
     free(str);
 }

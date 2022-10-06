@@ -1,9 +1,10 @@
 /**
  * @file libyang.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief The main libyang public header.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -37,6 +38,7 @@ extern "C" {
 
 /*
  * The following headers are supposed to be included explicitly:
+ * - metadata.h
  * - plugins_types.h
  * - plugins_exts.h
  */

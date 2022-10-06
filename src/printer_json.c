@@ -22,6 +22,7 @@
 #include "out.h"
 #include "out_internal.h"
 #include "parser_data.h"
+#include "plugins_exts/metadata.h"
 #include "plugins_types.h"
 #include "printer_data.h"
 #include "printer_internal.h"
