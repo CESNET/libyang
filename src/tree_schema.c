@@ -37,6 +37,7 @@
 #include "parser_internal.h"
 #include "parser_schema.h"
 #include "path.h"
+#include "plugins_internal.h"
 #include "schema_compile.h"
 #include "schema_compile_amend.h"
 #include "schema_features.h"
@@ -1250,8 +1251,16 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Resolve (find) all imported and included modules.
+ *
+ * @param[in] pctx Parser context.
+ * @param[in] pmod Parsed module to resolve.
+ * @param[out] new_mods Set with all the newly loaded modules.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
+lysp_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod, struct ly_set *new_mods)
 {
     struct lysp_import *imp;
     LY_ARRAY_COUNT_TYPE u, v;
@@ -1280,6 +1289,45 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *pmod
     LY_CHECK_RET(lysp_load_submodules(pctx, pmod, new_mods));
 
     pmod->parsing = 0;
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Resolve (find) all extension instance records and finish their parsing.
+ *
+ * @param[in] pctx Parse context with all the parsed extension instances.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_resolve_ext_instance_records(struct lys_parser_ctx *pctx)
+{
+    struct lysp_ext_instance *exts, *ext;
+    const struct lys_module *mod;
+    const char *ptr;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE u;
+
+    for (i = 0; i < pctx->ext_inst.count; ++i) {
+        exts = pctx->ext_inst.objs[i];
+        LY_ARRAY_FOR(exts, u) {
+            ext = &exts[u];
+
+            /* find the extension (definition) module */
+            ptr = strchr(ext->name, ':');
+            assert(ptr);
+            mod = ly_resolve_prefix(PARSER_CTX(pctx), ext->name, ptr - ext->name, ext->format, ext->prefix_data);
+            if (!mod) {
+                LOGVAL(PARSER_CTX(pctx), LYVE_SYNTAX, "Unknown prefix \"%*.s\" used for an extension instance.",
+                        (int)(ptr - ext->name), ext->name);
+                return LY_ENOTFOUND;
+            }
+
+            /* find the extension record, if any */
+            ++ptr;
+            ext->record = lyplg_ext_record_find(mod->name, mod->revision, ptr);
+        }
+    }
 
     return LY_SUCCESS;
 }
@@ -1350,7 +1398,10 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     lys_parser_fill_filepath(ctx, in, &submod->filepath);
 
     /* resolve imports and includes */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
+    LY_CHECK_GOTO(ret = lysp_resolve_import_include(pctx, (struct lysp_module *)submod, new_mods), error);
+
+    /* resolve extension instance plugin records */
+    LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), error);
 
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
@@ -1383,7 +1434,7 @@ error:
  * @return LY_ERR on error.
  */
 static LY_ERR
-lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
+lysp_add_internal_ietf_netconf(struct lysp_module *mod)
 {
     struct lysp_ext_instance *ext_p;
     struct lysp_stmt *stmt;
@@ -1551,7 +1602,7 @@ lys_parsed_add_internal_ietf_netconf(struct lysp_module *mod)
  * @return LY_ERR on error.
  */
 static LY_ERR
-lys_parsed_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
+lysp_add_internal_ietf_netconf_with_defaults(struct lysp_module *mod)
 {
     struct lysp_ext_instance *ext_p;
     struct lysp_stmt *stmt;
@@ -1724,9 +1775,9 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* add internal data in case specific modules were parsed */
     if (!strcmp(mod->name, "ietf-netconf")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), cleanup);
+        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf(mod->parsed), cleanup);
     } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), cleanup);
+        LY_CHECK_GOTO(ret = lysp_add_internal_ietf_netconf_with_defaults(mod->parsed), cleanup);
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */
@@ -1739,7 +1790,10 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     ctx->change_count++;
 
     /* resolve includes and all imports */
-    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
+    LY_CHECK_GOTO(ret = lysp_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
+
+    /* resolve extension instance plugin records */
+    LY_CHECK_GOTO(ret = lysp_resolve_ext_instance_records(pctx), cleanup);
 
     /* check name collisions */
     LY_CHECK_GOTO(ret = lysp_check_dup_typedefs(pctx, mod->parsed), cleanup);
@@ -1752,8 +1806,6 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* compile identities */
     LY_CHECK_GOTO(ret = lys_compile_identities(mod), cleanup);
-
-    /* success */
 
 cleanup:
     if (ret && (ret != LY_EEXIST)) {

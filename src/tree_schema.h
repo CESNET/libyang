@@ -546,6 +546,7 @@ struct lysp_ext_instance {
     LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement in its [sized array](@ref sizedarrays) (if any) */
     uint16_t flags;                         /**< LYS_INTERNAL value (@ref snodeflags) */
+    const struct lyplg_ext_record *record;  /**< extension defintion plugin record, if any */
 };
 
 /**

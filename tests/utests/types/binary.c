@@ -51,7 +51,7 @@ test_plugin_store(void **state)
     struct ly_err_item *err = NULL;
     struct lys_module *mod;
     struct lyd_value value = {0};
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BINARY]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BINARY]);
     struct lysc_type *lysc_type;
     LY_ERR ly_ret;
     const char *schema;
@@ -203,7 +203,7 @@ test_plugin_print(void **state)
     struct lyd_value value = {0};
     struct lys_module *mod;
     struct lysc_type *lysc_type;
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BINARY]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BINARY]);
     struct ly_err_item *err = NULL;
 
     /* create schema. Prepare common used variables */
@@ -226,7 +226,7 @@ test_plugin_duplicate(void **state)
     struct lyd_value value = {0}, dup;
     struct lys_module *mod;
     struct lysc_type *lysc_type;
-    struct lyplg_type *type = lyplg_find(LYPLG_TYPE, "", NULL, ly_data_type2str[LY_TYPE_BINARY]);
+    struct lyplg_type *type = lyplg_type_plugin_find("", NULL, ly_data_type2str[LY_TYPE_BINARY]);
     struct ly_err_item *err = NULL;
 
     /* create schema. Prepare common used variables */

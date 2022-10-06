@@ -26,8 +26,6 @@ extern "C" {
 #define ANNOTATION_SUBSTMT_DSC     4 /**< index for the LY_STMT_DSC substatement in annotation's ::lysc_ext_instance.substmts */
 #define ANNOTATION_SUBSTMT_REF     5 /**< index for the LY_STMT_REF substatement in annotation's ::lysc_ext_instance.substmts */
 
-#define LYEXT_PLUGIN_INTERNAL_ANNOTATION "ietf-yang-metadata", "2016-08-05", "annotation"
-
 #ifdef __cplusplus
 }
 #endif

@@ -39,6 +39,7 @@ struct lys_glob_unres;
 
 /**
  * @brief Insert WORD into the libyang context's dictionary and store as TARGET.
+ *
  * @param[in] CTX yang parser context to access libyang context.
  * @param[in] BUF buffer in case the word is not a constant and can be inserted directly (zero-copy)
  * @param[out] TARGET variable where to store the pointer to the inserted value.
@@ -51,44 +52,61 @@ struct lys_glob_unres;
 
 /**
  * @brief Read from the IN structure COUNT items. Also updates the indent value in yang parser context
+ *
  * @param[in] CTX yang parser context to update its indent value.
  * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
  */
 #define MOVE_INPUT(CTX, COUNT) ly_in_skip((CTX)->in, COUNT);(CTX)->indent+=COUNT
 
 /**
- * @brief Loop through all substatements.
+ * @brief Loop through all substatements. Starts a for loop and ::YANG_READ_SUBSTMT_NEXT_ITER must be used at its end.
  *
  * @param[in] CTX yang parser context for logging.
  * @param[out] KW YANG keyword read.
  * @param[out] WORD Pointer to the keyword itself.
  * @param[out] WORD_LEN Length of the keyword.
  * @param[out] RET Variable for error storing.
- * @param[in] SUC_CMD Command is applied if a semicolon is found, so no
- * substatements are available. It is expected to contain a return or goto command.
- * @param[in] ERR_CMD Command is applied if an error occurs before loop through
- * substatements. It is expected to contain return or goto command.
- *
- * @return In case there are no substatements or a fatal error encountered.
+ * @param[in] ERR_LABEL Label to go to on error.
  */
-#define YANG_READ_SUBSTMT_FOR(CTX, KW, WORD, WORD_LEN, RET, SUC_CMD, ERR_CMD) \
+#define YANG_READ_SUBSTMT_FOR_GOTO(CTX, KW, WORD, WORD_LEN, RET, ERR_LABEL) \
+    ly_bool __loop_end = 0; \
     if ((RET = get_keyword(CTX, &KW, &WORD, &WORD_LEN))) { \
-        ERR_CMD; \
+        goto ERR_LABEL; \
     } \
     if (KW == LY_STMT_SYNTAX_SEMICOLON) { \
-        SUC_CMD; \
-    } \
-    if (KW != LY_STMT_SYNTAX_LEFT_BRACE) { \
+        __loop_end = 1; \
+    } else if (KW != LY_STMT_SYNTAX_LEFT_BRACE) { \
         LOGVAL_PARSER(CTX, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", expected \";\" or \"{\".", ly_stmt2str(KW)); \
         RET = LY_EVALID; \
-        ERR_CMD; \
+        goto ERR_LABEL; \
+    } else { \
+        YANG_READ_SUBSTMT_NEXT_ITER(CTX, KW, WORD, WORD_LEN, NULL, RET, ERR_LABEL); \
     } \
-    for (RET = get_keyword(CTX, &KW, &WORD, &WORD_LEN); \
-            !RET && (KW != LY_STMT_SYNTAX_RIGHT_BRACE); \
-            RET = get_keyword(CTX, &KW, &WORD, &WORD_LEN))
+    while (!__loop_end)
 
-LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent,
-        struct lysp_node **siblings);
+/**
+ * @brief Next iteration of ::YANG_READ_SUBSTMT_FOR_GOTO loop.
+ *
+ * @param[in] CTX yang parser context for logging.
+ * @param[out] KW YANG keyword read.
+ * @param[out] WORD Pointer to the keyword itself.
+ * @param[out] WORD_LEN Length of the keyword.
+ * @param[in] EXTS Final extension instance array to store.
+ * @param[out] RET Variable for error storing.
+ * @param[in] ERR_LABEL Label to go to on error.
+ */
+#define YANG_READ_SUBSTMT_NEXT_ITER(CTX, KW, WORD, WORD_LEN, EXTS, RET, ERR_LABEL) \
+    if ((RET = get_keyword(CTX, &KW, &WORD, &WORD_LEN))) { \
+        goto ERR_LABEL; \
+    } \
+    if (KW == LY_STMT_SYNTAX_RIGHT_BRACE) { \
+        if (EXTS && (RET = ly_set_add(&(CTX)->ext_inst, (EXTS), 1, NULL))) { \
+            goto ERR_LABEL; \
+        } \
+        __loop_end = 1; \
+    }
+
+LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lysp_node **siblings);
@@ -106,7 +124,6 @@ LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent,
  * @param[in,out] buf Buffer to use, can be moved by realloc().
  * @param[in,out] buf_len Current size of the buffer.
  * @param[in,out] buf_used Currently used characters of the buffer.
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -144,7 +161,6 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  * 0 - colon not yet found (no prefix)
  * 1 - \p c is the colon character
  * 2 - prefix already processed, now processing the identifier
- *
  * @return LY_ERR values.
  */
 LY_ERR
@@ -300,7 +316,6 @@ skip_comment(struct lys_yang_parser_ctx *ctx, uint8_t comment)
  * @param[out] buf_len Length of the dynamically-allocated buffer \p word_b.
  * @param[in] indent Current indent (number of YANG spaces). Needed for correct multi-line string
  * indenation in the final quoted string.
- *
  * @return LY_ERR values.
  */
 static LY_ERR
@@ -888,8 +903,9 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, enum ly_stmt kw, char *word, 
     stmt->prefix_data = PARSER_CUR_PMOD(ctx);
     stmt->kw = kw;
 
-    YANG_READ_SUBSTMT_FOR(ctx, child_kw, word, word_len, ret, return LY_SUCCESS, return ret) {
-        LY_CHECK_RET(parse_ext_substmt(ctx, child_kw, word, word_len, &stmt->child));
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, child_kw, word, word_len, ret, cleanup) {
+        LY_CHECK_GOTO(ret = parse_ext_substmt(ctx, child_kw, word, word_len, &stmt->child), cleanup)
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, child_kw, word, word_len, NULL, ret, cleanup);
     }
 
 cleanup:
@@ -941,8 +957,9 @@ parse_ext(struct lys_yang_parser_ctx *ctx, const char *ext_name, size_t ext_name
     e->parent_stmt = insubstmt;
     e->parent_stmt_index = insubstmt_index;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
-        LY_CHECK_RET(parse_ext_substmt(ctx, kw, word, word_len, &e->child));
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
+        LY_CHECK_GOTO(ret = parse_ext_substmt(ctx, kw, word, word_len, &e->child), cleanup)
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
 
 cleanup:
@@ -982,7 +999,7 @@ parse_text_field(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, uint32_t
     /* store value and spend buf if allocated */
     INSERT_WORD_GOTO(ctx, buf, *value, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, substmt, substmt_index, exts));
@@ -991,6 +1008,7 @@ parse_text_field(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, uint32_t
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(substmt));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
 
 cleanup:
@@ -1033,7 +1051,7 @@ parse_yangversion(struct lys_yang_parser_ctx *ctx, uint8_t *version, struct lysp
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_YANG_VERSION, 0, exts));
@@ -1042,7 +1060,10 @@ parse_yangversion(struct lys_yang_parser_ctx *ctx, uint8_t *version, struct lysp
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "yang-version");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -1078,7 +1099,7 @@ parse_belongsto(struct lys_yang_parser_ctx *ctx, const char **prefix, struct lys
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_PREFIX:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_PREFIX, 0, prefix, Y_IDENTIF_ARG, exts));
@@ -1090,14 +1111,16 @@ parse_belongsto(struct lys_yang_parser_ctx *ctx, const char **prefix, struct lys
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "belongs-to");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
-checks:
+
     /* mandatory substatements */
     if (!*prefix) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "prefix", "belongs-to");
         return LY_EVALID;
     }
+
+cleanup:
     return ret;
 }
 
@@ -1136,7 +1159,7 @@ parse_revisiondate(struct lys_yang_parser_ctx *ctx, char *rev, struct lysp_ext_i
     strncpy(rev, word, word_len);
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_REVISION_DATE, 0, exts));
@@ -1145,7 +1168,10 @@ parse_revisiondate(struct lys_yang_parser_ctx *ctx, char *rev, struct lysp_ext_i
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "revision-date");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -1181,7 +1207,7 @@ parse_include(struct lys_yang_parser_ctx *ctx, const char *module_name, struct l
         return LY_EVALID;
     }
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             PARSER_CHECK_STMTVER2_RET(ctx, "description", "include");
@@ -1201,6 +1227,7 @@ parse_include(struct lys_yang_parser_ctx *ctx, const char *module_name, struct l
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "include");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, inc->exts, ret, cleanup);
     }
 
 cleanup:
@@ -1231,7 +1258,7 @@ parse_import(struct lys_yang_parser_ctx *ctx, const char *module_prefix, struct 
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, imp->name, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_PREFIX:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_PREFIX, 0, &imp->prefix, Y_IDENTIF_ARG, &imp->exts));
@@ -1255,10 +1282,9 @@ parse_import(struct lys_yang_parser_ctx *ctx, const char *module_prefix, struct 
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "import");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, imp->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* mandatory substatements */
     LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "prefix", "import"), LY_EVALID);
 
@@ -1297,7 +1323,7 @@ parse_revision(struct lys_yang_parser_ctx *ctx, struct lysp_revision **revs)
     strncpy(rev->date, word, word_len);
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &rev->dsc, Y_STR_ARG, &rev->exts));
@@ -1312,7 +1338,10 @@ parse_revision(struct lys_yang_parser_ctx *ctx, struct lysp_revision **revs)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "revision");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, rev->exts, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -1344,7 +1373,7 @@ parse_text_fields(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, const c
     LY_CHECK_RET(get_argument(ctx, arg, NULL, &word, &buf, &word_len));
 
     INSERT_WORD_GOTO(ctx, buf, *item, word, word_len, ret, cleanup);
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, substmt, LY_ARRAY_COUNT(*texts) - 1, exts));
@@ -1353,6 +1382,7 @@ parse_text_fields(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, const c
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(substmt));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
 
 cleanup:
@@ -1388,7 +1418,7 @@ parse_qnames(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, struct lysp_
 
     INSERT_WORD_GOTO(ctx, buf, item->str, word, word_len, ret, cleanup);
     item->mod = PARSER_CUR_PMOD(ctx);
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, substmt, LY_ARRAY_COUNT(*qnames) - 1, exts));
@@ -1397,6 +1427,7 @@ parse_qnames(struct lys_yang_parser_ctx *ctx, enum ly_stmt substmt, struct lysp_
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(substmt));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
 
 cleanup:
@@ -1439,7 +1470,7 @@ parse_config(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_i
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_CONFIG, 0, exts));
@@ -1448,7 +1479,10 @@ parse_config(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_i
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "config");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -1488,7 +1522,7 @@ parse_mandatory(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_MANDATORY, 0, exts));
@@ -1497,7 +1531,10 @@ parse_mandatory(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "mandatory");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -1524,7 +1561,7 @@ parse_restr(struct lys_yang_parser_ctx *ctx, enum ly_stmt restr_kw, struct lysp_
     CHECK_NONEMPTY(ctx, word_len, ly_stmt2str(restr_kw));
     INSERT_WORD_GOTO(ctx, buf, restr->arg.str, word, word_len, ret, cleanup);
     restr->arg.mod = PARSER_CUR_PMOD(ctx);
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &restr->dsc, Y_STR_ARG, &restr->exts));
@@ -1545,6 +1582,7 @@ parse_restr(struct lys_yang_parser_ctx *ctx, enum ly_stmt restr_kw, struct lysp_
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(restr_kw));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, restr->exts, ret, cleanup);
     }
 
 cleanup:
@@ -1607,7 +1645,7 @@ parse_status(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_i
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_STATUS, 0, exts));
@@ -1616,7 +1654,10 @@ parse_status(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_i
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "status");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -1651,7 +1692,7 @@ parse_when(struct lys_yang_parser_ctx *ctx, struct lysp_when **when_p)
     CHECK_NONEMPTY(ctx, word_len, "when");
     INSERT_WORD_GOTO(ctx, buf, when->cond, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto cleanup, goto cleanup) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_GOTO(ret = parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &when->dsc, Y_STR_ARG, &when->exts), cleanup);
@@ -1667,6 +1708,7 @@ parse_when(struct lys_yang_parser_ctx *ctx, struct lysp_when **when_p)
             ret = LY_EVALID;
             goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, when->exts, ret, cleanup);
     }
 
 cleanup:
@@ -1708,7 +1750,7 @@ parse_any(struct lys_yang_parser_ctx *ctx, enum ly_stmt any_kw, struct lysp_node
     INSERT_WORD_GOTO(ctx, buf, any->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &any->flags, &any->exts));
@@ -1741,6 +1783,7 @@ parse_any(struct lys_yang_parser_ctx *ctx, enum ly_stmt any_kw, struct lysp_node
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(any_kw));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, any->exts, ret, cleanup);
     }
 
 cleanup:
@@ -1763,7 +1806,7 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, 
         struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word, *ptr;
+    char *buf = NULL, *word, *ptr;
     size_t word_len;
     long long int num = 0;
     unsigned long long int unum = 0;
@@ -1771,7 +1814,8 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, 
 
     if (*flags & LYS_SET_VALUE) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(val_kw));
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     *flags |= LYS_SET_VALUE;
 
@@ -1780,7 +1824,8 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, 
 
     if (!word_len || (word[0] == '+') || ((word[0] == '0') && (word_len > 1)) || ((val_kw == LY_STMT_POSITION) && !strncmp(word, "-0", 2))) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
-        goto error;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     errno = 0;
@@ -1788,46 +1833,51 @@ parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, enum ly_stmt val_kw, 
         num = strtoll(word, &ptr, LY_BASE_DEC);
         if ((num < INT64_C(-2147483648)) || (num > INT64_C(2147483647))) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
-            goto error;
+            ret = LY_EVALID;
+            goto cleanup;
         }
     } else {
         unum = strtoull(word, &ptr, LY_BASE_DEC);
         if (unum > UINT64_C(4294967295)) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
-            goto error;
+            ret = LY_EVALID;
+            goto cleanup;
         }
     }
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
-        goto error;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     if (errno == ERANGE) {
         LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, ly_stmt2str(val_kw));
-        goto error;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     if (val_kw == LY_STMT_VALUE) {
         *value = num;
     } else {
         *value = unum;
     }
-    free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, val_kw == LY_STMT_VALUE ? LY_STMT_VALUE : LY_STMT_POSITION, 0, exts));
+            ret = parse_ext(ctx, word, word_len, val_kw == LY_STMT_VALUE ? LY_STMT_VALUE : LY_STMT_POSITION, 0, exts);
+            LY_CHECK_GOTO(ret, cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(val_kw));
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
-    return ret;
 
-error:
+cleanup:
     free(buf);
-    return LY_EVALID;
+    return ret;
 }
 
 /**
@@ -1860,7 +1910,7 @@ parse_type_enum(struct lys_yang_parser_ctx *ctx, enum ly_stmt enum_kw, struct ly
     INSERT_WORD_GOTO(ctx, buf, enm->name, word, word_len, ret, cleanup);
     CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &enm->dsc, Y_STR_ARG, &enm->exts));
@@ -1892,6 +1942,7 @@ parse_type_enum(struct lys_yang_parser_ctx *ctx, enum ly_stmt enum_kw, struct ly
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(enum_kw));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, enm->exts, ret, cleanup);
     }
 
 cleanup:
@@ -1911,7 +1962,7 @@ static LY_ERR
 parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, uint8_t *fracdig, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word, *ptr;
+    char *buf = NULL, *word, *ptr;
     size_t word_len;
     unsigned long long int num;
     enum ly_stmt kw;
@@ -1922,12 +1973,12 @@ parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, uint8_t *fracdig, struct 
     }
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if (!word_len || (word[0] == '0') || !isdigit(word[0])) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "fraction-digits");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     errno = 0;
@@ -1935,27 +1986,31 @@ parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, uint8_t *fracdig, struct 
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "fraction-digits");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     if ((errno == ERANGE) || (num > LY_TYPE_DEC64_FD_MAX)) {
         LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "fraction-digits");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     *fracdig = num;
-    free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_FRACTION_DIGITS, 0, exts));
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, LY_STMT_FRACTION_DIGITS, 0, exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "fraction-digits");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
+    free(buf);
     return ret;
 }
 
@@ -1974,7 +2029,7 @@ parse_type_reqinstance(struct lys_yang_parser_ctx *ctx, uint8_t *reqinst, uint16
         struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word;
+    char *buf = NULL, *word;
     size_t word_len;
     enum ly_stmt kw;
 
@@ -1985,27 +2040,31 @@ parse_type_reqinstance(struct lys_yang_parser_ctx *ctx, uint8_t *reqinst, uint16
     *flags |= LYS_SET_REQINST;
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if ((word_len == ly_strlen_const("true")) && !strncmp(word, "true", word_len)) {
         *reqinst = 1;
     } else if ((word_len != ly_strlen_const("false")) || strncmp(word, "false", word_len)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "require-instance");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
-    free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_REQUIRE_INSTANCE, 0, exts));
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, LY_STMT_REQUIRE_INSTANCE, 0, exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "require-instance");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
+    free(buf);
     return ret;
 }
 
@@ -2022,7 +2081,7 @@ static LY_ERR
 parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, const char **pat, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word;
+    char *buf = NULL, *word;
     size_t word_len;
     enum ly_stmt kw;
 
@@ -2032,35 +2091,40 @@ parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, const char **pat, s
     }
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if ((word_len != ly_strlen_const("invert-match")) || strncmp(word, "invert-match", word_len)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "modifier");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
-    free(buf);
 
     /* replace the value in the dictionary */
     buf = malloc(strlen(*pat) + 1);
-    LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!buf, LOGMEM(PARSER_CTX(ctx)); ret = LY_EMEM, cleanup);
     strcpy(buf, *pat);
     lydict_remove(PARSER_CTX(ctx), *pat);
 
     assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
     buf[0] = LYSP_RESTR_PATTERN_NACK;
-    LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, pat));
+    LY_CHECK_GOTO(ret = lydict_insert_zc(PARSER_CTX(ctx), buf, pat), cleanup);
+    buf = NULL;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_MODIFIER, 0, exts));
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, LY_STMT_MODIFIER, 0, exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "modifier");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
+    free(buf);
     return ret;
 }
 
@@ -2102,7 +2166,7 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct lysp_restr **patterns
     LY_CHECK_RET(lydict_insert_zc(PARSER_CTX(ctx), buf, &restr->arg.str));
     restr->arg.mod = PARSER_CUR_PMOD(ctx);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &restr->dsc, Y_STR_ARG, &restr->exts));
@@ -2127,7 +2191,10 @@ parse_type_pattern(struct lys_yang_parser_ctx *ctx, struct lysp_restr **patterns
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "pattern");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, restr->exts, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -2161,7 +2228,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct lysp_type *type)
     /* set module */
     type->pmod = PARSER_CUR_PMOD(ctx);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_BASE:
             LY_CHECK_RET(parse_text_fields(ctx, LY_STMT_BASE, &type->bases, Y_PREF_IDENTIF_ARG, &type->exts));
@@ -2241,6 +2308,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, struct lysp_type *type)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "type");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, type->exts, ret, cleanup);
     }
 
 cleanup:
@@ -2274,7 +2342,7 @@ parse_leaf(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
     INSERT_WORD_GOTO(ctx, buf, leaf->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &leaf->flags, &leaf->exts));
@@ -2317,10 +2385,9 @@ parse_leaf(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "leaf");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, leaf->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* mandatory substatements */
     if (!leaf->type.name) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "type", "leaf");
@@ -2345,7 +2412,7 @@ LY_ERR
 parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word, *ptr;
+    char *buf = NULL, *word, *ptr;
     size_t word_len;
     unsigned long long int num;
     enum ly_stmt kw;
@@ -2357,12 +2424,12 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flag
     *flags |= LYS_SET_MAX;
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if (!word_len || (word[0] == '0') || ((word[0] != 'u') && !isdigit(word[0]))) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "max-elements");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     if (ly_strncmp("unbounded", word, word_len)) {
@@ -2371,13 +2438,13 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flag
         /* we have not parsed the whole argument */
         if ((size_t)(ptr - word) != word_len) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "max-elements");
-            free(buf);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
         if ((errno == ERANGE) || (num > UINT32_MAX)) {
             LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "max-elements");
-            free(buf);
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
 
         *max = num;
@@ -2387,16 +2454,21 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, uint32_t *max, uint16_t *flag
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_MAX_ELEMENTS, 0, exts));
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, LY_STMT_MAX_ELEMENTS, 0, exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "max-elements");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
+    free(buf);
     return ret;
 }
 
@@ -2414,7 +2486,7 @@ LY_ERR
 parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word, *ptr;
+    char *buf = NULL, *word, *ptr;
     size_t word_len;
     unsigned long long int num;
     enum ly_stmt kw;
@@ -2426,12 +2498,12 @@ parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flag
     *flags |= LYS_SET_MIN;
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if (!word_len || !isdigit(word[0]) || ((word[0] == '0') && (word_len > 1))) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "min-elements");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
     errno = 0;
@@ -2439,27 +2511,31 @@ parse_minelements(struct lys_yang_parser_ctx *ctx, uint32_t *min, uint16_t *flag
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "min-elements");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     if ((errno == ERANGE) || (num > UINT32_MAX)) {
         LOGVAL_PARSER(ctx, LY_VCODE_OOB, word_len, word, "min-elements");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
     *min = num;
-    free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_MIN_ELEMENTS, 0, exts));
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, LY_STMT_MIN_ELEMENTS, 0, exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "min-elements");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
+    free(buf);
     return ret;
 }
 
@@ -2476,7 +2552,7 @@ static LY_ERR
 parse_orderedby(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *buf, *word;
+    char *buf = NULL, *word;
     size_t word_len;
     enum ly_stmt kw;
 
@@ -2486,7 +2562,7 @@ parse_orderedby(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
     }
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_GOTO(ret = get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len), cleanup);
 
     if ((word_len == ly_strlen_const("system")) && !strncmp(word, "system", word_len)) {
         *flags |= LYS_ORDBY_SYSTEM;
@@ -2494,21 +2570,25 @@ parse_orderedby(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
         *flags |= LYS_ORDBY_USER;
     } else {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, "ordered-by");
-        free(buf);
-        return LY_EVALID;
+        ret = LY_EVALID;
+        goto cleanup;
     }
-    free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_ORDERED_BY, 0, exts));
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, LY_STMT_ORDERED_BY, 0, exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "ordered-by");
-            return LY_EVALID;
+            ret = LY_EVALID;
+            goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
+    free(buf);
     return ret;
 }
 
@@ -2539,7 +2619,7 @@ parse_leaflist(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
     INSERT_WORD_GOTO(ctx, buf, llist->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &llist->flags, &llist->exts));
@@ -2588,10 +2668,9 @@ parse_leaflist(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "llist");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, llist->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* mandatory substatements */
     if (!llist->type.name) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "type", "leaf-list");
@@ -2626,7 +2705,7 @@ parse_refine(struct lys_yang_parser_ctx *ctx, struct lysp_refine **refines)
     CHECK_NONEMPTY(ctx, word_len, "refine");
     INSERT_WORD_GOTO(ctx, buf, rf->nodeid, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &rf->flags, &rf->exts));
@@ -2666,6 +2745,7 @@ parse_refine(struct lys_yang_parser_ctx *ctx, struct lysp_refine **refines)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "refine");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, rf->exts, ret, cleanup);
     }
 
 cleanup:
@@ -2696,7 +2776,7 @@ parse_typedef(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
     INSERT_WORD_GOTO(ctx, buf, tpdf->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DEFAULT:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DEFAULT, 0, &tpdf->dflt.str, Y_STR_ARG, &tpdf->exts));
@@ -2724,10 +2804,9 @@ parse_typedef(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "typedef");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, tpdf->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* mandatory substatements */
     if (!tpdf->type.name) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "type", "typedef");
@@ -2774,7 +2853,7 @@ parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_
     inout_p->parent = parent;
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", ly_stmt2str(inout_kw));
@@ -2817,15 +2896,15 @@ parse_inout(struct lys_yang_parser_ctx *ctx, enum ly_stmt inout_kw, struct lysp_
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(inout_kw));
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, inout_p->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     if (!inout_p->child) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
         return LY_EVALID;
     }
 
+cleanup:
     return ret;
 }
 
@@ -2854,7 +2933,7 @@ parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct l
     act->nodetype = parent ? LYS_ACTION : LYS_RPC;
     act->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &act->dsc, Y_STR_ARG, &act->exts));
@@ -2889,10 +2968,9 @@ parse_action(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct l
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), parent ? "action" : "rpc");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, act->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* always initialize inout, they are technically present (needed for later deviations/refines) */
     if (!act->input.nodetype) {
         act->input.nodetype = LYS_INPUT;
@@ -2934,7 +3012,7 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct ly
     notif->nodetype = LYS_NOTIF;
     notif->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &notif->dsc, Y_STR_ARG, &notif->exts));
@@ -2991,6 +3069,7 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct ly
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "notification");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, notif->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3022,7 +3101,7 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
     grp->nodetype = LYS_GROUPING;
     grp->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &grp->dsc, Y_STR_ARG, &grp->exts));
@@ -3080,10 +3159,9 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "grouping");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, grp->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* store data for collision check */
     if (parent) {
         assert(ctx->main_ctx);
@@ -3120,7 +3198,7 @@ parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
     aug->nodetype = LYS_AUGMENT;
     aug->parent = parent;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &aug->dsc, Y_STR_ARG, &aug->exts));
@@ -3181,6 +3259,7 @@ parse_augment(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct 
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "augment");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, aug->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3214,7 +3293,7 @@ parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
     INSERT_WORD_GOTO(ctx, buf, uses->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &uses->dsc, Y_STR_ARG, &uses->exts));
@@ -3245,6 +3324,7 @@ parse_uses(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "uses");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, uses->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3278,7 +3358,7 @@ parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
     INSERT_WORD_GOTO(ctx, buf, cas->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &cas->dsc, Y_STR_ARG, &cas->exts));
@@ -3327,6 +3407,7 @@ parse_case(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "case");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, cas->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3360,7 +3441,7 @@ parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct l
     INSERT_WORD_GOTO(ctx, buf, choice->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &choice->flags, &choice->exts));
@@ -3421,6 +3502,7 @@ parse_choice(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct l
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "choice");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, choice->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3454,7 +3536,7 @@ parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struc
     INSERT_WORD_GOTO(ctx, buf, cont->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &cont->flags, &cont->exts));
@@ -3527,6 +3609,7 @@ parse_container(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struc
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "container");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, cont->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3560,7 +3643,7 @@ parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
     INSERT_WORD_GOTO(ctx, buf, list->name, word, word_len, ret, cleanup);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             LY_CHECK_RET(parse_config(ctx, &list->flags, &list->exts));
@@ -3645,6 +3728,7 @@ parse_list(struct lys_yang_parser_ctx *ctx, struct lysp_node *parent, struct lys
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "list");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, list->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3687,7 +3771,7 @@ parse_yinelement(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_e
     }
     free(buf);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(parse_ext(ctx, word, word_len, LY_STMT_YIN_ELEMENT, 0, exts));
@@ -3697,7 +3781,10 @@ parse_yinelement(struct lys_yang_parser_ctx *ctx, uint16_t *flags, struct lysp_e
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "yin-element");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
+
+cleanup:
     return ret;
 }
 
@@ -3728,7 +3815,7 @@ parse_argument(struct lys_yang_parser_ctx *ctx, const char **argument, uint16_t 
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, *argument, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_YIN_ELEMENT:
             LY_CHECK_RET(parse_yinelement(ctx, flags, exts));
@@ -3740,6 +3827,7 @@ parse_argument(struct lys_yang_parser_ctx *ctx, const char **argument, uint16_t 
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "argument");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, NULL, ret, cleanup);
     }
 
 cleanup:
@@ -3769,7 +3857,7 @@ parse_extension(struct lys_yang_parser_ctx *ctx, struct lysp_ext **extensions)
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, ex->name, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &ex->dsc, Y_STR_ARG, &ex->exts));
@@ -3790,6 +3878,7 @@ parse_extension(struct lys_yang_parser_ctx *ctx, struct lysp_ext **extensions)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "extension");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, ex->exts, ret, cleanup);
     }
 
 cleanup:
@@ -3883,7 +3972,7 @@ parse_deviate(struct lys_yang_parser_ctx *ctx, struct lysp_deviate **deviates)
     }
     d->mod = dev_mod;
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto cleanup, goto cleanup) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_CONFIG:
             switch (dev_mod) {
@@ -4011,6 +4100,7 @@ parse_deviate(struct lys_yang_parser_ctx *ctx, struct lysp_deviate **deviates)
             ret = LY_EVALID;
             goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, d->exts, ret, cleanup);
     }
 
 cleanup:
@@ -4050,7 +4140,7 @@ parse_deviation(struct lys_yang_parser_ctx *ctx, struct lysp_deviation **deviati
     CHECK_NONEMPTY(ctx, word_len, "deviation");
     INSERT_WORD_GOTO(ctx, buf, dev->nodeid, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, goto cleanup) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_GOTO(ret = parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &dev->dsc, Y_STR_ARG, &dev->exts), cleanup);
@@ -4069,10 +4159,9 @@ parse_deviation(struct lys_yang_parser_ctx *ctx, struct lysp_deviation **deviati
             ret = LY_EVALID;
             goto cleanup;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, dev->exts, ret, cleanup);
     }
-    LY_CHECK_GOTO(ret, cleanup);
 
-checks:
     /* mandatory substatements */
     if (!dev->deviates) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "deviate", "deviation");
@@ -4111,7 +4200,7 @@ parse_feature(struct lys_yang_parser_ctx *ctx, struct lysp_feature **features)
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, feat->name, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &feat->dsc, Y_STR_ARG, &feat->exts));
@@ -4132,6 +4221,7 @@ parse_feature(struct lys_yang_parser_ctx *ctx, struct lysp_feature **features)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "feature");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, feat->exts, ret, cleanup);
     }
 
 cleanup:
@@ -4161,7 +4251,7 @@ parse_identity(struct lys_yang_parser_ctx *ctx, struct lysp_ident **identities)
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, ident->name, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, return LY_SUCCESS, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
         switch (kw) {
         case LY_STMT_DESCRIPTION:
             LY_CHECK_RET(parse_text_field(ctx, LY_STMT_DESCRIPTION, 0, &ident->dsc, Y_STR_ARG, &ident->exts));
@@ -4190,6 +4280,7 @@ parse_identity(struct lys_yang_parser_ctx *ctx, struct lysp_ident **identities)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "identity");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, ident->exts, ret, cleanup);
     }
 
 cleanup:
@@ -4220,7 +4311,7 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod)
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, mod->mod->name, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
 
 #define CHECK_ORDER(SECTION) \
         if (mod_stmt > SECTION) {LOGVAL_PARSER(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw)); return LY_EVALID;}mod_stmt = SECTION
@@ -4381,10 +4472,9 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct lysp_module *mod)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "module");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, mod->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* mandatory substatements */
     if (!mod->mod->ns) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "namespace", "module");
@@ -4430,7 +4520,7 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
     LY_CHECK_RET(get_argument(ctx, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD_GOTO(ctx, buf, submod->name, word, word_len, ret, cleanup);
 
-    YANG_READ_SUBSTMT_FOR(ctx, kw, word, word_len, ret, goto checks, return ret) {
+    YANG_READ_SUBSTMT_FOR_GOTO(ctx, kw, word, word_len, ret, cleanup) {
 
 #define CHECK_ORDER(SECTION) \
         if (mod_stmt > SECTION) {LOGVAL_PARSER(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw)); return LY_EVALID;}mod_stmt = SECTION
@@ -4591,10 +4681,9 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "submodule");
             return LY_EVALID;
         }
+        YANG_READ_SUBSTMT_NEXT_ITER(ctx, kw, word, word_len, submod->exts, ret, cleanup);
     }
-    LY_CHECK_RET(ret);
 
-checks:
     /* mandatory substatements */
     if (!submod->prefix) {
         LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "belongs-to", "submodule");
