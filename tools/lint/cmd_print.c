@@ -243,15 +243,12 @@ cmd_print(struct ly_ctx **ctx, const char *cmdline)
     if (node_path) {
         const struct lysc_node *node;
 
-        node = lys_find_path(*ctx, NULL, node_path, 0);
+        node = find_schema_path(*ctx, node_path);
         if (!node) {
-            node = lys_find_path(*ctx, NULL, node_path, 1);
-
-            if (!node) {
-                YLMSG_E("The requested schema node \"%s\" does not exists.\n", node_path);
-                goto cleanup;
-            }
+            YLMSG_E("The requested schema node \"%s\" does not exists.\n", node_path);
+            goto cleanup;
         }
+
         if (lys_print_node(out, node, format, 0, options_print)) {
             YLMSG_E("Unable to print schema node %s.\n", node_path);
             goto cleanup;

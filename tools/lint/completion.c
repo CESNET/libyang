@@ -122,8 +122,8 @@ single_hint_add_children(const struct lysc_node *last_node, char ***matches, uns
         return;
     }
 
-    while ((node = lys_getnext(node, last_node, NULL, 0))) {
-        match = lysc_path(node, LYSC_PATH_DATA, NULL, 0);
+    while ((node = lys_getnext(node, last_node, NULL, LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHCHOICE))) {
+        match = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
         cmd_completion_add_match(match, matches, match_count);
         free(match);
     }
@@ -153,7 +153,7 @@ add_all_children_nodes(const struct lysc_module *module, const struct lysc_node 
     }
 
     node = NULL;
-    while ((node = lys_getnext(node, parent, module, 0))) {
+    while ((node = lys_getnext(node, parent, module, LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHCHOICE))) {
         if (parent && (node->module != parent->module)) {
             /* augmented node */
             if (asprintf(&node_name, "%s:%s", node->module->name, node->name) == -1) {
@@ -170,7 +170,7 @@ add_all_children_nodes(const struct lysc_module *module, const struct lysc_node 
         if (!hint_node_name || !strncmp(hint_node_name, node_name, strlen(hint_node_name))) {
             /* adding just module names + their top level node(s) to the hint */
             *last_node = node;
-            match = lysc_path(node, LYSC_PATH_DATA, NULL, 0);
+            match = lysc_path(node, LYSC_PATH_LOG, NULL, 0);
             cmd_completion_add_match(match, matches, match_count);
             free(match);
         }
@@ -189,7 +189,7 @@ static void
 get_schema_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
     const struct lys_module *module;
-    uint32_t idx, prev_lo;
+    uint32_t idx;
     const char *start;
     char *end, *module_name = NULL, *path = NULL;
     const struct lysc_node *parent, *last_node;
@@ -260,10 +260,8 @@ get_schema_completion(const char *hint, char ***matches, unsigned int *match_cou
             goto cleanup;
         }
 
-        /* silently get the last parent in the hint (it may not exist) */
-        prev_lo = ly_log_options(0);
-        parent = lys_find_path(ctx, NULL, path, 0);
-        ly_log_options(prev_lo);
+        /* get the last parent in the hint (it may not exist) */
+        parent = find_schema_path(ctx, path);
 
         /* add all (matching) child nodes of the parent */
         add_all_children_nodes(NULL, parent, start + 1, matches, match_count, &last_node);
