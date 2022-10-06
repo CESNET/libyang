@@ -140,16 +140,12 @@ lysc_ext_dup(struct lysc_ext *orig)
 }
 
 LIBYANG_API_DEF LY_ERR
-lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p,
-        enum ly_stmt_cardinality *cardinality_p)
+lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p)
 {
     LY_ARRAY_COUNT_TYPE u;
 
     if (instance_p) {
         *instance_p = NULL;
-    }
-    if (cardinality_p) {
-        *cardinality_p = 0;
     }
 
     LY_ARRAY_FOR(ext->substmts, u) {
@@ -166,9 +162,6 @@ lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void
         }
 
         /* match */
-        if (cardinality_p) {
-            *cardinality_p = ext->substmts[u].cardinality;
-        }
         if (instance_p) {
             *instance_p = ext->substmts[u].storage;
         }
@@ -586,20 +579,14 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instan
     case LY_STMT_PRESENCE:
     case LY_STMT_REFERENCE:
     case LY_STMT_UNITS: {
-        const char ***strs_p, **str_p;
+        const char **str_p;
 
-        if (substmt->cardinality < LY_STMT_CARD_SOME) {
-            /* single item */
-            str_p = substmt->storage;
-            if (*str_p) {
-                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-                rc = LY_EVALID;
-                goto cleanup;
-            }
-        } else {
-            /* sized array */
-            strs_p = substmt->storage;
-            LY_ARRAY_NEW_GOTO(ctx->ctx, *strs_p, str_p, rc, cleanup);
+        /* single item */
+        str_p = substmt->storage;
+        if (*str_p) {
+            LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+            rc = LY_EVALID;
+            goto cleanup;
         }
 
         /* called instead of lysp_stmt_parse() to skip validation and not parse nested ext instances */
@@ -607,26 +594,14 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instan
         break;
     }
     case LY_STMT_MUST: {
-        struct lysc_must **musts_p, **must_p, *must;
+        struct lysc_must **musts_p, *must;
 
         /* parse */
         LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&restrs, NULL), cleanup);
 
-        if (substmt->cardinality < LY_STMT_CARD_SOME) {
-            /* single item */
-            must_p = substmt->storage;
-            if (*must_p) {
-                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-                rc = LY_EVALID;
-                goto cleanup;
-            }
-            *must_p = calloc(1, sizeof **must_p);
-            must = *must_p;
-        } else {
-            /* sized array */
-            musts_p = substmt->storage;
-            LY_ARRAY_NEW_GOTO(ctx->ctx, *musts_p, must, rc, cleanup);
-        }
+        /* sized array */
+        musts_p = substmt->storage;
+        LY_ARRAY_NEW_GOTO(ctx->ctx, *musts_p, must, rc, cleanup);
 
         /* compile */
         LY_CHECK_GOTO(rc = lys_compile_must(ctx, restrs, must), cleanup);
@@ -644,45 +619,26 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instan
         break;
     }
     case LY_STMT_STATUS:
-        if (substmt->cardinality > LY_STMT_CARD_MAND) {
-            /* only cardinality 0..1 and 1 */
-            goto not_supported;
-        }
         /* result needs to be a pointer to pointer */
         LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, &substmt->storage, NULL), cleanup);
         break;
 
     case LY_STMT_TYPEDEF:
-        if (substmt->cardinality < LY_STMT_CARD_SOME) {
-            /* single item */
-            if (*(struct lysp_tpdf **)substmt->storage) {
-                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-                rc = LY_EVALID;
-                goto cleanup;
-            }
-        } /* else sized array */
-
         /* parse */
         LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, substmt->storage, NULL), cleanup);
         break;
 
     case LY_STMT_TYPE: {
-        struct lysc_type ***types_p, **type_p;
+        struct lysc_type **type_p;
         const uint16_t *flags = lys_compile_ext_instance_get_storage(ext, LY_STMT_STATUS);
         const char **units = (void *)lys_compile_ext_instance_get_storage(ext, LY_STMT_UNITS);
 
-        if (substmt->cardinality < LY_STMT_CARD_SOME) {
-            /* single item */
-            type_p = substmt->storage;
-            if (*type_p) {
-                LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
-                rc = LY_EVALID;
-                goto cleanup;
-            }
-        } else {
-            /* sized array of pointers */
-            types_p = substmt->storage;
-            LY_ARRAY_NEW_GOTO(ctx->ctx, *types_p, type_p, rc, cleanup);
+        /* single item */
+        type_p = substmt->storage;
+        if (*type_p) {
+            LOGVAL(ctx->ctx, LY_VCODE_DUPSTMT, stmt->stmt);
+            rc = LY_EVALID;
+            goto cleanup;
         }
 
         LY_CHECK_GOTO(rc = lysp_stmt_parse(ctx, stmt, (void **)&ptype, NULL), cleanup);
@@ -693,10 +649,9 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, const struct lysp_ext_instan
     /* TODO support other substatements (parse stmt to lysp and then compile lysp to lysc),
         * also note that in many statements their extensions are not taken into account  */
     default:
-not_supported:
-        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" in cardinality %s is not supported as an extension "
-                "(found in \"%s%s%s\") substatement.", stmt->stmt, ly_cardinality2str(substmt->cardinality),
-                ext_p->name, ext_p->argument ? " " : "", ext_p->argument ? ext_p->argument : "");
+        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" is not supported as an extension "
+                "(found in \"%s%s%s\") substatement.", stmt->stmt, ext_p->name, ext_p->argument ? " " : "",
+                ext_p->argument ? ext_p->argument : "");
         rc = LY_EVALID;
         goto cleanup;
     }
@@ -716,7 +671,6 @@ lys_compile_extension_instance_(struct lysc_ctx *ctx, const struct lysp_ext_inst
     LY_ERR rc = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
-    uint64_t stmt_counter;
 
     /* check for invalid substatements */
     for (stmt = ext_p->child; stmt; stmt = stmt->next) {
@@ -745,26 +699,14 @@ lys_compile_extension_instance_(struct lysc_ctx *ctx, const struct lysp_ext_inst
      * the order is important for some of the statements depending on others (e.g. type needs status and units) */
 
     LY_ARRAY_FOR(ext->substmts, u) {
-        stmt_counter = 0;
-
         for (stmt = ext_p->child; stmt; stmt = stmt->next) {
             if (ext->substmts[u].stmt != stmt->kw) {
                 continue;
             }
 
-            stmt_counter++;
             if ((rc = lys_compile_ext_instance_stmt(ctx, ext_p, ext, &ext->substmts[u], stmt, aug_target))) {
                 goto cleanup;
             }
-        }
-
-        if (((ext->substmts[u].cardinality == LY_STMT_CARD_MAND) || (ext->substmts[u].cardinality == LY_STMT_CARD_SOME)) &&
-                !stmt_counter) {
-            LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s%s%s\".",
-                    ly_stmt2str(ext->substmts[u].stmt), ext_p->name, ext_p->argument ? " " : "",
-                    ext_p->argument ? ext_p->argument : "");
-            rc = LY_EVALID;
-            goto cleanup;
         }
     }
 

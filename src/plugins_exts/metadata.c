@@ -81,32 +81,26 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_IFF].stmt = LY_STMT_IF_FEATURE;
-    c_ext->substmts[ANNOTATION_SUBSTMT_IFF].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[ANNOTATION_SUBSTMT_IFF].storage = &annotation->iffeatures;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_UNITS].stmt = LY_STMT_UNITS;
-    c_ext->substmts[ANNOTATION_SUBSTMT_UNITS].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[ANNOTATION_SUBSTMT_UNITS].storage = &annotation->units;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_STATUS].stmt = LY_STMT_STATUS;
-    c_ext->substmts[ANNOTATION_SUBSTMT_STATUS].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[ANNOTATION_SUBSTMT_STATUS].storage = &annotation->flags;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_TYPE].stmt = LY_STMT_TYPE;
-    c_ext->substmts[ANNOTATION_SUBSTMT_TYPE].cardinality = LY_STMT_CARD_MAND;
     c_ext->substmts[ANNOTATION_SUBSTMT_TYPE].storage = &annotation->type;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_DSC].stmt = LY_STMT_DESCRIPTION;
-    c_ext->substmts[ANNOTATION_SUBSTMT_DSC].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[ANNOTATION_SUBSTMT_DSC].storage = &annotation->dsc;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[ANNOTATION_SUBSTMT_REF].stmt = LY_STMT_REFERENCE;
-    c_ext->substmts[ANNOTATION_SUBSTMT_REF].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[ANNOTATION_SUBSTMT_REF].storage = &annotation->ref;
 
     ret = lys_compile_extension_instance(cctx, p_ext, c_ext);

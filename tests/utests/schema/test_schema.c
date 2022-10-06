@@ -1718,7 +1718,6 @@ test_extension_compile(void **state)
     child.kw = LY_STMT_ERROR_MESSAGE;
 
     substmt->stmt = LY_STMT_ERROR_MESSAGE;
-    substmt->cardinality = LY_STMT_CARD_OPT;
     substmt->storage = &ext_c.data;
 
     /* compile */

@@ -272,19 +272,7 @@ enum ly_stmt {
 };
 
 /**
- * @brief Possible cardinalities of the YANG statements.
- *
- * Used in extensions plugins to define cardinalities of the extension instance substatements.
- */
-enum ly_stmt_cardinality {
-    LY_STMT_CARD_OPT,    /* 0..1 */
-    LY_STMT_CARD_MAND,   /* 1 */
-    LY_STMT_CARD_SOME,   /* 1..n */
-    LY_STMT_CARD_ANY     /* 0..n */
-};
-
-/**
- * @brief Helper structure for generic storage of the extension instances content.
+ * @brief Structure representing a generic parsed YANG substatement in an extension instance.
  */
 struct lysp_stmt {
     const char *stmt;                /**< identifier of the statement */
@@ -329,9 +317,8 @@ struct lysp_ext_instance {
  */
 struct lysc_ext_substmt {
     enum ly_stmt stmt;                     /**< allowed substatement */
-    enum ly_stmt_cardinality cardinality;  /**< cardinality of the substatement */
     void *storage;                         /**< pointer to the storage of the compiled statement according to the specific
-                                                lysc_ext_substmt::stmt and lysc_ext_substmt::cardinality */
+                                                lysc_ext_substmt::stmt */
 };
 
 /**
@@ -363,6 +350,7 @@ struct lysc_ext_instance {
     uint32_t plugins_extensions_apiver__ = LYPLG_EXT_API_VERSION; \
     const struct lyplg_ext_record plugins_extensions__[]
 
+typedef LY_ERR (*lyplg_ext_parse_clb)(struct lysp_ctx *pctx, struct lysp_ext_instance *p_ext);
 
 /**
  * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
@@ -461,6 +449,7 @@ typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, str
 struct lyplg_ext {
     const char *id;                         /**< plugin identification (mainly for distinguish incompatible versions
                                                  of the plugins for external tools) */
+    lyplg_ext_parse_clb parse;              /**< callback to parse the extension instance substatements */
     lyplg_ext_compile_clb compile;          /**< callback to compile extension instance from the parsed data */
     lyplg_ext_schema_printer_clb sprinter;  /**< callback to print the compiled content (info format) of the extension
                                                  instance */
@@ -494,14 +483,6 @@ struct lyplg_ext_record {
  * @return Constant string representation of the given @p stmt.
  */
 LIBYANG_API_DECL const char *ly_stmt2str(enum ly_stmt stmt);
-
-/**
- * @brief Stringify statement cardinality.
- *
- * @param[in] card The cardinality to stringify.
- * @return Constant string representation of the given @p card.
- */
-LIBYANG_API_DECL const char *ly_cardinality2str(enum ly_stmt_cardinality card);
 
 /**
  * @brief Convert nodetype to statement identifier
@@ -587,13 +568,10 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_schema_mount_create_context(const struct lysc_
  * on the @p substmt and can be found in the documentation of each ::ly_stmt value. Also note that some of the substatements
  * (::lysc_node based or flags) can share the storage with other substatements. In case the pointer is NULL, still the return
  * code can be used to at least know if the substatement is allowed for the extension.
- * @param[out] cardinality_p Pointer to provide allowed cardinality of the substatements in the extension. Note that in some
- * cases, the type of the storage depends also on the cardinality of the substatement.
  * @return LY_SUCCESS if the @p substmt found.
  * @return LY_ENOT in case the @p ext is not able to store (does not allow) the specified @p substmt.
  */
-LIBYANG_API_DECL LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt,
-        void **instance_p, enum ly_stmt_cardinality *cardinality_p);
+LIBYANG_API_DECL LY_ERR lysc_ext_substmt(const struct lysc_ext_instance *ext, enum ly_stmt substmt, void **instance_p);
 
 /** @} pluginsExtensions */
 

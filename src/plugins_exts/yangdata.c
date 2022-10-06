@@ -71,17 +71,14 @@ yangdata_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, s
     LY_ARRAY_CREATE_GOTO(cctx->ctx, c_ext->substmts, 3, ret, emem);
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[0].stmt = LY_STMT_CONTAINER;
-    c_ext->substmts[0].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[0].storage = &c_ext->data;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[1].stmt = LY_STMT_CHOICE;
-    c_ext->substmts[1].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[1].storage = &c_ext->data;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[2].stmt = LY_STMT_USES;
-    c_ext->substmts[2].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[2].storage = &c_ext->data;
 
     *lysc_ctx_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;

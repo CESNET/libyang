@@ -89,73 +89,59 @@ structure_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, 
     LY_ARRAY_CREATE_GOTO(cctx->ctx, c_ext->substmts, 14, rc, emem);
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[0].stmt = LY_STMT_MUST;
-    c_ext->substmts[0].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[0].storage = &struct_data->musts;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[1].stmt = LY_STMT_STATUS;
-    c_ext->substmts[1].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[1].storage = &struct_data->flags;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[2].stmt = LY_STMT_DESCRIPTION;
-    c_ext->substmts[2].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[2].storage = &struct_data->dsc;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[3].stmt = LY_STMT_REFERENCE;
-    c_ext->substmts[3].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[3].storage = &struct_data->ref;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[4].stmt = LY_STMT_TYPEDEF;
-    c_ext->substmts[4].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[4].storage = &struct_data->typedefs;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[5].stmt = LY_STMT_GROUPING;
-    c_ext->substmts[5].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[5].storage = &struct_data->groupings;
 
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[6].stmt = LY_STMT_CONTAINER;
-    c_ext->substmts[6].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[6].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[7].stmt = LY_STMT_LEAF;
-    c_ext->substmts[7].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[7].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[8].stmt = LY_STMT_LEAF_LIST;
-    c_ext->substmts[8].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[8].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[9].stmt = LY_STMT_LIST;
-    c_ext->substmts[9].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[9].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[10].stmt = LY_STMT_CHOICE;
-    c_ext->substmts[10].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[10].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[11].stmt = LY_STMT_ANYDATA;
-    c_ext->substmts[11].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[11].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[12].stmt = LY_STMT_ANYXML;
-    c_ext->substmts[12].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[12].storage = &struct_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[13].stmt = LY_STMT_USES;
-    c_ext->substmts[13].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[13].storage = &struct_data->child;
 
     *lysc_ctx_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
@@ -232,64 +218,52 @@ structure_aug_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_e
     LY_ARRAY_CREATE_GOTO(cctx->ctx, c_ext->substmts, 12, rc, emem);
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[0].stmt = LY_STMT_STATUS;
-    c_ext->substmts[0].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[0].storage = &aug_data->flags;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[1].stmt = LY_STMT_DESCRIPTION;
-    c_ext->substmts[1].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[1].storage = &aug_data->dsc;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[2].stmt = LY_STMT_REFERENCE;
-    c_ext->substmts[2].cardinality = LY_STMT_CARD_OPT;
     c_ext->substmts[2].storage = &aug_data->ref;
 
     /* data-def-stmt */
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[3].stmt = LY_STMT_CONTAINER;
-    c_ext->substmts[3].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[3].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[4].stmt = LY_STMT_LEAF;
-    c_ext->substmts[4].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[4].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[5].stmt = LY_STMT_LEAF_LIST;
-    c_ext->substmts[5].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[5].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[6].stmt = LY_STMT_LIST;
-    c_ext->substmts[6].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[6].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[7].stmt = LY_STMT_CHOICE;
-    c_ext->substmts[7].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[7].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[8].stmt = LY_STMT_ANYDATA;
-    c_ext->substmts[8].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[8].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[9].stmt = LY_STMT_ANYXML;
-    c_ext->substmts[9].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[9].storage = &target_data->child;
 
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[10].stmt = LY_STMT_USES;
-    c_ext->substmts[10].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[10].storage = &target_data->child;
 
     /* case */
     LY_ARRAY_INCREMENT(c_ext->substmts);
     c_ext->substmts[11].stmt = LY_STMT_CASE;
-    c_ext->substmts[11].cardinality = LY_STMT_CARD_ANY;
     c_ext->substmts[11].storage = &target_data->child;
 
     *lysc_ctx_get_options(cctx) |= LYS_COMPILE_NO_CONFIG | LYS_COMPILE_NO_DISABLED;
