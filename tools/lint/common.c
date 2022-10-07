@@ -805,26 +805,24 @@ find_schema_path(const struct ly_ctx *ctx, const char *schema_path)
 
         /* ex: schema_path = /ietf-interfaces:interfaces/interface/ietf-ip:ipv4 */
         module_name_end = strchr(schema_path, ':');
-        if (module_name_end) {
-            if (!end || (module_name_end < end)) {
-                /* only get module's name, if it is in the current scope */
-                free(module_name);
-                module_name = strndup(schema_path + 1, module_name_end - schema_path - 1);
-                if (!module_name) {
-                    YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
-                    parent_node = NULL;
-                    goto cleanup;
-                }
-                schema_path = module_name_end;
+        if (module_name_end && (!end || (module_name_end < end))) {
+            /* only get module's name, if it is in the current scope */
+            free(module_name);
+            /* - 1 because module_name_end points to ':' */
+            module_name = strndup(schema_path + 1, module_name_end - schema_path - 1);
+            if (!module_name) {
+                YLMSG_E("Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                parent_node = NULL;
+                goto cleanup;
             }
+            /* move the pointer to the beginning of the node's name - 1 */
+            schema_path = module_name_end;
 
+            /* recalculate the length of the node's name, because the module prefix mustn't be compared later */
             if (module_name_end < end) {
-                /* recalculate the length of the node's name, because the module prefix mustn't be compared later */
-                if (end) {
-                    node_name_len = end - module_name_end - 1;
-                } else {
-                    node_name_len = strlen(module_name_end + 1);
-                }
+                node_name_len = end - module_name_end - 1;
+            } else if (!end) {
+                node_name_len = strlen(module_name_end + 1);
             }
         }
 
