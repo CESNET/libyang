@@ -1847,30 +1847,30 @@ mount_point(void **state)
     TEST_LOCAL_SETUP;
 
     orig =
-        "module a29 {\n"
-        "  yang-version 1.1;\n"
-        "  namespace \"x:y\";\n"
-        "  prefix x;\n"
-        "  import ietf-yang-schema-mount {\n"
-             "prefix yangmnt;\n"
-        "  }\n"
-        "  list my-list {\n"
-        "    key name;\n"
-        "    leaf name {\n"
-        "      type string;\n"
-        "    }\n"
-        "    yangmnt:mount-point \"mnt-root\";\n"
-        "  }\n"
-        "  container my-cont {\n"
-        "    yangmnt:mount-point \"mnt-root\";\n"
-        "  }\n"
-        "}\n";
+            "module a29 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"x:y\";\n"
+            "  prefix x;\n"
+            "  import ietf-yang-schema-mount {\n"
+            "prefix yangmnt;\n"
+            "  }\n"
+            "  list my-list {\n"
+            "    key name;\n"
+            "    leaf name {\n"
+            "      type string;\n"
+            "    }\n"
+            "    yangmnt:mount-point \"mnt-root\";\n"
+            "  }\n"
+            "  container my-cont {\n"
+            "    yangmnt:mount-point \"mnt-root\";\n"
+            "  }\n"
+            "}\n";
 
     expect =
-        "module: a29\n"
-        "  +--mp my-list* [name]\n"
-        "  |  +--rw name    string\n"
-        "  +--mp my-cont\n";
+            "module: a29\n"
+            "  +--mp my-list* [name]\n"
+            "  |  +--rw name    string\n"
+            "  +--mp my-cont\n";
 
     UTEST_ADD_MODULE(orig, LYS_IN_YANG, NULL, &mod);
     TEST_LOCAL_PRINT(mod, 72);
