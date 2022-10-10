@@ -2566,6 +2566,7 @@ tro_create_implicit_case_node(struct trt_node node)
     ret.type = TRP_EMPTY_TRT_TYPE;
     ret.iffeatures = 0;
     ret.last_one = node.last_one;
+    ret.mount = NULL;
 
     return ret;
 }
