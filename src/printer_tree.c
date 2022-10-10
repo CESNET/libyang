@@ -448,15 +448,14 @@ struct trt_type {
  * trp_print_node
  */
 struct trt_node {
-    trt_status_type status;     /**< \<status\>. */
-    trt_flags_type flags;       /**< \<flags\>. */
-    struct trt_node_name name;  /**< \<node\> with \<opts\> mark or [\<keys\>]. */
-    struct trt_type type;       /**< \<type\> contains the name of the type or type for leafref. */
-    ly_bool iffeatures;         /**< \<if-features\>. Value 1 means that iffeatures are present and
-                                     will be printed by trt_fp_print.print_features_names callback. */
-    ly_bool last_one;           /**< Information about whether the node is the last. */
-    struct lysc_ext_instance
-    *mount;                     /**< Mount-point extension if flags == TRD_FLAGS_TYPE_MOUNT_POINT */
+    trt_status_type status;             /**< \<status\>. */
+    trt_flags_type flags;               /**< \<flags\>. */
+    struct trt_node_name name;          /**< \<node\> with \<opts\> mark or [\<keys\>]. */
+    struct trt_type type;               /**< \<type\> contains the name of the type or type for leafref. */
+    ly_bool iffeatures;                 /**< \<if-features\>. Value 1 means that iffeatures are present and
+                                             will be printed by trt_fp_print.print_features_names callback. */
+    ly_bool last_one;                   /**< Information about whether the node is the last. */
+    struct lysc_ext_instance *mount;    /**< Mount-point extension if flags == TRD_FLAGS_TYPE_MOUNT_POINT */
 };
 
 /**
@@ -726,15 +725,6 @@ struct trt_tree_ctx {
 #define TRP_TREE_CTX_GET_LYSP_NODE(CN) \
     ((const struct lysp_node *)CN->priv)
 
-/**
- * @brief Context for mounted module
- *
- */
-struct trt_mount_ctx {
-    struct trt_printer_ctx pc;
-    struct trt_tree_ctx tc;
-};
-
 /** Getter function for ::trop_node_charptr(). */
 typedef const char *(*trt_get_charptr_func)(const struct lysp_node *pn);
 
@@ -761,8 +751,7 @@ struct tro_getters {
 /**********************************************************************
  * Forward declarations
  *********************************************************************/
-static LY_ERR trb_print_mount_point(struct trt_node *node, struct trt_wrapper wr,
-        struct trt_printer_ctx *pc, struct trt_tree_ctx *tc);
+static LY_ERR trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrapper wr, struct trt_printer_ctx *pc);
 
 /**********************************************************************
  * Definition of the general Trg functions
@@ -2639,10 +2628,10 @@ trop_container_has_presence(const struct lysp_node *pn)
 }
 
 /**
- * @brief Check if container has yangmt:mount-point extension.
+ * @brief Check if container has mount-point extension.
  * @param[in] cn is pointer to container or list.
  * @param[out] mount is assigned a pointer to the extension instance, if found
- * @return 1 if container has mount-point.
+ * @return 1 if node has mount-point.
  */
 static ly_bool
 troc_node_has_mount(const struct lysc_node *cn, struct lysc_ext_instance **mount)
@@ -2665,6 +2654,12 @@ troc_node_has_mount(const struct lysc_node *cn, struct lysc_ext_instance **mount
     return 0;
 }
 
+/**
+ * @brief Check if node has mount-point extension.
+ *
+ * @param[in] pn is pointer to container or list.
+ * @return 1 if node has mount-point.
+ */
 static ly_bool
 trop_node_has_mount(const struct lysp_node *pn)
 {
@@ -3505,7 +3500,7 @@ trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct
     /* after -> print actual node with default indent */
     trp_print_entire_node(node, TRP_INIT_PCK_PRINT(tc, pc->fp.print),
             TRP_INIT_PCK_INDENT(wr, ind), pc->max_line_length, pc->out);
-    if (node.flags == TRD_FLAGS_TYPE_MOUNT_POINT) {
+    if ((node.flags == TRD_FLAGS_TYPE_MOUNT_POINT) && node.mount) {
         struct trt_wrapper wr_mount;
         struct tro_getters get;
 
@@ -3520,7 +3515,7 @@ trb_print_entire_node(struct trt_node node, uint32_t max_gap_before_type, struct
             wr_mount = trp_wrapper_set_mark_top(wr_mount);
         }
 
-        trb_print_mount_point(&node, wr_mount, pc, tc);
+        trb_print_mount_point(node.mount, wr_mount, pc);
     }
 }
 
@@ -3770,6 +3765,7 @@ trb_count_depth(const struct trt_wrapper *wr_in, const struct lysc_node *node)
  * Side-effect -> trt_tree_ctx.cn will be set to @p node.
  *
  * @param[in] node on which the function is focused.
+ * @param[in] wr_in for printing identation before node.
  * @param[in] pc is @ref TRP_trp settings.
  * @param[in,out] tc is context of tree printer.
  * @return wrapper for @p node.
@@ -3953,6 +3949,58 @@ trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct 
     }
 }
 
+/**
+ * @brief Mounted module iterator.
+ *
+ * Omit internal modules, modules with no nodes (e.g., iana-if-types)
+ * and modules that were loaded as the result of a parent-reference.
+ *
+ * @param[in] ext_ctx is special context of mount-point extension.
+ * @param[in] parent_refs is set of parent-references. Can be NULL for case of 'inline' schema-ref.
+ * @param[in,out] state of the iterator. Set the value to zero for initialization.
+ * @return First/next mounted module or NULL.
+ */
+static const struct lys_module *
+trb_mounted_module_iter(struct ly_ctx *ext_ctx, struct ly_set *parent_refs, uint32_t *state)
+{
+    const struct lys_module *mod = NULL;
+    ly_bool from_parent_ref;
+    uint32_t j;
+
+    if (!(*state)) {
+        /* Get first non-internal module. */
+        *state = ly_ctx_internal_modules_count(ext_ctx);
+    }
+
+    while ((mod = ly_ctx_get_module_iter(ext_ctx, state))) {
+        if (mod->compiled && !mod->compiled->data) {
+            /* Compiled module with no data-nodes. */
+            continue;
+        } else if (mod->parsed && !mod->parsed->data) {
+            /* Parsed module with no data-nodes. */
+            continue;
+        } else if (!parent_refs) {
+            /* Mounting in 'inline' mode. Success. */
+            break;
+        }
+
+        /* Check if the module is not in parent-reference. */
+        from_parent_ref = 0;
+        for (j = 0; j < parent_refs->count; j++) {
+            if (!strcmp(mod->ns, parent_refs->snodes[j]->module->ns)) {
+                from_parent_ref = 1;
+                break;
+            }
+        }
+        if (!from_parent_ref) {
+            /* Success. */
+            break;
+        }
+    }
+
+    return mod;
+}
+
 /**********************************************************************
  * Definition of trm main functions
  *********************************************************************/
@@ -3965,20 +4013,25 @@ trb_print_family_tree(struct trt_wrapper wr, struct trt_printer_ctx *pc, struct 
  * @param[in] out is output handler.
  * @param[in] max_line_length is the maximum line length limit
  * that should not be exceeded.
+ * @param[in] mounted context is used for printing the YANG Schema mount.
+ * @param[in] parent_refs context is used for printing the YANG Schema mount and its parent-reference is set.
  * @param[in,out] pc will be adapted to lysp_tree.
  * @param[in,out] tc will be adapted to lysp_tree.
  */
 static void
-trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, ly_bool mounted,
+        const struct ly_set *parent_refs, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     *tc = (struct trt_tree_ctx) {
         .lysc_tree = 0,
+        .mounted = mounted || parent_refs,
         .section = TRD_SECT_MODULE,
         .pmod = module->parsed,
         .cmod = NULL,
         .pn = module->parsed ? module->parsed->data : NULL,
         .tpn = module->parsed ? module->parsed->data : NULL,
-        .cn = NULL
+        .cn = NULL,
+        .parent_refs = parent_refs
     };
 
     pc->out = out;
@@ -4014,20 +4067,25 @@ trm_lysp_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
  * @param[in] out is output handler.
  * @param[in] max_line_length is the maximum line length limit
  * that should not be exceeded.
+ * @param[in] mounted context is used for printing the YANG Schema mount.
+ * @param[in] parent_refs context is used for printing the YANG Schema mount and its parent-reference is set.
  * @param[in,out] pc will be adapted to lysc_tree.
  * @param[in,out] tc will be adapted to lysc_tree.
  */
 static void
-trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
+trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t max_line_length, ly_bool mounted,
+        const struct ly_set *parent_refs, struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
     *tc = (struct trt_tree_ctx) {
         .lysc_tree = 1,
+        .mounted = mounted || parent_refs,
         .section = TRD_SECT_MODULE,
         .pmod = module->parsed,
         .cmod = module->compiled,
         .tpn = NULL,
         .pn = NULL,
-        .cn = module->compiled->data
+        .cn = module->compiled->data,
+        .parent_refs = parent_refs
     };
 
     pc->out = out;
@@ -4061,7 +4119,7 @@ trm_lysc_tree_ctx(const struct lys_module *module, struct ly_out *out, size_t ma
 static void
 trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    trm_lysc_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, pc, tc);
+    trm_lysc_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, tc->mounted, tc->parent_refs, pc, tc);
 }
 
 /**
@@ -4072,7 +4130,7 @@ trm_reset_to_lysc_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 static void
 trm_reset_to_lysp_tree_ctx(struct trt_printer_ctx *pc, struct trt_tree_ctx *tc)
 {
-    trm_lysp_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, pc, tc);
+    trm_lysp_tree_ctx(tc->pmod->mod, pc->out, pc->max_line_length, tc->mounted, tc->parent_refs, pc, tc);
 }
 
 /**
@@ -4377,9 +4435,9 @@ tree_print_module(struct ly_out *out, const struct lys_module *module, uint32_t 
 
     line_length = line_length == 0 ? SIZE_MAX : line_length;
     if ((module->ctx->flags & LY_CTX_SET_PRIV_PARSED) && module->compiled) {
-        trm_lysc_tree_ctx(module, new_out, line_length, &pc, &tc);
+        trm_lysc_tree_ctx(module, new_out, line_length, 0, NULL, &pc, &tc);
     } else {
-        trm_lysp_tree_ctx(module, new_out, line_length, &pc, &tc);
+        trm_lysp_tree_ctx(module, new_out, line_length, 0, NULL, &pc, &tc);
     }
 
     trm_print_sections(&pc, &tc);
@@ -4411,7 +4469,7 @@ tree_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint3
     }
 
     line_length = line_length == 0 ? SIZE_MAX : line_length;
-    trm_lysc_tree_ctx(node->module, new_out, line_length, &pc, &tc);
+    trm_lysc_tree_ctx(node->module, new_out, line_length, 0, NULL, &pc, &tc);
 
     trp_print_keyword_stmt(pc.fp.read.module_name(&tc), pc.max_line_length, 0, pc.out);
     trb_print_parents(node, NULL, &pc, &tc);
@@ -4447,7 +4505,7 @@ tree_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
     }
 
     line_length = line_length == 0 ? SIZE_MAX : line_length;
-    trm_lysp_tree_ctx(submodp->mod, new_out, line_length, &pc, &tc);
+    trm_lysp_tree_ctx(submodp->mod, new_out, line_length, 0, NULL, &pc, &tc);
     tc.pmod = (struct lysp_module *)submodp;
     tc.tpn = submodp->data;
     tc.pn = tc.tpn;
@@ -4460,100 +4518,62 @@ tree_print_parsed_submodule(struct ly_out *out, const struct lysp_submodule *sub
     return erc;
 }
 
+/**
+ * @brief Print all mounted nodes ('/') and parent-referenced nodes ('@').
+ *
+ * @param[in] ext is mount-point extension.
+ * @param[in] wr is wrapper to be printed.
+ * @param[in] pc contains mainly functions for printing.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-trb_print_mount_point(struct trt_node *node, struct trt_wrapper wr, struct trt_printer_ctx *pc,
-        struct trt_tree_ctx *UNUSED(tc))
+trb_print_mount_point(const struct lysc_ext_instance *ext, const struct trt_wrapper wr, struct trt_printer_ctx *pc)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct ly_ctx *ext_ctx = NULL;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *last_mod;
     struct trt_tree_ctx tmptc;
     struct trt_wrapper tmpwr;
     struct trt_printer_ctx tmppc;
-    struct trt_mount_ctx *mc;
-    struct ly_set *modules;
     struct ly_set *refs = NULL;
-    LY_ERR err = LY_SUCCESS;
+    uint32_t i, iter_state;
 
-    if (!node->mount) {
-        /* modules are parsed only */
-        return LY_SUCCESS;
-    }
-
-    if (lyplg_ext_schema_mount_create_context(node->mount, &ext_ctx)) {
+    if (lyplg_ext_schema_mount_create_context(ext, &ext_ctx)) {
         /* Void mount point */
         return LY_SUCCESS;
     }
 
-    if (ly_set_new(&modules)) {
-        err = LY_SUCCESS;
-        goto out_ctx;
+    lyplg_ext_schema_mount_get_parent_ref(ext, &refs);
+
+    /* Get the last mounted module which will be printed. */
+    iter_state = 0;
+    while ((mod = trb_mounted_module_iter(ext_ctx, refs, &iter_state))) {
+        last_mod = mod;
     }
-
-    lyplg_ext_schema_mount_get_parent_ref(node->mount, &refs);
-
-    /* build new list of modules to print.  This list will omit internal
-     * modules, modules with no nodes (e.g., iana-if-types) and modules
-     * that were loaded as the result of a parent-reference.
-     */
-    uint32_t v = ly_ctx_internal_modules_count(ext_ctx);
 
     tmppc = *pc;
-    while ((mod = ly_ctx_get_module_iter(ext_ctx, &v))) {
-        uint32_t siblings;
-        ly_bool from_parent_ref = 0;
-
-        for (uint32_t pr = 0; refs && pr < refs->count; pr++) {
-            if (!strcmp(mod->ns, refs->snodes[pr]->module->ns)) {
-                from_parent_ref = 1;
-                break;
-            }
-        }
-        if (from_parent_ref) {
-            continue;
-        }
-
+    iter_state = 0;
+    while ((mod = trb_mounted_module_iter(ext_ctx, refs, &iter_state))) {
+        /* Prepare printer tree context. */
         if ((ext_ctx->flags & LY_CTX_SET_PRIV_PARSED) && mod->compiled) {
-            trm_lysc_tree_ctx(mod, pc->out, pc->max_line_length, &tmppc, &tmptc);
+            trm_lysc_tree_ctx(mod, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
         } else {
-            trm_lysp_tree_ctx(mod, pc->out, pc->max_line_length, &tmppc, &tmptc);
+            trm_lysp_tree_ctx(mod, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
         }
-
-        siblings = (tmptc.pn || tmptc.cn) ?
-                trb_get_number_of_siblings(tmppc.fp.modify, &tmptc) : 0;
-        if (siblings == 0) {
-            continue;
-        }
-        tmptc.mounted = 1;
-        tmptc.parent_refs = refs;
-
-        mc = malloc(sizeof *mc);
-        if (mc == NULL) {
-            err = LY_EMEM;
-            goto out;
-        }
-
-        mc->tc = tmptc;
-        mc->pc = tmppc;
-        ly_set_add(modules, (void *)mc, 1, NULL);
+        /* Decide whether to print the symbol '|'. */
+        tmpwr = (mod == last_mod) ? wr : trp_wrapper_set_mark_top(wr);
+        /* Print top-level nodes of mounted module which are denoted by the symbol '/'. */
+        trb_print_family_tree(tmpwr, &tmppc, &tmptc);
     }
 
-    for (uint32_t v = 0; v < modules->count; ++v) {
-        mc = modules->objs[v];
-        tmpwr = (v == modules->count - 1) ? wr : trp_wrapper_set_mark_top(wr);
-        trb_print_family_tree(tmpwr, &mc->pc, &mc->tc);
+    /* Print parent-referenced nodes which are denoted by the symbol '@'. */
+    for (i = 0; refs && i < refs->count; i++) {
+        trm_lysc_tree_ctx(refs->snodes[i]->module, pc->out, pc->max_line_length, 1, refs, &tmppc, &tmptc);
+        trb_print_parents(refs->snodes[i], &tmpwr, pc, &tmptc);
     }
 
-    for (uint32_t pr = 0; refs && pr < refs->count; pr++) {
-        trm_lysc_tree_ctx(refs->snodes[pr]->module, pc->out, pc->max_line_length, &tmppc, &tmptc);
-        tmptc.mounted = 1;
-        tmptc.parent_refs = refs;
-        trb_print_parents(refs->snodes[pr], &tmpwr, pc, &tmptc);
-    }
-
-out:
-    ly_set_free(modules, free);
     ly_set_free(refs, NULL);
-out_ctx:
     ly_ctx_destroy(ext_ctx);
-    return err;
+
+    return ret;
 }
