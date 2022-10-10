@@ -454,7 +454,11 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
     LY_CHECK_ARG_RET(NULL, tree, ctx, LY_EINVAL);
 
     /* create a new context */
-    LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
+    if (*ctx == NULL) {
+        LY_CHECK_GOTO(ret = ly_ctx_new(search_dir, options, &ctx_new), cleanup);
+    } else {
+        ctx_new = *ctx;
+    }
 
     /* redundant to compile modules one-by-one */
     if (!(options & LY_CTX_EXPLICIT_COMPILE)) {
@@ -519,10 +523,12 @@ ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int optio
 cleanup:
     ly_set_free(set, NULL);
     ly_set_erase(&features, NULL);
-    *ctx = ctx_new;
-    if (ret) {
-        ly_ctx_destroy(*ctx);
-        *ctx = NULL;
+    if (*ctx == NULL) {
+        *ctx = ctx_new;
+        if (ret) {
+            ly_ctx_destroy(*ctx);
+            *ctx = NULL;
+        }
     }
     return ret;
 }

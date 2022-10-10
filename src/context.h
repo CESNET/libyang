@@ -241,7 +241,8 @@ LIBYANG_API_DECL LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, str
  * @param[in] path Path to the file containing yang-library-data in the specified format
  * @param[in] format Format of the data in the provided file.
  * @param[in] options Context options, see @ref contextoptions.
- * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
+ * @param[in,out] ctx If *ctx is not NULL, the existing libyang context is modified.  Otherwise, a pointer to a
+ * newly created context is returned here if LY_SUCCESS.
  * @return LY_ERR return value
  */
 LIBYANG_API_DECL LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options,
@@ -257,7 +258,8 @@ LIBYANG_API_DECL LY_ERR ly_ctx_new_ylpath(const char *search_dir, const char *pa
  * @param[in] data String containing yang-library data in the specified format.
  * @param[in] format Format of the data in the provided file.
  * @param[in] options Context options, see @ref contextoptions.
- * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
+ * @param[in,out] ctx If *ctx is not NULL, the existing libyang context is modified.  Otherwise, a pointer to a
+ * newly created context is returned here if LY_SUCCESS.
  * @return LY_ERR return value
  */
 LIBYANG_API_DECL LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options,
@@ -272,7 +274,8 @@ LIBYANG_API_DECL LY_ERR ly_ctx_new_ylmem(const char *search_dir, const char *dat
  * If no such directory is available, NULL is accepted.
  * @param[in] tree Data tree containing yang-library data.
  * @param[in] options Context options, see @ref contextoptions.
- * @param[out] ctx Pointer to the created libyang context if LY_SUCCESS returned.
+ * @param[in,out] ctx If *ctx is not NULL, the existing libyang context is modified.  Otherwise, a pointer to a
+ * newly created context is returned here if LY_SUCCESS.
  * @return LY_ERR return value
  */
 LIBYANG_API_DECL LY_ERR ly_ctx_new_yldata(const char *search_dir, const struct lyd_node *tree, int options,
