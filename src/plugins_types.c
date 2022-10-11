@@ -1005,8 +1005,7 @@ lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct ly
 
     /* check the result */
     if (target_path) {
-        /* no or exact match */
-        assert(!set.used || (set.used == 1));
+        /* no or exact match(es) */
         i = 0;
     } else {
         /* check whether any matches */
