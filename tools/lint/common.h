@@ -44,6 +44,12 @@
 #define YLMSG_W(...) \
         fprintf(stderr, "YANGLINT[W]: " __VA_ARGS__)
 
+#ifndef _WIN32
+# define PATH_SEPARATOR ":"
+#else
+# define PATH_SEPARATOR ";"
+#endif
+
 /**
  * @brief Storage for the list of the features (their names) in a specific YANG module.
  */
