@@ -41,7 +41,7 @@ struct context {
     /* prepared output (--output option or stdout by default) */
     struct ly_out *out;
 
-    struct ly_set searchpaths;
+    char *searchpaths;
 
     /* options flags */
     uint8_t list;        /* -l option to print list of schemas */
@@ -114,7 +114,8 @@ erase_context(struct context *c)
     ly_set_erase(&c->schema_modules, NULL);
 
     /* context */
-    ly_set_erase(&c->searchpaths, NULL);
+    free(c->searchpaths);
+    c->searchpaths = NULL;
 
     ly_out_free(c->out, NULL,  0);
     ly_ctx_destroy(c->ctx);
@@ -348,55 +349,60 @@ ext_data_clb(const struct lysc_ext_instance *ext, void *user_data, void **ext_da
     return LY_SUCCESS;
 }
 
+static LY_ERR
+searchpath_strcat(char **searchpaths, const char *path)
+{
+    uint64_t len;
+    char *new;
+
+    if (!(*searchpaths)) {
+        *searchpaths = strdup(path);
+        return LY_SUCCESS;
+    }
+
+    len = strlen(*searchpaths) + strlen(path) + strlen(PATH_SEPARATOR);
+    new = realloc(*searchpaths, sizeof(char) * len + 1);
+    if (!new) {
+        return LY_EMEM;
+    }
+    strcat(new, PATH_SEPARATOR);
+    strcat(new, path);
+    *searchpaths = new;
+
+    return LY_SUCCESS;
+}
+
 static int
 fill_context_inputs(int argc, char *argv[], struct context *c)
 {
     struct ly_in *in = NULL;
     struct schema_features *sf;
     struct lys_module *mod;
-    const char *all_features[] = {"*", NULL}, *searchdir;
+    const char *all_features[] = {"*", NULL};
     char *dir = NULL, *module = NULL;
 
-    /* get the first searchdir */
-    searchdir = c->searchpaths.count ? c->searchpaths.objs[0] : NULL;
-
+    /* Create libyang context. */
     if (c->yang_lib_file) {
         /* ignore features */
         ly_set_erase(&c->schema_features, free_features);
 
-        /* create context from the yang-library file */
-        if (ly_ctx_new(searchdir, c->ctx_options, &c->ctx)) {
-            YLMSG_E("Unable to create libyang context\n");
-            return -1;
-        }
-        ly_ctx_set_ext_data_clb(c->ctx, ext_data_clb, c->schema_context_filename);
-        if (ly_ctx_new_ylpath(searchdir, c->yang_lib_file, LYD_UNKNOWN, c->ctx_options, &c->ctx)) {
+        if (ly_ctx_new_ylpath(c->searchpaths, c->yang_lib_file, LYD_UNKNOWN, c->ctx_options, &c->ctx)) {
             YLMSG_E("Unable to modify libyang context with yang-library data.\n");
             return -1;
         }
     } else {
         /* set imp feature flag if all should be enabled */
-        if (!c->schema_features.count) {
-            c->ctx_options |= LY_CTX_ENABLE_IMP_FEATURES;
-        }
+        c->ctx_options |= !c->schema_features.count ? LY_CTX_ENABLE_IMP_FEATURES : 0;
 
-        /* libyang context */
-        if (ly_ctx_new(searchdir, c->ctx_options, &c->ctx)) {
-            YLMSG_E("Unable to create libyang context.\n");
+        if (ly_ctx_new(c->searchpaths, c->ctx_options, &c->ctx)) {
+            YLMSG_E("Unable to create libyang context\n");
             return -1;
         }
+    }
 
-        if (c->schema_context_filename) {
-            if (ly_ctx_set_ext_data_clb(c->ctx, ext_data_clb, c->schema_context_filename)) {
-                YLMSG_E("Unable to set extension callback data.\n");
-                return -1;
-            }
-        }
-
-        /* set the rest of searchdirs */
-        for (uint32_t i = 1; i < c->searchpaths.count; ++i) {
-            ly_ctx_set_searchdir(c->ctx, c->searchpaths.objs[i]);
-        }
+    /* set callback providing run-time extension instance data */
+    if (c->schema_context_filename) {
+        ly_ctx_set_ext_data_clb(c->ctx, ext_data_clb, c->schema_context_filename);
     }
 
     /* process the operational and/or reply RPC content if any */
@@ -642,7 +648,7 @@ fill_context(int argc, char *argv[], struct context *c)
                 return -1;
             }
 
-            if (ly_set_add(&c->searchpaths, optarg, 0, NULL)) {
+            if (searchpath_strcat(&c->searchpaths, optarg)) {
                 YLMSG_E("Storing searchpath failed.\n");
                 return -1;
             }
