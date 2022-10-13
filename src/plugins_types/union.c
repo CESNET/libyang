@@ -189,7 +189,7 @@ union_store_type(const struct ly_ctx *ctx, struct lysc_type *type, struct lyd_va
 
     if (resolve && (ret == LY_EINCOMPLETE)) {
         /* we need the value resolved */
-        ret = subvalue->value.realtype->plugin->validate(ctx, type, ctx_node, tree, &subvalue->value, err);
+        ret = type->plugin->validate(ctx, type, ctx_node, tree, &subvalue->value, err);
         if (ret) {
             /* resolve failed, we need to free the stored value */
             type->plugin->free(ctx, &subvalue->value);
@@ -318,7 +318,7 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, r;
     struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue;
 
@@ -353,8 +353,8 @@ lyplg_type_store_union(const struct ly_ctx *ctx, const struct lysc_type *type, c
     }
 
     /* store canonical value, if any (use the specific type value) */
-    ret = lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical);
-    LY_CHECK_GOTO(ret, cleanup);
+    r = lydict_insert(ctx, subvalue->value._canonical, 0, &storage->_canonical);
+    LY_CHECK_ERR_GOTO(r, ret = r, cleanup);
 
 cleanup:
     if (options & LYPLG_TYPE_STORE_DYNAMIC) {
@@ -372,29 +372,16 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_type_union *type_u = (struct lysc_type_union *)storage->realtype;
+    struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_union *subvalue = storage->subvalue;
     uint32_t type_idx;
 
     *err = NULL;
 
-    if (!subvalue->value.realtype->plugin->validate) {
-        /* nothing to resolve */
-        return LY_SUCCESS;
-    }
-
-    /* resolve the stored value */
-    if (!subvalue->value.realtype->plugin->validate(ctx, type, ctx_node, tree, &subvalue->value, err)) {
-        /* resolve successful */
-        return LY_SUCCESS;
-    }
-
-    /* Resolve failed, we have to try another subtype of the union.
-     * Unfortunately, since the realtype can change (e.g. in leafref), we are not able to detect
-     * which of the subtype's were tried the last time, so we have to try all of them again.
-     */
-    ly_err_free(*err);
-    *err = NULL;
+    /* because of types that do not store their own type as realtype (leafref), we are not able to call their
+     * validate callback (there is no way to get the type TODO could be added to struct lyd_value_union), so
+     * we have to perform union value storing again from scratch */
+    subvalue->value.realtype->plugin->free(ctx, &subvalue->value);
 
     if (subvalue->format == LY_VALUE_LYB) {
         /* use the specific type to store the value */
@@ -406,10 +393,6 @@ lyplg_type_validate_union(const struct ly_ctx *ctx, const struct lysc_type *type
         ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, NULL, err);
         LY_CHECK_RET(ret);
     }
-
-    /* store and resolve the value */
-    ret = union_find_type(ctx, type_u->types, subvalue, 1, ctx_node, tree, NULL, NULL, err);
-    LY_CHECK_RET(ret);
 
     /* success, update the canonical value, if any generated */
     lydict_remove(ctx, storage->_canonical);
